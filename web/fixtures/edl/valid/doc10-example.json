@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "projectId": "p_example_001",
+  "revision": 3,
+  "assets": [
+    {
+      "assetId": "a_video_001",
+      "kind": "video",
+      "durationUs": 20000000,
+      "displayWidth": 1080,
+      "displayHeight": 1920,
+      "hasAudio": true
+    },
+    {
+      "assetId": "a_music_001",
+      "kind": "audio",
+      "durationUs": 30000000
+    }
+  ],
+  "canvas": {
+    "aspect": "9:16",
+    "background": "#000000"
+  },
+  "clips": [
+    {
+      "clipId": "c_001",
+      "assetId": "a_video_001",
+      "sourceInUs": 0,
+      "sourceOutUs": 4000000,
+      "sourceGainDb": 0,
+      "muted": false,
+      "view": {
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1,
+        "fit": "cover"
+      }
+    },
+    {
+      "clipId": "c_002",
+      "assetId": "a_video_001",
+      "sourceInUs": 8000000,
+      "sourceOutUs": 14000000,
+      "sourceGainDb": -6,
+      "muted": false,
+      "view": {
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1,
+        "fit": "cover"
+      }
+    }
+  ],
+  "music": {
+    "assetId": "a_music_001",
+    "sourceInUs": 5000000,
+    "sourceOutUs": 15000000,
+    "timelineStartUs": 0,
+    "gainDb": -12,
+    "muted": false,
+    "fadeInUs": 250000,
+    "fadeOutUs": 500000
+  },
+  "export": {
+    "container": "mp4",
+    "videoCodec": "h264",
+    "audioCodec": "aac",
+    "shortEdge": 1080,
+    "fpsNum": 30,
+    "fpsDen": 1,
+    "colorMode": "sdr_rec709",
+    "audioSampleRate": 48000
+  }
+}

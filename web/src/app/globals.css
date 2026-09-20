@@ -1,0 +1,272 @@
+/*
+ * Quiet Studio tokens.
+ * Values come from the measured contrast table in UI/VALIDATION.md; changing a
+ * pair here means re-measuring that table.
+ */
+
+:root {
+  --bg: #101315;
+  --panel: #181c1f;
+  --raised: #22282b;
+  --text: #f3f5ee;
+  --muted: #abb4ae;
+  --border: #343d3b;
+  --control-border: #78837d;
+  --accent: #d2ef78;
+  --accent-ink: #17200c;
+  --focus: #b5ddff;
+  --danger: #ffb4aa;
+  --warning: #f4d28d;
+  --success: #a8d6b0;
+  --paper: #f3f3ea;
+  --ink: #19211c;
+
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-dialog: 20px;
+
+  --font-ui: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-time: ui-monospace, SFMono-Regular, Consolas, monospace;
+
+  /* Touch target policy: 44px on web, 48px for touch tools (UI doc). */
+  --tap: 44px;
+
+  --panel-left: 264px;
+  --panel-right: 284px;
+  --topbar-h: 64px;
+  --strip-h: 148px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+button svg {
+  pointer-events: none;
+}
+
+a,
+button,
+input,
+select,
+[tabindex] {
+  outline-offset: 3px;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus);
+}
+
+svg.icon {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------------------------------------------------------------- landing */
+
+.landing {
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.landing a:focus-visible,
+.landing button:focus-visible {
+  outline: 2px solid #1d4d7a;
+}
+
+.landing-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  max-width: 1080px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.landing-main {
+  max-width: 1080px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 24px 72px;
+  flex: 1;
+}
+
+.landing h1 {
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  margin: 24px 0 16px;
+  max-width: 18ch;
+}
+
+.landing .lede {
+  font-size: clamp(16px, 2.2vw, 19px);
+  line-height: 1.55;
+  color: #3c4841;
+  max-width: 56ch;
+  margin: 0 0 28px;
+}
+
+.landing-steps {
+  list-style: none;
+  padding: 0;
+  margin: 40px 0 0;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.landing-step {
+  background: #fff;
+  border: 1px solid #ddded1;
+  border-radius: var(--radius-card);
+  padding: 16px 18px;
+}
+
+.landing-step b {
+  display: block;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.landing-step span {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #4a564e;
+}
+
+.landing-note {
+  margin-top: 40px;
+  border-left: 3px solid #c8cbb4;
+  padding: 4px 0 4px 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #4a564e;
+  max-width: 62ch;
+}
+
+.landing-footer {
+  border-top: 1px solid #ddded1;
+  font-size: 13px;
+  color: #5a665e;
+  padding: 18px 24px;
+  max-width: 1080px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.btn-primary-light {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 20px;
+  border-radius: var(--radius-control);
+  border: 1px solid #2c3a22;
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.btn-ghost-light {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border-radius: var(--radius-control);
+  border: 1px solid #c9cbba;
+  background: transparent;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 650;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+}
+
+.wordmark-badge {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  display: grid;
+  place-items: center;
+}
+
+.wordmark-badge svg.icon {
+  width: 17px;
+  height: 17px;
+}

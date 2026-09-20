@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "valid": [
+    {
+      "file": "valid/single-clip.json"
+    },
+    {
+      "file": "valid/doc10-example.json"
+    },
+    {
+      "file": "valid/repeated-source-range.json"
+    },
+    {
+      "file": "valid/silent-source.json"
+    },
+    {
+      "file": "valid/delayed-music.json"
+    },
+    {
+      "file": "valid/square-output.json"
+    },
+    {
+      "file": "valid/contain-letterbox.json"
+    },
+    {
+      "file": "valid/minimum-length-clip.json"
+    }
+  ],
+  "invalid": [
+    {
+      "file": "invalid/negative-time.json",
+      "expectedIssueCodes": [
+        "time_not_safe_integer"
+      ]
+    },
+    {
+      "file": "invalid/reversed-range.json",
+      "expectedIssueCodes": [
+        "range_reversed"
+      ]
+    },
+    {
+      "file": "invalid/unknown-asset.json",
+      "expectedIssueCodes": [
+        "asset_unknown"
+      ]
+    },
+    {
+      "file": "invalid/crop-overflow.json",
+      "expectedIssueCodes": [
+        "view_out_of_bounds"
+      ]
+    },
+    {
+      "file": "invalid/range-out-of-source.json",
+      "expectedIssueCodes": [
+        "range_out_of_source"
+      ]
+    },
+    {
+      "file": "invalid/clip-too-short.json",
+      "expectedIssueCodes": [
+        "clip_too_short"
+      ]
+    },
+    {
+      "file": "invalid/output-duration-exceeds-policy.json",
+      "expectedIssueCodes": [
+        "output_duration_exceeds_policy"
+      ]
+    },
+    {
+      "file": "invalid/unsupported-codec-spec.json",
+      "expectedIssueCodes": [
+        "export_spec_invalid"
+      ]
+    },
+    {
+      "file": "invalid/too-many-clips.json",
+      "expectedIssueCodes": [
+        "clip_limit_exceeded"
+      ]
+    },
+    {
+      "file": "invalid/music-fade-overflow.json",
+      "expectedIssueCodes": [
+        "fade_exceeds_selection"
+      ]
+    },
+    {
+      "file": "invalid/music-start-after-output.json",
+      "expectedIssueCodes": [
+        "music_start_after_output"
+      ]
+    },
+    {
+      "file": "invalid/music-wrong-asset-kind.json",
+      "expectedIssueCodes": [
+        "asset_kind_mismatch"
+      ]
+    },
+    {
+      "file": "invalid/future-schema.json",
+      "expectedIssueCodes": [
+        "schema_version_unsupported"
+      ]
+    },
+    {
+      "file": "invalid/unknown-top-level-field.json",
+      "expectedIssueCodes": [
+        "unknown_field"
+      ]
+    },
+    {
+      "file": "invalid/duplicate-asset-id.json",
+      "expectedIssueCodes": [
+        "asset_id_duplicate"
+      ]
+    },
+    {
+      "file": "invalid/gain-out-of-range.json",
+      "expectedIssueCodes": [
+        "gain_out_of_range"
+      ]
+    },
+    {
+      "file": "invalid/empty-clips.json",
+      "expectedIssueCodes": [
+        "clips_empty"
+      ]
+    },
+    {
+      "file": "invalid/non-integer-time.json",
+      "expectedIssueCodes": [
+        "time_not_safe_integer"
+      ]
+    }
+  ]
+}
