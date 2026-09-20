@@ -24,6 +24,7 @@ export type ExportFailureCode =
   | 'plan_invalid'
   | 'no_video_track'
   | 'source_undecodable'
+  | 'hdr_source_unsupported'
   | 'audio_undecodable'
   | 'video_encoder_unsupported'
   | 'audio_encoder_unsupported'

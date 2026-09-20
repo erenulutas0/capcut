@@ -12,3 +12,5 @@ blob-report/
 .DS_Store
 Thumbs.db
 export-proof/
+web/tests/media/matrix/
+web/matrix-results/

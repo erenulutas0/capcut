@@ -172,6 +172,8 @@ export const tr = {
   'export.fail.plan_invalid': 'Düzenleme tarifi çıktı için uygun değil.',
   'export.fail.no_video_track': 'Seçilen dosyada video izi bulunamadı.',
   'export.fail.source_undecodable': 'Bu tarayıcı kaynak videoyu çözemiyor.',
+  'export.fail.hdr_source_unsupported':
+    'Bu video HDR. Doğrulanmış bir HDR→SDR dönüşümümüz olmadığı için renkleri bozmamak adına çıktı alınmıyor.',
   'export.fail.audio_undecodable': 'Bu tarayıcı seçilen ses dosyasını çözemiyor.',
   'export.fail.video_encoder_unsupported': 'Bu tarayıcıda H.264 kodlama bu ayarla desteklenmiyor.',
   'export.fail.audio_encoder_unsupported': 'Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor.',
@@ -410,6 +412,8 @@ export const en: Record<MessageKey, string> = {
   'export.fail.plan_invalid': 'The editing recipe cannot be exported.',
   'export.fail.no_video_track': 'No video track was found in the selected file.',
   'export.fail.source_undecodable': 'This browser cannot decode the source video.',
+  'export.fail.hdr_source_unsupported':
+    'This video is HDR. We have no verified HDR to SDR conversion, so export is refused rather than producing wrong colours.',
   'export.fail.audio_undecodable': 'This browser cannot decode the selected audio file.',
   'export.fail.video_encoder_unsupported':
     'H.264 encoding is unsupported here with this configuration.',

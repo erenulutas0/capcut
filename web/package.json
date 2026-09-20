@@ -14,7 +14,11 @@
     "test:e2e": "playwright test",
     "shots": "node scripts/screenshots.mjs",
     "verify:export": "node scripts/verify-export.mjs",
-    "verify:export:chrome": "node scripts/verify-export.mjs --chrome"
+    "verify:export:chrome": "node scripts/verify-export.mjs --chrome",
+    "matrix:media": "node scripts/generate-matrix-media.mjs",
+    "matrix": "node scripts/run-matrix.mjs",
+    "matrix:doc": "node scripts/build-support-matrix.mjs",
+    "matrix:long": "node scripts/measure-long-export.mjs"
   },
   "dependencies": {
     "mediabunny": "1.58.1",

@@ -31,7 +31,23 @@ export interface SourceStage {
   audioDecodable: boolean | null;
   sourceVideoCodec: string | null;
   sourceAudioCodec: string | null;
+  /** Coded size before rotation, for the support record. */
+  codedWidth: number | null;
+  codedHeight: number | null;
+  rotation: number | null;
+  /** Transfer characteristics as the container declares them. */
+  transfer: string | null;
+  primaries: string | null;
+  /**
+   * True when the source declares an HDR transfer. There is no verified tone
+   * mapping path, so doc 09 says refuse clearly rather than produce wrong
+   * colours and call it a success.
+   */
+  isHdr: boolean;
 }
+
+/** PQ and HLG are the HDR transfer functions we must not silently flatten. */
+const HDR_TRANSFERS = new Set(['pq', 'smpte2084', 'hlg', 'arib-std-b67']);
 
 export interface CapabilityReportV1 {
   /** True only when every stage that matters actually passed. */
@@ -107,11 +123,29 @@ export async function probeSource(videoFile: File, audioFile: File | null): Prom
     audioDecodable = await sourceAudioTrack.canDecode();
   }
 
+  let transfer: string | null = null;
+  let primaries: string | null = null;
+  if (videoTrack) {
+    try {
+      const colorSpace = await videoTrack.getColorSpace();
+      transfer = colorSpace.transfer ?? null;
+      primaries = colorSpace.primaries ?? null;
+    } catch {
+      // An unreadable colour space is treated as "unknown", not as HDR.
+    }
+  }
+
   return {
     videoDecodable: videoTrack ? await videoTrack.canDecode() : false,
     audioDecodable,
     sourceVideoCodec: videoTrack ? await videoTrack.getCodec() : null,
     sourceAudioCodec: sourceAudioTrack ? await sourceAudioTrack.getCodec() : null,
+    codedWidth: videoTrack ? await videoTrack.getCodedWidth() : null,
+    codedHeight: videoTrack ? await videoTrack.getCodedHeight() : null,
+    rotation: videoTrack ? await videoTrack.getRotation() : null,
+    transfer,
+    primaries,
+    isHdr: transfer !== null && HDR_TRANSFERS.has(transfer),
   };
 }
 
@@ -136,9 +170,9 @@ export function buildReport(
   }
 
   if (source && !source.videoDecodable) blockers.push('source_undecodable');
-  if (source && source.audioDecodable === false && source.sourceAudioCodec === null) {
-    // A video with no audio track at all is fine; an undecodable one is not.
-  }
+  // An HDR source decodes fine but would come out with wrong colours, so it is
+  // refused here instead of being quietly flattened to SDR (doc 09).
+  if (source && source.isHdr) blockers.push('hdr_source_unsupported');
 
   const unique = Array.from(new Set(blockers));
   const canExport =
@@ -147,7 +181,8 @@ export function buildReport(
     encoder !== null &&
     encoder.selfTestPassed &&
     source !== null &&
-    source.videoDecodable;
+    source.videoDecodable &&
+    !source.isHdr;
 
   return { canExport, environment, encoder, source, blockers: unique };
 }

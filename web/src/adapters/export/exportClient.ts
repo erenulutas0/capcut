@@ -13,6 +13,9 @@ import { TERMINAL_EXPORT_TYPES } from '@/domain/exportEvents';
 import type { RenderPlan } from '@/domain/renderPlan';
 import type { CapabilityStageResult, EncoderProbeConfig, WorkerRequest, WorkerResponse } from './protocol';
 
+/** Stage C renders a tiny file, so this is generous but finite. */
+const CAPABILITY_TIMEOUT_MS = 60_000;
+
 function createWorker(): Worker {
   return new Worker(new URL('./exportWorker.ts', import.meta.url), {
     type: 'module',
@@ -34,8 +37,17 @@ export class ExportWorkerClient {
     return `${prefix}_${Date.now().toString(36)}_${this.counter}`;
   }
 
-  /** Stage B + C. Rejects rather than guessing if the worker cannot start. */
-  async checkCapability(config: EncoderProbeConfig): Promise<CapabilityStageResult> {
+  /**
+   * Stage B + C. Rejects rather than guessing if the worker cannot start.
+   *
+   * The timeout is not belt-and-braces: a browser whose worker module fails to
+   * load without firing `error` would otherwise leave the dialog stuck on
+   * "checking" forever, which reads as a hang rather than an honest refusal.
+   */
+  async checkCapability(
+    config: EncoderProbeConfig,
+    timeoutMs = CAPABILITY_TIMEOUT_MS,
+  ): Promise<CapabilityStageResult> {
     const worker = this.ensureWorker();
     const requestId = this.nextId('cap');
 
@@ -51,9 +63,16 @@ export class ExportWorkerClient {
         reject(new Error('worker_unavailable'));
       };
       const cleanup = () => {
+        window.clearTimeout(timer);
         worker.removeEventListener('message', onMessage);
         worker.removeEventListener('error', onError);
       };
+      const timer = window.setTimeout(() => {
+        cleanup();
+        // A worker that never answers is treated as unavailable, not as a pass.
+        this.dispose();
+        reject(new Error('worker_unavailable'));
+      }, timeoutMs);
 
       worker.addEventListener('message', onMessage);
       worker.addEventListener('error', onError);

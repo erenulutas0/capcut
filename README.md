@@ -1,8 +1,9 @@
-# Clip — web video editörü (W1)
+# Clip — web video editörü (W2)
 
-> Durum: **W1 tamamlandı.** Editör çalışıyor ve desteklenen tarayıcıda
-> **gerçek MP4 (H.264/AAC) çıktısı** üretiyor. Çıktı, üretildikten sonra
-> yeniden açılıp ölçülüyor; ffprobe ile bağımsız doğrulandı.
+> Durum: **W2 tamamlandı.** Editör çalışıyor, desteklenen tarayıcıda
+> **gerçek MP4 (H.264/AAC) çıktısı** üretiyor ve doc 22 dosya matrisi beş
+> tarayıcıda gerçek dosyalarla çalıştırıldı.
+> Sonuçlar: [destek matrisi](docs/SUPPORT_MATRIX.md).
 > "Clip" geçici çalışma adıdır; marka/alan adı araştırması yapılmadı.
 
 Kullanıcı kendi videosunda tutmak istediği bölümleri seçer, sıralar, görüntü
@@ -57,6 +58,13 @@ Aynı doğrulamayı kurulu Google Chrome ile çalıştırmak için:
 cd web && npm run verify:export:chrome
 ```
 
+Dosya matrisi (doc 22) — fixture'ları üret, bir tarayıcıda çalıştır, destek
+matrisini yeniden yaz:
+
+```bash
+cd web && npm run matrix:media && npm run matrix -- --browser=chromium && npm run matrix:doc
+```
+
 Sentetik test medyası ve EDL fixture'ları üretmek için (ffmpeg gerekir):
 
 ```bash
@@ -102,18 +110,20 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 Kalıcı kayıt (proje yalnızca sekmede yaşar), thumbnail üretimi, serbest kırpma,
 çoklu video kaynağı, altyazı, bulut, hesap, ödeme ve native uygulama.
 
-Çıktı tarafında ölçülmemiş olanlar: Safari/Firefox/Edge, gerçek telefon,
-gerçek kamera dosyaları (VFR, rotation metadata, HEVC/HDR, 4K, 29.97/59.94 fps),
-44.1 kHz müzik karışımı ve dakikalarca süren çıktılar. Bellek sınırı nedeniyle
-çıktı süresi 5 dakika ile sınırlıdır.
+Çıktı Chromium/Chrome/Edge'de doğrulandı. **Firefox'ta AAC encode olmadığı
+için çıktı kapalıdır** ve uygulama bunu açıkça söyler. Gerçek Safari, gerçek
+telefon ve gerçek kamera kayıtları hâlâ test edilmedi; ayrıntı ve ölçümler
+[destek matrisinde](docs/SUPPORT_MATRIX.md). Çıktı süresi 5 dakika ile
+sınırlıdır.
 
 Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
 [ADR-009 (altyazı sınırı)](docs/adr/ADR-009-captions-boundary.md),
-[ADR-010 (W1 çıktı hattı ve ölçümler)](docs/adr/ADR-010-w1-web-export.md).
+[ADR-010 (W1 çıktı hattı ve ölçümler)](docs/adr/ADR-010-w1-web-export.md),
+[ADR-011 (W2 dosya matrisi ve destek sınırları)](docs/adr/ADR-011-w2-file-matrix.md).
 
 ## Sıradaki tek görev
 
-**W2 — dosya matrisi ve dayanıklılık:** `docs/22_QA_TEST_MATRIX.md` içindeki
-fixture'ları gerçek dosyalarla çalıştırmak, Safari/Firefox/Edge sonuçlarını
-kaydetmek, uzun çıktı için `StreamTarget` yoluna geçmek ve destek matrisini
-yayımlamak.
+**W3 — gerçek kullanıcı medyası ve kalıcılık:** matrisi gerçek telefon/kamera
+kayıtlarıyla tekrarlamak, oradan çıkacak bellek ölçümüyle `StreamTarget`
+kararını vermek ve projenin sekme kapanınca kaybolmaması için yerel kaydı
+(IndexedDB + re-link) uygulamak.
