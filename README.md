@@ -1,12 +1,14 @@
-# Clip — web video editörü (W0)
+# Clip — web video editörü (W1)
 
-> Durum: **W0 tamamlandı.** Editör arayüzü ve düzenleme tarifi çalışıyor.
-> Gerçek video çıktısı (encode) **yok** — bu W1'in işi.
+> Durum: **W1 tamamlandı.** Editör çalışıyor ve desteklenen tarayıcıda
+> **gerçek MP4 (H.264/AAC) çıktısı** üretiyor. Çıktı, üretildikten sonra
+> yeniden açılıp ölçülüyor; ffprobe ile bağımsız doğrulandı.
 > "Clip" geçici çalışma adıdır; marka/alan adı araştırması yapılmadı.
 
 Kullanıcı kendi videosunda tutmak istediği bölümleri seçer, sıralar, görüntü
-çerçevesini ve sesi ayarlar. Dosyalar bilgisayardan çıkmaz: bulut yükleme,
-hesap, abonelik ve yapay zekâ servisi yoktur.
+çerçevesini ve sesi ayarlar, sonra videoyu indirir. Kodlama tamamen tarayıcıda
+yapılır: dosyalar bilgisayardan çıkmaz, bulut yükleme, hesap, abonelik ve yapay
+zekâ servisi yoktur.
 
 ## Çalıştırma
 
@@ -42,6 +44,19 @@ Ekran görüntüleri (`web/screenshots/`), sunucu `:3100`'de ayaktayken:
 cd web && npm run shots
 ```
 
+Gerçek çıktı doğrulaması — editörü sürer, MP4 üretir, indirir ve **ffprobe** ile
+ölçer (sunucu `:3100`'de ayakta olmalı, ffmpeg/ffprobe gerekir):
+
+```bash
+cd web && npm run verify:export
+```
+
+Aynı doğrulamayı kurulu Google Chrome ile çalıştırmak için:
+
+```bash
+cd web && npm run verify:export:chrome
+```
+
 Sentetik test medyası ve EDL fixture'ları üretmek için (ffmpeg gerekir):
 
 ```bash
@@ -52,15 +67,16 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 
 | Yol | İçerik |
 |---|---|
-| `web/` | Next.js uygulaması (W0 editörü + tanıtım sayfası) |
+| `web/` | Next.js uygulaması (editör + tanıtım sayfası) |
 | `web/src/domain/` | Framework'süz EDL v1, zaman, timeline, çerçeveleme, politika |
 | `web/src/application/` | Saf komutlar, undo/redo geçmişi |
-| `web/src/adapters/` | Tarayıcı medya probe'u, W0 MediaEngine (encode yok) |
+| `web/src/adapters/` | Tarayıcı medya probe'u, uygunluk kapısı |
+| `web/src/adapters/export/` | Worker tabanlı encode hattı (WebCodecs + Mediabunny) |
 | `web/fixtures/edl/` | Dile bağımsız geçerli/geçersiz EDL örnekleri + manifest |
 | `video-editor-blueprint/` | Ürün ve mühendislik belge paketi (değiştirilmedi) |
 | `UI/` | Quiet Studio tasarım referansı ve HTML prototipi (değiştirilmedi) |
 | `transcript_araştırma/` | Altyazı/transkript araştırma eki (değiştirilmedi) |
-| `docs/adr/` | W0 ile birlikte yazılan karar kayıtları |
+| `docs/adr/` | Uygulamayla birlikte yazılan karar kayıtları |
 
 ## Bu sürümde çalışanlar
 
@@ -73,18 +89,31 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 - 9:16 / 16:9 / 1:1 oranları, doldur/sığdır ve merkezden yakınlaştırma.
 - Kendi ses dosyasını ekleme; bölüm, çıktı başlangıcı, seviye ve fade ayarları.
 - Domain değişikliklerinde undo/redo (son 100 adım).
-- Gerçek proje değerlerinden hesaplanan, **oluşturma düğmesi kapalı** çıktı paneli.
+- **Gerçek MP4 çıktısı:** seçilen anlar sırayla, seçilen çerçeveyle ve kaynak
+  sesi + müzik tek ses izinde birleştirilerek H.264/AAC olarak kodlanır.
+- Beş aşamalı uygunluk kapısı (ortam → encoder ayarı → sentetik deneme
+  dosyası → kaynağın çözülebilirliği → rota). Geçmezse düğme açılmaz.
+- Gerçek ilerleme yüzdesi (kodlanan kare / toplam kare), iptal, hata durumları.
+- Üretilen dosya yeniden açılıp ölçülür; arayüzdeki süre/çözünürlük/codec
+  değerleri o ölçümden gelir.
 
 ## Bu sürümde olmayanlar
 
-Gerçek encode/export, gerçek ses miksi, kalıcı kayıt (proje yalnızca sekmede
-yaşar), thumbnail üretimi, serbest kırpma, çoklu video kaynağı, altyazı,
-bulut, hesap, ödeme ve native uygulama.
+Kalıcı kayıt (proje yalnızca sekmede yaşar), thumbnail üretimi, serbest kırpma,
+çoklu video kaynağı, altyazı, bulut, hesap, ödeme ve native uygulama.
+
+Çıktı tarafında ölçülmemiş olanlar: Safari/Firefox/Edge, gerçek telefon,
+gerçek kamera dosyaları (VFR, rotation metadata, HEVC/HDR, 4K, 29.97/59.94 fps),
+44.1 kHz müzik karışımı ve dakikalarca süren çıktılar. Bellek sınırı nedeniyle
+çıktı süresi 5 dakika ile sınırlıdır.
 
 Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
-[ADR-009 (altyazı sınırı)](docs/adr/ADR-009-captions-boundary.md).
+[ADR-009 (altyazı sınırı)](docs/adr/ADR-009-captions-boundary.md),
+[ADR-010 (W1 çıktı hattı ve ölçümler)](docs/adr/ADR-010-w1-web-export.md).
 
 ## Sıradaki tek görev
 
-**W1 — gerçek web video çıktısı kanıtı:** seçilen anlardan, doğru çerçeveyle
-ve ses miksiyle gerçek bir MP4 üretilmesi ve ölçülmesi.
+**W2 — dosya matrisi ve dayanıklılık:** `docs/22_QA_TEST_MATRIX.md` içindeki
+fixture'ları gerçek dosyalarla çalıştırmak, Safari/Firefox/Edge sonuçlarını
+kaydetmek, uzun çıktı için `StreamTarget` yoluna geçmek ve destek matrisini
+yayımlamak.

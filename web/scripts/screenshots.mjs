@@ -62,8 +62,18 @@ for (const size of SIZES) {
   }
   if (size.name === 'desktop-1440x900') {
     await page.getByTestId('open-export').click();
+    await page.getByTestId('export-ready').waitFor({ timeout: 60_000 }).catch(() => {});
     await page.waitForTimeout(250);
     await page.screenshot({ path: join(outDir, 'export-dialog-1440x900.png') });
+
+    // A real export, captured while encoding and once it has finished.
+    await page.getByTestId('export-create').click().catch(() => {});
+    await page.getByTestId('export-running').waitFor({ timeout: 30_000 }).catch(() => {});
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: join(outDir, 'export-progress-1440x900.png') });
+    await page.getByTestId('export-succeeded').waitFor({ timeout: 180_000 }).catch(() => {});
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: join(outDir, 'export-succeeded-1440x900.png') });
     await page.keyboard.press('Escape');
 
     await page.goto(`${baseURL}/`);

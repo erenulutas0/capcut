@@ -537,7 +537,8 @@ export function EditorApp() {
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         project={state.project}
-        totalSourceBytes={state.totalSourceBytes}
+        videoFile={state.video?.file ?? null}
+        audioFile={state.audio?.file ?? null}
         onShortEdgeChange={state.changeShortEdge}
       />
       <HelpDialog t={t} open={helpOpen} onClose={() => setHelpOpen(false)} />

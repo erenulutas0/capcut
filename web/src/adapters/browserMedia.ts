@@ -22,6 +22,11 @@ export interface MediaHandle extends ProbeResult {
   kind: 'video' | 'audio';
   fileName: string;
   objectUrl: string;
+  /**
+   * The user's own `File`. Kept as a reference, never read into memory here:
+   * the export worker streams from it through `BlobSource`.
+   */
+  file: File;
   release(): void;
 }
 
@@ -100,10 +105,11 @@ async function probeFile(
           kind,
           fileName: file.name,
           objectUrl,
+          file,
           durationUs,
           displayWidth: video?.videoWidth,
           displayHeight: video?.videoHeight,
-          hasAudio: detectHasAudio(element),
+          hasAudio: detectHasAudioFromElement(element),
           mimeType: file.type || 'application/octet-stream',
           sizeBytes: file.size,
           release: () => URL.revokeObjectURL(objectUrl),
@@ -118,16 +124,27 @@ async function probeFile(
   cleanupProbe();
   if (!result.ok) {
     URL.revokeObjectURL(objectUrl);
+    return result;
+  }
+
+  if (result.handle.hasAudio === undefined) {
+    const fromContainer = await detectHasAudioFromContainer(file);
+    if (fromContainer !== undefined) {
+      result.handle.hasAudio = fromContainer;
+    }
   }
   return result;
 }
 
 /**
- * Best effort only. There is no cross-browser way to ask "does this file have
- * an audio track"; when nothing answers we return `undefined` and the UI says
- * "bilinmiyor" instead of inventing a silent or an audible source.
+ * Media-element heuristics, used only as a fallback.
+ *
+ * `webkitAudioDecodedByteCount` deliberately only proves PRESENCE: at
+ * `loadedmetadata` nothing has been decoded yet, so a 0 there means "not yet",
+ * not "no audio". Reading it as absence made the editor report silent sources
+ * for ordinary files — and, worse, dropped their audio from the export.
  */
-function detectHasAudio(element: HTMLMediaElement): boolean | undefined {
+function detectHasAudioFromElement(element: HTMLMediaElement): boolean | undefined {
   const candidate = element as HTMLMediaElement & {
     mozHasAudio?: boolean;
     webkitAudioDecodedByteCount?: number;
@@ -137,10 +154,29 @@ function detectHasAudio(element: HTMLMediaElement): boolean | undefined {
   if (candidate.audioTracks && typeof candidate.audioTracks.length === 'number') {
     return candidate.audioTracks.length > 0;
   }
-  if (typeof candidate.webkitAudioDecodedByteCount === 'number') {
-    return candidate.webkitAudioDecodedByteCount > 0;
+  if (
+    typeof candidate.webkitAudioDecodedByteCount === 'number' &&
+    candidate.webkitAudioDecodedByteCount > 0
+  ) {
+    return true;
   }
   return undefined;
+}
+
+/**
+ * Authoritative answer from the demuxer: it reads the container's track list
+ * instead of guessing from a media element. Returns `undefined` only when the
+ * file cannot be parsed here at all.
+ */
+async function detectHasAudioFromContainer(file: File): Promise<boolean | undefined> {
+  try {
+    const { ALL_FORMATS, BlobSource, Input } = await import('mediabunny');
+    const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(file) });
+    const audioTrack = await input.getPrimaryAudioTrack();
+    return audioTrack !== null;
+  } catch {
+    return undefined;
+  }
 }
 
 export function probeVideoFile(file: File, limits: Limits): Promise<ProbeOutcome> {

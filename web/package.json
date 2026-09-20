@@ -12,9 +12,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "shots": "node scripts/screenshots.mjs"
+    "shots": "node scripts/screenshots.mjs",
+    "verify:export": "node scripts/verify-export.mjs",
+    "verify:export:chrome": "node scripts/verify-export.mjs --chrome"
   },
   "dependencies": {
+    "mediabunny": "1.58.1",
     "next": "16.3.5",
     "react": "19.3.0",
     "react-dom": "19.3.0"

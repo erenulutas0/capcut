@@ -675,6 +675,12 @@ input[type='range']:disabled::-webkit-slider-thumb {
   color: var(--muted);
 }
 
+.notice b {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--text);
+}
+
 .notice-warning {
   border-color: #5f5230;
   background: rgba(244, 210, 141, 0.09);
@@ -682,9 +688,7 @@ input[type='range']:disabled::-webkit-slider-thumb {
 }
 
 .notice-warning b {
-  display: block;
   color: var(--warning);
-  margin-bottom: 3px;
 }
 
 .notice svg.icon {
@@ -1181,5 +1185,41 @@ input[type='range']:disabled::-webkit-slider-thumb {
 
   .btn {
     padding: 0 12px;
+  }
+}
+
+/* --------------------------------------------------------------- progress */
+
+.progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 120ms linear;
+}
+
+/* No percentage is known in this phase, so the bar must not imply one. */
+.progress-indeterminate {
+  width: 35%;
+  animation: progress-sweep 1.1s ease-in-out infinite;
+}
+
+@keyframes progress-sweep {
+  0% { margin-left: -35%; }
+  100% { margin-left: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-indeterminate {
+    width: 100%;
+    opacity: 0.4;
+    margin-left: 0;
   }
 }

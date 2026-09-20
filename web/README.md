@@ -8,7 +8,9 @@ Kurulum ve komutlar için depo kökündeki [README](../README.md) dosyasına bak
   çerçeveleme tarifi, politika limitleri, `MediaEngine` portu.
   React/DOM/Next import etmez.
 - `src/application/` — saf `ProjectV1 -> ProjectV1` komutları ve undo/redo.
-- `src/adapters/` — tarayıcı medya probe'u ve W0 MediaEngine (encode yok).
+- `src/adapters/` — tarayıcı medya probe'u ve uygunluk kapısı.
+- `src/adapters/export/` — encode worker'ı: demux → decode → canvas dönüşümü →
+  encode → mux → üretilen dosyanın yeniden açılıp ölçülmesi.
 - `src/components/` — React arayüzü.
 - `src/i18n/` — Türkçe varsayılan, İngilizce anahtarlı sözlükler.
 
@@ -18,6 +20,13 @@ Kurulum ve komutlar için depo kökündeki [README](../README.md) dosyasına bak
 hangi dosyanın geçerli olduğunu ve geçersizlerin hangi hata kodlarını üretmesi
 gerektiğini listeler. Dart ve Python tarafı aynı dosyaları okuyup aynı sonucu
 üretene kadar sözleşme tamamlanmış sayılmaz (doc 10).
+
+## Çıktı doğrulaması
+
+`npm run verify:export` gerçek bir export çalıştırır ve sonucu ffprobe ile
+ölçer. Ayrıca aynı kesimi ffmpeg ile bağımsız olarak kurup SSIM karşılaştırması
+yapar ve ses bantlarını ölçerek hem kaynak sesinin hem müziğin mikse girdiğini
+an başına doğrular. Ayrıntılar: `docs/adr/ADR-010-w1-web-export.md`.
 
 ## Test medyası
 

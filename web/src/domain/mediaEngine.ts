@@ -1,15 +1,16 @@
 /**
- * MediaEngine port (doc 10 "Motor portu") — a behaviour contract, not an
- * implementation.
+ * MediaEngine port (doc 10 "Motor portu") — a behaviour contract.
  *
- * W0 ships `probe` and `assess` only. `export` is intentionally absent from the
- * W0 adapter: there is no encoder behind it, and a method that resolves with a
- * fake success would be exactly the thing AGENTS.md forbids. W1 adds the real
- * one (`preparePreview` / `export` / `cancel`) behind the same port.
+ * W1 implements it for the browser with WebCodecs + Mediabunny
+ * (`src/adapters/export/`). The capability report and export event types live
+ * next to their own concerns (`exportEvents.ts`, `adapters/exportCapability.ts`)
+ * so the domain never depends on a specific encoder.
  */
 
 import type { ProjectV1 } from './edl';
+import type { ExportEvent } from './exportEvents';
 import type { ExportPolicy } from './policy';
+import type { RenderPlan } from './renderPlan';
 import type { Micros } from './time';
 
 export interface ProbeResult {
@@ -19,37 +20,21 @@ export interface ProbeResult {
   displayHeight?: number;
   /**
    * `undefined` means "the platform did not tell us", not "there is no audio".
-   * Browsers do not expose track lists reliably; we never guess.
+   * Browsers do not expose track lists reliably from a media element, so the
+   * editor shows "unknown" rather than guessing. The export path asks the
+   * demuxer instead, which does know.
    */
   hasAudio?: boolean;
   mimeType: string;
   sizeBytes: number;
 }
 
-export type CapabilityBlocker =
-  | 'export_engine_not_implemented'
-  | 'video_encoder_api_missing'
-  | 'audio_encoder_api_missing'
-  | 'insecure_context'
-  | 'output_duration_exceeds_policy'
-  | 'source_duration_exceeds_policy'
-  | 'source_bytes_exceed_policy'
-  | 'no_clips';
-
-export interface CapabilityReport {
-  /** True only when a verified route can actually produce the requested file. */
-  canExport: false;
-  blockers: CapabilityBlocker[];
-  /** Informational: encoder APIs detected in this browser, if any. */
-  detected: {
-    videoEncoderApi: boolean;
-    audioEncoderApi: boolean;
-    secureContext: boolean;
-  };
-}
-
 export interface MediaEngine {
   probe(file: File): Promise<ProbeResult>;
-  assess(project: ProjectV1, policy: ExportPolicy): Promise<CapabilityReport>;
-  dispose(): Promise<void>;
+  /** Compiles the recipe and reports whether this environment can run it. */
+  assess(project: ProjectV1, policy: ExportPolicy): Promise<{ plan: RenderPlan | null; canExport: boolean }>;
+  /** Emits exactly one terminal event: succeeded, failed or canceled. */
+  export(plan: RenderPlan, videoFile: File, audioFile: File | null): AsyncIterable<ExportEvent>;
+  cancel(): void;
+  dispose(): void;
 }

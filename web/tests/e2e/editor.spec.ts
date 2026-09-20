@@ -23,7 +23,7 @@ async function addMoment(page: Page, start: string, end: string) {
   await page.getByTestId('add-moment').click();
 }
 
-test.describe('W0 editor', () => {
+test.describe('editor', () => {
   test('reads real metadata from a locally chosen video', async ({ page }) => {
     const errors = await openEditor(page);
     await importSample(page);
@@ -241,9 +241,7 @@ test.describe('W0 editor', () => {
     await expect(page.getByTestId('pick-music')).toBeVisible();
   });
 
-  test('export dialog is honest: real numbers, disabled creation, Escape restores focus', async ({
-    page,
-  }) => {
+  test('export dialog shows real numbers and runs the capability gate', async ({ page }) => {
     await openEditor(page);
     await importSample(page);
     await addMoment(page, '00:00.000', '00:04.000');
@@ -254,12 +252,69 @@ test.describe('W0 editor', () => {
 
     await expect(page.getByTestId('export-duration')).toHaveText('10.0 sn');
     await expect(page.getByTestId('export-aspect')).toHaveText('16:9');
-    await expect(page.getByTestId('export-create')).toBeDisabled();
-    await expect(page.getByText('Çıktı motoru bu sürümde bağlı değil.')).toBeVisible();
+
+    // Creation stays disabled until every stage of the gate has actually run.
+    await expect(page.getByTestId('capability-gate')).toBeVisible({ timeout: 60_000 });
+    for (const row of ['gate-environment', 'gate-encoder', 'gate-selftest', 'gate-source']) {
+      await expect(page.getByTestId(row)).not.toContainText('çalıştırılmadı');
+    }
 
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(trigger).toBeFocused();
+  });
+
+  test('produces a real file and reports values read back from it', async ({ page }) => {
+    await openEditor(page);
+    await importSample(page);
+    await addMoment(page, '00:00.000', '00:02.000');
+
+    await page.getByTestId('open-export').click();
+    await page.getByTestId('export-quality').selectOption('720');
+    await page.getByTestId('export-ready').waitFor({ timeout: 60_000 });
+    await expect(page.getByTestId('export-create')).toBeEnabled();
+
+    await page.getByTestId('export-create').click();
+    await page.getByTestId('export-succeeded').waitFor({ timeout: 180_000 });
+
+    // 2 s at 30 fps, within one frame; measured from the produced file.
+    await expect(page.getByTestId('measured-duration')).toContainText(/^00:0[12]\./);
+    await expect(page.getByTestId('measured-resolution')).toHaveText('1280×720');
+    await expect(page.getByTestId('measured-codecs')).toContainText('avc');
+    await expect(page.getByTestId('measured-codecs')).toContainText('aac');
+
+    // The file is offered for saving; nothing is written without the user.
+    const download = page.waitForEvent('download');
+    await page.getByTestId('export-download').click();
+    const saved = await download;
+    expect(saved.suggestedFilename()).toMatch(/\.mp4$/);
+  });
+
+  test('cancel stops the export and produces no file', async ({ page }) => {
+    await openEditor(page);
+    await importSample(page);
+    // Long enough that cancel lands while frames are still being encoded.
+    await addMoment(page, '00:00.000', '00:20.000');
+
+    await page.getByTestId('open-export').click();
+    await page.getByTestId('export-ready').waitFor({ timeout: 60_000 });
+    await page.getByTestId('export-create').click();
+
+    await page.getByTestId('export-running').waitFor({ timeout: 30_000 });
+    await page.getByTestId('export-cancel').click();
+
+    await expect(page.getByTestId('export-canceled')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId('export-download')).toHaveCount(0);
+    await expect(page.getByTestId('export-succeeded')).toHaveCount(0);
+  });
+
+  test('refuses to export a recipe with no moments', async ({ page }) => {
+    await openEditor(page);
+    await importSample(page);
+
+    await page.getByTestId('open-export').click();
+    await expect(page.getByTestId('export-blocked')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('export-create')).toBeDisabled();
   });
 
   test('keyboard shortcuts work and stay out of text fields', async ({ page }) => {
