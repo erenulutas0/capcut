@@ -178,8 +178,12 @@ seçildi (ADR-017) ve ücretsiz uygunluk denemesi yapıldı; hiçbir açık Whis
 modeli eşikleri tutmadı (Türkçe WER ≥ %20, sessizlikte uydurma metin), uygulama
 başlamadı. Rapor: `docs/spikes/2026-09-21-asr-on-device.md`.
 
-**Sıradaki:** kurucu kararı — (a) raporun ücretsiz ek yollarına bir gün daha
-(Türkçe ince ayarlı model, VAD ön filtresi) ya da (b) transkripti rafa kaldırıp
-belge 31'in yerel sessizlik kesim önerisine veya beta hazırlığına geçmek.
+Transkript rafa kaldırıldı (kurucu kararı). Yerine belge 31'in ilk yerel AI deneyi
+olan **sessizlik kesim önerisi** geldi (ADR-018): tamamen yerel, öneri + onay + tek
+geri alma; ölçümle konuşma kesilmesi 37 → 0, bulma %100, sınır p95 37 ms.
+Rapor: `docs/spikes/2026-09-22-silence-detector.md`.
+
+**Sıradaki:** kurucunun 10 WAV çiftini dinlemesi (hece kontrolü, ADR-018'in son
+kapısı); sonra beta hazırlığı (P2).
 Açık küçük kararlar: HDR kayıtları SDR'ye tonlama (şu an reddediliyor) ve
 ayrıntılı 60 fps kayıtlarda Chromium'un yazılım kodlayıcısı için bit hızı.

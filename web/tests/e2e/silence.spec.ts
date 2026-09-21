@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
+import { tr } from '../../src/i18n/messages';
 import { ffmpegEnvelope, silenceFixture, type FixtureName } from './silence-media';
 
 /**
@@ -196,7 +197,7 @@ test.describe('silence suggestions', () => {
     await expect(page.getByTestId('silence-suggestion')).toHaveCount(0);
     await expect(page.getByTestId('silence-clip')).toHaveAttribute('data-status', 'low_contrast');
     await expect(page.getByTestId('silence-note')).toHaveText(
-      'Bu anda sürekli ses/müzik var; güvenli bir sessizlik bulunamadı.',
+      tr['silence.note.low_contrast'],
     );
     await expect(page.getByTestId('silence-apply')).toBeDisabled();
     // Vazgeç leaves the recipe untouched.

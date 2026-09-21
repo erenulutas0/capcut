@@ -46,7 +46,8 @@ export const DEFAULT_SILENCE_PARAMS: SilenceParams = {
 export const SILENCE_PARAM_LIMITS = {
   minSilenceUs: { min: 300_000, max: 3_000_000 },
   keepUs: { min: 0, max: 500_000 },
-  sensitivityDb: { min: -10, max: 10 },
+  // No plus side: every +5 dB setting in the ADR-018 sweep cut speech (1-7 cuts).
+  sensitivityDb: { min: -10, max: 0 },
 } as const;
 
 /** Sound shorter than this inside a pause (a click, a lip smack) does not break it. */

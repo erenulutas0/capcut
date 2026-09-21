@@ -89,3 +89,17 @@ eklenen boşluk; dijital sessizlik, oda tonu, düşük ses, gürültü, sentetik
   arayüz dalında test edilecek.
 - **Karar:** özellik bu iki madde (dinleme + zarf aynılığı) kapanana kadar ana akışa girmez;
   bulucu kuralları bu haliyle kalır.
+
+### Birleştirme sonrası durum (2026-09-22)
+
+- **Zarf aynılığı: kapandı.** Tarayıcının worker'da ölçtüğü zarf, ffmpeg'in 10 ms
+  zarfıyla sessiz olmayan karelerde 0,0005 dB'den az farkla aynı; sessiz karelerde ikisi de
+  −90 dBFS altında (`tests/e2e/silence.spec.ts`, parity testi). Yukarıdaki ölçüm sonuçları
+  tarayıcı yoluna da geçerli.
+- **Duyarlılık artı yönü kaldırıldı:** `SILENCE_PARAM_LIMITS.sensitivityDb` artık −10…0 dB.
+  Tarama, +5 dB'nin her ayarda konuşma kestiğini gösterdi.
+- **"Öneri yok" mesajı** gürültüyü, müziği ve sürekli sesi kapsayacak şekilde güncellendi.
+- **İnsan dinlemesi: AÇIK.** 10 çift (orijinal / kesilmiş) WAV yerelde
+  `web/spike-results/silence-listen/after/` altında (gitignore; paylaşılmaz). Kurucu dinleyip
+  "hece kesildi / kesilmedi" diye işaretleyene kadar özellik yayın kapsamına alınmaz. Kod
+  `main`'de; uygulama henüz hiçbir yerde yayında değil.
