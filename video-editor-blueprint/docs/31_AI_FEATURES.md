@@ -19,6 +19,11 @@ AI ilk sürümün çalışma koşulu değildir. Kullanıcının manuel saklama/k
 
 Bu tabloda herhangi bir API/model sağlayıcısı seçilmedi ve fiyatı araştırılmadı. Model seçiminde güncel resmî dokümanlar, veri saklama/eğitim koşulları ve gerçek Türkçe/İngilizce görev benchmark'ı gerekir.
 
+## Güncel durum (2026-09-22)
+
+- **Otomatik transkript** (araştırma eki, altyazı adım 4): bütçe olmadığı için yalnızca cihaz üstü rota denendi (ADR-017). Açık Whisper modelleri Türkçede eşiği tutmadı (en iyi WER %20,6; sessizlikte uydurma metin). Uygulama başlamadı; bulut rotası kurucu bütçe kararına kadar ertelendi.
+- **Sessizlik kesim önerisi** bu belgenin ilk deneyi olarak başladı: ADR-018 (tamamen yerel, dış servis ve maliyet yok, ölçüm kapısı tanımlı).
+
 ## İlk AI deneyi
 
 Yalnızca bir aday: sessizlik aralıklarını **öner**. En az 20 hakları temiz örnekle sessiz oda, arka plan müziği, düşük konuşma sesi, Türkçe/İngilizce ve nefes aralıklarını test et. Bu örneklem performans sertifikası değil, erken hata yakalama setidir.

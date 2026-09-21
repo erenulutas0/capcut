@@ -34,6 +34,7 @@ import { WEB_LOCAL_POLICY, type ExportPolicy } from '../domain/policy';
 import { computeSourceView, viewZoom } from '../domain/transform';
 import { MIN_CLIP_DURATION_US, type Micros } from '../domain/time';
 import { buildTimeline, totalOutputDurationUs } from '../domain/timeline';
+import { piecesAfterRemoval, type ClipSilence } from '../domain/silence';
 import { splitPointAt, type SplitRejection } from '../domain/trim';
 import { nextId } from './ids';
 
@@ -760,4 +761,110 @@ export function importCaptionTrack(
     };
   });
   return { ok: true, project: next, report };
+}
+
+/* --------------------------------------------- silence cuts (ADR-018) */
+
+export interface SilenceCutReport {
+  /** Output time removed. */
+  removedUs: Micros;
+  clipsBefore: number;
+  clipsAfter: number;
+  /** Pieces shorter than a moment may be (0.1 s) that were left out. */
+  droppedPieces: number;
+}
+
+export type SilenceCutResult =
+  | { ok: true; project: Project; report: SilenceCutReport }
+  | { ok: false; reason: 'clip_limit_exceeded'; clipsAfter: number }
+  | { ok: false; reason: 'nothing_to_remove' };
+
+/**
+ * Removes the user-approved source ranges from their moments, in one undo
+ * step (doc 31: suggestions are applied only after the user reviewed them).
+ *
+ * Each moment becomes the pieces that remain, in order; the first piece
+ * keeps the moment's id, the others get new ids, and every piece keeps the
+ * moment's settings (gain, mute, view). A remainder shorter than the minimum
+ * moment length is left out and counted. The moment limit is never relaxed:
+ * a result that would exceed it is refused, so the caller can offer fewer
+ * cuts (`selectWithinClipLimit`).
+ */
+export function applySilenceCuts(
+  project: Project,
+  removals: readonly ClipSilence[],
+  policy: ExportPolicy = WEB_LOCAL_POLICY,
+): SilenceCutResult {
+  if (removals.length === 0) return { ok: false, reason: 'nothing_to_remove' };
+
+  const clips: ClipV1[] = [];
+  const taken = project.clips.map((clip) => clip.clipId);
+  let dropped = 0;
+  let removedUs = 0;
+  for (const clip of project.clips) {
+    const mine = removals.filter((removal) => removal.clipId === clip.clipId);
+    if (mine.length === 0) {
+      clips.push(clip);
+      continue;
+    }
+    const pieces = piecesAfterRemoval(clip.sourceInUs, clip.sourceOutUs, mine);
+    const kept = pieces.filter((piece) => piece.endUs - piece.startUs >= MIN_CLIP_DURATION_US);
+    dropped += pieces.length - kept.length;
+    const keptUs = kept.reduce((sum, piece) => sum + (piece.endUs - piece.startUs), 0);
+    removedUs += clip.sourceOutUs - clip.sourceInUs - keptUs;
+    kept.forEach((piece, index) => {
+      const clipId = index === 0 ? clip.clipId : nextId('c', taken);
+      if (index > 0) taken.push(clipId);
+      clips.push({
+        ...clip,
+        clipId,
+        sourceInUs: piece.startUs,
+        sourceOutUs: piece.endUs,
+        view: { ...clip.view },
+      });
+    });
+  }
+
+  if (removedUs === 0) return { ok: false, reason: 'nothing_to_remove' };
+  if (clips.length > policy.maxClips) {
+    return { ok: false, reason: 'clip_limit_exceeded', clipsAfter: clips.length };
+  }
+  return {
+    ok: true,
+    project: bump(project, { clips }),
+    report: { removedUs, clipsBefore: project.clips.length, clipsAfter: clips.length, droppedPieces: dropped },
+  };
+}
+
+/**
+ * Picks the longest suggestions that still fit the moment limit. An inner cut
+ * adds a moment, an edge cut does not, so a shorter edge cut can still be
+ * taken after a longer inner one no longer fits. Returns what fits and how
+ * many were left out, so the UI can say so instead of silently dropping them.
+ */
+export function selectWithinClipLimit(
+  project: Project,
+  suggestions: readonly ClipSilence[],
+  policy: ExportPolicy = WEB_LOCAL_POLICY,
+): { selected: ClipSilence[]; leftOut: number } {
+  const byLength = [...suggestions].sort(
+    (a, b) => b.endUs - b.startUs - (a.endUs - a.startUs) || a.startUs - b.startUs,
+  );
+  const selected: ClipSilence[] = [];
+  const countFor = (chosen: readonly ClipSilence[]) =>
+    project.clips.reduce((total, clip) => {
+      const mine = chosen.filter((removal) => removal.clipId === clip.clipId);
+      if (mine.length === 0) return total + 1;
+      return (
+        total +
+        piecesAfterRemoval(clip.sourceInUs, clip.sourceOutUs, mine).filter(
+          (piece) => piece.endUs - piece.startUs >= MIN_CLIP_DURATION_US,
+        ).length
+      );
+    }, 0);
+  for (const suggestion of byLength) {
+    if (countFor([...selected, suggestion]) <= policy.maxClips) selected.push(suggestion);
+  }
+  selected.sort((a, b) => a.startUs - b.startUs);
+  return { selected, leftOut: suggestions.length - selected.length };
 }
