@@ -1,16 +1,15 @@
-# Clip — web video editörü (W4)
+# Clip — web video editörü
 
-> Durum: **W4 tamamlandı (bellek kısmı).** Editör çalışıyor, desteklenen
-> tarayıcıda **gerçek MP4 (H.264/AAC) çıktısı** üretiyor, proje tarayıcıya
-> kaydediliyor ve uzun çıktılar artık belleğe değil tarayıcının geçici diskine
-> yazılıyor: 5 dakikalık 1080p çıktıda tepe bellek ~1 GB'tan ~600 MB'a indi.
-> **Gerçek telefon/kamera kayıtlarıyla doğrulama henüz yapılmadı** — koşucu
-> hazır, kayıtlar bekleniyor. Sonuçlar: [destek matrisi](docs/SUPPORT_MATRIX.md).
-> "Clip" geçici çalışma adıdır; marka/alan adı araştırması yapılmadı.
+> Durum: editör, gerçek MP4 çıktısı, yerel kayıt, bölme ve sürükleyerek kırpma,
+> altyazı (elle, SRT/VTT, görüntüye bağlı, videoya işleme) ve yerel sessizlik
+> kesim önerisi çalışıyor. 15 gerçek kayıt ve 20 vakalık dosya matrisiyle ölçüldü:
+> [destek matrisi](docs/SUPPORT_MATRIX.md). Otomatik transkript bütçe kararına
+> kadar rafta (ADR-017). "Clip" geçici çalışma adıdır; marka/alan adı araştırması
+> yapılmadı.
 
 Kullanıcı kendi videosunda tutmak istediği bölümleri seçer, sıralar, görüntü
 çerçevesini ve sesi ayarlar, sonra videoyu indirir. Kodlama tamamen tarayıcıda
-yapılır: dosyalar bilgisayardan çıkmaz, bulut yükleme, hesap, abonelik ve yapay
+yapılır: dosyalar bilgisayardan çıkmaz; bulut yükleme, hesap, abonelik ve dış yapay
 zekâ servisi yoktur.
 
 ## Çalıştırma
@@ -137,8 +136,8 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 ## Bu sürümde olmayanlar
 
 Bulut yedeği veya cihazlar arası senkron, çoklu proje listesi, thumbnail
-üretimi, serbest kırpma, çoklu video kaynağı, altyazı, hesap, ödeme ve native
-uygulama.
+üretimi, serbest kırpma, çoklu video kaynağı, otomatik transkript ve çeviri,
+hesap, ödeme ve native uygulama.
 
 Yerel kayıt yalnızca **bu tarayıcıdadır**: tarayıcı verisi temizlenirse veya
 başka bir cihaz/tarayıcı kullanılırsa proje orada olmaz. Video dosyaları
@@ -156,7 +155,11 @@ Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
 [ADR-011 (W2 dosya matrisi ve destek sınırları)](docs/adr/ADR-011-w2-file-matrix.md),
 [ADR-012 (W3 yerel kayıt ve re-link)](docs/adr/ADR-012-w3-local-persistence.md),
 [ADR-013 (W4 çıktıyı OPFS'e akıtmak, gerçek kayıt koşucusu)](docs/adr/ADR-013-w4-output-to-opfs.md),
-[ADR-014 (W5 gerçek kayıtlarla kare çözme)](docs/adr/ADR-014-w5-real-media-decoding.md).
+[ADR-014 (W5 gerçek kayıtlarla kare çözme)](docs/adr/ADR-014-w5-real-media-decoding.md),
+[ADR-015 (altyazı: şema v2, videoya işleme)](docs/adr/ADR-015-captions-burn-in.md),
+[ADR-016 (SRT/VTT, görüntüye bağlı altyazı)](docs/adr/ADR-016-captions-srt-vtt-source-time.md),
+[ADR-017 (cihaz üstü transkript denemesi)](docs/adr/ADR-017-transcript-on-device.md),
+[ADR-018 (sessizlik kesim önerisi)](docs/adr/ADR-018-silence-cut-suggestions.md).
 
 ## Sıradaki tek görev
 
