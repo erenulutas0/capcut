@@ -9,8 +9,10 @@ import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import type { Micros } from '@/domain/time';
 import { splitPointAt, type Playhead, type TrimEdge } from '@/domain/trim';
 import { translator, type MessageKey } from '@/i18n/messages';
+import { listenForUncaughtErrors, recordError } from '@/adapters/diagnostics';
 import { ExportDialog } from './ExportDialog';
 import { HelpDialog } from './HelpDialog';
+import { ReportDialog } from './ReportDialog';
 import { Sheet } from './Dialog';
 import { CaptionsPanel } from './CaptionsPanel';
 import { AudioPanel, FramePanel, Inspector, type InspectorTab } from './Inspector';
@@ -79,6 +81,29 @@ export function EditorApp() {
   const [silenceOpen, setSilenceOpen] = useState(false);
   const silence = useSilenceAnalysis();
   const captionFont = useCaptionFont();
+  const [reportOpen, setReportOpen] = useState(false);
+
+  // Error CODES seen in this tab, for the diagnostics file the user may
+  // choose to download ("Sorun bildir"). Only the enum reaches the record —
+  // never a message, a file name or caption text. Kept in memory only.
+  useEffect(() => listenForUncaughtErrors(), []);
+  const mediaErrorReason = state.mediaError?.reason ?? null;
+  useEffect(() => {
+    if (mediaErrorReason) recordError('media', mediaErrorReason);
+  }, [mediaErrorReason]);
+  const editError = state.actionError ?? state.timelineError;
+  useEffect(() => {
+    if (editError) recordError('edit', editError.replace(/^error\./, ''));
+  }, [editError]);
+  const storeFailure =
+    persistence.saveState.kind === 'failed' ? persistence.saveState.reason : persistence.loadFailure;
+  useEffect(() => {
+    if (storeFailure) recordError('storage', storeFailure);
+  }, [storeFailure]);
+  const silenceFailure = silence.run.status === 'failed' ? silence.run.reason : null;
+  useEffect(() => {
+    if (silenceFailure) recordError('silence', silenceFailure);
+  }, [silenceFailure]);
 
   const videoInputRef = useRef<HTMLInputElement | null>(null);
   const audioInputRef = useRef<HTMLInputElement | null>(null);
@@ -838,8 +863,18 @@ export function EditorApp() {
         videoFile={state.video?.file ?? null}
         audioFile={state.audio?.file ?? null}
         onShortEdgeChange={state.changeShortEdge}
+        onReportProblem={() => setReportOpen(true)}
       />
-      <HelpDialog t={t} open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <HelpDialog
+        t={t}
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        onReportProblem={() => setReportOpen(true)}
+      />
+      {/* Stacked over whichever dialog opened it; mounted only while open. */}
+      {reportOpen ? (
+        <ReportDialog t={t} project={state.project} onClose={() => setReportOpen(false)} />
+      ) : null}
       {/* Mounted only while open, so every opening starts from the defaults. */}
       {silenceOpen && state.video ? (
         <SilenceDialog

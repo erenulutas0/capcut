@@ -22,6 +22,8 @@ interface Props {
   videoFile: File | null;
   audioFile: File | null;
   onShortEdgeChange: (shortEdge: number) => void;
+  /** Opens "Sorun bildir" on top of this dialog, keeping the failure on screen. */
+  onReportProblem: () => void;
 }
 
 type GateState = true | false | null;
@@ -149,6 +151,7 @@ export function ExportDialog({
   videoFile,
   audioFile,
   onShortEdgeChange,
+  onReportProblem,
 }: Props) {
   const { state, check, start, cancel, reset, isRunning } = useExport(project, videoFile, audioFile);
   const downloadRef = useRef<HTMLAnchorElement | null>(null);
@@ -405,6 +408,11 @@ export function ExportDialog({
         {state.phase === 'blocked' || state.phase === 'failed' || state.phase === 'canceled' ? (
           <button type="button" className="btn" onClick={() => void check()} data-testid="export-recheck">
             {t('export.recheck')}
+          </button>
+        ) : null}
+        {state.phase === 'blocked' || state.phase === 'failed' ? (
+          <button type="button" className="btn" onClick={onReportProblem} data-testid="export-report">
+            {t('support.open')}
           </button>
         ) : null}
         <button

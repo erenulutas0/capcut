@@ -11,11 +11,9 @@
  */
 
 import { parseRecord, type ProjectRecord } from '@/domain/projectRecord';
+import { PROJECTS_STORE, createConnection } from './localDb';
 
-const DB_NAME = 'clip-editor';
-const DB_VERSION = 1;
-const STORE = 'projects';
-const OPEN_TIMEOUT_MS = 8_000;
+const STORE = PROJECTS_STORE;
 
 export type StoreFailure =
   /** No IndexedDB at all, or opening it threw — e.g. some private modes. */
@@ -47,54 +45,9 @@ function classify(error: unknown): StoreFailure {
   return 'unknown';
 }
 
-function openDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    if (typeof indexedDB === 'undefined') {
-      reject(new Error('unavailable'));
-      return;
-    }
-
-    let request: IDBOpenDBRequest;
-    try {
-      request = indexedDB.open(DB_NAME, DB_VERSION);
-    } catch (error) {
-      // Some private-browsing modes throw here instead of returning a request.
-      reject(error);
-      return;
-    }
-
-    // An open that is blocked by another tab's older version never fires
-    // success or error; without this the editor would wait forever.
-    const timer = setTimeout(() => reject(new Error('blocked')), OPEN_TIMEOUT_MS);
-    const settle = (fn: () => void) => {
-      clearTimeout(timer);
-      fn();
-    };
-
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(STORE)) {
-        db.createObjectStore(STORE, { keyPath: 'projectId' });
-      }
-    };
-    request.onsuccess = () => settle(() => resolve(request.result));
-    request.onerror = () => settle(() => reject(request.error ?? new Error('unknown')));
-    request.onblocked = () => settle(() => reject(new Error('blocked')));
-  });
-}
-
 export function createIndexedDbStore(): ProjectStore {
-  let cached: IDBDatabase | null = null;
-
-  async function db(): Promise<IDBDatabase> {
-    if (cached) return cached;
-    cached = await openDatabase();
-    // A database closed underneath us (storage cleared) must be reopened.
-    cached.onclose = () => {
-      cached = null;
-    };
-    return cached;
-  }
+  // Shared schema and version with the export log (see localDb.ts).
+  const db = createConnection();
 
   return {
     async save(record: ProjectRecord): Promise<SaveResult> {

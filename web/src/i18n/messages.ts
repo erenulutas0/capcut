@@ -57,11 +57,135 @@ export const tr = {
 
   'backup.title': 'Proje yedeği',
   'backup.body':
-    'Düzenleme tarifini bir dosyaya indir. Bu dosya videonu içermez; yalnızca hangi anları seçtiğini ve ayarlarını taşır.',
+    'Düzenleme tarifini bir dosyaya indir. Bu dosya videonu içermez; seçtiğin anları, ayarlarını, altyazı metinlerini, proje adını ve kaynak dosyanın adını taşır. Paylaşmadan önce bunu bil.',
   'backup.download': 'Yedek dosyasını indir',
   'backup.import': 'Yedek dosyasından geri yükle',
   'backup.importFailed': 'Yedek dosyası okunamadı veya bu sürümle uyumlu değil.',
   'backup.imported': 'Yedek geri yüklendi. Şimdi video dosyasını seçmen gerekiyor.',
+
+  'privacy.link': 'Gizlilik (taslak)',
+  'privacy.linkNewTab': 'Gizlilik (taslak) — yeni sekmede açılır',
+  'privacy.metaTitle': 'Clip — gizlilik (taslak)',
+  'privacy.metaDescription': 'Bu sürümün verini nasıl işlediği: neyin bu tarayıcıda kaldığı, neyin hiç toplanmadığı.',
+  'privacy.eyebrow': 'Gizlilik',
+  'privacy.heading': 'Bu sürüm verini nasıl işliyor',
+  'privacy.draftBadge': 'Taslak — veri sorumlusu bilgisi ve hukuki inceleme eksik (belge 30 K02)',
+  'privacy.draftBody':
+    'Bu sayfa uygulamanın bugünkü davranışını anlatır; hukuki incelemeden geçmiş bir aydınlatma metni değildir. “belirlenmedi” yazan bilgiler henüz karara bağlanmadı.',
+  'privacy.updated': 'Son güncelleme: 22 Eylül 2026 · sürüm {version} · derleme {commit}',
+  'privacy.otherLanguage': 'English',
+  'privacy.back': 'Ana sayfa',
+  'privacy.undecided': 'belirlenmedi',
+
+  'privacy.summary.title': 'Kısaca',
+  'privacy.summary.local':
+    'Seçtiğin video, ses ve altyazı dosyaları bu tarayıcıda, kendi cihazında işlenir. Düzenleme, sessizlik bulma ve dışa aktarma için hiçbir sunucuya gönderilmez.',
+  'privacy.summary.nothingCollected':
+    'Hesap yok. Analitik, reklam, çerez, cihaz parmak izi ve otomatik hata raporlama yok.',
+  'privacy.summary.stored': 'Bazı bilgiler yalnızca bu tarayıcıda saklanır; aşağıda tek tek listelendi ve silebilirsin.',
+  'privacy.summary.report':
+    'Uygulama senin adına hiçbir şey göndermez. Sorun bildirmek istersen tanı dosyasını sen indirir, sen gönderirsin.',
+
+  'privacy.network.title': 'Sayfayı açınca ağda ne olur',
+  'privacy.network.body':
+    'Tarayıcın uygulamanın kendi dosyalarını (sayfalar, kod, stil dosyaları, altyazı yazı tipi) bu siteyi sunan sunucudan indirir. Her web sitesinde olduğu gibi sunucu bu sırada IP adresini, istek zamanını ve tarayıcı bilgisini (user agent) görebilir. Başka bir adrese istek yapılmaz; bunu her sürümde otomatik bir testle kontrol ediyoruz. Uygulama sunucuya dosya veya form göndermez.',
+  'privacy.network.host': 'Barındırma sağlayıcısı',
+  'privacy.network.logs': 'Sunucu erişim kayıtlarının saklanma süresi',
+
+  'privacy.stored.title': 'Bu tarayıcıda saklananlar',
+  'privacy.stored.what': 'Ne',
+  'privacy.stored.where': 'Nerede',
+  'privacy.stored.howLong': 'Ne zaman silinir',
+  'privacy.stored.project.name': 'Proje tarifi',
+  'privacy.stored.project.body':
+    'Proje adı, seçtiğin anlar ve sırası, görüntü/oran ayarları, müzik ayarları, altyazı satırlarının metni ve biçimi. Kaynak dosyayı yeniden tanımak için dosyanın adı, boyutu, değiştirilme tarihi, süresi, çözünürlüğü ve türü. Video ve ses dosyasının kendisi saklanmaz.',
+  'privacy.stored.project.where': 'IndexedDB “clip-editor”, “projects” deposu',
+  'privacy.stored.project.delete':
+    'Sen silene kadar. Tarayıcı ayarlarından bu sitenin verilerini temizleyebilirsin; editör dosyayı yeniden istediğinde “Kayıtlı projeyi sil” de kullanılabilir. Tarayıcı yer açmak için kendisi de silebilir.',
+  'privacy.stored.log.name': 'Dışa aktarma günlüğü',
+  'privacy.stored.log.body':
+    'Son 20 dışa aktarma denemesi: zaman, sonuç (başarılı, başarısız, iptal), hata kodu, çıktı süresi, çözünürlük, yazma yolu (disk veya bellek), geçen süre ve tarifin kısa özet kodu. Dosya adı, altyazı metni veya görüntü içermez. Yalnızca sen tanı dosyası indirirsen o dosyaya eklenir.',
+  'privacy.stored.log.where': 'IndexedDB “clip-editor”, “exportLog” deposu',
+  'privacy.stored.log.delete': '21. deneme en eskisini siler. Hepsini aşağıdaki “Günlüğü temizle” ile silebilirsin.',
+  'privacy.stored.temp.name': 'Geçici çıktı dosyası',
+  'privacy.stored.temp.body':
+    'Destekleyen tarayıcılarda dışa aktarılan MP4, bellek yerine tarayıcının özel dosya alanına yazılır ve indirme sunulduğu sürece orada durur.',
+  'privacy.stored.temp.where': 'Tarayıcının özel dosya alanı (OPFS), “clip-export-” ile başlayan dosya',
+  'privacy.stored.temp.delete':
+    'Dışa aktarma penceresini kapatınca, yeni dışa aktarma başlayınca veya editörden çıkınca. Sekme kapanır ya da çökerse, editör bir sonraki açılışında 6 saatten eski dosyayı siler.',
+  'privacy.stored.memory.name': 'Oturum belleği',
+  'privacy.stored.memory.body':
+    'Açtığın dosyalar için geçici adresler, sessizlik bulucunun ses yüksekliği özetleri, son dışa aktarma kontrolünün sonucu ve bu oturumda görülen hata kodları.',
+  'privacy.stored.memory.where': 'Yalnızca açık sekmenin belleği',
+  'privacy.stored.memory.delete': 'Sekmeyi kapatınca.',
+  'privacy.stored.none': 'Çerez, localStorage ve sessionStorage kullanılmaz.',
+
+  'privacy.downloads.title': 'Senin indirdiğin dosyalar',
+  'privacy.downloads.body':
+    'Bu dosyalar yalnızca bir düğmeye bastığında oluşur ve bilgisayarına kaydedilir. Kiminle paylaşacağına sen karar verirsin.',
+  'privacy.downloads.mp4': 'Dışa aktarılan video (MP4): seçtiğin anlar, müzik ve videoya yazılmış altyazılar.',
+  'privacy.downloads.backup':
+    'Proje yedeği (.clip.json): proje tarifinin tamamı; proje adı, altyazı metinleri ve kaynak dosya adları dahil. Video içermez.',
+  'privacy.downloads.subtitles': 'Altyazı dosyası (SRT veya VTT): altyazı satırların ve zamanları.',
+  'privacy.downloads.diag':
+    'Tanı dosyası (JSON): içeriği indirmeden önce gösterilir; dosya adı, proje adı ve altyazı metni içermez.',
+
+  'privacy.notCollected.title': 'Toplanmayanlar',
+  'privacy.notCollected.body':
+    'Hesap veya e-posta, analitik ya da kullanım istatistiği, çerez, reklam kimliği, cihaz parmak izi, konum, otomatik hata veya çökme raporu. Bu sürümde yapay zekâ özelliği ve indirilen model dosyası yok.',
+
+  'privacy.report.title': 'Sorun bildirme',
+  'privacy.report.body':
+    'Editörde “Kısayollar ve sınırlar” penceresindeki “Sorun bildir”, gönderebileceğin tanı dosyasının tam içeriğini önce ekranda gösterir. Dosya otomatik gönderilmez; indirmek ve göndermek senin kararın.',
+
+  'privacy.controller.title': 'Sorumlu kişi ve hukuki bilgiler',
+  'privacy.controller.name': 'Veri sorumlusu',
+  'privacy.controller.contact': 'Gizlilik iletişim adresi',
+  'privacy.controller.country': 'Faaliyet yeri',
+  'privacy.controller.basis': 'Hukuki dayanak',
+  'privacy.controller.rights': 'Haklarını kullanma ve başvuru yolu',
+  'privacy.controller.support': 'Destek iletişimi',
+  'privacy.controller.note':
+    'Bu bilgiler kurucu kararı ve hukuki inceleme bekliyor (belge 30 K02). Belirlenmeden bu metin yayına hazır sayılmaz.',
+
+  'privacy.controls.loading': 'Günlük okunuyor…',
+  'privacy.controls.unavailable': 'Bu tarayıcıda yerel kayıt okunamadı.',
+
+  'support.open': 'Sorun bildir',
+  'support.section': 'Gizlilik ve destek',
+  'support.title': 'Sorun bildir',
+  'support.intro':
+    'Bir şey ters gittiyse aşağıdaki tanı dosyasını indirip gönderebilirsin. Hiçbir şey otomatik gönderilmez.',
+  'support.contains': 'Dosyada ne var',
+  'support.contains.app': 'Uygulama sürümü ve derleme kodu',
+  'support.contains.browser':
+    'Tarayıcının her siteye zaten verdiği bilgiler: user agent, platform, dil, işlemci çekirdeği ve bellek tahmini, ekran boyutu',
+  'support.contains.features':
+    'Tarayıcı özellikleri (WebCodecs, OPFS, WebGPU) ve son dışa aktarma kontrolünün aşama sonuçları, depolama alanı (MB)',
+  'support.contains.project': 'Açık projenin yapısı: an ve altyazı satırı sayısı, oran, çıktı süresi',
+  'support.contains.log': 'Bu tarayıcıdaki son 20 dışa aktarma denemesi ve bu oturumda görülen hata kodları',
+  'support.excludes': 'Dosya adı, proje adı, altyazı metni, video, ses veya görüntü yoktur.',
+  'support.preview': 'Dosyanın tam içeriği',
+  'support.previewLoading': 'Hazırlanıyor…',
+  'support.download': 'Tanı dosyasını indir',
+  'support.where': 'Nereye gönderilir',
+  'support.contact': 'İletişim adresi: {contact}',
+  'support.contactMissing':
+    'İletişim adresi henüz belirlenmedi — dosyayı seni betaya davet eden kişiye gönder.',
+  'support.also': 'Ne yaparken olduğunu birkaç cümleyle yazman yeterli. Videonu göndermek zorunda değilsin.',
+  'support.close': 'Kapat',
+  'support.log.title': 'Dışa aktarma günlüğü',
+  'support.log.empty': 'Bu tarayıcıda kayıtlı dışa aktarma denemesi yok.',
+  'support.log.count': '{count} deneme kayıtlı (en fazla 20).',
+  'support.log.clear': 'Günlüğü temizle',
+  'support.log.cleared': 'Günlük temizlendi.',
+  'support.log.clearFailed': 'Günlük temizlenemedi.',
+
+  'diag.outcome.succeeded': 'başarılı',
+  'diag.outcome.failed': 'başarısız',
+  'diag.outcome.canceled': 'iptal',
+  'diag.route.opfs': 'disk',
+  'diag.route.memory': 'bellek',
 
   'tabs.moments': 'Anlar',
   'tabs.sources': 'Kaynaklar',
@@ -609,11 +733,135 @@ export const en: Record<MessageKey, string> = {
 
   'backup.title': 'Project backup',
   'backup.body':
-    'Download the editing recipe as a file. It does not contain your video; only which moments you chose and your settings.',
+    'Download the editing recipe as a file. It does not contain your video; it carries your moments, settings, caption text, the project name and the source file name. Keep that in mind before sharing it.',
   'backup.download': 'Download the backup file',
   'backup.import': 'Restore from a backup file',
   'backup.importFailed': 'The backup file could not be read or is not compatible with this version.',
   'backup.imported': 'Backup restored. Now choose the video file.',
+
+  'privacy.link': 'Privacy (draft)',
+  'privacy.linkNewTab': 'Privacy (draft) — opens in a new tab',
+  'privacy.metaTitle': 'Clip — privacy (draft)',
+  'privacy.metaDescription': 'How this version handles your data: what stays in this browser and what is never collected.',
+  'privacy.eyebrow': 'Privacy',
+  'privacy.heading': 'How this version handles your data',
+  'privacy.draftBadge': 'Draft — data controller details and legal review missing (doc 30 K02)',
+  'privacy.draftBody':
+    'This page describes what the app does today; it is not a legally reviewed privacy notice. Items marked “not decided” have not been settled yet.',
+  'privacy.updated': 'Last updated: 22 September 2026 · version {version} · build {commit}',
+  'privacy.otherLanguage': 'Türkçe',
+  'privacy.back': 'Home',
+  'privacy.undecided': 'not decided',
+
+  'privacy.summary.title': 'In short',
+  'privacy.summary.local':
+    'The video, audio and subtitle files you choose are processed in this browser, on your own device. They are not sent to any server for editing, silence detection or export.',
+  'privacy.summary.nothingCollected':
+    'No account. No analytics, advertising, cookies, device fingerprinting or automatic error reporting.',
+  'privacy.summary.stored': 'Some information is kept only in this browser; each item is listed below and you can delete it.',
+  'privacy.summary.report':
+    'The app never sends anything on your behalf. If you want to report a problem, you download the diagnostics file and send it yourself.',
+
+  'privacy.network.title': 'What happens on the network when you open the page',
+  'privacy.network.body':
+    'Your browser downloads the app’s own files (pages, code, stylesheets, the caption typeface) from the server that hosts this site. As with any website, that server can see your IP address, the time of the request and your browser identification (user agent). No other address is contacted; an automated test checks this for every version. The app does not send files or forms to the server.',
+  'privacy.network.host': 'Hosting provider',
+  'privacy.network.logs': 'Retention of server access logs',
+
+  'privacy.stored.title': 'What is kept in this browser',
+  'privacy.stored.what': 'What',
+  'privacy.stored.where': 'Where',
+  'privacy.stored.howLong': 'When it is deleted',
+  'privacy.stored.project.name': 'Project recipe',
+  'privacy.stored.project.body':
+    'Project name, the moments you chose and their order, frame/aspect settings, music settings, the text and style of caption lines. To recognise the source file again: its name, size, modification date, duration, resolution and type. The video and audio files themselves are not stored.',
+  'privacy.stored.project.where': 'IndexedDB “clip-editor”, store “projects”',
+  'privacy.stored.project.delete':
+    'Until you delete it. You can clear this site’s data in your browser settings; when the editor asks for the file again, “Delete the saved project” also works. The browser may also evict it to free space.',
+  'privacy.stored.log.name': 'Export log',
+  'privacy.stored.log.body':
+    'The last 20 export attempts: time, outcome (succeeded, failed, canceled), failure code, output duration, resolution, write route (disk or memory), elapsed time and a short code summarising the recipe. No file names, caption text or pictures. It is added to a diagnostics file only if you download one.',
+  'privacy.stored.log.where': 'IndexedDB “clip-editor”, store “exportLog”',
+  'privacy.stored.log.delete': 'The 21st attempt removes the oldest. “Clear the log” below deletes all of them.',
+  'privacy.stored.temp.name': 'Temporary output file',
+  'privacy.stored.temp.body':
+    'In browsers that support it, the exported MP4 is written to the browser’s private file area instead of memory, and stays there while the download is offered.',
+  'privacy.stored.temp.where': 'The browser’s private file system (OPFS), a file starting with “clip-export-”',
+  'privacy.stored.temp.delete':
+    'When you close the export dialog, start a new export or leave the editor. If the tab closes or crashes, the editor deletes files older than 6 hours the next time it opens.',
+  'privacy.stored.memory.name': 'Session memory',
+  'privacy.stored.memory.body':
+    'Temporary addresses for the files you opened, the loudness summaries of the silence finder, the result of the last export check and the error codes seen in this session.',
+  'privacy.stored.memory.where': 'Only the memory of the open tab',
+  'privacy.stored.memory.delete': 'When you close the tab.',
+  'privacy.stored.none': 'No cookies, localStorage or sessionStorage are used.',
+
+  'privacy.downloads.title': 'Files you download',
+  'privacy.downloads.body':
+    'These files are created only when you press a button, and are saved on your computer. You decide whom to share them with.',
+  'privacy.downloads.mp4': 'Exported video (MP4): your chosen moments, music and burned-in captions.',
+  'privacy.downloads.backup':
+    'Project backup (.clip.json): the full project recipe, including the project name, caption text and source file names. It contains no video.',
+  'privacy.downloads.subtitles': 'Subtitle file (SRT or VTT): your caption lines and their timing.',
+  'privacy.downloads.diag':
+    'Diagnostics file (JSON): its content is shown before you download it; it contains no file names, project name or caption text.',
+
+  'privacy.notCollected.title': 'Not collected',
+  'privacy.notCollected.body':
+    'Account or email, analytics or usage statistics, cookies, advertising IDs, device fingerprints, location, automatic error or crash reports. This version has no AI feature and downloads no model files.',
+
+  'privacy.report.title': 'Reporting a problem',
+  'privacy.report.body':
+    'In the editor, “Report a problem” in the “Shortcuts and limits” window first shows the full content of the diagnostics file you could send. The file is never sent automatically; downloading and sending it is your decision.',
+
+  'privacy.controller.title': 'Responsible party and legal details',
+  'privacy.controller.name': 'Data controller',
+  'privacy.controller.contact': 'Privacy contact',
+  'privacy.controller.country': 'Place of business',
+  'privacy.controller.basis': 'Legal basis',
+  'privacy.controller.rights': 'How to exercise your rights',
+  'privacy.controller.support': 'Support contact',
+  'privacy.controller.note':
+    'These details await a founder decision and legal review (doc 30 K02). Until they are settled this text is not ready for publication.',
+
+  'privacy.controls.loading': 'Reading the log…',
+  'privacy.controls.unavailable': 'Local storage could not be read in this browser.',
+
+  'support.open': 'Report a problem',
+  'support.section': 'Privacy and support',
+  'support.title': 'Report a problem',
+  'support.intro':
+    'If something went wrong, you can download the diagnostics file below and send it. Nothing is sent automatically.',
+  'support.contains': 'What the file contains',
+  'support.contains.app': 'App version and build code',
+  'support.contains.browser':
+    'What your browser already tells every site: user agent, platform, language, CPU cores and memory estimate, screen size',
+  'support.contains.features':
+    'Browser features (WebCodecs, OPFS, WebGPU), the stage results of the last export check, storage space (MB)',
+  'support.contains.project': 'The shape of the open project: number of moments and caption lines, aspect, output duration',
+  'support.contains.log': 'The last 20 export attempts in this browser and the error codes seen in this session',
+  'support.excludes': 'No file names, project name, caption text, video, audio or pictures.',
+  'support.preview': 'Full content of the file',
+  'support.previewLoading': 'Preparing…',
+  'support.download': 'Download the diagnostics file',
+  'support.where': 'Where to send it',
+  'support.contact': 'Contact: {contact}',
+  'support.contactMissing':
+    'No contact address has been decided yet — send the file to the person who invited you to the beta.',
+  'support.also': 'A few sentences on what you were doing are enough. You do not have to send your video.',
+  'support.close': 'Close',
+  'support.log.title': 'Export log',
+  'support.log.empty': 'No export attempts are recorded in this browser.',
+  'support.log.count': '{count} attempts recorded (at most 20).',
+  'support.log.clear': 'Clear the log',
+  'support.log.cleared': 'The log was cleared.',
+  'support.log.clearFailed': 'The log could not be cleared.',
+
+  'diag.outcome.succeeded': 'succeeded',
+  'diag.outcome.failed': 'failed',
+  'diag.outcome.canceled': 'canceled',
+  'diag.route.opfs': 'disk',
+  'diag.route.memory': 'memory',
 
   'tabs.moments': 'Moments',
   'tabs.sources': 'Sources',

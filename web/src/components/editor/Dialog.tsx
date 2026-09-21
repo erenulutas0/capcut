@@ -113,6 +113,7 @@ export function Dialog({
   onClose,
   labelledBy,
   wide = false,
+  stacked = false,
   children,
 }: {
   open: boolean;
@@ -120,6 +121,11 @@ export function Dialog({
   labelledBy: string;
   /** For review lists (silence suggestions) that need more than a form's width. */
   wide?: boolean;
+  /**
+   * Opened on top of another dialog ("Sorun bildir" from help or export). Its
+   * overlay must cover the dialog beneath, which equal z-indexes would not.
+   */
+  stacked?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -127,8 +133,8 @@ export function Dialog({
       open={open}
       onClose={onClose}
       labelledBy={labelledBy}
-      overlayClassName="overlay"
-      panelClassName={wide ? 'dialog dialog-wide' : 'dialog'}
+      overlayClassName={stacked ? 'overlay overlay-stacked' : 'overlay'}
+      panelClassName={['dialog', wide ? 'dialog-wide' : '', stacked ? 'dialog-stacked' : ''].filter(Boolean).join(' ')}
     >
       {children}
     </ModalShell>

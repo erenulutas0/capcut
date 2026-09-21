@@ -24,10 +24,13 @@ export function HelpDialog({
   t,
   open,
   onClose,
+  onReportProblem,
 }: {
   t: (key: MessageKey) => string;
   open: boolean;
   onClose: () => void;
+  /** Opens "Sorun bildir" on top of this dialog. */
+  onReportProblem: () => void;
 }) {
   return (
     <Dialog open={open} onClose={onClose} labelledBy="help-title">
@@ -59,6 +62,21 @@ export function HelpDialog({
           </li>
         ))}
       </ul>
+
+      <hr className="divider" />
+
+      <p className="field-label">{t('support.section')}</p>
+      <div className="help-support">
+        {/* A new tab: leaving the editor would close the files opened in it. */}
+        <a className="btn" href="/gizlilik" target="_blank" rel="noopener" data-testid="help-privacy-link">
+          <Icon name="shield" />
+          {t('privacy.linkNewTab')}
+        </a>
+        <button type="button" className="btn" onClick={onReportProblem} data-testid="open-report">
+          <Icon name="alert" />
+          {t('support.open')}
+        </button>
+      </div>
 
       <div className="dialog-actions">
         <button type="button" className="btn" onClick={onClose}>

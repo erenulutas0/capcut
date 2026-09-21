@@ -2016,3 +2016,57 @@ input[type='range']:disabled::-webkit-slider-thumb {
     font-size: 14px;
   }
 }
+
+/* ------------------------------------------------- report a problem (P2-04) */
+
+/* Opened on top of the help or export dialog: its overlay must cover them. */
+.overlay-stacked {
+  z-index: 42;
+}
+
+.dialog-stacked {
+  z-index: 43;
+}
+
+.dialog .report-heading {
+  margin: 18px 0 8px;
+}
+
+.report-list {
+  margin: 0 0 10px;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.diag-preview {
+  margin: 0;
+  max-height: 240px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg);
+  padding: 12px;
+  font-family: var(--font-time);
+  font-size: 12px;
+  line-height: 1.45;
+  /* Wrap long user-agent strings: no horizontal scroll at 390 px. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.diag-preview:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.help-support {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.help-support .btn,
+.dialog-actions a.btn {
+  text-decoration: none;
+}
