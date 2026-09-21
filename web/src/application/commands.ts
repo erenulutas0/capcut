@@ -19,6 +19,7 @@ import { WEB_LOCAL_POLICY, type ExportPolicy } from '../domain/policy';
 import { computeSourceView, viewZoom } from '../domain/transform';
 import { MIN_CLIP_DURATION_US, type Micros } from '../domain/time';
 import { totalOutputDurationUs } from '../domain/timeline';
+import { splitPointAt, type SplitRejection } from '../domain/trim';
 import { nextId } from './ids';
 
 export function createEmptyProject(projectId = 'p_local_001'): ProjectV1 {
@@ -188,6 +189,37 @@ export function updateClipRange(
     clip.clipId === clipId ? { ...clip, ...range } : clip,
   );
   return { ok: true, project: bump(project, { clips }) };
+}
+
+/**
+ * Cuts one moment in two at a source time. Both halves keep every setting of
+ * the original (gain, mute, view); the first keeps the clip id, the second
+ * gets the next free id and sits right after it, so the output is unchanged
+ * frame for frame — only the moment count grows.
+ */
+export function splitClip(
+  project: ProjectV1,
+  clipId: string,
+  atSourceUs: Micros,
+  policy: ExportPolicy = WEB_LOCAL_POLICY,
+): { ok: true; project: ProjectV1; newClipId: string } | { ok: false; reason: SplitRejection } {
+  const point = splitPointAt(project, clipId, { mode: 'source', sourceUs: atSourceUs }, policy);
+  if (!point.ok) return point;
+
+  const index = project.clips.findIndex((clip) => clip.clipId === clipId);
+  const original = project.clips[index];
+  if (!original) return { ok: false, reason: 'no_selection' };
+
+  const newClipId = nextClipId(project);
+  const first: ClipV1 = { ...original, view: { ...original.view }, sourceOutUs: point.sourceUs };
+  const second: ClipV1 = {
+    ...original,
+    view: { ...original.view },
+    clipId: newClipId,
+    sourceInUs: point.sourceUs,
+  };
+  const clips = [...project.clips.slice(0, index), first, second, ...project.clips.slice(index + 1)];
+  return { ok: true, project: bump(project, { clips }), newClipId };
 }
 
 export function setClipGain(project: ProjectV1, clipId: string, gainDb: number): ProjectV1 {

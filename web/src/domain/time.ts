@@ -68,6 +68,27 @@ export function formatDurationShort(us: Micros): string {
 }
 
 /**
+ * Screen-reader form of a time, e.g. "1 dakika 4,033 saniye". The words and
+ * the decimal mark come from the caller's dictionary, so the domain stays
+ * language-free. Milliseconds are kept (trailing zeros dropped): a trim handle
+ * moves in 1/30 s steps, and "4 saniye" for 4.033 s would hide the change.
+ */
+export function formatSpokenTime(
+  us: Micros,
+  words: { minute: string; second: string; decimalMark: string },
+): string {
+  const totalMs = Math.round(Math.max(0, us) / US_PER_MS);
+  const minutes = Math.floor(totalMs / 60_000);
+  const restMs = totalMs - minutes * 60_000;
+  const whole = Math.floor(restMs / 1000);
+  const fraction = String(restMs % 1000).padStart(3, '0').replace(/0+$/, '');
+  const seconds = fraction === '' ? String(whole) : `${whole}${words.decimalMark}${fraction}`;
+  const secondPart = `${seconds} ${words.second}`;
+  if (minutes === 0) return secondPart;
+  return restMs === 0 ? `${minutes} ${words.minute}` : `${minutes} ${words.minute} ${secondPart}`;
+}
+
+/**
  * Accepts `SS`, `SS.mmm`, `MM:SS`, `MM:SS.mmm`, `HH:MM:SS.mmm`.
  * Returns null for anything else — callers show an invalid-input state rather
  * than silently coercing a typo into a real edit.

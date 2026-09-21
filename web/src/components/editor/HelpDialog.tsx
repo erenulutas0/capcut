@@ -7,6 +7,8 @@ import type { MessageKey } from '@/i18n/messages';
 const SHORTCUTS: Array<[string, MessageKey]> = [
   ['Space', 'help.shortcut.space'],
   ['I / O', 'help.shortcut.io'],
+  ['S', 'help.shortcut.split'],
+  ['← / → · Shift', 'help.shortcut.trim'],
   ['Ctrl+Z · Ctrl+Shift+Z', 'help.shortcut.undo'],
   ['Esc', 'help.shortcut.escape'],
 ];

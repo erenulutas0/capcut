@@ -102,13 +102,18 @@
   color: var(--text);
 }
 
-.icon-btn:hover:not(:disabled) {
+.icon-btn:hover:not(:disabled):not([aria-disabled='true']) {
   background: var(--raised);
   border-color: var(--border);
 }
 
-.icon-btn:disabled {
+.icon-btn:disabled,
+.icon-btn[aria-disabled='true'] {
   color: #5d6763;
+}
+
+.icon-btn[aria-disabled='true'] {
+  cursor: not-allowed;
 }
 
 .btn {
@@ -127,7 +132,7 @@
   white-space: nowrap;
 }
 
-.btn:hover:not(:disabled) {
+.btn:hover:not(:disabled):not([aria-disabled='true']) {
   border-color: var(--text);
 }
 
@@ -353,7 +358,7 @@
 .moment-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 4px;
   padding: 6px 8px;
   border-top: 1px solid var(--border);
@@ -362,9 +367,11 @@
 
 .moment-duration {
   font-size: 12px;
+  font-weight: 400;
   color: var(--muted);
   font-family: var(--font-time);
-  padding-left: 4px;
+  padding-left: 8px;
+  white-space: nowrap;
 }
 
 .moment-buttons {
@@ -825,7 +832,7 @@ input[type='range']:disabled::-webkit-slider-thumb {
 
 .strip-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
   flex-wrap: wrap;
 }
@@ -870,16 +877,35 @@ input[type='range']:disabled::-webkit-slider-thumb {
   overflow: hidden;
 }
 
+/* The wrapper draws the clip; the select button fills it and the trim
+   handles sit on its edges. No overflow clipping here, so a dragged handle
+   stays visible past the clip's old edge (the track still clips). */
 .strip-clip {
+  position: relative;
+  display: flex;
+  min-width: 54px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: linear-gradient(160deg, #2a3236, #1b2124);
+}
+
+.strip-clip[data-selected='true'] {
+  border-color: var(--accent);
+  /* Room for two touch-sized handles plus the label between them. */
+  min-width: 104px;
+}
+
+.strip-clip-select {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
   color: var(--text);
   font-size: 11px;
   font-family: var(--font-time);
   padding: 6px 8px;
   text-align: left;
-  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -887,9 +913,113 @@ input[type='range']:disabled::-webkit-slider-thumb {
   align-items: flex-end;
 }
 
-.strip-clip[data-selected='true'] {
-  border-color: var(--accent);
+.strip-clip[data-selected='true'] .strip-clip-select {
   color: var(--accent);
+  padding: 6px 30px;
+}
+
+.strip-clip-select:focus-visible {
+  outline-offset: -3px;
+}
+
+/* 28px wide hit area over the full clip height; the visible part is a slim
+   grip so the clip itself stays readable. */
+.trim-handle {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 2;
+  border-radius: 8px;
+}
+
+.trim-handle[data-edge='in'] {
+  left: -1px;
+}
+
+.trim-handle[data-edge='out'] {
+  right: -1px;
+}
+
+.trim-grip {
+  width: 6px;
+  height: 60%;
+  min-height: 22px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--panel);
+}
+
+.trim-handle:hover .trim-grip,
+.trim-handle[data-dragging='true'] .trim-grip {
+  width: 8px;
+}
+
+.trim-handle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+/* Value readout: shown while dragging and while the handle has keyboard
+   focus. It sits inside the track so the track's clipping never hides it. */
+.trim-label {
+  display: none;
+  position: absolute;
+  top: 3px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  border: 1px solid var(--control-border);
+  background: var(--raised);
+  color: var(--text);
+  font-family: var(--font-time);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.trim-handle[data-edge='in'] .trim-label {
+  left: 26px;
+}
+
+.trim-handle[data-edge='out'] .trim-label {
+  right: 26px;
+}
+
+.trim-handle[data-dragging='true'] .trim-label,
+.trim-handle:focus-visible .trim-label {
+  display: block;
+}
+
+.strip-hint {
+  margin: -2px 0 0 82px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.strip-error {
+  margin-top: 0;
+}
+
+.btn-compact {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
+  gap: 6px;
+}
+
+.btn[aria-disabled='true'] {
+  opacity: 0.55;
+  border-color: var(--border);
+  cursor: not-allowed;
 }
 
 .strip-empty {

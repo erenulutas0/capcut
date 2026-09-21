@@ -21,6 +21,9 @@ interface Props {
   onEdit: (clipId: string) => void;
   onMove: (clipId: string, delta: -1 | 1) => void;
   onRemove: (clipId: string) => void;
+  /** Why this moment cannot be split at the playhead, or null if it can. */
+  splitBlockedFor: (clipId: string) => MessageKey | null;
+  onSplit: (clipId: string) => void;
   onPickVideo: () => void;
   onPickAudio: () => void;
 }
@@ -39,7 +42,27 @@ export function MomentsList({
   onEdit,
   onMove,
   onRemove,
-}: Pick<Props, 't' | 'project' | 'selectedClipId' | 'onSelect' | 'onEdit' | 'onMove' | 'onRemove'>) {
+  splitBlockedFor,
+  onSplit,
+  error = null,
+}: {
+  /**
+   * Split errors, for copies of the list shown in a sheet or drawer that
+   * covers the output strip (where these errors normally appear).
+   */
+  error?: MessageKey | null;
+} & Pick<
+  Props,
+  | 't'
+  | 'project'
+  | 'selectedClipId'
+  | 'onSelect'
+  | 'onEdit'
+  | 'onMove'
+  | 'onRemove'
+  | 'splitBlockedFor'
+  | 'onSplit'
+>) {
   return (
     <>
       <div className="section-head">
@@ -53,7 +76,9 @@ export function MomentsList({
         <p className="empty-state">{t('moments.empty')}</p>
       ) : (
         <ul className="moment-list" data-testid="moment-list">
-          {project.clips.map((clip, index) => (
+          {project.clips.map((clip, index) => {
+            const splitBlocked = splitBlockedFor(clip.clipId);
+            return (
             <li
               key={clip.clipId}
               className="moment-card"
@@ -73,6 +98,10 @@ export function MomentsList({
                 <span className="moment-text">
                   <b>
                     {t('moments.item')} {String(index + 1).padStart(2, '0')}
+                    {/* Next to the title: the action row is full of buttons. */}
+                    <span className="moment-duration">
+                      {formatDurationShort(clip.sourceOutUs - clip.sourceInUs)}
+                    </span>
                   </b>
                   <span className="moment-range">
                     {formatTimecode(clip.sourceInUs)} — {formatTimecode(clip.sourceOutUs)}
@@ -80,9 +109,6 @@ export function MomentsList({
                 </span>
               </button>
               <div className="moment-actions">
-                <span className="moment-duration">
-                  {formatDurationShort(clip.sourceOutUs - clip.sourceInUs)}
-                </span>
                 <div className="moment-buttons">
                   <button
                     type="button"
@@ -91,6 +117,21 @@ export function MomentsList({
                     onClick={() => onEdit(clip.clipId)}
                   >
                     <Icon name="edit" size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    // Focusable while unavailable; the title and the hidden
+                    // text say why, and a press shows the same message.
+                    aria-disabled={splitBlocked !== null}
+                    aria-label={`${t('moments.split')} ${index + 1}${
+                      splitBlocked ? `: ${t(splitBlocked)}` : ''
+                    }`}
+                    title={splitBlocked ? t(splitBlocked) : t('split.ready')}
+                    onClick={() => onSplit(clip.clipId)}
+                    data-testid="split-moment"
+                  >
+                    <Icon name="scissors" size={16} />
                   </button>
                   <button
                     type="button"
@@ -124,9 +165,17 @@ export function MomentsList({
                 </div>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
+
+      {error ? (
+        <p className="inline-error" role="alert" data-testid="moments-error">
+          <Icon name="alert" />
+          {t(error)}
+        </p>
+      ) : null}
 
       <p className="hint">{t('moments.hint')}</p>
     </>

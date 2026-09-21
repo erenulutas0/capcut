@@ -23,6 +23,7 @@ import {
   setFraming,
   setMusicAsset,
   setVideoAsset,
+  splitClip,
   updateClipRange,
   updateMusic,
   type AddClipRejection,
@@ -34,6 +35,7 @@ import {
   commit,
   initHistory,
   redo as historyRedo,
+  replace as historyReplace,
   undo as historyUndo,
   type History,
 } from '@/application/history';
@@ -48,6 +50,7 @@ import {
 } from '@/domain/projectRecord';
 import { totalOutputDurationUs } from '@/domain/timeline';
 import type { Micros } from '@/domain/time';
+import { splitPointAt, type Playhead, type SplitRejection } from '@/domain/trim';
 import type { MessageKey } from '@/i18n/messages';
 
 export type PreviewMode = 'source' | 'output';
@@ -67,7 +70,7 @@ const AUDIO_LIMITS = {
   maxDurationUs: WEB_LOCAL_POLICY.maxMusicDurationUs,
 };
 
-function rejectionKey(reason: AddClipRejection | MusicRejection): MessageKey {
+function rejectionKey(reason: AddClipRejection | MusicRejection | SplitRejection): MessageKey {
   return `error.${reason}` as MessageKey;
 }
 
@@ -88,6 +91,11 @@ export function useEditorState() {
   const [importing, setImporting] = useState<'video' | 'audio' | null>(null);
   const [mediaError, setMediaError] = useState<MediaError | null>(null);
   const [actionError, setActionError] = useState<MessageKey | null>(null);
+  /**
+   * Errors from the output strip (split, trim). Kept apart from `actionError`
+   * because that one is shown by the range form, which result mode hides.
+   */
+  const [timelineError, setTimelineError] = useState<MessageKey | null>(null);
 
   const project = history.present;
   const liveHandles = useRef<{ video: MediaHandle | null; audio: MediaHandle | null }>({
@@ -379,6 +387,58 @@ export function useEditorState() {
     [],
   );
 
+  /**
+   * Splits a moment where the preview's playhead is. The playhead is passed
+   * with its clock (source or output) and mapped in the domain, so the result
+   * mode never cuts at a source second that belongs to another occurrence.
+   */
+  const splitMoment = useCallback((clipId: string | null, playhead: Playhead) => {
+    setActionError(null);
+    setHistory((current) => {
+      const point = splitPointAt(current.present, clipId, playhead, WEB_LOCAL_POLICY);
+      if (!point.ok || !clipId) {
+        setTimelineError(rejectionKey(point.ok ? 'no_selection' : point.reason));
+        return current;
+      }
+      const result = splitClip(current.present, clipId, point.sourceUs, WEB_LOCAL_POLICY);
+      if (!result.ok) {
+        setTimelineError(rejectionKey(result.reason));
+        return current;
+      }
+      setTimelineError(null);
+      return commit(current, result.project);
+    });
+  }, []);
+
+  /**
+   * Stores a trimmed range from the strip handles. `coalesce` folds the change
+   * into the undo step that is already on top — used for a held arrow key, so
+   * one long press is one undo, not thirty.
+   */
+  const trimMoment = useCallback(
+    (clipId: string, range: { sourceInUs: Micros; sourceOutUs: Micros }, coalesce = false) => {
+      setActionError(null);
+      setHistory((current) => {
+        const clip = current.present.clips.find((item) => item.clipId === clipId);
+        if (
+          clip &&
+          clip.sourceInUs === range.sourceInUs &&
+          clip.sourceOutUs === range.sourceOutUs
+        ) {
+          return current;
+        }
+        const result = updateClipRange(current.present, clipId, range, WEB_LOCAL_POLICY);
+        if (!result.ok) {
+          setTimelineError(rejectionKey(result.reason));
+          return current;
+        }
+        setTimelineError(null);
+        return coalesce ? historyReplace(current, result.project) : commit(current, result.project);
+      });
+    },
+    [],
+  );
+
   const shiftMoment = useCallback((clipId: string, delta: -1 | 1) => {
     setActionError(null);
     setHistory((current) => {
@@ -426,11 +486,13 @@ export function useEditorState() {
 
   const undo = useCallback(() => {
     setActionError(null);
+    setTimelineError(null);
     setHistory((current) => historyUndo(current));
   }, []);
 
   const redo = useCallback(() => {
     setActionError(null);
+    setTimelineError(null);
     setHistory((current) => historyRedo(current));
   }, []);
 
@@ -492,6 +554,8 @@ export function useEditorState() {
     clearMediaError: () => setMediaError(null),
     actionError,
     setActionError,
+    timelineError,
+    setTimelineError,
     dirty,
     canUndo: historyCanUndo(history),
     canRedo: historyCanRedo(history),
@@ -503,6 +567,8 @@ export function useEditorState() {
     addMoment,
     editMomentRange,
     dropMoment,
+    splitMoment,
+    trimMoment,
     shiftMoment,
     changeFraming,
     changeClipGain,

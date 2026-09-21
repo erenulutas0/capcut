@@ -105,6 +105,7 @@ export const tr = {
   'moments.remove': 'Kaldır',
   'moments.edit': 'Düzenle',
   'moments.item': 'An',
+  'moments.split': 'Böl',
 
   'sources.video': 'Video kaynağı',
   'sources.audio': 'Ses kaynağı',
@@ -163,6 +164,16 @@ export const tr = {
   'output.music': 'Müzik',
   'output.note': 'Kaynak dosyanın değil, kliplerin sırası',
   'output.empty': 'Eklediğin anlar burada sırayla görünür.',
+
+  'split.action': 'Böl',
+  'split.ready': 'Seçili anı oynatma çizgisinin olduğu yerden ikiye böl (S)',
+  'trim.startOf': 'başlangıcı',
+  'trim.endOf': 'bitişi',
+  'trim.hint':
+    'Seçili anın kenarlarını sürükle ya da ok tuşlarıyla 1 kare (1/30 sn), Shift ile 1 saniye kaydır. Esc sürüklemeyi iptal eder.',
+  'time.minute': 'dakika',
+  'time.second': 'saniye',
+  'time.decimalMark': ',',
 
   'export.title': 'Videonu hazırla.',
   'export.eyebrow': 'SON BİR BAKIŞ',
@@ -280,6 +291,11 @@ export const tr = {
   'error.fade_exceeds_selection': 'Açılış ve kapanış toplamı müzik bölümünden uzun olamaz.',
   'error.music_start_after_output': 'Müzik, çıktı süresi dolmadan başlamalı.',
   'error.no_music': 'Önce bir ses dosyası seç.',
+  'error.no_selection': 'Bölmek için önce aşağıdaki çıktı sırasından bir an seç.',
+  'error.playhead_outside_clip':
+    'Oynatma çizgisi seçili anın içinde değil. Bölmek için önizlemede bu anın içindeki bir noktaya git.',
+  'error.split_too_close_to_edge':
+    'Oynatma çizgisi anın başına ya da sonuna çok yakın. Bölünen iki parça da en az 0,1 saniye olmalı.',
 
   'help.title': 'Kısayollar ve bu sürümün sınırları',
   'help.shortcuts': 'Kısayollar',
@@ -289,6 +305,8 @@ export const tr = {
   'help.shortcut.io': 'Başlangıç / bitiş işaretle',
   'help.shortcut.undo': 'Geri al / ileri al',
   'help.shortcut.escape': 'Açık paneli kapat',
+  'help.shortcut.split': 'Seçili anı oynatma çizgisinden böl',
+  'help.shortcut.trim': 'Odaklı kenarı 1 kare / Shift ile 1 saniye kaydır',
   'help.shortcutNote': 'Bir metin veya zaman alanına yazarken kısayollar devre dışıdır.',
   'help.limit.export': 'Çıktı yalnızca uygunluk kontrolünü geçen tarayıcıda alınabilir.',
   'help.limit.mix': 'Önizlemede iki oynatıcı birlikte çalışır; gerçek miks yalnızca çıktıda yapılır.',
@@ -403,6 +421,7 @@ export const en: Record<MessageKey, string> = {
   'moments.remove': 'Remove',
   'moments.edit': 'Edit',
   'moments.item': 'Moment',
+  'moments.split': 'Split',
 
   'sources.video': 'Video source',
   'sources.audio': 'Audio source',
@@ -460,6 +479,16 @@ export const en: Record<MessageKey, string> = {
   'output.music': 'Music',
   'output.note': 'The order of your clips, not of the source file',
   'output.empty': 'The moments you add appear here in order.',
+
+  'split.action': 'Split',
+  'split.ready': 'Split the selected moment in two at the playhead (S)',
+  'trim.startOf': 'start',
+  'trim.endOf': 'end',
+  'trim.hint':
+    'Drag the edges of the selected moment, or use the arrow keys for 1 frame (1/30 s) and Shift for 1 second. Esc cancels a drag.',
+  'time.minute': 'minute',
+  'time.second': 'seconds',
+  'time.decimalMark': '.',
 
   'export.title': 'Prepare your video.',
   'export.eyebrow': 'ONE LAST LOOK',
@@ -578,6 +607,11 @@ export const en: Record<MessageKey, string> = {
   'error.fade_exceeds_selection': 'Fade in plus fade out cannot exceed the music segment.',
   'error.music_start_after_output': 'Music must start before the output ends.',
   'error.no_music': 'Choose an audio file first.',
+  'error.no_selection': 'To split, first select a moment in the output order below.',
+  'error.playhead_outside_clip':
+    'The playhead is not inside the selected moment. Move the preview to a point inside it to split.',
+  'error.split_too_close_to_edge':
+    'The playhead is too close to the start or end of the moment. Both parts must be at least 0.1 seconds.',
 
   'help.title': 'Shortcuts and the limits of this version',
   'help.shortcuts': 'Shortcuts',
@@ -587,6 +621,8 @@ export const en: Record<MessageKey, string> = {
   'help.shortcut.io': 'Mark start / end',
   'help.shortcut.undo': 'Undo / redo',
   'help.shortcut.escape': 'Close the open panel',
+  'help.shortcut.split': 'Split the selected moment at the playhead',
+  'help.shortcut.trim': 'Move the focused edge by 1 frame / 1 second with Shift',
   'help.shortcutNote': 'Shortcuts are disabled while you type in a text or time field.',
   'help.limit.export': 'Export is only possible in a browser that passes the capability check.',
   'help.limit.mix': 'The preview runs two players together; the real mix happens only in the export.',

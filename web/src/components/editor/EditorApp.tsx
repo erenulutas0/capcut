@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Icon, Wordmark } from '@/components/Icon';
+import { WEB_LOCAL_POLICY } from '@/domain/policy';
+import type { Micros } from '@/domain/time';
+import { splitPointAt, type Playhead, type TrimEdge } from '@/domain/trim';
 import { translator, type MessageKey } from '@/i18n/messages';
 import { ExportDialog } from './ExportDialog';
 import { HelpDialog } from './HelpDialog';
@@ -133,6 +136,61 @@ export function EditorApp() {
     [playback, state],
   );
 
+  // The playhead on the clock the preview is showing. Result mode shows output
+  // time; the domain maps it back through the timeline (see splitPointAt).
+  const playhead: Playhead =
+    state.previewMode === 'output'
+      ? { mode: 'output', outputUs: playback.outputTimeUs }
+      : { mode: 'source', sourceUs: playback.sourceTimeUs };
+
+  const splitBlockedFor = (clipId: string | null): MessageKey | null => {
+    if (!state.video) return 'error.no_source';
+    const point = splitPointAt(state.project, clipId, playhead, WEB_LOCAL_POLICY);
+    return point.ok ? null : (`error.${point.reason}` as MessageKey);
+  };
+
+  const { previewMode, video, setTimelineError, setSelectedClipId, splitMoment } = state;
+  const { outputTimeUs, sourceTimeUs, stop: stopPlayback } = playback;
+  const splitAtPlayhead = useCallback(
+    (clipId: string | null) => {
+      if (!video) {
+        setTimelineError('error.no_source');
+        return;
+      }
+      stopPlayback();
+      if (clipId) setSelectedClipId(clipId);
+      splitMoment(
+        clipId,
+        previewMode === 'output'
+          ? { mode: 'output', outputUs: outputTimeUs }
+          : { mode: 'source', sourceUs: sourceTimeUs },
+      );
+    },
+    [
+      outputTimeUs,
+      previewMode,
+      setSelectedClipId,
+      setTimelineError,
+      sourceTimeUs,
+      splitMoment,
+      stopPlayback,
+      video,
+    ],
+  );
+
+  // Trimming shows source frames, so a drag or key step in result mode drops
+  // back to the source preview rather than blurring the two clocks.
+  const startTrim = () => {
+    playback.stop();
+    if (state.previewMode === 'output') changeMode('source');
+  };
+
+  const previewTrim = (edge: TrimEdge, us: Micros) => {
+    // Ranges are half-open: the out-point itself is the first frame NOT kept,
+    // so the out handle shows the last kept frame instead.
+    playback.seekSource(edge === 'out' ? Math.max(0, us - 1) : us);
+  };
+
   // Keyboard shortcuts never fire while a text or time field has focus.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -154,12 +212,17 @@ export function EditorApp() {
         if (!state.video) return;
         event.preventDefault();
         playback.togglePlay();
+        return;
+      }
+      if (!meta && !event.altKey && !event.repeat && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        splitAtPlayhead(state.selectedClipId);
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [playback, state]);
+  }, [playback, splitAtPlayhead, state]);
 
   const backupPanel = (
     <div data-testid="backup-panel">
@@ -206,6 +269,8 @@ export function EditorApp() {
     onEdit: startEditing,
     onMove: state.shiftMoment,
     onRemove: removeMoment,
+    splitBlockedFor,
+    onSplit: splitAtPlayhead,
     onPickVideo: pickVideo,
     onPickAudio: pickAudio,
   };
@@ -395,7 +460,9 @@ export function EditorApp() {
 
           {state.previewMode === 'source' ? (
             <RangeEditor
-              key={`${editingClipId ?? 'new-moment'}:${state.video?.objectUrl ?? ''}`}
+              // The edited range is part of the key: a trim or split from the
+              // strip remounts the form with the stored values.
+              key={`${editingClip ? `${editingClip.clipId}:${editingClip.sourceInUs}:${editingClip.sourceOutUs}` : 'new-moment'}:${state.video?.objectUrl ?? ''}`}
               t={t}
               disabled={!state.video}
               sourceTimeUs={playback.sourceTimeUs}
@@ -421,12 +488,20 @@ export function EditorApp() {
         selectedClipId={state.selectedClipId}
         onSelect={state.setSelectedClipId}
         onPickAudio={pickAudio}
+        splitBlocked={splitBlockedFor(state.selectedClipId)}
+        onSplit={() => splitAtPlayhead(state.selectedClipId)}
+        error={state.timelineError}
+        playheadSourceUs={playback.sourceTimeUs}
+        onTrimStart={startTrim}
+        onTrimPreview={previewTrim}
+        onTrimCancel={playback.seekSource}
+        onTrimCommit={state.trimMoment}
       />
 
       {layout === 'phone' ? null : (
         <footer className="status-bar">
           <span>{t('footer.local')}</span>
-          <span className="shortcut-hints">Space · I · O · Ctrl/Cmd+Z</span>
+          <span className="shortcut-hints">Space · I · O · S · Ctrl/Cmd+Z</span>
         </footer>
       )}
 
@@ -488,6 +563,9 @@ export function EditorApp() {
           onEdit={startEditing}
           onMove={state.shiftMoment}
           onRemove={removeMoment}
+          splitBlockedFor={splitBlockedFor}
+          onSplit={splitAtPlayhead}
+          error={state.timelineError}
         />
       </Sheet>
 
@@ -535,6 +613,9 @@ export function EditorApp() {
           onEdit={startEditing}
           onMove={state.shiftMoment}
           onRemove={removeMoment}
+          splitBlockedFor={splitBlockedFor}
+          onSplit={splitAtPlayhead}
+          error={state.timelineError}
         />
       </Sheet>
 
