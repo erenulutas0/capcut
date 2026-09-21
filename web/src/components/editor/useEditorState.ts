@@ -11,6 +11,7 @@ import {
 import {
   addCaptionCue,
   addClip,
+  applySilenceCuts,
   convertCaptionTimeBase,
   createEmptyProject,
   importCaptionTrack,
@@ -41,6 +42,7 @@ import {
   type CaptionResult,
   type ImportedCueInput,
   type ShiftCaptionsResult,
+  type SilenceCutResult,
   type MusicRejection,
 } from '@/application/commands';
 import {
@@ -63,6 +65,7 @@ import {
   type ProjectRecord,
 } from '@/domain/projectRecord';
 import { totalOutputDurationUs } from '@/domain/timeline';
+import type { ClipSilence } from '@/domain/silence';
 import type { Micros } from '@/domain/time';
 import { splitPointAt, type Playhead, type SplitRejection } from '@/domain/trim';
 import type { MessageKey } from '@/i18n/messages';
@@ -507,7 +510,8 @@ export function useEditorState() {
   }, []);
 
   /**
-   * Runs a caption command and commits it as one undo step.
+   * Runs a caption command (or the silence-cut command, which has the same
+   * result shape) and commits it as one undo step.
    *
    * Unlike the moment commands, the caller needs the outcome right away (the
    * new cue id to focus, or the reason to show under the line), so the command
@@ -558,6 +562,16 @@ export function useEditorState() {
   const importCaptions = useCallback(
     (cues: readonly ImportedCueInput[], timeBase: 'output' | 'source'): CaptionImportResult =>
       runCaption((base) => importCaptionTrack(base, cues, timeBase)),
+    [runCaption],
+  );
+
+  /**
+   * Removes the silences the user approved in the dialog (ADR-018). One undo
+   * step; the dialog shows the report, so the result is returned directly.
+   */
+  const cutSilences = useCallback(
+    (removals: readonly ClipSilence[]): SilenceCutResult =>
+      runCaption((base) => applySilenceCuts(base, removals, WEB_LOCAL_POLICY)),
     [runCaption],
   );
 
@@ -672,6 +686,7 @@ export function useEditorState() {
     convertCaptions,
     shiftAllCaptions,
     importCaptions,
+    cutSilences,
   };
 }
 

@@ -112,11 +112,14 @@ export function Dialog({
   open,
   onClose,
   labelledBy,
+  wide = false,
   children,
 }: {
   open: boolean;
   onClose: () => void;
   labelledBy: string;
+  /** For review lists (silence suggestions) that need more than a form's width. */
+  wide?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -125,7 +128,7 @@ export function Dialog({
       onClose={onClose}
       labelledBy={labelledBy}
       overlayClassName="overlay"
-      panelClassName="dialog"
+      panelClassName={wide ? 'dialog dialog-wide' : 'dialog'}
     >
       {children}
     </ModalShell>

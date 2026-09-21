@@ -24,6 +24,9 @@ interface Props {
   /** Why this moment cannot be split at the playhead, or null if it can. */
   splitBlockedFor: (clipId: string) => MessageKey | null;
   onSplit: (clipId: string) => void;
+  /** Why "Sessizlikleri bul" is unavailable (no moments, no linked video), or null. */
+  silenceBlocked: MessageKey | null;
+  onFindSilences: () => void;
   onPickVideo: () => void;
   onPickAudio: () => void;
 }
@@ -44,6 +47,8 @@ export function MomentsList({
   onRemove,
   splitBlockedFor,
   onSplit,
+  silenceBlocked,
+  onFindSilences,
   error = null,
 }: {
   /**
@@ -62,6 +67,8 @@ export function MomentsList({
   | 'onRemove'
   | 'splitBlockedFor'
   | 'onSplit'
+  | 'silenceBlocked'
+  | 'onFindSilences'
 >) {
   return (
     <>
@@ -178,6 +185,26 @@ export function MomentsList({
       ) : null}
 
       <p className="hint">{t('moments.hint')}</p>
+
+      {/* Focusable while unavailable: the hint under it says why. */}
+      <button
+        type="button"
+        className="btn btn-block silence-open"
+        aria-disabled={silenceBlocked !== null}
+        aria-describedby={silenceBlocked ? 'silence-open-hint' : undefined}
+        onClick={() => {
+          if (silenceBlocked === null) onFindSilences();
+        }}
+        data-testid="open-silence"
+      >
+        <Icon name="scissors" />
+        {t('silence.open')}
+      </button>
+      {silenceBlocked ? (
+        <p className="hint-small" id="silence-open-hint" data-testid="silence-open-hint">
+          {t(silenceBlocked)}
+        </p>
+      ) : null}
     </>
   );
 }

@@ -22,3 +22,6 @@ web/tests/media/real/
 # Speech fixtures for the transcript spike (rights-clean, local only)
 web/tests/media/speech/
 web/spike-results/
+
+# Generated silence-suggestion fixtures (ffmpeg, made by the e2e setup)
+web/tests/media/silence/

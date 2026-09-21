@@ -1820,3 +1820,199 @@ input[type='range']:disabled::-webkit-slider-thumb {
   line-height: 1.55;
   color: var(--text);
 }
+
+/* ------------------------------------------------ silence suggestions (ADR-018) */
+
+/* A review list needs more room than a form; still one column on a phone. */
+.dialog-wide {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.dialog h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.silence-open {
+  margin-top: 12px;
+}
+
+.silence-running,
+.silence-problem {
+  margin-bottom: 16px;
+}
+
+.silence-params {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 12px 14px 14px;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.silence-params legend {
+  padding: 0 6px;
+  margin: 0;
+}
+
+.silence-params .btn {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.silence-param {
+  min-width: 0;
+}
+
+.dialog .silence-results-title {
+  margin: 18px 0 4px;
+}
+
+.silence-clips,
+.silence-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.silence-clips {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 10px 0 8px;
+}
+
+.silence-clip {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--raised);
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.silence-clip-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.silence-time,
+.silence-length {
+  font-family: var(--font-time);
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.silence-length {
+  color: var(--text);
+}
+
+.silence-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.silence-note svg.icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.silence-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.silence-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+
+.silence-row:first-child {
+  border-top: 0;
+}
+
+/* The whole label is the tap target, not just the 20 px box. */
+.silence-check {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-height: var(--tap);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.silence-check input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.silence-listen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.silence-listen .btn[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.silence-summary {
+  margin-top: 16px;
+}
+
+.silence-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.silence-summary-grid .summary-card b {
+  font-family: var(--font-time);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.silence-report h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--success);
+}
+
+@media (max-width: 640px) {
+  .dialog-wide {
+    padding: 18px 16px;
+  }
+
+  .silence-params {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .silence-summary-grid .summary-card b {
+    font-size: 14px;
+  }
+}

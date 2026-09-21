@@ -20,11 +20,13 @@ import { PreviewStage } from './PreviewStage';
 import { RangeEditor } from './RangeEditor';
 import { RelinkPanel } from './RelinkPanel';
 import { SaveStateBadge } from './SaveStateBadge';
+import { SilenceDialog } from './SilenceDialog';
 import { useCaptionFont } from './useCaptionFont';
 import { useProjectPersistence } from './useProjectPersistence';
 import { useEditorState, type PreviewMode } from './useEditorState';
 import { useLayoutMode } from './useLayoutMode';
 import { usePlayback } from './usePlayback';
+import { useSilenceAnalysis } from './useSilenceAnalysis';
 
 type MobileSheet = 'moments' | 'frame' | 'audio' | 'captions' | 'sources' | null;
 
@@ -74,6 +76,8 @@ export function EditorApp() {
   const [momentsDrawerOpen, setMomentsDrawerOpen] = useState(false);
   const [mobileSheet, setMobileSheet] = useState<MobileSheet>(null);
   const [editingClipId, setEditingClipId] = useState<string | null>(null);
+  const [silenceOpen, setSilenceOpen] = useState(false);
+  const silence = useSilenceAnalysis();
   const captionFont = useCaptionFont();
 
   const videoInputRef = useRef<HTMLInputElement | null>(null);
@@ -215,6 +219,34 @@ export function EditorApp() {
     if (state.previewMode === 'output') changeMode('source');
   };
 
+  // Silences are searched in the moments of the linked video; the button says
+  // which of the two is missing instead of just greying out.
+  const silenceBlocked: MessageKey | null =
+    state.project.clips.length === 0
+      ? 'silence.blocked.noMoments'
+      : !state.video
+        ? 'silence.blocked.noVideo'
+        : null;
+
+  const openSilence = () => {
+    if (!state.video || state.project.clips.length === 0) return;
+    playback.stop();
+    // The dialog replaces the phone sheet / tablet drawer it was opened from.
+    setMobileSheet(null);
+    setMomentsDrawerOpen(false);
+    setSilenceOpen(true);
+    silence.start(state.video.file, state.project.clips);
+  };
+
+  const retrySilence = () => {
+    if (state.video) silence.start(state.video.file, state.project.clips);
+  };
+
+  const closeSilence = () => {
+    silence.reset();
+    setSilenceOpen(false);
+  };
+
   const previewTrim = (edge: TrimEdge, us: Micros) => {
     // Ranges are half-open: the out-point itself is the first frame NOT kept,
     // so the out handle shows the last kept frame instead.
@@ -238,6 +270,9 @@ export function EditorApp() {
         state.redo();
         return;
       }
+      // Inside a dialog or sheet, Space and S belong to the focused control
+      // (a "Dinle" button, a checkbox), not to the preview behind it.
+      if (event.target instanceof Element && event.target.closest('[aria-modal="true"]')) return;
       if (event.key === ' ' || event.code === 'Space') {
         if (!state.video) return;
         event.preventDefault();
@@ -301,6 +336,8 @@ export function EditorApp() {
     onRemove: removeMoment,
     splitBlockedFor,
     onSplit: splitAtPlayhead,
+    silenceBlocked,
+    onFindSilences: openSilence,
     onPickVideo: pickVideo,
     onPickAudio: pickAudio,
   };
@@ -650,6 +687,8 @@ export function EditorApp() {
           onRemove={removeMoment}
           splitBlockedFor={splitBlockedFor}
           onSplit={splitAtPlayhead}
+          silenceBlocked={silenceBlocked}
+          onFindSilences={openSilence}
           error={state.timelineError}
         />
       </Sheet>
@@ -702,6 +741,8 @@ export function EditorApp() {
           onRemove={removeMoment}
           splitBlockedFor={splitBlockedFor}
           onSplit={splitAtPlayhead}
+          silenceBlocked={silenceBlocked}
+          onFindSilences={openSilence}
           error={state.timelineError}
         />
       </Sheet>
@@ -799,6 +840,21 @@ export function EditorApp() {
         onShortEdgeChange={state.changeShortEdge}
       />
       <HelpDialog t={t} open={helpOpen} onClose={() => setHelpOpen(false)} />
+      {/* Mounted only while open, so every opening starts from the defaults. */}
+      {silenceOpen && state.video ? (
+        <SilenceDialog
+          t={t}
+          project={state.project}
+          videoUrl={state.video.objectUrl}
+          run={silence.run}
+          envelopeFor={silence.envelopeFor}
+          onRetry={retrySilence}
+          onCancel={silence.cancel}
+          onApply={state.cutSilences}
+          onClose={closeSilence}
+          onBeforeListen={playback.stop}
+        />
+      ) : null}
 
       {/* Hidden pickers: the user always starts the file dialog explicitly. */}
       <input
