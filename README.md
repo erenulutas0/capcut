@@ -1,10 +1,11 @@
-# Clip — web video editörü (W3)
+# Clip — web video editörü (W4)
 
-> Durum: **W3 tamamlandı.** Editör çalışıyor, desteklenen tarayıcıda
-> **gerçek MP4 (H.264/AAC) çıktısı** üretiyor, doc 22 dosya matrisi beş
-> tarayıcıda çalıştırıldı ve proje artık **tarayıcıya kaydediliyor**;
-> sekme kapansa bile düzenleme tarifi geri geliyor.
-> Sonuçlar: [destek matrisi](docs/SUPPORT_MATRIX.md).
+> Durum: **W4 tamamlandı (bellek kısmı).** Editör çalışıyor, desteklenen
+> tarayıcıda **gerçek MP4 (H.264/AAC) çıktısı** üretiyor, proje tarayıcıya
+> kaydediliyor ve uzun çıktılar artık belleğe değil tarayıcının geçici diskine
+> yazılıyor: 5 dakikalık 1080p çıktıda tepe bellek ~1 GB'tan ~600 MB'a indi.
+> **Gerçek telefon/kamera kayıtlarıyla doğrulama henüz yapılmadı** — koşucu
+> hazır, kayıtlar bekleniyor. Sonuçlar: [destek matrisi](docs/SUPPORT_MATRIX.md).
 > "Clip" geçici çalışma adıdır; marka/alan adı araştırması yapılmadı.
 
 Kullanıcı kendi videosunda tutmak istediği bölümleri seçer, sıralar, görüntü
@@ -66,6 +67,21 @@ matrisini yeniden yaz:
 cd web && npm run matrix:media && npm run matrix -- --browser=chromium && npm run matrix:doc
 ```
 
+Export bellek ölçümü (Windows; tarayıcı süreç ağacını işletim sisteminden
+örnekler, kalıcı profil kullanır):
+
+```bash
+cd web && npm run matrix:memory -- --seconds=30,120,300 --label=opfs-route
+```
+
+**Kendi kayıtlarınla deneme** — telefon/kamera videolarını `web/tests/media/real/`
+klasörüne kopyala (klasör git dışında; dosyalar hiçbir yere yüklenmez, sonuç
+dosyasına dosya adı yazılmaz), sunucu `:3100`'de ayaktayken:
+
+```bash
+cd web && npm run matrix:real
+```
+
 Sentetik test medyası ve EDL fixture'ları üretmek için (ffmpeg gerekir):
 
 ```bash
@@ -113,6 +129,10 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 - Gerçek ilerleme yüzdesi (kodlanan kare / toplam kare), iptal, hata durumları.
 - Üretilen dosya yeniden açılıp ölçülür; arayüzdeki süre/çözünürlük/codec
   değerleri o ölçümden gelir.
+- **Çıktı diske akar:** destekleyen tarayıcıda dosya belleğe değil tarayıcının
+  özel geçici diskine (OPFS) yazılır; bellek kullanımı çıktı uzunluğundan
+  bağımsız kalır. Olmazsa bellek yoluna döner ve bunu "Yazıldığı yer"
+  satırında söyler. Geçici dosya dialog kapanınca silinir.
 
 ## Bu sürümde olmayanlar
 
@@ -134,10 +154,12 @@ Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
 [ADR-009 (altyazı sınırı)](docs/adr/ADR-009-captions-boundary.md),
 [ADR-010 (W1 çıktı hattı ve ölçümler)](docs/adr/ADR-010-w1-web-export.md),
 [ADR-011 (W2 dosya matrisi ve destek sınırları)](docs/adr/ADR-011-w2-file-matrix.md),
-[ADR-012 (W3 yerel kayıt ve re-link)](docs/adr/ADR-012-w3-local-persistence.md).
+[ADR-012 (W3 yerel kayıt ve re-link)](docs/adr/ADR-012-w3-local-persistence.md),
+[ADR-013 (W4 çıktıyı OPFS'e akıtmak, gerçek kayıt koşucusu)](docs/adr/ADR-013-w4-output-to-opfs.md).
 
 ## Sıradaki tek görev
 
-**W4 — gerçek kullanıcı medyası:** matrisi gerçek telefon/kamera kayıtlarıyla
-tekrarlamak (gerçek VFR, rotation, HEVC, 4K, uzun kayıt) ve oradan çıkacak
-bellek/süre ölçümleriyle `StreamTarget` kararını vermek.
+**W5 — gerçek kayıtlarla doğrulama:** kullanıcı kayıtlarını
+`npm run matrix:real` ile Chromium/Chrome/Edge'de çalıştırmak, çıkan hataları
+düzeltmek ve 250 MiB / 20 dk giriş sınırının gerçek telefon kayıtları için ürün
+kararını vermek.

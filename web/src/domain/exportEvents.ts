@@ -32,6 +32,7 @@ export type ExportFailureCode =
   | 'output_probe_failed'
   | 'output_duration_mismatch'
   | 'out_of_memory'
+  | 'output_storage_full'
   | 'worker_unavailable'
   | 'internal_error';
 
@@ -45,10 +46,17 @@ export interface ExportProbe {
   hasAudio: boolean;
 }
 
+/**
+ * Where the finished file lived while it was written. Reported, not hidden:
+ * the memory route costs about twice the file size in RAM (ADR-013).
+ */
+export type ExportOutputRoute = 'opfs' | 'memory';
+
 export interface ExportResult {
   attemptId: string;
   fingerprint: string;
   sizeBytes: number;
+  route: ExportOutputRoute;
   /** Measured from the produced file, not copied from the plan. */
   probe: ExportProbe;
   /** Difference between the plan's frame grid and the produced file. */
@@ -69,7 +77,19 @@ export type ExportEvent =
     }
   | { type: 'finalizing'; attemptId: string }
   | { type: 'verifying'; attemptId: string }
-  | { type: 'succeeded'; attemptId: string; result: ExportResult; data: Uint8Array }
+  | {
+      type: 'succeeded';
+      attemptId: string;
+      result: ExportResult;
+      /**
+       * `memory`: the bytes themselves, transferred (not copied) to the page.
+       * `opfs`: a disk-backed File in the browser's private file system; the
+       * page must remove `entryName` when it no longer offers the download.
+       */
+      output:
+        | { kind: 'memory'; data: Uint8Array }
+        | { kind: 'opfs'; file: File; entryName: string };
+    }
   | { type: 'failed'; attemptId: string; code: ExportFailureCode }
   | { type: 'canceled'; attemptId: string };
 

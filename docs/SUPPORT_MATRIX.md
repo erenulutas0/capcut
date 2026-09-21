@@ -18,11 +18,11 @@ Her satır `video-editor-blueprint/docs/22_QA_TEST_MATRIX.md` içindeki bir fixt
 
 | Tarayıcı | Sürüm | Encoder kabiliyeti | Çalıştırma |
 |---|---|---|---|
-| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-09-21 00:09 UTC |
-| Google Chrome | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 00:09 UTC |
-| Microsoft Edge | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 00:10 UTC |
-| Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-21 00:11 UTC |
-| WebKit (Playwright) | 26.6 | WebCodecs yok | 2026-09-21 00:11 UTC |
+| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-09-21 12:07 UTC |
+| Google Chrome | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 12:07 UTC |
+| Microsoft Edge | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 12:08 UTC |
+| Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-21 12:08 UTC |
+| WebKit (Playwright) | 26.6 | WebCodecs yok | 2026-09-21 12:08 UTC |
 
 Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari, gerçek telefon ve fiziksel cihaz testi yapılmadı.** Playwright’ın WebKit derlemesi Safari değildir ve Safari sonucu yerine geçmez.
 
@@ -54,7 +54,7 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari,
 
 | # | Süre | Kare | Çözünürlük | SSIM | Diğer ölçümler |
 |---|---|---|---|---|---|
-| M01 | 10.005333 s | 300 | 720x1280 | 0.9416 | an sesleri -22.1 / -22.1 dB |
+| M01 | 10.005333 s | 300 | 720x1280 | 0.9417 | an sesleri -22.1 / -22.1 dB |
 | M02 | 5.013333 s | 150 | 720x1280 | 0.9409 | — |
 | M03 | 5.013333 s | 150 | 720x1280 | 0.922 | — |
 | M04 | 6.016 s | 180 | 1280x720 | — | 440 Hz -56.3 / 330 Hz -36.1 dB |
@@ -73,25 +73,29 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari,
 
 - **WebKit (Playwright):** Bu tarayıcı temel H.264 fixture'ını açamıyor, dolayısıyla matris burada çalıştırılamaz. Uygulamanın mesajı: "Bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu formatı oynatmıyor.".
 
-## Uzun çıktı ölçümleri
+## Uzun çıktı: süre, hız ve bellek
 
-Ortam: chromium, 2026-09-20 23:41 UTC.
+Ortam: chromium, kalıcı (disk destekli) profil, yoğun 1080p kaynak, 1080p çıktı. Tarayıcı süreç ağacının (ana süreç + renderer + GPU + yardımcılar) private bytes değeri işletim sisteminden ~400 ms aralıkla örneklendi. Encode worker renderer sürecinin içinde çalışır.
 
-| İstenen | Ölçülen süre | Kare | Dosya | Süren işlem | Gerçek zamana oran |
+| Çıktı | Dosya | Kare | Süren işlem | Bellek yolu: tepe (artış) | OPFS yolu: tepe (artış) |
 |---|---|---|---|---|---|
-| 10 s | 10.005 s | 300 | 0.3 MB | 3.0 s | 3.3× |
-| 30 s | 30.016 s | 900 | 0.7 MB | 7.2 s | 4.2× |
-| 60 s | 60.011 s | 1800 | 1.5 MB | 12.9 s | 4.6× |
-| 120 s | 120 s | 3600 | 2.9 MB | 24.0 s | 5.0× |
-| 180 s | 180.011 s | 5400 | 4.4 MB | 37.0 s | 4.9× |
+| 30 s | 19.9 MiB (5.44 Mbit/s) | 900 | 7.2 s | 588 MiB (+355) | 574 MiB (+350) |
+| 60 s | 39.9 MiB (5.44 Mbit/s) | 1800 | 13.8 s | 605 MiB (+371) | 586 MiB (+346) |
+| 120 s | 79.7 MiB (5.44 Mbit/s) | 3600 | 27.2 s | 654 MiB (+428) | 590 MiB (+355) |
+| 180 s | 119.5 MiB (5.44 Mbit/s) | 5400 | 40.5 s | 778 MiB (+541) | 601 MiB (+363) |
+| 300 s | 199.2 MiB (5.44 Mbit/s) | 9000 | 68.9 s | 1033 MiB (+787) | 607 MiB (+362) |
 
-> Çıktı bellekte tutuluyor (BufferTarget + fastStart in-memory). UYARI: Chromium performance.memory değeri gizlilik için kabaca yuvarlanır; bütün koşularda aynı değeri verdiği için bu ölçümden bellek tavanı çıkarılamaz. Ayrıca fixture sentetik bir test deseni olduğu için encoder hedef bitrate’in çok altında kalıyor; gerçek kamera görüntüsünde dosya boyutu ve dolayısıyla bellek kullanımı belirgin şekilde yüksek olur.
+Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer’da hem sayfadaki Blob’da tutulur). OPFS yolunda çıktı tarayıcının özel diskine akar ve artış uzunluktan bağımsız kalır. Uyarı: gizli pencerede Chromium OPFS’i RAM’de tutar; orada bu kazanç yoktur.
+
+## Gerçek kayıtlar
+
+**NOT_RUN.** Gerçek telefon/kamera kayıtlarıyla çalıştırma henüz yapılmadı. Yukarıdaki bütün satırlar ffmpeg ile üretilmiş sentetik dosyalardan gelir. Çalıştırmak için kayıtları `web/tests/media/real/` klasörüne koyup `node scripts/run-real-media.mjs` komutunu kullanın.
 
 ## Bu matrisin kapsamadıkları
 
 - Gerçek Safari (macOS/iOS) ve gerçek fiziksel telefon/tablet.
-- Gerçek kamera/telefon kayıtları; bütün fixture’lar ffmpeg ile üretilmiş sentetik dosyalardır.
-- Gerçek görüntüyle uzun çıktıda bellek tavanı: ölçülemedi (aşağıdaki nota bakın). Çıktı süresi politika gereği 5 dakika ile sınırlıdır.
+- Gerçek kamera/telefon kayıtları, “Gerçek kayıtlar” bölümünde çalıştırılmadıysa.
+- Bellek ölçümü yalnızca Windows’ta ve Chromium’da yapıldı; macOS/Linux ve diğer tarayıcılar ölçülmedi.
 - Düşük bellekli cihazlar ve bellek yetmediğinde davranış.
 - Disk dolması, uzun süreli kararlılık ve termal davranış.
 - Ekran okuyucu ve erişilebilirlik denetimi.

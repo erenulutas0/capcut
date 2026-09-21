@@ -107,6 +107,7 @@ const reported = {
   resolution: await page.getByTestId('measured-resolution').textContent(),
   codecs: await page.getByTestId('measured-codecs').textContent(),
   delta: await page.getByTestId('measured-delta').textContent(),
+  route: await page.getByTestId('measured-route').textContent().catch(() => null),
 };
 
 const downloadPromise = page.waitForEvent('download', { timeout: 60_000 });

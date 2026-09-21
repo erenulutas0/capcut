@@ -46,6 +46,8 @@ import {
 } from '@/domain/renderPlan';
 import { US_PER_SECOND } from '@/domain/time';
 import { AudioStreamReader } from './audioStream';
+import { removeExportEntry, sweepExportEntries } from './opfsEntries';
+import { prepareOutput } from './outputSink';
 import type { CapabilityStageResult, EncoderProbeConfig, WorkerRequest, WorkerResponse } from './protocol';
 
 const scope = self as unknown as DedicatedWorkerGlobalScope;
@@ -71,6 +73,9 @@ class ExportFailure extends Error {
 
 let cancelRequestedFor: string | null = null;
 
+/** OPFS entries this worker created and has not yet been told to release. */
+const ownEntries = new Set<string>();
+
 function checkCanceled(requestId: string): void {
   if (cancelRequestedFor === requestId) throw new CanceledError();
 }
@@ -83,12 +88,13 @@ function emit(requestId: string, event: ExportEvent, transfer?: Transferable[]):
 
 /* ------------------------------------------------------------------ probing */
 
-async function probeProduced(bytes: Uint8Array): Promise<ExportProbe> {
-  // A fresh Input over the produced bytes: the file is verified the same way a
-  // player would open it, not by trusting our own encoder.
+async function probeProduced(produced: Uint8Array | Blob): Promise<ExportProbe> {
+  // A fresh Input over the produced file: it is verified the same way a player
+  // would open it, not by trusting our own encoder. A disk-backed File is read
+  // in place, never copied into memory for the check.
   const input = new Input({
     formats: ALL_FORMATS,
-    source: new BufferSource(bytes),
+    source: produced instanceof Blob ? new BlobSource(produced) : new BufferSource(produced),
   });
   const videoTrack = await input.getPrimaryVideoTrack();
   if (!videoTrack) throw new ExportFailure('output_probe_failed');
@@ -350,10 +356,18 @@ async function runExport(
 
   const wantsAudio = sourceAudioUsable || musicTrack !== null;
 
-  const output = new Output({
-    format: new Mp4OutputFormat({ fastStart: 'in-memory' }),
-    target: new BufferTarget(),
-  });
+  // Previous results from this worker are no longer offered once a new export
+  // starts; stale files from closed tabs are swept too.
+  for (const name of ownEntries) await removeExportEntry(name);
+  ownEntries.clear();
+  await sweepExportEntries().catch(() => 0);
+
+  // Generous upper estimate: bitrates plus 25% for container overhead.
+  const expectedBytes =
+    ((plan.videoBitrate + plan.audioBitrate) * (plan.expectedDurationUs / US_PER_SECOND) * 1.25) / 8;
+  const sink = await prepareOutput(requestId, expectedBytes);
+
+  const output = new Output({ format: sink.format, target: sink.target });
 
   const canvas = new OffscreenCanvas(plan.width, plan.height);
   const context = canvas.getContext('2d', { alpha: false });
@@ -381,6 +395,7 @@ async function runExport(
   const frameDuration = plan.fpsDen / plan.fpsNum;
   let framesDone = 0;
   let framesDrawn = 0;
+  let succeeded = false;
 
   try {
     await output.start();
@@ -452,34 +467,51 @@ async function runExport(
     audioSource?.close();
     await output.finalize();
 
-    const buffer = output.target.buffer;
-    if (!buffer) throw new ExportFailure('output_probe_failed');
-    const bytes = new Uint8Array(buffer);
+    const collected = await sink.collect(output.target);
+    const produced = collected.file ?? collected.bytes;
+    if (!produced || collected.sizeBytes === 0) throw new ExportFailure('output_probe_failed');
 
     emit(requestId, { type: 'verifying', attemptId: requestId });
-    const probe = await probeProduced(bytes);
+    const probe = await probeProduced(produced);
 
     if (!durationWithinTolerance(plan.expectedDurationUs, probe.durationUs, plan.fpsNum, plan.fpsDen)) {
       throw new ExportFailure('output_duration_mismatch');
     }
 
-    emit(
-      requestId,
-      {
+    const result = {
+      attemptId: requestId,
+      fingerprint: plan.fingerprint,
+      sizeBytes: collected.sizeBytes,
+      route: collected.route,
+      probe,
+      durationDeltaUs: probe.durationUs - plan.expectedDurationUs,
+      elapsedMs: Date.now() - startedAt,
+    };
+
+    if (collected.file && collected.entryName) {
+      ownEntries.add(collected.entryName);
+      succeeded = true;
+      emit(requestId, {
         type: 'succeeded',
         attemptId: requestId,
-        result: {
+        result,
+        output: { kind: 'opfs', file: collected.file, entryName: collected.entryName },
+      });
+    } else if (collected.bytes) {
+      succeeded = true;
+      emit(
+        requestId,
+        {
+          type: 'succeeded',
           attemptId: requestId,
-          fingerprint: plan.fingerprint,
-          sizeBytes: bytes.byteLength,
-          probe,
-          durationDeltaUs: probe.durationUs - plan.expectedDurationUs,
-          elapsedMs: Date.now() - startedAt,
+          result,
+          output: { kind: 'memory', data: collected.bytes },
         },
-        data: bytes,
-      },
-      [bytes.buffer],
-    );
+        [collected.bytes.buffer],
+      );
+    } else {
+      throw new ExportFailure('output_probe_failed');
+    }
   } finally {
     await sources.clipReader?.close();
     await sources.musicReader?.close();
@@ -488,6 +520,9 @@ async function runExport(
     if (output.state !== 'finalized') {
       await output.cancel().catch(() => undefined);
     }
+    // A partial or unverified file must never be left behind as if it were a
+    // result: only a verified success keeps its file.
+    if (!succeeded) await sink.discard();
   }
 }
 
@@ -539,6 +574,7 @@ scope.onmessage = async (message: MessageEvent<WorkerRequest>) => {
     return;
   }
 
+
   if (request.type === 'capability') {
     const result = await runSelfTest(request.config);
     const response: WorkerResponse = { type: 'capability', requestId: request.requestId, result };
@@ -560,7 +596,12 @@ scope.onmessage = async (message: MessageEvent<WorkerRequest>) => {
           type: 'failed',
           attemptId: request.requestId,
           // Never forward the raw message: it can contain file paths.
-          code: name === 'RangeError' ? 'out_of_memory' : 'internal_error',
+          code:
+            name === 'RangeError'
+              ? 'out_of_memory'
+              : name === 'QuotaExceededError'
+                ? 'output_storage_full'
+                : 'internal_error',
         });
       }
     } finally {

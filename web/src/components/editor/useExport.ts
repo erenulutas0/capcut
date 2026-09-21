@@ -10,6 +10,7 @@ import {
   type CapabilityReportV1,
 } from '@/adapters/exportCapability';
 import { ExportWorkerClient } from '@/adapters/export/exportClient';
+import { removeExportEntry, sweepExportEntries } from '@/adapters/export/opfsEntries';
 import type { ExportFailureCode, ExportResult } from '@/domain/exportEvents';
 import type { ProjectV1 } from '@/domain/edl';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
@@ -46,22 +47,36 @@ export function useExport(project: ProjectV1, videoFile: File | null, audioFile:
   const [state, setState] = useState<ExportUiState>({ phase: 'idle' });
   const clientRef = useRef<ExportWorkerClient | null>(null);
   const urlRef = useRef<string | null>(null);
+  /** OPFS entry behind the offered download, if the disk route was used. */
+  const entryRef = useRef<string | null>(null);
 
+  /**
+   * Stops offering the previous result. For the disk route this also deletes
+   * the temporary file, so exports never pile up in the user's storage.
+   */
   const releaseUrl = useCallback(() => {
     if (urlRef.current) {
       URL.revokeObjectURL(urlRef.current);
       urlRef.current = null;
     }
+    if (entryRef.current) {
+      const name = entryRef.current;
+      entryRef.current = null;
+      void removeExportEntry(name);
+    }
   }, []);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // A tab closed right after an export never gets to delete its temporary
+    // file. Old leftovers are removed whenever the editor opens, not only when
+    // the next export starts, so they do not sit in the user's storage.
+    void sweepExportEntries().catch(() => 0);
+    return () => {
       releaseUrl();
       clientRef.current?.dispose();
       clientRef.current = null;
-    },
-    [releaseUrl],
-  );
+    };
+  }, [releaseUrl]);
 
   const client = useCallback(() => {
     if (!clientRef.current) clientRef.current = new ExportWorkerClient();
@@ -149,7 +164,12 @@ export function useExport(project: ProjectV1, videoFile: File | null, audioFile:
           });
           break;
         case 'succeeded': {
-          const blob = new Blob([event.data as BlobPart], { type: 'video/mp4' });
+          // The disk route hands over a disk-backed File: no copy into memory.
+          const blob =
+            event.output.kind === 'opfs'
+              ? event.output.file
+              : new Blob([event.output.data as BlobPart], { type: 'video/mp4' });
+          if (event.output.kind === 'opfs') entryRef.current = event.output.entryName;
           const url = URL.createObjectURL(blob);
           urlRef.current = url;
           setState({

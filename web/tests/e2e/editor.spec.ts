@@ -291,6 +291,64 @@ test.describe('editor', () => {
     expect(saved.suggestedFilename()).toMatch(/\.mp4$/);
   });
 
+  test('writes the output to temporary storage and removes it afterwards', async ({ page }) => {
+    const listExportFiles = () =>
+      page.evaluate(async () => {
+        const root = await navigator.storage.getDirectory();
+        const names: string[] = [];
+        for await (const name of (root as unknown as { keys(): AsyncIterable<string> }).keys()) {
+          if (name.startsWith('clip-export-')) names.push(name);
+        }
+        return names;
+      });
+
+    await openEditor(page);
+    await importSample(page);
+    await addMoment(page, '00:00.000', '00:03.000');
+
+    await page.getByTestId('open-export').click();
+    await page.getByTestId('export-quality').selectOption('720');
+    await page.getByTestId('export-ready').waitFor({ timeout: 60_000 });
+    await page.getByTestId('export-create').click();
+    await page.getByTestId('export-succeeded').waitFor({ timeout: 180_000 });
+
+    // The file went to the browser's temporary storage, not into memory...
+    await expect(page.getByTestId('measured-route')).toHaveText('tarayıcının geçici diski');
+    // ...and exists there while it is being offered for download.
+    expect(await listExportFiles()).toHaveLength(1);
+
+    const download = page.waitForEvent('download');
+    await page.getByTestId('export-download').click();
+    expect((await download).suggestedFilename()).toMatch(/\.mp4$/);
+
+    // Closing the dialog stops offering it and deletes the temporary file.
+    await page.keyboard.press('Escape');
+    await expect.poll(listExportFiles, { timeout: 5000 }).toEqual([]);
+  });
+
+  test('a canceled export leaves no temporary file behind', async ({ page }) => {
+    await openEditor(page);
+    await importSample(page);
+    await addMoment(page, '00:00.000', '00:20.000');
+
+    await page.getByTestId('open-export').click();
+    await page.getByTestId('export-ready').waitFor({ timeout: 60_000 });
+    await page.getByTestId('export-create').click();
+    await page.getByTestId('export-running').waitFor({ timeout: 30_000 });
+    await page.getByTestId('export-cancel').click();
+    await expect(page.getByTestId('export-canceled')).toBeVisible({ timeout: 60_000 });
+
+    const leftovers = await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      const names: string[] = [];
+      for await (const name of (root as unknown as { keys(): AsyncIterable<string> }).keys()) {
+        if (name.startsWith('clip-export-')) names.push(name);
+      }
+      return names;
+    });
+    expect(leftovers).toEqual([]);
+  });
+
   test('cancel stops the export and produces no file', async ({ page }) => {
     await openEditor(page);
     await importSample(page);

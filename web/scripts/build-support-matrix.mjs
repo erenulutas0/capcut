@@ -169,26 +169,74 @@ if (untestable.length > 0) {
   lines.push('');
 }
 
-// Long-output behaviour, when it has been measured.
-const longPath = join(resultsDir, 'long-export.json');
-if (existsSync(longPath)) {
-  const long = JSON.parse(readFileSync(longPath, 'utf8'));
-  lines.push('## Uzun çıktı ölçümleri');
+// Memory cost of long exports: the two output routes, measured the same way.
+const memoryPath = join(resultsDir, 'export-memory-1080-memory-route.json');
+const opfsPath = join(resultsDir, 'export-memory-1080-opfs-route.json');
+if (existsSync(memoryPath) && existsSync(opfsPath)) {
+  const memory = JSON.parse(readFileSync(memoryPath, 'utf8'));
+  const opfs = JSON.parse(readFileSync(opfsPath, 'utf8'));
+  lines.push('## Uzun çıktı: süre, hız ve bellek');
   lines.push('');
-  lines.push(`Ortam: ${long.browser}, ${long.ranAt.replace('T', ' ').slice(0, 16)} UTC.`);
+  lines.push(
+    `Ortam: ${opfs.browser}, ${opfs.profile === 'persistent' ? 'kalıcı (disk destekli) profil' : 'kalıcı olmayan profil'}, ` +
+      `yoğun 1080p kaynak, 1080p çıktı. ${opfs.method}`,
+  );
   lines.push('');
-  lines.push('| İstenen | Ölçülen süre | Kare | Dosya | Süren işlem | Gerçek zamana oran |');
+  lines.push('| Çıktı | Dosya | Kare | Süren işlem | Bellek yolu: tepe (artış) | OPFS yolu: tepe (artış) |');
   lines.push('|---|---|---|---|---|---|');
-  for (const row of long.rows) {
-    const ratio = row.finished ? (row.requestedSeconds / (row.elapsedMs / 1000)).toFixed(1) : '—';
+  for (const row of opfs.rows) {
+    const old = memory.rows.find((r) => r.requestedSeconds === row.requestedSeconds);
     lines.push(
-      `| ${row.requestedSeconds} s | ${row.measuredSeconds ?? `BAŞARISIZ: ${row.failure}`} s | ` +
-        `${row.frames ?? '—'} | ${row.sizeMb ?? '—'} MB | ${(row.elapsedMs / 1000).toFixed(1)} s | ${ratio}× |`,
+      `| ${row.requestedSeconds} s | ${row.outputMib ?? '—'} MiB (${row.videoBitrateMbps ?? '—'} Mbit/s) | ` +
+        `${row.frames ?? '—'} | ${(row.elapsedMs / 1000).toFixed(1)} s | ` +
+        `${old ? `${old.peakTotalMib} MiB (+${old.growthMib})` : '—'} | ` +
+        `${row.peakTotalMib} MiB (+${row.growthMib}) |`,
     );
   }
   lines.push('');
-  lines.push(`> ${long.note}`);
+  lines.push(
+    'Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer’da hem sayfadaki Blob’da tutulur). ' +
+      'OPFS yolunda çıktı tarayıcının özel diskine akar ve artış uzunluktan bağımsız kalır. ' +
+      'Uyarı: gizli pencerede Chromium OPFS’i RAM’de tutar; orada bu kazanç yoktur.',
+  );
   lines.push('');
+}
+
+// The user's own recordings, if they have been run. Anonymous ids only.
+const realFiles = BROWSERS.map((b) => ({ ...b, path: join(resultsDir, `real-media-${b.key}.json`) })).filter(
+  (b) => existsSync(b.path),
+);
+lines.push('## Gerçek kayıtlar');
+lines.push('');
+if (realFiles.length === 0) {
+  lines.push(
+    '**NOT_RUN.** Gerçek telefon/kamera kayıtlarıyla çalıştırma henüz yapılmadı. Yukarıdaki bütün satırlar ' +
+      'ffmpeg ile üretilmiş sentetik dosyalardan gelir. Çalıştırmak için kayıtları `web/tests/media/real/` ' +
+      'klasörüne koyup `node scripts/run-real-media.mjs` komutunu kullanın.',
+  );
+  lines.push('');
+} else {
+  for (const entry of realFiles) {
+    const data = JSON.parse(readFileSync(entry.path, 'utf8'));
+    const t = data.totals;
+    lines.push(
+      `### ${entry.label} — ${t.pass} PASS, ${t.refused} REFUSED, ${t.fail} FAIL, ${t.error} ERROR ` +
+        `(${data.ranAt.replace('T', ' ').slice(0, 16)} UTC)`,
+    );
+    lines.push('');
+    lines.push('| # | Durum | Codec | Boyut | Rotasyon | fps | Süre | Dosya | Renk | Ses | SSIM |');
+    lines.push('|---|---|---|---|---|---|---|---|---|---|---|');
+    for (const r of data.results) {
+      const p = r.properties ?? {};
+      lines.push(
+        `| ${r.id} | ${r.status} | ${p.videoCodec ?? '—'} | ${p.width ?? '—'}x${p.height ?? '—'} | ` +
+          `${p.rotation ?? 0}° | ${p.fps ?? '—'}${p.likelyVfr ? ' (VFR?)' : ''} | ` +
+          `${p.durationSeconds ? p.durationSeconds.toFixed(1) : '—'} s | ${p.sizeMib ?? '—'} MiB | ` +
+          `${p.colorTransfer ?? '—'} | ${p.audioCodec ?? 'yok'} | ${r.measured?.ssim ?? '—'} |`,
+      );
+    }
+    lines.push('');
+  }
 }
 
 const notRunCases = CASES.filter((c) => c.notRun);
@@ -204,8 +252,8 @@ if (notRunCases.length > 0) {
 lines.push('## Bu matrisin kapsamadıkları');
 lines.push('');
 lines.push('- Gerçek Safari (macOS/iOS) ve gerçek fiziksel telefon/tablet.');
-lines.push('- Gerçek kamera/telefon kayıtları; bütün fixture’lar ffmpeg ile üretilmiş sentetik dosyalardır.');
-lines.push('- Gerçek görüntüyle uzun çıktıda bellek tavanı: ölçülemedi (aşağıdaki nota bakın). Çıktı süresi politika gereği 5 dakika ile sınırlıdır.');
+lines.push('- Gerçek kamera/telefon kayıtları, “Gerçek kayıtlar” bölümünde çalıştırılmadıysa.');
+lines.push('- Bellek ölçümü yalnızca Windows’ta ve Chromium’da yapıldı; macOS/Linux ve diğer tarayıcılar ölçülmedi.');
 lines.push('- Düşük bellekli cihazlar ve bellek yetmediğinde davranış.');
 lines.push('- Disk dolması, uzun süreli kararlılık ve termal davranış.');
 lines.push('- Ekran okuyucu ve erişilebilirlik denetimi.');

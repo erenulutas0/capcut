@@ -343,6 +343,12 @@ export function ExportDialog({
               </span>
             </li>
             <li>
+              <span className="meta-key">{t('export.route')}</span>
+              <span className="meta-value" data-testid="measured-route">
+                {state.result.route === 'opfs' ? t('export.route.opfs') : t('export.route.memory')}
+              </span>
+            </li>
+            <li>
               <span className="meta-key">{t('export.elapsed')}</span>
               <span className="meta-value">{(state.result.elapsedMs / 1000).toFixed(1)} s</span>
             </li>

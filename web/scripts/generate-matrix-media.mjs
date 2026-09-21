@@ -154,6 +154,19 @@ if (wanted('M13')) {
   record('M13', 'm13-oversize.mp4', 'lossless 1080p noise, intentionally over 250 MiB');
 }
 
+// L01 — dense 1080p content for memory measurements.
+// The test pattern above compresses so well that the encoder never spends its
+// bitrate budget, which hid the real cost of holding the output in memory.
+// Moving pattern + temporal noise makes every frame expensive, the way real
+// camera footage is. Kept under the 250 MiB input limit.
+if (wanted('L01')) {
+  ff(['-f', 'lavfi', '-i', 'testsrc2=size=1920x1080:rate=30:duration=20,noise=alls=28:allf=t+u',
+      ...toneIn(440, 20),
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '30', '-pix_fmt', 'yuv420p', '-g', '30',
+      ...AAC, '-shortest', p('l01-dense-1080p.mp4')], 'L01');
+  record('L01', 'l01-dense-1080p.mp4', '1080p moving pattern + temporal noise, for realistic bitrate');
+}
+
 const manifest = { generatedAt: new Date().toISOString(), files: made };
 writeFileSync(join(out, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 

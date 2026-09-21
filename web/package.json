@@ -18,7 +18,8 @@
     "matrix:media": "node scripts/generate-matrix-media.mjs",
     "matrix": "node scripts/run-matrix.mjs",
     "matrix:doc": "node scripts/build-support-matrix.mjs",
-    "matrix:long": "node scripts/measure-long-export.mjs"
+    "matrix:memory": "node scripts/measure-export-memory.mjs --persistent",
+    "matrix:real": "node scripts/run-real-media.mjs"
   },
   "dependencies": {
     "mediabunny": "1.58.1",
