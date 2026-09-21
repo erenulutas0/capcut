@@ -15,3 +15,6 @@ export-proof/
 web/tests/media/matrix/
 web/matrix-results/
 web/tests/media/real/
+
+# Agent worktrees (local only)
+.claude/worktrees/
