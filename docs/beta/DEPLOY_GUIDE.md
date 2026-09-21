@@ -1,7 +1,9 @@
 # Beta için ücretsiz yayın rehberi
 
-> Tarih: 2026-09-22 · Durum: HAZIRLIK — **yayın yapılmadı.** Herkese açık bir adres
-> dışa dönük bir eylemdir; kurucu onayı ve isim/iletişim kararı (belge 30 K01) gerekir.
+> Tarih: 2026-09-22 · Durum: **YAYINDA** — https://erenulutas0.github.io/capcut/ (kurucu onayı:
+> GitHub Pages). Yayın `.github/workflows/ci.yml` ile yalnızca bütün testler ve alt dizin
+> duman testi (`tests/pages/`) geçince, test edilen dosyaların aynısıyla yapılır. Canlı
+> adreste güvenli bağlam ve gerçek bir dışa aktarma (OPFS yolu) doğrulandı.
 
 ## Teknik şartlar (kodda doğrulandı)
 

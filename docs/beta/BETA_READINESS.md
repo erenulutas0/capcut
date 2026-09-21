@@ -23,7 +23,7 @@
 |---|---|---|
 | Desteklenen OS/tarayıcı/codec matrisi gerçek testlerle yazıldı | ⚠️ | Windows'ta Chromium/Chrome/Edge 20/20, Firefox açık ret, 15 gerçek kayıt. **Eksik:** macOS, Safari, gerçek telefon tarayıcısı, düşük bellekli cihaz |
 | Türkçe metinler, hata açıklamaları ve erişilebilirlik test edildi | ⚠️ | Türkçe metinler ve hata kodları: e2e. Otomatik erişilebilirlik: axe (WCAG 2.2 A/AA) 32 ekran durumunda 233 → 0 ihlal; klavyeyle tam akış, odak tuzağı, hareket azaltma, %200 yakınlaştırma testlerle geçiyor (`docs/a11y/2026-09-22-audit.md`). **Gerçek ekran okuyucu (NVDA) testi yapılmadı**; 11 adımlık kontrol listesi raporda |
-| İsim/domain/iletişim bilgileri gerçek | ❌ **Kurucu kararı (K01)** | "Clip" geçici ad; domain ve iletişim adresi yok |
+| İsim/domain/iletişim bilgileri gerçek | ⚠️ | İletişim: GitHub Issues (kurucu kararı), "Sorun bildir"de bağlantı ve "herkese açık" uyarısı, Issue şablonu. Adres: https://erenulutas0.github.io/capcut/. **"Clip" geçici ad (K01) açık** |
 | Privacy/terms ve veri envanteri gerçek davranışla eşleşiyor | ⚠️ | Koddan çıkarılmış envanter (`docs/privacy/DATA_INVENTORY.md`) ve taslak `/gizlilik` sayfası (TR/EN). Tam oturumun dışarıya sıfır istek yaptığı ve çerez bırakmadığı e2e ile doğrulanıyor. **Veri sorumlusu (K02), barındırma sağlayıcısı ve hukuki inceleme eksik; sayfada görünür "belirlenmedi"** |
 | App Store/Play beyanları | — | Web-only; mağaza yok |
 | Hesap varsa silme akışları | — | Hesap yok. Yerel projeyi silme var (`persistence.spec.ts`) |
@@ -39,17 +39,14 @@
 2. **Veri sorumlusu (K02).** Gizlilik sayfası taslaktır; kim adına yazıldığı ve hukuki
    inceleme eksik. Uygulama hiçbir kişisel veriyi dışarı göndermediği için risk düşük,
    ama metin yine de bir kişi/kurum adına yayınlanır.
-3. **Yayın (herkese açık adres).** Beta kullanıcılarının uygulamayı açabilmesi için
-   HTTPS bir adres gerekir (WebCodecs ve OPFS güvenli bağlam ister). Ücretsiz yollar
-   `docs/beta/DEPLOY_GUIDE.md`'de; yayın dışa dönük bir eylem olduğu için kurucu onayı
-   olmadan yapılmaz.
-4. **Otomatik test (CI).** Depo herkese açık olduğundan GitHub Actions ücretsizdir.
-   Kalıcı bir depo ayarı olduğu için onayla eklenir.
+3. ~~Yayın~~ — **yapıldı** (2026-09-22): GitHub Pages, https://erenulutas0.github.io/capcut/.
+4. ~~Otomatik test (CI)~~ — **yapıldı**: her push'ta Linux'ta tip/lint/birim, Windows'ta
+   e2e + yayın duman testi; yayın yalnızca hepsi geçince.
 
 ## Donanım gerektirenler
 
-- **Gerçek telefon tarayıcısı** (Android Chrome, Samsung Internet): yayın (HTTPS adres)
-  gerekir; yerel ağdaki `http://` adres güvenli bağlam sayılmaz ve dışa aktarma kapalı
-  kalır. Yayından sonra kurucunun Samsung telefonuyla yapılabilir.
+- **Gerçek telefon tarayıcısı** (Android Chrome, Samsung Internet): artık mümkün —
+  kurucu Samsung telefonunda https://erenulutas0.github.io/capcut/editor/ adresini açıp
+  kendi kaydıyla deneyebilir. Henüz yapılmadı.
 - **Safari / macOS / iPhone:** Mac erişimi gerekir (K04).
 - **Bellek ölçümünün başka makinede tekrarı:** yalnızca bu Windows makinesinde ölçüldü.

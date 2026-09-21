@@ -1,5 +1,9 @@
 # Clip — web video editörü
 
+**Canlı beta:** https://erenulutas0.github.io/capcut/ · Sorun bildirmek için [GitHub Issues](https://github.com/erenulutas0/capcut/issues) (herkese açıktır: video ya da kişisel bilgi ekleme).
+
+[![CI](https://github.com/erenulutas0/capcut/actions/workflows/ci.yml/badge.svg)](https://github.com/erenulutas0/capcut/actions/workflows/ci.yml)
+
 > Durum: editör, gerçek MP4 çıktısı, yerel kayıt, bölme ve sürükleyerek kırpma,
 > altyazı (elle, SRT/VTT, görüntüye bağlı, videoya işleme) ve yerel sessizlik
 > kesim önerisi çalışıyor. 15 gerçek kayıt ve 20 vakalık dosya matrisiyle ölçüldü:
@@ -186,7 +190,11 @@ olan **sessizlik kesim önerisi** geldi (ADR-018): tamamen yerel, öneri + onay 
 geri alma; ölçümle konuşma kesilmesi 37 → 0, bulma %100, sınır p95 37 ms.
 Rapor: `docs/spikes/2026-09-22-silence-detector.md`.
 
-**Sıradaki:** kurucunun 10 WAV çiftini dinlemesi (hece kontrolü, ADR-018'in son
-kapısı); sonra beta hazırlığı (P2).
+Sessizlik önerisinin dinleme kapısı kapandı (kurucu, 10/10 temiz). Beta hazırlığı:
+erişilebilirlik (axe 233 → 0), veri envanteri ve taslak gizlilik sayfası, "Sorun bildir"
+(GitHub Issues), CI ve GitHub Pages yayını (`docs/beta/`).
+
+**Sıradaki:** kullanıcı testleri (`docs/beta/USER_TEST_KIT.md`, 5–10 kişi) ve kurucunun
+Samsung telefonunda canlı adresi denemesi; NVDA ekran okuyucu kontrolü.
 Açık küçük kararlar: HDR kayıtları SDR'ye tonlama (şu an reddediliyor) ve
 ayrıntılı 60 fps kayıtlarda Chromium'un yazılım kodlayıcısı için bit hızı.
