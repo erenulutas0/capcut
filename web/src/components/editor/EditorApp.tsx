@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Icon, Wordmark } from '@/components/Icon';
+import { useHydrated } from '@/components/useHydrated';
 import { DEFAULT_CAPTION_STYLE, activeCueAt, primaryCaptionTrack } from '@/domain/captions';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import type { Micros } from '@/domain/time';
@@ -47,6 +48,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 export function EditorApp() {
+  const hydrated = useHydrated();
   const layout = useLayoutMode();
   const state = useEditorState();
   // The component owns the media elements; the playback hook only drives them.
@@ -895,7 +897,13 @@ export function EditorApp() {
         />
       ) : null}
 
-      {/* Hidden pickers: the user always starts the file dialog explicitly. */}
+      {/*
+        Hidden pickers: the user always starts the file dialog explicitly.
+        Rendered only after hydration: in the prerendered HTML they would
+        accept a file before their change handlers exist, and lose it.
+      */}
+      {hydrated ? (
+        <>
       <input
         ref={videoInputRef}
         type="file"
@@ -943,6 +951,8 @@ export function EditorApp() {
           if (file) void state.importAudio(file);
         }}
       />
+        </>
+      ) : null}
       {state.audio && state.project.music ? (
         <audio
           ref={musicElementRef}
