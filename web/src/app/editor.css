@@ -622,7 +622,7 @@ input[type='range']:disabled::-webkit-slider-thumb {
   flex-shrink: 0;
 }
 
-.time-field label {
+.time-field-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1296,6 +1296,14 @@ input[type='range']:disabled::-webkit-slider-thumb {
 .editor-root[data-mode='phone'] .mobile-tabbar {
   position: sticky;
   bottom: 0;
+}
+
+/* When Tab moves focus, the browser scrolls the control into view but does
+   not know about the sticky bar above; without this padding a focused
+   control could end up entirely under it (WCAG 2.4.11). 56px bar + border +
+   room for the focus outline. */
+html:has(.editor-root[data-mode='phone']) {
+  scroll-padding-bottom: calc(72px + env(safe-area-inset-bottom));
 }
 
 .editor-root[data-mode='phone'] .topbar {

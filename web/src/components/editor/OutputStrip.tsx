@@ -155,6 +155,11 @@ export function OutputStrip({
                     className="strip-clip-select"
                     onClick={() => onSelect(entry.clipId)}
                     aria-pressed={selected}
+                    // A short moment is a narrow block, so its label may be cut
+                    // with an ellipsis on purpose. Nothing is lost: the full
+                    // text stays the button's name, and the moment list shows
+                    // number, duration and range.
+                    data-truncates=""
                     title={`${formatTimecode(entry.startUs)} → ${formatTimecode(entry.endUs)}`}
                   >
                     {String(index + 1).padStart(2, '0')} · {formatDurationShort(entry.durationUs)}

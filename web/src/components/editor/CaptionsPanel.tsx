@@ -380,10 +380,12 @@ function CueEditor({
         </button>
       </div>
 
-      {/* Always present so screen readers announce a refusal when it appears. */}
+      {/* Always present so screen readers announce a refusal when it appears.
+          The message itself has no role: nested in this region, an alert
+          would be announced twice by some screen readers. */}
       <div aria-live="polite" id={errorId}>
         {error ? (
-          <p className="inline-error" role="alert" data-testid="cue-error">
+          <p className="inline-error" data-testid="cue-error">
             <Icon name="alert" />
             {t(errorKey(error))}
           </p>
@@ -687,7 +689,7 @@ export function CaptionsPanel({
       </p>
       <div aria-live="polite">
         {addError ? (
-          <p className="inline-error" role="alert" data-testid="captions-add-error">
+          <p className="inline-error" data-testid="captions-add-error">
             <Icon name="alert" />
             {t(errorKey(addError))}
           </p>

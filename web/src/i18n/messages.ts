@@ -8,6 +8,17 @@ export const tr = {
   'app.tagline': 'Videondan tutmak istediğin anları seç, sırala, hazırla.',
   'app.workingName': 'Clip geçici çalışma adıdır.',
 
+  // Names only assistive technology hears (landmarks, hidden labels).
+  'a11y.editorHeading': 'Clip editörü',
+  'a11y.prototypeNotice': 'Sürüm notu',
+  'a11y.preview': 'Önizleme',
+  'a11y.previewMode': 'Önizleme türü',
+  'a11y.previewVideo': 'Önizleme videosu',
+  'a11y.timeNow': 'Şu anki zaman',
+  'a11y.timeTotal': 'Toplam süre',
+  'a11y.inspector': 'Ayarlar',
+  'a11y.toolbar': 'Araçlar',
+
   'nav.openEditor': 'Editörü aç',
   'nav.backToEditor': 'Düzenlemeye dön',
 
@@ -559,6 +570,17 @@ export const en: Record<MessageKey, string> = {
   'app.name': 'clip',
   'app.tagline': 'Pick the moments you want to keep, order them, prepare the video.',
   'app.workingName': 'Clip is a provisional working name.',
+
+  // Names only assistive technology hears (landmarks, hidden labels).
+  'a11y.editorHeading': 'Clip editor',
+  'a11y.prototypeNotice': 'Release note',
+  'a11y.preview': 'Preview',
+  'a11y.previewMode': 'Preview mode',
+  'a11y.previewVideo': 'Preview video',
+  'a11y.timeNow': 'Current time',
+  'a11y.timeTotal': 'Total length',
+  'a11y.inspector': 'Settings',
+  'a11y.toolbar': 'Tools',
 
   'nav.openEditor': 'Open the editor',
   'nav.backToEditor': 'Back to editing',

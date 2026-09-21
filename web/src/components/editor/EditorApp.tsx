@@ -413,12 +413,14 @@ export function EditorApp() {
           CANVAS_ASPECT_CSS[state.project.canvas.aspect] ?? '16 / 9',
       }}
     >
-      <div className="prototype-banner">
+      {/* A landmark of its own, so screen-reader users meet it on purpose
+          instead of as stray text before the header. */}
+      <aside className="prototype-banner" aria-label={t('a11y.prototypeNotice')}>
         <span>{t('banner.prototype')}</span>
         <Link href="/" style={{ color: 'inherit' }}>
           {t('app.name')}
         </Link>
-      </div>
+      </aside>
 
       <header className="topbar">
         <Wordmark />
@@ -513,7 +515,9 @@ export function EditorApp() {
         </div>
       </header>
 
-      <div className="editor-body" data-mode={layout}>
+      <main className="editor-body" data-mode={layout}>
+        {/* The page's one h1; the panels below carry the h2s. */}
+        <h1 className="visually-hidden">{t('a11y.editorHeading')}</h1>
         {layout === 'wide' || layout === 'narrow' ? <LeftPanel {...leftPanelProps} /> : null}
 
         {state.missingVideoBinding ? (
@@ -592,7 +596,7 @@ export function EditorApp() {
         )}
 
         {layout === 'wide' ? <Inspector {...inspectorProps} /> : null}
-      </div>
+      </main>
 
       <OutputStrip
         t={t}
@@ -619,7 +623,7 @@ export function EditorApp() {
       )}
 
       {layout === 'phone' ? (
-      <nav className="mobile-tabbar" aria-label={t('tabs.moments')}>
+      <nav className="mobile-tabbar" aria-label={t('a11y.toolbar')}>
         <button
           type="button"
           onClick={() => setMobileSheet('moments')}
@@ -862,6 +866,10 @@ export function EditorApp() {
         type="file"
         accept="video/*"
         className="visually-hidden"
+        // Reached only through the visible buttons, so it is kept out of the
+        // tab order and the accessibility tree (an unlabeled second stop).
+        tabIndex={-1}
+        aria-hidden="true"
         data-testid="video-input"
         onChange={(event) => {
           const file = event.target.files?.[0];
@@ -874,6 +882,8 @@ export function EditorApp() {
         type="file"
         accept="application/json,.json"
         className="visually-hidden"
+        tabIndex={-1}
+        aria-hidden="true"
         data-testid="backup-input"
         onChange={(event) => {
           const file = event.target.files?.[0];
@@ -889,6 +899,8 @@ export function EditorApp() {
         type="file"
         accept="audio/*"
         className="visually-hidden"
+        tabIndex={-1}
+        aria-hidden="true"
         data-testid="audio-input"
         onChange={(event) => {
           const file = event.target.files?.[0];

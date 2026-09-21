@@ -26,6 +26,32 @@ interface Props {
 
 type GateState = true | false | null;
 
+/**
+ * One sentence per phase for the dialog's status region. Screen-reader users
+ * press "Oluştur" and then hear when the file is ready or why it failed; the
+ * percentage is left out, it changes on every frame.
+ */
+function phaseAnnouncement(t: (key: MessageKey) => string, state: ExportUiState): string {
+  switch (state.phase) {
+    case 'checking':
+      return t('export.checking');
+    case 'ready':
+      return t('export.ready');
+    case 'blocked':
+      return t('export.blockedTitle');
+    case 'running':
+      return t(`export.running.${state.step}` as MessageKey);
+    case 'canceled':
+      return t('export.canceledTitle');
+    case 'failed':
+      return t('export.failedTitle');
+    case 'succeeded':
+      return t('export.succeededTitle');
+    default:
+      return '';
+  }
+}
+
 function GateRow({
   label,
   state,
@@ -197,6 +223,10 @@ export function ExportDialog({
           <Icon name="close" />
         </button>
       </div>
+
+      <p className="visually-hidden" role="status" data-testid="export-status">
+        {phaseAnnouncement(t, state)}
+      </p>
 
       <div className="summary-grid">
         <div className="summary-card">

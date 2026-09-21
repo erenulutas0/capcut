@@ -159,16 +159,19 @@ export function CaptionClockSection({
       >
         {t(target === 'source' ? 'captions.clock.toSource' : 'captions.clock.toOutput')}
       </button>
+      {/* One live region per message slot. The messages inside carry no
+          role of their own: an alert or status nested in a polite region is
+          announced twice by some screen readers. */}
       <div aria-live="polite">
         {shown?.kind === 'done' ? (
-          <p className="notice caption-report" role="status" data-testid="caption-clock-report">
+          <p className="notice caption-report" data-testid="caption-clock-report">
             <Icon name="check" size={16} />
             <span>
               {fill(t('captions.clock.done'), { split: shown.split, dropped: shown.dropped })}
             </span>
           </p>
         ) : shown?.kind === 'error' ? (
-          <p className="inline-error" role="alert" data-testid="caption-clock-error">
+          <p className="inline-error" data-testid="caption-clock-error">
             <Icon name="alert" />
             {fill(t(`captions.clock.error.${shown.reason}`), { lines: shown.lines })}
           </p>
@@ -318,11 +321,11 @@ export function CaptionShiftSection({
       </form>
       <div aria-live="polite" id={`${uid}-message`}>
         {shown?.kind === 'done' ? (
-          <p className="hint-small" role="status" data-testid="caption-shift-report">
+          <p className="hint-small" data-testid="caption-shift-report">
             {fill(t('captions.shift.done'), { amount: formatShiftSeconds(shown.deltaUs, decimalMark) })}
           </p>
         ) : shown?.kind === 'error' ? (
-          <p className="inline-error" role="alert" data-testid="caption-shift-error">
+          <p className="inline-error" data-testid="caption-shift-error">
             <Icon name="alert" />
             {t(shown.key)}
           </p>
@@ -510,13 +513,13 @@ export function CaptionImport({
       </p>
       <div aria-live="polite">
         {readError ? (
-          <p className="inline-error" role="alert" data-testid="caption-import-read-error">
+          <p className="inline-error" data-testid="caption-import-read-error">
             <Icon name="alert" />
             {t(readError)}
           </p>
         ) : null}
         {shownDone ? (
-          <div className="notice caption-report" role="status" data-testid="caption-import-report">
+          <div className="notice caption-report" data-testid="caption-import-report">
             <Icon name="check" size={16} />
             <div>
               <b data-testid="caption-import-count">
@@ -573,14 +576,20 @@ export function CaptionImport({
               </p>
             ) : null}
 
+            {/* A radio group, so "required" and "invalid" are allowed on it
+                (a plain fieldset may not carry them). */}
             <fieldset
               className="caption-import-question"
+              role="radiogroup"
+              aria-labelledby={`${uid}-question`}
               aria-required="true"
               aria-invalid={needChoice}
               aria-describedby={needChoice ? `${uid}-need` : undefined}
               data-testid="caption-import-question"
             >
-              <legend className="field-label">{t('captions.import.question')}</legend>
+              <legend className="field-label" id={`${uid}-question`}>
+                {t('captions.import.question')}
+              </legend>
               {option('source')}
               {option('output')}
               {pending.hint === 'same' ? (
@@ -599,13 +608,13 @@ export function CaptionImport({
 
             <div aria-live="polite">
               {needChoice ? (
-                <p className="inline-error" role="alert" id={`${uid}-need`} data-testid="caption-import-need-choice">
+                <p className="inline-error" id={`${uid}-need`} data-testid="caption-import-need-choice">
                   <Icon name="alert" />
                   {t('captions.import.chooseFirst')}
                 </p>
               ) : null}
               {failure ? (
-                <div role="alert" data-testid="caption-import-error">
+                <div data-testid="caption-import-error">
                   <p className="inline-error">
                     <Icon name="alert" />
                     {t(`captions.import.error.${failure.failure.reason}`)}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Icon } from '@/components/Icon';
 import type { ClipV1 } from '@/domain/edl';
@@ -22,6 +22,17 @@ interface Props {
 
 const DEFAULT_LENGTH_US = 4_000_000;
 const MIN_SUGGESTION_US = 1_000_000;
+
+// "I" on an English layout (with or without caps) and on Turkish Q, where the
+// capital of i is İ. The dotless ı is a different key and is not a shortcut.
+const MARK_IN_KEYS = new Set(['i', 'I', 'İ']);
+const MARK_OUT_KEYS = new Set(['o', 'O']);
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+}
 
 export function RangeEditor({
   t,
@@ -75,23 +86,53 @@ export function RangeEditor({
 
   const errorKey = localError ?? actionError;
 
+  // The I / O shortcuts the help dialog lists (doc 06): the same as pressing
+  // the I / O buttons. The playhead changes every frame, so the listener reads
+  // it from a ref instead of re-subscribing on each render.
+  const playheadRef = useRef(sourceTimeUs);
+  useEffect(() => {
+    playheadRef.current = sourceTimeUs;
+  }, [sourceTimeUs]);
+
+  useEffect(() => {
+    if (disabled) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return;
+      if (isTypingTarget(event.target)) return;
+      // Inside a dialog or sheet the letters belong to it, not to the form behind.
+      if (event.target instanceof Element && event.target.closest('[aria-modal="true"]')) return;
+      if (MARK_IN_KEYS.has(event.key)) {
+        event.preventDefault();
+        setStartText(formatTimecode(playheadRef.current));
+      } else if (MARK_OUT_KEYS.has(event.key)) {
+        event.preventDefault();
+        setEndText(formatTimecode(playheadRef.current));
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [disabled]);
+
   return (
     <div>
       <div className="range-editor">
         <div className="time-field">
-          <label htmlFor="range-start">
-            {t('range.start')}
+          {/* The button sits beside the label, not inside it: inside, its
+              text became part of the field's name ("Başlangıç I ..."). */}
+          <div className="time-field-head">
+            <label htmlFor="range-start">{t('range.start')}</label>
             <button
               type="button"
               className="mark-btn"
               disabled={disabled}
               onClick={() => setStartText(formatTimecode(sourceTimeUs))}
               title={t('range.setStart')}
+              data-testid="mark-start"
             >
               I
               <span className="visually-hidden">{t('range.setStart')}</span>
             </button>
-          </label>
+          </div>
           <input
             id="range-start"
             className="time-input"
@@ -111,19 +152,20 @@ export function RangeEditor({
         </div>
 
         <div className="time-field">
-          <label htmlFor="range-end">
-            {t('range.end')}
+          <div className="time-field-head">
+            <label htmlFor="range-end">{t('range.end')}</label>
             <button
               type="button"
               className="mark-btn"
               disabled={disabled}
               onClick={() => setEndText(formatTimecode(sourceTimeUs))}
               title={t('range.setEnd')}
+              data-testid="mark-end"
             >
               O
               <span className="visually-hidden">{t('range.setEnd')}</span>
             </button>
-          </label>
+          </div>
           <input
             id="range-end"
             className="time-input"

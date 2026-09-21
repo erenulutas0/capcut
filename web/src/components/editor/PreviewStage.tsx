@@ -9,6 +9,7 @@ import { formatDurationShort, formatTimecode, US_PER_SECOND, type Micros } from 
 import { placeView } from '@/domain/transform';
 import type { MessageKey } from '@/i18n/messages';
 import { CaptionOverlay } from './CaptionOverlay';
+import { onTablistKeyDown } from './tablist';
 import type { PreviewMode } from './useEditorState';
 
 interface Props {
@@ -106,13 +107,20 @@ export function PreviewStage({
   const percent = durationUs > 0 ? Math.min(100, (currentUs / durationUs) * 100) : 0;
 
   return (
-    <section className="stage" aria-label={t('preview.source')}>
+    <section className="stage" aria-label={t('a11y.preview')}>
       <div className="stage-head">
-        <div className="mode-switch" role="tablist" aria-label={t('preview.source')}>
+        <div
+          className="mode-switch"
+          role="tablist"
+          aria-label={t('a11y.previewMode')}
+          onKeyDown={onTablistKeyDown}
+        >
           <button
             type="button"
             role="tab"
             aria-selected={!isOutput}
+            // Stays the Tab stop whenever the result tab cannot take focus.
+            tabIndex={isOutput && project.clips.length > 0 ? -1 : 0}
             onClick={() => onModeChange('source')}
           >
             {t('preview.source')}
@@ -121,6 +129,7 @@ export function PreviewStage({
             type="button"
             role="tab"
             aria-selected={isOutput}
+            tabIndex={isOutput ? 0 : -1}
             onClick={() => onModeChange('output')}
             disabled={project.clips.length === 0}
           >
@@ -150,6 +159,9 @@ export function PreviewStage({
               src={video.objectUrl}
               playsInline
               preload="metadata"
+              // No native controls (the transport below drives it), so the
+              // element needs its own name to be more than "video".
+              aria-label={t('a11y.previewVideo')}
               style={{
                 width: placement.width,
                 height: placement.height,
@@ -185,7 +197,10 @@ export function PreviewStage({
       </div>
 
       <div className="transport">
-        <span className="time-readout">
+        {/* Hidden words make the readouts more than bare numbers. Not live:
+            during playback they change every frame. */}
+        <span className="time-readout" data-testid="time-now">
+          <span className="visually-hidden">{`${t('a11y.timeNow')} `}</span>
           <strong data-testid="current-time">{formatTimecode(currentUs)}</strong>
         </span>
         <button
@@ -198,8 +213,9 @@ export function PreviewStage({
         >
           <Icon name={playing ? 'pause' : 'play'} size={22} />
         </button>
-        <span className="time-readout" data-testid="total-time">
-          {formatTimecode(durationUs)}
+        <span className="time-readout" data-testid="time-total">
+          <span className="visually-hidden">{`${t('a11y.timeTotal')} `}</span>
+          <span data-testid="total-time">{formatTimecode(durationUs)}</span>
         </span>
       </div>
 

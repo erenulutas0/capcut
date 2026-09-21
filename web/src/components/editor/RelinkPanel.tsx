@@ -143,6 +143,9 @@ export function RelinkPanel({ t, binding, onPick, onUseAsNew, onDiscardProject }
         type="file"
         accept={isVideo ? 'video/*' : 'audio/*'}
         className="visually-hidden"
+        // Reached through "Dosyayı seç" above; not a second, unlabeled stop.
+        tabIndex={-1}
+        aria-hidden="true"
         data-testid={isVideo ? 'relink-video-input' : 'relink-audio-input'}
         onChange={(event) => {
           const file = event.target.files?.[0];

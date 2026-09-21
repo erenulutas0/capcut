@@ -6,6 +6,7 @@ import type { Project } from '@/domain/edl';
 import { formatBytes } from '@/domain/policy';
 import { formatDurationShort, formatTimecode } from '@/domain/time';
 import type { MessageKey } from '@/i18n/messages';
+import { onTablistKeyDown } from './tablist';
 
 export type LeftTab = 'moments' | 'sources';
 
@@ -315,11 +316,19 @@ export function LeftPanel(props: Props) {
   const { t, tab, onTabChange } = props;
   return (
     <aside className="panel panel-left" aria-label={t('tabs.moments')}>
-      <div className="segmented" role="tablist" aria-label={t('tabs.moments')}>
+      <div
+        className="segmented"
+        role="tablist"
+        aria-label={t('tabs.moments')}
+        onKeyDown={onTablistKeyDown}
+      >
         <button
           type="button"
           role="tab"
+          id="left-tab-moments"
           aria-selected={tab === 'moments'}
+          aria-controls="left-panel"
+          tabIndex={tab === 'moments' ? 0 : -1}
           onClick={() => onTabChange('moments')}
         >
           {t('tabs.moments')}
@@ -327,13 +336,16 @@ export function LeftPanel(props: Props) {
         <button
           type="button"
           role="tab"
+          id="left-tab-sources"
           aria-selected={tab === 'sources'}
+          aria-controls="left-panel"
+          tabIndex={tab === 'sources' ? 0 : -1}
           onClick={() => onTabChange('sources')}
         >
           {t('tabs.sources')}
         </button>
       </div>
-      <div className="panel-scroll">
+      <div className="panel-scroll" role="tabpanel" id="left-panel" aria-labelledby={`left-tab-${tab}`}>
         {tab === 'moments' ? <MomentsList {...props} /> : <SourcesList {...props} />}
       </div>
     </aside>
