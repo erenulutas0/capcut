@@ -61,3 +61,31 @@ korur.
   kontrolü küçük bir örneklemde yapılır ve raporda yazar.
 
 Eşikler tutmazsa özellik ana akışa girmez; sonuç raporda yazılır.
+
+## Ölçüm sonucu (2026-09-22)
+
+Rapor: `docs/spikes/2026-09-22-silence-detector.md`. 31 dosya (40 FLEURS klibi, TR/EN, 94
+eklenen boşluk; dijital sessizlik, oda tonu, düşük ses, gürültü, sentetik müzik, karışık dil,
+4 negatif), bulucunun girdisi ffmpeg'in bağımsız 10 ms zarfı.
+
+- **İlk hâli (9bc753d) geçmedi:** 98 önerinin 37'si konuşma kesti, sınır p95 1009 ms,
+  müzikte 11 öneri. Hiçbir ayar (27 bileşim) 0 vakaya inmedi; sorun ayarda değil kuraldaydı.
+- **Ölçümle değişen kurallar** (yukarıdaki "Nasıl bulur" maddelerinin yerine geçer):
+  - Kısa ses (< 60 ms) duraklamayı yalnızca konuşmanın **25 dB altındaysa** bölmez; daha
+    yüksek bir tık/patlamalı ünsüz duraklamayı böler.
+  - Eşik konuşmanın **en az 20 dB altında** durur (12 değil); kullanıcının duyarlılık ayarı
+    bu sınırı aşamaz.
+  - Sessiz ile yüksek seviye arasında **26 dB'den az** fark varsa öneri yoktur (12 değil).
+  - Önerilecek bir duraklamanın seviyesi müzik gibi dalgalanıyorsa (10. ve 90. yüzdelik arası
+    > 10 dB, dijital sıfır hariç) o anda **hiç öneri yoktur** (neden: `low_contrast`).
+- **Sonra:** konuşma kesilmesi **0**, bulma (temiz + oda tonu + düşük ses) **34/34**, sınır
+  p95 **37 ms**, müzikte öneri **0**, negatiflerde öneri **0**. Ölçülebilen kapı satırlarının
+  hepsi geçti.
+- Bedeli: 15/5 dB SNR gürültüde ve müzik −12 dB'deyken hiç öneri yok. Duyarlılık +5 dB,
+  taranan her ayarda 1–7 konuşma kesilmesi verdi; + yön güvenli değil.
+- **Açık kalan:** insan dinlemesi (hece kontrolü) yapılmadı; WAV çiftleri
+  `web/spike-results/silence-listen/after/` altında hazır. Müzik yalnızca sentetikti; düz bir
+  müzik yatağı dalgalanma kuralına takılmayabilir. Tarayıcı zarfının ffmpeg zarfıyla aynılığı
+  arayüz dalında test edilecek.
+- **Karar:** özellik bu iki madde (dinleme + zarf aynılığı) kapanana kadar ana akışa girmez;
+  bulucu kuralları bu haliyle kalır.

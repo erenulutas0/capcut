@@ -74,13 +74,23 @@ describe('findSilences', () => {
     ]);
   });
 
-  it('ignores a click inside a pause but not a short word', () => {
+  it('ignores a quiet click inside a pause but not a loud one or a short word', () => {
+    // 27 dB under speech: a lip smack, not a syllable.
     const click = findSilences(
-      envelope([[2, SPEECH], [0.6, ROOM], [0.03, SPEECH], [0.6, ROOM], [2, SPEECH]]),
+      envelope([[2, SPEECH], [0.6, ROOM], [0.03, SPEECH - 27], [0.6, ROOM], [2, SPEECH]]),
       DEFAULT_SILENCE_PARAMS,
     );
     if (!click.ok) throw new Error(click.reason);
     expect(click.suggestions).toHaveLength(1);
+
+    // Near speech level it may be a plosive release: it splits the pause into
+    // two halves, each shorter than the minimum (ADR-018 measurement).
+    const loud = findSilences(
+      envelope([[2, SPEECH], [0.6, ROOM], [0.03, SPEECH], [0.6, ROOM], [2, SPEECH]]),
+      DEFAULT_SILENCE_PARAMS,
+    );
+    if (!loud.ok) throw new Error(loud.reason);
+    expect(loud.suggestions).toHaveLength(0);
 
     const word = findSilences(
       envelope([[2, SPEECH], [0.6, ROOM], [0.2, SPEECH], [0.6, ROOM], [2, SPEECH]]),
@@ -103,6 +113,39 @@ describe('findSilences', () => {
   it('finds nothing under continuous music, and says why', () => {
     const music = findSilences(envelope([[2, -24], [1.5, -30], [2, -22]]), DEFAULT_SILENCE_PARAMS);
     expect(music).toMatchObject({ ok: false, reason: 'low_contrast' });
+  });
+
+  it('keeps the threshold 20 dB under speech, whatever the sensitivity', () => {
+    for (const sensitivityDb of [0, 5, 10]) {
+      const stats = levelStats(envelope([[3, SPEECH], [1, -50]]).db, sensitivityDb);
+      expect(stats.thresholdDb).toBeLessThanOrEqual(SPEECH - 20);
+    }
+    // Lowering it is always allowed.
+    expect(levelStats(envelope([[3, SPEECH], [1, ROOM]]).db, -5).thresholdDb).toBeLessThan(
+      levelStats(envelope([[3, SPEECH], [1, ROOM]]).db, 0).thresholdDb,
+    );
+  });
+
+  it('suggests nothing when the quiet level is less than 26 dB under speech', () => {
+    // Noise at ~15 dB SNR: no threshold fits 6 dB above it and 20 dB under speech.
+    const noisy = findSilences(envelope([[2, SPEECH], [1.5, SPEECH - 22], [2, SPEECH]]), DEFAULT_SILENCE_PARAMS);
+    expect(noisy).toMatchObject({ ok: false, reason: 'low_contrast' });
+  });
+
+  it('treats a pause that rises and falls like music as no silence at all', () => {
+    // Tremolo under the pause: 12 dB swings every 100 ms.
+    const tremolo: Array<[number, number]> = [];
+    for (let i = 0; i < 15; i += 1) tremolo.push([0.1, i % 2 ? -50 : ROOM]);
+    const music = findSilences(envelope([[2, SPEECH], ...tremolo, [2, SPEECH], [1.5, ROOM], [2, SPEECH]]), DEFAULT_SILENCE_PARAMS);
+    expect(music).toMatchObject({ ok: false, reason: 'low_contrast' });
+
+    // Digital silence inside room tone is steady (the zeros are left out).
+    const edited = findSilences(
+      envelope([[2, SPEECH], [0.3, ROOM], [1, FLOOR_DB], [0.3, ROOM], [2, SPEECH]]),
+      DEFAULT_SILENCE_PARAMS,
+    );
+    if (!edited.ok) throw new Error(edited.reason);
+    expect(edited.suggestions).toEqual([{ startUs: 2_150_000, endUs: 3_450_000 }]);
   });
 
   it('respects the parameters', () => {

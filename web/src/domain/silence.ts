@@ -51,10 +51,24 @@ export const SILENCE_PARAM_LIMITS = {
 
 /** Sound shorter than this inside a pause (a click, a lip smack) does not break it. */
 const BLIP_US = 60_000;
+/**
+ * ...but only a quiet one. A short sound louder than this many dB under
+ * speech (a plosive release, a one-syllable word, a loud click) always breaks
+ * the pause. Measured (ADR-018 report): without this check the blip rule bridged
+ * speech-level clicks and word ends; 25 dB keeps a margin for 5 ms peaks
+ * that run a few dB above the 10 ms RMS.
+ */
+const BLIP_BELOW_LOUD_DB = 25;
 /** A removal smaller than this after padding is not worth an extra cut. */
 const MIN_REMOVAL_US = 200_000;
-/** Below this loud/quiet contrast the recording has no reliable silence (music, noise). */
-const MIN_CONTRAST_DB = 12;
+/**
+ * Silence must sit at least this far under speech (see `levelStats`). Also the
+ * least contrast with a reliable silence: 6 dB above the floor AND 20 dB under
+ * speech only fit when floor and speech are 26 dB apart. Below it (noise at
+ * 15 dB SNR, loud music) nothing is suggested.
+ */
+const SPEECH_MARGIN_DB = 20;
+const MIN_CONTRAST_DB = SPEECH_MARGIN_DB + 6;
 
 export interface LevelStats {
   /** 10th percentile: the quiet level between sounds. */
@@ -75,7 +89,8 @@ function percentile(sorted: readonly number[], p: number): number {
  * The threshold sits a share of the way from the quiet level up to the loud
  * level, never too close to either:
  * - at least 6 dB above the floor, so room tone jitter is not "sound";
- * - at least 12 dB below speech, so soft syllables are never "silence";
+ * - at least 20 dB below speech, so soft syllables and word endings are
+ *   never "silence" — also after the user's sensitivity is applied;
  * - not lower than 40 dB under speech, so digital-silence gaps (−120 dB)
  *   do not drag it down and hide real room-tone pauses.
  */
@@ -85,9 +100,29 @@ export function levelStats(db: readonly number[], sensitivityDb = 0): LevelStats
   const loudDb = percentile(sorted, 0.95);
   const range = loudDb - floorDb;
   const step = Math.min(20, Math.max(6, range * 0.3));
-  let threshold = Math.max(floorDb + step, loudDb - 40);
-  threshold = Math.min(threshold, loudDb - 12);
-  return { floorDb, loudDb, thresholdDb: threshold + sensitivityDb };
+  const threshold = Math.max(floorDb + step, loudDb - 40) + sensitivityDb;
+  return { floorDb, loudDb, thresholdDb: Math.min(threshold, loudDb - SPEECH_MARGIN_DB) };
+}
+
+function runMax(db: readonly number[], from: number, to: number): number {
+  let max = FLOOR_DB;
+  for (let k = from; k < to; k += 1) max = Math.max(max, db[k] ?? FLOOR_DB);
+  return max;
+}
+
+/**
+ * Silence is steady: digital zero or a constant room tone. Inside a pause
+ * under music the level keeps rising and falling (beats, tremolo, decaying
+ * notes); a range whose sound frames spread more than this is not silence
+ * (see `findSilences`, step 4). Digital-silence frames are left out.
+ */
+const MAX_PAUSE_SPREAD_DB = 10;
+
+function isSteady(db: readonly number[], from: number, to: number): boolean {
+  const sound = db.slice(Math.max(0, from), Math.min(db.length, to)).filter((value) => value > FLOOR_DB + 20);
+  if (sound.length < 10) return true;
+  sound.sort((a, b) => a - b);
+  return percentile(sound, 0.9) - percentile(sound, 0.1) <= MAX_PAUSE_SPREAD_DB;
 }
 
 export interface SilenceSuggestion {
@@ -103,13 +138,15 @@ export type SilenceAnalysis =
 /**
  * Finds removable pauses in one source range.
  *
- * 1. Frames below the threshold are silent; sound blips shorter than 60 ms
- *    inside a pause are ignored.
+ * 1. Frames below the threshold are silent; quiet sound blips shorter than
+ *    60 ms inside a pause are ignored.
  * 2. Pauses shorter than `minSilenceUs` are kept (natural rhythm).
  * 3. Each pause is shrunk by `keepUs` on every side that touches sound. A
  *    side that touches the start or end of the range needs no margin: there
  *    is nothing to protect there.
- * 4. What remains, if at least 200 ms, is suggested.
+ * 4. What remains, if at least 200 ms, is suggested — unless its level rises
+ *    and falls like music; then the whole range is `low_contrast` (no
+ *    reliable silence), because a bed under one pause runs under all of them.
  */
 export function findSilences(envelope: LoudnessEnvelope, params: SilenceParams): SilenceAnalysis {
   const { db, frameUs, startUs } = envelope;
@@ -129,7 +166,7 @@ export function findSilences(envelope: LoudnessEnvelope, params: SilenceParams):
     let end = index;
     while (end < silent.length && !silent[end]) end += 1;
     const bounded = index > 0 && end < silent.length;
-    if (bounded && end - index <= blipFrames) {
+    if (bounded && end - index <= blipFrames && runMax(db, index, end) < stats.loudDb - BLIP_BELOW_LOUD_DB) {
       for (let k = index; k < end; k += 1) silent[k] = true;
     }
     index = end;
@@ -150,7 +187,14 @@ export function findSilences(envelope: LoudnessEnvelope, params: SilenceParams):
     if (pauseEnd - pauseStart >= params.minSilenceUs) {
       const from = index === 0 ? pauseStart : pauseStart + params.keepUs;
       const to = end === silent.length ? Math.min(pauseEnd, rangeEndUs) : pauseEnd - params.keepUs;
-      if (to - from >= MIN_REMOVAL_US) suggestions.push({ startUs: from, endUs: to });
+      if (to - from >= MIN_REMOVAL_US) {
+        // One pause that rises and falls like music means a bed runs under
+        // the whole range: its other "pauses" are not silence either.
+        if (!isSteady(db, Math.floor((from - startUs) / frameUs), Math.ceil((to - startUs) / frameUs))) {
+          return { ok: false, reason: 'low_contrast', stats };
+        }
+        suggestions.push({ startUs: from, endUs: to });
+      }
     }
     index = end;
   }
