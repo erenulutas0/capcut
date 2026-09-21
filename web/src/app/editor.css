@@ -1637,3 +1637,186 @@ input[type='range']:disabled::-webkit-slider-thumb {
   background: repeating-linear-gradient(135deg, var(--warning) 0 4px, transparent 4px 7px);
   opacity: 1;
 }
+
+/* ------------------------------------------- caption clock, shift, files */
+
+.caption-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--raised);
+  padding: 10px 12px 12px;
+  margin: 12px 0;
+  min-width: 0;
+}
+
+.caption-section-title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.caption-clock-now {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+}
+
+.caption-clock-switch {
+  margin-top: 10px;
+}
+
+.caption-report {
+  margin-top: 10px;
+}
+
+.caption-report b {
+  font-weight: 600;
+}
+
+/* Neutral facts ("shows twice") read differently from warnings. */
+.cue-badge[data-kind='info'] {
+  color: var(--text);
+  background: var(--panel);
+  border-color: var(--border);
+}
+
+.cue-times-group {
+  border: 0;
+  padding: 0;
+  margin: 10px 0 0;
+  min-width: 0;
+}
+
+.cue-clock {
+  padding: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.cue-times-group .cue-times {
+  margin-top: 4px;
+}
+
+.caption-shift-steps,
+.caption-export-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.caption-shift-steps .btn {
+  flex: 1 1 64px;
+  padding: 0 8px;
+  font-family: var(--font-time);
+}
+
+.caption-export-buttons .btn {
+  flex: 1 1 120px;
+}
+
+.caption-shift-exact {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.caption-shift-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.caption-import {
+  margin-top: 12px;
+}
+
+.caption-skipped ul,
+.caption-import-problems {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.caption-skipped .field-label {
+  margin: 8px 0 0;
+}
+
+.caption-import-problems {
+  color: var(--warning);
+}
+
+.caption-file-name {
+  overflow-wrap: anywhere;
+}
+
+.caption-import-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.caption-import-facts > div {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--raised);
+  padding: 8px 10px;
+  min-width: 0;
+}
+
+.caption-import-fact-wide {
+  grid-column: 1 / -1;
+}
+
+.caption-import-facts dt {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.caption-import-facts dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.caption-import-question {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 8px 12px 10px;
+  margin: 12px 0;
+  min-width: 0;
+}
+
+.caption-import-question[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.caption-import-question legend {
+  padding: 0 4px;
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.caption-import-option {
+  min-height: var(--tap);
+}
+
+.radio-row small.caption-import-suggest {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent);
+}
+
+.dialog-text {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+}

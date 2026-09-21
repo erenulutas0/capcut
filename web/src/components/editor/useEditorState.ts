@@ -11,7 +11,10 @@ import {
 import {
   addCaptionCue,
   addClip,
+  convertCaptionTimeBase,
   createEmptyProject,
+  importCaptionTrack,
+  shiftCaptions,
   currentFraming,
   moveClip,
   nextAssetId,
@@ -32,8 +35,12 @@ import {
   updateClipRange,
   updateMusic,
   type AddClipRejection,
+  type CaptionConversionResult,
   type CaptionCueInput,
+  type CaptionImportResult,
   type CaptionResult,
+  type ImportedCueInput,
+  type ShiftCaptionsResult,
   type MusicRejection,
 } from '@/application/commands';
 import {
@@ -76,6 +83,14 @@ const AUDIO_LIMITS = {
   maxBytes: WEB_LOCAL_POLICY.maxMusicBytes,
   maxDurationUs: WEB_LOCAL_POLICY.maxMusicDurationUs,
 };
+
+/** The shape every caption command returns: a new recipe, or a refusal. */
+type CaptionOutcome = { ok: true; project: Project } | { ok: false };
+
+/** The recipe to commit, or null when the command refused or changed nothing. */
+function changedProject(result: CaptionOutcome, base: Project): Project | null {
+  return result.ok && result.project !== base ? result.project : null;
+}
 
 function rejectionKey(reason: AddClipRejection | MusicRejection | SplitRejection): MessageKey {
   return `error.${reason}` as MessageKey;
@@ -501,12 +516,14 @@ export function useEditorState() {
    * stale recipe.
    */
   const runCaption = useCallback(
-    (run: (base: Project) => CaptionResult): CaptionResult => {
+    <R extends CaptionOutcome>(run: (base: Project) => R): R => {
       const result = run(project);
-      if (result.ok) {
+      const changed = changedProject(result, project);
+      if (changed) {
         setHistory((current) => {
-          const again = current.present === project ? result : run(current.present);
-          return again.ok ? commit(current, again.project) : current;
+          if (current.present === project) return commit(current, changed);
+          const again = changedProject(run(current.present), current.present);
+          return again ? commit(current, again) : current;
         });
       }
       return result;
@@ -522,6 +539,25 @@ export function useEditorState() {
   const updateCaption = useCallback(
     (cueId: string, patch: Partial<CaptionCueInput>) =>
       runCaption((base) => updateCaptionCue(base, cueId, patch)),
+    [runCaption],
+  );
+
+  /** Re-anchors the track to the other clock (ADR-016). One undo step. */
+  const convertCaptions = useCallback(
+    (target: 'output' | 'source'): CaptionConversionResult =>
+      runCaption((base) => convertCaptionTimeBase(base, target)),
+    [runCaption],
+  );
+
+  const shiftAllCaptions = useCallback(
+    (deltaUs: Micros): ShiftCaptionsResult => runCaption((base) => shiftCaptions(base, deltaUs)),
+    [runCaption],
+  );
+
+  /** Replaces the track with lines from a subtitle file. One undo step. */
+  const importCaptions = useCallback(
+    (cues: readonly ImportedCueInput[], timeBase: 'output' | 'source'): CaptionImportResult =>
+      runCaption((base) => importCaptionTrack(base, cues, timeBase)),
     [runCaption],
   );
 
@@ -633,6 +669,9 @@ export function useEditorState() {
     removeCaption,
     changeCaptionStyle,
     changeCaptionLanguage,
+    convertCaptions,
+    shiftAllCaptions,
+    importCaptions,
   };
 }
 

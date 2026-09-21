@@ -4,6 +4,13 @@ import { useEffect, useRef, type ReactNode } from 'react';
 
 import { Icon } from '@/components/Icon';
 
+/**
+ * Open modals, innermost last. A dialog can open on top of a phone sheet (the
+ * caption import dialog); only the top one may react to Escape and Tab,
+ * otherwise one Escape would close both and two focus traps would fight.
+ */
+const openModals: HTMLElement[] = [];
+
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -48,7 +55,10 @@ function ModalShell({
     const first = container?.querySelector<HTMLElement>(FOCUSABLE);
     (first ?? container)?.focus();
 
+    if (container) openModals.push(container);
+
     const onKeyDown = (event: KeyboardEvent) => {
+      if (container && openModals[openModals.length - 1] !== container) return;
       if (event.key === 'Escape') {
         event.stopPropagation();
         onCloseRef.current();
@@ -73,6 +83,8 @@ function ModalShell({
     document.addEventListener('keydown', onKeyDown, true);
     return () => {
       document.removeEventListener('keydown', onKeyDown, true);
+      const at = container ? openModals.lastIndexOf(container) : -1;
+      if (at >= 0) openModals.splice(at, 1);
       restoreRef.current?.focus();
     };
   }, [open]);

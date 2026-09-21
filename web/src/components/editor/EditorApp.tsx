@@ -110,6 +110,19 @@ export function EditorApp() {
     [changeMode, playback, state.previewMode],
   );
 
+  /**
+   * A source-anchored line that no moment shows has no place on the output
+   * timeline; "Buraya git" then shows its picture in the source preview.
+   */
+  const seekCaptionSource = useCallback(
+    (sourceUs: Micros) => {
+      if (state.previewMode !== 'source') changeMode('source');
+      playback.stop();
+      playback.seekSource(sourceUs);
+    },
+    [changeMode, playback, state.previewMode],
+  );
+
   const removeMoment = useCallback(
     (clipId: string) => {
       // Leaving result mode with nothing to show is handled here, at the event,
@@ -316,8 +329,10 @@ export function EditorApp() {
     <CaptionsPanel
       t={t}
       project={state.project}
+      title={state.title}
       outputDurationUs={playback.outputDurationUs}
       outputTimeUs={playback.outputTimeUs}
+      sourceTimeUs={playback.sourceTimeUs}
       previewMode={state.previewMode}
       fontStatus={captionFont}
       onAdd={state.addCaption}
@@ -325,8 +340,12 @@ export function EditorApp() {
       onRemove={state.removeCaption}
       onStyle={state.changeCaptionStyle}
       onLanguage={state.changeCaptionLanguage}
+      onConvert={state.convertCaptions}
+      onShift={state.shiftAllCaptions}
+      onImport={state.importCaptions}
       onShowResult={() => changeMode('output')}
       onSeek={seekCaption}
+      onSeekSource={seekCaptionSource}
     />
   );
 

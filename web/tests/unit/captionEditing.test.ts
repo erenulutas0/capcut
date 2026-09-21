@@ -7,8 +7,9 @@ import {
   suggestNewCueRange,
 } from '@/domain/captionEditing';
 import type { MeasureText } from '@/domain/captionLayout';
-import { DEFAULT_CAPTION_STYLE } from '@/domain/captions';
-import type { CaptionCueV2 } from '@/domain/edl';
+import { createEmptyProject } from '@/application/commands';
+import { DEFAULT_CAPTION_STYLE, outputCues } from '@/domain/captions';
+import type { CaptionCueV2, Project } from '@/domain/edl';
 import { US_PER_SECOND } from '@/domain/time';
 
 const S = US_PER_SECOND;
@@ -92,8 +93,40 @@ describe('captionMarks', () => {
   it('places lines in percent of the output and cuts or drops what is past the end', () => {
     const marks = captionMarks([cue('q_003', 9, 12), cue('q_001', 0, 2), cue('q_004', 11, 12)], 10 * S);
     expect(marks).toEqual([
-      { cueId: 'q_001', leftPct: 0, widthPct: 20, visibility: 'visible' },
-      { cueId: 'q_003', leftPct: 90, widthPct: 10, visibility: 'clipped' },
+      { cueId: 'q_001', leftPct: 0, widthPct: 20, visibility: 'visible', startUs: 0, endUs: 2 * S, text: 'Merhaba' },
+      { cueId: 'q_003', leftPct: 90, widthPct: 10, visibility: 'clipped', startUs: 9 * S, endUs: 10 * S, text: 'Merhaba' },
+    ]);
+  });
+
+  it('shows a source-anchored line at every output appearance (via outputCues)', () => {
+    // Source 8–14 s then 0–4 s, then 0–4 s again: the line at source 1–3 s
+    // appears twice, at output 7–9 s and 11–13 s; the unused one not at all.
+    const project: Project = {
+      ...createEmptyProject(),
+      assets: [
+        { assetId: 'a_video_001', kind: 'video', durationUs: 20 * S, displayWidth: 1920, displayHeight: 1080, hasAudio: true },
+      ],
+      clips: [
+        { clipId: 'c_001', assetId: 'a_video_001', sourceInUs: 8 * S, sourceOutUs: 14 * S, sourceGainDb: 0, muted: false, view: { x: 0, y: 0, width: 1, height: 1, fit: 'cover' } },
+        { clipId: 'c_002', assetId: 'a_video_001', sourceInUs: 0, sourceOutUs: 4 * S, sourceGainDb: 0, muted: false, view: { x: 0, y: 0, width: 1, height: 1, fit: 'cover' } },
+        { clipId: 'c_003', assetId: 'a_video_001', sourceInUs: 0, sourceOutUs: 4 * S, sourceGainDb: 0, muted: false, view: { x: 0, y: 0, width: 1, height: 1, fit: 'cover' } },
+      ],
+      captionTracks: [
+        {
+          trackId: 't_001',
+          origin: 'imported',
+          timeBase: 'source',
+          assetId: 'a_video_001',
+          language: 'tr',
+          style: { ...DEFAULT_CAPTION_STYLE },
+          cues: [cue('q_001', 1, 3, 'Baş'), cue('q_002', 15, 19, 'Kullanılmayan')],
+        },
+      ],
+    };
+    const marks = captionMarks(outputCues(project), 14 * S);
+    expect(marks.map((mark) => [mark.cueId, mark.startUs / S, mark.endUs / S])).toEqual([
+      ['q_001', 7, 9],
+      ['q_001', 11, 13],
     ]);
   });
 

@@ -87,12 +87,23 @@ export interface CaptionMark {
   leftPct: number;
   widthPct: number;
   visibility: Exclude<CueVisibility, 'outside'>;
+  /**
+   * The drawn output range and the words, for the mark's tooltip. Carried on
+   * the mark because a source-anchored line can appear several times, so its
+   * id alone does not say which appearance this is.
+   */
+  startUs: Micros;
+  endUs: Micros;
+  text: string;
 }
 
 /**
  * Where each line sits on the output strip. Lines past the output end are
  * left out (they are not drawn in the file either); a clipped line is shown
  * up to the end, like the render plan cuts it.
+ *
+ * `cues` must be on the OUTPUT clock: pass `outputCues(project)`, never a
+ * track's stored cues, which are source times for a source-anchored track.
  */
 export function captionMarks(
   cues: readonly CaptionCueV2[],
@@ -109,6 +120,9 @@ export function captionMarks(
       leftPct: (cue.startUs / outputDurationUs) * 100,
       widthPct: ((endUs - cue.startUs) / outputDurationUs) * 100,
       visibility,
+      startUs: cue.startUs,
+      endUs,
+      text: cue.text,
     });
   }
   return marks;

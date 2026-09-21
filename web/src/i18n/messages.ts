@@ -216,6 +216,112 @@ export const tr = {
     'Oynatma çizgisinden sonra yeni satıra yer yok. Oynatma çizgisini boş bir yere taşı.',
   'captions.error.invalid_time':
     'Zamanı 00:15.000 gibi dakika:saniye ya da yalnızca saniye (15) olarak yaz.',
+  'captions.error.caption_playhead_off_video':
+    'Oynatma çizgisi şu an satırların bağlı olduğu görüntünün üzerinde değil (videonun sonundasın). Oynatma çizgisini bir anın içine taşı.',
+  'captions.addHintSource':
+    'Satırlar görüntüye bağlı: yeni satır, oynatma çizgisinde oynayan görüntünün orijinal videodaki zamanına 2 saniyelik eklenir.',
+  'captions.sourceModeHintSource':
+    'Kaynak önizlemesinde altyazı çizilmez. Satırlar görüntüye bağlı olduğu için yeni satır kaynaktaki oynatma çizgisine eklenir.',
+  'captions.dialogCancel': 'Vazgeç',
+  'captions.and': 've',
+
+  'captions.clock.title': 'Satırlar neye bağlı?',
+  'captions.clock.output': 'Sonuç videosuna bağlı',
+  'captions.clock.outputBody':
+    'Satırlar sonuç videosunun zamanında durur. Anları taşıdığında ya da kırptığında satırlar yerinde kalır.',
+  'captions.clock.source': 'Görüntüye bağlı',
+  'captions.clock.sourceBody':
+    'Satırlar orijinal videonun zamanında durur ve görüntüyle birlikte taşınır. Aynı bölümü iki kez kullanırsan o bölümün satırları da iki kez görünür.',
+  'captions.clock.toSource': 'Görüntüye bağla',
+  'captions.clock.toOutput': 'Sonuç videosuna bağla',
+  'captions.clock.confirmTitle.source': 'Satırlar görüntüye bağlansın mı?',
+  'captions.clock.confirmBody.source':
+    'Şu anki sonuç videosunda görünen hiçbir şey değişmez. Bundan sonra anları yeniden sıraladığında ya da kırptığında satırlar görüntüyle birlikte taşınır. Bir kesimin üzerinden geçen satır anlar kadar parçaya bölünür; 0,2 saniyeden kısa kalan parçalar düşer.',
+  'captions.clock.confirmTitle.output': 'Satırlar sonuç videosuna bağlansın mı?',
+  'captions.clock.confirmBody.output':
+    'Şu anki sonuç videosunda görünen hiçbir şey değişmez. Bir satırın her görünüşü ayrı bir satır olur; hiçbir anın göstermediği satırlar silinir. Bundan sonra anları taşıdığında satırlar yerinde kalır.',
+  'captions.clock.undoNote': 'Geri al ile tek adımda eski hâline dönebilirsin.',
+  'captions.clock.confirm': 'Dönüştür',
+  'captions.clock.done': 'Dönüştürüldü. {split} satır bölündü, {dropped} satır ya da parça düştü.',
+  'captions.clock.error.caption_conversion_conflict':
+    'Dönüştürülemedi: {lines} orijinal videoda aynı ana düşüyor. Aynı bölüm iki kez kullanılmış ve iki kullanımda farklı satırlar var; hangisinin kalacağını tahmin etmiyoruz. Satırlardan birini silip tekrar dene.',
+  'captions.clock.error.caption_no_video': 'Görüntüye bağlamak için önce bir video aç.',
+  'captions.clock.error.caption_no_track': 'Dönüştürülecek satır yok.',
+
+  'captions.times.source': 'Videodaki zamanı',
+  'captions.times.output': 'Sonuçtaki zamanı',
+  'captions.usage.count': 'Sonuçta {count} kez görünüyor',
+  'captions.usage.none': 'Hiçbir anda yok, çıktıda görünmez',
+  'captions.usage.partial': 'Bir anın kenarında kesiliyor',
+
+  'captions.shift.title': 'Hepsini kaydır',
+  'captions.shift.hint':
+    'Dosya erken ya da geç kalıyorsa bütün satırları aynı miktarda kaydır. Eksi değer satırları erkene alır.',
+  'captions.shift.earlier': 'Bütün satırları {amount} saniye erkene al',
+  'captions.shift.later': 'Bütün satırları {amount} saniye geçe al',
+  'captions.shift.exactLabel': 'Kaç saniye? (ör. -0,5 ya da 1,25)',
+  'captions.shift.apply': 'Kaydır',
+  'captions.shift.unit': 'sn',
+  'captions.shift.done': 'Bütün satırlar {amount} sn kaydırıldı.',
+  'captions.shift.error.caption_shift_out_of_range':
+    'Kaydırılamadı: bir satır saatinin dışına çıkardı (videonun başından önceye ya da sonundan sonraya). Kırpmıyoruz, çünkü satırlar kenarda üst üste yığılırdı. Daha küçük bir değer dene.',
+  'captions.shift.error.caption_no_track': 'Kaydırılacak satır yok.',
+  'captions.shift.error.invalid': 'Saniyeyi -0,5 ya da 1,25 gibi bir sayı olarak yaz.',
+
+  'captions.import.button': 'SRT/VTT içe aktar',
+  'captions.import.hint':
+    'Dosya bu cihazda okunur, hiçbir yere gönderilmez. Yalnızca zamanlar ve düz metin alınır; biçim etiketleri silinir.',
+  'captions.import.title': 'Altyazı dosyasını içe aktar',
+  'captions.import.format': 'Biçim',
+  'captions.import.encoding': 'Kodlama',
+  'captions.import.encoding.utf-8': 'UTF-8 olarak okundu',
+  'captions.import.encoding.utf-16le': 'UTF-16 olarak okundu',
+  'captions.import.encoding.utf-16be': 'UTF-16 olarak okundu',
+  'captions.import.encoding.windows-1254': 'Türkçe Windows kodlaması olarak okundu (Windows-1254)',
+  'captions.import.lines': 'Okunan satır',
+  'captions.import.problem.bad_timing': 'Dosyadaki {block}. altyazı okunamadı: zaman satırı bozuk.',
+  'captions.import.problem.no_text': 'Dosyadaki {block}. altyazının metni yok.',
+  'captions.import.joined':
+    '{count} altyazıda 2’den fazla satır vardı; ikinci satırdan sonrası tek satırda birleştirildi.',
+  'captions.import.question': 'Bu dosya neye göre zamanlandı?',
+  'captions.import.option.source': 'Orijinal video (kaynak)',
+  'captions.import.option.sourceHelp': 'Satırlar görüntüye bağlanır ve anlarla birlikte taşınır.',
+  'captions.import.option.output': 'Bu projenin sonucu',
+  'captions.import.option.outputHelp': 'Satırlar sonuç videosunun zamanında durur.',
+  'captions.import.suggest.source': 'Dosya sonucun süresini aşıyor; muhtemelen orijinal videoya göre.',
+  'captions.import.suggest.output':
+    'Dosya orijinal videonun süresini aşıyor; muhtemelen bu projenin sonucuna göre.',
+  'captions.import.suggest.same':
+    'Sonuç, kesilmemiş videonun tamamı: iki seçenek de aynı sonucu verir, hangisini seçersen seç.',
+  'captions.import.chooseFirst': 'Önce dosyanın neye göre zamanlandığını seç.',
+  'captions.import.replaceWarning':
+    'İçe aktarma mevcut {count} satırın yerini alır. Stil ve dil korunur. Geri al ile dönebilirsin.',
+  'captions.import.confirm': 'İçe aktar',
+  'captions.import.done': '{count} satır içe aktarıldı.',
+  'captions.import.skippedTitle': 'Atlanan satırlar',
+  'captions.import.skipped': 'Dosyadaki {block}. altyazı atlandı: {reason}',
+  'captions.import.error.caption_import_empty':
+    'Dosyada kurallara uyan hiçbir satır yok; hiçbir şey değişmedi.',
+  'captions.import.error.caption_no_video': 'Orijinal videoya bağlamak için önce bir video aç.',
+  'captions.import.error.not_subtitles': 'Bu dosya bir SRT ya da VTT altyazısına benzemiyor.',
+  'captions.import.error.too_large':
+    'Dosya çok büyük (en çok 2 MB). Bir altyazı dosyası seçtiğinden emin ol.',
+  'captions.import.error.unreadable': 'Dosya okunamadı. Tekrar seçmeyi dene.',
+  'captions.skip.caption_text_empty': 'metni boş.',
+  'captions.skip.caption_text_too_long': '120 karakterden uzun.',
+  'captions.skip.caption_too_many_lines': '2 satırdan fazla.',
+  'captions.skip.range_reversed': 'bitişi başlangıcından önce.',
+  'captions.skip.caption_cue_too_short': '0,2 saniyeden kısa.',
+  'captions.skip.caption_cue_overlap': 'önceki satırla üst üste biniyor.',
+  'captions.skip.range_out_of_source': 'orijinal videonun süresini aşıyor.',
+  'captions.skip.caption_limit_exceeded': '500 satır sınırını aşıyor.',
+
+  'captions.export.title': 'Altyazı dosyası indir',
+  'captions.export.body':
+    'Dosya bitmiş videonun zamanına göre yazılır: satırlar sonuç videosunda göründükleri anlara denk gelir. Stil (kutu, konum, boyut) yalnızca videoya işlenen altyazıda vardır; SRT/VTT her oynatıcıda farklı görünebilir.',
+  'captions.export.srt': 'SRT indir',
+  'captions.export.vtt': 'VTT indir',
+  'captions.export.none': 'Sonuç videosunda görünen satır yok; indirilecek bir şey yok.',
 
   'output.title': 'Çıktı sırası',
   'output.totalMoments': 'an',
@@ -596,6 +702,110 @@ export const en: Record<MessageKey, string> = {
   'captions.error.caption_no_room':
     'There is no room for a new line after the playhead. Move the playhead to a free spot.',
   'captions.error.invalid_time': 'Write the time as minutes:seconds like 00:15.000, or just seconds (15).',
+  'captions.error.caption_playhead_off_video':
+    'The playhead is not over the picture these lines are tied to right now (you are at the end of the video). Move the playhead into a moment.',
+  'captions.addHintSource':
+    'Lines are tied to the picture: a new line is added, 2 seconds long, at the original-video time of the picture under the playhead.',
+  'captions.sourceModeHintSource':
+    'The source preview does not draw captions. Because the lines are tied to the picture, a new line is added at the source playhead.',
+  'captions.dialogCancel': 'Cancel',
+  'captions.and': 'and',
+
+  'captions.clock.title': 'What are the lines tied to?',
+  'captions.clock.output': 'Tied to the result video',
+  'captions.clock.outputBody':
+    'Lines stay on the result video’s clock. When you move or trim moments, the lines stay where they are.',
+  'captions.clock.source': 'Tied to the picture',
+  'captions.clock.sourceBody':
+    'Lines stay on the original video’s clock and move with the picture. If you use the same part twice, its lines show twice too.',
+  'captions.clock.toSource': 'Tie to the picture',
+  'captions.clock.toOutput': 'Tie to the result video',
+  'captions.clock.confirmTitle.source': 'Tie the lines to the picture?',
+  'captions.clock.confirmBody.source':
+    'Nothing you see in the current result changes. From now on, when you reorder or trim moments, the lines move with the picture. A line that crosses a cut is split into one piece per moment; pieces shorter than 0.2 seconds are dropped.',
+  'captions.clock.confirmTitle.output': 'Tie the lines to the result video?',
+  'captions.clock.confirmBody.output':
+    'Nothing you see in the current result changes. Every appearance of a line becomes its own line; lines no moment shows are removed. From now on, moving moments leaves the lines where they are.',
+  'captions.clock.undoNote': 'Undo takes you back in one step.',
+  'captions.clock.confirm': 'Convert',
+  'captions.clock.done': 'Converted. {split} lines were split, {dropped} lines or pieces were dropped.',
+  'captions.clock.error.caption_conversion_conflict':
+    'Could not convert: {lines} land on the same instant of the original video. The same part is used twice with different lines; we do not guess which one wins. Delete one of them and try again.',
+  'captions.clock.error.caption_no_video': 'Open a video before tying lines to the picture.',
+  'captions.clock.error.caption_no_track': 'There are no lines to convert.',
+
+  'captions.times.source': 'Time in the video',
+  'captions.times.output': 'Time in the result',
+  'captions.usage.count': 'Shows {count} times in the result',
+  'captions.usage.none': 'In no moment, not in the export',
+  'captions.usage.partial': 'Cut at the edge of a moment',
+
+  'captions.shift.title': 'Shift all',
+  'captions.shift.hint':
+    'If the file runs early or late, move every line by the same amount. A negative value moves them earlier.',
+  'captions.shift.earlier': 'Move all lines {amount} seconds earlier',
+  'captions.shift.later': 'Move all lines {amount} seconds later',
+  'captions.shift.exactLabel': 'How many seconds? (e.g. -0.5 or 1.25)',
+  'captions.shift.apply': 'Shift',
+  'captions.shift.unit': 's',
+  'captions.shift.done': 'All lines shifted by {amount} s.',
+  'captions.shift.error.caption_shift_out_of_range':
+    'Could not shift: a line would leave its clock (before the start or after the end of the video). We do not clip, because lines would pile up at the edge. Try a smaller value.',
+  'captions.shift.error.caption_no_track': 'There are no lines to shift.',
+  'captions.shift.error.invalid': 'Write the seconds as a number like -0.5 or 1.25.',
+
+  'captions.import.button': 'Import SRT/VTT',
+  'captions.import.hint':
+    'The file is read on this device and sent nowhere. Only times and plain text are taken; formatting tags are removed.',
+  'captions.import.title': 'Import a subtitle file',
+  'captions.import.format': 'Format',
+  'captions.import.encoding': 'Encoding',
+  'captions.import.encoding.utf-8': 'Read as UTF-8',
+  'captions.import.encoding.utf-16le': 'Read as UTF-16',
+  'captions.import.encoding.utf-16be': 'Read as UTF-16',
+  'captions.import.encoding.windows-1254': 'Read as Turkish Windows encoding (Windows-1254)',
+  'captions.import.lines': 'Lines read',
+  'captions.import.problem.bad_timing': 'Subtitle {block} in the file could not be read: broken timing line.',
+  'captions.import.problem.no_text': 'Subtitle {block} in the file has no text.',
+  'captions.import.joined':
+    '{count} subtitles had more than 2 lines; everything after the second line was joined into one line.',
+  'captions.import.question': 'What was this file timed against?',
+  'captions.import.option.source': 'The original video (source)',
+  'captions.import.option.sourceHelp': 'Lines are tied to the picture and move with the moments.',
+  'captions.import.option.output': 'This project’s result',
+  'captions.import.option.outputHelp': 'Lines stay on the result video’s clock.',
+  'captions.import.suggest.source': 'The file runs past the result; probably timed to the original video.',
+  'captions.import.suggest.output':
+    'The file runs past the original video; probably timed to this project’s result.',
+  'captions.import.suggest.same':
+    'The result is the whole uncut video: both options give the same result, pick either.',
+  'captions.import.chooseFirst': 'First choose what the file was timed against.',
+  'captions.import.replaceWarning':
+    'Importing replaces the current {count} lines. Style and language are kept. Undo is available.',
+  'captions.import.confirm': 'Import',
+  'captions.import.done': '{count} lines imported.',
+  'captions.import.skippedTitle': 'Skipped lines',
+  'captions.import.skipped': 'Subtitle {block} in the file was skipped: {reason}',
+  'captions.import.error.caption_import_empty': 'No line in the file follows the rules; nothing changed.',
+  'captions.import.error.caption_no_video': 'Open a video before tying lines to the original video.',
+  'captions.import.error.not_subtitles': 'This file does not look like an SRT or VTT subtitle file.',
+  'captions.import.error.too_large': 'The file is too large (2 MB at most). Make sure it is a subtitle file.',
+  'captions.import.error.unreadable': 'The file could not be read. Try picking it again.',
+  'captions.skip.caption_text_empty': 'its text is empty.',
+  'captions.skip.caption_text_too_long': 'longer than 120 characters.',
+  'captions.skip.caption_too_many_lines': 'more than 2 lines.',
+  'captions.skip.range_reversed': 'it ends before it starts.',
+  'captions.skip.caption_cue_too_short': 'shorter than 0.2 seconds.',
+  'captions.skip.caption_cue_overlap': 'overlaps the previous line.',
+  'captions.skip.range_out_of_source': 'runs past the end of the original video.',
+  'captions.skip.caption_limit_exceeded': 'over the 500-line limit.',
+
+  'captions.export.title': 'Download a subtitle file',
+  'captions.export.body':
+    'The file is timed to the finished video: each line matches when it appears in the result. Style (box, position, size) exists only in the burned-in video; SRT/VTT may look different in every player.',
+  'captions.export.srt': 'Download SRT',
+  'captions.export.vtt': 'Download VTT',
+  'captions.export.none': 'No line appears in the result video; there is nothing to download.',
 
   'output.title': 'Output order',
   'output.totalMoments': 'moments',

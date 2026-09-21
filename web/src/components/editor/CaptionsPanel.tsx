@@ -4,7 +4,15 @@ import { useEffect, useId, useMemo, useRef, useState, type FocusEvent } from 're
 
 import { Icon } from '@/components/Icon';
 import { canvasMeasure } from '@/adapters/captionRender';
-import type { CaptionCueInput, CaptionRejection, CaptionResult } from '@/application/commands';
+import type {
+  CaptionConversionResult,
+  CaptionCueInput,
+  CaptionImportResult,
+  CaptionRejection,
+  CaptionResult,
+  ImportedCueInput,
+  ShiftCaptionsResult,
+} from '@/application/commands';
 import { captionFits, suggestNewCueRange } from '@/domain/captionEditing';
 import type { MeasureText } from '@/domain/captionLayout';
 import {
@@ -16,17 +24,38 @@ import {
   captionCharCount,
   cueVisibility,
   normalizeCaptionText,
+  outputCues,
   primaryCaptionTrack,
   sortCues,
-  type CueVisibility,
+  sourceCueUsage,
+  trackTimeAtOutput,
 } from '@/domain/captions';
-import { outputPixelSize, type CaptionStyleV2, type Project } from '@/domain/edl';
+import {
+  outputPixelSize,
+  type CaptionCueV2,
+  type CaptionStyleV2,
+  type CaptionTrackV2,
+  type Project,
+} from '@/domain/edl';
 import { formatTimecode, parseTimecode, type Micros } from '@/domain/time';
 import type { MessageKey } from '@/i18n/messages';
+import {
+  CaptionClockSection,
+  CaptionExportSection,
+  CaptionImport,
+  CaptionShiftSection,
+} from './CaptionTools';
 import type { CaptionFontStatus } from './useCaptionFont';
 import type { PreviewMode } from './useEditorState';
 
-type CaptionUiError = CaptionRejection | 'caption_no_room' | 'invalid_time';
+type CaptionUiError = CaptionRejection | 'caption_no_room' | 'invalid_time' | 'caption_playhead_off_video';
+
+/** A word badge on a line; warnings carry an icon, never colour alone (doc 06). */
+interface CueBadge {
+  kind: 'warning' | 'info';
+  testId: string;
+  text: string;
+}
 
 /** Refusals about the words themselves; the rest are about the time range. */
 const TEXT_ERRORS: ReadonlySet<CaptionUiError> = new Set([
@@ -42,8 +71,11 @@ function errorKey(error: CaptionUiError): MessageKey {
 interface Props {
   t: (key: MessageKey) => string;
   project: Project;
+  /** Project title, for the name of a downloaded SRT/VTT file. */
+  title: string;
   outputDurationUs: Micros;
   outputTimeUs: Micros;
+  sourceTimeUs: Micros;
   previewMode: PreviewMode;
   fontStatus: CaptionFontStatus;
   onAdd: (input: CaptionCueInput) => CaptionResult;
@@ -51,9 +83,14 @@ interface Props {
   onRemove: (cueId: string) => void;
   onStyle: (patch: Partial<CaptionStyleV2>) => void;
   onLanguage: (language: string) => void;
+  onConvert: (target: CaptionTrackV2['timeBase']) => CaptionConversionResult;
+  onShift: (deltaUs: Micros) => ShiftCaptionsResult;
+  onImport: (cues: readonly ImportedCueInput[], timeBase: CaptionTrackV2['timeBase']) => CaptionImportResult;
   onShowResult: () => void;
   /** Moves the OUTPUT playhead, switching the preview to result mode first. */
   onSeek: (outputUs: Micros) => void;
+  /** Moves the SOURCE playhead, switching the preview to source mode first. */
+  onSeekSource: (sourceUs: Micros) => void;
 }
 
 interface Draft {
@@ -206,12 +243,16 @@ interface EditorProps {
   /** The shared "2 lines, 120 characters" hint above the list. */
   textHintId: string;
   label: string;
+  /** Stored id, or null for the new line. */
+  cueId: string | null;
   startUs: Micros;
   endUs: Micros;
+  /** Which clock the times are on: "videodaki zamanı" or "sonuçtaki zamanı". */
+  clockLabel: string;
   text: string;
   draft: boolean;
   autoFocus: boolean;
-  visibility: CueVisibility;
+  badges: readonly CueBadge[];
   fits: (text: string) => boolean;
   error: CaptionUiError | null;
   onText: Commit<string>;
@@ -226,12 +267,14 @@ function CueEditor({
   idBase,
   textHintId,
   label,
+  cueId,
   startUs,
   endUs,
+  clockLabel,
   text,
   draft,
   autoFocus,
-  visibility,
+  badges,
   fits,
   error,
   onText,
@@ -243,20 +286,28 @@ function CueEditor({
   const errorId = `${idBase}-error`;
   const draftHintId = `${idBase}-hint`;
   return (
-    <li className="cue-card" data-cue-editor="" data-draft={draft} data-testid={draft ? 'cue-draft' : 'cue-item'}>
+    <li
+      className="cue-card"
+      data-cue-editor=""
+      data-draft={draft}
+      data-cue-id={cueId ?? ''}
+      data-testid={draft ? 'cue-draft' : 'cue-item'}
+    >
       <div className="cue-head">
         <b>{label}</b>
-        <span className="moment-range" data-testid="cue-range">
+        <span className="moment-range" title={clockLabel} data-testid="cue-range">
           {formatTimecode(startUs)} — {formatTimecode(endUs)}
         </span>
       </div>
 
-      {visibility !== 'visible' ? (
+      {badges.length > 0 ? (
         <p className="cue-badges">
-          <span className="cue-badge" data-kind="warning" data-testid={`cue-badge-${visibility}`}>
-            <Icon name="alert" size={14} />
-            {t(visibility === 'clipped' ? 'captions.badge.clipped' : 'captions.badge.outside')}
-          </span>
+          {badges.map((badge) => (
+            <span key={badge.testId} className="cue-badge" data-kind={badge.kind} data-testid={badge.testId}>
+              <Icon name={badge.kind === 'warning' ? 'alert' : 'info'} size={14} />
+              {badge.text}
+            </span>
+          ))}
         </p>
       ) : null}
 
@@ -281,28 +332,34 @@ function CueEditor({
         </p>
       ) : null}
 
-      <div className="cue-times">
-        <CaptionTimeField
-          key={`start-${startUs}`}
-          id={`${idBase}-start`}
-          label={t('range.start')}
-          hiddenPrefix={label}
-          initialUs={startUs}
-          invalid={error !== null && !TEXT_ERRORS.has(error)}
-          testId="cue-start"
-          onCommit={onStart}
-        />
-        <CaptionTimeField
-          key={`end-${endUs}`}
-          id={`${idBase}-end`}
-          label={t('range.end')}
-          hiddenPrefix={label}
-          initialUs={endUs}
-          invalid={error !== null && !TEXT_ERRORS.has(error)}
-          testId="cue-end"
-          onCommit={onEnd}
-        />
-      </div>
+      {/* The legend names the clock, so "00:09.000" is never ambiguous. */}
+      <fieldset className="cue-times-group">
+        <legend className="cue-clock" data-testid="cue-clock">
+          {clockLabel}
+        </legend>
+        <div className="cue-times">
+          <CaptionTimeField
+            key={`start-${startUs}`}
+            id={`${idBase}-start`}
+            label={t('range.start')}
+            hiddenPrefix={label}
+            initialUs={startUs}
+            invalid={error !== null && !TEXT_ERRORS.has(error)}
+            testId="cue-start"
+            onCommit={onStart}
+          />
+          <CaptionTimeField
+            key={`end-${endUs}`}
+            id={`${idBase}-end`}
+            label={t('range.end')}
+            hiddenPrefix={label}
+            initialUs={endUs}
+            invalid={error !== null && !TEXT_ERRORS.has(error)}
+            testId="cue-end"
+            onCommit={onEnd}
+          />
+        </div>
+      </fieldset>
 
       <div className="cue-actions">
         {draft ? null : (
@@ -386,8 +443,10 @@ function fontMeasure(): MeasureText | null {
 export function CaptionsPanel({
   t,
   project,
+  title,
   outputDurationUs,
   outputTimeUs,
+  sourceTimeUs,
   previewMode,
   fontStatus,
   onAdd,
@@ -395,14 +454,28 @@ export function CaptionsPanel({
   onRemove,
   onStyle,
   onLanguage,
+  onConvert,
+  onShift,
+  onImport,
   onShowResult,
   onSeek,
+  onSeekSource,
 }: Props) {
   const uid = useId();
   const track = primaryCaptionTrack(project);
   const cues = useMemo(() => sortCues(track?.cues ?? []), [track]);
   const style = track?.style ?? DEFAULT_CAPTION_STYLE;
   const canAdd = project.clips.length > 0 && outputDurationUs > 0;
+  // Cue times are always on the track's own clock (ADR-016): source time for a
+  // source-anchored track, output time otherwise. Everything that shows or
+  // edits a stored time below must respect that.
+  const isSource = track?.timeBase === 'source';
+  const clockEndUs = isSource
+    ? (project.assets.find((asset) => asset.assetId === track?.assetId)?.durationUs ?? 0)
+    : outputDurationUs;
+  const clockLabel = t(isSource ? 'captions.times.source' : 'captions.times.output');
+  // Where each line appears in the output now; only needed for source tracks.
+  const shown = useMemo(() => (isSource ? outputCues(project) : []), [isSource, project]);
 
   const [draft, setDraft] = useState<Draft | null>(null);
   const [draftError, setDraftError] = useState<CaptionUiError | null>(null);
@@ -422,6 +495,21 @@ export function CaptionsPanel({
   const setCueError = (cueId: string, error: CaptionUiError | null) =>
     setErrors((previous) => ({ ...previous, [cueId]: error }));
 
+  /**
+   * The playhead on the track's clock, for "Satır ekle". Null when a
+   * source-anchored track's picture is not what plays at the output playhead.
+   */
+  const playheadOnTrackClock = (): Micros | null => {
+    if (!isSource) {
+      // Leaving source mode parks the output playhead at 0 (usePlayback), so
+      // that is where a line added from source mode goes.
+      return previewMode === 'output' ? outputTimeUs : 0;
+    }
+    // The source preview already shows the track's own clock.
+    if (previewMode === 'source') return sourceTimeUs;
+    return trackTimeAtOutput(project, outputTimeUs);
+  };
+
   const addLine = () => {
     setAddError(null);
     if (!canAdd) return;
@@ -430,15 +518,19 @@ export function CaptionsPanel({
       document.getElementById(`${uid}-draft-${draftSerial}-text`)?.focus();
       return;
     }
-    // Leaving source mode parks the output playhead at 0 (usePlayback), so
-    // that is where a line added from source mode goes.
-    const playhead = previewMode === 'output' ? outputTimeUs : 0;
-    const range = suggestNewCueRange(cues, playhead, outputDurationUs);
-    if (!range.ok) {
-      setAddError(range.reason);
+    const playhead = playheadOnTrackClock();
+    if (playhead === null) {
+      setAddError('caption_playhead_off_video');
       return;
     }
-    onSeek(range.startUs);
+    const range = suggestNewCueRange(cues, playhead, clockEndUs);
+    if (!range.ok) {
+      setAddError(isSource && range.reason === 'caption_outside_output' ? 'range_out_of_source' : range.reason);
+      return;
+    }
+    // An output line is added where the result preview can show it; a source
+    // line is added at the picture already on screen, so nothing moves.
+    if (!isSource) onSeek(range.startUs);
     setDraft({ startUs: range.startUs, endUs: range.endUs, text: '' });
     setDraftError(null);
     setDraftSerial((serial) => serial + 1);
@@ -480,6 +572,67 @@ export function CaptionsPanel({
       return apply(us, leaving);
     };
 
+  /**
+   * A new line's times are on the track's clock, so a change of clock (or a
+   * replaced track) would silently reinterpret them: the draft is dropped.
+   */
+  const convert = (target: CaptionTrackV2['timeBase']) => {
+    const result = onConvert(target);
+    if (result.ok) {
+      setDraft(null);
+      setErrors({});
+    }
+    return result;
+  };
+  const importLines = (lines: readonly ImportedCueInput[], timeBase: CaptionTrackV2['timeBase']) => {
+    const result = onImport(lines, timeBase);
+    if (result.ok) {
+      setDraft(null);
+      setErrors({});
+    }
+    return result;
+  };
+
+  const badgesFor = (cue: CaptionCueV2): CueBadge[] => {
+    if (!isSource) {
+      const visibility = cueVisibility(cue, outputDurationUs);
+      if (visibility === 'visible') return [];
+      return [
+        {
+          kind: 'warning',
+          testId: `cue-badge-${visibility}`,
+          text: t(visibility === 'clipped' ? 'captions.badge.clipped' : 'captions.badge.outside'),
+        },
+      ];
+    }
+    const usage = sourceCueUsage(project, cue);
+    if (usage.occurrences === 0) {
+      return [{ kind: 'warning', testId: 'cue-badge-unused', text: t('captions.usage.none') }];
+    }
+    const badges: CueBadge[] = [
+      {
+        kind: 'info',
+        testId: 'cue-badge-usage',
+        text: t('captions.usage.count').replace('{count}', String(usage.occurrences)),
+      },
+    ];
+    if (usage.partial) {
+      badges.push({ kind: 'warning', testId: 'cue-badge-partial', text: t('captions.usage.partial') });
+    }
+    return badges;
+  };
+
+  /** Output tracks: the stored time. Source tracks: the first appearance, else the picture itself. */
+  const goTo = (cue: CaptionCueV2) => {
+    if (!isSource) {
+      onSeek(cue.startUs);
+      return;
+    }
+    const first = shown.find((item) => item.cueId === cue.cueId);
+    if (first) onSeek(first.startUs);
+    else onSeekSource(cue.startUs);
+  };
+
   type Row = { kind: 'cue'; startUs: Micros; index: number } | { kind: 'draft'; startUs: Micros };
   const rows: Row[] = cues.map((cue, index) => ({ kind: 'cue', startUs: cue.startUs, index }));
   if (draft) {
@@ -504,9 +657,13 @@ export function CaptionsPanel({
         </p>
       ) : null}
 
+      <CaptionClockSection t={t} project={project} onConvert={convert} />
+
       {canAdd && previewMode === 'source' ? (
         <div className="caption-source-hint" data-testid="captions-source-hint">
-          <p className="hint-small">{t('captions.sourceModeHint')}</p>
+          <p className="hint-small">
+            {t(isSource ? 'captions.sourceModeHintSource' : 'captions.sourceModeHint')}
+          </p>
           <button type="button" className="link-button" onClick={onShowResult}>
             {t('captions.showResult')}
           </button>
@@ -526,7 +683,7 @@ export function CaptionsPanel({
         {t('captions.add')}
       </button>
       <p className="hint-small" id={`${uid}-add-hint`}>
-        {canAdd ? t('captions.addHint') : t('captions.needMoments')}
+        {canAdd ? t(isSource ? 'captions.addHintSource' : 'captions.addHint') : t('captions.needMoments')}
       </p>
       <div aria-live="polite">
         {addError ? (
@@ -536,6 +693,8 @@ export function CaptionsPanel({
           </p>
         ) : null}
       </div>
+
+      <CaptionImport t={t} project={project} onImport={importLines} />
 
       {rows.length === 0 ? (
         <p className="empty-state" style={{ marginTop: 14 }} data-testid="captions-empty">
@@ -558,12 +717,14 @@ export function CaptionsPanel({
                     idBase={idBase}
                     textHintId={`${uid}-text-hint`}
                     label={t('captions.newLine')}
+                    cueId={null}
                     startUs={draft.startUs}
                     endUs={draft.endUs}
+                    clockLabel={clockLabel}
                     text={draft.text}
                     draft
                     autoFocus
-                    visibility="visible"
+                    badges={[]}
                     fits={fits}
                     error={draftError}
                     onText={(text, leaving) => commitDraft({ text }, leaving)}
@@ -575,7 +736,7 @@ export function CaptionsPanel({
                       (us, leaving) => commitDraft({ endUs: us }, leaving),
                       setDraftError,
                     )}
-                    onGoTo={() => onSeek(draft.startUs)}
+                    onGoTo={() => undefined}
                     onRemove={() => {
                       setDraft(null);
                       setDraftError(null);
@@ -593,12 +754,14 @@ export function CaptionsPanel({
                   idBase={`${uid}-${cue.cueId}`}
                   textHintId={`${uid}-text-hint`}
                   label={label}
+                  cueId={cue.cueId}
                   startUs={cue.startUs}
                   endUs={cue.endUs}
+                  clockLabel={clockLabel}
                   text={cue.text}
                   draft={false}
                   autoFocus={false}
-                  visibility={cueVisibility(cue, outputDurationUs)}
+                  badges={badgesFor(cue)}
                   fits={fits}
                   error={errors[cue.cueId] ?? null}
                   onText={(text) =>
@@ -612,7 +775,7 @@ export function CaptionsPanel({
                     (us) => commitCue(cue.cueId, { endUs: us }),
                     (error) => setCueError(cue.cueId, error),
                   )}
-                  onGoTo={() => onSeek(cue.startUs)}
+                  onGoTo={() => goTo(cue)}
                   onRemove={() => {
                     setCueError(cue.cueId, null);
                     onRemove(cue.cueId);
@@ -623,6 +786,9 @@ export function CaptionsPanel({
           </ol>
         </>
       )}
+
+      <CaptionShiftSection t={t} project={project} onShift={onShift} />
+      <CaptionExportSection t={t} project={project} title={title} />
 
       <hr className="divider" />
 
