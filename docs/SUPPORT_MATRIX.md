@@ -132,7 +132,7 @@ Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer�
 
 - Gerçek Safari (macOS/iOS) ve gerçek fiziksel telefon/tablet.
 - Gerçek kamera/telefon kayıtları, “Gerçek kayıtlar” bölümünde çalıştırılmadıysa.
-- Bilinen sınır: yazılım H.264 çözücüsü (Playwright Chromium; donanım çözmesi kapalı Chrome/Edge) bazı kamera akışlarında kareleri doğru zaman damgasıyla ama yanlış içerikle veriyor (R07, SSIM 0.76–0.80). Uygulama bunu henüz tespit edemiyor; ayrıntı ADR-014.
+- Bilinen sınır: yeniden sıralamayı SPS’te az bildiren H.264 akışları (R07) yazılım çözücüsünde kare atıyordu. Artık SPS düzeltilerek çözülüyor. Düzeltilemeyen durumda (paket içi SPS) dışa aktarma açıkça duruyor. Başka bir sebeple kare atan bir çözücü damgalardan hâlâ tespit edilemiyor. Ayrıntı ADR-014 §3. (Yukarıdaki gerçek kayıt tabloları bu düzeltmeden önce ölçüldü. Düzeltmeden sonra R07: Chromium 0.969, Chrome/Edge 0.974.)
 - Bellek ölçümü yalnızca Windows’ta ve Chromium’da yapıldı; macOS/Linux ve diğer tarayıcılar ölçülmedi.
 - Düşük bellekli cihazlar ve bellek yetmediğinde davranış.
 - Disk dolması, uzun süreli kararlılık ve termal davranış.

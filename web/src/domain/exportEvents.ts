@@ -30,6 +30,7 @@ export type ExportFailureCode =
   | 'audio_encoder_unsupported'
   | 'no_frames_decoded'
   | 'source_frames_missing'
+  | 'source_reorder_unfixable'
   | 'output_probe_failed'
   | 'output_duration_mismatch'
   | 'out_of_memory'

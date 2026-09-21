@@ -199,11 +199,13 @@ test.describe('editor', () => {
     await page.getByTestId('play-toggle').click();
   });
 
-  test('nothing is sent off the machine', async ({ page }) => {
+  test('nothing is sent off the machine', async ({ page, baseURL }) => {
+    // The app's own origin is whatever port this run's server uses (E2E_PORT).
+    const ownOrigin = new URL(baseURL ?? 'http://127.0.0.1:3100').origin;
     const external: string[] = [];
     page.on('request', (request) => {
       const url = request.url();
-      if (!url.startsWith('http://127.0.0.1:3100') && !url.startsWith('blob:') && !url.startsWith('data:')) {
+      if (!url.startsWith(`${ownOrigin}/`) && !url.startsWith('blob:') && !url.startsWith('data:')) {
         external.push(url);
       }
     });
