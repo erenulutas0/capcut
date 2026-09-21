@@ -22,6 +22,16 @@ run([
   join(out, 'sample-24s.mp4'),
 ]);
 
+// A deliberately DIFFERENT video: another duration and another size, used to
+// prove that re-linking refuses a file that is not the saved one.
+run([
+  '-f', 'lavfi', '-i', 'testsrc=size=640x360:rate=30:duration=8',
+  '-f', 'lavfi', '-i', 'sine=frequency=660:sample_rate=48000:duration=8',
+  '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-preset', 'slow', '-crf', '36', '-g', '30',
+  '-c:a', 'aac', '-b:a', '64k', '-shortest',
+  join(out, 'other-8s.mp4'),
+]);
+
 // 30 s music stand-in: a quiet synthetic tone, not a licensed track.
 run([
   '-f', 'lavfi', '-i', 'sine=frequency=220:sample_rate=48000:duration=30',

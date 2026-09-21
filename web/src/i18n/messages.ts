@@ -11,7 +11,7 @@ export const tr = {
   'nav.openEditor': 'Editörü aç',
   'nav.backToEditor': 'Düzenlemeye dön',
 
-  'banner.prototype': 'W1 · Yerel MP4 çıktısı · desteklenen tarayıcıda',
+  'banner.prototype': 'Yerel düzenleme · MP4 çıktısı desteklenen tarayıcıda · bulut yok',
 
   'topbar.untitled': 'Adsız proje',
   'topbar.renameLabel': 'Proje adı',
@@ -19,9 +19,49 @@ export const tr = {
   'topbar.redo': 'İleri al',
   'topbar.help': 'Kısayollar ve sınırlar',
   'topbar.export': 'Dışa aktar',
-  'topbar.saveState.session': 'Bu oturumda',
-  'topbar.saveState.sessionHint':
-    'Yerel kayıt henüz yok. Sekmeyi kapatırsan bu düzenleme tarifi kaybolur.',
+  'topbar.saveState.idle': 'Henüz kaydedilmedi',
+  'topbar.saveState.saving': 'Kaydediliyor…',
+  'topbar.saveState.saved': 'Kaydedildi',
+  'topbar.saveState.failed': 'Kaydedilemedi',
+  'topbar.saveState.hint':
+    'Düzenleme tarifin bu tarayıcıya kaydedilir. Bu bir bulut yedeği değildir: tarayıcı verisini temizlersen veya başka bir cihaz/tarayıcı kullanırsan proje orada olmaz. Video dosyaların hiçbir zaman kaydedilmez.',
+  'topbar.saveState.failedHint':
+    'Tarayıcı kaydı reddetti. Projeni kaybetmemek için yedek dosyasını indir.',
+
+  'store.fail.unavailable': 'Bu tarayıcıda yerel kayıt kullanılamıyor (gizli sekme olabilir).',
+  'store.fail.blocked': 'Yerel kayıt başka bir sekme tarafından engellendi.',
+  'store.fail.quota_exceeded': 'Tarayıcının depolama alanı dolu.',
+  'store.fail.corrupt': 'Kayıtlı proje okunamadı; bozulmuş olabilir.',
+  'store.fail.unknown': 'Yerel kayıt sırasında bilinmeyen bir hata oluştu.',
+
+  'relink.title': 'Bu projenin videosu açık değil.',
+  'relink.body':
+    'Düzenleme tarifin kaydedilmişti ve geri yüklendi. Video dosyaları tarayıcıda saklanamaz, bu yüzden aynı dosyayı yeniden seçmen gerekiyor.',
+  'relink.fileLabel': 'Aranan dosya',
+  'relink.pick': 'Dosyayı yeniden seç',
+  'relink.pickAudio': 'Ses dosyasını yeniden seç',
+  'relink.audioTitle': 'Müzik dosyası açık değil.',
+  'relink.audioBody':
+    'Projede müzik var ama ses dosyası bu sekmede açık değil. Aynı dosyayı yeniden seçebilirsin.',
+  'relink.matched': 'Dosya tanındı, anların korundu.',
+  'relink.matchedLikely':
+    'Dosya aynı görünüyor (boyut ve süre uyuşuyor) ve yeniden bağlandı. Değiştirilme tarihi farklı.',
+  'relink.mismatchTitle': 'Bu dosya kayıtlı dosyadan farklı görünüyor.',
+  'relink.mismatchBody':
+    'Boyut veya süre uyuşmuyor. Bu dosyayı kullanırsak işaretlediğin anlar başka görüntülere denk gelebilir; bu yüzden anları saklamıyoruz.',
+  'relink.useAsNew': 'Yeni kaynak olarak kullan (anlar silinir)',
+  'relink.cancel': 'Vazgeç',
+  'relink.discard': 'Kayıtlı projeyi sil',
+  'relink.discardConfirm':
+    'Bu tarayıcıya kaydedilen proje tarifi silinecek. Video dosyalarına dokunulmaz. Devam edilsin mi?',
+
+  'backup.title': 'Proje yedeği',
+  'backup.body':
+    'Düzenleme tarifini bir dosyaya indir. Bu dosya videonu içermez; yalnızca hangi anları seçtiğini ve ayarlarını taşır.',
+  'backup.download': 'Yedek dosyasını indir',
+  'backup.import': 'Yedek dosyasından geri yükle',
+  'backup.importFailed': 'Yedek dosyası okunamadı veya bu sürümle uyumlu değil.',
+  'backup.imported': 'Yedek geri yüklendi. Şimdi video dosyasını seçmen gerekiyor.',
 
   'tabs.moments': 'Anlar',
   'tabs.sources': 'Kaynaklar',
@@ -184,6 +224,8 @@ export const tr = {
   'export.fail.worker_unavailable': 'Arka plan işleyicisi başlatılamadı.',
   'export.fail.internal_error': 'Beklenmeyen bir hata oluştu.',
   'export.plan.no_clips': 'Henüz an eklenmedi.',
+  'export.plan.source_missing':
+    'Projenin video dosyası bu sekmede açık değil. Çıktı almak için dosyayı yeniden seç.',
   'export.plan.missing_source_dimensions': 'Kaynak videonun boyutları okunamadı.',
   'export.plan.unknown_asset': 'Tarifte tanımsız bir kaynak var.',
   'export.plan.output_duration_exceeds_policy': 'Toplam çıktı süresi 5 dakikayı aşıyor.',
@@ -236,7 +278,8 @@ export const tr = {
   'help.shortcutNote': 'Bir metin veya zaman alanına yazarken kısayollar devre dışıdır.',
   'help.limit.export': 'Çıktı yalnızca uygunluk kontrolünü geçen tarayıcıda alınabilir.',
   'help.limit.mix': 'Önizlemede iki oynatıcı birlikte çalışır; gerçek miks yalnızca çıktıda yapılır.',
-  'help.limit.save': 'Kalıcı kayıt yok; proje yalnızca bu sekmede yaşar.',
+  'help.limit.save':
+    'Proje tarifi bu tarayıcıya kaydedilir; bulut yedeği yoktur ve video dosyaları saklanmaz.',
   'help.limit.cloud': 'Bulut, hesap, ödeme ve yapay zekâ yok.',
 
   'footer.local': 'Yerel düzenleme · kaynak dosya değişmez · bulut yüklemesi yok',
@@ -253,7 +296,7 @@ export const en: Record<MessageKey, string> = {
   'nav.openEditor': 'Open the editor',
   'nav.backToEditor': 'Back to editing',
 
-  'banner.prototype': 'W1 · local MP4 export · in a supported browser',
+  'banner.prototype': 'Local editing · MP4 export in a supported browser · no cloud',
 
   'topbar.untitled': 'Untitled project',
   'topbar.renameLabel': 'Project name',
@@ -261,9 +304,49 @@ export const en: Record<MessageKey, string> = {
   'topbar.redo': 'Redo',
   'topbar.help': 'Shortcuts and limits',
   'topbar.export': 'Export',
-  'topbar.saveState.session': 'This session',
-  'topbar.saveState.sessionHint':
-    'Local persistence is not implemented yet. Closing the tab loses this recipe.',
+  'topbar.saveState.idle': 'Not saved yet',
+  'topbar.saveState.saving': 'Saving…',
+  'topbar.saveState.saved': 'Saved',
+  'topbar.saveState.failed': 'Could not save',
+  'topbar.saveState.hint':
+    'Your editing recipe is saved to this browser. This is not a cloud backup: clearing browser data, or using another device or browser, means the project will not be there. Your video files are never stored.',
+  'topbar.saveState.failedHint':
+    'The browser refused to save. Download the backup file so you do not lose your project.',
+
+  'store.fail.unavailable': 'Local saving is unavailable in this browser (possibly a private window).',
+  'store.fail.blocked': 'Local saving was blocked by another tab.',
+  'store.fail.quota_exceeded': 'The browser has run out of storage.',
+  'store.fail.corrupt': 'The saved project could not be read; it may be corrupted.',
+  'store.fail.unknown': 'An unknown error occurred while saving locally.',
+
+  'relink.title': 'This project\u2019s video is not open.',
+  'relink.body':
+    'Your editing recipe was saved and restored. Video files cannot be kept in the browser, so you need to pick the same file again.',
+  'relink.fileLabel': 'Looking for',
+  'relink.pick': 'Choose the file again',
+  'relink.pickAudio': 'Choose the audio file again',
+  'relink.audioTitle': 'The music file is not open.',
+  'relink.audioBody':
+    'The project has music but its audio file is not open in this tab. You can pick the same file again.',
+  'relink.matched': 'File recognised; your moments are intact.',
+  'relink.matchedLikely':
+    'The file looks the same (size and duration match) and was re-linked. Its modification time differs.',
+  'relink.mismatchTitle': 'This file looks different from the saved one.',
+  'relink.mismatchBody':
+    'The size or duration does not match. Using it could point your moments at different footage, so they are not kept.',
+  'relink.useAsNew': 'Use as a new source (moments are removed)',
+  'relink.cancel': 'Cancel',
+  'relink.discard': 'Delete the saved project',
+  'relink.discardConfirm':
+    'The project recipe saved in this browser will be deleted. Your video files are not touched. Continue?',
+
+  'backup.title': 'Project backup',
+  'backup.body':
+    'Download the editing recipe as a file. It does not contain your video; only which moments you chose and your settings.',
+  'backup.download': 'Download the backup file',
+  'backup.import': 'Restore from a backup file',
+  'backup.importFailed': 'The backup file could not be read or is not compatible with this version.',
+  'backup.imported': 'Backup restored. Now choose the video file.',
 
   'tabs.moments': 'Moments',
   'tabs.sources': 'Sources',
@@ -427,6 +510,8 @@ export const en: Record<MessageKey, string> = {
   'export.fail.worker_unavailable': 'The background worker could not be started.',
   'export.fail.internal_error': 'An unexpected error occurred.',
   'export.plan.no_clips': 'No moments added yet.',
+  'export.plan.source_missing':
+    'The project\u2019s video file is not open in this tab. Choose it again to export.',
   'export.plan.missing_source_dimensions': 'The source video dimensions could not be read.',
   'export.plan.unknown_asset': 'The recipe references an unknown source.',
   'export.plan.output_duration_exceeds_policy': 'Total output duration exceeds 5 minutes.',
@@ -479,7 +564,8 @@ export const en: Record<MessageKey, string> = {
   'help.shortcutNote': 'Shortcuts are disabled while you type in a text or time field.',
   'help.limit.export': 'Export is only possible in a browser that passes the capability check.',
   'help.limit.mix': 'The preview runs two players together; the real mix happens only in the export.',
-  'help.limit.save': 'No persistence; the project lives in this tab only.',
+  'help.limit.save':
+    'The project recipe is saved to this browser; there is no cloud backup and video files are not stored.',
   'help.limit.cloud': 'No cloud, account, payment or AI.',
 
   'footer.local': 'Local editing · your source file is unchanged · no cloud upload',

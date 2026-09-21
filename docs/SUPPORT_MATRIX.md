@@ -18,11 +18,11 @@ Her satır `video-editor-blueprint/docs/22_QA_TEST_MATRIX.md` içindeki bir fixt
 
 | Tarayıcı | Sürüm | Encoder kabiliyeti | Çalıştırma |
 |---|---|---|---|
-| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-09-20 23:35 UTC |
-| Google Chrome | 153.0.0.0 | H.264 var · AAC var | 2026-09-20 23:36 UTC |
-| Microsoft Edge | 153.0.0.0 | H.264 var · AAC var | 2026-09-20 23:36 UTC |
-| Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-20 23:37 UTC |
-| WebKit (Playwright) | 26.6 | WebCodecs yok | 2026-09-20 23:34 UTC |
+| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-09-21 00:09 UTC |
+| Google Chrome | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 00:09 UTC |
+| Microsoft Edge | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 00:10 UTC |
+| Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-21 00:11 UTC |
+| WebKit (Playwright) | 26.6 | WebCodecs yok | 2026-09-21 00:11 UTC |
 
 Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari, gerçek telefon ve fiziksel cihaz testi yapılmadı.** Playwright’ın WebKit derlemesi Safari değildir ve Safari sonucu yerine geçmez.
 
@@ -44,11 +44,11 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari,
 | M11 | Bozuk/truncated MP4 | ✅ | ✅ | ✅ | ✅ | — |
 | M12 | Çok kısa ve maksimum 20 klip | ✅ | ✅ | ✅ | ⛔ | — |
 | M13 | Politika sınırını aşan büyük dosya | ✅ | ✅ | ✅ | ✅ | — |
-| M14 | İzin iptali / kaynağın silinmesi | — | — | — | — | — |
+| M14 | Kaynağa erişim kaybı ve yeniden bağlama | ✅ | ✅ | ✅ | ⛔ | — |
 | M15 | Export sırasında sekme arka plana alınıyor | ✅ | ✅ | ✅ | ⛔ | — |
 | M16 | Gain toplamı / fade sınırları | ✅ | ✅ | ✅ | ⛔ | — |
 
-| Toplam | | 16✅ 0⛔ 0❌ 0💥 1— | 16✅ 0⛔ 0❌ 0💥 1— | 16✅ 0⛔ 0❌ 0💥 1— | 4✅ 12⛔ 0❌ 0💥 1— | 0✅ 0⛔ 0❌ 0💥 17— |
+| Toplam | | 17✅ 0⛔ 0❌ 0💥 0— | 17✅ 0⛔ 0❌ 0💥 0— | 17✅ 0⛔ 0❌ 0💥 0— | 4✅ 13⛔ 0❌ 0💥 0— | 0✅ 0⛔ 0❌ 0💥 17— |
 
 ## Ölçülen değerler (Chromium)
 
@@ -62,9 +62,10 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari,
 | M06 | 6.016 s | 180 | 1280x720 | — | — |
 | M07 | 10.005333 s | 300 | 1280x720 | — | — |
 | M08 | 10.005333 s | 300 | 720x1280 | — | müzik önce -69.5 → sonra -36.1 dB |
-| M09 | 6.016 s | 180 | 1280x720 | — | sınır -22.5 / genel -22.1 dB |
+| M09 | 6.016 s | 180 | 1280x720 | — | sınır -24.4 / genel -24.1 dB |
 | M10-hevc | — | — | — | — | sonuç: import_rejected |
 | M12 | 4.010667 s | 120 | 1280x720 | — | — |
+| M14 | 10.005333 s | 300 | 720x1280 | — | — |
 | M15 | 6.016 s | 180 | 1280x720 | — | — |
 | M16 | 6.016 s | 180 | 1280x720 | — | tepe -19.8 dB; fade -43 → -28.2 dB |
 
@@ -85,10 +86,6 @@ Ortam: chromium, 2026-09-20 23:41 UTC.
 | 180 s | 180.011 s | 5400 | 4.4 MB | 37.0 s | 4.9× |
 
 > Çıktı bellekte tutuluyor (BufferTarget + fastStart in-memory). UYARI: Chromium performance.memory değeri gizlilik için kabaca yuvarlanır; bütün koşularda aynı değeri verdiği için bu ölçümden bellek tavanı çıkarılamaz. Ayrıca fixture sentetik bir test deseni olduğu için encoder hedef bitrate’in çok altında kalıyor; gerçek kamera görüntüsünde dosya boyutu ve dolayısıyla bellek kullanımı belirgin şekilde yüksek olur.
-
-## Çalıştırılamayanlar
-
-- **M14 — İzin iptali / kaynağın silinmesi:** Tarayıcıda seçilmiş bir File referansının iznini test sürücüsünden iptal etmenin yolu yok; ayrıca kalıcı kayıt (re-link) henüz uygulanmadı.
 
 ## Bu matrisin kapsamadıkları
 

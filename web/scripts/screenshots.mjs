@@ -80,6 +80,14 @@ for (const size of SIZES) {
     await page.waitForTimeout(200);
     await page.screenshot({ path: join(outDir, 'landing-1440x900.png') });
   }
+  if (size.name === 'desktop-1366x768') {
+    // The re-link prompt: reload so the recipe comes back without its file.
+    await page.getByTestId('save-state').filter({ hasText: 'Kaydedildi' }).waitFor({ timeout: 30_000 }).catch(() => {});
+    await page.reload();
+    await page.getByTestId('relink-video').waitFor({ timeout: 30_000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: join(outDir, 'relink-1366x768.png') });
+  }
   if (size.name === 'tablet-1024x768') {
     await page.getByTestId('open-inspector-drawer').click();
     await page.waitForTimeout(250);

@@ -168,6 +168,30 @@ async function drive(page, testCase, artefactPath) {
     }
   }
 
+  // --- losing access to the source, then getting it back -----------------
+  let relinked = false;
+  if (setup.reloadBeforeExport) {
+    // Wait for the recipe to really be stored before throwing the page away.
+    await page
+      .getByTestId('save-state')
+      .filter({ hasText: 'Kaydedildi' })
+      .waitFor({ timeout: 30_000 })
+      .catch(() => null);
+    await page.reload();
+
+    const after = await waitForAny(page, ['relink-video', 'preview-video'], 60_000);
+    if (after !== 'relink-video') {
+      return { failed: true, failureText: 'yeniden yükleme sonrası re-link istenmedi', notes };
+    }
+    notes.push(
+      `yeniden yükleme sonrası aranan dosya: ${(await page.getByTestId('relink-filename').textContent()) ?? '?'}`,
+    );
+    await page.getByTestId('relink-video-input').setInputFiles(join(mediaDir, setup.video));
+    await waitForAny(page, ['preview-video'], 60_000);
+    relinked = (await page.getByTestId('preview-video').count()) > 0;
+    notes.push(`yeniden bağlandı: ${relinked ? 'evet' : 'hayır'}`);
+  }
+
   // --- export ------------------------------------------------------------
   await page.getByTestId('open-export').click();
   if (setup.quality) {
@@ -187,7 +211,7 @@ async function drive(page, testCase, artefactPath) {
   if ((await blocked.count()) > 0) {
     const blockerTexts = await page.getByTestId('export-blockers').allTextContents().catch(() => []);
     const body = ((await blocked.textContent()) ?? '').replace(/\s+/g, ' ').trim();
-    return { blocked: true, gate, blockerTexts, blockedText: body, momentCount, editorDisplaySize, notes };
+    return { blocked: true, gate, blockerTexts, blockedText: body, momentCount, editorDisplaySize, relinked, notes };
   }
 
   await page.getByTestId('export-create').click();
@@ -210,7 +234,7 @@ async function drive(page, testCase, artefactPath) {
 
   if ((await failed.count()) > 0) {
     const text = ((await failed.textContent()) ?? '').replace(/\s+/g, ' ').trim();
-    return { failed: true, failureText: text, gate, momentCount, editorDisplaySize, notes };
+    return { failed: true, failureText: text, gate, momentCount, editorDisplaySize, relinked, notes };
   }
 
   const reported = {
@@ -225,7 +249,7 @@ async function drive(page, testCase, artefactPath) {
   const download = await downloadPromise;
   await download.saveAs(artefactPath);
 
-  return { exported: true, gate, reported, momentCount, editorDisplaySize, notes };
+  return { exported: true, gate, reported, momentCount, editorDisplaySize, relinked, notes };
 }
 
 /* --------------------------------------------------------------- checking */
@@ -358,6 +382,13 @@ function assess(testCase, driveResult, artefactPath) {
       `sabit ${want.constantFrameRate} fps`,
       measured.frameRate === `${want.constantFrameRate}/1`,
       `${measured.frameRate}`,
+    );
+  }
+  if (want.relinked) {
+    add(
+      'kaynak kaybedildikten sonra yeniden bağlandı ve tarif korundu',
+      driveResult.relinked === true,
+      (driveResult.notes ?? []).join(' | '),
     );
   }
   if (want.editorDisplaySize && driveResult.editorDisplaySize) {

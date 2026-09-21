@@ -200,7 +200,8 @@ test.describe('editor', () => {
     await page.getByTestId('open-export').click();
     await expect(page.getByTestId('export-create')).toBeDisabled();
 
-    expect(external).toEqual([]);
+    // Named explicitly so a future failure says WHICH request escaped.
+    expect(external, `beklenmeyen dış istek: ${external.join(', ')}`).toEqual([]);
   });
 
   test('aspect presets change the preview frame geometry', async ({ page }) => {

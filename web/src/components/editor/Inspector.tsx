@@ -25,6 +25,8 @@ interface Props {
   onMusicChange: (patch: Partial<Omit<MusicV1, 'assetId'>>) => boolean;
   onPickAudio: () => void;
   onRemoveAudio: () => void;
+  /** Shown instead of the music controls when its file needs re-linking. */
+  relinkNode?: React.ReactNode;
 }
 
 const ASPECT_CHOICES: Array<{ value: AspectRatio; labelKey: MessageKey; w: number; h: number }> = [
@@ -183,9 +185,19 @@ export function AudioPanel({
   onMusicChange,
   onPickAudio,
   onRemoveAudio,
+  relinkNode,
 }: Pick<
   Props,
-  't' | 'project' | 'audio' | 'selectedClip' | 'onClipGain' | 'onClipMuted' | 'onMusicChange' | 'onPickAudio' | 'onRemoveAudio'
+  | 't'
+  | 'project'
+  | 'audio'
+  | 'selectedClip'
+  | 'onClipGain'
+  | 'onClipMuted'
+  | 'onMusicChange'
+  | 'onPickAudio'
+  | 'onRemoveAudio'
+  | 'relinkNode'
 >) {
   const previewRef = useRef<HTMLAudioElement | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -262,7 +274,9 @@ export function AudioPanel({
         <h2>{t('audio.musicTitle')}</h2>
       </div>
 
-      {music && audio ? (
+      {music && !audio && relinkNode ? (
+        relinkNode
+      ) : music && audio ? (
         <>
           <p className="file-name" data-testid="music-file-name">
             {safeFileName(audio.fileName)}

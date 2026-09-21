@@ -39,6 +39,13 @@ import {
 } from '@/application/history';
 import type { AspectRatio, FitMode, MusicV1, ProjectV1 } from '@/domain/edl';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
+import {
+  bindingFor,
+  compareBinding,
+  type AssetBinding,
+  type BindingMatch,
+  type ProjectRecord,
+} from '@/domain/projectRecord';
 import { totalOutputDurationUs } from '@/domain/timeline';
 import type { Micros } from '@/domain/time';
 import type { MessageKey } from '@/i18n/messages';
@@ -71,6 +78,11 @@ export function useEditorState() {
   );
   const [video, setVideo] = useState<MediaHandle | null>(null);
   const [audio, setAudio] = useState<MediaHandle | null>(null);
+  /**
+   * What we know about the user's files, kept so a restored project can
+   * recognise them again. Small metadata only — never media bytes.
+   */
+  const [bindings, setBindings] = useState<AssetBinding[]>([]);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<PreviewMode>('source');
   const [importing, setImporting] = useState<'video' | 'audio' | null>(null);
@@ -118,6 +130,14 @@ export function useEditorState() {
       setPreviewMode('source');
       setHistory((current) => {
         const assetId = nextAssetId(current.present, 'video');
+        setBindings((previous) => [
+          ...previous.filter((binding) => binding.kind !== 'video'),
+          bindingFor(assetId, 'video', file, {
+            durationUs: outcome.handle.durationUs,
+            displayWidth: outcome.handle.displayWidth,
+            displayHeight: outcome.handle.displayHeight,
+          }),
+        ]);
         return commit(
           current,
           setVideoAsset(current.present, {
@@ -158,6 +178,10 @@ export function useEditorState() {
     });
     setHistory((current) => {
       const assetId = nextAssetId(current.present, 'audio');
+      setBindings((previous) => [
+        ...previous.filter((binding) => binding.kind !== 'audio'),
+        bindingFor(assetId, 'audio', file, { durationUs: outcome.handle.durationUs }),
+      ]);
       return commit(
         current,
         setMusicAsset(current.present, {
@@ -174,8 +198,118 @@ export function useEditorState() {
       previous?.release();
       return null;
     });
+    setBindings((previous) => previous.filter((binding) => binding.kind !== 'audio'));
     setHistory((current) => commit(current, removeMusic(current.present)));
   }, []);
+
+  /**
+   * Re-opens a project that was stored locally.
+   *
+   * The recipe comes back; the files do not, because a browser cannot hold a
+   * `File` across sessions. History starts fresh — undoing into a previous
+   * session's state would be meaningless.
+   */
+  const restoreFromRecord = useCallback((record: ProjectRecord) => {
+    setHistory(initHistory(record.edl));
+    setTitle(record.title);
+    setBindings(record.bindings);
+    setSelectedClipId(null);
+    setPreviewMode('source');
+    setActionError(null);
+    setMediaError(null);
+  }, []);
+
+  /**
+   * Points a restored project back at a file the user picks again.
+   *
+   * A file that does not match the stored binding is NOT accepted silently:
+   * re-pointing existing ranges at different footage would produce a video the
+   * user never asked for (doc 11). The caller is told and decides.
+   */
+  const relinkVideo = useCallback(
+    async (file: File): Promise<{ ok: true; match: BindingMatch } | { ok: false; reason: ProbeFailure | 'mismatch' | 'no_binding' }> => {
+      const binding = bindings.find((item) => item.kind === 'video');
+      if (!binding) return { ok: false, reason: 'no_binding' };
+
+      setMediaError(null);
+      setImporting('video');
+      const outcome = await probeVideoFile(file, VIDEO_LIMITS);
+      setImporting(null);
+      if (!outcome.ok) {
+        setMediaError({ scope: 'video', reason: outcome.reason });
+        return { ok: false, reason: outcome.reason };
+      }
+
+      const match = compareBinding(binding, {
+        sizeBytes: file.size,
+        lastModified: file.lastModified,
+        durationUs: outcome.handle.durationUs,
+        displayWidth: outcome.handle.displayWidth,
+        displayHeight: outcome.handle.displayHeight,
+      });
+
+      if (match === 'mismatch') {
+        outcome.handle.release();
+        return { ok: false, reason: 'mismatch' };
+      }
+
+      setVideo((previous) => {
+        previous?.release();
+        return outcome.handle;
+      });
+      // Re-linking restores access; it does not change the recipe, so it must
+      // not create an undo step or bump the revision.
+      setBindings((previous) =>
+        previous.map((item) =>
+          item.kind === 'video'
+            ? { ...item, fileName: file.name, lastSeenAt: new Date().toISOString() }
+            : item,
+        ),
+      );
+      return { ok: true, match };
+    },
+    [bindings],
+  );
+
+  const relinkAudio = useCallback(
+    async (file: File): Promise<{ ok: true; match: BindingMatch } | { ok: false; reason: ProbeFailure | 'mismatch' | 'no_binding' }> => {
+      const binding = bindings.find((item) => item.kind === 'audio');
+      if (!binding) return { ok: false, reason: 'no_binding' };
+
+      setMediaError(null);
+      setImporting('audio');
+      const outcome = await probeAudioFile(file, AUDIO_LIMITS);
+      setImporting(null);
+      if (!outcome.ok) {
+        setMediaError({ scope: 'audio', reason: outcome.reason });
+        return { ok: false, reason: outcome.reason };
+      }
+
+      const match = compareBinding(binding, {
+        sizeBytes: file.size,
+        lastModified: file.lastModified,
+        durationUs: outcome.handle.durationUs,
+      });
+      if (match === 'mismatch') {
+        outcome.handle.release();
+        return { ok: false, reason: 'mismatch' };
+      }
+
+      setAudio((previous) => {
+        previous?.release();
+        return outcome.handle;
+      });
+      setBindings((previous) =>
+        previous.map((item) =>
+          item.kind === 'audio'
+            ? { ...item, fileName: file.name, lastSeenAt: new Date().toISOString() }
+            : item,
+        ),
+      );
+      return { ok: true, match };
+    },
+    [bindings],
+  );
 
   const addMoment = useCallback(
     (sourceInUs: Micros, sourceOutUs: Micros): boolean => {
@@ -294,17 +428,27 @@ export function useEditorState() {
 
   const totalSourceBytes = (video?.sizeBytes ?? 0) + (audio?.sizeBytes ?? 0);
   const dirty = history.past.length > 0;
+  // The unload warning moved to the persistence hook: now that edits are saved
+  // automatically, warning on every edit would cry wolf. Only work that is
+  // still being written, or that failed to write, is actually at risk.
 
-  // The browser decides whether to show this; we never promise recovery.
-  useEffect(() => {
-    if (!dirty) return undefined;
-    const handler = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [dirty]);
+  // A restored project knows which files it needs but has none of them open.
+  const referencedAssetIds = useMemo(
+    () => new Set(project.assets.map((item) => item.assetId)),
+    [project.assets],
+  );
+  const missingVideoBinding = useMemo(() => {
+    if (video) return null;
+    return (
+      bindings.find((item) => item.kind === 'video' && referencedAssetIds.has(item.assetId)) ?? null
+    );
+  }, [bindings, referencedAssetIds, video]);
+  const missingAudioBinding = useMemo(() => {
+    if (audio) return null;
+    return (
+      bindings.find((item) => item.kind === 'audio' && referencedAssetIds.has(item.assetId)) ?? null
+    );
+  }, [audio, bindings, referencedAssetIds]);
 
   return {
     title,
@@ -315,6 +459,12 @@ export function useEditorState() {
     outputDurationUs,
     video,
     audio,
+    bindings,
+    missingVideoBinding,
+    missingAudioBinding,
+    restoreFromRecord,
+    relinkVideo,
+    relinkAudio,
     totalSourceBytes,
     selectedClipId,
     selectedClip,

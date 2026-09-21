@@ -1,8 +1,9 @@
-# Clip — web video editörü (W2)
+# Clip — web video editörü (W3)
 
-> Durum: **W2 tamamlandı.** Editör çalışıyor, desteklenen tarayıcıda
-> **gerçek MP4 (H.264/AAC) çıktısı** üretiyor ve doc 22 dosya matrisi beş
-> tarayıcıda gerçek dosyalarla çalıştırıldı.
+> Durum: **W3 tamamlandı.** Editör çalışıyor, desteklenen tarayıcıda
+> **gerçek MP4 (H.264/AAC) çıktısı** üretiyor, doc 22 dosya matrisi beş
+> tarayıcıda çalıştırıldı ve proje artık **tarayıcıya kaydediliyor**;
+> sekme kapansa bile düzenleme tarifi geri geliyor.
 > Sonuçlar: [destek matrisi](docs/SUPPORT_MATRIX.md).
 > "Clip" geçici çalışma adıdır; marka/alan adı araştırması yapılmadı.
 
@@ -76,9 +77,9 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 | Yol | İçerik |
 |---|---|
 | `web/` | Next.js uygulaması (editör + tanıtım sayfası) |
-| `web/src/domain/` | Framework'süz EDL v1, zaman, timeline, çerçeveleme, politika |
+| `web/src/domain/` | Framework'süz EDL v1, zaman, timeline, çerçeveleme, politika, proje kaydı |
 | `web/src/application/` | Saf komutlar, undo/redo geçmişi |
-| `web/src/adapters/` | Tarayıcı medya probe'u, uygunluk kapısı |
+| `web/src/adapters/` | Tarayıcı medya probe'u, uygunluk kapısı, IndexedDB proje deposu |
 | `web/src/adapters/export/` | Worker tabanlı encode hattı (WebCodecs + Mediabunny) |
 | `web/fixtures/edl/` | Dile bağımsız geçerli/geçersiz EDL örnekleri + manifest |
 | `video-editor-blueprint/` | Ürün ve mühendislik belge paketi (değiştirilmedi) |
@@ -97,6 +98,14 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 - 9:16 / 16:9 / 1:1 oranları, doldur/sığdır ve merkezden yakınlaştırma.
 - Kendi ses dosyasını ekleme; bölüm, çıktı başlangıcı, seviye ve fade ayarları.
 - Domain değişikliklerinde undo/redo (son 100 adım).
+- **Otomatik yerel kayıt:** düzenleme tarifi 500 ms gecikmeyle bu tarayıcıya
+  yazılır. "Kaydedildi" yalnızca yazma gerçekten tamamlandıysa gösterilir;
+  reddedilirse sebebi ve yedek indirme yolu görünür.
+- **Dosyayı yeniden bağlama:** video dosyaları tarayıcıda saklanamadığı için
+  proje geri geldiğinde aynı dosya istenir. Boyut/süre/kare boyutu uyuşmazsa
+  dosya sessizce kabul edilmez; kullanıcı uyarılır.
+- **Proje yedeği:** tarif `.clip.json` olarak indirilip geri yüklenebilir
+  (video içermez).
 - **Gerçek MP4 çıktısı:** seçilen anlar sırayla, seçilen çerçeveyle ve kaynak
   sesi + müzik tek ses izinde birleştirilerek H.264/AAC olarak kodlanır.
 - Beş aşamalı uygunluk kapısı (ortam → encoder ayarı → sentetik deneme
@@ -107,8 +116,13 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 
 ## Bu sürümde olmayanlar
 
-Kalıcı kayıt (proje yalnızca sekmede yaşar), thumbnail üretimi, serbest kırpma,
-çoklu video kaynağı, altyazı, bulut, hesap, ödeme ve native uygulama.
+Bulut yedeği veya cihazlar arası senkron, çoklu proje listesi, thumbnail
+üretimi, serbest kırpma, çoklu video kaynağı, altyazı, hesap, ödeme ve native
+uygulama.
+
+Yerel kayıt yalnızca **bu tarayıcıdadır**: tarayıcı verisi temizlenirse veya
+başka bir cihaz/tarayıcı kullanılırsa proje orada olmaz. Video dosyaları
+hiçbir zaman saklanmaz; proje geri geldiğinde dosya yeniden seçilir.
 
 Çıktı Chromium/Chrome/Edge'de doğrulandı. **Firefox'ta AAC encode olmadığı
 için çıktı kapalıdır** ve uygulama bunu açıkça söyler. Gerçek Safari, gerçek
@@ -119,11 +133,11 @@ sınırlıdır.
 Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
 [ADR-009 (altyazı sınırı)](docs/adr/ADR-009-captions-boundary.md),
 [ADR-010 (W1 çıktı hattı ve ölçümler)](docs/adr/ADR-010-w1-web-export.md),
-[ADR-011 (W2 dosya matrisi ve destek sınırları)](docs/adr/ADR-011-w2-file-matrix.md).
+[ADR-011 (W2 dosya matrisi ve destek sınırları)](docs/adr/ADR-011-w2-file-matrix.md),
+[ADR-012 (W3 yerel kayıt ve re-link)](docs/adr/ADR-012-w3-local-persistence.md).
 
 ## Sıradaki tek görev
 
-**W3 — gerçek kullanıcı medyası ve kalıcılık:** matrisi gerçek telefon/kamera
-kayıtlarıyla tekrarlamak, oradan çıkacak bellek ölçümüyle `StreamTarget`
-kararını vermek ve projenin sekme kapanınca kaybolmaması için yerel kaydı
-(IndexedDB + re-link) uygulamak.
+**W4 — gerçek kullanıcı medyası:** matrisi gerçek telefon/kamera kayıtlarıyla
+tekrarlamak (gerçek VFR, rotation, HEVC, 4K, uzun kayıt) ve oradan çıkacak
+bellek/süre ölçümleriyle `StreamTarget` kararını vermek.

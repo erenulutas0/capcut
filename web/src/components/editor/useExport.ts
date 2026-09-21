@@ -19,7 +19,12 @@ export type ExportUiState =
   | { phase: 'idle' }
   | { phase: 'checking' }
   | { phase: 'ready'; report: CapabilityReportV1 }
-  | { phase: 'blocked'; report: CapabilityReportV1 | null; planRejection: PlanRejection | null }
+  | {
+      phase: 'blocked';
+      report: CapabilityReportV1 | null;
+      /** `source_missing` is a UI state, not a compiler verdict. */
+      planRejection: PlanRejection | 'source_missing' | null;
+    }
   | {
       phase: 'running';
       step: 'preparing' | 'encoding' | 'finalizing' | 'verifying';
@@ -74,7 +79,8 @@ export function useExport(project: ProjectV1, videoFile: File | null, audioFile:
       return;
     }
     if (!videoFile) {
-      setState({ phase: 'blocked', report: null, planRejection: 'no_clips' });
+      // The recipe is fine; the file just is not open in this tab.
+      setState({ phase: 'blocked', report: null, planRejection: 'source_missing' });
       return;
     }
 
@@ -91,7 +97,10 @@ export function useExport(project: ProjectV1, videoFile: File | null, audioFile:
   }, [audioFile, client, project, releaseUrl, videoFile]);
 
   const start = useCallback(async () => {
-    if (!videoFile) return;
+    if (!videoFile) {
+      setState({ phase: 'blocked', report: null, planRejection: 'source_missing' });
+      return;
+    }
     const compiled = compileRenderPlan(project, WEB_LOCAL_POLICY);
     if (!compiled.ok) {
       setState({ phase: 'blocked', report: null, planRejection: compiled.reason });

@@ -1223,3 +1223,70 @@ input[type='range']:disabled::-webkit-slider-thumb {
     margin-left: 0;
   }
 }
+
+/* ------------------------------------------------------------ persistence */
+
+.save-state-failed {
+  color: var(--danger);
+  gap: 8px;
+}
+
+.save-dot[data-kind='saved'] {
+  background: var(--success);
+}
+
+.save-dot[data-kind='saving'] {
+  background: var(--focus);
+}
+
+.save-dot[data-kind='idle'] {
+  background: var(--control-border);
+}
+
+.link-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  text-decoration: underline;
+  font-size: inherit;
+}
+
+.relink {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  padding: 20px;
+  max-width: 560px;
+  margin: auto;
+}
+
+.relink-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.relink-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.relink-body {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.relink-meta {
+  margin-bottom: 4px;
+}
+
+.relink-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}

@@ -8,7 +8,8 @@ Kurulum ve komutlar için depo kökündeki [README](../README.md) dosyasına bak
   çerçeveleme tarifi, politika limitleri, `MediaEngine` portu.
   React/DOM/Next import etmez.
 - `src/application/` — saf `ProjectV1 -> ProjectV1` komutları ve undo/redo.
-- `src/adapters/` — tarayıcı medya probe'u ve uygunluk kapısı.
+- `src/adapters/` — tarayıcı medya probe'u, uygunluk kapısı ve IndexedDB
+  proje deposu (yalnızca EDL + küçük metadata; medya asla yazılmaz).
 - `src/adapters/export/` — encode worker'ı: demux → decode → canvas dönüşümü →
   encode → mux → üretilen dosyanın yeniden açılıp ölçülmesi.
 - `src/components/` — React arayüzü.

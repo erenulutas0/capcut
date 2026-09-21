@@ -276,11 +276,25 @@ export const CASES = [
   },
   {
     id: 'M14',
-    title: 'İzin iptali / kaynağın silinmesi',
+    title: 'Kaynağa erişim kaybı ve yeniden bağlama',
     expectation: 'Re-link yolu; EDL kaybolmuyor',
-    notRun:
-      'Tarayıcıda seçilmiş bir File referansının iznini test sürücüsünden iptal etmenin yolu yok; ' +
-      'ayrıca kalıcı kayıt (re-link) henüz uygulanmadı.',
+    // Reloading the tab reproduces the real condition: the recipe is still
+    // stored but the `File` object is gone, exactly as after a restart. A
+    // browser API to revoke a picked file mid-session does not exist.
+    setup: {
+      video: 'm01-portrait-20s.mp4',
+      moments: [['00:00.000', '00:04.000'], ['00:08.000', '00:14.000']],
+      aspect: '9-16',
+      quality: '720',
+      reloadBeforeExport: true,
+    },
+    expect: {
+      exports: true,
+      durationSeconds: 10,
+      frames: 300,
+      size: [720, 1280],
+      relinked: true,
+    },
   },
   {
     id: 'M15',

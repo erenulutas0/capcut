@@ -13,6 +13,9 @@ import { LeftPanel, MomentsList, SourcesList, type LeftTab } from './LeftPanel';
 import { OutputStrip } from './OutputStrip';
 import { PreviewStage } from './PreviewStage';
 import { RangeEditor } from './RangeEditor';
+import { RelinkPanel } from './RelinkPanel';
+import { SaveStateBadge } from './SaveStateBadge';
+import { useProjectPersistence } from './useProjectPersistence';
 import { useEditorState, type PreviewMode } from './useEditorState';
 import { useLayoutMode } from './useLayoutMode';
 import { usePlayback } from './usePlayback';
@@ -48,7 +51,16 @@ export function EditorApp() {
     hasMusicFile: state.audio !== null,
   });
 
+  const persistence = useProjectPersistence({
+    project: state.project,
+    title: state.title,
+    bindings: state.bindings,
+    onRestore: state.restoreFromRecord,
+  });
+
   const [leftTab, setLeftTab] = useState<LeftTab>('moments');
+  const [backupMessage, setBackupMessage] = useState<MessageKey | null>(null);
+  const backupInputRef = useRef<HTMLInputElement | null>(null);
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>('frame');
   const [exportOpen, setExportOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -149,6 +161,39 @@ export function EditorApp() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [playback, state]);
 
+  const backupPanel = (
+    <div data-testid="backup-panel">
+      <p className="field-label">{t('backup.title')}</p>
+      <p className="hint-small" style={{ marginBottom: 10 }}>
+        {t('backup.body')}
+      </p>
+      <button
+        type="button"
+        className="btn btn-block"
+        onClick={persistence.downloadBackup}
+        data-testid="backup-download"
+      >
+        <Icon name="download" />
+        {t('backup.download')}
+      </button>
+      <button
+        type="button"
+        className="btn btn-block"
+        style={{ marginTop: 8 }}
+        onClick={() => backupInputRef.current?.click()}
+        data-testid="backup-import"
+      >
+        <Icon name="folder" />
+        {t('backup.import')}
+      </button>
+      {backupMessage ? (
+        <p className="hint-small" role="status" data-testid="backup-message">
+          {t(backupMessage)}
+        </p>
+      ) : null}
+    </div>
+  );
+
   const leftPanelProps = {
     t,
     tab: leftTab,
@@ -165,6 +210,15 @@ export function EditorApp() {
     onPickAudio: pickAudio,
   };
 
+  const relinkAudioNode = state.missingAudioBinding ? (
+    <RelinkPanel
+      t={t}
+      binding={state.missingAudioBinding}
+      onPick={state.relinkAudio}
+      onUseAsNew={(file) => void state.importAudio(file)}
+    />
+  ) : null;
+
   const inspectorProps = {
     t,
     tab: inspectorTab,
@@ -179,6 +233,7 @@ export function EditorApp() {
     onMusicChange: state.changeMusic,
     onPickAudio: pickAudio,
     onRemoveAudio: state.dropAudio,
+    relinkNode: relinkAudioNode,
   };
 
   return (
@@ -216,10 +271,11 @@ export function EditorApp() {
             </>
           )}
           {layout === 'phone' ? null : (
-            <span className="save-state" title={t('topbar.saveState.sessionHint')}>
-              <span className="save-dot" aria-hidden="true" />
-              {t('topbar.saveState.session')}
-            </span>
+            <SaveStateBadge
+              t={t}
+              state={persistence.saveState}
+              onDownloadBackup={persistence.downloadBackup}
+            />
           )}
         </div>
 
@@ -292,6 +348,26 @@ export function EditorApp() {
       <div className="editor-body" data-mode={layout}>
         {layout === 'wide' || layout === 'narrow' ? <LeftPanel {...leftPanelProps} /> : null}
 
+        {state.missingVideoBinding ? (
+          <section className="stage" aria-label={t('relink.title')}>
+            <RelinkPanel
+              t={t}
+              binding={state.missingVideoBinding}
+              onPick={state.relinkVideo}
+              onUseAsNew={(file) => void state.importVideo(file)}
+              onDiscardProject={() => {
+                if (!window.confirm(t('relink.discardConfirm'))) return;
+                void persistence.forget().then(() => window.location.reload());
+              }}
+            />
+            {state.mediaError ? (
+              <p className="inline-error" role="alert" data-testid="media-error">
+                <Icon name="alert" />
+                {t(`error.${state.mediaError.reason}` as MessageKey)}
+              </p>
+            ) : null}
+          </section>
+        ) : (
         <PreviewStage
           t={t}
           project={state.project}
@@ -333,6 +409,7 @@ export function EditorApp() {
             />
           ) : null}
         </PreviewStage>
+        )}
 
         {layout === 'wide' ? <Inspector {...inspectorProps} /> : null}
       </div>
@@ -516,7 +593,7 @@ export function EditorApp() {
           data-testid="project-title"
         />
         <p className="hint-small" style={{ marginBottom: 14 }}>
-          {t('topbar.saveState.sessionHint')}
+          {t('topbar.saveState.hint')}
         </p>
         <SourcesList
           t={t}
@@ -525,6 +602,8 @@ export function EditorApp() {
           onPickVideo={pickVideo}
           onPickAudio={pickAudio}
         />
+        <hr className="divider" />
+        {backupPanel}
         <hr className="divider" />
         <button type="button" className="btn btn-block" onClick={() => setHelpOpen(true)}>
           <Icon name="help" />
@@ -554,6 +633,21 @@ export function EditorApp() {
           const file = event.target.files?.[0];
           event.target.value = '';
           if (file) void state.importVideo(file);
+        }}
+      />
+      <input
+        ref={backupInputRef}
+        type="file"
+        accept="application/json,.json"
+        className="visually-hidden"
+        data-testid="backup-input"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = '';
+          if (!file) return;
+          void persistence.importBackup(file).then((result) => {
+            setBackupMessage(result.ok ? 'backup.imported' : 'backup.importFailed');
+          });
         }}
       />
       <input
