@@ -1,0 +1,19 @@
+{
+  "name": "clip-spike-asr",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Cihaz üstü transkript uygunluk denemesi (ADR-017). Ana uygulamaya bağımlılık eklemez; kendi node_modules'ı vardır.",
+  "type": "module",
+  "scripts": {
+    "data": "node prepare-speech.mjs",
+    "models": "node mirror-models.mjs",
+    "serve": "node serve.mjs",
+    "run": "node run-asr.mjs"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}
