@@ -5,6 +5,7 @@
  * (a user's own recordings) must exercise exactly the same code paths, so the
  * driving and the assessment live here once.
  */
+import { statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -140,12 +141,59 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     // --- losing access to the source, then getting it back -----------------
     let relinked = false;
     if (setup.reloadBeforeExport) {
-      // Wait for the recipe to really be stored before throwing the page away.
-      await page
-        .getByTestId('save-state')
-        .filter({ hasText: 'Kaydedildi' })
-        .waitFor({ timeout: 30_000 })
-        .catch(() => null);
+      // Wait for THIS recipe to really be stored before throwing the page
+      // away. The "Kaydedildi" badge alone is not proof: cases share one
+      // browser context, and the badge can still describe the previous save
+      // while the debounced one for the new moments has not run yet — then the
+      // reload restores an older case's project.
+      const expected = {
+        clips: (setup.moments ?? []).length,
+        bytes: statSync(join(mediaDir, setup.video)).size,
+      };
+      // Polled with page.evaluate, not waitForFunction: waitForFunction does
+      // not await a returned Promise, and a Promise object is truthy — so it
+      // "passed" at once and the page reloaded before the save.
+      const readStored = () =>
+        page.evaluate(
+          ({ clips, bytes }) =>
+            new Promise((resolve) => {
+              const open = indexedDB.open('clip-editor');
+              open.onerror = () => resolve(false);
+              open.onsuccess = () => {
+                const db = open.result;
+                if (!db.objectStoreNames.contains('projects')) {
+                  db.close();
+                  resolve(false);
+                  return;
+                }
+                const all = db.transaction('projects', 'readonly').objectStore('projects').getAll();
+                all.onerror = () => {
+                  db.close();
+                  resolve(false);
+                };
+                all.onsuccess = () => {
+                  db.close();
+                  resolve(
+                    all.result.some(
+                      (r) =>
+                        r.edl?.clips?.length === clips &&
+                        r.bindings?.some((b) => b.kind === 'video' && b.sizeBytes === bytes),
+                    ),
+                  );
+                };
+              };
+            }),
+          expected,
+        );
+      let stored = false;
+      const storeDeadline = Date.now() + 30_000;
+      while (!stored && Date.now() < storeDeadline) {
+        stored = await readStored();
+        if (!stored) await page.waitForTimeout(250);
+      }
+      if (!stored) {
+        return { failed: true, failureText: 'proje yenilemeden önce kaydedilmedi', notes };
+      }
       await page.reload();
 
       const after = await waitForAny(page, ['relink-video', 'preview-video'], 60_000);

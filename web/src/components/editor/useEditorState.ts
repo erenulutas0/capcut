@@ -38,7 +38,7 @@ import {
   type History,
 } from '@/application/history';
 import type { AspectRatio, FitMode, MusicV1, ProjectV1 } from '@/domain/edl';
-import { WEB_LOCAL_POLICY } from '@/domain/policy';
+import { WEB_LOCAL_POLICY, exceedsTotalSourceBytes } from '@/domain/policy';
 import {
   bindingFor,
   compareBinding,
@@ -113,6 +113,14 @@ export function useEditorState() {
     async (file: File) => {
       setMediaError(null);
       setActionError(null);
+      const musicBytes = liveHandles.current.audio?.file.size ?? 0;
+      if (
+        file.size <= VIDEO_LIMITS.maxBytes &&
+        exceedsTotalSourceBytes(WEB_LOCAL_POLICY, file.size, musicBytes)
+      ) {
+        setMediaError({ scope: 'video', reason: 'total_too_large' });
+        return;
+      }
       setImporting('video');
       const outcome = await probeVideoFile(file, VIDEO_LIMITS);
       setImporting(null);
@@ -163,6 +171,14 @@ export function useEditorState() {
   const importAudio = useCallback(async (file: File) => {
     setMediaError(null);
     setActionError(null);
+    const videoBytes = liveHandles.current.video?.file.size ?? 0;
+    if (
+      file.size <= AUDIO_LIMITS.maxBytes &&
+      exceedsTotalSourceBytes(WEB_LOCAL_POLICY, file.size, videoBytes)
+    ) {
+      setMediaError({ scope: 'audio', reason: 'total_too_large' });
+      return;
+    }
     setImporting('audio');
     const outcome = await probeAudioFile(file, AUDIO_LIMITS);
     setImporting(null);

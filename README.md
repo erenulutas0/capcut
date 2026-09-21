@@ -161,5 +161,5 @@ Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
 
 **W5 — gerçek kayıtlarla doğrulama:** kullanıcı kayıtlarını
 `npm run matrix:real` ile Chromium/Chrome/Edge'de çalıştırmak, çıkan hataları
-düzeltmek ve 250 MiB / 20 dk giriş sınırının gerçek telefon kayıtları için ürün
-kararını vermek.
+düzeltmek. Web girdi sınırı 60 dk / 2 GiB (politika `2026-09-21.v2`), çıktı
+sınırı 5 dk; kalan iş HEVC, rotasyonlu ve daha büyük gerçek kayıtlar.

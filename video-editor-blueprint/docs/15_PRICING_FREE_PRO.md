@@ -7,7 +7,7 @@
 
 **Bu belge bütün fiyat/kota sayıların tek kaynağıdır.** Bunlar pazar araştırmasıyla doğrulanmış ideal fiyatlar veya yapılmış özellikler değildir. P0/P1/P2 alfa-beta sırasında ödeme kapalıdır; teslim edilen temel özellikler ücretsiz denenir. P3 satış, gerçek Pro değeri + billing/restore + hukuk + destek + maliyet kapıları geçince açılır.
 
-Politika kimliği: `2026-09-19.v1`. Limitler ürün güvenliği için başlangıç önerisidir; teknik motorların mutlak maksimum kapasitesi değildir. Daha fazla para ödemek desteklenmeyen codec/donanımı destekli yapmaz.
+Politika kimliği: `2026-09-21.v2`. Limitler ürün güvenliği için başlangıç önerisidir; teknik motorların mutlak maksimum kapasitesi değildir. Daha fazla para ödemek desteklenmeyen codec/donanımı destekli yapmaz.
 
 ## Planlar
 
@@ -23,7 +23,7 @@ Politika kimliği: `2026-09-19.v1`. Limitler ürün güvenliği için başlangı
 | Mobil yerel çıktı süresi | En çok 5 dakika/proje | En çok 30 dakika/proje |
 | Mobil toplam video kaynak süresi | En çok 20 dakika/proje | En çok 60 dakika/proje |
 | Mobil toplam seçili medya boyutu | En çok 2 GiB/proje | En çok 5 GiB/proje |
-| Web yerel limitleri | 5 dakika çıktı / 20 dakika video girdi / 250 MiB toplam | İlk destek matrisinde aynı; Pro tarayıcı sınırını artırmaz |
+| Web yerel limitleri | 5 dakika çıktı / 60 dakika video girdi / 2 GiB toplam | İlk destek matrisinde aynı; Pro tarayıcı sınırını artırmaz |
 | Tek projede kaynak/klip | En çok 5 video kaynağı, 20 klip, 1 harici müzik | İlk sürümde aynı |
 | Harici müzik dosyası | En çok 10 dakika ve 100 MiB; toplam byte limitine dahil | Aynı |
 | Kaydedilebilir çalışma profilleri | Yok; hazır temel oranlar ve ayarlar dahil | Yerelde kullanıcı profilleri; pratik disk sınırı |
@@ -33,6 +33,8 @@ Politika kimliği: `2026-09-19.v1`. Limitler ürün güvenliği için başlangı
 | Kalıcı cloud arşivi / cihazlar arası medya senkronu | Yok | Yok |
 
 GiB = 1.073.741.824 byte, MiB = 1.048.576 byte. Kullanıcı arayüzü hangi birimi gösteriyorsa gerçek kontrol aynı birimde yapılmalı. “2 GB” deyip farklı limit uygulama.
+
+**Değişiklik `2026-09-21.v2` (kurucu kararı, 21 Eylül 2026):** Web yerel girdi limiti 20 dakika / 250 MiB'den 60 dakika / 2 GiB'ye çıkarıldı; 5 dakika çıktı limiti değişmedi. Dayanak: `docs/adr/ADR-013-w4-output-to-opfs.md` ölçümü — dışa aktarmada bellek çıktı süresiyle büyür, kaynak dosya diskten okunur; 32 dakikalık 257,7 MiB gerçek kayıt 720p'de 363–434 MiB tepe bellekle tamamlandı. Yalnızca yerel web rotasını etkiler; mobil ve cloud satırları, fiyat ve ücretli haklar değişmedi. Mevcut kullanıcı haklarına etkisi: yalnızca genişleme, hiçbir proje daha önce açılabilirken kapanmaz. 2 GiB üzerinde dosya henüz ölçülmedi.
 
 Yerel limitsiz adet, aynı anda sınırsız encode demek değildir. Cihazda bir aktif encode; batch sırayla çalışır. Limitin üzerinde Pro projesi hakkı sona erince silinmez; kullanıcı proje/medyayı görebilir, Free sınırına indirip çıktı alabilir. Daha önce oluşturduğu dosyalar etkilenmez.
 

@@ -16,7 +16,10 @@ export type ProbeFailure =
   | 'unknown_duration'
   | 'timeout'
   | 'file_too_large'
-  | 'source_too_long';
+  | 'total_too_large'
+  | 'source_too_long'
+  | 'music_too_large'
+  | 'music_too_long';
 
 export interface MediaHandle extends ProbeResult {
   kind: 'video' | 'audio';
@@ -56,7 +59,7 @@ async function probeFile(
   limits: Limits,
 ): Promise<ProbeOutcome> {
   if (file.size > limits.maxBytes) {
-    return { ok: false, reason: 'file_too_large' };
+    return { ok: false, reason: kind === 'audio' ? 'music_too_large' : 'file_too_large' };
   }
 
   const objectUrl = URL.createObjectURL(file);
@@ -89,7 +92,7 @@ async function probeFile(
       }
       const durationUs = secondsToUs(seconds);
       if (durationUs > limits.maxDurationUs) {
-        finish({ ok: false, reason: 'source_too_long' });
+        finish({ ok: false, reason: kind === 'audio' ? 'music_too_long' : 'source_too_long' });
         return;
       }
 

@@ -8,7 +8,7 @@
  *   node scripts/generate-matrix-media.mjs
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, rmSync, statSync, readFileSync, writeFileSync } from 'node:fs';
+import { closeSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeFileSync, writeSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -143,22 +143,39 @@ if (wanted('M11')) {
   record('M11', 'm11-truncated.mp4', 'first 40% of M01; moov is missing');
 }
 
-// M13 — over the 250 MiB policy limit, but still a valid, readable file.
-// Noise is close to incompressible, so lossless 1080p reaches the limit in a
-// few seconds instead of minutes.
+// M13 — over the 2 GiB policy limit (doc 15 v2), but still a valid, readable
+// file. Encoding 2 GiB of real frames would take minutes, so a short clip is
+// followed by a top-level `free` box: ISO BMFF readers skip it, the file stays
+// playable, and only its size crosses the limit.
 if (wanted('M13')) {
-  ff(['-f', 'lavfi', '-i', 'color=c=black:s=1920x1080:r=30:d=4,noise=alls=100:allf=t+u',
-      ...toneIn(440, 4),
-      '-c:v', 'libx264', '-preset', 'ultrafast', '-qp', '0', '-pix_fmt', 'yuv420p',
-      ...AAC, '-shortest', p('m13-oversize.mp4')], 'M13');
-  record('M13', 'm13-oversize.mp4', 'lossless 1080p noise, intentionally over 250 MiB');
+  const clip = p('m13-clip.tmp.mp4');
+  ff([...videoIn('1280x720', 30, 4), ...toneIn(440, 4), ...H264, ...AAC, '-shortest', clip], 'M13');
+  const target = 2048 * 1048576 + 16 * 1048576;
+  const clipBytes = readFileSync(clip);
+  const freeSize = target - clipBytes.length;
+  const header = Buffer.alloc(8);
+  header.writeUInt32BE(freeSize, 0);
+  header.write('free', 4, 'ascii');
+  const fd = openSync(p('m13-oversize.mp4'), 'w');
+  writeSync(fd, clipBytes);
+  writeSync(fd, header);
+  const zeros = Buffer.alloc(64 * 1048576);
+  let left = freeSize - header.length;
+  while (left > 0) {
+    const n = Math.min(left, zeros.length);
+    writeSync(fd, zeros, 0, n);
+    left -= n;
+  }
+  closeSync(fd);
+  rmSync(clip, { force: true });
+  record('M13', 'm13-oversize.mp4', '4 s 720p clip + free box, intentionally over 2 GiB');
 }
 
 // L01 — dense 1080p content for memory measurements.
 // The test pattern above compresses so well that the encoder never spends its
 // bitrate budget, which hid the real cost of holding the output in memory.
 // Moving pattern + temporal noise makes every frame expensive, the way real
-// camera footage is. Kept under the 250 MiB input limit.
+// camera footage is. Kept far under the input limit.
 if (wanted('L01')) {
   ff(['-f', 'lavfi', '-i', 'testsrc2=size=1920x1080:rate=30:duration=20,noise=alls=28:allf=t+u',
       ...toneIn(440, 20),

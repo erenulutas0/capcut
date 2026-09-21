@@ -119,7 +119,7 @@ sonradan kullanıcı tarafından silindi; sonuçları o commit'teki destek matri
 
 **İkinci set — 1 kayıt:** H.264 854×480 24 fps, AAC 44.1 kHz, **32 dk 37 sn,
 257.7 MiB**, uzantısı `.vid` (içeriği standart MP4, `ftyp isom`).
-Mevcut politikayla üç tarayıcıda da **REFUSED**: içe aktarmada "250 MiB
+O günkü politikayla (v1) üç tarayıcıda da **REFUSED**: içe aktarmada "250 MiB
 sınırının üzerinde". Doğru ve politikaya uygun davranış.
 
 Bu koşular dört gerçek hata çıkardı, hepsi düzeltildi:
@@ -158,6 +158,28 @@ kanıtlanmış bir destek iddiası değil. Sınırı değiştirmek doc 15'te kan
 politika değişikliğidir ve kurucu kararı gerektirir (AGENTS.md); bu belge
 kendiliğinden değiştirmez.
 
+### Karar: politika `2026-09-21.v2`
+
+Kurucu, 21 Eylül 2026'da web yerel girdi sınırını **60 dk / 2 GiB** olarak seçti;
+çıktı sınırı 5 dk kaldı. Doc 15 yeni politika kimliğiyle güncellendi, kod aynı
+sayıları uyguluyor ve `tests/unit/policy.test.ts` ikisi ayrışırsa kırılıyor.
+
+Aynı değişiklikte kapatılan iki açık:
+
+- Boyut sınırı yalnızca dosya başına kontrol ediliyordu; doc 15 ise video ve
+  müziği **toplam** sınırlıyor. Artık ikisi birlikte 2 GiB'ı aşarsa içe aktarma
+  "Video ve müzik birlikte … sınırını aşıyor" diye reddediliyor.
+- Müzik dosyası 100 MiB / 10 dk sınırına takıldığında video mesajı (yanlış
+  sayı) gösteriliyordu; artık müziğe özgü mesaj var.
+
+Sonuç, gerçek politikayla (deney derlemesi değil): 32 dakikalık, 257.7 MiB `.vid`
+kaydı Chromium/Chrome/Edge'de **PASS** (SSIM 0.93–0.94, süre birebir, ses −1.1 dB).
+M13 artık 2 GiB'ı aşan geçerli bir dosya (4 sn klip + ISO BMFF `free` kutusu,
+2064 MiB) ve dört tarayıcıda da doğru mesajla reddediliyor.
+
+Ölçülmeyenler: 257.7 MiB'tan büyük gerçek bir kaynak, 32 dakikadan uzun bir kaynak.
+2 GiB / 60 dk bir ölçüm sonucu değil, kurucunun kabul ettiği bir sınır.
+
 Hâlâ çalıştırılmayanlar: HEVC/4K telefon kaydı (Chromium'da HEVC içe aktarmada
 reddediliyor), rotasyon metadata'lı gerçek bir telefon kaydı, HDR.
 
@@ -173,5 +195,5 @@ reddediliyor), rotasyon metadata'lı gerçek bir telefon kaydı, HDR.
 
 **W5 — gerçek kayıtlarla doğrulama:** kullanıcı kayıtlarını
 `node scripts/run-real-media.mjs` ile Chromium/Chrome/Edge'de çalıştırmak, çıkan
-hataları düzeltmek ve 250 MiB / 20 dk giriş sınırının gerçek telefon kayıtları
-için ürün kararını vermek.
+hataları düzeltmek. Giriş sınırı kararı verildi (60 dk / 2 GiB, yukarıda);
+kalan iş HEVC, rotasyonlu ve daha büyük gerçek kayıtlar.
