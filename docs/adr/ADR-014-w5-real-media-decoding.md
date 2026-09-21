@@ -54,18 +54,74 @@ kareyi atıp saati **bir sonraki** kareden başlatıyordu. Referans artık saati
 tutuyor. Bu, oynatıcının ve uygulamanın davranışı. iPhone kaydı: Chrome 0.937,
 Chromium 0.914. Kare sayıları birebir.
 
-### 3. Yazılım çözücüsü yanlış içerik veriyor (açık sınır)
+### 3. Yazılım çözücüsü kare atlıyordu: SPS yeniden sıralamayı az bildiriyor (düzeltildi)
 
-Chromium'da GoPro kaydı düzeltmelerden sonra da SSIM 0.757. Siyah kare yok,
-zaman damgaları Chrome'dakiyle birebir aynı ve sıralı. Ama resmin içeriği
-0.4–0.5 s kadar **geride**. Gerçek Chrome ve Edge de
-`--disable-accelerated-video-decode` ile aynı sonucu verdi (SSIM 0.804). Yani
-donanım çözmesi olmayan gerçek bir kullanıcı da etkilenebilir.
+Belirti: Chromium'da GoPro kaydı SSIM 0.757. Gerçek Chrome ve Edge
+`--disable-accelerated-video-decode` ile 0.804. Zaman damgaları doğru ve
+sıralıydı ama resim her GOP'ta biraz daha geride kalıyordu.
 
-Damgalar doğru olduğu için uygulama bu hatayı şu an **tespit edemiyor**. Destek
-matrisine bilinen sınır olarak yazıldı. Olası yollar (henüz denenmedi): aynı
-kareyi iki farklı çözme yoluyla alıp karşılaştıran bir ön kontrol, ya da yazılım
-çözmede bu tür akışları güvenilmez sayıp uyarmak.
+**Kök neden (ölçüldü).** GoPro'nun SPS'i `bitstream_restriction_flag = 1`,
+`max_num_reorder_frames = 1`, `max_dec_frame_buffering = 6` diyor
+(`ffmpeg -bsf:v trace_headers`). Oysa akış her B grubunu P, B(ref), B, B
+sırasıyla kodluyor. Her GOP da bir IDR ve ondan **önce** gösterilen üç
+B-kareyle başlıyor (POC −4, −6, −2). Konteynerin çözme ve sunma sırasından
+ölçülen gerçek derinlik 2. FFmpeg'in H.264 çözücüsü, yani Chromium, Chrome ve
+Edge'in yazılım yolu, bayrak açıkken SPS'teki sayıya güveniyor ve tamponu
+büyütmüyor. Her B grubunda POC'si en küçük kare "sıra dışı" sayılıp atılıyor.
+
+Kanıt: WebCodecs `VideoDecoder`'ı demux edilmiş paketlerle doğrudan süren
+bağımsız bir test sayfası kullanıldı. İlk 200 paket girdi. Chromium, yazılım
+çözmeli Chrome ve yazılım çözmeli Edge'de 150 kare çıktı: tam 50 kare (sunum
+sırasında her 4. kare) düştü, hata bildirilmedi. Chrome'un donanım çözücüsü
+200 kare verdi ama sunum sırasına dizmeden. `optimizeForLatency` ve
+`prefer-software` sonucu değiştirmedi. mediabunny (1.58.1) Chromium'da her
+çıkan kareye sıradaki en küçük girdi damgasını veriyor. Böylece her atılan
+kare, sonraki bütün resimleri bir kare geriye kaydırdı. Damgalar kusursuz
+göründü, resim gittikçe gecikti. Dosyanın tamamında ffmpeg karelerine göre
+ölçülen kayma sona doğru 80 kareyi aştı.
+
+Karar: dışa aktarmadan önce worker, H.264 izinin paket sırasını yalnızca
+metadata ile tarıyor (baştan ve her kesimin başındaki anahtar kareden
+240'ar paket). Bu tarama konteynerin gerçek yeniden sıralama derinliğini
+ölçüyor (`avcReorder.ts`). Derinlik SPS'in bildirdiğinden büyükse avcC'deki
+SPS'in yalnızca iki alanı (`max_num_reorder_frames`,
+`max_dec_frame_buffering`) düzeltilip çözücüye veriliyor. Hiçbir şey yeniden
+kodlanmıyor. Düzeltilmiş SPS ffmpeg ile doğrulandı: öteki bütün alanlar
+aynı, yalnızca 1→2. Aynı test sayfasında düzeltmeyle üç yazılım yolu da
+200/200 kare verdi, sıralı ve donanım çözücüsüyle birebir aynı içerikle.
+Yan etki olarak donanım yolu da artık sıralı çıkıyor.
+
+İki koruma:
+
+- Derinlik, B deseni tekrarladığı için en az 3 karede görülmüş olmalı.
+  Sentetik M06 (üç parçanın `concat` ile birleştirilmesi) birleşme yerinde tek
+  bir bozuk damga taşıyor. İlk sürüm bunu 4 derinlik sanıp dosyayı reddetti.
+  Bu yanlış pozitif matriste yakalandı ve düzeltildi.
+- Paket içinde (in-band) SPS taşıyan akışta avcC düzeltmesi tutmuyor. Ölçüldü:
+  FFmpeg her anahtar karede paketteki SPS'i yeniden okuyor ve kareler yine
+  düşüyor. Düzeltme gerekip ilgili anahtar paketinde az bildiren bir SPS
+  varsa dışa aktarma `source_reorder_unfixable` ile açıkça duruyor.
+
+Maliyet: tarama 1–15 ms (GoPro 5 ms, 270 MiB'lık `.vid` 14 ms). Reorder
+tamponu bir kare uzuyor. Dışa aktarma süresine ölçülebilir bir etkisi yok.
+
+Sonuç: GoPro (R07) Chromium'da 0.969, Chrome ve Edge'de donanım ve yazılım
+çözmede 0.974 (önce 0.947 / 0.804). Düzeltme diğer 7 gerçek H.264 kaydında
+tetiklenmiyor. Onlarda SPS doğru.
+
+Kalan sınırlar: taranan pencerelerin dışında derinleşen bir desen görülmez.
+HEVC için benzer bir kontrol yok. mediabunny'nin damga yeniden atama
+davranışı yüzünden, başka bir sebeple kare atan bir çözücü hâlâ damgalardan
+tespit edilemez.
+
+**Samsung S21 (sonradan eklenen `web-samsung-s21-h264-60fps-rot90.mp4`, R15)
+bu sınıftan değil.** B-kare yok (derinlik 0), düzeltme devreye girmiyor.
+Chromium'un çözdüğü 264 karenin 264'ü ffmpeg'in karesiyle aynı yerde.
+Çıktı referansla kare kare hizalı: ±1 kare kaydırınca SSIM 0.825'ten 0.61'e
+düşüyor. Düşük skor kodlamadan geliyor. Çok ayrıntılı 1080p60 bir kayıt bu.
+x264 bile Chrome'un bit hızında (3.8 Mbit/s) referansa karşı yalnızca 0.856
+alıyor. Chromium'un yazılım kodlayıcısı 0.825 veriyor, Chrome ve Edge 0.861.
+Yani bu, eşik ve bit hızı konusu (açık). Kare çözme hatası değil.
 
 ### 4. Koşucu kontrollü durdurmayı PASS sayıyordu (düzeltildi)
 
@@ -79,7 +135,11 @@ ama çalışan bir dışa aktarma değil.
 |---|---|---|---|
 | Chrome | 8 | 0 | 0 |
 | Edge | 8 | 0 | 0 |
-| Chromium (Playwright) | 7 | 0 | 1 (R07, yazılım çözücü) |
+| Chromium (Playwright) | 7 → **8** | 0 | 1 → **0** (R07 düzeltildi, §3) |
+| Chrome / Edge, `--sw-decode` | 8 | 0 | 0 (R07 önce 0.804, şimdi 0.974) |
+
+`run-real-media.mjs --sw-decode` Chromium ailesini GPU video çözücüsü olmadan
+başlatıyor ve sonucu `real-media-<tarayıcı>-swdecode.json` olarak yazıyor.
 
 ## Hâlâ sınanmayanlar
 

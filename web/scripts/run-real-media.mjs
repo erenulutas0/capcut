@@ -13,6 +13,7 @@
  *
  *   node scripts/run-real-media.mjs                       # tests/media/real
  *   node scripts/run-real-media.mjs --dir=D:/telefon-videolari --browser=chrome
+ *   node scripts/run-real-media.mjs --browser=chrome --sw-decode   # no GPU decoder
  */
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, extname, isAbsolute, join, resolve } from 'node:path';
@@ -65,12 +66,20 @@ const mediaDir = isAbsolute(dirArg) ? dirArg : resolve(process.cwd(), dirArg);
 const browserName = argValue('browser', 'chromium');
 /** Keep the exported pieces of the user's footage for inspection. Off by default. */
 const keepArtefacts = args.includes('--keep');
+/**
+ * Launch Chromium-family browsers without the GPU video decoder. A user
+ * without hardware decoding gets FFmpeg's software H.264 decoder, which
+ * behaved differently on real camera footage (ADR-014 §3).
+ */
+const swDecode = args.includes('--sw-decode');
+const runLabel = swDecode ? `${browserName}-swdecode` : browserName;
+const chromiumArgs = swDecode ? ['--disable-accelerated-video-decode'] : [];
 
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.m4v', '.webm', '.mkv', '.3gp']);
 const LAUNCHERS = {
-  chromium: () => chromium.launch(),
-  chrome: () => chromium.launch({ channel: 'chrome' }),
-  edge: () => chromium.launch({ channel: 'msedge' }),
+  chromium: () => chromium.launch({ args: chromiumArgs }),
+  chrome: () => chromium.launch({ channel: 'chrome', args: chromiumArgs }),
+  edge: () => chromium.launch({ channel: 'msedge', args: chromiumArgs }),
   firefox: () => firefox.launch(),
   webkit: () => webkit.launch(),
 };
@@ -198,7 +207,7 @@ const browser = await LAUNCHERS[browserName]();
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
 const results = [];
 
-console.log(`${files.length} kayıt, tarayıcı: ${browserName}, sunucu: ${baseURL}\n`);
+console.log(`${files.length} kayıt, tarayıcı: ${runLabel}, sunucu: ${baseURL}\n`);
 
 for (const [index, fileName] of files.entries()) {
   const id = `R${String(index + 1).padStart(2, '0')}`;
@@ -242,7 +251,7 @@ for (const [index, fileName] of files.entries()) {
   const page = await context.newPage();
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
-  const artefactPath = join(outDir, `${id}-${browserName}.mp4`);
+  const artefactPath = join(outDir, `${id}-${runLabel}.mp4`);
 
   let record;
   try {
@@ -326,6 +335,7 @@ await browser.close();
 
 const summary = {
   browser: browserName,
+  softwareDecodeOnly: swDecode,
   ranAt: new Date().toISOString(),
   files: results.length,
   totals: {
@@ -336,9 +346,9 @@ const summary = {
   },
   results,
 };
-writeFileSync(join(outDir, `real-media-${browserName}.json`), `${JSON.stringify(summary, null, 2)}\n`);
+writeFileSync(join(outDir, `real-media-${runLabel}.json`), `${JSON.stringify(summary, null, 2)}\n`);
 console.log(
-  `\n${browserName}: ${summary.totals.pass} PASS, ${summary.totals.refused} REFUSED, ` +
+  `\n${runLabel}: ${summary.totals.pass} PASS,${summary.totals.refused} REFUSED, ` +
     `${summary.totals.fail} FAIL, ${summary.totals.error} ERROR`,
 );
 process.exit(summary.totals.fail + summary.totals.error === 0 ? 0 : 1);

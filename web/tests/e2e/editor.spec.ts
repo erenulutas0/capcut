@@ -200,12 +200,12 @@ test.describe('editor', () => {
   });
 
   test('nothing is sent off the machine', async ({ page, baseURL }) => {
-    // The app's own origin follows E2E_PORT (playwright.config.ts).
+    // The app's own origin is whatever port this run's server uses (E2E_PORT).
     const ownOrigin = new URL(baseURL ?? 'http://127.0.0.1:3100').origin;
     const external: string[] = [];
     page.on('request', (request) => {
       const url = request.url();
-      if (!url.startsWith(ownOrigin) && !url.startsWith('blob:') && !url.startsWith('data:')) {
+      if (!url.startsWith(`${ownOrigin}/`) && !url.startsWith('blob:') && !url.startsWith('data:')) {
         external.push(url);
       }
     });

@@ -20,6 +20,7 @@ import {
   BufferSource,
   BufferTarget,
   CanvasSource,
+  EncodedPacketSink,
   Input,
   Mp4OutputFormat,
   Output,
@@ -28,6 +29,7 @@ import {
   canEncodeAudio,
   canEncodeVideo,
   type InputAudioTrack,
+  type InputVideoTrack,
 } from 'mediabunny';
 
 import {
@@ -46,6 +48,12 @@ import {
 } from '@/domain/renderPlan';
 import { US_PER_SECOND } from '@/domain/time';
 import { AudioStreamReader } from './audioStream';
+import {
+  avcLengthSize,
+  inBandSpsUnderstates,
+  raiseAvcReorderDepth,
+  reorderDepth,
+} from './avcReorder';
 import { pickFrames } from './framePicker';
 import { removeExportEntry, sweepExportEntries } from './opfsEntries';
 import { prepareOutput } from './outputSink';
@@ -217,6 +225,82 @@ async function runSelfTest(config: EncoderProbeConfig): Promise<CapabilityStageR
   return result;
 }
 
+/* ------------------------------------------------------- H.264 reorder fix */
+
+/** Packets whose order is measured from each place the export reads. */
+const REORDER_SCAN_PACKETS = 240;
+
+function bytesOf(source: AllowSharedBufferSource): Uint8Array {
+  // Not `instanceof SharedArrayBuffer`: that global does not exist on pages
+  // without cross-origin isolation, and referencing it throws.
+  return ArrayBuffer.isView(source)
+    ? new Uint8Array(source.buffer, source.byteOffset, source.byteLength)
+    : new Uint8Array(source);
+}
+
+/**
+ * Makes the decoder wait for as many reordered frames as the file really has.
+ *
+ * Some cameras (a GoPro/Ambarella file, ADR-014 §3) declare fewer reorder
+ * frames in the SPS than their B-frame pattern needs. FFmpeg — the software
+ * H.264 decoder of Chromium, Chrome and Edge — trusts that number and silently
+ * drops about one frame per B-group (25% of that file). mediabunny then hands
+ * every delivered picture the next pending timestamp, so the export looked
+ * perfectly timed while its pictures fell further behind at every GOP.
+ *
+ * The container's own decode/presentation order is the ground truth: when it
+ * shows deeper reordering than the SPS admits, the decoder is configured with
+ * a corrected SPS. Streams that are already truthful are left untouched.
+ */
+async function correctAvcReorder(
+  track: InputVideoTrack,
+  segments: readonly RenderSegment[],
+): Promise<void> {
+  if ((await track.getCodec()) !== 'avc') return;
+  const config = await track.getDecoderConfig();
+  if (!config?.description) return;
+  const description = bytesOf(config.description);
+
+  const packets = new EncodedPacketSink(track);
+  const metadataOnly = { metadataOnly: true };
+  const starts = [await packets.getFirstPacket(metadataOnly)];
+  for (const segment of segments) {
+    starts.push(await packets.getKeyPacket(segment.sourceInUs / US_PER_SECOND, metadataOnly));
+  }
+
+  let depth = 0;
+  for (const start of starts) {
+    if (!start) continue;
+    const times: number[] = [];
+    for await (const packet of packets.packets(start, undefined, metadataOnly)) {
+      times.push(packet.timestamp);
+      if (times.length >= REORDER_SCAN_PACKETS) break;
+    }
+    depth = Math.max(depth, reorderDepth(times));
+  }
+
+  const corrected = raiseAvcReorderDepth(description, depth);
+  if (!corrected) return;
+
+  // A parameter set repeated inside the packets overrides the corrected one
+  // at every keyframe (measured), so the drops would come back. Such a file is
+  // refused rather than exported with pictures that lag their timestamps.
+  const lengthSize = avcLengthSize(description);
+  for (const segment of segments) {
+    const key = await packets.getKeyPacket(segment.sourceInUs / US_PER_SECOND);
+    if (key && inBandSpsUnderstates(key.data, lengthSize, depth)) {
+      throw new ExportFailure('source_reorder_unfixable');
+    }
+  }
+
+  // VideoSampleSink reads the decoder config through this public method each
+  // time it builds a decoder; overriding it on this one track instance is the
+  // narrowest way to hand the corrected SPS to the decoder mediabunny creates
+  // (its own browser workarounds still run on top of it).
+  const correctedConfig: VideoDecoderConfig = { ...config, description: corrected };
+  track.getDecoderConfig = () => Promise.resolve(correctedConfig);
+}
+
 /* ------------------------------------------------------------------- export */
 
 interface AudioContextSources {
@@ -342,6 +426,7 @@ async function runExport(
   const videoTrack = await videoInput.getPrimaryVideoTrack();
   if (!videoTrack) throw new ExportFailure('no_video_track');
   if (!(await videoTrack.canDecode())) throw new ExportFailure('source_undecodable');
+  await correctAvcReorder(videoTrack, plan.segments);
 
   const sourceAudioTrack = await videoInput.getPrimaryAudioTrack();
   const sourceAudioUsable =

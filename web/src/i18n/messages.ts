@@ -236,6 +236,8 @@ export const tr = {
   'export.fail.no_frames_decoded': 'Kaynaktan hiç kare çözülemedi.',
   'export.fail.source_frames_missing':
     'Bu tarayıcı videonun bazı karelerini çözemedi. Eksik karelerle bozuk bir dosya üretmek yerine durduruldu. Chrome veya Edge ile dene.',
+  'export.fail.source_reorder_unfixable':
+    'Bu video kare sırasını olduğundan az bildiriyor ve bu tarayıcının çözücüsü bu yüzden kare atlıyor. Görüntüsü sesinden geri kalan bir dosya üretmek yerine durduruldu.',
   'export.fail.output_probe_failed': 'Oluşan dosya yeniden açılamadı; başarılı sayılmadı.',
   'export.fail.output_duration_mismatch': 'Oluşan dosyanın süresi beklenen süreyle uyuşmadı.',
   'export.fail.out_of_memory': 'Tarayıcının belleği yetmedi. Daha kısa bir çıktı dene.',
@@ -553,6 +555,8 @@ export const en: Record<MessageKey, string> = {
   'export.fail.no_frames_decoded': 'No frames could be decoded from the source.',
   'export.fail.source_frames_missing':
     'This browser could not decode some frames of the video. It stopped instead of producing a broken file. Try Chrome or Edge.',
+  'export.fail.source_reorder_unfixable':
+    'This video understates its frame reordering, so this browser’s decoder skips frames. It stopped instead of producing a file whose picture lags behind its sound.',
   'export.fail.output_probe_failed':
     'The produced file could not be re-opened, so it does not count as success.',
   'export.fail.output_duration_mismatch': 'The produced file did not have the expected duration.',
