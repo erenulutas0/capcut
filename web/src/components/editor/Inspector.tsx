@@ -8,6 +8,7 @@ import type { AspectRatio, ClipV1, FitMode, MusicV1, Project } from '@/domain/ed
 import { formatTimecode, parseTimecode, US_PER_SECOND } from '@/domain/time';
 import { MAX_ZOOM, MIN_ZOOM } from '@/domain/transform';
 import type { MessageKey } from '@/i18n/messages';
+import { onTablistKeyDown } from './tablist';
 
 export type InspectorTab = 'frame' | 'audio' | 'captions';
 
@@ -420,12 +421,20 @@ function TimeFieldInline({
 export function Inspector(props: Props) {
   const { t, tab, onTabChange } = props;
   return (
-    <aside className="panel panel-right" aria-label={t('tabs.frame')}>
-      <div className="segmented" role="tablist" aria-label={t('tabs.frame')}>
+    <aside className="panel panel-right" aria-label={t('a11y.inspector')}>
+      <div
+        className="segmented"
+        role="tablist"
+        aria-label={t('a11y.inspector')}
+        onKeyDown={onTablistKeyDown}
+      >
         <button
           type="button"
           role="tab"
+          id="inspector-tab-frame"
           aria-selected={tab === 'frame'}
+          aria-controls="inspector-panel"
+          tabIndex={tab === 'frame' ? 0 : -1}
           onClick={() => onTabChange('frame')}
         >
           <Icon name="frame" size={16} />
@@ -434,7 +443,10 @@ export function Inspector(props: Props) {
         <button
           type="button"
           role="tab"
+          id="inspector-tab-audio"
           aria-selected={tab === 'audio'}
+          aria-controls="inspector-panel"
+          tabIndex={tab === 'audio' ? 0 : -1}
           onClick={() => onTabChange('audio')}
         >
           <Icon name="music" size={16} />
@@ -443,7 +455,10 @@ export function Inspector(props: Props) {
         <button
           type="button"
           role="tab"
+          id="inspector-tab-captions"
           aria-selected={tab === 'captions'}
+          aria-controls="inspector-panel"
+          tabIndex={tab === 'captions' ? 0 : -1}
           onClick={() => onTabChange('captions')}
           data-testid="inspector-tab-captions"
         >
@@ -451,7 +466,12 @@ export function Inspector(props: Props) {
           {t('captions.tab')}
         </button>
       </div>
-      <div className="panel-scroll">
+      <div
+        className="panel-scroll"
+        role="tabpanel"
+        id="inspector-panel"
+        aria-labelledby={`inspector-tab-${tab}`}
+      >
         {tab === 'frame' ? (
           <FramePanel {...props} />
         ) : tab === 'audio' ? (

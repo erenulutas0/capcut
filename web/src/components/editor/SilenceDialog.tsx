@@ -493,7 +493,10 @@ export function SilenceDialog({
                 </div>
               ) : null}
 
-              <section className="silence-summary" aria-labelledby="silence-summary-title" aria-live="polite" id="silence-summary">
+              {/* Not live: every checkbox would re-read the whole summary. The
+                  status line above announces the count, and the apply button
+                  points here with aria-describedby. */}
+              <section className="silence-summary" aria-labelledby="silence-summary-title" id="silence-summary">
                 <h3 id="silence-summary-title" className="field-label">
                   {t('silence.summary')}
                 </h3>

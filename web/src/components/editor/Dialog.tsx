@@ -14,6 +14,30 @@ const openModals: HTMLElement[] = [];
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/**
+ * The elements Tab really stops at, in order. The selector alone over-counts:
+ * a hidden file input (tabIndex -1) or an unchecked radio in a group that has
+ * a checked one matches it but is skipped by Tab, and when such an element was
+ * taken as "last", Tab from the real last control left the dialog.
+ */
+function tabbables(container: HTMLElement): HTMLElement[] {
+  const checkedGroups = new Set<string>();
+  const firstInGroup = new Set<string>();
+  for (const radio of Array.from(container.querySelectorAll<HTMLInputElement>('input[type="radio"]'))) {
+    if (radio.checked && radio.name) checkedGroups.add(radio.name);
+  }
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((element) => {
+    if (element.tabIndex < 0) return false;
+    if (element.getClientRects().length === 0) return false;
+    if (element instanceof HTMLInputElement && element.type === 'radio' && element.name) {
+      if (checkedGroups.has(element.name)) return element.checked;
+      if (firstInGroup.has(element.name)) return false;
+      firstInGroup.add(element.name);
+    }
+    return true;
+  });
+}
+
 interface ModalShellProps {
   open: boolean;
   onClose: () => void;
@@ -52,10 +76,13 @@ function ModalShell({
 
     restoreRef.current = document.activeElement as HTMLElement | null;
     const container = containerRef.current;
-    const first = container?.querySelector<HTMLElement>(FOCUSABLE);
+    // Registered before focus moves in: the focus guard of a sheet underneath
+    // must already see this dialog as the top one, or it would pull focus back.
+    if (container) openModals.push(container);
+    const first = container ? tabbables(container)[0] : undefined;
     (first ?? container)?.focus();
 
-    if (container) openModals.push(container);
+    let backwards = false;
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (container && openModals[openModals.length - 1] !== container) return;
@@ -65,8 +92,12 @@ function ModalShell({
         return;
       }
       if (event.key !== 'Tab' || !container) return;
-      const items = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (items.length === 0) return;
+      backwards = event.shiftKey;
+      const items = tabbables(container);
+      if (items.length === 0) {
+        event.preventDefault();
+        return;
+      }
       const firstItem = items[0];
       const lastItem = items[items.length - 1];
       if (!firstItem || !lastItem) return;
@@ -80,9 +111,21 @@ function ModalShell({
       }
     };
 
+    // Backstop for anything the Tab handling cannot foresee (a control that
+    // appears or disappears between key presses): focus that lands outside
+    // the top modal is put back at the edge it left from.
+    const onFocusIn = (event: FocusEvent) => {
+      if (!container || openModals[openModals.length - 1] !== container) return;
+      if (event.target instanceof Node && container.contains(event.target)) return;
+      const items = tabbables(container);
+      ((backwards ? items[items.length - 1] : items[0]) ?? container).focus();
+    };
+
     document.addEventListener('keydown', onKeyDown, true);
+    document.addEventListener('focusin', onFocusIn);
     return () => {
       document.removeEventListener('keydown', onKeyDown, true);
+      document.removeEventListener('focusin', onFocusIn);
       const at = container ? openModals.lastIndexOf(container) : -1;
       if (at >= 0) openModals.splice(at, 1);
       restoreRef.current?.focus();
