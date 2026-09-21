@@ -89,7 +89,29 @@ Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer�
 
 ## Gerçek kayıtlar
 
-**NOT_RUN.** Gerçek telefon/kamera kayıtlarıyla çalıştırma henüz yapılmadı. Yukarıdaki bütün satırlar ffmpeg ile üretilmiş sentetik dosyalardan gelir. Çalıştırmak için kayıtları `web/tests/media/real/` klasörüne koyup `node scripts/run-real-media.mjs` komutunu kullanın.
+### Chromium (Playwright) — 3 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 12:58 UTC)
+
+| # | Durum | Codec | Boyut | Rotasyon | fps | Süre | Dosya | Renk | Ses | SSIM |
+|---|---|---|---|---|---|---|---|---|---|---|
+| R01 | PASS | h264 | 592x1280 | 0° | 40.588 (VFR?) | 29.5 s | 3.9 MiB | — | aac | 0.9123 |
+| R02 | PASS | h264 | 480x724 | 0° | 29.934 | 45.1 s | 1.7 MiB | — | aac | 0.972 |
+| R03 | PASS | h264 | 1080x1920 | 0° | 30 | 14.2 s | 1.3 MiB | bt709 | aac | 0.995 |
+
+### Google Chrome — 3 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 12:58 UTC)
+
+| # | Durum | Codec | Boyut | Rotasyon | fps | Süre | Dosya | Renk | Ses | SSIM |
+|---|---|---|---|---|---|---|---|---|---|---|
+| R01 | PASS | h264 | 592x1280 | 0° | 40.588 (VFR?) | 29.5 s | 3.9 MiB | — | aac | 0.9254 |
+| R02 | PASS | h264 | 480x724 | 0° | 29.934 | 45.1 s | 1.7 MiB | — | aac | 0.976 |
+| R03 | PASS | h264 | 1080x1920 | 0° | 30 | 14.2 s | 1.3 MiB | bt709 | aac | 0.997 |
+
+### Microsoft Edge — 3 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 12:58 UTC)
+
+| # | Durum | Codec | Boyut | Rotasyon | fps | Süre | Dosya | Renk | Ses | SSIM |
+|---|---|---|---|---|---|---|---|---|---|---|
+| R01 | PASS | h264 | 592x1280 | 0° | 40.588 (VFR?) | 29.5 s | 3.9 MiB | — | aac | 0.9254 |
+| R02 | PASS | h264 | 480x724 | 0° | 29.934 | 45.1 s | 1.7 MiB | — | aac | 0.976 |
+| R03 | PASS | h264 | 1080x1920 | 0° | 30 | 14.2 s | 1.3 MiB | bt709 | aac | 0.997 |
 
 ## Bu matrisin kapsamadıkları
 

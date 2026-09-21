@@ -24,7 +24,36 @@ import { ffprobeJson, runFfmpeg } from './lib/media-measure.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const outDir = join(root, 'matrix-results');
-const baseURL = process.env.SHOT_URL ?? 'http://127.0.0.1:3100';
+/**
+ * Finds a running editor instead of assuming one port: the production server
+ * used by the other scripts (:3100) or `npm run dev` (:3000). Without this,
+ * every file failed with the same connection error and no hint why.
+ */
+async function findServer() {
+  const candidates = process.env.SHOT_URL
+    ? [process.env.SHOT_URL]
+    : ['http://127.0.0.1:3100', 'http://127.0.0.1:3000'];
+  for (const url of candidates) {
+    try {
+      const response = await fetch(`${url}/editor`, { signal: AbortSignal.timeout(5000) });
+      if (response.ok) return url;
+    } catch {
+      // Not running here; try the next one.
+    }
+  }
+  return null;
+}
+
+const baseURL = await findServer();
+if (!baseURL) {
+  console.error(
+    'Editör sunucusu bulunamadı (3100 ve 3000 portlarına bakıldı).\n' +
+      'Ayrı bir terminalde şunlardan birini çalıştırıp açık bırak, sonra bu komutu tekrarla:\n' +
+      '  cd E:\\capcut_better\\web && npm run dev\n' +
+      '  cd E:\\capcut_better\\web && npm run build && npx next start -p 3100',
+  );
+  process.exit(2);
+}
 
 const args = process.argv.slice(2);
 const argValue = (name, fallback) => {
@@ -146,7 +175,7 @@ const browser = await LAUNCHERS[browserName]();
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
 const results = [];
 
-console.log(`${files.length} kayıt, tarayıcı: ${browserName}\n`);
+console.log(`${files.length} kayıt, tarayıcı: ${browserName}, sunucu: ${baseURL}\n`);
 
 for (const [index, fileName] of files.entries()) {
   const id = `R${String(index + 1).padStart(2, '0')}`;
@@ -203,11 +232,25 @@ for (const [index, fileName] of files.entries()) {
       const source = sourceRangesRmsDb(path, trims);
       const produced = outputRmsDb(artefactPath);
       measured.audioRmsDb = { source: Number(source.toFixed(1)), output: Number(produced.toFixed(1)) };
-      checks.push({
-        label: 'ses seviyesi kaynağa yakın (±3 dB, güvenlik kazancı dahil)',
-        ok: Number.isFinite(source) && Number.isFinite(produced) && Math.abs(produced - source) <= 3,
-        detail: `kaynak ${source.toFixed(1)} dB, çıktı ${produced.toFixed(1)} dB`,
-      });
+      // A track can exist and still be digital silence in the chosen ranges
+      // (found on a real recording). Then the right result is silence too;
+      // comparing -Infinity with -Infinity would otherwise yield NaN.
+      const SILENT_DB = -90;
+      const sourceSilent = !Number.isFinite(source) || source < SILENT_DB;
+      const outputSilent = !Number.isFinite(produced) || produced < SILENT_DB;
+      checks.push(
+        sourceSilent
+          ? {
+              label: 'kaynak bu aralıklarda sessiz; çıktı da sessiz',
+              ok: outputSilent,
+              detail: `kaynak ${source.toFixed(1)} dB, çıktı ${produced.toFixed(1)} dB`,
+            }
+          : {
+              label: 'ses seviyesi kaynağa yakın (±3 dB, güvenlik kazancı dahil)',
+              ok: Number.isFinite(produced) && Math.abs(produced - source) <= 3,
+              detail: `kaynak ${source.toFixed(1)} dB, çıktı ${produced.toFixed(1)} dB`,
+            },
+      );
     }
     checks.push({ label: 'sayfada JS hatası yok', ok: pageErrors.length === 0, detail: pageErrors.join(' | ') });
 
