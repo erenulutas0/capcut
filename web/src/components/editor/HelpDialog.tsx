@@ -1,5 +1,6 @@
 'use client';
 
+import { withBasePath } from '@/basePath';
 import { Icon } from '@/components/Icon';
 import { Dialog } from './Dialog';
 import type { MessageKey } from '@/i18n/messages';
@@ -68,7 +69,7 @@ export function HelpDialog({
       <p className="field-label">{t('support.section')}</p>
       <div className="help-support">
         {/* A new tab: leaving the editor would close the files opened in it. */}
-        <a className="btn" href="/gizlilik" target="_blank" rel="noopener" data-testid="help-privacy-link">
+        <a className="btn" href={withBasePath('/gizlilik')} target="_blank" rel="noopener" data-testid="help-privacy-link">
           <Icon name="shield" />
           {t('privacy.linkNewTab')}
         </a>

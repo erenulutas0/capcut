@@ -101,7 +101,7 @@ export const tr = {
   'privacy.network.body':
     'Tarayıcın uygulamanın kendi dosyalarını (sayfalar, kod, stil dosyaları, altyazı yazı tipi) bu siteyi sunan sunucudan indirir. Her web sitesinde olduğu gibi sunucu bu sırada IP adresini, istek zamanını ve tarayıcı bilgisini (user agent) görebilir. Başka bir adrese istek yapılmaz; bunu her sürümde otomatik bir testle kontrol ediyoruz. Uygulama sunucuya dosya veya form göndermez.',
   'privacy.network.host': 'Barındırma sağlayıcısı',
-  'privacy.network.logs': 'Sunucu erişim kayıtlarının saklanma süresi',
+  'privacy.network.logs': 'Sunucu erişim kayıtları (kim tutar, ne kadar süre: sağlayıcının kendi bildirimi)',
 
   'privacy.stored.title': 'Bu tarayıcıda saklananlar',
   'privacy.stored.what': 'Ne',
@@ -181,6 +181,9 @@ export const tr = {
   'support.download': 'Tanı dosyasını indir',
   'support.where': 'Nereye gönderilir',
   'support.contact': 'İletişim adresi: {contact}',
+  'support.openIssue': 'GitHub Issues’ta yeni kayıt aç',
+  'support.publicWarning':
+    'GitHub Issues herkese açıktır: yazdığın her şeyi herkes görebilir. Video, ekran görüntüsünde yüz, ad veya e-posta gibi kişisel bilgi ekleme. Tanı dosyası bunları içermez.',
   'support.contactMissing':
     'İletişim adresi henüz belirlenmedi — dosyayı seni betaya davet eden kişiye gönder.',
   'support.also': 'Ne yaparken olduğunu birkaç cümleyle yazman yeterli. Videonu göndermek zorunda değilsin.',
@@ -788,7 +791,7 @@ export const en: Record<MessageKey, string> = {
   'privacy.network.body':
     'Your browser downloads the app’s own files (pages, code, stylesheets, the caption typeface) from the server that hosts this site. As with any website, that server can see your IP address, the time of the request and your browser identification (user agent). No other address is contacted; an automated test checks this for every version. The app does not send files or forms to the server.',
   'privacy.network.host': 'Hosting provider',
-  'privacy.network.logs': 'Retention of server access logs',
+  'privacy.network.logs': 'Server access logs (who keeps them and for how long: the provider’s own statement)',
 
   'privacy.stored.title': 'What is kept in this browser',
   'privacy.stored.what': 'What',
@@ -868,6 +871,9 @@ export const en: Record<MessageKey, string> = {
   'support.download': 'Download the diagnostics file',
   'support.where': 'Where to send it',
   'support.contact': 'Contact: {contact}',
+  'support.openIssue': 'Open a new issue on GitHub',
+  'support.publicWarning':
+    'GitHub Issues are public: anyone can read what you write. Do not attach videos, faces in screenshots, names, e-mail addresses or other personal details. The diagnostics file contains none of these.',
   'support.contactMissing':
     'No contact address has been decided yet — send the file to the person who invited you to the beta.',
   'support.also': 'A few sentences on what you were doing are enough. You do not have to send your video.',

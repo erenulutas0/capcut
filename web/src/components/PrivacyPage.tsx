@@ -67,6 +67,10 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
   const t = translator(locale);
   const undecided = t('privacy.undecided');
   const supportContact = (process.env.NEXT_PUBLIC_SUPPORT_CONTACT ?? '').trim();
+  // Set by the deploy build only (language-neutral values: a name and a URL).
+  // Without them the page keeps saying "belirlenmedi" instead of guessing.
+  const hostingProvider = (process.env.NEXT_PUBLIC_HOSTING_PROVIDER ?? '').trim();
+  const hostingLogPolicy = (process.env.NEXT_PUBLIC_HOSTING_LOG_POLICY ?? '').trim();
   const updated = t('privacy.updated')
     .replace('{version}', process.env.NEXT_PUBLIC_APP_VERSION ?? 'dev')
     .replace('{commit}', process.env.NEXT_PUBLIC_GIT_COMMIT ?? 'unknown');
@@ -78,8 +82,8 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
     ['privacy.controller.basis', null],
     ['privacy.controller.rights', null],
     ['privacy.controller.support', supportContact || null],
-    ['privacy.network.host', null],
-    ['privacy.network.logs', null],
+    ['privacy.network.host', hostingProvider || null],
+    ['privacy.network.logs', hostingLogPolicy || null],
   ];
 
   return (
@@ -89,6 +93,9 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
           <Wordmark />
         </Link>
         <Link
+          // No prefetch: Next 16's static export writes nested segment payloads
+          // under a different name than the prefetcher asks for (404s on Pages).
+          prefetch={false}
           className="btn-ghost-light"
           href={locale === 'tr' ? '/gizlilik/en' : '/gizlilik'}
           hrefLang={locale === 'tr' ? 'en' : 'tr'}

@@ -17,6 +17,7 @@ import {
   type MeasureText,
 } from '../domain/captionLayout';
 import type { CaptionPreset, CaptionStyleV2 } from '../domain/edl';
+import { BASE_PATH } from '../basePath';
 
 export const CAPTION_FONT_FAMILY = 'Clip Caption';
 
@@ -36,7 +37,8 @@ const FACES = [
   },
 ] as const;
 
-export const CAPTION_FONT_PATH = '/fonts/caption/';
+/** Includes the deploy sub-path (GitHub Pages serves the app under /capcut). */
+export const CAPTION_FONT_PATH = `${BASE_PATH}/fonts/caption/`;
 
 const loaded = new WeakMap<FontFaceSet, Promise<boolean>>();
 

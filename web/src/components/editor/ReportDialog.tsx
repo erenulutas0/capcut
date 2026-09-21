@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { withBasePath } from '@/basePath';
 import { Icon } from '@/components/Icon';
 import { ExportLogPanel } from '@/components/ExportLogPanel';
 import { SUPPORT_CONTACT, collectDiagnostics } from '@/adapters/diagnostics';
@@ -9,6 +10,14 @@ import { diagnosticsFileName, type DiagnosticsReport } from '@/domain/diagnostic
 import type { Project } from '@/domain/edl';
 import type { MessageKey } from '@/i18n/messages';
 import { Dialog } from './Dialog';
+
+/** Only an https address becomes a link; anything else stays plain text. */
+const SUPPORT_IS_URL = /^https:\/\/[^\s]+$/.test(SUPPORT_CONTACT);
+/**
+ * GitHub issues are world-readable. The user must hear that before writing
+ * anything, not discover it afterwards.
+ */
+const SUPPORT_IS_PUBLIC = /^https:\/\/github\.com\/[^/]+\/[^/]+\/issues/.test(SUPPORT_CONTACT);
 
 const CONTAINS: MessageKey[] = [
   'support.contains.app',
@@ -120,6 +129,19 @@ export function ReportDialog({
           ? t('support.contact').replace('{contact}', () => SUPPORT_CONTACT)
           : t('support.contactMissing')}
       </p>
+      {SUPPORT_IS_URL ? (
+        <p className="dialog-text">
+          {/* A new tab: leaving the editor would close the files opened in it. */}
+          <a className="btn" href={SUPPORT_CONTACT} target="_blank" rel="noopener noreferrer" data-testid="support-open-issue">
+            {t('support.openIssue')}
+          </a>
+        </p>
+      ) : null}
+      {SUPPORT_IS_PUBLIC ? (
+        <div className="notice notice-warning" role="note" data-testid="support-public-warning">
+          {t('support.publicWarning')}
+        </div>
+      ) : null}
       <p className="hint-small">{t('support.also')}</p>
 
       <hr className="divider" />
@@ -128,7 +150,7 @@ export function ReportDialog({
       <ExportLogPanel locale="tr" buttonClassName="btn" onChanged={() => setRevision((value) => value + 1)} />
 
       <div className="dialog-actions">
-        <a className="btn" href="/gizlilik" target="_blank" rel="noopener" data-testid="report-privacy-link">
+        <a className="btn" href={withBasePath('/gizlilik')} target="_blank" rel="noopener" data-testid="report-privacy-link">
           {t('privacy.linkNewTab')}
         </a>
         <button type="button" className="btn" onClick={onClose}>

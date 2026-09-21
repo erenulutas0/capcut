@@ -31,13 +31,26 @@ function gitCommit(): string {
   }
 }
 
+/**
+ * GitHub Pages (docs/beta/DEPLOY_GUIDE.md): a fully static export served from
+ * a sub-path (`/capcut`). Both are opt-in through the environment so local
+ * development, `next start` and the e2e suite keep running at the root.
+ * `trailingSlash` makes every page a folder with index.html, which any static
+ * host serves without rewrite rules.
+ */
+const staticExport = process.env.STATIC_EXPORT === '1';
+const basePath = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/+$/, '');
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   // No remote media, no analytics, no third-party scripts.
   // The editor is a client-only module; nothing here enables uploads.
+  ...(staticExport ? { output: 'export' as const, trailingSlash: true } : {}),
+  ...(basePath ? { basePath } : {}),
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion(),
     NEXT_PUBLIC_GIT_COMMIT: gitCommit(),
+    NEXT_PUBLIC_BASE_PATH: basePath,
   },
 };
 

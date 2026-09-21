@@ -17,7 +17,7 @@ export default function LandingPage() {
     <div className="landing">
       <header className="landing-bar">
         <Wordmark />
-        <Link className="btn-primary-light" href="/editor">
+        <Link className="btn-primary-light" href="/editor" prefetch={false}>
           {t('nav.openEditor')}
           <Icon name="play" size={16} />
         </Link>
@@ -26,7 +26,7 @@ export default function LandingPage() {
       <main className="landing-main">
         <h1>Video düzenlemeyi öğrenmeden, tutmak istediğin anları seç.</h1>
         <p className="lede">{t('app.tagline')}</p>
-        <Link className="btn-primary-light" href="/editor">
+        <Link className="btn-primary-light" href="/editor" prefetch={false}>
           {t('nav.openEditor')}
         </Link>
 
@@ -50,7 +50,13 @@ export default function LandingPage() {
 
       <footer className="landing-footer">
         <span>{t('footer.local')}</span>
-        <Link href="/gizlilik" data-testid="footer-privacy">
+        {/*
+          prefetch={false} on the landing links: Next 16's static export writes
+          nested segment payloads (editor/__next.editor/__PAGE__.txt) under a
+          different name than its prefetcher requests, which 404s on GitHub
+          Pages. A click still navigates normally.
+        */}
+        <Link href="/gizlilik" prefetch={false} data-testid="footer-privacy">
           {t('privacy.link')}
         </Link>
       </footer>
