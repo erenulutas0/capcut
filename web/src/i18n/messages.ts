@@ -208,6 +208,8 @@ export const tr = {
   'export.route': 'Yazıldığı yer',
   'export.route.opfs': 'tarayıcının geçici diski',
   'export.route.memory': 'bellek',
+  'export.framesMissing': 'Çözülemeyen kare',
+  'export.framesMissing.value': '{count} kare, yerine önceki kare gösterildi',
   'export.save': 'Dosyayı kaydet',
   'export.again': 'Yeniden oluştur',
   'export.noAudioTrack': 'ses yok',
@@ -221,6 +223,8 @@ export const tr = {
   'export.fail.video_encoder_unsupported': 'Bu tarayıcıda H.264 kodlama bu ayarla desteklenmiyor.',
   'export.fail.audio_encoder_unsupported': 'Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor.',
   'export.fail.no_frames_decoded': 'Kaynaktan hiç kare çözülemedi.',
+  'export.fail.source_frames_missing':
+    'Bu tarayıcı videonun bazı karelerini çözemedi. Eksik karelerle bozuk bir dosya üretmek yerine durduruldu. Chrome veya Edge ile dene.',
   'export.fail.output_probe_failed': 'Oluşan dosya yeniden açılamadı; başarılı sayılmadı.',
   'export.fail.output_duration_mismatch': 'Oluşan dosyanın süresi beklenen süreyle uyuşmadı.',
   'export.fail.out_of_memory': 'Tarayıcının belleği yetmedi. Daha kısa bir çıktı dene.',
@@ -501,6 +505,8 @@ export const en: Record<MessageKey, string> = {
   'export.route': 'Written to',
   'export.route.opfs': 'browser temporary storage',
   'export.route.memory': 'memory',
+  'export.framesMissing': 'Undecodable frames',
+  'export.framesMissing.value': '{count} frames, the previous frame was held',
   'export.save': 'Save the file',
   'export.again': 'Export again',
   'export.noAudioTrack': 'no audio',
@@ -516,6 +522,8 @@ export const en: Record<MessageKey, string> = {
   'export.fail.audio_encoder_unsupported':
     'AAC encoding is unsupported here with this configuration.',
   'export.fail.no_frames_decoded': 'No frames could be decoded from the source.',
+  'export.fail.source_frames_missing':
+    'This browser could not decode some frames of the video. It stopped instead of producing a broken file. Try Chrome or Edge.',
   'export.fail.output_probe_failed':
     'The produced file could not be re-opened, so it does not count as success.',
   'export.fail.output_duration_mismatch': 'The produced file did not have the expected duration.',

@@ -155,11 +155,13 @@ Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
 [ADR-010 (W1 çıktı hattı ve ölçümler)](docs/adr/ADR-010-w1-web-export.md),
 [ADR-011 (W2 dosya matrisi ve destek sınırları)](docs/adr/ADR-011-w2-file-matrix.md),
 [ADR-012 (W3 yerel kayıt ve re-link)](docs/adr/ADR-012-w3-local-persistence.md),
-[ADR-013 (W4 çıktıyı OPFS'e akıtmak, gerçek kayıt koşucusu)](docs/adr/ADR-013-w4-output-to-opfs.md).
+[ADR-013 (W4 çıktıyı OPFS'e akıtmak, gerçek kayıt koşucusu)](docs/adr/ADR-013-w4-output-to-opfs.md),
+[ADR-014 (W5 gerçek kayıtlarla kare çözme)](docs/adr/ADR-014-w5-real-media-decoding.md).
 
 ## Sıradaki tek görev
 
-**W5 — gerçek kayıtlarla doğrulama:** kullanıcı kayıtlarını
-`npm run matrix:real` ile Chromium/Chrome/Edge'de çalıştırmak, çıkan hataları
-düzeltmek. Web girdi sınırı 60 dk / 2 GiB (politika `2026-09-21.v2`), çıktı
-sınırı 5 dk; kalan iş HEVC, rotasyonlu ve daha büyük gerçek kayıtlar.
+**W5 devam — telefon kayıtları:** 8 gerçek kayıt Chrome/Edge'de 8/8 geçiyor
+(ADR-014). Eksik olanlar gerçek HEVC, döndürmeli dikey ve HDR telefon kayıtları;
+bunlar kullanıcının telefonuyla çekilip `web/tests/media/real/` klasörüne
+konacak. Açık sınır: yazılım H.264 çözücüsünde bazı kamera akışları yanlış
+kare içeriği veriyor ve uygulama bunu henüz tespit edemiyor.

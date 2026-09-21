@@ -260,6 +260,11 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       codecs: await succeeded.locator('[data-testid="measured-codecs"]').textContent(),
       delta: await succeeded.locator('[data-testid="measured-delta"]').textContent(),
     };
+    // Held frames are an honest partial result, and must show up in reports.
+    const held = succeeded.locator('[data-testid="measured-frames-missing"]');
+    if ((await held.count()) > 0) {
+      notes.push(`çözülemeyen kare: ${((await held.textContent()) ?? '').trim()}`);
+    }
 
     const downloadPromise = page.waitForEvent('download', { timeout: 120_000 });
     await page.getByTestId('export-download').click();

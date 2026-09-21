@@ -29,6 +29,7 @@ export type ExportFailureCode =
   | 'video_encoder_unsupported'
   | 'audio_encoder_unsupported'
   | 'no_frames_decoded'
+  | 'source_frames_missing'
   | 'output_probe_failed'
   | 'output_duration_mismatch'
   | 'out_of_memory'
@@ -63,6 +64,20 @@ export interface ExportResult {
   durationDeltaUs: Micros;
   /** Wall-clock milliseconds the encode took. */
   elapsedMs: number;
+  /**
+   * Output frames whose source frame the decoder never delivered; the previous
+   * frame was held there. Shown to the user when above zero.
+   */
+  framesMissing: number;
+}
+
+/**
+ * How many undelivered source frames an export may hold over and still call
+ * itself a success: 2% of the output, at least one. A single held frame is
+ * invisible; a third of the moment frozen or black is a broken file.
+ */
+export function missingFramesAllowed(totalFrames: number): number {
+  return Math.max(1, Math.floor(totalFrames * 0.02));
 }
 
 export type ExportEvent =

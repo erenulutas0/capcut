@@ -72,11 +72,27 @@ export function ssim(fileA, fileB) {
  * be compared against something our code had no hand in producing.
  */
 export function buildReference(sourceFile, { filter, trims }, width, height, outFile) {
+  // Each output instant must show the frame a player shows there: the latest
+  // source frame that started at or before it. The old `trim=from,setpts=
+  // PTS-STARTPTS` dropped the frame covering `from` and restarted the clock on
+  // the NEXT frame, which shifted every reference frame of an odd-rate or VFR
+  // recording by one — a measurement error, not an app error.
+  //
+  // So: keep a little lead-in, anchor the clock on `from` itself, let
+  // `fps=round=up` hold each frame until the next one starts, and only then
+  // cut the moment out. The lead-in is a whole number of output frames so the
+  // grid stays aligned with the app's `from + k/30`.
   const parts = trims
-    .map(
-      ([from, to], index) =>
-        `[0:v]trim=${from}:${to},setpts=PTS-STARTPTS,${filter},fps=30[v${index}]`,
-    )
+    .map(([from, to], index) => {
+      const lead = Math.min(1, Math.floor(from * 30) / 30);
+      const origin = from - lead;
+      const length = to - from;
+      return (
+        `[0:v]trim=start=${origin}:end=${to},setpts=PTS-${origin}/TB,${filter},` +
+        `fps=fps=30:round=up:start_time=0,` +
+        `trim=start=${lead}:end=${lead + length},setpts=PTS-STARTPTS[v${index}]`
+      );
+    })
     .join(';');
   const labels = trims.map((_, index) => `[v${index}]`).join('');
   const graph = `${parts};${labels}concat=n=${trims.length}:v=1:a=0[outv]`;

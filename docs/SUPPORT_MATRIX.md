@@ -18,10 +18,10 @@ Her satır `video-editor-blueprint/docs/22_QA_TEST_MATRIX.md` içindeki bir fixt
 
 | Tarayıcı | Sürüm | Encoder kabiliyeti | Çalıştırma |
 |---|---|---|---|
-| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-09-21 13:45 UTC |
-| Google Chrome | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 13:45 UTC |
-| Microsoft Edge | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 13:46 UTC |
-| Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-21 13:47 UTC |
+| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-09-21 15:05 UTC |
+| Google Chrome | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 15:05 UTC |
+| Microsoft Edge | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 15:06 UTC |
+| Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-21 15:06 UTC |
 | WebKit (Playwright) | 26.6 | WebCodecs yok | 2026-09-21 13:47 UTC |
 
 Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari, gerçek telefon ve fiziksel cihaz testi yapılmadı.** Playwright’ın WebKit derlemesi Safari değildir ve Safari sonucu yerine geçmez.
@@ -55,8 +55,8 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari,
 | # | Süre | Kare | Çözünürlük | SSIM | Diğer ölçümler |
 |---|---|---|---|---|---|
 | M01 | 10.005333 s | 300 | 720x1280 | 0.9416 | an sesleri -22.1 / -22.1 dB |
-| M02 | 5.013333 s | 150 | 720x1280 | 0.9409 | — |
-| M03 | 5.013333 s | 150 | 720x1280 | 0.922 | — |
+| M02 | 5.013333 s | 150 | 720x1280 | 0.941 | — |
+| M03 | 5.013333 s | 150 | 720x1280 | 0.9221 | — |
 | M04 | 6.016 s | 180 | 1280x720 | — | 440 Hz -56.3 / 330 Hz -36.1 dB |
 | M05 | 5.013333 s | 150 | 720x1280 | — | perde -36.1 / -55.4 dB |
 | M06 | 6.016 s | 180 | 1280x720 | — | — |
@@ -89,28 +89,50 @@ Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer�
 
 ## Gerçek kayıtlar
 
-### Chromium (Playwright) — 1 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 13:47 UTC)
+### Chromium (Playwright) — 7 PASS, 0 REFUSED, 1 FAIL, 0 ERROR (2026-09-21 15:02 UTC)
 
 | # | Durum | Codec | Boyut | Rotasyon | fps | Süre | Dosya | Renk | Ses | SSIM |
 |---|---|---|---|---|---|---|---|---|---|---|
-| R01 | PASS | h264 | 854x480 | 0° | 24 | 1957.4 s | 257.7 MiB | — | aac | 0.9279 |
+| R01 | PASS | h264 | 854x480 | 0° | 24 | 1957.4 s | 257.7 MiB | — | aac | 0.9837 |
+| R02 | PASS | h264 | 592x1280 | 0° | 40.588 (VFR?) | 29.5 s | 3.9 MiB | — | aac | 0.9832 |
+| R03 | PASS | h264 | 720x1280 | 0° | 30.004 | 22.8 s | 2.8 MiB | — | aac | 0.9858 |
+| R04 | PASS | h264 | 480x724 | 0° | 29.934 | 45.1 s | 1.7 MiB | — | aac | 0.977 |
+| R05 | PASS | h264 | 1080x1920 | 0° | 30 | 14.2 s | 1.3 MiB | bt709 | aac | 0.9965 |
+| R06 | PASS | h264 | 1280x720 | 0° | 24.334 (VFR?) | 16.9 s | 21.7 MiB | bt709 | aac | 0.9141 |
+| R07 | FAIL | h264 | 1280x720 | 0° | 59.94 | 16.5 s | 24.1 MiB | — | aac | 0.7566 |
+| R08 | PASS | h264 | 224x128 | 0° | 15 | 34.4 s | 0.7 MiB | bt709 | aac | 0.9863 |
 
-### Google Chrome — 1 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 13:48 UTC)
+### Google Chrome — 8 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 15:09 UTC)
 
 | # | Durum | Codec | Boyut | Rotasyon | fps | Süre | Dosya | Renk | Ses | SSIM |
 |---|---|---|---|---|---|---|---|---|---|---|
-| R01 | PASS | h264 | 854x480 | 0° | 24 | 1957.4 s | 257.7 MiB | — | aac | 0.9395 |
+| R01 | PASS | h264 | 854x480 | 0° | 24 | 1957.4 s | 257.7 MiB | — | aac | 0.9898 |
+| R02 | PASS | h264 | 592x1280 | 0° | 40.588 (VFR?) | 29.5 s | 3.9 MiB | — | aac | 0.9896 |
+| R03 | PASS | h264 | 720x1280 | 0° | 30.004 | 22.8 s | 2.8 MiB | — | aac | 0.9934 |
+| R04 | PASS | h264 | 480x724 | 0° | 29.934 | 45.1 s | 1.7 MiB | — | aac | 0.9806 |
+| R05 | PASS | h264 | 1080x1920 | 0° | 30 | 14.2 s | 1.3 MiB | bt709 | aac | 0.9982 |
+| R06 | PASS | h264 | 1280x720 | 0° | 24.334 (VFR?) | 16.9 s | 21.7 MiB | bt709 | aac | 0.9374 |
+| R07 | PASS | h264 | 1280x720 | 0° | 59.94 | 16.5 s | 24.1 MiB | — | aac | 0.9472 |
+| R08 | PASS | h264 | 224x128 | 0° | 15 | 34.4 s | 0.7 MiB | bt709 | aac | 0.9909 |
 
-### Microsoft Edge — 1 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 13:48 UTC)
+### Microsoft Edge — 8 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 15:10 UTC)
 
 | # | Durum | Codec | Boyut | Rotasyon | fps | Süre | Dosya | Renk | Ses | SSIM |
 |---|---|---|---|---|---|---|---|---|---|---|
-| R01 | PASS | h264 | 854x480 | 0° | 24 | 1957.4 s | 257.7 MiB | — | aac | 0.9395 |
+| R01 | PASS | h264 | 854x480 | 0° | 24 | 1957.4 s | 257.7 MiB | — | aac | 0.9898 |
+| R02 | PASS | h264 | 592x1280 | 0° | 40.588 (VFR?) | 29.5 s | 3.9 MiB | — | aac | 0.9896 |
+| R03 | PASS | h264 | 720x1280 | 0° | 30.004 | 22.8 s | 2.8 MiB | — | aac | 0.9934 |
+| R04 | PASS | h264 | 480x724 | 0° | 29.934 | 45.1 s | 1.7 MiB | — | aac | 0.9806 |
+| R05 | PASS | h264 | 1080x1920 | 0° | 30 | 14.2 s | 1.3 MiB | bt709 | aac | 0.9982 |
+| R06 | PASS | h264 | 1280x720 | 0° | 24.334 (VFR?) | 16.9 s | 21.7 MiB | bt709 | aac | 0.9374 |
+| R07 | PASS | h264 | 1280x720 | 0° | 59.94 | 16.5 s | 24.1 MiB | — | aac | 0.9473 |
+| R08 | PASS | h264 | 224x128 | 0° | 15 | 34.4 s | 0.7 MiB | bt709 | aac | 0.9909 |
 
 ## Bu matrisin kapsamadıkları
 
 - Gerçek Safari (macOS/iOS) ve gerçek fiziksel telefon/tablet.
 - Gerçek kamera/telefon kayıtları, “Gerçek kayıtlar” bölümünde çalıştırılmadıysa.
+- Bilinen sınır: yazılım H.264 çözücüsü (Playwright Chromium; donanım çözmesi kapalı Chrome/Edge) bazı kamera akışlarında kareleri doğru zaman damgasıyla ama yanlış içerikle veriyor (R07, SSIM 0.76–0.80). Uygulama bunu henüz tespit edemiyor; ayrıntı ADR-014.
 - Bellek ölçümü yalnızca Windows’ta ve Chromium’da yapıldı; macOS/Linux ve diğer tarayıcılar ölçülmedi.
 - Düşük bellekli cihazlar ve bellek yetmediğinde davranış.
 - Disk dolması, uzun süreli kararlılık ve termal davranış.

@@ -37,7 +37,7 @@ import {
   musicEnvelope,
 } from '@/domain/audioMix';
 import type { ExportEvent, ExportFailureCode, ExportProbe } from '@/domain/exportEvents';
-import { durationWithinTolerance } from '@/domain/exportEvents';
+import { durationWithinTolerance, missingFramesAllowed } from '@/domain/exportEvents';
 import {
   frameToUs,
   sourceTimeForFrame,
@@ -46,6 +46,7 @@ import {
 } from '@/domain/renderPlan';
 import { US_PER_SECOND } from '@/domain/time';
 import { AudioStreamReader } from './audioStream';
+import { pickFrames } from './framePicker';
 import { removeExportEntry, sweepExportEntries } from './opfsEntries';
 import { prepareOutput } from './outputSink';
 import type { CapabilityStageResult, EncoderProbeConfig, WorkerRequest, WorkerResponse } from './protocol';
@@ -395,6 +396,7 @@ async function runExport(
   const frameDuration = plan.fpsDen / plan.fpsNum;
   let framesDone = 0;
   let framesDrawn = 0;
+  let framesMissing = 0;
   let succeeded = false;
 
   try {
@@ -424,17 +426,26 @@ async function runExport(
       }
       if (timestamps.length === 0) continue;
 
+      // One continuous decode per moment (see framePicker): a flush at every
+      // GOP boundary made Chromium drop whole GOPs of real camera footage.
+      const firstTs = timestamps[0] ?? 0;
+      const lastTs = timestamps[timestamps.length - 1] ?? firstTs;
+      const decoded = videoSink.samples(firstTs, lastTs + 0.001);
       let frame = segment.startFrame;
-      for await (const sample of videoSink.samplesAtTimestamps(timestamps)) {
+      for await (const { frame: sample, missing } of pickFrames(decoded, timestamps, frameDuration)) {
         checkCanceled(requestId);
 
         context.fillStyle = plan.background;
         context.fillRect(0, 0, plan.width, plan.height);
 
+        // A frame the decoder did not deliver is counted, never hidden: the
+        // previous frame is held (or the background shown when none exists)
+        // and the total decides below whether this is still an honest result.
+        if (missing) framesMissing += 1;
         if (sample) {
           // Same rectangle the preview uses, taken straight from the plan.
+          // The picker owns the sample and closes it; do not close it here.
           drawSegmentFrame(context, sample, segment, plan);
-          sample.close();
           framesDrawn += 1;
         }
 
@@ -459,6 +470,9 @@ async function runExport(
     }
 
     if (framesDrawn === 0) throw new ExportFailure('no_frames_decoded');
+    if (framesMissing > missingFramesAllowed(plan.totalFrames)) {
+      throw new ExportFailure('source_frames_missing');
+    }
 
     checkCanceled(requestId);
     emit(requestId, { type: 'finalizing', attemptId: requestId });
@@ -486,6 +500,7 @@ async function runExport(
       probe,
       durationDeltaUs: probe.durationUs - plan.expectedDurationUs,
       elapsedMs: Date.now() - startedAt,
+      framesMissing,
     };
 
     if (collected.file && collected.entryName) {

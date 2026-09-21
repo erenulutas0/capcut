@@ -278,7 +278,12 @@ for (const [index, fileName] of files.entries()) {
     checks.push({ label: 'sayfada JS hatası yok', ok: pageErrors.length === 0, detail: pageErrors.join(' | ') });
 
     const ok = checks.every((c) => c.ok);
-    const refused = measured.outcome === 'import_rejected' || measured.outcome === 'gate_blocked';
+    // A controlled stop during export (e.g. the decoder lost frames) is an honest
+    // result, but it is not a working export — never report it as PASS.
+    const refused =
+      measured.outcome === 'import_rejected' ||
+      measured.outcome === 'gate_blocked' ||
+      measured.outcome === 'failed';
     record = {
       id,
       status: ok ? (refused ? 'REFUSED' : 'PASS') : 'FAIL',

@@ -348,6 +348,14 @@ export function ExportDialog({
                 {state.result.route === 'opfs' ? t('export.route.opfs') : t('export.route.memory')}
               </span>
             </li>
+            {state.result.framesMissing > 0 ? (
+              <li>
+                <span className="meta-key">{t('export.framesMissing')}</span>
+                <span className="meta-value" data-testid="measured-frames-missing">
+                  {t('export.framesMissing.value').replace('{count}', String(state.result.framesMissing))}
+                </span>
+              </li>
+            ) : null}
             <li>
               <span className="meta-key">{t('export.elapsed')}</span>
               <span className="meta-value">{(state.result.elapsedMs / 1000).toFixed(1)} s</span>
