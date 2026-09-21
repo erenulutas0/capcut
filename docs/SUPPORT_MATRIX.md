@@ -18,11 +18,11 @@ Her satır `video-editor-blueprint/docs/22_QA_TEST_MATRIX.md` içindeki bir fixt
 
 | Tarayıcı | Sürüm | Encoder kabiliyeti | Çalıştırma |
 |---|---|---|---|
-| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-09-21 17:42 UTC |
-| Google Chrome | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 17:43 UTC |
-| Microsoft Edge | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 17:44 UTC |
-| Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-21 17:45 UTC |
-| WebKit (Playwright) | 26.6 | WebCodecs yok | 2026-09-21 17:45 UTC |
+| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-09-21 18:34 UTC |
+| Google Chrome | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 18:35 UTC |
+| Microsoft Edge | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 18:36 UTC |
+| Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-21 18:36 UTC |
+| WebKit (Playwright) | 26.6 | WebCodecs yok | 2026-09-21 18:36 UTC |
 
 Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari, gerçek telefon ve fiziksel cihaz testi yapılmadı.** Playwright’ın WebKit derlemesi Safari değildir ve Safari sonucu yerine geçmez.
 
@@ -48,15 +48,17 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari,
 | M15 | Export sırasında sekme arka plana alınıyor | ✅ | ✅ | ✅ | ⛔ | — |
 | M16 | Gain toplamı / fade sınırları | ✅ | ✅ | ✅ | ⛔ | — |
 | M17 | Altyazı videoya işleniyor | ✅ | ✅ | ✅ | ⛔ | — |
+| M18 | Görüntüye bağlı altyazı anlarla taşınıyor | ✅ | ✅ | ✅ | ⛔ | — |
+| M18b | Kaynak → sonuç dönüşümü görünen altyazıyı değiştirmiyor | ✅ | ✅ | ✅ | ⛔ | — |
 
-| Toplam | | 18✅ 0⛔ 0❌ 0💥 0— | 18✅ 0⛔ 0❌ 0💥 0— | 18✅ 0⛔ 0❌ 0💥 0— | 4✅ 14⛔ 0❌ 0💥 0— | 0✅ 0⛔ 0❌ 0💥 18— |
+| Toplam | | 20✅ 0⛔ 0❌ 0💥 0— | 20✅ 0⛔ 0❌ 0💥 0— | 20✅ 0⛔ 0❌ 0💥 0— | 4✅ 16⛔ 0❌ 0💥 0— | 0✅ 0⛔ 0❌ 0💥 20— |
 
 ## Ölçülen değerler (Chromium)
 
 | # | Süre | Kare | Çözünürlük | SSIM | Diğer ölçümler |
 |---|---|---|---|---|---|
 | M01 | 10.005333 s | 300 | 720x1280 | 0.9416 | an sesleri -22.1 / -22.1 dB |
-| M02 | 5.013333 s | 150 | 720x1280 | 0.9409 | — |
+| M02 | 5.013333 s | 150 | 720x1280 | 0.941 | — |
 | M03 | 5.013333 s | 150 | 720x1280 | 0.9221 | — |
 | M04 | 6.016 s | 180 | 1280x720 | — | 440 Hz -56.3 / 330 Hz -36.1 dB |
 | M05 | 5.013333 s | 150 | 720x1280 | — | perde -36.1 / -55.4 dB |
@@ -70,6 +72,8 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari,
 | M15 | 6.016 s | 180 | 1280x720 | — | — |
 | M16 | 6.016 s | 180 | 1280x720 | — | tepe -19.8 dB; fade -43 → -28.2 dB |
 | M17 | 10.005333 s | 300 | 720x1280 | — | — |
+| M18 | 12.010667 s | 360 | 720x1280 | — | — |
+| M18b | 12.010667 s | 360 | 720x1280 | — | — |
 
 ## Matris çalıştırılamayan ortamlar
 
@@ -111,7 +115,7 @@ Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer�
 | R14 | REFUSED | hevc | 1920x1080 | -90° | 30.017 | 11.8 s | 14.4 MiB | bt709 | aac | — |
 | R15 | FAIL | h264 | 1920x1080 | -90° | 60.042 | 4.4 s | 14.8 MiB | bt709 | aac | 0.8252 |
 
-### Google Chrome — 13 PASS, 2 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 17:48 UTC)
+### Google Chrome — 13 PASS, 2 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 18:39 UTC)
 
 | # | Durum | Codec | Boyut | Rotasyon | fps | Süre | Dosya | Renk | Ses | SSIM |
 |---|---|---|---|---|---|---|---|---|---|---|

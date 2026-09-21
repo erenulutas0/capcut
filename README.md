@@ -168,7 +168,12 @@ Altyazı adım 2 tamamlandı (ADR-015): EDL v2 (`captionTracks`, v1 kayıpsız
 geçiş), "Altyazı" sekmesi, aynı çizim koduyla önizleme ve dışa aktarmada
 piksellere işleme; M17 Chromium/Chrome/Edge'de ölçümle geçiyor.
 
-**Sıradaki:** altyazı adım 3 — SRT/VTT içe/dışa aktarma ve kaynak zamanına
-bağlı satırlar (anlar yeniden sıralanınca satırlar içerikle birlikte taşınır).
-Açık küçük kararlar: HDR kayıtları SDR'ye tonlama (şu an reddediliyor) ve
+Altyazı adım 3 tamamlandı (ADR-016): SRT/VTT içe/dışa aktarma (Windows-1254
+dahil, saat kullanıcıya sorulur), görüntüye bağlı satırlar (anlarla taşınır,
+tekrarda iki kez görünür), saat dönüşümü ve toplu kaydırma; M18/M18b
+Chromium/Chrome/Edge'de kare kare ölçümle geçiyor.
+
+**Sıradaki:** altyazı adım 4 — otomatik transkript. Dış servis, maliyet,
+gizlilik ve açık rıza kapısı gerektirir; sağlayıcı seçimi ve bütçe kurucu
+kararıdır, onaysız başlanmaz. Açık küçük kararlar: HDR kayıtları SDR'ye tonlama (şu an reddediliyor) ve
 ayrıntılı 60 fps kayıtlarda Chromium'un yazılım kodlayıcısı için bit hızı.
