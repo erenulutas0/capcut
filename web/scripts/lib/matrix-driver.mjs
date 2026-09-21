@@ -5,14 +5,18 @@
  * (a user's own recordings) must exercise exactly the same code paths, so the
  * driving and the assessment live here once.
  */
-import { statSync } from 'node:fs';
+import { statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
   bandRmsDb,
   buildReference,
+  captionRegion,
+  extractFramePng,
   ffprobeJson,
+  loadCaptionLayoutModule,
+  measureCaptionBurnIn,
   peakDb,
   ssim,
 } from './media-measure.mjs';
@@ -25,6 +29,8 @@ const RECOVERY_FILE = fileURLToPath(new URL('../../tests/media/sample-24s.mp4', 
 
 export function createDriver({ mediaDir, outDir, baseURL }) {
   const FRAME_TOLERANCE = 1 / 30 + 0.002;
+  /** The app's caption layout, transpiled once per run (see media-measure). */
+  let captionLayoutModule = null;
 
   /**
    * Waits until one of several test ids is present, and says which.
@@ -209,7 +215,19 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       notes.push(`yeniden bağlandı: ${relinked ? 'evet' : 'hayır'}`);
     }
 
-    // --- export ------------------------------------------------------------
+    if (setup.captions) {
+      return driveCaptionExports(page, testCase, artefactPath, { momentCount, editorDisplaySize, notes });
+    }
+
+    const outcome = await exportOnce(page, setup, artefactPath, notes);
+    return { ...outcome, momentCount, editorDisplaySize, relinked, notes };
+  }
+
+  /**
+   * Opens the export dialog, runs the gate and, when it passes, exports and
+   * saves the file. Shared by the plain cases and the caption variants.
+   */
+  async function exportOnce(page, setup, savePath, notes) {
     await page.getByTestId('open-export').click();
     if (setup.quality) {
       await page.getByTestId('export-quality').selectOption(setup.quality);
@@ -228,7 +246,7 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     if ((await blocked.count()) > 0) {
       const blockerTexts = await page.getByTestId('export-blockers').allTextContents().catch(() => []);
       const body = ((await blocked.textContent()) ?? '').replace(/\s+/g, ' ').trim();
-      return { blocked: true, gate, blockerTexts, blockedText: body, momentCount, editorDisplaySize, relinked, notes };
+      return { blocked: true, gate, blockerTexts, blockedText: body };
     }
 
     await page.getByTestId('export-create').click();
@@ -251,7 +269,7 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
 
     if ((await failed.count()) > 0) {
       const text = ((await failed.textContent()) ?? '').replace(/\s+/g, ' ').trim();
-      return { failed: true, failureText: text, gate, momentCount, editorDisplaySize, relinked, notes };
+      return { failed: true, failureText: text, gate };
     }
 
     const reported = {
@@ -269,9 +287,138 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     const downloadPromise = page.waitForEvent('download', { timeout: 120_000 });
     await page.getByTestId('export-download').click();
     const download = await downloadPromise;
-    await download.saveAs(artefactPath);
+    await download.saveAs(savePath);
 
-    return { exported: true, gate, reported, momentCount, editorDisplaySize, relinked, notes };
+    return { exported: true, gate, reported };
+  }
+
+  /* ------------------------------------------------------------- captions */
+
+  /**
+   * Reads the stored project record the editor saved for the open project.
+   * Polled with page.evaluate: waitForFunction does not await a Promise.
+   */
+  async function readStoredRecord(page, matches, timeoutMs = 30_000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const records = await page.evaluate(
+        () =>
+          new Promise((resolve) => {
+            const open = indexedDB.open('clip-editor');
+            open.onerror = () => resolve([]);
+            open.onsuccess = () => {
+              const db = open.result;
+              if (!db.objectStoreNames.contains('projects')) {
+                db.close();
+                resolve([]);
+                return;
+              }
+              const all = db.transaction('projects', 'readonly').objectStore('projects').getAll();
+              all.onerror = () => {
+                db.close();
+                resolve([]);
+              };
+              all.onsuccess = () => {
+                db.close();
+                resolve(all.result);
+              };
+            };
+          }),
+      );
+      // Newest first: cases share one browser profile, so older projects with
+      // the same file and moments can still be in storage.
+      const hits = records.filter(matches);
+      hits.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+      if (hits[0]) return hits[0];
+      await page.waitForTimeout(250);
+    }
+    return null;
+  }
+
+  /**
+   * Gives the project captions through a supported app path — the backup
+   * import — rather than any caption editing UI, then exports once per style
+   * variant. The recipe the editor saved is taken, captions are added to it,
+   * and it goes back in through `.clip.json` validation like any user backup.
+   */
+  async function driveCaptionExports(page, testCase, artefactPath, base) {
+    const setup = testCase.setup;
+    const { notes } = base;
+    const aspect = (setup.aspect ?? '').replace('-', ':');
+    const bytes = statSync(join(mediaDir, setup.video)).size;
+    const clips = (setup.moments ?? []).length;
+
+    const record = await readStoredRecord(
+      page,
+      (r) =>
+        r.edl?.clips?.length === clips &&
+        r.edl?.canvas?.aspect === aspect &&
+        r.bindings?.some((b) => b.kind === 'video' && b.sizeBytes === bytes),
+    );
+    if (!record) return { failed: true, failureText: 'proje kaydı bulunamadı (yedek alınamadı)', notes, ...base };
+
+    captionLayoutModule ??= await loadCaptionLayoutModule(outDir);
+    const runs = [];
+    for (const [index, variant] of setup.captions.variants.entries()) {
+      const trackId = `t_${testCase.id.toLowerCase()}_${index + 1}`;
+      const backup = structuredClone(record);
+      // Adding captions is an edit, so the revision moves on, as it would in
+      // the editor. A changed revision is also what makes the editor autosave
+      // the restored project, which is how the import is confirmed below. The
+      // step is large because the export dialog's quality setting is an edit
+      // too and may already have moved the live revision past `record`.
+      backup.edl.revision = record.edl.revision + 1000 * (index + 1);
+      backup.edl.captionTracks = [
+        {
+          trackId,
+          origin: 'manual',
+          timeBase: 'output',
+          language: 'tr',
+          style: variant.style,
+          cues: setup.captions.cues.map((cue, cueIndex) => ({
+            cueId: `q_${index + 1}_${cueIndex + 1}`,
+            startUs: cue.startUs,
+            endUs: cue.endUs,
+            text: cue.text,
+          })),
+        },
+      ];
+      const backupPath = join(outDir, `${testCase.id}-${variant.label}.clip.json`);
+      writeFileSync(backupPath, JSON.stringify(backup, null, 2));
+
+      await page.getByTestId('backup-input').setInputFiles(backupPath);
+      // Proof the import really went through the app: the restored project,
+      // captions included, is saved back to storage by the editor itself.
+      const restored = await readStoredRecord(page, (r) => r.edl?.captionTracks?.[0]?.trackId === trackId);
+      if (!restored) {
+        return { failed: true, failureText: `yedek içe aktarılamadı (${variant.label})`, ...base };
+      }
+      notes.push(`${variant.label}: yedekten ${restored.edl.captionTracks[0].cues.length} altyazı satırı yüklendi`);
+
+      const view = await waitForAny(page, ['relink-video', 'preview-video'], 30_000);
+      if (view === 'relink-video') {
+        await page.getByTestId('relink-video-input').setInputFiles(join(mediaDir, setup.video));
+        await waitForAny(page, ['preview-video'], 60_000);
+      }
+
+      const savePath = index === 0 ? artefactPath : artefactPath.replace(/\.mp4$/, `-${variant.label}.mp4`);
+      const outcome = await exportOnce(page, setup, savePath, notes);
+      if (!outcome.exported) return { ...outcome, ...base };
+
+      runs.push({ label: variant.label, style: variant.style, path: savePath, gate: outcome.gate, reported: outcome.reported });
+      // Close the dialog so the next import starts from a clean export state.
+      await page.keyboard.press('Escape');
+      await page.getByTestId('export-succeeded').waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {});
+    }
+
+    const first = runs[0];
+    return {
+      exported: true,
+      gate: first?.gate,
+      reported: first?.reported,
+      captionRuns: runs,
+      ...base,
+    };
   }
 
   /* --------------------------------------------------------------- checking */
@@ -445,6 +592,8 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       }
     }
 
+    if (want.captions) assessCaptions(testCase, driveResult, measured, add);
+
     // --- audio --------------------------------------------------------------
     const control = bandRmsDb(artefactPath, 3000);
     measured.controlBandDb = Number(control.toFixed(1));
@@ -543,6 +692,107 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     }
 
     return { checks, measured };
+  }
+
+  /**
+   * Caption burn-in (ADR-015), measured against a caption-free ffmpeg
+   * reference of the same edit: inside each cue's window its region must
+   * differ clearly, outside every window the picture must match, and the
+   * first/last frame showing the caption must be the planned ones (±1).
+   */
+  function assessCaptions(testCase, driveResult, measured, add) {
+    const want = testCase.expect.captions;
+    const setup = testCase.setup;
+    const runs = driveResult.captionRuns ?? [];
+    add(
+      `altyazılı ${setup.captions.variants.length} çıktı üretildi`,
+      runs.length === setup.captions.variants.length,
+      runs.map((run) => run.label).join(', '),
+    );
+    if (!captionLayoutModule || runs.length === 0) return;
+
+    const width = measured.width;
+    const height = measured.height;
+    const aspect = (setup.aspect ?? '').replace('-', ':');
+    const frame = { width, height, aspect };
+    const fps = want.fps;
+    const referencePath = join(outDir, `${testCase.id}-reference.mp4`);
+    try {
+      buildReference(join(mediaDir, setup.video), want.reference, width, height, referencePath);
+    } catch (error) {
+      add('altyazısız referans üretildi', false, String(error).slice(0, 160));
+      return;
+    }
+
+    measured.captions = [];
+    for (const [runIndex, run] of runs.entries()) {
+      const probe = ffprobeJson(run.path);
+      const video = probe?.streams.find((stream) => stream.codec_type === 'video');
+      const frames = video ? Number(video.nb_frames) : null;
+      add(`${run.label}: kare sayısı ${want.totalFrames}`, frames === want.totalFrames, `ölçülen ${frames}`);
+
+      // Same grid rule as the render plan: frameAtUs = round(us * fps / 1e6).
+      const cues = setup.captions.cues.map((cue) => ({
+        text: cue.text,
+        startFrame: Math.min(want.totalFrames, Math.round((cue.startUs * fps) / 1_000_000)),
+        endFrame: Math.min(want.totalFrames, Math.round((cue.endUs * fps) / 1_000_000)),
+        region: captionRegion(captionLayoutModule, cue.text, run.style, frame),
+      }));
+      const result = measureCaptionBurnIn(run.path, referencePath, { cues, totalFrames: want.totalFrames });
+      const summary = {
+        label: run.label,
+        style: run.style,
+        cleanFrames: result.cleanFrames,
+        cleanSsimMean: Number(result.cleanSsimMean.toFixed(4)),
+        cleanSsimMin: Number(result.cleanSsimMin.toFixed(4)),
+        cues: result.perCue,
+      };
+      measured.captions.push(summary);
+
+      add(
+        `${run.label}: satır dışı karelerde görüntü referansla aynı (SSIM ort. ≥ ${want.minCleanSsim}, en düşük ≥ ${want.minCleanSsimFrame})`,
+        result.cleanSsimMean >= want.minCleanSsim && result.cleanSsimMin >= want.minCleanSsimFrame,
+        `${result.cleanFrames} kare, SSIM ort. ${summary.cleanSsimMean}, en düşük ${summary.cleanSsimMin}`,
+      );
+
+      for (const [cueIndex, cue] of result.perCue.entries()) {
+        const name = `${run.label} satır ${cueIndex + 1}`;
+        // Two encoders never agree pixel for pixel, so "differs" is judged
+        // against that noise: the median must rise well above it, and the
+        // quietest frame inside the window must still beat the loudest
+        // caption-free frame outside it.
+        const rise = cue.insideDiff - cue.noiseDiff;
+        const separation = cue.minInsideDiff - cue.maxOutsideDiff;
+        add(
+          `${name}: pencere içinde bölge belirgin farklı (medyan artışı ≥ ${want.minRegionRise}, kare kare ayrım ≥ ${want.minRegionSeparation})`,
+          rise >= want.minRegionRise && separation >= want.minRegionSeparation,
+          `ort. mutlak luma farkı içeride ${cue.insideDiff} (en düşük ${cue.minInsideDiff}), ` +
+            `dışarıda ${cue.noiseDiff} (en yüksek ${cue.maxOutsideDiff}); ` +
+            `bölge SSIM içeride ${cue.regionSsimInside}, dışarıda ${cue.regionSsimOutside}`,
+        );
+        add(
+          `${name}: ilk/son görünen kare planla aynı (±1)`,
+          cue.first !== null &&
+            cue.last !== null &&
+            Math.abs(cue.first - cue.plannedFirst) <= 1 &&
+            Math.abs(cue.last - cue.plannedLast) <= 1,
+          `plan ${cue.plannedFirst}–${cue.plannedLast}, ölçülen ${cue.first}–${cue.last}`,
+        );
+        add(
+          `${name}: pencere boyunca her karede var, dışarıya taşmıyor`,
+          cue.missingInside === 0 && cue.leakedFrames === 0,
+          `eksik ${cue.missingInside}, taşan ${cue.leakedFrames}, dışarıdaki en yüksek fark ${cue.maxOutsideDiff}`,
+        );
+      }
+
+      // One frame per style for a human to look at (synthetic media only).
+      const shot = want.screenshots?.[runIndex];
+      if (shot) {
+        const target = fileURLToPath(new URL(`../../${shot.file}`, import.meta.url));
+        const saved = extractFramePng(run.path, shot.frame, target);
+        add(`${run.label}: örnek kare kaydedildi`, saved, shot.file);
+      }
+    }
   }
 
   return { drive, assess, waitForAny };

@@ -34,7 +34,12 @@ export type ExportUiState =
       totalFrames: number;
     }
   | { phase: 'succeeded'; result: ExportResult; url: string; fileName: string }
-  | { phase: 'failed'; code: ExportFailureCode }
+  | {
+      phase: 'failed';
+      code: ExportFailureCode;
+      /** The caption line to shorten, numbered as the user sees the list. */
+      captionCue?: { index: number; text: string };
+    }
   | { phase: 'canceled' };
 
 function safeBaseName(name: string): string {
@@ -101,7 +106,9 @@ export function useExport(project: Project, videoFile: File | null, audioFile: F
 
     const environment = checkEnvironment();
     try {
-      const encoder = await client().checkCapability(probeConfigFromPlan(compiled.plan));
+      const encoder = await client().checkCapability(probeConfigFromPlan(compiled.plan), {
+        withCaptionFont: compiled.plan.captions !== null,
+      });
       const source = await probeSource(videoFile, audioFile);
       const report = buildReport(environment, encoder, source);
       setState(report.canExport ? { phase: 'ready', report } : { phase: 'blocked', report, planRejection: null });
@@ -180,9 +187,19 @@ export function useExport(project: Project, videoFile: File | null, audioFile: F
           });
           break;
         }
-        case 'failed':
-          setState({ phase: 'failed', code: event.code });
+        case 'failed': {
+          // The worker names the cue by id; the user knows it by its place
+          // in the caption list.
+          const cues = project.captionTracks[0]?.cues ?? [];
+          const position = event.cueId ? cues.findIndex((cue) => cue.cueId === event.cueId) : -1;
+          const cue = position >= 0 ? cues[position] : undefined;
+          setState({
+            phase: 'failed',
+            code: event.code,
+            ...(cue ? { captionCue: { index: position + 1, text: cue.text } } : {}),
+          });
           break;
+        }
         case 'canceled':
           setState({ phase: 'canceled' });
           break;

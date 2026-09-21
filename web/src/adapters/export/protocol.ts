@@ -28,17 +28,37 @@ export interface CapabilityStageResult {
   selfTestPassed: boolean;
   selfTestDurationUs: number | null;
   selfTestHasAudio: boolean;
+  /**
+   * Whether the caption typeface really loaded inside the worker, the place
+   * that draws it. `null` when the plan has no captions and nothing was tried.
+   * `api_missing`: the worker has no FontFace / `self.fonts` at all.
+   */
+  captionFont: CaptionFontStatus | null;
   failure: ExportFailureCode | null;
 }
 
+export type CaptionFontStatus = 'loaded' | 'api_missing' | 'load_failed';
+
 export type WorkerRequest =
-  | { type: 'capability'; requestId: string; config: EncoderProbeConfig }
+  | {
+      type: 'capability';
+      requestId: string;
+      config: EncoderProbeConfig;
+      /** Page origin to load the caption font from; null when the plan has no captions. */
+      captionFontOrigin: string | null;
+    }
   | {
       type: 'export';
       requestId: string;
       plan: RenderPlan;
       videoFile: File;
       audioFile: File | null;
+      /**
+       * The page origin (`location.origin`), passed explicitly: the caption font
+       * is fetched by absolute URL so it does not depend on how the bundler
+       * happened to load the worker script (module URL, blob URL, CDN).
+       */
+      origin: string;
     }
   | { type: 'cancel'; requestId: string };
 

@@ -294,6 +294,13 @@ export function ExportDialog({
           <span>
             <b>{t('export.failedTitle')}</b>
             {t(`export.fail.${state.code}` as MessageKey)}
+            {state.captionCue ? (
+              <span style={{ display: 'block', marginTop: 6 }} data-testid="export-failed-caption">
+                {t('export.fail.captionCue')
+                  .replace('{index}', String(state.captionCue.index))
+                  .replace('{text}', () => state.captionCue?.text ?? '')}
+              </span>
+            ) : null}
           </span>
         </div>
       ) : null}
