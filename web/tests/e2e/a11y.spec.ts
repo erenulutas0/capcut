@@ -203,6 +203,22 @@ test.describe('a11y: axe audit', () => {
     await audit(page, 'landing', testInfo);
   });
 
+  // Added after the privacy/support work landed next to this audit.
+  test('privacy page (tr, en) and the report dialog', async ({ page }, testInfo) => {
+    await page.goto('/gizlilik');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await audit(page, 'privacy-tr', testInfo);
+    await page.goto('/gizlilik/en');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await audit(page, 'privacy-en', testInfo);
+
+    await openEditor(page);
+    await page.getByTestId('open-help').click();
+    await page.getByTestId('open-report').click();
+    await expect(page.getByTestId('diag-preview')).toBeVisible();
+    await audit(page, 'report-dialog', testInfo);
+  });
+
   test('editor: empty, with video and moments, every panel tab', async ({ page }, testInfo) => {
     const errors = await openEditor(page);
     await audit(page, 'editor-empty', testInfo);

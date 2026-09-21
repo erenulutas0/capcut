@@ -22,12 +22,12 @@
 | Satır | Durum | Kanıt / eksik |
 |---|---|---|
 | Desteklenen OS/tarayıcı/codec matrisi gerçek testlerle yazıldı | ⚠️ | Windows'ta Chromium/Chrome/Edge 20/20, Firefox açık ret, 15 gerçek kayıt. **Eksik:** macOS, Safari, gerçek telefon tarayıcısı, düşük bellekli cihaz |
-| Türkçe metinler, hata açıklamaları ve erişilebilirlik test edildi | ⏳ | Türkçe metinler ve hata kodları: e2e. Erişilebilirlik denetimi bu turda yapılıyor (`docs/a11y/`) |
+| Türkçe metinler, hata açıklamaları ve erişilebilirlik test edildi | ⚠️ | Türkçe metinler ve hata kodları: e2e. Otomatik erişilebilirlik: axe (WCAG 2.2 A/AA) 32 ekran durumunda 233 → 0 ihlal; klavyeyle tam akış, odak tuzağı, hareket azaltma, %200 yakınlaştırma testlerle geçiyor (`docs/a11y/2026-09-22-audit.md`). **Gerçek ekran okuyucu (NVDA) testi yapılmadı**; 11 adımlık kontrol listesi raporda |
 | İsim/domain/iletişim bilgileri gerçek | ❌ **Kurucu kararı (K01)** | "Clip" geçici ad; domain ve iletişim adresi yok |
-| Privacy/terms ve veri envanteri gerçek davranışla eşleşiyor | ⏳ | Envanter ve taslak gizlilik sayfası bu turda yazılıyor (`docs/privacy/`). **Veri sorumlusu (K02) ve hukuki inceleme kurucuya ait** |
+| Privacy/terms ve veri envanteri gerçek davranışla eşleşiyor | ⚠️ | Koddan çıkarılmış envanter (`docs/privacy/DATA_INVENTORY.md`) ve taslak `/gizlilik` sayfası (TR/EN). Tam oturumun dışarıya sıfır istek yaptığı ve çerez bırakmadığı e2e ile doğrulanıyor. **Veri sorumlusu (K02), barındırma sağlayıcısı ve hukuki inceleme eksik; sayfada görünür "belirlenmedi"** |
 | App Store/Play beyanları | — | Web-only; mağaza yok |
 | Hesap varsa silme akışları | — | Hesap yok. Yerel projeyi silme var (`persistence.spec.ts`) |
-| Beta gözlemleri, destek yolu ve export metrikleri hazır | ⏳ | Kullanıcı testi kiti: `docs/beta/USER_TEST_KIT.md`. Destek yolu ("Sorun bildir", yerel tanı dosyası) ve yerel export günlüğü bu turda yapılıyor. Uzaktan metrik toplanmıyor (analitik sağlayıcısı yok, bilerek) |
+| Beta gözlemleri, destek yolu ve export metrikleri hazır | ⚠️ | Kullanıcı testi kiti: `docs/beta/USER_TEST_KIT.md`. "Sorun bildir": içeriği önceden gösterilen, dosya adı/altyazı metni içermeyen tanı dosyası (birim testli); yerel export günlüğü (son 20, yalnız bu tarayıcıda). **İletişim adresi belirlenmedi** (`NEXT_PUBLIC_SUPPORT_CONTACT`). Uzaktan metrik toplanmıyor, bilerek |
 | Landing page yalnızca mevcut özellikleri gösteriyor | ✅ | Tanıtım sayfası tek cümle ve "Editörü aç"; olmayan özellik vaadi yok |
 | Analytics ve marketing tercihleri anlaşılır | ✅ (yok) | Analitik ve pazarlama izleme yok; gizlilik sayfası bunu söyleyecek. İleride eklenirse ayrı rıza (P2-05, kurucu kararı) |
 
