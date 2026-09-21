@@ -99,7 +99,10 @@ eklenen boşluk; dijital sessizlik, oda tonu, düşük ses, gürültü, sentetik
 - **Duyarlılık artı yönü kaldırıldı:** `SILENCE_PARAM_LIMITS.sensitivityDb` artık −10…0 dB.
   Tarama, +5 dB'nin her ayarda konuşma kestiğini gösterdi.
 - **"Öneri yok" mesajı** gürültüyü, müziği ve sürekli sesi kapsayacak şekilde güncellendi.
-- **İnsan dinlemesi: AÇIK.** 10 çift (orijinal / kesilmiş) WAV yerelde
-  `web/spike-results/silence-listen/after/` altında (gitignore; paylaşılmaz). Kurucu dinleyip
-  "hece kesildi / kesilmedi" diye işaretleyene kadar özellik yayın kapsamına alınmaz. Kod
-  `main`'de; uygulama henüz hiçbir yerde yayında değil.
+- **İnsan dinlemesi: KAPANDI (2026-09-22).** Kurucu 10 çifti (orijinal / kesilmiş,
+  `web/spike-results/silence-listen/after/`) dinledi: hiçbirinde hece ya da kelime sonu
+  kesilmesi duyulmadı. Sınır: örneklem 10 kesim ve kurgulanmış (FLEURS + eklenen boşluk)
+  kayıtlardan; gerçek vlog sesi, nefesli duraklamalar ve çok konuşmacılı kayıt beta
+  kullanıcılarıyla izlenecek.
+- **Sonuç:** ADR-018 ölçüm kapısının bütün satırları kapandı; özellik beta kapsamına
+  alınabilir.
