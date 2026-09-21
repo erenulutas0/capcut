@@ -31,6 +31,8 @@ export type ExportFailureCode =
   | 'no_frames_decoded'
   | 'source_frames_missing'
   | 'source_reorder_unfixable'
+  | 'caption_font_unavailable'
+  | 'caption_does_not_fit'
   | 'output_probe_failed'
   | 'output_duration_mismatch'
   | 'out_of_memory'
@@ -106,7 +108,16 @@ export type ExportEvent =
         | { kind: 'memory'; data: Uint8Array }
         | { kind: 'opfs'; file: File; entryName: string };
     }
-  | { type: 'failed'; attemptId: string; code: ExportFailureCode }
+  | {
+      type: 'failed';
+      attemptId: string;
+      code: ExportFailureCode;
+      /**
+       * The caption line behind `caption_does_not_fit`, so the user is told
+       * which one to shorten. An id from the recipe, never the text itself.
+       */
+      cueId?: string;
+    }
   | { type: 'canceled'; attemptId: string };
 
 export const TERMINAL_EXPORT_TYPES: ReadonlySet<ExportEvent['type']> = new Set([

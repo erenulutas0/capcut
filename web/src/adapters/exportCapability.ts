@@ -167,6 +167,12 @@ export function buildReport(
     if (!encoder.videoConfigSupported) blockers.push('video_encoder_unsupported');
     if (!encoder.audioConfigSupported) blockers.push('audio_encoder_unsupported');
     if (!encoder.selfTestPassed && encoder.failure) blockers.push(encoder.failure);
+    // Only asked when the plan burns in captions. A worker that cannot load
+    // the bundled typeface would draw them in some other font, so the export
+    // is refused rather than made to look different from the preview.
+    if (encoder.captionFont !== null && encoder.captionFont !== 'loaded') {
+      blockers.push('caption_font_unavailable');
+    }
   }
 
   if (source && !source.videoDecodable) blockers.push('source_undecodable');
@@ -180,6 +186,7 @@ export function buildReport(
     environmentPasses(environment) &&
     encoder !== null &&
     encoder.selfTestPassed &&
+    (encoder.captionFont === null || encoder.captionFont === 'loaded') &&
     source !== null &&
     source.videoDecodable &&
     !source.isHdr;

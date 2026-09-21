@@ -38,6 +38,8 @@ import {
   mixStreamInto,
   musicEnvelope,
 } from '@/domain/audioMix';
+import { cueIndexAtFrame, preflightCaptions } from '@/domain/captionBurnIn';
+import type { CaptionLayout } from '@/domain/captionLayout';
 import type { ExportEvent, ExportFailureCode, ExportProbe } from '@/domain/exportEvents';
 import { durationWithinTolerance, missingFramesAllowed } from '@/domain/exportEvents';
 import {
@@ -47,6 +49,13 @@ import {
   type RenderSegment,
 } from '@/domain/renderPlan';
 import { US_PER_SECOND } from '@/domain/time';
+import {
+  CAPTION_FONT_FAMILY,
+  canvasMeasure,
+  captionFont,
+  drawCaptionLayout,
+  loadCaptionFont,
+} from '../captionRender';
 import { AudioStreamReader } from './audioStream';
 import {
   avcLengthSize,
@@ -57,7 +66,13 @@ import {
 import { pickFrames } from './framePicker';
 import { removeExportEntry, sweepExportEntries } from './opfsEntries';
 import { prepareOutput } from './outputSink';
-import type { CapabilityStageResult, EncoderProbeConfig, WorkerRequest, WorkerResponse } from './protocol';
+import type {
+  CaptionFontStatus,
+  CapabilityStageResult,
+  EncoderProbeConfig,
+  WorkerRequest,
+  WorkerResponse,
+} from './protocol';
 
 const scope = self as unknown as DedicatedWorkerGlobalScope;
 
@@ -74,7 +89,11 @@ class CanceledError extends Error {
 }
 
 class ExportFailure extends Error {
-  constructor(readonly code: ExportFailureCode) {
+  constructor(
+    readonly code: ExportFailureCode,
+    /** Set for `caption_does_not_fit`: which recipe line to shorten. */
+    readonly cueId?: string,
+  ) {
     super(code);
     this.name = 'ExportFailure';
   }
@@ -121,6 +140,75 @@ async function probeProduced(produced: Uint8Array | Blob): Promise<ExportProbe> 
   };
 }
 
+/* ------------------------------------------------------------ caption font */
+
+/** Letters the caption must render correctly (Turkish dotted/dotless i, ğ, ş). */
+const FONT_PROBE_TEXT = 'İığşçöü ĞŞ Wm 0123';
+
+function isWebOrigin(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (url.protocol === 'https:' || url.protocol === 'http:') && url.origin === value;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Loads the bundled caption typeface into THIS worker and proves the canvas
+ * uses it. A font that silently fell back would give a file that differs from
+ * the preview, so anything short of proof is reported, never papered over
+ * with another font (ADR-015).
+ */
+async function loadWorkerCaptionFont(origin: string): Promise<CaptionFontStatus> {
+  // `fonts` on a worker scope and `FontFace` are both needed; older engines
+  // lack them in workers even where the page has them.
+  const fonts = (scope as unknown as { fonts?: FontFaceSet }).fonts;
+  if (typeof FontFace !== 'function' || !fonts || typeof OffscreenCanvas !== 'function') {
+    return 'api_missing';
+  }
+  if (!isWebOrigin(origin)) return 'load_failed';
+  if (!(await loadCaptionFont(fonts, origin))) return 'load_failed';
+
+  let inSet = false;
+  fonts.forEach((face) => {
+    if (face.family.replace(/["']/g, '') === CAPTION_FONT_FAMILY && face.status === 'loaded') inSet = true;
+  });
+  if (!inSet) return 'load_failed';
+
+  // The set holding the face is not yet proof the canvas draws with it: the
+  // caption font must measure differently from both generic fallbacks.
+  const probe = new OffscreenCanvas(8, 8).getContext('2d');
+  if (!probe) return 'load_failed';
+  const width = (font: string) => {
+    probe.font = font;
+    return probe.measureText(FONT_PROBE_TEXT).width;
+  };
+  const caption = width(captionFont(40));
+  const fallbacks = [width('700 40px sans-serif'), width('700 40px serif')];
+  return fallbacks.every((fallback) => Math.abs(fallback - caption) > 0.5) ? 'loaded' : 'load_failed';
+}
+
+/**
+ * Loads the font and lays out every cue before any frame is encoded; the
+ * returned array is the per-cue layout cache the frame loop draws from.
+ */
+async function prepareCaptionLayouts(plan: RenderPlan, origin: string): Promise<CaptionLayout[] | null> {
+  if (!plan.captions) return null;
+  if ((await loadWorkerCaptionFont(origin)) !== 'loaded') {
+    throw new ExportFailure('caption_font_unavailable');
+  }
+  const measureContext = new OffscreenCanvas(8, 8).getContext('2d');
+  if (!measureContext) throw new ExportFailure('internal_error');
+  const preflight = preflightCaptions(
+    plan.captions,
+    { width: plan.width, height: plan.height, aspect: plan.aspect },
+    canvasMeasure(measureContext),
+  );
+  if (!preflight.ok) throw new ExportFailure('caption_does_not_fit', preflight.cueId);
+  return preflight.layouts;
+}
+
 /* -------------------------------------------------------- capability gate C */
 
 /**
@@ -128,15 +216,27 @@ async function probeProduced(produced: Uint8Array | Blob): Promise<ExportProbe> 
  * mux it, then re-open it. Being able to play a file, or having the encoder
  * API present, is not evidence that this path produces a readable MP4.
  */
-async function runSelfTest(config: EncoderProbeConfig): Promise<CapabilityStageResult> {
+async function runSelfTest(
+  config: EncoderProbeConfig,
+  captionFontOrigin: string | null,
+): Promise<CapabilityStageResult> {
   const result: CapabilityStageResult = {
     videoConfigSupported: false,
     audioConfigSupported: false,
     selfTestPassed: false,
     selfTestDurationUs: null,
     selfTestHasAudio: false,
+    captionFont: null,
     failure: null,
   };
+
+  // Checked first so the answer is reported even when the encoder stages
+  // below refuse; it is loaded in the same worker that will later draw it.
+  if (captionFontOrigin !== null) {
+    result.captionFont = await loadWorkerCaptionFont(captionFontOrigin).catch(
+      (): CaptionFontStatus => 'load_failed',
+    );
+  }
 
   try {
     result.videoConfigSupported = await canEncodeVideo('avc', {
@@ -418,9 +518,14 @@ async function runExport(
   plan: RenderPlan,
   videoFile: File,
   audioFile: File | null,
+  origin: string,
 ): Promise<void> {
   const startedAt = Date.now();
   emit(requestId, { type: 'preparing', attemptId: requestId });
+
+  // Before any decoding or output file exists: a missing font or a line that
+  // cannot fit is known now, not after minutes of encoding.
+  const captionLayouts = await prepareCaptionLayouts(plan, origin);
 
   const videoInput = new Input({ formats: ALL_FORMATS, source: new BlobSource(videoFile) });
   const videoTrack = await videoInput.getPrimaryVideoTrack();
@@ -532,6 +637,15 @@ async function runExport(
           // The picker owns the sample and closes it; do not close it here.
           drawSegmentFrame(context, sample, segment, plan);
           framesDrawn += 1;
+        }
+
+        // Burned in on top of the picture, before the frame is handed to the
+        // encoder. Drawn even on a held/background frame: the caption belongs
+        // to output time, not to the source frame.
+        if (captionLayouts && plan.captions) {
+          const cueIndex = cueIndexAtFrame(plan.captions.cues, frame);
+          const layout = cueIndex >= 0 ? captionLayouts[cueIndex] : undefined;
+          if (layout) drawCaptionLayout(context, layout, plan.captions.style.preset);
         }
 
         await videoSource.add(frame * frameDuration, frameDuration);
@@ -676,7 +790,7 @@ scope.onmessage = async (message: MessageEvent<WorkerRequest>) => {
 
 
   if (request.type === 'capability') {
-    const result = await runSelfTest(request.config);
+    const result = await runSelfTest(request.config, request.captionFontOrigin);
     const response: WorkerResponse = { type: 'capability', requestId: request.requestId, result };
     scope.postMessage(response);
     return;
@@ -684,12 +798,23 @@ scope.onmessage = async (message: MessageEvent<WorkerRequest>) => {
 
   if (request.type === 'export') {
     try {
-      await runExport(request.requestId, request.plan, request.videoFile, request.audioFile);
+      await runExport(
+        request.requestId,
+        request.plan,
+        request.videoFile,
+        request.audioFile,
+        request.origin,
+      );
     } catch (error) {
       if (error instanceof CanceledError) {
         emit(request.requestId, { type: 'canceled', attemptId: request.requestId });
       } else if (error instanceof ExportFailure) {
-        emit(request.requestId, { type: 'failed', attemptId: request.requestId, code: error.code });
+        emit(request.requestId, {
+          type: 'failed',
+          attemptId: request.requestId,
+          code: error.code,
+          ...(error.cueId !== undefined ? { cueId: error.cueId } : {}),
+        });
       } else {
         const name = error instanceof Error ? error.name : '';
         emit(request.requestId, {

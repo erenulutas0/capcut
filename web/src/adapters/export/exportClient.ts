@@ -46,10 +46,11 @@ export class ExportWorkerClient {
    */
   async checkCapability(
     config: EncoderProbeConfig,
-    timeoutMs = CAPABILITY_TIMEOUT_MS,
+    options: { withCaptionFont: boolean; timeoutMs?: number } = { withCaptionFont: false },
   ): Promise<CapabilityStageResult> {
     const worker = this.ensureWorker();
     const requestId = this.nextId('cap');
+    const timeoutMs = options.timeoutMs ?? CAPABILITY_TIMEOUT_MS;
 
     return new Promise<CapabilityStageResult>((resolve, reject) => {
       const onMessage = (event: MessageEvent<WorkerResponse>) => {
@@ -76,7 +77,12 @@ export class ExportWorkerClient {
 
       worker.addEventListener('message', onMessage);
       worker.addEventListener('error', onError);
-      const request: WorkerRequest = { type: 'capability', requestId, config };
+      const request: WorkerRequest = {
+        type: 'capability',
+        requestId,
+        config,
+        captionFontOrigin: options.withCaptionFont ? window.location.origin : null,
+      };
       worker.postMessage(request);
     });
   }
@@ -119,7 +125,14 @@ export class ExportWorkerClient {
     worker.addEventListener('message', onMessage);
     worker.addEventListener('error', onError);
 
-    const request: WorkerRequest = { type: 'export', requestId, plan, videoFile, audioFile };
+    const request: WorkerRequest = {
+      type: 'export',
+      requestId,
+      plan,
+      videoFile,
+      audioFile,
+      origin: window.location.origin,
+    };
     worker.postMessage(request);
 
     try {

@@ -330,4 +330,56 @@ export const CASES = [
       fadeCheck: { frequency: TONE.music, quietAt: 0.1, loudAt: 3, minMarginDb: 10 },
     },
   },
+  {
+    id: 'M17',
+    title: 'Altyazı videoya işleniyor',
+    expectation:
+      'Satırlar planlanan karelerde ve doğru bölgede görünüyor; satır dışındaki kareler altyazısız referansla aynı',
+    // The captions reach the project through the backup import (a supported
+    // app path), not through any caption editing UI. One track has one style,
+    // so the two presets are two exports of the same edit.
+    setup: {
+      video: 'm01-portrait-20s.mp4',
+      moments: [['00:00.000', '00:04.000'], ['00:08.000', '00:14.000']],
+      aspect: '9-16',
+      quality: '720',
+      captions: {
+        variants: [
+          { label: 'kutu-alt', style: { preset: 'box', position: 'bottom', size: 'medium' } },
+          { label: 'kontur-ust', style: { preset: 'outline', position: 'top', size: 'medium' } },
+        ],
+        // Output time. The second cue crosses the 4 s cut between the two
+        // moments, so the worker must follow OUTPUT frames, not source time.
+        cues: [
+          { startUs: 500_000, endUs: 2_500_000, text: 'Günaydın İstanbul' },
+          { startUs: 3_500_000, endUs: 7_000_000, text: 'Dağlar ışıl ışıl\nŞimdi başlıyoruz' },
+        ],
+      },
+    },
+    expect: {
+      exports: true,
+      durationSeconds: 10,
+      frames: 300,
+      size: [720, 1280],
+      videoCodec: 'h264',
+      audioCodec: 'aac',
+      captions: {
+        fps: 30,
+        totalFrames: 300,
+        // Same independent ffmpeg edit as M01, without captions.
+        reference: { filter: 'crop=iw:ih,scale=720:1280', trims: [[0, 4], [8, 14]] },
+        // M01's whole-file bar; per frame a little lower for codec variance.
+        minCleanSsim: 0.9,
+        minCleanSsimFrame: 0.85,
+        // Mean absolute luma difference (0-255) inside the cue region, over
+        // the noise of two different encoders (~13-14 on this busy pattern).
+        minRegionRise: 10,
+        minRegionSeparation: 4,
+        screenshots: [
+          { file: 'screenshots/caption-export-frame.png', frame: 150 },
+          { file: 'screenshots/caption-export-frame-outline.png', frame: 150 },
+        ],
+      },
+    },
+  },
 ];

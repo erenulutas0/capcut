@@ -296,6 +296,11 @@ export const tr = {
     'Bu tarayıcı videonun bazı karelerini çözemedi. Eksik karelerle bozuk bir dosya üretmek yerine durduruldu. Chrome veya Edge ile dene.',
   'export.fail.source_reorder_unfixable':
     'Bu video kare sırasını olduğundan az bildiriyor ve bu tarayıcının çözücüsü bu yüzden kare atlıyor. Görüntüsü sesinden geri kalan bir dosya üretmek yerine durduruldu.',
+  'export.fail.caption_font_unavailable':
+    'Altyazı yazı tipi bu tarayıcıda yüklenemedi. Önizlemeden farklı görünen bir dosya üretmemek için çıktı alınmadı.',
+  'export.fail.caption_does_not_fit':
+    'Bir altyazı satırı videoya iki satırda sığmıyor. O satırı kısalt ya da ikiye böl, sonra yeniden dene.',
+  'export.fail.captionCue': 'Kısaltılması gereken: {index}. altyazı satırı, “{text}”',
   'export.fail.output_probe_failed': 'Oluşan dosya yeniden açılamadı; başarılı sayılmadı.',
   'export.fail.output_duration_mismatch': 'Oluşan dosyanın süresi beklenen süreyle uyuşmadı.',
   'export.fail.out_of_memory': 'Tarayıcının belleği yetmedi. Daha kısa bir çıktı dene.',
@@ -672,6 +677,11 @@ export const en: Record<MessageKey, string> = {
     'This browser could not decode some frames of the video. It stopped instead of producing a broken file. Try Chrome or Edge.',
   'export.fail.source_reorder_unfixable':
     'This video understates its frame reordering, so this browser’s decoder skips frames. It stopped instead of producing a file whose picture lags behind its sound.',
+  'export.fail.caption_font_unavailable':
+    'The caption typeface could not be loaded in this browser. No file was made, so it cannot look different from the preview.',
+  'export.fail.caption_does_not_fit':
+    'A caption line does not fit the video in two lines. Shorten or split that line, then try again.',
+  'export.fail.captionCue': 'Needs shortening: caption line {index}, “{text}”',
   'export.fail.output_probe_failed':
     'The produced file could not be re-opened, so it does not count as success.',
   'export.fail.output_duration_mismatch': 'The produced file did not have the expected duration.',
