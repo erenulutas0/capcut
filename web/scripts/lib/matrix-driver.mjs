@@ -6,6 +6,7 @@
  * driving and the assessment live here once.
  */
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   bandRmsDb,
@@ -18,6 +19,9 @@ import {
 /**
  * @param {{ mediaDir: string, outDir: string, baseURL: string }} ctx
  */
+/** A committed, known-good file used to check the app still works after a refusal. */
+const RECOVERY_FILE = fileURLToPath(new URL('../../tests/media/sample-24s.mp4', import.meta.url));
+
 export function createDriver({ mediaDir, outDir, baseURL }) {
   const FRAME_TOLERANCE = 1 / 30 + 0.002;
 
@@ -62,7 +66,7 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       const message = ((await importError.textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ').trim();
 
       // The app must still work afterwards: a good file must import cleanly.
-      await page.getByTestId('video-input').setInputFiles(join(mediaDir, 'm01-portrait-20s.mp4'));
+      await page.getByTestId('video-input').setInputFiles(RECOVERY_FILE);
       const recovered = (await waitForAny(page, ['preview-video'], 60_000)) === 'preview-video';
 
       return {

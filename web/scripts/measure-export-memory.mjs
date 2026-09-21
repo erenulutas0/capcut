@@ -14,7 +14,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
@@ -125,7 +125,8 @@ for (const seconds of durations) {
       if (name.startsWith('clip-export-')) await root.removeEntry(name).catch(() => undefined);
     }
   });
-  await page.getByTestId('video-input').setInputFiles(join(mediaDir, fixture));
+  // An absolute path measures any file, e.g. a user's own long recording.
+  await page.getByTestId('video-input').setInputFiles(isAbsolute(fixture) ? fixture : join(mediaDir, fixture));
   await page.getByTestId('preview-video').waitFor({ timeout: 60_000 });
 
   // Long outputs from a 20 s source by reusing ranges (doc 10 allows repeats).
@@ -206,6 +207,9 @@ for (const seconds of durations) {
     row.measuredSeconds = probe ? Number(Number(probe.format.duration).toFixed(3)) : null;
     row.frames = video ? Number(video.nb_frames) : null;
     row.videoBitrateMbps = video?.bit_rate ? Number((Number(video.bit_rate) / 1e6).toFixed(2)) : null;
+    // An absolute fixture is someone's own recording: do not leave a copy of
+    // it behind once it has been measured.
+    if (isAbsolute(fixture)) rmSync(artefact, { force: true });
   } else {
     const failure = await page.getByTestId('export-failed').textContent().catch(() => null);
     row.failure = failure ? failure.replace(/\s+/g, ' ').trim() : 'zaman aşımı';

@@ -1,7 +1,7 @@
 # ADR-013 — W4: çıktıyı OPFS'e akıtmak ve gerçek kayıt koşucusu
 
 > Tarih: 2026-09-21 · Durum: UYGULANDI ve ÖLÇÜLDÜ (bellek kısmı);
-> gerçek kayıt kısmı **kullanıcı kayıtlarını bekliyor**.
+> gerçek kayıtlarla ilk koşular yapıldı (aşağıda).
 
 ## Bağlam
 
@@ -107,16 +107,59 @@ Koşucunun mekaniği sentetik dosyaların bir kopyasıyla ayrı bir klasörde de
 Bu bir **koşucu testidir, gerçek kayıt sonucu değildir**; sonuç dosyası
 yayımlanmadan silindi.
 
-## Açık kalan: gerçek kayıtlar
+## Gerçek kayıtlarla ilk koşular (W5 öncesi)
 
-**NOT_RUN — kullanıcı kayıtları gerekiyor.** Gerçek telefon/kamera kayıtları bu
-ortamda yok; uydurulmadı, internetten telifli içerik indirilmedi. Destek matrisi
-bunu açıkça "NOT_RUN" olarak gösteriyor.
+Kullanıcı kendi dosyalarını `web/tests/media/real/` klasörüne koydu. Dosya
+adları ve içerikleri kaydedilmedi; aşağıda yalnızca teknik özellikler var.
 
-Beklenen bir bulgu şimdiden söylenebilir: 250 MiB giriş sınırı nedeniyle birkaç
-dakikalık 4K telefon kayıtlarının çoğu içe aktarmada reddedilecek (politika,
-doc 15). Bu bir hata değil, politika; ancak gerçek kayıtlar geldiğinde sınırın
-ürün için doğru olup olmadığı tartışılmalı.
+**Birinci set — 3 kayıt, Chromium/Chrome/Edge'de 3/3 PASS** (commit `fb89dab`):
+gerçek VFR (ortalama 40.6 fps, nominal 30), alışılmadık çözünürlük (480×724) ve
+1080×1920. SSIM 0.91–0.995, süre birebir, ses kaynağa göre −1.0/−1.1 dB. Bu set
+sonradan kullanıcı tarafından silindi; sonuçları o commit'teki destek matrisinde.
+
+**İkinci set — 1 kayıt:** H.264 854×480 24 fps, AAC 44.1 kHz, **32 dk 37 sn,
+257.7 MiB**, uzantısı `.vid` (içeriği standart MP4, `ftyp isom`).
+Mevcut politikayla üç tarayıcıda da **REFUSED**: içe aktarmada "250 MiB
+sınırının üzerinde". Doğru ve politikaya uygun davranış.
+
+Bu koşular dört gerçek hata çıkardı, hepsi düzeltildi:
+
+1. Koşucu yalnızca :3100'e bakıyordu; `npm run dev` (:3000) açıkken her dosya
+   aynı bağlantı hatasıyla düşüyordu.
+2. Ses izi olan ama seçilen aralıkta tamamen sessiz bir kayıtta kontrol
+   `−∞ − (−∞) = NaN` üretiyordu. Kaynak sessizse çıktının da sessiz olması
+   bekleniyor artık.
+3. Dosyalar uzantıya göre seçiliyordu; `.vid` uzantılı sıradan bir MP4 hiç
+   görülmedi. Artık uzantı bilinmiyorsa içerik ffprobe ile kontrol ediliyor.
+4. Arayüz sınırı "250 MB" diye yazıyordu, kontrol 250 **MiB** (≈262 MB) ile
+   yapılıyordu. Doc 15 bunu açıkça yasaklıyor; mesaj artık birimi doğru veriyor.
+
+Ayrıca bir gizlilik düzeltmesi: koşucu, kontrol için kestiği parçaları (kullanıcı
+görüntüsünün kopyaları) diskte bırakıyordu. Artık kontrol biter bitmez siliyor;
+`--keep` ile istenirse saklanır. Bellek ölçüm script'i de kullanıcı dosyasıyla
+çalıştığında kopyaları siliyor.
+
+### Deney: sınırlar kalksaydı
+
+Ana koda dokunmadan, yalnızca giriş sınırları yükseltilmiş (120 dk / 4 GiB) ayrı
+bir derleme ayrı bir worktree'de kuruldu; deney bitince kaldırıldı ve sonucu
+yayımlanan matrise girmedi.
+
+- Aynı 32 dakikalık, 257.7 MiB dosya **PASS**: dosyanın %10 ve %55 noktalarından
+  (≈3:15 ve ≈17:56) kesilen iki an doğru; SSIM 0.93, süre birebir, 44.1 kHz ses
+  48 kHz'e doğru çevrildi (−1.1 dB).
+- Bellek (kalıcı profil, 720p çıktı): 30 sn çıktı tepe **363 MiB**, 300 sn çıktı
+  tepe **434 MiB**. Giriş dosyası belleğe alınmıyor, gerektikçe diskten okunuyor;
+  bellek giriş boyutuyla büyümüyor.
+
+**Sonuç:** 250 MiB / 20 dk giriş sınırının bu mimaride teknik bir bellek
+gerekçesi yok. Kanıt tek dosya ve tek makine (n=1) olduğu için bu bir öneri,
+kanıtlanmış bir destek iddiası değil. Sınırı değiştirmek doc 15'te kanonik bir
+politika değişikliğidir ve kurucu kararı gerektirir (AGENTS.md); bu belge
+kendiliğinden değiştirmez.
+
+Hâlâ çalıştırılmayanlar: HEVC/4K telefon kaydı (Chromium'da HEVC içe aktarmada
+reddediliyor), rotasyon metadata'lı gerçek bir telefon kaydı, HDR.
 
 ## Bilinen sınırlar
 

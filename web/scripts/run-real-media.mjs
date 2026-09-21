@@ -14,7 +14,7 @@
  *   node scripts/run-real-media.mjs                       # tests/media/real
  *   node scripts/run-real-media.mjs --dir=D:/telefon-videolari --browser=chrome
  */
-import { mkdirSync, readdirSync, statSync, writeFileSync, existsSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, extname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, firefox, webkit } from '@playwright/test';
@@ -63,6 +63,8 @@ const argValue = (name, fallback) => {
 const dirArg = argValue('dir', join(root, 'tests', 'media', 'real'));
 const mediaDir = isAbsolute(dirArg) ? dirArg : resolve(process.cwd(), dirArg);
 const browserName = argValue('browser', 'chromium');
+/** Keep the exported pieces of the user's footage for inspection. Off by default. */
+const keepArtefacts = args.includes('--keep');
 
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.m4v', '.webm', '.mkv', '.3gp']);
 const LAUNCHERS = {
@@ -78,9 +80,30 @@ mkdirSync(outDir, { recursive: true });
 if (!existsSync(mediaDir)) {
   mkdirSync(mediaDir, { recursive: true });
 }
+/**
+ * Extensions lie: phones and download tools write perfectly ordinary MP4s as
+ * `.vid`, `.dat` or no extension at all. A file is included when it has a
+ * known video extension OR when ffprobe finds a video stream in it.
+ */
+function hasVideoStream(path) {
+  const probe = ffprobeJson(path);
+  return Boolean(probe?.streams?.some((s) => s.codec_type === 'video'));
+}
+
+const skipped = [];
 const files = readdirSync(mediaDir)
-  .filter((name) => VIDEO_EXTENSIONS.has(extname(name).toLowerCase()))
+  .filter((name) => {
+    const path = join(mediaDir, name);
+    if (!statSync(path).isFile()) return false;
+    if (VIDEO_EXTENSIONS.has(extname(name).toLowerCase())) return true;
+    if (hasVideoStream(path)) return true;
+    skipped.push(name);
+    return false;
+  })
   .sort();
+if (skipped.length > 0) {
+  console.log(`video içermediği için atlandı: ${skipped.length} dosya`);
+}
 
 if (files.length === 0) {
   console.log(
@@ -269,6 +292,13 @@ for (const [index, fileName] of files.entries()) {
     record = { id, status: 'ERROR', properties, error: String(error).split('\n')[0].slice(0, 200), checks: [] };
   } finally {
     await page.close();
+    // The exported piece and the ffmpeg reference are copies of the user's own
+    // footage. They are only needed for the checks above, so they do not stay
+    // on disk unless explicitly asked for.
+    if (!keepArtefacts) {
+      rmSync(artefactPath, { force: true });
+      rmSync(join(outDir, `${id}-reference.mp4`), { force: true });
+    }
   }
 
   results.push(record);

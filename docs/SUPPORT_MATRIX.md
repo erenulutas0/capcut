@@ -18,11 +18,11 @@ Her satır `video-editor-blueprint/docs/22_QA_TEST_MATRIX.md` içindeki bir fixt
 
 | Tarayıcı | Sürüm | Encoder kabiliyeti | Çalıştırma |
 |---|---|---|---|
-| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-09-21 12:07 UTC |
-| Google Chrome | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 12:07 UTC |
-| Microsoft Edge | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 12:08 UTC |
-| Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-21 12:08 UTC |
-| WebKit (Playwright) | 26.6 | WebCodecs yok | 2026-09-21 12:08 UTC |
+| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-09-21 13:15 UTC |
+| Google Chrome | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 13:15 UTC |
+| Microsoft Edge | 153.0.0.0 | H.264 var · AAC var | 2026-09-21 13:16 UTC |
+| Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-21 13:16 UTC |
+| WebKit (Playwright) | 26.6 | WebCodecs yok | 2026-09-21 13:17 UTC |
 
 Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari, gerçek telefon ve fiziksel cihaz testi yapılmadı.** Playwright’ın WebKit derlemesi Safari değildir ve Safari sonucu yerine geçmez.
 
@@ -79,39 +79,33 @@ Ortam: chromium, kalıcı (disk destekli) profil, yoğun 1080p kaynak, 1080p ç�
 
 | Çıktı | Dosya | Kare | Süren işlem | Bellek yolu: tepe (artış) | OPFS yolu: tepe (artış) |
 |---|---|---|---|---|---|
-| 30 s | 19.9 MiB (5.44 Mbit/s) | 900 | 7.2 s | 588 MiB (+355) | 574 MiB (+350) |
-| 60 s | 39.9 MiB (5.44 Mbit/s) | 1800 | 13.8 s | 605 MiB (+371) | 586 MiB (+346) |
-| 120 s | 79.7 MiB (5.44 Mbit/s) | 3600 | 27.2 s | 654 MiB (+428) | 590 MiB (+355) |
-| 180 s | 119.5 MiB (5.44 Mbit/s) | 5400 | 40.5 s | 778 MiB (+541) | 601 MiB (+363) |
-| 300 s | 199.2 MiB (5.44 Mbit/s) | 9000 | 68.9 s | 1033 MiB (+787) | 607 MiB (+362) |
+| 30 s | 19.9 MiB (5.44 Mbit/s) | 900 | 9.0 s | 597 MiB (+366) | 579 MiB (+354) |
+| 60 s | 39.9 MiB (5.44 Mbit/s) | 1800 | 18.5 s | 605 MiB (+370) | 592 MiB (+351) |
+| 120 s | 79.7 MiB (5.44 Mbit/s) | 3600 | 36.7 s | 659 MiB (+424) | 597 MiB (+366) |
+| 180 s | 119.5 MiB (5.44 Mbit/s) | 5400 | 46.3 s | 706 MiB (+464) | 613 MiB (+375) |
+| 300 s | 199.2 MiB (5.44 Mbit/s) | 9000 | 84.4 s | 1007 MiB (+754) | 630 MiB (+370) |
 
 Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer’da hem sayfadaki Blob’da tutulur). OPFS yolunda çıktı tarayıcının özel diskine akar ve artış uzunluktan bağımsız kalır. Uyarı: gizli pencerede Chromium OPFS’i RAM’de tutar; orada bu kazanç yoktur.
 
 ## Gerçek kayıtlar
 
-### Chromium (Playwright) — 3 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 12:58 UTC)
+### Chromium (Playwright) — 0 PASS, 1 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 13:12 UTC)
 
 | # | Durum | Codec | Boyut | Rotasyon | fps | Süre | Dosya | Renk | Ses | SSIM |
 |---|---|---|---|---|---|---|---|---|---|---|
-| R01 | PASS | h264 | 592x1280 | 0° | 40.588 (VFR?) | 29.5 s | 3.9 MiB | — | aac | 0.9123 |
-| R02 | PASS | h264 | 480x724 | 0° | 29.934 | 45.1 s | 1.7 MiB | — | aac | 0.972 |
-| R03 | PASS | h264 | 1080x1920 | 0° | 30 | 14.2 s | 1.3 MiB | bt709 | aac | 0.995 |
+| R01 | REFUSED | h264 | 854x480 | 0° | 24 | 1957.4 s | 257.7 MiB | — | aac | — |
 
-### Google Chrome — 3 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 12:58 UTC)
+### Google Chrome — 0 PASS, 1 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 13:12 UTC)
 
 | # | Durum | Codec | Boyut | Rotasyon | fps | Süre | Dosya | Renk | Ses | SSIM |
 |---|---|---|---|---|---|---|---|---|---|---|
-| R01 | PASS | h264 | 592x1280 | 0° | 40.588 (VFR?) | 29.5 s | 3.9 MiB | — | aac | 0.9254 |
-| R02 | PASS | h264 | 480x724 | 0° | 29.934 | 45.1 s | 1.7 MiB | — | aac | 0.976 |
-| R03 | PASS | h264 | 1080x1920 | 0° | 30 | 14.2 s | 1.3 MiB | bt709 | aac | 0.997 |
+| R01 | REFUSED | h264 | 854x480 | 0° | 24 | 1957.4 s | 257.7 MiB | — | aac | — |
 
-### Microsoft Edge — 3 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 12:58 UTC)
+### Microsoft Edge — 0 PASS, 1 REFUSED, 0 FAIL, 0 ERROR (2026-09-21 13:12 UTC)
 
 | # | Durum | Codec | Boyut | Rotasyon | fps | Süre | Dosya | Renk | Ses | SSIM |
 |---|---|---|---|---|---|---|---|---|---|---|
-| R01 | PASS | h264 | 592x1280 | 0° | 40.588 (VFR?) | 29.5 s | 3.9 MiB | — | aac | 0.9254 |
-| R02 | PASS | h264 | 480x724 | 0° | 29.934 | 45.1 s | 1.7 MiB | — | aac | 0.976 |
-| R03 | PASS | h264 | 1080x1920 | 0° | 30 | 14.2 s | 1.3 MiB | bt709 | aac | 0.997 |
+| R01 | REFUSED | h264 | 854x480 | 0° | 24 | 1957.4 s | 257.7 MiB | — | aac | — |
 
 ## Bu matrisin kapsamadıkları
 

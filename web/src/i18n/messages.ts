@@ -259,7 +259,8 @@ export const tr = {
     'Bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu formatı oynatmıyor.',
   'error.unknown_duration': 'Dosyanın süresi okunamadı; bu haliyle düzenlenemez.',
   'error.timeout': 'Dosya okunurken zaman aşımı oldu.',
-  'error.file_too_large': 'Dosya bu sürümdeki 250 MB sınırının üzerinde.',
+  'error.file_too_large':
+    'Dosya bu sürümdeki 250 MiB (yaklaşık 262 MB) sınırının üzerinde.',
   'error.source_too_long': 'Video bu sürümdeki 20 dakika sınırının üzerinde.',
   'error.range_reversed': 'Bitiş zamanı başlangıçtan sonra olmalı.',
   'error.range_out_of_source': 'Seçilen aralık videonun dışında.',
@@ -550,7 +551,7 @@ export const en: Record<MessageKey, string> = {
     'The browser could not open a preview for this file. It may be corrupt or in an unsupported format.',
   'error.unknown_duration': 'The duration could not be read, so the file cannot be edited.',
   'error.timeout': 'Reading the file timed out.',
-  'error.file_too_large': 'The file is above the 250 MB limit of this version.',
+  'error.file_too_large': 'The file is above the 250 MiB (about 262 MB) limit of this version.',
   'error.source_too_long': 'The video is above the 20 minute limit of this version.',
   'error.range_reversed': 'The end must come after the start.',
   'error.range_out_of_source': 'The selected range is outside the video.',
