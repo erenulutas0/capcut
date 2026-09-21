@@ -1,6 +1,13 @@
 # ADR-017 — Altyazı adım 4: otomatik transkript, cihaz üstü (tarayıcıda) rota
 
-> Tarih: 2026-09-21 · Durum: KABUL EDİLDİ (kurucu "en uygun olanı yap" dedi; bütçe kısıtı açık)
+> Tarih: 2026-09-21 · Durum: ROTA KABUL EDİLDİ, **UYGUNLUK DENEMESİ GEÇMEDİ — uygulama başlamadı**
+> Deneme raporu: `docs/spikes/2026-09-21-asr-on-device.md`. Özet: hiçbir açık Whisper
+> modeli (tiny/base/small; WebGPU ve WASM; Chromium/Chrome/Edge/Firefox) eşikleri
+> tutmadı. Türkçe WER en iyi modelde %20,6 (eşik %10); üç model de sessizlik ve müzikte
+> uydurma metin yazdı ("Abone olmayı unutmayın."); small/WebGPU 8,6 GiB bellek. Kendi
+> kuralımız gereği çalışmayan özellik ana akışa konmadı. Ücretsiz ek yollar raporda
+> (Türkçe ince ayarlı model, VAD ön filtresi, boyut sınırı gevşetilirse large-v3-turbo);
+> devam kararı kurucunun.
 > Bu ADR, `transcript_araştırma/04` belgesinin istediği **değişiklik önerisidir**: araştırma
 > ekiyle belge 31 arasındaki sıralama çelişkisini açıkça çözer ve kanonik belgelerde
 > neyin değiştiğini, neyin değişmediğini yazar. Uygulama, aşağıdaki uygunluk
