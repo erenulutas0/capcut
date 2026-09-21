@@ -116,26 +116,50 @@ export function buildReference(sourceFile, { filter, trims }, width, height, out
 /* ------------------------------------------------------------- captions */
 
 /**
- * Loads the app's own caption layout (`src/domain/captionLayout.ts`) into
- * Node, so the regions measured below come from the numbers the worker drew
- * with — not from a second copy of the rules that could drift.
- *
- * The TypeScript is only transpiled (types stripped); the two files it needs
- * have no runtime imports beyond each other.
+ * Domain files the caption measurements load, i.e. the runtime import
+ * closure of `captionLayout.ts` and `captions.ts`. When a new runtime import
+ * appears in them, it must be listed here: the loader then fails loudly on
+ * the unresolved path instead of measuring with stale rules.
  */
-export async function loadCaptionLayoutModule(workDir) {
+const CAPTION_DOMAIN_FILES = ['captions', 'captionLayout', 'timeline'];
+
+/**
+ * Transpiles the caption domain files (types stripped only) into `workDir`
+ * and returns the path of the folder. Relative imports get the `.mjs`
+ * extension Node needs; type-only imports are gone after transpiling.
+ */
+async function transpileCaptionDomain(workDir) {
   const ts = (await import('typescript')).default;
   const domain = fileURLToPath(new URL('../../src/domain/', import.meta.url));
   const target = join(workDir, '.caption-layout');
   mkdirSync(target, { recursive: true });
-  for (const name of ['captions', 'captionLayout']) {
+  for (const name of CAPTION_DOMAIN_FILES) {
     const source = readFileSync(join(domain, `${name}.ts`), 'utf8');
     const { outputText } = ts.transpileModule(source, {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
     });
-    writeFileSync(join(target, `${name}.mjs`), outputText.replace(/from '\.\/captions'/g, "from './captions.mjs'"));
+    writeFileSync(join(target, `${name}.mjs`), outputText.replace(/from '\.\/([A-Za-z]+)'/g, "from './$1.mjs'"));
   }
+  return target;
+}
+
+/**
+ * Loads the app's own caption layout (`src/domain/captionLayout.ts`) into
+ * Node, so the regions measured below come from the numbers the worker drew
+ * with — not from a second copy of the rules that could drift.
+ */
+export async function loadCaptionLayoutModule(workDir) {
+  const target = await transpileCaptionDomain(workDir);
   return import(pathToFileURL(join(target, 'captionLayout.mjs')).href);
+}
+
+/**
+ * The app's `captions.ts` (incl. `outputCues`). Used only to CROSS-CHECK an
+ * expectation that the matrix computes on its own; never as the expectation.
+ */
+export async function loadCaptionsModule(workDir) {
+  const target = await transpileCaptionDomain(workDir);
+  return import(pathToFileURL(join(target, 'captions.mjs')).href);
 }
 
 /**
@@ -306,6 +330,133 @@ export function measureCaptionBurnIn(outputFile, referenceFile, { cues, totalFra
     cleanSsimMin: cleanSsim.length ? Math.min(...cleanSsim) : NaN,
     perCue,
   };
+}
+
+/* ------------------------------------------- which caption, frame by frame */
+
+/**
+ * The exact box a `box`-preset caption occupies, from the app's own layout
+ * and a text measure taken in the browser with the bundled caption font (so
+ * the width is the one the worker drew with, not a guess).
+ */
+export function captionBox(layoutModule, text, style, frame, measure) {
+  const result = layoutModule.layoutCaption(text, style, frame, measure);
+  if (!result.ok) throw new Error(`layout refused: ${text}`);
+  const { box, lines } = result.layout;
+  return { ...box, lines: lines.length };
+}
+
+/**
+ * Says, for every frame of an export, WHICH caption is burned in (or none),
+ * by comparing it with a caption-free reference of the same edit.
+ *
+ * Presence alone cannot follow a source-anchored track: two different lines
+ * can sit back to back in the same place (a cut from "üç-beş" straight into
+ * "bir"), which looks like one long caption. Each candidate line has its own
+ * box (width from its text, height from its line count), so each frame is
+ * labelled by the box whose EDGES are really there: just inside each edge
+ * the picture must differ from the reference, just outside it must not.
+ *
+ *   contrast(box) = min over left, right and top edge of
+ *                   mean |diff| in a strip just inside − just outside
+ *
+ * A narrower box than the one drawn has both strips inside the drawn box and
+ * a wider one has both outside, so either scores near zero; only the drawn
+ * box scores high. The strips start `gap` px from the edge to stay clear of
+ * the rounded corners' anti-aliasing and of codec blur. Every value is
+ * relative to the same frame, so encoder noise (which differs per browser)
+ * cancels out and no absolute level has to be tuned.
+ *
+ * `presence` is a second, box-independent signal: mean |diff| inside the
+ * smallest candidate box minus a caption-free strip above the band. It
+ * catches a caption that matches no candidate (labelled '?').
+ *
+ * @param {{ label: string, box: {x:number,y:number,width:number,height:number} }[]} candidates
+ */
+export function measureCaptionIdentity(
+  outputFile,
+  referenceFile,
+  { candidates, frameWidth, frameHeight, minContrast, gap = 3, strip = 6, margin = 16 },
+) {
+  const even = (value) => value - (value % 2);
+  const top = even(Math.max(0, Math.min(...candidates.map((c) => c.box.y)) - margin - 40));
+  const bottom = Math.min(frameHeight, Math.max(...candidates.map((c) => c.box.y + c.box.height)) + margin);
+  const left = even(Math.max(0, Math.min(...candidates.map((c) => c.box.x)) - margin));
+  const right = Math.min(frameWidth, Math.max(...candidates.map((c) => c.box.x + c.box.width)) + margin);
+  const band = { x: left, y: top, width: even(right - left), height: even(bottom - top) };
+
+  const a = lumaRegionFrames(outputFile, band);
+  const b = lumaRegionFrames(referenceFile, band);
+  const count = Math.min(a.length, b.length);
+
+  // Rectangle mean of |a - b| in band coordinates.
+  const rectMean = (fa, fb, x0, y0, x1, y1) => {
+    let sum = 0;
+    let n = 0;
+    for (let y = Math.max(0, y0); y < Math.min(band.height, y1); y += 1) {
+      const row = y * band.width;
+      for (let x = Math.max(0, x0); x < Math.min(band.width, x1); x += 1) {
+        sum += Math.abs(fa[row + x] - fb[row + x]);
+        n += 1;
+      }
+    }
+    return n ? sum / n : NaN;
+  };
+
+  const local = candidates.map((c) => ({
+    label: c.label,
+    x: c.box.x - band.x,
+    y: c.box.y - band.y,
+    w: c.box.width,
+    h: c.box.height,
+  }));
+  const smallest = [...local].sort((p, q) => p.w * p.h - q.w * q.h)[0];
+  // Caption-free control strip: the 32 rows at the top of the band, above
+  // every candidate box by at least `margin` px.
+  const controlRows = [0, 32];
+
+  const frames = [];
+  for (let n = 0; n < count; n += 1) {
+    const fa = a[n];
+    const fb = b[n];
+    const scores = {};
+    for (const c of local) {
+      const y0 = c.y + gap;
+      const y1 = c.y + c.h - gap;
+      const leftEdge =
+        rectMean(fa, fb, c.x + gap, y0, c.x + gap + strip, y1) - rectMean(fa, fb, c.x - gap - strip, y0, c.x - gap, y1);
+      const rightEdge =
+        rectMean(fa, fb, c.x + c.w - gap - strip, y0, c.x + c.w - gap, y1) -
+        rectMean(fa, fb, c.x + c.w + gap, y0, c.x + c.w + gap + strip, y1);
+      const topEdge =
+        rectMean(fa, fb, c.x + gap, c.y + gap, c.x + c.w - gap, c.y + gap + strip) -
+        rectMean(fa, fb, c.x + gap, c.y - gap - strip, c.x + c.w - gap, c.y - gap);
+      scores[c.label] = Math.min(leftEdge, rightEdge, topEdge);
+    }
+    const presence =
+      rectMean(fa, fb, smallest.x + gap, smallest.y + gap, smallest.x + smallest.w - gap, smallest.y + smallest.h - gap) -
+      rectMean(fa, fb, 0, controlRows[0], band.width, controlRows[1]);
+    let best = null;
+    for (const [label, score] of Object.entries(scores)) {
+      if (best === null || score > best.score) best = { label, score };
+    }
+    let label = 'none';
+    if (best && best.score >= minContrast) label = best.label;
+    else if (presence >= minContrast) label = '?';
+    frames.push({ label, best: best?.label ?? null, bestScore: best?.score ?? NaN, presence, scores });
+  }
+  return { band, frames, framesA: a.length, framesB: b.length };
+}
+
+/** Frame-by-frame label runs: [{ label, first, last }]. */
+export function labelRuns(labels) {
+  const runs = [];
+  for (const [frame, label] of labels.entries()) {
+    const current = runs[runs.length - 1];
+    if (current && current.label === label) current.last = frame;
+    else runs.push({ label, first: frame, last: frame });
+  }
+  return runs;
 }
 
 /** One output frame as PNG, for a human to look at. */

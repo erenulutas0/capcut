@@ -382,4 +382,86 @@ export const CASES = [
       },
     },
   },
+  {
+    id: 'M18',
+    title: 'Görüntüye bağlı altyazı anlarla taşınıyor',
+    expectation:
+      'Kaynak zamanlı satırlar, sırası değişmiş ve tekrar eden anlarda O + (t − S) karelerinde görünüyor; başka yerde yok',
+    setup: anchoredSetup({
+      variants: [
+        // Negative control: the same edit, imported with no caption track,
+        // must measure as caption-free everywhere.
+        { label: 'altyazisiz', track: null },
+        { label: 'kaynak', track: 'source' },
+      ],
+    }),
+    expect: anchoredExpect({
+      screenshot: { file: 'screenshots/caption-source-anchored-frame.png', variant: 'kaynak', frame: 285 },
+    }),
+  },
+  {
+    id: 'M18b',
+    title: 'Kaynak → sonuç dönüşümü görünen altyazıyı değiştirmiyor',
+    expectation: 'Aynı kurgu, satırlar sonuç zamanına çevrilmiş; altyazı kareleri M18 ile aynı',
+    setup: anchoredSetup({ variants: [{ label: 'cikti', track: 'output' }] }),
+    expect: anchoredExpect({ sameAs: { caseId: 'M18', variant: 'kaynak' } }),
+  },
 ];
+
+/**
+ * M18/M18b share one edit. m01's testsrc burns the SOURCE second into every
+ * frame, so a frame grab shows which source instant a caption sits on.
+ *
+ * Moments are out of order and [2,4) is used twice:
+ *   output [0,4)  ← source [8,12)
+ *   output [4,8)  ← source [0,4)
+ *   output [8,12) ← source [2,6)
+ * Source lines: "bir" [1,3) is shown twice (whole, then cut at the start of
+ * the third moment); "dokuz" [9,11) once; "üç-beş" [3,5) is cut by the 4 s
+ * edge of the second moment and shown whole in the third. Their boxes differ
+ * (width, and a second line for "üç-beş"), which is how the measurement
+ * tells back-to-back lines apart.
+ */
+function anchoredSetup({ variants }) {
+  return {
+    video: 'm01-portrait-20s.mp4',
+    moments: [['00:08.000', '00:12.000'], ['00:00.000', '00:04.000'], ['00:02.000', '00:06.000']],
+    aspect: '9-16',
+    quality: '720',
+    anchoredCaptions: {
+      style: { preset: 'box', position: 'bottom', size: 'medium' },
+      // SOURCE time (timeBase 'source', bound to the video asset).
+      sourceCues: [
+        { startUs: 1_000_000, endUs: 3_000_000, text: 'bir' },
+        { startUs: 3_000_000, endUs: 5_000_000, text: 'üç-beş\nkesimin iki yanında' },
+        { startUs: 9_000_000, endUs: 11_000_000, text: 'dokuz' },
+      ],
+      variants,
+    },
+  };
+}
+
+function anchoredExpect(extra) {
+  return {
+    exports: true,
+    durationSeconds: 12,
+    frames: 360,
+    size: [720, 1280],
+    videoCodec: 'h264',
+    audioCodec: 'aac',
+    anchoredCaptions: {
+      fps: 30,
+      totalFrames: 360,
+      // Caption-free ffmpeg edit of the same moments, in the same order.
+      reference: { filter: 'crop=iw:ih,scale=720:1280', trims: [[8, 12], [0, 4], [2, 6]] },
+      // Picture check on the caption-free control and on frames with no line.
+      minSsim: 0.9,
+      minCleanSsimFrame: 0.85,
+      // Edge contrast (mean |luma diff| just inside a box edge minus just
+      // outside it, 0-255) a frame needs to count as showing that box. See
+      // ADR-016 "Ölçüm (M18)" for the measured levels this sits between.
+      minContrast: 12,
+      ...extra,
+    },
+  };
+}

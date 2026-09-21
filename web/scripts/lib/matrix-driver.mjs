@@ -12,14 +12,71 @@ import { fileURLToPath } from 'node:url';
 import {
   bandRmsDb,
   buildReference,
+  captionBox,
   captionRegion,
   extractFramePng,
   ffprobeJson,
+  labelRuns,
   loadCaptionLayoutModule,
+  loadCaptionsModule,
   measureCaptionBurnIn,
+  measureCaptionIdentity,
   peakDb,
+  perFrameSsim,
   ssim,
 } from './media-measure.mjs';
+
+/** 'mm:ss.mmm' (the moment fields' format) to microseconds. */
+function clockToUs(text) {
+  const [minutes, seconds] = text.split(':');
+  return Math.round((Number(minutes) * 60 + Number(seconds)) * 1_000_000);
+}
+
+/**
+ * Where source-time lines must appear in the output, computed HERE from the
+ * ADR-016 rule and nothing else: a moment cut from source [S, E) that starts
+ * at output O shows the part of a line inside [S, E) at O + (t − S).
+ *
+ * Deliberately not `outputCues` from the app: the measurement must be able to
+ * disagree with the code it is checking. `outputCues` is only compared
+ * against this afterwards, as a cross-check.
+ */
+export function anchoredExpectation(moments, sourceCues) {
+  const shown = [];
+  let outputStartUs = 0;
+  for (const [from, to] of moments) {
+    const S = clockToUs(from);
+    const E = clockToUs(to);
+    for (const cue of sourceCues) {
+      const a = Math.max(cue.startUs, S);
+      const b = Math.min(cue.endUs, E);
+      if (b > a) shown.push({ text: cue.text, startUs: outputStartUs + (a - S), endUs: outputStartUs + (b - S) });
+    }
+    outputStartUs += E - S;
+  }
+  return shown.sort((p, q) => p.startUs - q.startUs);
+}
+
+/** Short, stable name for a caption line in reports: its first line. */
+const cueLabel = (text) => text.split('\n')[0];
+
+/**
+ * Every string `wrapCaptionText` may ask the width of for these texts: each
+ * run of consecutive words of each paragraph. (No word here is wider than a
+ * line, so the per-character split never runs.)
+ */
+function measuredStrings(texts) {
+  const out = new Set();
+  for (const text of texts) {
+    for (const paragraph of text.split('\n')) {
+      const words = paragraph.split(' ');
+      for (let i = 0; i < words.length; i += 1) {
+        for (let j = i + 1; j <= words.length; j += 1) out.add(words.slice(i, j).join(' '));
+      }
+    }
+  }
+  return [...out];
+}
 
 /**
  * @param {{ mediaDir: string, outDir: string, baseURL: string }} ctx
@@ -31,6 +88,10 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
   const FRAME_TOLERANCE = 1 / 30 + 0.002;
   /** The app's caption layout, transpiled once per run (see media-measure). */
   let captionLayoutModule = null;
+  /** The app's captions.ts, for cross-checking the independent expectation only. */
+  let captionsModule = null;
+  /** Per-frame caption labels of anchored runs, so M18b can be compared to M18. */
+  const anchoredLabels = new Map();
 
   /**
    * Waits until one of several test ids is present, and says which.
@@ -217,6 +278,9 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
 
     if (setup.captions) {
       return driveCaptionExports(page, testCase, artefactPath, { momentCount, editorDisplaySize, notes });
+    }
+    if (setup.anchoredCaptions) {
+      return driveAnchoredCaptionExports(page, testCase, artefactPath, { momentCount, editorDisplaySize, notes });
     }
 
     const outcome = await exportOnce(page, setup, artefactPath, notes);
@@ -421,6 +485,169 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     };
   }
 
+  /**
+   * Widths of caption strings with the bundled caption font, measured in the
+   * editor page (the same engine and font file the export worker draws with).
+   * Waits for the editor's own font load; null when the font never loads.
+   */
+  async function measureCaptionWidths(page, strings, fontPx) {
+    return page.evaluate(
+      async ({ strings: list, px }) => {
+        const family = 'Clip Caption';
+        const ours = () => [...document.fonts].filter((face) => face.family.replaceAll('"', '') === family);
+        const deadline = Date.now() + 20_000;
+        while (Date.now() < deadline) {
+          const faces = ours();
+          if (faces.length > 0 && faces.every((face) => face.status === 'loaded')) break;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        const faces = ours();
+        if (faces.length === 0 || !faces.every((face) => face.status === 'loaded')) return null;
+        const font = `700 ${px}px "${family}"`;
+        await document.fonts.load(font, list.join(' '));
+        const context = document.createElement('canvas').getContext('2d');
+        context.font = font;
+        return Object.fromEntries(list.map((text) => [text, context.measureText(text).width]));
+      },
+      { strings, px: fontPx },
+    );
+  }
+
+  /**
+   * M18/M18b: a SOURCE-time caption track (or its output-time conversion)
+   * reaches the project through the backup import, like M17, and the edit is
+   * exported once per variant. A variant with `track: null` is exported
+   * before any import, as the caption-free negative control.
+   */
+  async function driveAnchoredCaptionExports(page, testCase, artefactPath, base) {
+    const setup = testCase.setup;
+    const spec = setup.anchoredCaptions;
+    const { notes } = base;
+    const aspect = (setup.aspect ?? '').replace('-', ':');
+    const bytes = statSync(join(mediaDir, setup.video)).size;
+    const sourceIns = setup.moments.map(([from]) => clockToUs(from));
+
+    // Match THIS case's project: same file, same moments in the same order.
+    // Its caption track is NOT assumed empty: the editor reopens the previous
+    // case's project and picking the video keeps that project's captions, so
+    // every variant below sets the track explicitly through the backup.
+    const sameEdit = (r) =>
+      r.edl?.canvas?.aspect === aspect &&
+      JSON.stringify(r.edl?.clips?.map((clip) => clip.sourceInUs)) === JSON.stringify(sourceIns) &&
+      r.bindings?.some((b) => b.kind === 'video' && b.sizeBytes === bytes);
+    const record = await readStoredRecord(page, sameEdit);
+    if (!record) {
+      return {
+        failed: true,
+        failureText: `proje kaydı bulunamadı (yedek alınamadı); editördeki an sayısı: ${base.momentCount.trim()}`,
+        ...base,
+      };
+    }
+    const video = record.edl.assets.find((asset) => asset.kind === 'video');
+    if (!video) return { failed: true, failureText: 'kayıtta video kaynağı yok', ...base };
+
+    const expected = anchoredExpectation(setup.moments, spec.sourceCues);
+
+    // Caption boxes from the app's layout + the browser's font measure.
+    captionLayoutModule ??= await loadCaptionLayoutModule(outDir);
+    captionsModule ??= await loadCaptionsModule(outDir);
+    const [width, height] = testCase.expect.size;
+    const frame = { width, height, aspect };
+    const texts = spec.sourceCues.map((cue) => cue.text);
+    const probe = captionLayoutModule.layoutCaption(texts[0], spec.style, frame, () => 0);
+    const fontPx = probe.ok ? probe.layout.fontPx : null;
+    const widths = fontPx ? await measureCaptionWidths(page, measuredStrings(texts), fontPx) : null;
+    if (!widths) return { failed: true, failureText: 'altyazı fontu sayfada yüklenmedi; kutular ölçülemez', ...base };
+    const measure = (text) => {
+      if (!(text in widths)) throw new Error(`ölçülmemiş metin: ${text}`);
+      return widths[text];
+    };
+    const boxes = texts.map((text) => ({ label: cueLabel(text), box: captionBox(captionLayoutModule, text, spec.style, frame, measure) }));
+    notes.push(
+      `kutular (${fontPx}px): ${boxes.map((b) => `${b.label} ${b.box.width}x${b.box.height}@${b.box.x},${b.box.y}`).join('; ')}`,
+    );
+
+    const runs = [];
+    let appOutputCues = null;
+    for (const [index, variant] of spec.variants.entries()) {
+      const savePath = index === 0 ? artefactPath : artefactPath.replace(/\.mp4$/, `-${variant.label}.mp4`);
+      const trackId = `t_${testCase.id.toLowerCase()}_${variant.label}`;
+      const backup = structuredClone(record);
+      backup.edl.revision = record.edl.revision + 1000 * (index + 1);
+      const cues =
+        variant.track === 'source'
+          ? spec.sourceCues
+          : // The output-time version of the same track, built with the
+            // independent rule: each appearance becomes its own line.
+            expected;
+      backup.edl.captionTracks =
+        variant.track === null
+          ? []
+          : [
+              {
+                trackId,
+                origin: 'imported',
+                timeBase: variant.track,
+                ...(variant.track === 'source' ? { assetId: video.assetId } : {}),
+                language: 'tr',
+                style: spec.style,
+                cues: cues.map((cue, cueIndex) => ({
+                  cueId: `q_${String(cueIndex + 1).padStart(3, '0')}`,
+                  startUs: cue.startUs,
+                  endUs: cue.endUs,
+                  text: cue.text,
+                })),
+              },
+            ];
+      const backupPath = join(outDir, `${testCase.id}-${variant.label}.clip.json`);
+      writeFileSync(backupPath, JSON.stringify(backup, null, 2));
+      await page.getByTestId('backup-input').setInputFiles(backupPath);
+      // Proof the import went through the app: the editor saves the restored
+      // project back. The caption-free control is recognised by its revision.
+      const restored = await readStoredRecord(page, (r) =>
+        variant.track === null
+          ? sameEdit(r) && r.edl.revision >= backup.edl.revision && (r.edl.captionTracks ?? []).length === 0
+          : r.edl?.captionTracks?.[0]?.trackId === trackId,
+      );
+      if (!restored) return { failed: true, failureText: `yedek içe aktarılamadı (${variant.label})`, ...base };
+      const track = restored.edl.captionTracks?.[0];
+      notes.push(
+        track
+          ? `${variant.label}: yedekten ${track.cues.length} satır yüklendi (timeBase ${track.timeBase})`
+          : `${variant.label}: yedekten altyazısız proje yüklendi`,
+      );
+      if (variant.track === 'source') {
+        // Cross-check only: what the app itself maps this project to.
+        appOutputCues = captionsModule.outputCues(restored.edl).map((cue) => ({
+          text: cue.text,
+          startUs: cue.startUs,
+          endUs: cue.endUs,
+        }));
+      }
+
+      const view = await waitForAny(page, ['relink-video', 'preview-video'], 30_000);
+      if (view === 'relink-video') {
+        await page.getByTestId('relink-video-input').setInputFiles(join(mediaDir, setup.video));
+        await waitForAny(page, ['preview-video'], 60_000);
+      }
+
+      const outcome = await exportOnce(page, setup, savePath, notes);
+      if (!outcome.exported) return { ...outcome, ...base };
+      runs.push({ label: variant.label, track: variant.track, path: savePath, gate: outcome.gate, reported: outcome.reported });
+      await page.keyboard.press('Escape');
+      await page.getByTestId('export-succeeded').waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {});
+    }
+
+    return {
+      exported: true,
+      gate: runs[0]?.gate,
+      reported: runs[0]?.reported,
+      anchoredRuns: runs,
+      anchored: { expected, appOutputCues, boxes, frame },
+      ...base,
+    };
+  }
+
   /* --------------------------------------------------------------- checking */
 
   /**
@@ -593,6 +820,7 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     }
 
     if (want.captions) assessCaptions(testCase, driveResult, measured, add);
+    if (want.anchoredCaptions) assessAnchoredCaptions(testCase, driveResult, measured, add);
 
     // --- audio --------------------------------------------------------------
     const control = bandRmsDb(artefactPath, 3000);
@@ -791,6 +1019,235 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
         const target = fileURLToPath(new URL(`../../${shot.file}`, import.meta.url));
         const saved = extractFramePng(run.path, shot.frame, target);
         add(`${run.label}: örnek kare kaydedildi`, saved, shot.file);
+      }
+    }
+  }
+
+  /**
+   * Source-anchored captions (ADR-016), measured frame by frame against a
+   * caption-free ffmpeg reference of the same out-of-order, repeating edit:
+   *
+   * (a) every frame the independent O + (t − S) rule puts a line on shows
+   *     THAT line (identified by its box), incl. both appearances of the
+   *     repeated range and the cut at a moment edge;
+   * (b) every other frame shows no caption;
+   * (c) each appearance starts and ends within ±1 frame of the plan.
+   *
+   * The only frames excused from (a)/(b) are the two straddling a planned
+   * change; (c) is what bounds those.
+   */
+  function assessAnchoredCaptions(testCase, driveResult, measured, add) {
+    const want = testCase.expect.anchoredCaptions;
+    const spec = testCase.setup.anchoredCaptions;
+    const runs = driveResult.anchoredRuns ?? [];
+    add(
+      `${spec.variants.length} çıktı üretildi`,
+      runs.length === spec.variants.length,
+      runs.map((run) => run.label).join(', '),
+    );
+    const anchored = driveResult.anchored;
+    if (!anchored || runs.length === 0) return;
+
+    const { fps, totalFrames } = want;
+    const { width, height } = anchored.frame;
+    const toFrame = (us) => Math.min(totalFrames, Math.round((us * fps) / 1_000_000));
+
+    // The plan, on the same grid rule as the render plan.
+    const appearances = anchored.expected.map((cue) => ({
+      label: cueLabel(cue.text),
+      startUs: cue.startUs,
+      endUs: cue.endUs,
+      startFrame: toFrame(cue.startUs),
+      endFrame: toFrame(cue.endUs),
+    }));
+    const expectedLabels = Array.from({ length: totalFrames }, (_, frame) => {
+      const hit = appearances.find((item) => frame >= item.startFrame && frame < item.endFrame);
+      return hit ? hit.label : 'none';
+    });
+    // The two frames on either side of every planned change (incl. start/end).
+    const nearChange = new Set();
+    for (let frame = 1; frame < totalFrames; frame += 1) {
+      if (expectedLabels[frame] !== expectedLabels[frame - 1]) {
+        nearChange.add(frame - 1);
+        nearChange.add(frame);
+      }
+    }
+    measured.anchoredCaptions = {
+      plan: appearances.map(({ label, startFrame, endFrame }) => ({ label, first: startFrame, last: endFrame - 1 })),
+      boxes: anchored.boxes,
+      runs: [],
+    };
+
+    // Cross-check: the app's own mapping must agree with the independent
+    // rule. A disagreement is a bug in one of them and fails the case.
+    if (anchored.appOutputCues) {
+      const key = (list) => JSON.stringify(list.map((cue) => [cue.text, cue.startUs, cue.endUs]));
+      add(
+        'bağımsız O + (t − S) beklentisi uygulamanın outputCues sonucuyla aynı',
+        key(anchored.appOutputCues) === key(anchored.expected),
+        anchored.expected
+          .map((cue) => `${cueLabel(cue.text)} ${(cue.startUs / 1e6).toFixed(3)}–${(cue.endUs / 1e6).toFixed(3)} s`)
+          .join(', '),
+      );
+    }
+
+    const referencePath = join(outDir, `${testCase.id}-reference.mp4`);
+    try {
+      buildReference(join(mediaDir, testCase.setup.video), want.reference, width, height, referencePath);
+    } catch (error) {
+      add('altyazısız referans üretildi', false, String(error).slice(0, 160));
+      return;
+    }
+
+    const round = (value, digits = 2) => (Number.isFinite(value) ? Number(value.toFixed(digits)) : null);
+
+    for (const run of runs) {
+      const probe = ffprobeJson(run.path);
+      const stream = probe?.streams.find((item) => item.codec_type === 'video');
+      const frames = stream ? Number(stream.nb_frames) : null;
+      add(`${run.label}: kare sayısı ${totalFrames}`, frames === totalFrames, `ölçülen ${frames}`);
+
+      const identity = measureCaptionIdentity(run.path, referencePath, {
+        candidates: anchored.boxes,
+        frameWidth: width,
+        frameHeight: height,
+        minContrast: want.minContrast,
+      });
+      const labels = identity.frames.map((item) => item.label);
+      const fullSsim = perFrameSsim(run.path, referencePath);
+      const summary = { label: run.label, track: run.track, band: identity.band, labels: labelRuns(labels) };
+      measured.anchoredCaptions.runs.push(summary);
+
+      if (run.track === null) {
+        // Negative control: the same edit without captions.
+        const maxBest = Math.max(...identity.frames.map((item) => item.bestScore));
+        const maxPresence = Math.max(...identity.frames.map((item) => item.presence));
+        summary.maxEdgeContrast = round(maxBest);
+        summary.maxPresence = round(maxPresence);
+        add(
+          `${run.label}: altyazısız kontrolde hiçbir karede altyazı bulunmadı`,
+          labels.length === totalFrames && labels.every((label) => label === 'none'),
+          `${labels.filter((label) => label !== 'none').length} kare işaretlendi; en yüksek kenar karşıtlığı ` +
+            `${summary.maxEdgeContrast}, en yüksek varlık farkı ${summary.maxPresence} (eşik ${want.minContrast})`,
+        );
+        // The picture itself: moments in this order, the repeat included.
+        const values = fullSsim.filter(Number.isFinite);
+        const meanSsim = values.reduce((s, v) => s + v, 0) / (values.length || 1);
+        summary.ssimMean = round(meanSsim, 4);
+        summary.ssimMin = round(Math.min(...values), 4);
+        add(
+          `${run.label}: görüntü sırası değişmiş/tekrarlı ffmpeg referansıyla eşleşiyor (SSIM ort. ≥ ${want.minSsim})`,
+          values.length === totalFrames && meanSsim >= want.minSsim && Math.min(...values) >= want.minCleanSsimFrame,
+          `${values.length} kare, SSIM ort. ${summary.ssimMean}, en düşük ${summary.ssimMin}`,
+        );
+        continue;
+      }
+
+      // (a) + identity: planned frames show the planned line.
+      let missing = 0;
+      let wrongLine = 0;
+      let leaked = 0;
+      let strictMismatch = 0;
+      for (let frame = 0; frame < totalFrames; frame += 1) {
+        const planned = expectedLabels[frame];
+        const got = labels[frame];
+        if (got !== planned) strictMismatch += 1;
+        if (nearChange.has(frame) || got === planned) continue;
+        if (planned === 'none') leaked += 1;
+        else if (got === 'none') missing += 1;
+        else wrongLine += 1;
+      }
+      // Evidence for the threshold: how the true box scores inside the
+      // windows vs. the best any box scores where no line is planned.
+      const insideScores = [];
+      const outsideScores = [];
+      const rivalScores = [];
+      for (let frame = 0; frame < Math.min(totalFrames, identity.frames.length); frame += 1) {
+        if (nearChange.has(frame)) continue;
+        const item = identity.frames[frame];
+        const label = expectedLabels[frame];
+        if (label === 'none') outsideScores.push(Math.max(item.bestScore, item.presence));
+        else {
+          insideScores.push(item.scores[label]);
+          for (const [other, score] of Object.entries(item.scores)) if (other !== label) rivalScores.push(score);
+        }
+      }
+      summary.trueBoxContrastMin = round(Math.min(...insideScores));
+      summary.otherBoxContrastMax = round(Math.max(...rivalScores));
+      summary.noCaptionMax = round(Math.max(...outsideScores));
+      summary.strictMismatchFrames = strictMismatch;
+
+      add(
+        `${run.label}: planlanan her karede planlanan satır var (değişim sınırındaki ±1 kare hariç)`,
+        missing === 0 && wrongLine === 0,
+        `eksik ${missing}, yanlış satır ${wrongLine}; doğru kutunun en düşük karşıtlığı ${summary.trueBoxContrastMin}, ` +
+          `diğer kutuların en yüksek ${summary.otherBoxContrastMax} (eşik ${want.minContrast})`,
+      );
+      // (b) nothing anywhere else.
+      add(
+        `${run.label}: planlanmayan karelerde altyazı yok`,
+        leaked === 0,
+        `taşan ${leaked}; altyazısız karelerde en yüksek karşıtlık ${summary.noCaptionMax}; ` +
+          `sınır kareleri dahil plandan farklı kare ${strictMismatch}`,
+      );
+
+      // (c) each appearance's first and last frame, from the label runs.
+      summary.appearances = [];
+      for (const item of appearances) {
+        const middle = Math.floor((item.startFrame + item.endFrame - 1) / 2);
+        let first = null;
+        let last = null;
+        if (labels[middle] === item.label) {
+          first = middle;
+          while (first > 0 && labels[first - 1] === item.label) first -= 1;
+          last = middle;
+          while (last < labels.length - 1 && labels[last + 1] === item.label) last += 1;
+        }
+        const plannedFirst = item.startFrame;
+        const plannedLast = item.endFrame - 1;
+        summary.appearances.push({ label: item.label, plannedFirst, plannedLast, first, last });
+        add(
+          `${run.label}: "${item.label}" ${(item.startUs / 1e6).toFixed(0)}–${(item.endUs / 1e6).toFixed(0)} s ilk/son kare planla aynı (±1)`,
+          first !== null && Math.abs(first - plannedFirst) <= 1 && Math.abs(last - plannedLast) <= 1,
+          `plan ${plannedFirst}–${plannedLast}, ölçülen ${first ?? '-'}–${last ?? '-'}`,
+        );
+      }
+
+      // The picture outside the lines still matches the reference.
+      const clean = [];
+      for (let frame = 0; frame < totalFrames; frame += 1) {
+        if (expectedLabels[frame] === 'none' && !nearChange.has(frame) && Number.isFinite(fullSsim[frame])) {
+          clean.push(fullSsim[frame]);
+        }
+      }
+      const cleanMean = clean.reduce((s, v) => s + v, 0) / (clean.length || 1);
+      summary.cleanSsimMean = round(cleanMean, 4);
+      summary.cleanSsimMin = round(Math.min(...clean), 4);
+      add(
+        `${run.label}: satır dışı karelerde görüntü referansla aynı (SSIM ort. ≥ ${want.minSsim}, en düşük ≥ ${want.minCleanSsimFrame})`,
+        clean.length > 0 && cleanMean >= want.minSsim && Math.min(...clean) >= want.minCleanSsimFrame,
+        `${clean.length} kare, SSIM ort. ${summary.cleanSsimMean}, en düşük ${summary.cleanSsimMin}`,
+      );
+
+      anchoredLabels.set(`${testCase.id}:${run.label}`, labels);
+      if (want.sameAs) {
+        const other = anchoredLabels.get(`${want.sameAs.caseId}:${want.sameAs.variant}`);
+        if (!other) {
+          add(`${run.label}: ${want.sameAs.caseId} ile kare kare karşılaştırma`, false, `${want.sameAs.caseId} bu koşuda ölçülmedi`);
+        } else {
+          const differing = labels.filter((label, frame) => label !== other[frame]).length;
+          add(
+            `${run.label}: altyazı kareleri ${want.sameAs.caseId} (${want.sameAs.variant}) ile kare kare aynı`,
+            differing === 0 && labels.length === other.length,
+            `farklı kare ${differing}`,
+          );
+        }
+      }
+
+      const shot = want.screenshot;
+      if (shot && shot.variant === run.label) {
+        const target = fileURLToPath(new URL(`../../${shot.file}`, import.meta.url));
+        add(`${run.label}: örnek kare kaydedildi`, extractFramePng(run.path, shot.frame, target), shot.file);
       }
     }
   }
