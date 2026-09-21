@@ -9,10 +9,13 @@ import {
   probeSource,
   type CapabilityReportV1,
 } from '@/adapters/exportCapability';
+import { recordCapability, recordError } from '@/adapters/diagnostics';
 import { ExportWorkerClient } from '@/adapters/export/exportClient';
+import { exportLog } from '@/adapters/exportLogStore';
 import { removeExportEntry, sweepExportEntries } from '@/adapters/export/opfsEntries';
 import type { ExportFailureCode, ExportResult } from '@/domain/exportEvents';
 import type { Project } from '@/domain/edl';
+import { exportLogEntry, type AttemptEnd } from '@/domain/exportLog';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import { compileRenderPlan, type PlanRejection, type RenderPlan } from '@/domain/renderPlan';
 
@@ -95,11 +98,14 @@ export function useExport(project: Project, videoFile: File | null, audioFile: F
 
     const compiled = compileRenderPlan(project, WEB_LOCAL_POLICY);
     if (!compiled.ok) {
+      recordError('plan', compiled.reason);
       setState({ phase: 'blocked', report: null, planRejection: compiled.reason });
       return;
     }
     if (!videoFile) {
-      // The recipe is fine; the file just is not open in this tab.
+      // The recipe is fine; the file just is not open in this tab. Still worth
+      // a code in the session record: it is what the user saw instead of export.
+      recordError('plan', 'source_missing');
       setState({ phase: 'blocked', report: null, planRejection: 'source_missing' });
       return;
     }
@@ -111,9 +117,12 @@ export function useExport(project: Project, videoFile: File | null, audioFile: F
       });
       const source = await probeSource(videoFile, audioFile);
       const report = buildReport(environment, encoder, source);
+      recordCapability(report);
       setState(report.canExport ? { phase: 'ready', report } : { phase: 'blocked', report, planRejection: null });
     } catch {
       const report = buildReport(environment, null, null);
+      recordCapability(report);
+      recordError('capability', 'worker_unavailable');
       setState({ phase: 'blocked', report, planRejection: null });
     }
   }, [audioFile, client, project, releaseUrl, videoFile]);
@@ -131,6 +140,13 @@ export function useExport(project: Project, videoFile: File | null, audioFile: F
     const plan: RenderPlan = compiled.plan;
 
     releaseUrl();
+    // Every attempt that starts ends in exactly one log entry (see
+    // domain/exportLog.ts for what an entry may hold). Best effort: a browser
+    // that refuses the write must not turn the export itself into a failure.
+    const startedAt = performance.now();
+    const logAttempt = (end: AttemptEnd) => {
+      void exportLog().append(exportLogEntry(plan, end, performance.now() - startedAt, new Date()));
+    };
     setState({
       phase: 'running',
       step: 'preparing',
@@ -179,6 +195,13 @@ export function useExport(project: Project, videoFile: File | null, audioFile: F
           if (event.output.kind === 'opfs') entryRef.current = event.output.entryName;
           const url = URL.createObjectURL(blob);
           urlRef.current = url;
+          logAttempt({
+            outcome: 'succeeded',
+            measuredDurationUs: event.result.probe.durationUs,
+            width: event.result.probe.width,
+            height: event.result.probe.height,
+            route: event.result.route,
+          });
           setState({
             phase: 'succeeded',
             result: event.result,
@@ -193,6 +216,8 @@ export function useExport(project: Project, videoFile: File | null, audioFile: F
           const cues = project.captionTracks[0]?.cues ?? [];
           const position = event.cueId ? cues.findIndex((cue) => cue.cueId === event.cueId) : -1;
           const cue = position >= 0 ? cues[position] : undefined;
+          recordError('export', event.code);
+          logAttempt({ outcome: 'failed', code: event.code });
           setState({
             phase: 'failed',
             code: event.code,
@@ -201,6 +226,7 @@ export function useExport(project: Project, videoFile: File | null, audioFile: F
           break;
         }
         case 'canceled':
+          logAttempt({ outcome: 'canceled' });
           setState({ phase: 'canceled' });
           break;
       }

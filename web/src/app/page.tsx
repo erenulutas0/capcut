@@ -48,7 +48,12 @@ export default function LandingPage() {
         </p>
       </main>
 
-      <footer className="landing-footer">{t('footer.local')}</footer>
+      <footer className="landing-footer">
+        <span>{t('footer.local')}</span>
+        <Link href="/gizlilik" data-testid="footer-privacy">
+          {t('privacy.link')}
+        </Link>
+      </footer>
     </div>
   );
 }
