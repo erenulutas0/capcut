@@ -140,6 +140,17 @@ const valid = {
   'caption-past-output': project({
     captionTracks: [captionTrack([cue('q_001', 3, 6, 'Sonuna kadar')])],
   }),
+  // Source-anchored (ADR-016): cue times are on the video file's clock, and
+  // may cover parts no moment uses (here 12-19 s).
+  'caption-source-anchored': project({
+    clips: [clip('c_001', 8, 14), clip('c_002', 0, 4)],
+    captionTracks: [
+      captionTrack(
+        [cue('q_001', 1, 3, 'Baştaki an'), cue('q_002', 9, 13, 'Sonradan eklenen an'), cue('q_003', 15, 19, 'Kullanılmayan')],
+        { timeBase: 'source', assetId: 'a_video_001', origin: 'imported' },
+      ),
+    ],
+  }),
   'caption-outline-top-en': project({
     captionTracks: [
       captionTrack([cue('q_001', 0, 2, 'Hello there')], {
@@ -271,8 +282,28 @@ const invalid = {
     }),
     ['caption_style_invalid'],
   ],
-  'caption-source-timebase': [
+  'caption-source-without-asset': [
     project({ captionTracks: [captionTrack([cue('q_001', 0, 2, 'kaynak')], { timeBase: 'source' })] }),
+    ['id_invalid'],
+  ],
+  'caption-source-past-video': [
+    project({
+      captionTracks: [
+        captionTrack([cue('q_001', 19, 21, 'taşan')], { timeBase: 'source', assetId: 'a_video_001' }),
+      ],
+    }),
+    ['range_out_of_source'],
+  ],
+  'caption-source-unknown-asset': [
+    project({
+      captionTracks: [
+        captionTrack([cue('q_001', 0, 2, 'yok')], { timeBase: 'source', assetId: 'a_video_999' }),
+      ],
+    }),
+    ['asset_unknown'],
+  ],
+  'caption-output-with-asset': [
+    project({ captionTracks: [captionTrack([cue('q_001', 0, 2, 'çıktı')], { assetId: 'a_video_001' })] }),
     ['caption_track_invalid'],
   ],
   'two-caption-tracks': [

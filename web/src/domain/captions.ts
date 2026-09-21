@@ -7,6 +7,7 @@
 
 import type { CaptionCueV2, CaptionStyleV2, CaptionTrackV2, Project } from './edl';
 import type { Micros } from './time';
+import { buildTimeline, mapOutputToSource } from './timeline';
 
 export const CAPTION_LIMITS = {
   /** v2 shows one track; a second (e.g. a translation) is a later decision. */
@@ -118,17 +119,103 @@ export function primaryCaptionTrack(project: Project): CaptionTrackV2 | undefine
   return project.captionTracks[0];
 }
 
-/** The cue visible at an output instant, if any. Half-open: the end is not shown. */
-export function activeCueAt(project: Project, outputUs: Micros): CaptionCueV2 | undefined {
+/** A caption as it appears on the output timeline. */
+export interface OutputCue {
+  cueId: string;
+  /**
+   * Which appearance of the cue this is, in output order. Always 0 for output
+   * tracks; a source cue whose range is used twice appears as 0 and 1.
+   */
+  occurrence: number;
+  /** Half-open output range. */
+  startUs: Micros;
+  endUs: Micros;
+  text: string;
+}
+
+/**
+ * THE mapping from the stored track to what is shown on the output timeline.
+ * Preview, render plan, export files (SRT/VTT) and the timeline lane all read
+ * captions through this function, so they cannot disagree.
+ *
+ * - Output tracks: the cues as stored (they may run past the output end; the
+ *   caller clips).
+ * - Source tracks: every moment cut from the track's video shows the part of
+ *   each cue that falls inside the moment, shifted to where the moment sits in
+ *   the output (ADR-009: O + (t - S)). Nothing lands outside the output, and
+ *   because an output instant shows exactly one source instant, the pieces
+ *   never overlap.
+ */
+export function outputCues(project: Project): OutputCue[] {
   const track = primaryCaptionTrack(project);
-  if (!track) return undefined;
-  return track.cues.find((cue) => cue.startUs <= outputUs && outputUs < cue.endUs);
+  if (!track) return [];
+  if (track.timeBase === 'output') {
+    return track.cues.map((cue) => ({ ...cue, occurrence: 0 }));
+  }
+
+  const pieces: Omit<OutputCue, 'occurrence'>[] = [];
+  for (const entry of buildTimeline(project)) {
+    if (entry.assetId !== track.assetId) continue;
+    for (const cue of track.cues) {
+      const from = Math.max(cue.startUs, entry.sourceInUs);
+      const to = Math.min(cue.endUs, entry.sourceOutUs);
+      if (to <= from) continue;
+      pieces.push({
+        cueId: cue.cueId,
+        startUs: entry.startUs + (from - entry.sourceInUs),
+        endUs: entry.startUs + (to - entry.sourceInUs),
+        text: cue.text,
+      });
+    }
+  }
+  pieces.sort((a, b) => a.startUs - b.startUs);
+  const seen = new Map<string, number>();
+  return pieces.map((piece) => {
+    const occurrence = seen.get(piece.cueId) ?? 0;
+    seen.set(piece.cueId, occurrence + 1);
+    return { ...piece, occurrence };
+  });
+}
+
+/** The caption visible at an output instant, if any. Half-open: the end is not shown. */
+export function activeCueAt(project: Project, outputUs: Micros): OutputCue | undefined {
+  return outputCues(project).find((cue) => cue.startUs <= outputUs && outputUs < cue.endUs);
+}
+
+/**
+ * The instant on the track's own clock that is playing at an output instant:
+ * the output time itself for output tracks, the source time for source
+ * tracks. Null when a source track's video is not what plays there.
+ */
+export function trackTimeAtOutput(project: Project, outputUs: Micros): Micros | null {
+  const track = primaryCaptionTrack(project);
+  if (!track || track.timeBase === 'output') return outputUs;
+  const position = mapOutputToSource(project, outputUs);
+  if (!position || position.entry.assetId !== track.assetId) return null;
+  return position.sourceUs;
+}
+
+export interface SourceCueUsage {
+  /** How many times the cue appears in the output (0 = no moment reaches it). */
+  occurrences: number;
+  /** True when at least one appearance is cut short by a moment's edge. */
+  partial: boolean;
+}
+
+/** For source tracks: whether the current moments show a cue, and whole. */
+export function sourceCueUsage(project: Project, cue: CaptionCueV2): SourceCueUsage {
+  const shown = outputCues(project).filter((item) => item.cueId === cue.cueId);
+  const full = cue.endUs - cue.startUs;
+  return {
+    occurrences: shown.length,
+    partial: shown.some((item) => item.endUs - item.startUs < full),
+  };
 }
 
 export type CueVisibility = 'visible' | 'clipped' | 'outside';
 
 /**
- * How much of a cue survives the current output length. Editing moments can
+ * How much of an OUTPUT-track cue survives the current output length. Editing moments can
  * shorten the video under existing captions; those cues are kept (the user
  * may lengthen the video again) but shown as clipped or outside, never
  * silently dropped.
@@ -137,4 +224,39 @@ export function cueVisibility(cue: CaptionCueV2, outputDurationUs: Micros): CueV
   if (cue.startUs >= outputDurationUs) return 'outside';
   if (cue.endUs > outputDurationUs) return 'clipped';
   return 'visible';
+}
+
+/**
+ * What an SRT/VTT export of the finished video contains: the output view of
+ * the captions (`outputCues`), cut at the output end, with lines wholly past
+ * it left out. Adjacent appearances are not merged; each stays a line.
+ */
+export function outputCuesForExport(project: Project, outputDurationUs: Micros): OutputCue[] {
+  return outputCues(project)
+    .filter((cue) => cue.startUs < outputDurationUs)
+    .map((cue) => ({ ...cue, endUs: Math.min(cue.endUs, outputDurationUs) }));
+}
+
+export type TimeBaseHint = 'source' | 'output' | 'same' | null;
+
+/**
+ * A HINT for the import dialog, never a decision (ADR-009: the time base is
+ * not guessed silently; the user picks). It only speaks when the file's own
+ * timing makes one answer clearly impossible:
+ * - `same`: the output is the whole video uncut, so both clocks agree;
+ * - `source`: lines run past the output but fit the video;
+ * - `output`: lines run past the video itself, so they cannot be source times.
+ */
+export function suggestTimeBase(
+  cues: readonly { endUs: Micros }[],
+  outputDurationUs: Micros,
+  sourceDurationUs: Micros,
+  outputIsWholeSource: boolean,
+): TimeBaseHint {
+  if (outputIsWholeSource) return 'same';
+  const lastEnd = cues.reduce((max, cue) => Math.max(max, cue.endUs), 0);
+  const slack = 500_000;
+  if (lastEnd > sourceDurationUs + slack) return 'output';
+  if (lastEnd > outputDurationUs + slack) return 'source';
+  return null;
 }

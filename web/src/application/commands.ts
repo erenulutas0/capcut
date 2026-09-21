@@ -24,6 +24,7 @@ import {
   captionTextProblem,
   isCaptionLanguage,
   normalizeCaptionText,
+  outputCues,
   overlappingCue,
   primaryCaptionTrack,
   sortCues,
@@ -32,7 +33,7 @@ import {
 import { WEB_LOCAL_POLICY, type ExportPolicy } from '../domain/policy';
 import { computeSourceView, viewZoom } from '../domain/transform';
 import { MIN_CLIP_DURATION_US, type Micros } from '../domain/time';
-import { totalOutputDurationUs } from '../domain/timeline';
+import { buildTimeline, totalOutputDurationUs } from '../domain/timeline';
 import { splitPointAt, type SplitRejection } from '../domain/trim';
 import { nextId } from './ids';
 
@@ -378,6 +379,7 @@ export type CaptionRejection =
   | 'caption_cue_overlap'
   | 'caption_limit_exceeded'
   | 'caption_outside_output'
+  | 'range_out_of_source'
   | 'caption_not_found';
 
 export interface CaptionCueInput {
@@ -392,10 +394,23 @@ export type CaptionResult =
   | { ok: false; reason: CaptionRejection };
 
 /**
+ * The clock a track's cue times run on, and where it ends: the output for
+ * output tracks, the anchored video file for source tracks (ADR-016).
+ */
+function trackClock(project: Project): { endUs: Micros; outside: CaptionRejection } {
+  const track = primaryCaptionTrack(project);
+  if (track?.timeBase === 'source') {
+    const asset = project.assets.find((item) => item.assetId === track.assetId);
+    return { endUs: asset?.durationUs ?? 0, outside: 'range_out_of_source' };
+  }
+  return { endUs: totalOutputDurationUs(project), outside: 'caption_outside_output' };
+}
+
+/**
  * Checks one cue against the rules the validator enforces, plus one editing
- * rule: a new or moved cue must start inside the current output. Its end is
- * cut at the output end rather than refused, because the natural gesture is
- * "add a line here" near the end of a short video.
+ * rule: a new or moved cue must start inside its clock (the output, or the
+ * anchored video). Its end is cut there rather than refused, because the
+ * natural gesture is "add a line here" near the end.
  */
 function resolveCue(
   project: Project,
@@ -407,10 +422,10 @@ function resolveCue(
   const problem = captionTextProblem(text);
   if (problem) return { ok: false, reason: problem };
 
-  const outputUs = totalOutputDurationUs(project);
+  const clock = trackClock(project);
   const startUs = Math.max(0, Math.round(input.startUs));
-  if (startUs >= outputUs) return { ok: false, reason: 'caption_outside_output' };
-  const endUs = Math.min(outputUs, Math.round(input.endUs));
+  if (startUs >= clock.endUs) return { ok: false, reason: clock.outside };
+  const endUs = Math.min(clock.endUs, Math.round(input.endUs));
   if (endUs <= startUs) return { ok: false, reason: 'range_reversed' };
   if (endUs - startUs < CAPTION_LIMITS.minCueDurationUs) {
     return { ok: false, reason: 'caption_cue_too_short' };
@@ -508,4 +523,241 @@ export function setCaptionLanguage(project: Project, language: string): Project 
     return project;
   }
   return withTrack(project, (track) => ({ ...track, language }));
+}
+
+/* ------------------------------------------- caption time base (ADR-016) */
+
+export interface CaptionConversionReport {
+  /** Cues that became more than one cue (split at a cut, or a repeated range). */
+  split: number;
+  /** Cues, or pieces of cues, that could not survive (unused or too short). */
+  dropped: number;
+}
+
+export type CaptionConversionResult =
+  | { ok: true; project: Project; report: CaptionConversionReport }
+  | {
+      ok: false;
+      reason: 'caption_no_track' | 'caption_no_video' | 'caption_conversion_conflict';
+      /** For a conflict: the cues that would land on the same source instant. */
+      cueIds?: string[];
+    };
+
+type CuePiece = Omit<CaptionCueV2, 'cueId'> & { from: string };
+
+/** Keeps the original id on the first piece of each cue; later pieces get fresh ids. */
+function reassignIds(pieces: readonly CuePiece[]): CaptionCueV2[] {
+  const used = new Set<string>();
+  const taken = pieces.map((piece) => piece.from);
+  return pieces.map((piece) => {
+    const cueId = used.has(piece.from) ? nextId('q', [...taken, ...used]) : piece.from;
+    used.add(cueId);
+    return { cueId, startUs: piece.startUs, endUs: piece.endUs, text: piece.text };
+  });
+}
+
+/**
+ * Re-anchors the caption track to the other clock, keeping what the viewer
+ * sees in the CURRENT output identical (ADR-016).
+ *
+ * - output → source: each line is mapped onto the video file. A line that
+ *   spans a cut becomes one line per moment (joined again when the moments
+ *   are contiguous in the file). Two different lines that would land on the
+ *   same instant of the file — possible when a range is used twice — make
+ *   the conversion refuse instead of guessing which one wins.
+ * - source → output: each appearance becomes its own output line; lines no
+ *   moment shows are dropped and counted.
+ *
+ * Pieces shorter than the minimum cue length are dropped and counted, never
+ * silently stretched.
+ */
+export function convertCaptionTimeBase(
+  project: Project,
+  target: CaptionTrackV2['timeBase'],
+): CaptionConversionResult {
+  const track = primaryCaptionTrack(project);
+  if (!track) return { ok: false, reason: 'caption_no_track' };
+  if (track.timeBase === target) return { ok: true, project, report: { split: 0, dropped: 0 } };
+
+  if (target === 'output') {
+    const shown = outputCues(project);
+    const kept = shown.filter((cue) => cue.endUs - cue.startUs >= CAPTION_LIMITS.minCueDurationUs);
+    const appearances = new Map<string, number>();
+    for (const cue of shown) appearances.set(cue.cueId, (appearances.get(cue.cueId) ?? 0) + 1);
+    const unused = track.cues.filter((cue) => !appearances.has(cue.cueId)).length;
+    const split = [...appearances.values()].filter((count) => count > 1).length;
+    const cues = reassignIds(kept.map((cue) => ({ ...cue, from: cue.cueId })));
+    return {
+      ok: true,
+      report: { split, dropped: unused + (shown.length - kept.length) },
+      project: withTrack(project, (current) => {
+        const { assetId: _unused, ...rest } = current;
+        return { ...rest, timeBase: 'output', cues };
+      }),
+    };
+  }
+
+  const video = primaryVideoAsset(project);
+  if (!video) return { ok: false, reason: 'caption_no_video' };
+  const outputEnd = totalOutputDurationUs(project);
+  const timeline = buildTimeline(project);
+
+  const pieces: CuePiece[] = [];
+  let dropped = 0;
+  let split = 0;
+  for (const cue of track.cues) {
+    const to = Math.min(cue.endUs, outputEnd);
+    const mine: CuePiece[] = [];
+    for (const entry of timeline) {
+      if (entry.assetId !== video.assetId) continue;
+      const a = Math.max(cue.startUs, entry.startUs);
+      const b = Math.min(to, entry.endUs);
+      if (b <= a) continue;
+      const startUs = entry.sourceInUs + (a - entry.startUs);
+      const endUs = entry.sourceInUs + (b - entry.startUs);
+      const previous = mine[mine.length - 1];
+      // Consecutive moments that are contiguous in the file: one line again.
+      if (previous && previous.endUs === startUs) previous.endUs = endUs;
+      else mine.push({ from: cue.cueId, startUs, endUs, text: cue.text });
+    }
+    const long = mine.filter((piece) => piece.endUs - piece.startUs >= CAPTION_LIMITS.minCueDurationUs);
+    dropped += mine.length === 0 ? 1 : mine.length - long.length;
+    if (long.length > 1) split += 1;
+    pieces.push(...long);
+  }
+
+  pieces.sort((a, b) => a.startUs - b.startUs);
+  for (let index = 1; index < pieces.length; index += 1) {
+    const before = pieces[index - 1];
+    const current = pieces[index];
+    if (!before || !current || current.startUs >= before.endUs) continue;
+    if (before.from === current.from) {
+      // The same line over a range used twice: one source line covers both.
+      before.endUs = Math.max(before.endUs, current.endUs);
+      pieces.splice(index, 1);
+      index -= 1;
+      continue;
+    }
+    return { ok: false, reason: 'caption_conversion_conflict', cueIds: [before.from, current.from] };
+  }
+
+  return {
+    ok: true,
+    report: { split, dropped },
+    project: withTrack(project, (current) => ({
+      ...current,
+      timeBase: 'source',
+      assetId: video.assetId,
+      cues: reassignIds(pieces),
+    })),
+  };
+}
+
+export type ShiftCaptionsResult =
+  | { ok: true; project: Project }
+  | { ok: false; reason: 'caption_no_track' | 'caption_shift_out_of_range' };
+
+/**
+ * Moves every line by the same amount (sync fix for a file that runs early or
+ * late). Refused, not clamped, when any line would leave its clock: clamping
+ * would squash lines together at the edge.
+ */
+export function shiftCaptions(project: Project, deltaUs: Micros): ShiftCaptionsResult {
+  const track = primaryCaptionTrack(project);
+  if (!track || track.cues.length === 0) return { ok: false, reason: 'caption_no_track' };
+  const delta = Math.round(deltaUs);
+  if (delta === 0) return { ok: true, project };
+  const clock = trackClock(project);
+  const moved = track.cues.map((cue) => ({ ...cue, startUs: cue.startUs + delta, endUs: cue.endUs + delta }));
+  const outOfRange = moved.some(
+    (cue) => cue.startUs < 0 || (track.timeBase === 'source' && cue.endUs > clock.endUs),
+  );
+  if (outOfRange) return { ok: false, reason: 'caption_shift_out_of_range' };
+  return { ok: true, project: withTrack(project, (current) => ({ ...current, cues: moved })) };
+}
+
+export interface ImportedCueInput {
+  startUs: Micros;
+  endUs: Micros;
+  text: string;
+}
+
+export type ImportSkipReason =
+  | CaptionTextProblem
+  | 'range_reversed'
+  | 'caption_cue_too_short'
+  | 'caption_cue_overlap'
+  | 'range_out_of_source'
+  | 'caption_limit_exceeded';
+
+export interface CaptionImportReport {
+  imported: number;
+  /** `index` is the line's position in the file (0-based), for the user report. */
+  skipped: { index: number; reason: ImportSkipReason }[];
+}
+
+export type CaptionImportResult =
+  | { ok: true; project: Project; report: CaptionImportReport }
+  | { ok: false; reason: 'caption_no_video' | 'caption_import_empty'; report?: CaptionImportReport };
+
+/**
+ * Replaces the caption track with lines from a subtitle file.
+ *
+ * The caller MUST say which clock the file was timed against (ADR-009: never
+ * guess the time base silently). Every line that breaks a rule is skipped and
+ * reported by its position in the file; nothing is stretched or merged to
+ * make it fit. Output-time lines past the current end are kept, like typed
+ * lines (the render plan cuts them); source-time lines must lie in the video.
+ * Style and language of an existing track are kept. One undo step.
+ */
+export function importCaptionTrack(
+  project: Project,
+  cues: readonly ImportedCueInput[],
+  timeBase: CaptionTrackV2['timeBase'],
+): CaptionImportResult {
+  const video = primaryVideoAsset(project);
+  if (timeBase === 'source' && !video) return { ok: false, reason: 'caption_no_video' };
+
+  const skipped: CaptionImportReport['skipped'] = [];
+  const accepted: Omit<CaptionCueV2, 'cueId'>[] = [];
+  const order = cues
+    .map((cue, index) => ({ cue, index }))
+    .sort((a, b) => a.cue.startUs - b.cue.startUs || a.index - b.index);
+
+  for (const { cue, index } of order) {
+    const text = normalizeCaptionText(cue.text);
+    const problem = captionTextProblem(text);
+    const startUs = Math.round(cue.startUs);
+    const endUs = Math.round(cue.endUs);
+    const last = accepted[accepted.length - 1];
+    let reason: ImportSkipReason | null = null;
+    if (problem) reason = problem;
+    else if (!(endUs > startUs) || startUs < 0) reason = 'range_reversed';
+    else if (endUs - startUs < CAPTION_LIMITS.minCueDurationUs) reason = 'caption_cue_too_short';
+    else if (timeBase === 'source' && video && endUs > video.durationUs) reason = 'range_out_of_source';
+    else if (last && startUs < last.endUs) reason = 'caption_cue_overlap';
+    else if (accepted.length >= CAPTION_LIMITS.maxCuesPerTrack) reason = 'caption_limit_exceeded';
+
+    if (reason) skipped.push({ index, reason });
+    else accepted.push({ startUs, endUs, text });
+  }
+  skipped.sort((a, b) => a.index - b.index);
+  const report = { imported: accepted.length, skipped };
+  if (accepted.length === 0) return { ok: false, reason: 'caption_import_empty', report };
+
+  const numbered = accepted.map((cue, position) => ({
+    cueId: `q_${String(position + 1).padStart(3, '0')}`,
+    ...cue,
+  }));
+  const next = withTrack(project, (current) => {
+    const { assetId: _unused, ...rest } = current;
+    return {
+      ...rest,
+      origin: 'imported',
+      timeBase,
+      ...(timeBase === 'source' && video ? { assetId: video.assetId } : {}),
+      cues: numbered,
+    };
+  });
+  return { ok: true, project: next, report };
 }

@@ -29,6 +29,9 @@
       "file": "valid/caption-past-output.json"
     },
     {
+      "file": "valid/caption-source-anchored.json"
+    },
+    {
       "file": "valid/caption-outline-top-en.json"
     }
   ],
@@ -154,7 +157,25 @@
       ]
     },
     {
-      "file": "invalid/caption-source-timebase.json",
+      "file": "invalid/caption-source-without-asset.json",
+      "expectedIssueCodes": [
+        "id_invalid"
+      ]
+    },
+    {
+      "file": "invalid/caption-source-past-video.json",
+      "expectedIssueCodes": [
+        "range_out_of_source"
+      ]
+    },
+    {
+      "file": "invalid/caption-source-unknown-asset.json",
+      "expectedIssueCodes": [
+        "asset_unknown"
+      ]
+    },
+    {
+      "file": "invalid/caption-output-with-asset.json",
       "expectedIssueCodes": [
         "caption_track_invalid"
       ]

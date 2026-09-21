@@ -17,7 +17,7 @@ import {
   type MusicV1,
   type Project,
 } from './edl';
-import { primaryCaptionTrack } from './captions';
+import { outputCues, primaryCaptionTrack } from './captions';
 import type { ExportPolicy } from './policy';
 import { totalOutputDurationUs } from './timeline';
 import { cropPixels, type CropRect } from './transform';
@@ -289,8 +289,10 @@ export function compileRenderPlan(project: Project, policy: ExportPolicy): PlanR
 
 /**
  * Caption cues on the frame grid, using the same rounding rule as the video
- * (frameAtUs). A cue that the current moments leave partly past the end is
- * cut there; one wholly past it is not drawn. The UI shows both states.
+ * (frameAtUs). Read through `outputCues`, so source-anchored captions follow
+ * their moments (a repeated range yields the same cueId twice). An output cue
+ * that the current moments leave partly past the end is cut there; one wholly
+ * past it is not drawn. The UI shows both states.
  */
 function captionPlan(
   project: Project,
@@ -301,7 +303,7 @@ function captionPlan(
   const track = primaryCaptionTrack(project);
   if (!track) return null;
   const cues: RenderCaption[] = [];
-  for (const cue of track.cues) {
+  for (const cue of outputCues(project)) {
     const startFrame = Math.min(totalFrames, frameAtUs(cue.startUs, fpsNum, fpsDen));
     const endFrame = Math.min(totalFrames, frameAtUs(cue.endUs, fpsNum, fpsDen));
     if (endFrame > startFrame) {

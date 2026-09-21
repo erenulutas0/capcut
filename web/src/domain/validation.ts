@@ -187,16 +187,17 @@ const EXPORT_KEYS = [
   'audioSampleRate',
 ] as const;
 
-const CAPTION_TRACK_KEYS = ['trackId', 'origin', 'timeBase', 'language', 'style', 'cues'] as const;
+const CAPTION_TRACK_KEYS = ['trackId', 'origin', 'timeBase', 'assetId', 'language', 'style', 'cues'] as const;
 const CAPTION_STYLE_KEYS = ['preset', 'position', 'size'] as const;
 const CAPTION_CUE_KEYS = ['cueId', 'startUs', 'endUs', 'text'] as const;
 
 /**
- * Caption tracks (v2, ADR-015). Cues may lie partly or wholly past the current
- * output end: editing moments can shorten the video under them, and the
- * render plan clips them. Everything else about a cue must be well-formed.
+ * Caption tracks (v2, ADR-015/016). Output-time cues may lie partly or wholly
+ * past the current output end: editing moments can shorten the video under
+ * them, and the render plan clips them. Source-time cues must lie inside their
+ * video file. Everything else about a cue must be well-formed.
  */
-function validateCaptionTracks(bag: IssueBag, raw: unknown): void {
+function validateCaptionTracks(bag: IssueBag, raw: unknown, assets: Map<string, AssetV1>): void {
   if (!Array.isArray(raw)) {
     bag.add('missing_field', 'captionTracks', 'captionTracks bir dizi olmalı.');
     return;
@@ -223,12 +224,33 @@ function validateCaptionTracks(bag: IssueBag, raw: unknown): void {
       }
       ids.add(track.trackId as string);
     }
-    if (track.origin !== 'manual' || track.timeBase !== 'output' || !isCaptionLanguage(track.language)) {
+    if (
+      (track.origin !== 'manual' && track.origin !== 'imported') ||
+      (track.timeBase !== 'output' && track.timeBase !== 'source') ||
+      !isCaptionLanguage(track.language)
+    ) {
       bag.add(
         'caption_track_invalid',
         path,
-        'v2 yalnızca elle yazılmış, çıktı zamanlı ve geçerli dil kodlu iz kabul eder.',
+        'İz kaynağı (manual/imported), zaman tabanı (output/source) ve dil kodu geçerli olmalı.',
       );
+    }
+
+    // A source track is anchored to one video file; an output track to none.
+    let sourceDurationUs: number | null = null;
+    if (track.timeBase === 'source') {
+      if (checkId(bag, track.assetId, `${path}.assetId`)) {
+        const asset = assets.get(track.assetId as string);
+        if (!asset) {
+          bag.add('asset_unknown', `${path}.assetId`, 'Altyazı izi tanımsız bir kaynağa bağlı.');
+        } else if (asset.kind !== 'video') {
+          bag.add('asset_kind_mismatch', `${path}.assetId`, 'Altyazı izi bir video kaynağına bağlı olmalı.');
+        } else {
+          sourceDurationUs = asset.durationUs;
+        }
+      }
+    } else if (track.assetId !== undefined) {
+      bag.add('caption_track_invalid', `${path}.assetId`, 'Çıktı zamanlı izin kaynağı olmaz.');
     }
 
     const style = track.style;
@@ -292,6 +314,9 @@ function validateCaptionTracks(bag: IssueBag, raw: unknown): void {
       if (end <= start) {
         bag.add('range_reversed', cuePath, 'Bitiş başlangıçtan sonra olmalı.');
         return;
+      }
+      if (sourceDurationUs !== null && end > sourceDurationUs) {
+        bag.add('range_out_of_source', cuePath, 'Altyazı satırı videonun süresini aşıyor.');
       }
       if (end - start < CAPTION_LIMITS.minCueDurationUs) {
         bag.add('caption_cue_too_short', cuePath, 'Bir altyazı satırı en az 0,2 saniye görünmeli.');
@@ -684,7 +709,7 @@ export function validateProject(
     validateMusic(bag, input.music, assets, totalOutputUs, policy);
   }
 
-  validateCaptionTracks(bag, input.captionTracks);
+  validateCaptionTracks(bag, input.captionTracks, assets);
 
   if (!bag.ok) {
     return { ok: false, issues: bag.issues };

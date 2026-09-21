@@ -100,14 +100,22 @@ export interface CaptionCueV2 {
 /**
  * A displayed caption track (ADR-009: never the transcript itself).
  *
- * `timeBase` is explicit so that imported or transcript-derived cues can later
- * be anchored to SOURCE time without a migration; v2 only has manual cues on
- * the OUTPUT timeline, which is what the user sees while typing them.
+ * `timeBase` says which clock the cue times are on (ADR-016):
+ * - `output`: the finished video. What the user sees while typing; cues stay
+ *   put when moments are reordered.
+ * - `source`: the video file named by `assetId`. Cues travel with the
+ *   picture: reorder, trim or repeat a moment and its captions follow, and a
+ *   range used twice shows its captions twice.
  */
+export type CaptionTimeBase = 'output' | 'source';
+
 export interface CaptionTrackV2 {
   trackId: string;
-  origin: 'manual';
-  timeBase: 'output';
+  /** Where the lines came from: typed in the editor, or an SRT/VTT file. */
+  origin: 'manual' | 'imported';
+  timeBase: CaptionTimeBase;
+  /** Required for `source` tracks, absent for `output` tracks. */
+  assetId?: string;
   /** BCP 47 primary language, optionally with region: "tr", "en", "en-GB". */
   language: string;
   style: CaptionStyleV2;

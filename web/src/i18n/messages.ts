@@ -210,6 +210,7 @@ export const tr = {
   'captions.error.caption_cue_overlap': 'Bu aralıkta başka bir satır var; satırlar üst üste binemez.',
   'captions.error.caption_limit_exceeded': 'Bir projede en çok 500 altyazı satırı olabilir.',
   'captions.error.caption_outside_output': 'Satır, video bitmeden başlamalı.',
+  'captions.error.range_out_of_source': 'Satır, kaynak videonun süresi içinde kalmalı.',
   'captions.error.caption_not_found': 'Bu satır artık yok; geri alınmış olabilir.',
   'captions.error.caption_no_room':
     'Oynatma çizgisinden sonra yeni satıra yer yok. Oynatma çizgisini boş bir yere taşı.',
@@ -590,6 +591,7 @@ export const en: Record<MessageKey, string> = {
   'captions.error.caption_cue_overlap': 'Another line already uses this time; lines cannot overlap.',
   'captions.error.caption_limit_exceeded': 'A project can hold at most 500 caption lines.',
   'captions.error.caption_outside_output': 'The line must start before the video ends.',
+  'captions.error.range_out_of_source': 'The line must stay within the source video.',
   'captions.error.caption_not_found': 'This line no longer exists; it may have been undone.',
   'captions.error.caption_no_room':
     'There is no room for a new line after the playhead. Move the playhead to a free spot.',

@@ -109,7 +109,8 @@ v2, v1'in aynısıdır; yalnızca zorunlu bir `captionTracks` dizisi eklenir (ay
 
 Kurallar:
 - En çok 1 iz, iz başına en çok 500 satır.
-- `origin` yalnızca `manual`; `timeBase` yalnızca `output`. Kaynak zamanına bağlı ya da transkriptten türetilen satırlar bu alanla ileride şema geçişi olmadan eklenebilir; bugün reddedilir.
+- `origin`: `manual` (editörde yazıldı) | `imported` (SRT/VTT'den geldi).
+- `timeBase`: `output` (satır zamanları sonuç videosuna göre) | `source` (satır zamanları `assetId` ile gösterilen video dosyasına göre). `source` izde `assetId` zorunludur ve bir video kaynağı olmalıdır; satırlar o videonun süresi içinde kalır (`range_out_of_source`). `output` izde `assetId` bulunmaz. Kaynak zamanlı satırlar sonuç videosunda anlarla birlikte taşınır, aynı bölüm iki kez kullanılırsa iki kez görünür (ADR-016). Bu genişletme 2026-09-21'de v2 içinde yapıldı; öncesinde yazılmış v2 tarifler aynen geçerlidir.
 - `language`: BCP 47 ana dil kodu, isteğe bağlı olarak bölge ile (`tr`, `en`, `en-GB`).
 - `style`: yalnızca hazır değerler kabul edilir.
   - `preset`: `box` | `outline`

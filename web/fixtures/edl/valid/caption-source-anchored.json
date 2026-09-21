@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 2,
+  "projectId": "p_fixture_001",
+  "revision": 1,
+  "assets": [
+    {
+      "assetId": "a_video_001",
+      "kind": "video",
+      "durationUs": 20000000,
+      "displayWidth": 1080,
+      "displayHeight": 1920,
+      "hasAudio": true
+    }
+  ],
+  "canvas": {
+    "aspect": "9:16",
+    "background": "#000000"
+  },
+  "clips": [
+    {
+      "clipId": "c_001",
+      "assetId": "a_video_001",
+      "sourceInUs": 8000000,
+      "sourceOutUs": 14000000,
+      "sourceGainDb": 0,
+      "muted": false,
+      "view": {
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1,
+        "fit": "cover"
+      }
+    },
+    {
+      "clipId": "c_002",
+      "assetId": "a_video_001",
+      "sourceInUs": 0,
+      "sourceOutUs": 4000000,
+      "sourceGainDb": 0,
+      "muted": false,
+      "view": {
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1,
+        "fit": "cover"
+      }
+    }
+  ],
+  "export": {
+    "container": "mp4",
+    "videoCodec": "h264",
+    "audioCodec": "aac",
+    "shortEdge": 1080,
+    "fpsNum": 30,
+    "fpsDen": 1,
+    "colorMode": "sdr_rec709",
+    "audioSampleRate": 48000
+  },
+  "captionTracks": [
+    {
+      "trackId": "t_001",
+      "origin": "imported",
+      "timeBase": "source",
+      "language": "tr",
+      "style": {
+        "preset": "box",
+        "position": "bottom",
+        "size": "medium"
+      },
+      "cues": [
+        {
+          "cueId": "q_001",
+          "startUs": 1000000,
+          "endUs": 3000000,
+          "text": "Baştaki an"
+        },
+        {
+          "cueId": "q_002",
+          "startUs": 9000000,
+          "endUs": 13000000,
+          "text": "Sonradan eklenen an"
+        },
+        {
+          "cueId": "q_003",
+          "startUs": 15000000,
+          "endUs": 19000000,
+          "text": "Kullanılmayan"
+        }
+      ],
+      "assetId": "a_video_001"
+    }
+  ]
+}
