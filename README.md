@@ -164,8 +164,11 @@ W5 tamamlandı: 15 gerçek kayıt (HEVC, döndürmeli, HDR, 60 fps, 5+ dk) Chrom
 13 geçer / 2 açık ret (HDR), hata yok (ADR-014). Bölme ve sürükleyerek kırpma
 eklendi (P1-03).
 
-**Sıradaki:** doc 29'daki altyazı sırasının ilk adımı — tek bir elle yazılmış
-altyazı satırının gerçek videoya işlenmesi. EDL v1'e geriye uyumlu bir alan
-gerektirir; şema önerisi kurucu onayıyla yapılır. Açık küçük kararlar: HDR
-kayıtları SDR'ye tonlama (şu an reddediliyor) ve ayrıntılı 60 fps kayıtlarda
-Chromium'un yazılım kodlayıcısı için bit hızı.
+Altyazı adım 2 tamamlandı (ADR-015): EDL v2 (`captionTracks`, v1 kayıpsız
+geçiş), "Altyazı" sekmesi, aynı çizim koduyla önizleme ve dışa aktarmada
+piksellere işleme; M17 Chromium/Chrome/Edge'de ölçümle geçiyor.
+
+**Sıradaki:** altyazı adım 3 — SRT/VTT içe/dışa aktarma ve kaynak zamanına
+bağlı satırlar (anlar yeniden sıralanınca satırlar içerikle birlikte taşınır).
+Açık küçük kararlar: HDR kayıtları SDR'ye tonlama (şu an reddediliyor) ve
+ayrıntılı 60 fps kayıtlarda Chromium'un yazılım kodlayıcısı için bit hızı.
