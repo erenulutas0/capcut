@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "projectId": "p_fixture_001",
   "revision": 1,
   "assets": [
@@ -48,6 +48,7 @@
     "colorMode": "sdr_rec709",
     "audioSampleRate": 48000
   },
+  "captionTracks": [],
   "music": {
     "assetId": "a_music_001",
     "sourceInUs": 0,

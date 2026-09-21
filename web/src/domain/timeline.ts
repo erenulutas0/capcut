@@ -6,7 +6,7 @@
  * gaps; position is derived from array order, never stored.
  */
 
-import type { MusicV1, ProjectV1 } from './edl';
+import type { MusicV1, Project } from './edl';
 import type { Micros } from './time';
 
 export interface TimelineEntry {
@@ -33,7 +33,7 @@ export function clipDurationUs(clip: { sourceInUs: Micros; sourceOutUs: Micros }
   return clip.sourceOutUs - clip.sourceInUs;
 }
 
-export function buildTimeline(project: Pick<ProjectV1, 'clips'>): TimelineEntry[] {
+export function buildTimeline(project: Pick<Project, 'clips'>): TimelineEntry[] {
   const entries: TimelineEntry[] = [];
   let cursor = 0;
   project.clips.forEach((clip, index) => {
@@ -54,11 +54,11 @@ export function buildTimeline(project: Pick<ProjectV1, 'clips'>): TimelineEntry[
 }
 
 /** Total output duration = sum of clip durations (no transitions, no speed). */
-export function totalOutputDurationUs(project: Pick<ProjectV1, 'clips'>): Micros {
+export function totalOutputDurationUs(project: Pick<Project, 'clips'>): Micros {
   return project.clips.reduce((total, clip) => total + clipDurationUs(clip), 0);
 }
 
-export function totalSourceDurationUs(project: Pick<ProjectV1, 'assets'>): Micros {
+export function totalSourceDurationUs(project: Pick<Project, 'assets'>): Micros {
   return project.assets
     .filter((asset) => asset.kind === 'video')
     .reduce((total, asset) => total + asset.durationUs, 0);
@@ -69,7 +69,7 @@ export function totalSourceDurationUs(project: Pick<ProjectV1, 'assets'>): Micro
  * Half-open: outputUs === totalDuration belongs to no clip.
  */
 export function mapOutputToSource(
-  project: Pick<ProjectV1, 'clips'>,
+  project: Pick<Project, 'clips'>,
   outputUs: Micros,
 ): OutputPosition | null {
   if (outputUs < 0) return null;
@@ -92,7 +92,7 @@ export function mapOutputToSource(
  * used twice, so the clip index — not the source time — identifies the answer.
  */
 export function mapSourceToOutput(
-  project: Pick<ProjectV1, 'clips'>,
+  project: Pick<Project, 'clips'>,
   clipIndex: number,
   sourceUs: Micros,
 ): Micros | null {

@@ -7,9 +7,9 @@
  * forbids. What survives is the recipe; the files are re-selected by the user.
  */
 
-import type { ProjectV1 } from './edl';
+import type { Project } from './edl';
 import type { Micros } from './time';
-import { validateProject } from './validation';
+import { loadProject } from './migration';
 
 export const PROJECT_RECORD_VERSION = 1;
 
@@ -39,7 +39,7 @@ export interface ProjectRecord {
   recordVersion: typeof PROJECT_RECORD_VERSION;
   projectId: string;
   title: string;
-  edl: ProjectV1;
+  edl: Project;
   bindings: AssetBinding[];
   createdAt: string;
   updatedAt: string;
@@ -135,7 +135,7 @@ export function bindingFor(
 export function createRecord(
   projectId: string,
   title: string,
-  edl: ProjectV1,
+  edl: Project,
   bindings: AssetBinding[],
   now: Date = new Date(),
 ): ProjectRecord {
@@ -178,7 +178,8 @@ export function parseRecord(input: unknown): RecordResult {
     return { ok: false, reason: 'version_unsupported' };
   }
 
-  const validation = validateProject(candidate.edl);
+  // Older builds stored v1 recipes; they are upgraded here, never refused.
+  const validation = loadProject(candidate.edl);
   if (!validation.ok) return { ok: false, reason: 'edl_invalid' };
 
   if (!Array.isArray(candidate.bindings)) return { ok: false, reason: 'bindings_invalid' };

@@ -1,12 +1,12 @@
 /**
  * Edge trimming and split-point maths.
  *
- * Pure functions over `ProjectV1`: the timeline drag handles, their keyboard
+ * Pure functions over `Project`: the timeline drag handles, their keyboard
  * steps and the split action all ask these for a legal value instead of
  * computing one in a component. Nothing here changes the recipe; commands do.
  */
 
-import type { ProjectV1 } from './edl';
+import type { Project } from './edl';
 import type { ExportPolicy } from './policy';
 import { frameAtUs, frameToUs } from './renderPlan';
 import { MIN_CLIP_DURATION_US, type Micros } from './time';
@@ -60,7 +60,7 @@ export interface TrimBounds {
  * policy is the one project-wide rule, and it caps how far an edge may grow.
  */
 export function trimBounds(
-  project: ProjectV1,
+  project: Project,
   clipId: string,
   edge: TrimEdge,
   policy: Pick<ExportPolicy, 'maxOutputDurationUs'>,
@@ -98,7 +98,7 @@ export function trimBounds(
  * grid point inside it; only if no grid point fits does the exact limit win.
  */
 export function resolveTrimTarget(
-  project: ProjectV1,
+  project: Project,
   clipId: string,
   edge: TrimEdge,
   rawUs: Micros,
@@ -156,7 +156,7 @@ export type SplitPoint = { ok: true; sourceUs: Micros } | { ok: false; reason: S
  * limit is checked as well, so the UI can disable the action up front.
  */
 export function splitPointAt(
-  project: ProjectV1,
+  project: Project,
   clipId: string | null,
   playhead: Playhead,
   policy?: Pick<ExportPolicy, 'maxClips'>,

@@ -1,5 +1,6 @@
 /**
- * EDL v1 validation (doc 10 "Doğrulama kuralları").
+ * EDL v2 validation (doc 10 "Doğrulama kuralları"). v1 input is migrated
+ * first (migration.ts); this validator only ever sees the current schema.
  *
  * Deliberately hand-written and dependency-free: the same rules must later be
  * re-implemented in Dart and Python and checked against the SAME fixture files
@@ -15,9 +16,18 @@ import {
   type AssetV1,
   type ClipV1,
   type MusicV1,
-  type ProjectV1,
+  type Project,
   type ViewRectV1,
 } from './edl';
+import {
+  CAPTION_LIMITS,
+  CAPTION_POSITIONS,
+  CAPTION_PRESETS,
+  CAPTION_SIZES,
+  captionTextProblem,
+  isCaptionLanguage,
+  normalizeCaptionText,
+} from './captions';
 import { WEB_LOCAL_POLICY, type ExportPolicy } from './policy';
 import { MIN_CLIP_DURATION_US, isSafeMicros } from './time';
 
@@ -52,7 +62,15 @@ export type IssueCode =
   | 'revision_invalid'
   | 'output_duration_exceeds_policy'
   | 'source_duration_exceeds_policy'
-  | 'video_asset_limit_exceeded';
+  | 'video_asset_limit_exceeded'
+  | 'caption_track_limit_exceeded'
+  | 'caption_track_invalid'
+  | 'caption_style_invalid'
+  | 'caption_cue_limit_exceeded'
+  | 'caption_id_duplicate'
+  | 'caption_text_invalid'
+  | 'caption_cue_too_short'
+  | 'caption_cue_overlap';
 
 export interface ValidationIssue {
   code: IssueCode;
@@ -61,7 +79,7 @@ export interface ValidationIssue {
 }
 
 export type ValidationResult =
-  | { ok: true; project: ProjectV1; issues: [] }
+  | { ok: true; project: Project; issues: [] }
   | { ok: false; issues: ValidationIssue[] };
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
@@ -168,6 +186,128 @@ const EXPORT_KEYS = [
   'colorMode',
   'audioSampleRate',
 ] as const;
+
+const CAPTION_TRACK_KEYS = ['trackId', 'origin', 'timeBase', 'language', 'style', 'cues'] as const;
+const CAPTION_STYLE_KEYS = ['preset', 'position', 'size'] as const;
+const CAPTION_CUE_KEYS = ['cueId', 'startUs', 'endUs', 'text'] as const;
+
+/**
+ * Caption tracks (v2, ADR-015). Cues may lie partly or wholly past the current
+ * output end: editing moments can shorten the video under them, and the
+ * render plan clips them. Everything else about a cue must be well-formed.
+ */
+function validateCaptionTracks(bag: IssueBag, raw: unknown): void {
+  if (!Array.isArray(raw)) {
+    bag.add('missing_field', 'captionTracks', 'captionTracks bir dizi olmalı.');
+    return;
+  }
+  if (raw.length > CAPTION_LIMITS.maxTracks) {
+    bag.add(
+      'caption_track_limit_exceeded',
+      'captionTracks',
+      `Bu sürümde en çok ${CAPTION_LIMITS.maxTracks} altyazı izi olabilir.`,
+    );
+  }
+
+  const ids = new Set<string>();
+  raw.forEach((track, trackIndex) => {
+    const path = `captionTracks[${trackIndex}]`;
+    if (!isPlainObject(track)) {
+      bag.add('not_an_object', path, 'Altyazı izi nesnesi bekleniyor.');
+      return;
+    }
+    checkUnknownFields(bag, track, CAPTION_TRACK_KEYS, path);
+    if (checkId(bag, track.trackId, `${path}.trackId`)) {
+      if (ids.has(track.trackId as string)) {
+        bag.add('caption_id_duplicate', `${path}.trackId`, 'Altyazı kimliği tekrar ediyor.');
+      }
+      ids.add(track.trackId as string);
+    }
+    if (track.origin !== 'manual' || track.timeBase !== 'output' || !isCaptionLanguage(track.language)) {
+      bag.add(
+        'caption_track_invalid',
+        path,
+        'v2 yalnızca elle yazılmış, çıktı zamanlı ve geçerli dil kodlu iz kabul eder.',
+      );
+    }
+
+    const style = track.style;
+    if (!isPlainObject(style)) {
+      bag.add('caption_style_invalid', `${path}.style`, 'Altyazı stili nesnesi bekleniyor.');
+    } else {
+      checkUnknownFields(bag, style, CAPTION_STYLE_KEYS, `${path}.style`);
+      if (
+        !(CAPTION_PRESETS as readonly unknown[]).includes(style.preset) ||
+        !(CAPTION_POSITIONS as readonly unknown[]).includes(style.position) ||
+        !(CAPTION_SIZES as readonly unknown[]).includes(style.size)
+      ) {
+        bag.add('caption_style_invalid', `${path}.style`, 'Bilinmeyen altyazı stili.');
+      }
+    }
+
+    if (!Array.isArray(track.cues)) {
+      bag.add('missing_field', `${path}.cues`, 'cues bir dizi olmalı.');
+      return;
+    }
+    if (track.cues.length > CAPTION_LIMITS.maxCuesPerTrack) {
+      bag.add(
+        'caption_cue_limit_exceeded',
+        `${path}.cues`,
+        `Bir izde en çok ${CAPTION_LIMITS.maxCuesPerTrack} satır olabilir.`,
+      );
+    }
+
+    let previousEnd: number | null = null;
+    track.cues.forEach((cue: unknown, cueIndex: number) => {
+      const cuePath = `${path}.cues[${cueIndex}]`;
+      if (!isPlainObject(cue)) {
+        bag.add('not_an_object', cuePath, 'Altyazı satırı nesnesi bekleniyor.');
+        return;
+      }
+      checkUnknownFields(bag, cue, CAPTION_CUE_KEYS, cuePath);
+      if (checkId(bag, cue.cueId, `${cuePath}.cueId`)) {
+        if (ids.has(cue.cueId as string)) {
+          bag.add('caption_id_duplicate', `${cuePath}.cueId`, 'Altyazı kimliği tekrar ediyor.');
+        }
+        ids.add(cue.cueId as string);
+      }
+
+      if (
+        typeof cue.text !== 'string' ||
+        cue.text !== normalizeCaptionText(cue.text) ||
+        captionTextProblem(cue.text) !== null
+      ) {
+        bag.add(
+          'caption_text_invalid',
+          `${cuePath}.text`,
+          `Metin boş olmayan, en çok ${CAPTION_LIMITS.maxTextChars} karakter ve ${CAPTION_LIMITS.maxLines} satır, normalleştirilmiş düz metin olmalı.`,
+        );
+      }
+
+      const startOk = checkMicros(bag, cue.startUs, `${cuePath}.startUs`);
+      const endOk = checkMicros(bag, cue.endUs, `${cuePath}.endUs`);
+      if (!startOk || !endOk) return;
+      const start = cue.startUs as number;
+      const end = cue.endUs as number;
+      if (end <= start) {
+        bag.add('range_reversed', cuePath, 'Bitiş başlangıçtan sonra olmalı.');
+        return;
+      }
+      if (end - start < CAPTION_LIMITS.minCueDurationUs) {
+        bag.add('caption_cue_too_short', cuePath, 'Bir altyazı satırı en az 0,2 saniye görünmeli.');
+      }
+      // Sorted and non-overlapping: one line on screen at a time.
+      if (previousEnd !== null && start < previousEnd) {
+        bag.add(
+          'caption_cue_overlap',
+          cuePath,
+          'Altyazı satırları başlangıca göre sıralı olmalı ve üst üste binmemeli.',
+        );
+      }
+      previousEnd = end;
+    });
+  });
+}
 
 function validateAssets(bag: IssueBag, raw: unknown): Map<string, AssetV1> {
   const byId = new Map<string, AssetV1>();
@@ -544,14 +684,16 @@ export function validateProject(
     validateMusic(bag, input.music, assets, totalOutputUs, policy);
   }
 
+  validateCaptionTracks(bag, input.captionTracks);
+
   if (!bag.ok) {
     return { ok: false, issues: bag.issues };
   }
-  return { ok: true, project: input as unknown as ProjectV1, issues: [] };
+  return { ok: true, project: input as unknown as Project, issues: [] };
 }
 
 export function issueCodes(result: ValidationResult): IssueCode[] {
   return result.ok ? [] : result.issues.map((issue) => issue.code);
 }
 
-export type { AssetV1, ClipV1, MusicV1, ProjectV1, ViewRectV1 };
+export type { AssetV1, ClipV1, MusicV1, Project, ViewRectV1 };

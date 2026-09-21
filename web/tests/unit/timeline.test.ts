@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import type { ProjectV1 } from '@/domain/edl';
+import type { Project } from '@/domain/edl';
 import {
   buildTimeline,
   mapOutputToMusic,
@@ -13,11 +13,11 @@ import {
 } from '@/domain/timeline';
 import { US_PER_SECOND, formatTimecode, parseTimecode, secondsToUs } from '@/domain/time';
 
-const docExample: ProjectV1 = JSON.parse(
+const docExample: Project = JSON.parse(
   readFileSync(join(process.cwd(), 'fixtures', 'edl', 'valid', 'doc10-example.json'), 'utf8'),
 );
 
-const repeated: ProjectV1 = JSON.parse(
+const repeated: Project = JSON.parse(
   readFileSync(
     join(process.cwd(), 'fixtures', 'edl', 'valid', 'repeated-source-range.json'),
     'utf8',

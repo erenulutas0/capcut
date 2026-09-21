@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Icon } from '@/components/Icon';
 import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
-import type { AspectRatio, ClipV1, FitMode, MusicV1, ProjectV1 } from '@/domain/edl';
+import type { AspectRatio, ClipV1, FitMode, MusicV1, Project } from '@/domain/edl';
 import { formatTimecode, parseTimecode, US_PER_SECOND } from '@/domain/time';
 import { MAX_ZOOM, MIN_ZOOM } from '@/domain/transform';
 import type { MessageKey } from '@/i18n/messages';
@@ -15,7 +15,7 @@ interface Props {
   t: (key: MessageKey) => string;
   tab: InspectorTab;
   onTabChange: (tab: InspectorTab) => void;
-  project: ProjectV1;
+  project: Project;
   audio: MediaHandle | null;
   framing: { fit: FitMode; zoom: number };
   selectedClip: ClipV1 | null;

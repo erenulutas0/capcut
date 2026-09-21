@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { AssetV1, ProjectV1 } from '@/domain/edl';
+import type { AssetV1, Project } from '@/domain/edl';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import { formatSpokenTime, MIN_CLIP_DURATION_US, US_PER_SECOND } from '@/domain/time';
 import { totalOutputDurationUs } from '@/domain/timeline';
@@ -27,7 +27,7 @@ import { commit, initHistory, redo, undo } from '@/application/history';
 const S = US_PER_SECOND;
 const RATE = { fpsNum: 30, fpsDen: 1 };
 
-function withRanges(ranges: Array<[number, number]>, durationUs = 24 * S): ProjectV1 {
+function withRanges(ranges: Array<[number, number]>, durationUs = 24 * S): Project {
   const video: AssetV1 = {
     assetId: 'a_video_001',
     kind: 'video',

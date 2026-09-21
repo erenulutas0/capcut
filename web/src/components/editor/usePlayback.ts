@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 
-import type { ProjectV1 } from '@/domain/edl';
+import type { Project } from '@/domain/edl';
 import {
   buildTimeline,
   dbToLinear,
@@ -20,7 +20,7 @@ interface PlaybackArgs {
   /** DOM refs are owned by the component; the hook only drives them. */
   videoRef: RefObject<HTMLVideoElement | null>;
   musicRef: RefObject<HTMLAudioElement | null>;
-  project: ProjectV1;
+  project: Project;
   mode: PreviewMode;
   hasVideo: boolean;
   hasMusicFile: boolean;

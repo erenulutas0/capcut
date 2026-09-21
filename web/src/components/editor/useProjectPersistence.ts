@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { createIndexedDbStore, type StoreFailure } from '@/adapters/projectStore';
-import type { ProjectV1 } from '@/domain/edl';
+import type { Project } from '@/domain/edl';
 import {
   createRecord,
   parseRecord,
@@ -23,7 +23,7 @@ export type SaveState =
   | { kind: 'failed'; reason: StoreFailure };
 
 interface Args {
-  project: ProjectV1;
+  project: Project;
   title: string;
   bindings: AssetBinding[];
   onRestore: (record: ProjectRecord) => void;

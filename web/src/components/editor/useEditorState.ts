@@ -39,7 +39,7 @@ import {
   undo as historyUndo,
   type History,
 } from '@/application/history';
-import type { AspectRatio, FitMode, MusicV1, ProjectV1 } from '@/domain/edl';
+import type { AspectRatio, FitMode, MusicV1, Project } from '@/domain/edl';
 import { WEB_LOCAL_POLICY, exceedsTotalSourceBytes } from '@/domain/policy';
 import {
   bindingFor,
@@ -76,7 +76,7 @@ function rejectionKey(reason: AddClipRejection | MusicRejection | SplitRejection
 
 export function useEditorState() {
   const [title, setTitle] = useState('');
-  const [history, setHistory] = useState<History<ProjectV1>>(() =>
+  const [history, setHistory] = useState<History<Project>>(() =>
     initHistory(createEmptyProject()),
   );
   const [video, setVideo] = useState<MediaHandle | null>(null);

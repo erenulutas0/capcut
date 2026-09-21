@@ -2,7 +2,7 @@
 
 import { Icon } from '@/components/Icon';
 import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
-import type { ProjectV1 } from '@/domain/edl';
+import type { Project } from '@/domain/edl';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import { formatDurationShort, formatTimecode, type Micros } from '@/domain/time';
 import { buildTimeline, totalOutputDurationUs } from '@/domain/timeline';
@@ -12,7 +12,7 @@ import { TrimHandle } from './TrimHandle';
 
 interface Props {
   t: (key: MessageKey) => string;
-  project: ProjectV1;
+  project: Project;
   audio: MediaHandle | null;
   selectedClipId: string | null;
   onSelect: (clipId: string) => void;

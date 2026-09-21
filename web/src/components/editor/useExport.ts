@@ -12,7 +12,7 @@ import {
 import { ExportWorkerClient } from '@/adapters/export/exportClient';
 import { removeExportEntry, sweepExportEntries } from '@/adapters/export/opfsEntries';
 import type { ExportFailureCode, ExportResult } from '@/domain/exportEvents';
-import type { ProjectV1 } from '@/domain/edl';
+import type { Project } from '@/domain/edl';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import { compileRenderPlan, type PlanRejection, type RenderPlan } from '@/domain/renderPlan';
 
@@ -43,7 +43,7 @@ function safeBaseName(name: string): string {
   return (cleaned || 'clip').slice(0, 60);
 }
 
-export function useExport(project: ProjectV1, videoFile: File | null, audioFile: File | null) {
+export function useExport(project: Project, videoFile: File | null, audioFile: File | null) {
   const [state, setState] = useState<ExportUiState>({ phase: 'idle' });
   const clientRef = useRef<ExportWorkerClient | null>(null);
   const urlRef = useRef<string | null>(null);

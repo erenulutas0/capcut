@@ -88,9 +88,48 @@ Aşağıdaki örnek **10 saniye** sonuç üretir: ilk aralık 0–4, ikinci aral
 }
 ```
 
+## EDL v2 — altyazı izleri (2026-09-21, kurucu onaylı)
+
+v2, v1'in aynısıdır; yalnızca zorunlu bir `captionTracks` dizisi eklenir (ayrıntı ve gerekçe: `docs/adr/ADR-015-captions-burn-in.md`). v1 tarif kayıpsız okunur: `schemaVersion` 2 yapılır ve `captionTracks: []` eklenir, başka hiçbir alan değişmez. Okuyan her yol (yerel kayıt, yedek dosyası, fixture) bu geçişten geçer; doğrulayıcının kendisi yalnızca güncel sürümü tanır.
+
+```json
+"captionTracks": [
+  {
+    "trackId": "t_001",
+    "origin": "manual",
+    "timeBase": "output",
+    "language": "tr",
+    "style": { "preset": "box", "position": "bottom", "size": "medium" },
+    "cues": [
+      { "cueId": "q_001", "startUs": 500000, "endUs": 3000000, "text": "İlk an: güneş doğuyor" }
+    ]
+  }
+]
+```
+
+Kurallar:
+- En çok 1 iz, iz başına en çok 500 satır.
+- `origin` yalnızca `manual`; `timeBase` yalnızca `output`. Kaynak zamanına bağlı ya da transkriptten türetilen satırlar bu alanla ileride şema geçişi olmadan eklenebilir; bugün reddedilir.
+- `language`: BCP 47 ana dil kodu, isteğe bağlı olarak bölge ile (`tr`, `en`, `en-GB`).
+- `style`: yalnızca hazır değerler kabul edilir.
+  - `preset`: `box` | `outline`
+  - `position`: `bottom` | `middle` | `top`
+  - `size`: `small` | `medium` | `large`
+
+  Serbest renk ya da font yoktur: önizleme ile dosya aynı görünmek zorundadır.
+- Satırlar `startUs`'e göre sıralıdır ve üst üste binmez; aralık yarı açıktır `[startUs, endUs)` ve en az 200.000 µs sürer.
+- `text` düz metindir, kanonik biçimde saklanır:
+  - satır sonu yalnızca LF;
+  - kontrol ve sıfır genişlikli karakterler silinir;
+  - satır içindeki boşluklar tek boşluğa indirilir ve satırlar kırpılır;
+  - en çok 120 kod noktası ve 2 satır.
+
+  Metin, kendi normalleştirilmiş hâline eşit değilse geçersizdir.
+- Bir satır çıktının sonunu aşabilir; bu geçerlidir. Anlar kısalınca satır silinmez; render planı onu çıktı sonunda keser, tamamen dışarıda kalanı çizmez, arayüz de bunu gösterir.
+
 ## Doğrulama kuralları
 
-`schemaVersion=1`; bilinmeyen ana alanlar ilk sürümde hata verir. Alan genişletme ihtiyacı değişiklik kaydıyla ele alınır. `projectId/assetId/clipId` sınırlı uzunlukta opaque kimliktir. Her `assetId` tekil; klipte referans verilen asset `video`; müzik asset'i `audio` olmalıdır. Tüm sayılar finite; NaN/Infinity kabul edilmez.
+`schemaVersion=2` (v1 okunurken yukarıdaki geçişle yükseltilir); bilinmeyen ana alanlar ilk sürümde hata verir. Alan genişletme ihtiyacı değişiklik kaydıyla ele alınır. `projectId/assetId/clipId` sınırlı uzunlukta opaque kimliktir. Her `assetId` tekil; klipte referans verilen asset `video`; müzik asset'i `audio` olmalıdır. Tüm sayılar finite; NaN/Infinity kabul edilmez.
 
 Zamanlar güvenli integer ve ≥0; JSON'da stringe çevrilmez. JavaScript safe-integer sınırı korunur. `0 ≤ in < out ≤ probedDuration`; her klip ≥100.000 µs. Düzenlemede tekrarlanan/örtüşen kaynak aralıkları geçerlidir; örneğin aynı sahnenin tekrar gösterilmesi mümkündür. Çıktı timeline'ında klipler ardışık ve boşluksuzdur; konum dizi sırasından türetilir.
 

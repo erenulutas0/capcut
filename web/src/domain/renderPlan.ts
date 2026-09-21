@@ -12,17 +12,19 @@
 import {
   outputPixelSize,
   type AspectRatio,
+  type CaptionStyleV2,
   type FitMode,
   type MusicV1,
-  type ProjectV1,
+  type Project,
 } from './edl';
+import { primaryCaptionTrack } from './captions';
 import type { ExportPolicy } from './policy';
 import { totalOutputDurationUs } from './timeline';
 import { cropPixels, type CropRect } from './transform';
 import { US_PER_SECOND, type Micros } from './time';
 
 /** Bumped whenever the compiler changes the frames it would produce. */
-export const RENDER_PLAN_VERSION = 1;
+export const RENDER_PLAN_VERSION = 2;
 export const RENDER_ENGINE_ID = 'web-webcodecs-mediabunny@1';
 
 export interface RenderSegment {
@@ -68,6 +70,22 @@ export interface RenderAudioPlan {
   music: RenderMusicPlan | null;
 }
 
+/** One caption line to burn in, already on the output frame grid. */
+export interface RenderCaption {
+  cueId: string;
+  /** Half-open output frame range: [startFrame, endFrame). */
+  startFrame: number;
+  endFrame: number;
+  text: string;
+}
+
+export interface RenderCaptionPlan {
+  language: string;
+  style: CaptionStyleV2;
+  /** Sorted, non-overlapping, clipped to the output; empty frames dropped. */
+  cues: RenderCaption[];
+}
+
 export interface RenderPlan {
   planVersion: typeof RENDER_PLAN_VERSION;
   engineId: string;
@@ -90,6 +108,8 @@ export interface RenderPlan {
   audioBitrate: number;
   segments: RenderSegment[];
   audio: RenderAudioPlan;
+  /** Null when the project has no caption line inside the output. */
+  captions: RenderCaptionPlan | null;
 }
 
 export type PlanRejection =
@@ -147,7 +167,7 @@ function musicPlan(music: MusicV1): RenderMusicPlan {
   };
 }
 
-export function compileRenderPlan(project: ProjectV1, policy: ExportPolicy): PlanResult {
+export function compileRenderPlan(project: Project, policy: ExportPolicy): PlanResult {
   if (project.clips.length === 0) return { ok: false, reason: 'no_clips' };
 
   const requestedDurationUs = totalOutputDurationUs(project);
@@ -211,6 +231,8 @@ export function compileRenderPlan(project: ProjectV1, policy: ExportPolicy): Pla
     music,
   };
 
+  const captions = captionPlan(project, totalFrames, fpsNum, fpsDen);
+
   const body = JSON.stringify({
     v: RENDER_PLAN_VERSION,
     engine: RENDER_ENGINE_ID,
@@ -235,6 +257,7 @@ export function compileRenderPlan(project: ProjectV1, policy: ExportPolicy): Pla
       segment.gain,
     ]),
     audio,
+    captions,
   });
 
   return {
@@ -259,8 +282,34 @@ export function compileRenderPlan(project: ProjectV1, policy: ExportPolicy): Pla
       audioBitrate: 128_000,
       segments,
       audio,
+      captions,
     },
   };
+}
+
+/**
+ * Caption cues on the frame grid, using the same rounding rule as the video
+ * (frameAtUs). A cue that the current moments leave partly past the end is
+ * cut there; one wholly past it is not drawn. The UI shows both states.
+ */
+function captionPlan(
+  project: Project,
+  totalFrames: number,
+  fpsNum: number,
+  fpsDen: number,
+): RenderCaptionPlan | null {
+  const track = primaryCaptionTrack(project);
+  if (!track) return null;
+  const cues: RenderCaption[] = [];
+  for (const cue of track.cues) {
+    const startFrame = Math.min(totalFrames, frameAtUs(cue.startUs, fpsNum, fpsDen));
+    const endFrame = Math.min(totalFrames, frameAtUs(cue.endUs, fpsNum, fpsDen));
+    if (endFrame > startFrame) {
+      cues.push({ cueId: cue.cueId, startFrame, endFrame, text: cue.text });
+    }
+  }
+  if (cues.length === 0) return null;
+  return { language: track.language, style: { ...track.style }, cues };
 }
 
 /** Source timestamp (seconds) to sample for a given output frame. */

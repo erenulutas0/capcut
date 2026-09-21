@@ -1,5 +1,8 @@
 /**
- * EDL v1 — the canonical, portable editing recipe (doc 10).
+ * EDL v2 — the canonical, portable editing recipe (doc 10).
+ *
+ * v2 = v1 + `captionTracks` (ADR-015). Everything else is unchanged, so a v1
+ * recipe is read through `migrateProject` (migration.ts) and never rejected.
  *
  * It carries asset *identities* and edit semantics only. Local URIs, blob URLs,
  * signed URLs, tokens, licences and user identity are deliberately absent:
@@ -8,7 +11,7 @@
 
 import type { Micros } from './time';
 
-export const EDL_SCHEMA_VERSION = 1;
+export const EDL_SCHEMA_VERSION = 2;
 
 export type AssetKind = 'video' | 'audio';
 export type AspectRatio = '9:16' | '16:9' | '1:1';
@@ -74,7 +77,49 @@ export interface ExportSpecV1 {
   audioSampleRate: number;
 }
 
-export interface ProjectV1 {
+/** Caption look. Presets, not free styling: preview and export must match. */
+export type CaptionPreset = 'box' | 'outline';
+export type CaptionPosition = 'bottom' | 'middle' | 'top';
+export type CaptionSize = 'small' | 'medium' | 'large';
+
+export interface CaptionStyleV2 {
+  preset: CaptionPreset;
+  position: CaptionPosition;
+  size: CaptionSize;
+}
+
+/** One displayed line (or two), on the track's time base. Half-open range. */
+export interface CaptionCueV2 {
+  cueId: string;
+  startUs: Micros;
+  endUs: Micros;
+  /** Plain text, canonical form (see `normalizeCaptionText`); never markup. */
+  text: string;
+}
+
+/**
+ * A displayed caption track (ADR-009: never the transcript itself).
+ *
+ * `timeBase` is explicit so that imported or transcript-derived cues can later
+ * be anchored to SOURCE time without a migration; v2 only has manual cues on
+ * the OUTPUT timeline, which is what the user sees while typing them.
+ */
+export interface CaptionTrackV2 {
+  trackId: string;
+  origin: 'manual';
+  timeBase: 'output';
+  /** BCP 47 primary language, optionally with region: "tr", "en", "en-GB". */
+  language: string;
+  style: CaptionStyleV2;
+  cues: CaptionCueV2[];
+}
+
+/** The v1 recipe as stored by older builds. Only migration.ts reads it. */
+export interface LegacyProjectV1 extends Omit<Project, 'schemaVersion' | 'captionTracks'> {
+  schemaVersion: 1;
+}
+
+export interface Project {
   schemaVersion: typeof EDL_SCHEMA_VERSION;
   projectId: string;
   revision: number;
@@ -83,6 +128,7 @@ export interface ProjectV1 {
   clips: ClipV1[];
   music?: MusicV1;
   export: ExportSpecV1;
+  captionTracks: CaptionTrackV2[];
 }
 
 export const PROJECT_TOP_LEVEL_KEYS = [
@@ -94,6 +140,7 @@ export const PROJECT_TOP_LEVEL_KEYS = [
   'clips',
   'music',
   'export',
+  'captionTracks',
 ] as const;
 
 export const ASPECT_RATIOS: readonly AspectRatio[] = ['9:16', '16:9', '1:1'];

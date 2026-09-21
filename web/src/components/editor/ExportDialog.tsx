@@ -7,7 +7,7 @@ import { Dialog } from './Dialog';
 import { useExport, type ExportUiState } from './useExport';
 import type { CapabilityReportV1 } from '@/adapters/exportCapability';
 import { environmentPasses } from '@/adapters/exportCapability';
-import type { ProjectV1 } from '@/domain/edl';
+import type { Project } from '@/domain/edl';
 import { WEB_LOCAL_POLICY, formatBytes } from '@/domain/policy';
 import { compileRenderPlan } from '@/domain/renderPlan';
 import { formatDurationShort, formatTimecode } from '@/domain/time';
@@ -18,7 +18,7 @@ interface Props {
   t: (key: MessageKey) => string;
   open: boolean;
   onClose: () => void;
-  project: ProjectV1;
+  project: Project;
   videoFile: File | null;
   audioFile: File | null;
   onShortEdgeChange: (shortEdge: number) => void;

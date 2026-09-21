@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
 import { Icon } from '@/components/Icon';
 import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
-import { aspectRatioValue, type ProjectV1 } from '@/domain/edl';
+import { aspectRatioValue, type Project } from '@/domain/edl';
 import { formatDurationShort, formatTimecode, US_PER_SECOND, type Micros } from '@/domain/time';
 import { placeView } from '@/domain/transform';
 import type { MessageKey } from '@/i18n/messages';
@@ -12,7 +12,7 @@ import type { PreviewMode } from './useEditorState';
 
 interface Props {
   t: (key: MessageKey) => string;
-  project: ProjectV1;
+  project: Project;
   video: MediaHandle | null;
   mode: PreviewMode;
   onModeChange: (mode: PreviewMode) => void;

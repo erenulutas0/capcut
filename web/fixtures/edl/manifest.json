@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "valid": [
     {
       "file": "valid/single-clip.json"
@@ -24,6 +24,12 @@
     },
     {
       "file": "valid/minimum-length-clip.json"
+    },
+    {
+      "file": "valid/caption-past-output.json"
+    },
+    {
+      "file": "valid/caption-outline-top-en.json"
     }
   ],
   "invalid": [
@@ -106,6 +112,60 @@
       ]
     },
     {
+      "file": "invalid/missing-caption-tracks.json",
+      "expectedIssueCodes": [
+        "missing_field"
+      ]
+    },
+    {
+      "file": "invalid/caption-overlap.json",
+      "expectedIssueCodes": [
+        "caption_cue_overlap"
+      ]
+    },
+    {
+      "file": "invalid/caption-text-not-normalized.json",
+      "expectedIssueCodes": [
+        "caption_text_invalid"
+      ]
+    },
+    {
+      "file": "invalid/caption-text-too-long.json",
+      "expectedIssueCodes": [
+        "caption_text_invalid"
+      ]
+    },
+    {
+      "file": "invalid/caption-three-lines.json",
+      "expectedIssueCodes": [
+        "caption_text_invalid"
+      ]
+    },
+    {
+      "file": "invalid/caption-too-short.json",
+      "expectedIssueCodes": [
+        "caption_cue_too_short"
+      ]
+    },
+    {
+      "file": "invalid/caption-unknown-style.json",
+      "expectedIssueCodes": [
+        "caption_style_invalid"
+      ]
+    },
+    {
+      "file": "invalid/caption-source-timebase.json",
+      "expectedIssueCodes": [
+        "caption_track_invalid"
+      ]
+    },
+    {
+      "file": "invalid/two-caption-tracks.json",
+      "expectedIssueCodes": [
+        "caption_track_limit_exceeded"
+      ]
+    },
+    {
       "file": "invalid/unknown-top-level-field.json",
       "expectedIssueCodes": [
         "unknown_field"
@@ -134,6 +194,20 @@
       "expectedIssueCodes": [
         "time_not_safe_integer"
       ]
+    }
+  ],
+  "legacy": [
+    {
+      "file": "legacy-v1/single-clip.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v1/doc10-example.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v1/v1-with-captions.json",
+      "expect": "invalid"
     }
   ]
 }

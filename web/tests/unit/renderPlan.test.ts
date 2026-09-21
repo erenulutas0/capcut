@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import type { AssetV1, ProjectV1 } from '@/domain/edl';
+import type { AssetV1, Project } from '@/domain/edl';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import {
   compileRenderPlan,
@@ -28,7 +28,7 @@ const music: AssetV1 = {
   durationUs: 30 * US_PER_SECOND,
 };
 
-function projectWith(ranges: Array<[number, number]>): ProjectV1 {
+function projectWith(ranges: Array<[number, number]>): Project {
   let project = setVideoAsset(createEmptyProject(), video);
   for (const [from, to] of ranges) {
     const result = addClip(project, {
@@ -41,7 +41,7 @@ function projectWith(ranges: Array<[number, number]>): ProjectV1 {
   return project;
 }
 
-function compile(project: ProjectV1) {
+function compile(project: Project) {
   const result = compileRenderPlan(project, WEB_LOCAL_POLICY);
   if (!result.ok) throw new Error(`unexpected rejection: ${result.reason}`);
   return result.plan;
@@ -154,7 +154,7 @@ describe('render plan', () => {
 
   it('ignores values that do not change the produced frames', () => {
     const base = projectWith([[0, 4]]);
-    const renamed: ProjectV1 = { ...base, projectId: 'p_other', revision: base.revision + 40 };
+    const renamed: Project = { ...base, projectId: 'p_other', revision: base.revision + 40 };
     expect(compile(renamed).fingerprint).toBe(compile(base).fingerprint);
   });
 
@@ -178,7 +178,7 @@ describe('render plan', () => {
   });
 
   it('compiles the shared doc10 fixture without touching the EDL', () => {
-    const fixture: ProjectV1 = JSON.parse(
+    const fixture: Project = JSON.parse(
       readFileSync(join(process.cwd(), 'fixtures', 'edl', 'valid', 'doc10-example.json'), 'utf8'),
     );
     const before = JSON.stringify(fixture);

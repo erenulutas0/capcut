@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import type { ProjectV1 } from '@/domain/edl';
+import type { Project } from '@/domain/edl';
 import { US_PER_SECOND } from '@/domain/time';
 import {
   bindingFor,
@@ -14,7 +14,7 @@ import {
   type AssetBinding,
 } from '@/domain/projectRecord';
 
-const edl: ProjectV1 = JSON.parse(
+const edl: Project = JSON.parse(
   readFileSync(join(process.cwd(), 'fixtures', 'edl', 'valid', 'doc10-example.json'), 'utf8'),
 );
 

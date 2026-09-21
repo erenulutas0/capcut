@@ -2,7 +2,7 @@
 
 import { Icon } from '@/components/Icon';
 import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
-import type { ProjectV1 } from '@/domain/edl';
+import type { Project } from '@/domain/edl';
 import { formatBytes } from '@/domain/policy';
 import { formatDurationShort, formatTimecode } from '@/domain/time';
 import type { MessageKey } from '@/i18n/messages';
@@ -13,7 +13,7 @@ interface Props {
   t: (key: MessageKey) => string;
   tab: LeftTab;
   onTabChange: (tab: LeftTab) => void;
-  project: ProjectV1;
+  project: Project;
   video: MediaHandle | null;
   audio: MediaHandle | null;
   selectedClipId: string | null;

@@ -7,7 +7,7 @@
  * so the domain never depends on a specific encoder.
  */
 
-import type { ProjectV1 } from './edl';
+import type { Project } from './edl';
 import type { ExportEvent } from './exportEvents';
 import type { ExportPolicy } from './policy';
 import type { RenderPlan } from './renderPlan';
@@ -32,7 +32,7 @@ export interface ProbeResult {
 export interface MediaEngine {
   probe(file: File): Promise<ProbeResult>;
   /** Compiles the recipe and reports whether this environment can run it. */
-  assess(project: ProjectV1, policy: ExportPolicy): Promise<{ plan: RenderPlan | null; canExport: boolean }>;
+  assess(project: Project, policy: ExportPolicy): Promise<{ plan: RenderPlan | null; canExport: boolean }>;
   /** Emits exactly one terminal event: succeeded, failed or canceled. */
   export(plan: RenderPlan, videoFile: File, audioFile: File | null): AsyncIterable<ExportEvent>;
   cancel(): void;

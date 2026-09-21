@@ -45,20 +45,40 @@ const clip = (clipId, inS, outS, extra = {}) => ({
   ...extra,
 });
 
+const LF = String.fromCharCode(10);
+
+const captionTrack = (cues, patch = {}) => ({
+  trackId: 't_001',
+  origin: 'manual',
+  timeBase: 'output',
+  language: 'tr',
+  style: { preset: 'box', position: 'bottom', size: 'medium' },
+  cues,
+  ...patch,
+});
+
+const cue = (cueId, inS, outS, text) => ({
+  cueId,
+  startUs: Math.round(inS * S),
+  endUs: Math.round(outS * S),
+  text,
+});
+
 const project = (patch = {}) => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
   projectId: 'p_fixture_001',
   revision: 1,
   assets: [videoAsset],
   canvas: { aspect: '9:16', background: '#000000' },
   clips: [clip('c_001', 0, 4)],
   export: { ...exportSpec },
+  captionTracks: [],
   ...patch,
 });
 
 /** The canonical doc-10 example: two ranges -> 10 s, music 5-15 s. */
 const docExample = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   projectId: 'p_example_001',
   revision: 3,
   assets: [videoAsset, musicAsset],
@@ -75,6 +95,12 @@ const docExample = {
     fadeOutUs: 500_000,
   },
   export: { ...exportSpec },
+  captionTracks: [
+    captionTrack([
+      cue('q_001', 0.5, 3, 'İlk an: güneş doğuyor'),
+      cue('q_002', 4.5, 8, `İkinci an${LF}iki satır`),
+    ]),
+  ],
 };
 
 const valid = {
@@ -110,6 +136,18 @@ const valid = {
     clips: [clip('c_001', 1, 4, { view: { x: 0, y: 0, width: 1, height: 1, fit: 'contain' } })],
   }),
   'minimum-length-clip': project({ clips: [clip('c_001', 0, 0.1)] }),
+  // A cue may outlive the current output; the render plan cuts it (ADR-015).
+  'caption-past-output': project({
+    captionTracks: [captionTrack([cue('q_001', 3, 6, 'Sonuna kadar')])],
+  }),
+  'caption-outline-top-en': project({
+    captionTracks: [
+      captionTrack([cue('q_001', 0, 2, 'Hello there')], {
+        language: 'en',
+        style: { preset: 'outline', position: 'top', size: 'large' },
+      }),
+    ],
+  }),
 };
 
 const invalid = {
@@ -195,7 +233,57 @@ const invalid = {
     }),
     ['asset_kind_mismatch'],
   ],
-  'future-schema': [project({ schemaVersion: 2 }), ['schema_version_unsupported']],
+  'future-schema': [project({ schemaVersion: 3 }), ['schema_version_unsupported']],
+  'missing-caption-tracks': [
+    (() => {
+      const { captionTracks: _drop, ...rest } = project();
+      return rest;
+    })(),
+    ['missing_field'],
+  ],
+  'caption-overlap': [
+    project({ captionTracks: [captionTrack([cue('q_001', 0, 2, 'bir'), cue('q_002', 1.5, 3, 'iki')])] }),
+    ['caption_cue_overlap'],
+  ],
+  'caption-text-not-normalized': [
+    project({ captionTracks: [captionTrack([cue('q_001', 0, 2, '  iki   boşluk ')])] }),
+    ['caption_text_invalid'],
+  ],
+  'caption-text-too-long': [
+    project({ captionTracks: [captionTrack([cue('q_001', 0, 2, 'a'.repeat(121))])] }),
+    ['caption_text_invalid'],
+  ],
+  'caption-three-lines': [
+    project({ captionTracks: [captionTrack([cue('q_001', 0, 2, ['bir', 'iki', 'üç'].join(LF))])] }),
+    ['caption_text_invalid'],
+  ],
+  'caption-too-short': [
+    project({ captionTracks: [captionTrack([cue('q_001', 0, 0.1, 'kısa')])] }),
+    ['caption_cue_too_short'],
+  ],
+  'caption-unknown-style': [
+    project({
+      captionTracks: [
+        captionTrack([cue('q_001', 0, 2, 'stil')], {
+          style: { preset: 'karaoke', position: 'bottom', size: 'medium' },
+        }),
+      ],
+    }),
+    ['caption_style_invalid'],
+  ],
+  'caption-source-timebase': [
+    project({ captionTracks: [captionTrack([cue('q_001', 0, 2, 'kaynak')], { timeBase: 'source' })] }),
+    ['caption_track_invalid'],
+  ],
+  'two-caption-tracks': [
+    project({
+      captionTracks: [
+        captionTrack([cue('q_001', 0, 2, 'tr')]),
+        captionTrack([cue('q_002', 0, 2, 'en')], { trackId: 't_002', language: 'en' }),
+      ],
+    }),
+    ['caption_track_limit_exceeded'],
+  ],
   'unknown-top-level-field': [
     { ...project(), captions: [{ text: 'merhaba' }] },
     ['unknown_field'],
@@ -215,13 +303,31 @@ const invalid = {
 rmSync(root, { recursive: true, force: true });
 mkdirSync(join(root, 'valid'), { recursive: true });
 mkdirSync(join(root, 'invalid'), { recursive: true });
+mkdirSync(join(root, 'legacy-v1'), { recursive: true });
 
-const manifest = { schemaVersion: 1, valid: [], invalid: [] };
+const manifest = { schemaVersion: 2, valid: [], invalid: [], legacy: [] };
 
 for (const [name, value] of Object.entries(valid)) {
   writeFileSync(join(root, 'valid', `${name}.json`), `${JSON.stringify(value, null, 2)}\n`);
   manifest.valid.push({ file: `valid/${name}.json` });
 }
+// v1 recipes written by older builds. Readers migrate them (migration.ts);
+// `expect` is the verdict AFTER migration.
+const asV1 = (value) => {
+  const { captionTracks: _drop, ...rest } = value;
+  return { ...rest, schemaVersion: 1 };
+};
+const legacy = {
+  'single-clip': [asV1(project()), 'valid'],
+  'doc10-example': [asV1({ ...docExample, captionTracks: [] }), 'valid'],
+  // A "v1" that carries v2 fields is not something any build wrote.
+  'v1-with-captions': [{ ...asV1(project()), captionTracks: [] }, 'invalid'],
+};
+for (const [name, [value, expect]] of Object.entries(legacy)) {
+  writeFileSync(join(root, 'legacy-v1', `${name}.json`), `${JSON.stringify(value, null, 2)}${LF}`);
+  manifest.legacy.push({ file: `legacy-v1/${name}.json`, expect });
+}
+
 for (const [name, [value, codes]] of Object.entries(invalid)) {
   writeFileSync(join(root, 'invalid', `${name}.json`), `${JSON.stringify(value, null, 2)}\n`);
   manifest.invalid.push({ file: `invalid/${name}.json`, expectedIssueCodes: codes });
