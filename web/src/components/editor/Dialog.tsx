@@ -31,6 +31,14 @@ function ModalShell({
 }: ModalShellProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
+  // Callers pass inline close handlers, which are new on every render. If the
+  // focus effect depended on that identity it would re-run on each parent
+  // render, sending focus back to the opener and then to the first control,
+  // i.e. out of whatever field the user is typing in.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -43,7 +51,7 @@ function ModalShell({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab' || !container) return;
@@ -67,7 +75,7 @@ function ModalShell({
       document.removeEventListener('keydown', onKeyDown, true);
       restoreRef.current?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

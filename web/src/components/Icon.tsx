@@ -19,6 +19,7 @@ const PATHS = {
   plus: 'M12 5v14M5 12h14',
   edit: 'M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17v3Z',
   check: 'M5 12.5l4.5 4.5L19 7',
+  captions: 'M4 5h16v14H4zM7 12h4M13 12h4M7 15.5h7M16 15.5h1',
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-13h.01M11 12h1v5h1',
 } as const;
 

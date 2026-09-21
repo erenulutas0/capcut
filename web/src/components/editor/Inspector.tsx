@@ -9,7 +9,7 @@ import { formatTimecode, parseTimecode, US_PER_SECOND } from '@/domain/time';
 import { MAX_ZOOM, MIN_ZOOM } from '@/domain/transform';
 import type { MessageKey } from '@/i18n/messages';
 
-export type InspectorTab = 'frame' | 'audio';
+export type InspectorTab = 'frame' | 'audio' | 'captions';
 
 interface Props {
   t: (key: MessageKey) => string;
@@ -27,6 +27,8 @@ interface Props {
   onRemoveAudio: () => void;
   /** Shown instead of the music controls when its file needs re-linking. */
   relinkNode?: React.ReactNode;
+  /** The caption panel, built by the editor (it needs playback and history). */
+  captionsNode: React.ReactNode;
 }
 
 const ASPECT_CHOICES: Array<{ value: AspectRatio; labelKey: MessageKey; w: number; h: number }> = [
@@ -438,9 +440,25 @@ export function Inspector(props: Props) {
           <Icon name="music" size={16} />
           {t('tabs.audio')}
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'captions'}
+          onClick={() => onTabChange('captions')}
+          data-testid="inspector-tab-captions"
+        >
+          <Icon name="captions" size={16} />
+          {t('captions.tab')}
+        </button>
       </div>
       <div className="panel-scroll">
-        {tab === 'frame' ? <FramePanel {...props} /> : <AudioPanel {...props} />}
+        {tab === 'frame' ? (
+          <FramePanel {...props} />
+        ) : tab === 'audio' ? (
+          <AudioPanel {...props} />
+        ) : (
+          props.captionsNode
+        )}
       </div>
     </aside>
   );

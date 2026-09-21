@@ -2,6 +2,8 @@
 
 import { Icon } from '@/components/Icon';
 import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
+import { captionMarks } from '@/domain/captionEditing';
+import { primaryCaptionTrack } from '@/domain/captions';
 import type { Project } from '@/domain/edl';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import { formatDurationShort, formatTimecode, type Micros } from '@/domain/time';
@@ -55,6 +57,8 @@ export function OutputStrip({
   const totalUs = totalOutputDurationUs(project);
   const frameUs = frameStepUs(project.export);
   const hasSelection = timeline.some((entry) => entry.clipId === selectedClipId);
+  const captionCues = primaryCaptionTrack(project)?.cues ?? [];
+  const marks = captionMarks(captionCues, totalUs);
 
   const handleFor = (clipId: string, index: number, edge: TrimEdge) => {
     const bounds = trimBounds(project, clipId, edge, WEB_LOCAL_POLICY);
@@ -168,6 +172,32 @@ export function OutputStrip({
       <p id={HINT_ID} className="strip-hint" hidden={!hasSelection}>
         {t('trim.hint')}
       </p>
+
+      {captionCues.length > 0 ? (
+        // Read-only overview of where the lines are; they are edited in the
+        // caption panel, which also lists them as text for screen readers.
+        <div className="strip-row strip-row-thin">
+          <span className="strip-row-label">
+            <Icon name="captions" size={15} />
+            {t('captions.strip')}
+          </span>
+          <div className="strip-captions" aria-hidden="true" data-testid="strip-captions">
+            {marks.map((mark) => {
+              const cue = captionCues.find((item) => item.cueId === mark.cueId);
+              return (
+                <span
+                  key={mark.cueId}
+                  className="strip-caption-mark"
+                  data-visibility={mark.visibility}
+                  style={{ left: `${mark.leftPct}%`, width: `${mark.widthPct}%` }}
+                  title={cue ? `${formatTimecode(cue.startUs)} → ${formatTimecode(cue.endUs)} · ${cue.text}` : undefined}
+                  data-testid="strip-caption-mark"
+                />
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <div className="strip-row">
         <span className="strip-row-label">

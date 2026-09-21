@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Icon, Wordmark } from '@/components/Icon';
+import { DEFAULT_CAPTION_STYLE, activeCueAt, primaryCaptionTrack } from '@/domain/captions';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import type { Micros } from '@/domain/time';
 import { splitPointAt, type Playhead, type TrimEdge } from '@/domain/trim';
@@ -11,6 +12,7 @@ import { translator, type MessageKey } from '@/i18n/messages';
 import { ExportDialog } from './ExportDialog';
 import { HelpDialog } from './HelpDialog';
 import { Sheet } from './Dialog';
+import { CaptionsPanel } from './CaptionsPanel';
 import { AudioPanel, FramePanel, Inspector, type InspectorTab } from './Inspector';
 import { LeftPanel, MomentsList, SourcesList, type LeftTab } from './LeftPanel';
 import { OutputStrip } from './OutputStrip';
@@ -18,12 +20,13 @@ import { PreviewStage } from './PreviewStage';
 import { RangeEditor } from './RangeEditor';
 import { RelinkPanel } from './RelinkPanel';
 import { SaveStateBadge } from './SaveStateBadge';
+import { useCaptionFont } from './useCaptionFont';
 import { useProjectPersistence } from './useProjectPersistence';
 import { useEditorState, type PreviewMode } from './useEditorState';
 import { useLayoutMode } from './useLayoutMode';
 import { usePlayback } from './usePlayback';
 
-type MobileSheet = 'moments' | 'frame' | 'audio' | 'sources' | null;
+type MobileSheet = 'moments' | 'frame' | 'audio' | 'captions' | 'sources' | null;
 
 const t = translator('tr');
 
@@ -71,6 +74,7 @@ export function EditorApp() {
   const [momentsDrawerOpen, setMomentsDrawerOpen] = useState(false);
   const [mobileSheet, setMobileSheet] = useState<MobileSheet>(null);
   const [editingClipId, setEditingClipId] = useState<string | null>(null);
+  const captionFont = useCaptionFont();
 
   const videoInputRef = useRef<HTMLInputElement | null>(null);
   const audioInputRef = useRef<HTMLInputElement | null>(null);
@@ -91,6 +95,19 @@ export function EditorApp() {
       state.setPreviewMode(mode);
     },
     [playback, state],
+  );
+
+  /**
+   * Captions sit on the output timeline, so moving to a line (or adding one)
+   * always shows the result preview and parks playback there.
+   */
+  const seekCaption = useCallback(
+    (outputUs: Micros) => {
+      if (state.previewMode !== 'output') changeMode('output');
+      playback.stop();
+      playback.seekOutput(outputUs);
+    },
+    [changeMode, playback, state.previewMode],
   );
 
   const removeMoment = useCallback(
@@ -284,6 +301,35 @@ export function EditorApp() {
     />
   ) : null;
 
+  const captionTrack = primaryCaptionTrack(state.project);
+  const captionStyle = captionTrack?.style ?? DEFAULT_CAPTION_STYLE;
+  // Nothing is drawn with a fallback font, and nothing past the output end
+  // (the file has no frame there, even for a line that runs over it).
+  const activeCaption =
+    state.previewMode === 'output' &&
+    captionFont === 'ready' &&
+    playback.outputTimeUs < playback.outputDurationUs
+      ? activeCueAt(state.project, playback.outputTimeUs)
+      : undefined;
+
+  const captionsNode = (
+    <CaptionsPanel
+      t={t}
+      project={state.project}
+      outputDurationUs={playback.outputDurationUs}
+      outputTimeUs={playback.outputTimeUs}
+      previewMode={state.previewMode}
+      fontStatus={captionFont}
+      onAdd={state.addCaption}
+      onUpdate={state.updateCaption}
+      onRemove={state.removeCaption}
+      onStyle={state.changeCaptionStyle}
+      onLanguage={state.changeCaptionLanguage}
+      onShowResult={() => changeMode('output')}
+      onSeek={seekCaption}
+    />
+  );
+
   const inspectorProps = {
     t,
     tab: inspectorTab,
@@ -299,6 +345,7 @@ export function EditorApp() {
     onPickAudio: pickAudio,
     onRemoveAudio: state.dropAudio,
     relinkNode: relinkAudioNode,
+    captionsNode,
   };
 
   return (
@@ -450,6 +497,16 @@ export function EditorApp() {
           onSeekOutput={playback.seekOutput}
           onPickVideo={pickVideo}
           importing={state.importing === 'video'}
+          caption={activeCaption ? { cueId: activeCaption.cueId, text: activeCaption.text } : null}
+          captionStyle={captionStyle}
+          captionNotice={
+            captionFont === 'failed' && (captionTrack?.cues.length ?? 0) > 0 ? (
+              <p className="inline-error" role="status" data-testid="preview-caption-font-failed">
+                <Icon name="alert" />
+                {t('captions.fontFailed')}
+              </p>
+            ) : null
+          }
         >
           {state.mediaError ? (
             <p className="inline-error" role="alert" data-testid="media-error">
@@ -536,6 +593,15 @@ export function EditorApp() {
         </button>
         <button
           type="button"
+          onClick={() => setMobileSheet('captions')}
+          aria-expanded={mobileSheet === 'captions'}
+          data-testid="tab-captions"
+        >
+          <Icon name="captions" size={20} />
+          {t('captions.tab')}
+        </button>
+        <button
+          type="button"
           onClick={() => setMobileSheet('sources')}
           aria-expanded={mobileSheet === 'sources'}
           data-testid="tab-file"
@@ -572,7 +638,7 @@ export function EditorApp() {
       <Sheet
         open={(layout === 'narrow' || layout === 'tablet') && drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        title={`${t('tabs.frame')} · ${t('tabs.audio')}`}
+        title={`${t('tabs.frame')} · ${t('tabs.audio')} · ${t('captions.tab')}`}
         id="drawer-inspector"
         side="right"
         closeLabel={t('help.close')}
@@ -595,6 +661,8 @@ export function EditorApp() {
           onPickAudio={pickAudio}
           onRemoveAudio={state.dropAudio}
         />
+        <hr className="divider" />
+        {captionsNode}
       </Sheet>
 
       {/* Phone bottom sheets */}
@@ -652,6 +720,16 @@ export function EditorApp() {
           onPickAudio={pickAudio}
           onRemoveAudio={state.dropAudio}
         />
+      </Sheet>
+
+      <Sheet
+        open={layout === 'phone' && mobileSheet === 'captions'}
+        onClose={() => setMobileSheet(null)}
+        title={t('captions.tab')}
+        id="sheet-captions"
+        closeLabel={t('help.close')}
+      >
+        {captionsNode}
       </Sheet>
 
       <Sheet

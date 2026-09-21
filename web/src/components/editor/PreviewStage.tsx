@@ -4,10 +4,11 @@ import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
 import { Icon } from '@/components/Icon';
 import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
-import { aspectRatioValue, type Project } from '@/domain/edl';
+import { aspectRatioValue, type CaptionStyleV2, type Project } from '@/domain/edl';
 import { formatDurationShort, formatTimecode, US_PER_SECOND, type Micros } from '@/domain/time';
 import { placeView } from '@/domain/transform';
 import type { MessageKey } from '@/i18n/messages';
+import { CaptionOverlay } from './CaptionOverlay';
 import type { PreviewMode } from './useEditorState';
 
 interface Props {
@@ -27,6 +28,11 @@ interface Props {
   onSeekOutput: (us: Micros) => void;
   onPickVideo: () => void;
   importing: boolean;
+  /** Active caption line at the output playhead; null when nothing is drawn. */
+  caption: { cueId: string; text: string } | null;
+  captionStyle: CaptionStyleV2;
+  /** Shown under the transport, e.g. when the caption font failed to load. */
+  captionNotice?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -76,6 +82,9 @@ export function PreviewStage({
   onSeekOutput,
   onPickVideo,
   importing,
+  caption,
+  captionStyle,
+  captionNotice,
   children,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -149,6 +158,18 @@ export function PreviewStage({
               }}
               data-testid="preview-video"
             />
+            {/* Captions live on the output timeline, so only the result
+                preview carries the overlay. */}
+            {isOutput ? (
+              <CaptionOverlay
+                text={caption?.text ?? null}
+                cueId={caption?.cueId ?? null}
+                style={captionStyle}
+                aspect={project.canvas.aspect}
+                width={box.width}
+                height={box.height}
+              />
+            ) : null}
           </div>
         ) : (
           <div className="frame-empty">
@@ -215,6 +236,8 @@ export function PreviewStage({
           {t('preview.outputNote')}
         </p>
       ) : null}
+
+      {captionNotice}
 
       {children}
 

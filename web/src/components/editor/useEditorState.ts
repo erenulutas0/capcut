@@ -9,14 +9,18 @@ import {
   type ProbeFailure,
 } from '@/adapters/browserMedia';
 import {
+  addCaptionCue,
   addClip,
   createEmptyProject,
   currentFraming,
   moveClip,
   nextAssetId,
   primaryVideoAsset,
+  removeCaptionCue,
   removeClip,
   removeMusic,
+  setCaptionLanguage,
+  setCaptionStyle,
   setClipGain,
   setClipMuted,
   setExportShortEdge,
@@ -24,9 +28,12 @@ import {
   setMusicAsset,
   setVideoAsset,
   splitClip,
+  updateCaptionCue,
   updateClipRange,
   updateMusic,
   type AddClipRejection,
+  type CaptionCueInput,
+  type CaptionResult,
   type MusicRejection,
 } from '@/application/commands';
 import {
@@ -39,7 +46,7 @@ import {
   undo as historyUndo,
   type History,
 } from '@/application/history';
-import type { AspectRatio, FitMode, MusicV1, Project } from '@/domain/edl';
+import type { AspectRatio, CaptionStyleV2, FitMode, MusicV1, Project } from '@/domain/edl';
 import { WEB_LOCAL_POLICY, exceedsTotalSourceBytes } from '@/domain/policy';
 import {
   bindingFor,
@@ -484,6 +491,52 @@ export function useEditorState() {
     });
   }, []);
 
+  /**
+   * Runs a caption command and commits it as one undo step.
+   *
+   * Unlike the moment commands, the caller needs the outcome right away (the
+   * new cue id to focus, or the reason to show under the line), so the command
+   * runs against the rendered project first. The updater re-runs it only if
+   * another update landed in between, so nothing is committed on top of a
+   * stale recipe.
+   */
+  const runCaption = useCallback(
+    (run: (base: Project) => CaptionResult): CaptionResult => {
+      const result = run(project);
+      if (result.ok) {
+        setHistory((current) => {
+          const again = current.present === project ? result : run(current.present);
+          return again.ok ? commit(current, again.project) : current;
+        });
+      }
+      return result;
+    },
+    [project],
+  );
+
+  const addCaption = useCallback(
+    (input: CaptionCueInput) => runCaption((base) => addCaptionCue(base, input)),
+    [runCaption],
+  );
+
+  const updateCaption = useCallback(
+    (cueId: string, patch: Partial<CaptionCueInput>) =>
+      runCaption((base) => updateCaptionCue(base, cueId, patch)),
+    [runCaption],
+  );
+
+  const removeCaption = useCallback((cueId: string) => {
+    setHistory((current) => commit(current, removeCaptionCue(current.present, cueId)));
+  }, []);
+
+  const changeCaptionStyle = useCallback((patch: Partial<CaptionStyleV2>) => {
+    setHistory((current) => commit(current, setCaptionStyle(current.present, patch)));
+  }, []);
+
+  const changeCaptionLanguage = useCallback((language: string) => {
+    setHistory((current) => commit(current, setCaptionLanguage(current.present, language)));
+  }, []);
+
   const undo = useCallback(() => {
     setActionError(null);
     setTimelineError(null);
@@ -575,6 +628,11 @@ export function useEditorState() {
     changeClipMuted,
     changeMusic,
     changeShortEdge,
+    addCaption,
+    updateCaption,
+    removeCaption,
+    changeCaptionStyle,
+    changeCaptionLanguage,
   };
 }
 
