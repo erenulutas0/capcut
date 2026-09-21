@@ -18,3 +18,7 @@ web/tests/media/real/
 
 # Agent worktrees (local only)
 .claude/worktrees/
+
+# Speech fixtures for the transcript spike (rights-clean, local only)
+web/tests/media/speech/
+web/spike-results/
