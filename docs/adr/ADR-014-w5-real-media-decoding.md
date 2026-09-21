@@ -10,8 +10,15 @@ FFmpeg'in herkese açık örnek sunucusundan (samples.ffmpeg.org, hata kayıtlar
 GoPro (Ambarella) ve 224×128 / 22 kHz eski bir iPhone yüklemesi. Hepsi
 yalnızca yerelde, `.gitignore` altındaki klasörde. Depoya girmediler.
 
-Klasörde HEVC, döndürme metadata'lı ya da HDR bir gerçek kayıt **yok**. O
-türler hâlâ yalnızca sentetik matriste (M02, M10) sınanıyor.
+İkinci turda yedi gerçek telefon kaydı daha eklendi (R09–R15). Kaynaklar:
+immich-app/test-assets (kamu malı), androidx/media test verisi (Apache-2.0),
+pulsejet/memories (depo lisansı AGPL-3.0; medya için ayrı lisans yok) ve
+archive.org (CC BY-NC-ND / CC BY-ND). Kaynak ve lisans kaydı yerelde
+`web/tests/media/real/SOURCES-web.md` dosyasında. Kapsam: iPhone 12 Pro HEVC
+HLG/Dolby Vision döndürmeli, Pixel 6 Pro HEVC 4K döndürmeli, Samsung HEVC
+slow-motion (12 kHz ses), Android HEVC HDR10+ (PQ), iPhone 13 Pro 60 fps
+180° döndürmeli, Samsung S21 H.264 60 fps döndürmeli, iPhone 11 5 dk 41 sn
+618 MiB.
 
 ## Bulgular ve kararlar
 
@@ -129,7 +136,7 @@ Yani bu, eşik ve bit hızı konusu (açık). Kare çözme hatası değil.
 sonuç olarak PASS diye yazıyordu. Artık REFUSED. Doğru bir dürüst davranış,
 ama çalışan bir dışa aktarma değil.
 
-## Sonuç tablosu (8 gerçek kayıt)
+## Ara sonuç tablosu (ilk 8 gerçek kayıt)
 
 | Tarayıcı | PASS | REFUSED | FAIL |
 |---|---|---|---|
@@ -141,8 +148,20 @@ ama çalışan bir dışa aktarma değil.
 `run-real-media.mjs --sw-decode` Chromium ailesini GPU video çözücüsü olmadan
 başlatıyor ve sonucu `real-media-<tarayıcı>-swdecode.json` olarak yazıyor.
 
+## Son durum: 15 gerçek kayıt (birleştirilmiş main, 21 Eylül 2026)
+
+| Tarayıcı | PASS | REFUSED | FAIL |
+|---|---|---|---|
+| Chrome | 13 | 2 (HDR: R09, R11) | 0 |
+| Edge | 11 | 4 (HEVC içe aktarılamıyor: R13, R14; HDR: R09, R11) | 0 |
+| Chrome `--sw-decode` | 11 | 4 (HEVC donanım çözücüsü ister; HDR) | 0 |
+| Chromium (Playwright) | 10 | 4 | 1 (R15, SSIM 0.825; kodlama kalitesi, §3) |
+
+- HEVC (Pixel 6 Pro 4K döndürmeli, Samsung slow-motion) yalnızca Chrome'da çalışıyor (SSIM 0.910 / 0.988). Edge ve Chromium bu makinede HEVC önizlemesini açamıyor ve bunu içe aktarmada açıkça söylüyor.
+- HDR (HLG ve PQ) kayıtlar bilerek reddediliyor: tonlama olmadan SDR çıktı yanlış renk üretir (ADR-011).
+- Döndürme (−90°, −180°) ve 60 fps kayıtlar doğru: iPhone 13 Pro 180° 0.957, Samsung S21 60 fps −90° Chrome 0.861.
+- 5 dk 41 sn / 618 MiB iPhone 11 kaydı geçiyor (Chrome 0.945).
+
 ## Hâlâ sınanmayanlar
 
-Gerçek HEVC telefon kaydı, döndürme metadata'lı gerçek dikey kayıt, gerçek HDR
-kayıt, 257.7 MiB'tan büyük ya da 32 dakikadan uzun gerçek kaynak. Bunlar için
-en iyi kaynak kullanıcının kendi telefonu.
+Gerçek bir HDR kaydın SDR'ye tonlanarak çıktısı (şu an reddediliyor), 618 MiB'tan büyük ya da 32 dakikadan uzun gerçek kaynak, Safari, fiziksel telefon tarayıcısı. R15'in Chromium'daki düşük skoru için bit hızı/eşik kararı açık.

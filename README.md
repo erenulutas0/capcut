@@ -160,8 +160,12 @@ Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
 
 ## Sıradaki tek görev
 
-**W5 devam — telefon kayıtları:** 8 gerçek kayıt Chrome/Edge'de 8/8 geçiyor
-(ADR-014). Eksik olanlar gerçek HEVC, döndürmeli dikey ve HDR telefon kayıtları;
-bunlar kullanıcının telefonuyla çekilip `web/tests/media/real/` klasörüne
-konacak. Açık sınır: yazılım H.264 çözücüsünde bazı kamera akışları yanlış
-kare içeriği veriyor ve uygulama bunu henüz tespit edemiyor.
+W5 tamamlandı: 15 gerçek kayıt (HEVC, döndürmeli, HDR, 60 fps, 5+ dk) Chrome'da
+13 geçer / 2 açık ret (HDR), hata yok (ADR-014). Bölme ve sürükleyerek kırpma
+eklendi (P1-03).
+
+**Sıradaki:** doc 29'daki altyazı sırasının ilk adımı — tek bir elle yazılmış
+altyazı satırının gerçek videoya işlenmesi. EDL v1'e geriye uyumlu bir alan
+gerektirir; şema önerisi kurucu onayıyla yapılır. Açık küçük kararlar: HDR
+kayıtları SDR'ye tonlama (şu an reddediliyor) ve ayrıntılı 60 fps kayıtlarda
+Chromium'un yazılım kodlayıcısı için bit hızı.
