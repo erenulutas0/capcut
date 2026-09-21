@@ -105,5 +105,17 @@ describe('time helpers', () => {
     expect(parseTimecode('abc')).toBeNull();
     expect(parseTimecode('1:2:3:4')).toBeNull();
     expect(parseTimecode('-4')).toBeNull();
+    // A minute or second field past 59 is a typo, not a time.
+    expect(parseTimecode('00:75.000')).toBeNull();
+    expect(parseTimecode('1:60')).toBeNull();
+  });
+
+  it('accepts what people actually type', () => {
+    // An extra leading zero, as when editing "00:04.000" into "00:015.000".
+    expect(parseTimecode('00:015.000')).toBe(15_000_000);
+    // Plain seconds beyond two digits.
+    expect(parseTimecode('150')).toBe(150_000_000);
+    expect(parseTimecode('15,5')).toBe(15_500_000);
+    expect(parseTimecode('2:05')).toBe(125_000_000);
   });
 });

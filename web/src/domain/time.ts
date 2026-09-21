@@ -75,11 +75,15 @@ export function formatDurationShort(us: Micros): string {
 export function parseTimecode(input: string): Micros | null {
   const text = input.trim().replace(',', '.');
   if (text === '') return null;
-  if (!/^\d{1,2}(:\d{1,2}){0,2}(\.\d{1,6})?$/.test(text)) return null;
+  // Extra leading zeros are harmless ("00:015.000" is plainly 15 s) and plain
+  // seconds may be long ("150"), so digits are not capped per component. What
+  // stays invalid is a minute or second field that overflows 59.
+  if (!/^\d{1,6}(:\d{1,3}){0,2}(\.\d{1,6})?$/.test(text)) return null;
 
   const [clock, fraction = ''] = text.split('.');
   const parts = (clock ?? '').split(':').map((part) => Number.parseInt(part, 10));
   if (parts.some((part) => !Number.isFinite(part))) return null;
+  if (parts.slice(1).some((part) => part > 59)) return null;
 
   let seconds = 0;
   for (const part of parts) {

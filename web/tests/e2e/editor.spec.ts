@@ -92,8 +92,23 @@ test.describe('editor', () => {
     await expect(page.getByTestId('moment-count')).toHaveText('0 an');
 
     await addMoment(page, 'saat on', '00:04.000');
-    await expect(page.getByTestId('range-error')).toContainText('00:00.000 biçiminde');
+    await expect(page.getByTestId('range-error')).toContainText('00:15.000 gibi');
     await expect(page.getByTestId('moment-count')).toHaveText('0 an');
+  });
+
+  test('accepts a time typed with an extra leading zero', async ({ page }) => {
+    await openEditor(page);
+    await importSample(page);
+
+    // Exactly what a user typed in the field: "00:015.000".
+    await addMoment(page, '00:05.000', '00:015.000');
+    await expect(page.getByTestId('moment-count')).toHaveText('1 an');
+    await expect(page.getByTestId('output-duration-us')).toHaveText('10000000');
+
+    // Leaving the field shows the value as it was understood.
+    await page.getByTestId('range-end').fill('20');
+    await page.getByTestId('range-end').blur();
+    await expect(page.getByTestId('range-end')).toHaveValue('00:20.000');
   });
 
   test('result mode maps output time onto source time', async ({ page }) => {

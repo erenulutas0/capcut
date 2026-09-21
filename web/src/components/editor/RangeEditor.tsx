@@ -101,7 +101,10 @@ export function RangeEditor({
             disabled={disabled}
             onChange={(event) => setStartText(event.target.value)}
             onBlur={() => {
-              if (startUs !== null) onPreviewRange(startUs);
+              if (startUs === null) return;
+              // Show what was understood, e.g. "15" -> "00:15.000".
+              setStartText(formatTimecode(startUs));
+              onPreviewRange(startUs);
             }}
             data-testid="range-start"
           />
@@ -129,6 +132,9 @@ export function RangeEditor({
             aria-invalid={endInvalid}
             disabled={disabled}
             onChange={(event) => setEndText(event.target.value)}
+            onBlur={() => {
+              if (endUs !== null) setEndText(formatTimecode(endUs));
+            }}
             data-testid="range-end"
           />
         </div>
