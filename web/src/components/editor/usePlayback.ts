@@ -44,6 +44,11 @@ export function usePlayback({
 }: PlaybackArgs) {
   const clipIndexRef = useRef(0);
   const frameRef = useRef<number | null>(null);
+  /**
+   * True while an edge drag shows a source frame that may lie outside the
+   * piece being played (ADR-019). The output clock is parked meanwhile.
+   */
+  const peekingRef = useRef(false);
 
   const [playing, setPlaying] = useState(false);
   const [sourceTimeUs, setSourceTimeUs] = useState<Micros>(0);
@@ -58,13 +63,19 @@ export function usePlayback({
     setPlaying(false);
   }, [videoRef, musicRef]);
 
-  /** Positions the video (and music) for an output timestamp. */
+  /**
+   * Positions the video (and music) for an output timestamp. An edit passes
+   * the recipe it just produced (`target`), because the rendered one is still
+   * the old recipe until React re-renders.
+   */
   const seekOutput = useCallback(
-    (targetUs: Micros) => {
+    (targetUs: Micros, target: Project = project) => {
+      peekingRef.current = false;
       const video = videoRef.current;
       if (!video) return;
-      const clamped = Math.max(0, Math.min(targetUs, Math.max(0, outputDurationUs - 1)));
-      const position = mapOutputToSource(project, clamped);
+      const totalUs = totalOutputDurationUs(target);
+      const clamped = Math.max(0, Math.min(targetUs, Math.max(0, totalUs - 1)));
+      const position = mapOutputToSource(target, clamped);
       if (!position) {
         setOutputTimeUs(0);
         return;
@@ -75,8 +86,8 @@ export function usePlayback({
       setSourceTimeUs(position.sourceUs);
 
       const music = musicRef.current;
-      if (music && project.music) {
-        const musicPosition = mapOutputToMusic(project.music, clamped);
+      if (music && target.music) {
+        const musicPosition = mapOutputToMusic(target.music, clamped);
         if (musicPosition.sourceUs === null) {
           music.pause();
         } else {
@@ -84,13 +95,29 @@ export function usePlayback({
         }
       }
     },
-    [outputDurationUs, project, videoRef, musicRef],
+    [project, videoRef, musicRef],
+  );
+
+  /**
+   * Shows one source frame without moving the output clock: the frame at a
+   * dragged edge. `endPeek` (or any seek) returns control to the clock.
+   */
+  const peekSource = useCallback(
+    (sourceUs: Micros) => {
+      const video = videoRef.current;
+      if (!video) return;
+      peekingRef.current = true;
+      video.currentTime = Math.max(0, sourceUs) / US_PER_SECOND;
+      setSourceTimeUs(Math.max(0, sourceUs));
+    },
+    [videoRef],
   );
 
   const seekSource = useCallback(
     (targetUs: Micros) => {
       const video = videoRef.current;
       if (!video) return;
+      peekingRef.current = false;
       video.currentTime = Math.max(0, targetUs) / US_PER_SECOND;
       setSourceTimeUs(Math.max(0, targetUs));
     },
@@ -106,7 +133,9 @@ export function usePlayback({
     }
     if (mode === 'output') {
       if (outputDurationUs <= 0) return;
-      if (outputTimeUs >= outputDurationUs - 1) seekOutput(0);
+      // Re-seat the clock on the current recipe before playing: an undo or
+      // redo may have changed the pieces while playback was parked.
+      seekOutput(outputTimeUs >= outputDurationUs - 1 ? 0 : outputTimeUs);
     }
     // Playback can be refused (autoplay policy, unsupported stream); surface it
     // instead of leaving a dead play button.
@@ -131,8 +160,15 @@ export function usePlayback({
       if (video) {
         const sourceUs = secondsToUs(video.currentTime);
         setSourceTimeUs(sourceUs);
+        // A parked clock is only moved by seeks: while paused (or peeking at
+        // a dragged edge) the video may show a frame outside the current
+        // piece, and that must not advance the output time. A video that
+        // ran to the end of the file is paused too, but still has to finish.
+        const parked = peekingRef.current || (video.paused && !video.ended);
 
-        if (mode === 'output') {
+        if (mode === 'output' && parked) {
+          // Nothing to follow.
+        } else if (mode === 'output') {
           const timeline = buildTimeline(project);
           const entry = timeline[clipIndexRef.current];
           if (!entry) {
@@ -224,5 +260,6 @@ export function usePlayback({
     stop,
     seekSource,
     seekOutput,
+    peekSource,
   };
 }

@@ -64,6 +64,8 @@ export function trimBounds(
   clipId: string,
   edge: TrimEdge,
   policy: Pick<ExportPolicy, 'maxOutputDurationUs'>,
+  /** Shortest length the edge may leave; the recipe minimum by default. */
+  minLengthUs: Micros = MIN_CLIP_DURATION_US,
 ): TrimBounds | null {
   const clip = project.clips.find((item) => item.clipId === clipId);
   if (!clip) return null;
@@ -72,16 +74,17 @@ export function trimBounds(
 
   const ownUs = clip.sourceOutUs - clip.sourceInUs;
   const maxLengthUs = Math.max(ownUs, policy.maxOutputDurationUs - (totalOutputDurationUs(project) - ownUs));
+  const minimumUs = Math.max(MIN_CLIP_DURATION_US, Math.min(minLengthUs, ownUs));
 
   if (edge === 'in') {
     return {
       minUs: Math.max(0, clip.sourceOutUs - maxLengthUs),
-      maxUs: clip.sourceOutUs - MIN_CLIP_DURATION_US,
+      maxUs: clip.sourceOutUs - minimumUs,
       valueUs: clip.sourceInUs,
     };
   }
   return {
-    minUs: clip.sourceInUs + MIN_CLIP_DURATION_US,
+    minUs: clip.sourceInUs + minimumUs,
     maxUs: Math.min(asset.durationUs, clip.sourceInUs + maxLengthUs),
     valueUs: clip.sourceOutUs,
   };
@@ -103,8 +106,9 @@ export function resolveTrimTarget(
   edge: TrimEdge,
   rawUs: Micros,
   policy: Pick<ExportPolicy, 'maxOutputDurationUs'>,
+  minLengthUs: Micros = MIN_CLIP_DURATION_US,
 ): Micros | null {
-  const bounds = trimBounds(project, clipId, edge, policy);
+  const bounds = trimBounds(project, clipId, edge, policy, minLengthUs);
   if (!bounds) return null;
   const clip = project.clips.find((item) => item.clipId === clipId);
   const asset = project.assets.find((item) => item.assetId === clip?.assetId);

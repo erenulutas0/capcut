@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 import { tr } from '../../src/i18n/messages';
+import { startWithEmptyTimeline } from './rangeFlow';
 import { ffmpegEnvelope, silenceFixture, type FixtureName } from './silence-media';
 
 /**
@@ -24,6 +25,8 @@ async function openWith(page: Page, name: FixtureName) {
   await expect(page.getByTestId('open-export')).toBeVisible();
   await page.getByTestId('video-input').setInputFiles(file);
   await expect(page.getByTestId('preview-video')).toBeVisible();
+  // These tests build their pieces with the range flow (ADR-019).
+  await startWithEmptyTimeline(page);
   return errors;
 }
 
@@ -69,7 +72,7 @@ test.describe('silence suggestions', () => {
     const button = page.getByTestId('open-silence');
     await expect(button).toHaveAttribute('aria-disabled', 'true');
     await expect(page.getByTestId('silence-open-hint')).toHaveText(
-      'Önce bir an ekle; sessizlikler anların içinde aranır.',
+      'Önce zaman çizgisine bir parça ekle; sessizlikler parçaların içinde aranır.',
     );
     // Playwright will not click an aria-disabled button; a keyboard press can.
     await button.focus();
@@ -83,7 +86,7 @@ test.describe('silence suggestions', () => {
     }) => {
       const errors = await openWith(page, name);
       await addMoment(page, '00:00.000', '00:04.500');
-      await expect(page.getByTestId('moment-count')).toHaveText('1 an');
+      await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
       await findSilences(page);
 
       // Exactly one suggestion: the 1.2 s gap minus 150 ms on each side.
@@ -114,7 +117,7 @@ test.describe('silence suggestions', () => {
       for (let step = 0; step < 8; step += 1) await page.keyboard.press('ArrowRight');
       await expect(min).toHaveValue('1.5');
       await expect(page.getByTestId('silence-suggestion')).toHaveCount(0);
-      await expect(page.getByTestId('silence-note')).toHaveText('Bu anda ayarlara uyan uzun sessizlik yok.');
+      await expect(page.getByTestId('silence-note')).toHaveText('Bu parçada ayarlara uyan uzun sessizlik yok.');
       await expect(page.getByTestId('silence-running')).toHaveCount(0);
       await page.getByTestId('silence-reset').click();
       await expect(page.getByTestId('silence-suggestion')).toHaveCount(1);
@@ -129,7 +132,7 @@ test.describe('silence suggestions', () => {
       await expect(page.getByTestId('silence-report-removed')).toHaveText(/^0\.9 sn$/);
       await page.getByTestId('silence-done').click();
       await expect(dialog(page)).toHaveCount(0);
-      await expect(page.getByTestId('moment-count')).toHaveText('2 an');
+      await expect(page.getByTestId('moment-count')).toHaveText('2 parça');
       const after = Number(await page.getByTestId('output-duration-us').textContent());
       expectNear(before - after, only!.endUs - only!.startUs);
       expect(before - after).toBe(only!.endUs - only!.startUs);
@@ -137,7 +140,7 @@ test.describe('silence suggestions', () => {
       expect(rangesText).toHaveLength(2);
 
       await page.getByTestId('undo').click();
-      await expect(page.getByTestId('moment-count')).toHaveText('1 an');
+      await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
       await expect(page.getByTestId('output-duration-us')).toHaveText(String(4.5 * S));
       expect(errors).toEqual([]);
     });
@@ -203,7 +206,7 @@ test.describe('silence suggestions', () => {
     // Vazgeç leaves the recipe untouched.
     await page.getByTestId('silence-dismiss').click();
     await expect(dialog(page)).toHaveCount(0);
-    await expect(page.getByTestId('moment-count')).toHaveText('1 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
     await expect(page.getByTestId('undo')).toBeEnabled();
   });
 
@@ -213,7 +216,7 @@ test.describe('silence suggestions', () => {
     await findSilences(page);
     await expect(page.getByTestId('silence-clip')).toHaveAttribute('data-status', 'too_short');
     await expect(page.getByTestId('silence-note')).toHaveText(
-      'Bu an, en kısa sessizlikten kısa; burada öneri yok.',
+      'Bu parça, en kısa sessizlikten kısa; burada öneri yok.',
     );
   });
 
@@ -224,14 +227,14 @@ test.describe('silence suggestions', () => {
     await expect(page.getByTestId('silence-suggestion')).toHaveCount(20);
     await expect(page.getByTestId('silence-check').and(page.locator(':checked'))).toHaveCount(19);
     await expect(page.getByTestId('silence-left-out')).toHaveText(
-      '20 an sınırı: en uzun 19 kesim seçildi; 1 öneri sınır yüzünden dışarıda kaldı.',
+      '20 parça sınırı: en uzun 19 kesim seçildi; 1 öneri sınır yüzünden dışarıda kaldı.',
     );
     await expect(page.getByTestId('silence-summary-moments')).toHaveText('1 → 20');
 
     // Checking the left-out one too would exceed the limit: said, not applied.
     await page.getByTestId('silence-check').and(page.locator(':not(:checked)')).check();
     await expect(page.getByTestId('silence-limit-exceeded')).toHaveText(
-      'Seçili kesimlerle 21 an olur; en çok 20 an olabilir. Birkaç kesimi kapat.',
+      'Seçili kesimlerle 21 parça olur; en çok 20 parça olabilir. Birkaç kesimi kapat.',
     );
     await expect(page.getByTestId('silence-apply')).toBeDisabled();
   });
@@ -258,7 +261,7 @@ test.describe('silence suggestions', () => {
     test.setTimeout(120_000);
     const errors = await openWith(page, 'long');
     await addMoment(page, '00:00.000', '04:50.000');
-    await expect(page.getByTestId('moment-count')).toHaveText('1 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
 
     await page.getByTestId('open-silence').click();
     await expect(page.getByTestId('silence-running')).toBeVisible();
@@ -278,7 +281,7 @@ test.describe('silence suggestions', () => {
     await page.getByTestId('silence-cancel').click();
     await expect(page.getByTestId('silence-problem')).toHaveAttribute('data-reason', 'canceled');
     await page.getByTestId('silence-dismiss').click();
-    await expect(page.getByTestId('moment-count')).toHaveText('1 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
     expect(errors).toEqual([]);
   });
 

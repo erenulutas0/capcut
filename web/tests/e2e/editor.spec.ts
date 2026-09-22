@@ -1,6 +1,8 @@
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
+import { startWithEmptyTimeline } from './rangeFlow';
+
 const SAMPLE_VIDEO = join(process.cwd(), 'tests', 'media', 'sample-24s.mp4');
 const SAMPLE_AUDIO = join(process.cwd(), 'tests', 'media', 'tone-30s.m4a');
 
@@ -15,6 +17,8 @@ async function openEditor(page: Page) {
 async function importSample(page: Page) {
   await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
   await expect(page.getByTestId('preview-video')).toBeVisible();
+  // These tests drive the range flow from an empty timeline (ADR-019).
+  await startWithEmptyTimeline(page);
 }
 
 async function addMoment(page: Page, start: string, end: string) {
@@ -53,13 +57,13 @@ test.describe('editor', () => {
 
     await addMoment(page, '00:00.000', '00:04.000');
     await addMoment(page, '00:08.000', '00:14.000');
-    await expect(page.getByTestId('moment-count')).toHaveText('2 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('2 parça');
     await expect(page.getByTestId('output-duration-us')).toHaveText('10000000');
     await expect(page.getByTestId('output-summary')).toContainText('10.0 sn');
 
     // The same source range twice is a valid edit.
     await addMoment(page, '00:08.000', '00:14.000');
-    await expect(page.getByTestId('moment-count')).toHaveText('3 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('3 parça');
     await expect(page.getByTestId('output-duration-us')).toHaveText('16000000');
 
     // Reorder without dragging.
@@ -74,9 +78,9 @@ test.describe('editor', () => {
     await expect(firstRange).toHaveText('00:08.000 — 00:14.000');
 
     await page.getByTestId('remove-moment').first().click();
-    await expect(page.getByTestId('moment-count')).toHaveText('2 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('2 parça');
     await page.getByTestId('undo').click();
-    await expect(page.getByTestId('moment-count')).toHaveText('3 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('3 parça');
   });
 
   test('rejects invalid ranges instead of creating bad clips', async ({ page }) => {
@@ -85,15 +89,15 @@ test.describe('editor', () => {
 
     await addMoment(page, '00:06.000', '00:02.000');
     await expect(page.getByTestId('range-error')).toContainText('Bitiş zamanı');
-    await expect(page.getByTestId('moment-count')).toHaveText('0 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('0 parça');
 
     await addMoment(page, '00:20.000', '00:30.000');
     await expect(page.getByTestId('range-error')).toContainText('videonun dışında');
-    await expect(page.getByTestId('moment-count')).toHaveText('0 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('0 parça');
 
     await addMoment(page, 'saat on', '00:04.000');
     await expect(page.getByTestId('range-error')).toContainText('00:15.000 gibi');
-    await expect(page.getByTestId('moment-count')).toHaveText('0 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('0 parça');
   });
 
   test('accepts a time typed with an extra leading zero', async ({ page }) => {
@@ -102,7 +106,7 @@ test.describe('editor', () => {
 
     // Exactly what a user typed in the field: "00:015.000".
     await addMoment(page, '00:05.000', '00:015.000');
-    await expect(page.getByTestId('moment-count')).toHaveText('1 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
     await expect(page.getByTestId('output-duration-us')).toHaveText('10000000');
 
     // Leaving the field shows the value as it was understood.
@@ -410,7 +414,7 @@ test.describe('editor', () => {
     // Ctrl+Z outside a field undoes the domain edit.
     await page.getByTestId('open-export').focus();
     await page.keyboard.press('Control+z');
-    await expect(page.getByTestId('moment-count')).toHaveText('0 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('0 parça');
   });
 
   test('long Turkish file names do not overflow the page', async ({ page }) => {

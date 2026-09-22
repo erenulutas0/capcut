@@ -68,6 +68,23 @@ export function formatDurationShort(us: Micros): string {
 }
 
 /**
+ * A piece length for messages people read and hear, to a tenth of a second:
+ * "14,0 sn", "1 dk 50,0 sn". Words and decimal mark come from the caller.
+ * Tenths, not frames: "14,0 → 10,0" is what a confirmation needs to say.
+ */
+export function formatLength(
+  us: Micros,
+  words: { minute: string; second: string; decimalMark: string },
+): string {
+  const tenths = Math.round(Math.max(0, us) / (US_PER_SECOND / 10));
+  const minutes = Math.floor(tenths / 600);
+  const restTenths = tenths - minutes * 600;
+  const seconds = `${Math.floor(restTenths / 10)}${words.decimalMark}${restTenths % 10}`;
+  const secondPart = `${seconds} ${words.second}`;
+  return minutes === 0 ? secondPart : `${minutes} ${words.minute} ${secondPart}`;
+}
+
+/**
  * Screen-reader form of a time, e.g. "1 dakika 4,033 saniye". The words and
  * the decimal mark come from the caller's dictionary, so the domain stays
  * language-free. Milliseconds are kept (trailing zeros dropped): a trim handle

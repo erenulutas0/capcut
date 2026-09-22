@@ -22,9 +22,6 @@ interface Props {
   onEdit: (clipId: string) => void;
   onMove: (clipId: string, delta: -1 | 1) => void;
   onRemove: (clipId: string) => void;
-  /** Why this moment cannot be split at the playhead, or null if it can. */
-  splitBlockedFor: (clipId: string) => MessageKey | null;
-  onSplit: (clipId: string) => void;
   /** Why "Sessizlikleri bul" is unavailable (no moments, no linked video), or null. */
   silenceBlocked: MessageKey | null;
   onFindSilences: () => void;
@@ -46,15 +43,13 @@ export function MomentsList({
   onEdit,
   onMove,
   onRemove,
-  splitBlockedFor,
-  onSplit,
   silenceBlocked,
   onFindSilences,
   error = null,
 }: {
   /**
-   * Split errors, for copies of the list shown in a sheet or drawer that
-   * covers the output strip (where these errors normally appear).
+   * Timeline errors, for copies of the list shown in a sheet or drawer that
+   * covers the timeline (where these errors normally appear).
    */
   error?: MessageKey | null;
 } & Pick<
@@ -66,8 +61,6 @@ export function MomentsList({
   | 'onEdit'
   | 'onMove'
   | 'onRemove'
-  | 'splitBlockedFor'
-  | 'onSplit'
   | 'silenceBlocked'
   | 'onFindSilences'
 >) {
@@ -84,9 +77,7 @@ export function MomentsList({
         <p className="empty-state">{t('moments.empty')}</p>
       ) : (
         <ul className="moment-list" data-testid="moment-list">
-          {project.clips.map((clip, index) => {
-            const splitBlocked = splitBlockedFor(clip.clipId);
-            return (
+          {project.clips.map((clip, index) => (
             <li
               key={clip.clipId}
               className="moment-card"
@@ -129,21 +120,6 @@ export function MomentsList({
                   <button
                     type="button"
                     className="icon-btn"
-                    // Focusable while unavailable; the title and the hidden
-                    // text say why, and a press shows the same message.
-                    aria-disabled={splitBlocked !== null}
-                    aria-label={`${t('moments.split')} ${index + 1}${
-                      splitBlocked ? `: ${t(splitBlocked)}` : ''
-                    }`}
-                    title={splitBlocked ? t(splitBlocked) : t('split.ready')}
-                    onClick={() => onSplit(clip.clipId)}
-                    data-testid="split-moment"
-                  >
-                    <Icon name="scissors" size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-btn"
                     aria-label={`${t('moments.moveUp')} ${index + 1}`}
                     disabled={index === 0}
                     onClick={() => onMove(clip.clipId, -1)}
@@ -173,8 +149,7 @@ export function MomentsList({
                 </div>
               </div>
             </li>
-            );
-          })}
+          ))}
         </ul>
       )}
 

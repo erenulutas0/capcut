@@ -2,6 +2,8 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
+import { startWithEmptyTimeline } from './rangeFlow';
+
 /**
  * Caption burn-in through the real export worker (ADR-015).
  *
@@ -66,6 +68,7 @@ async function projectWithCaptions(
   await expect(page.getByTestId('open-export')).toBeVisible();
   await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
   await expect(page.getByTestId('preview-video')).toBeVisible();
+  await startWithEmptyTimeline(page);
   await page.getByTestId('range-start').fill('00:00.000');
   await page.getByTestId('range-end').fill('00:03.000');
   await page.getByTestId('add-moment').click();

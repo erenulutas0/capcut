@@ -877,22 +877,86 @@ input[type='range']:disabled::-webkit-slider-thumb {
   overflow: hidden;
 }
 
-/* The wrapper draws the clip; the select button fills it and the trim
-   handles sit on its edges. No overflow clipping here, so a dragged handle
-   stays visible past the clip's old edge (the track still clips). */
-.strip-clip {
-  position: relative;
+/* ---------------------------------------------------- single timeline (ADR-019)
+   One output clock. The ruler and the lane share one width, so a pointer x
+   maps to the same output time on both; pieces are placed by time, not by
+   flex, so what you see is the real proportion of the output. */
+
+.tl-actions {
   display: flex;
-  min-width: 54px;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tl-track {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* Horizontal drags scrub; a vertical swipe still scrolls the page. */
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: pointer;
+}
+
+.tl-ruler {
+  position: relative;
+  height: 24px;
+  border-radius: 8px 8px 0 0;
+  background:
+    linear-gradient(var(--border), var(--border)) bottom / 100% 1px no-repeat,
+    repeating-linear-gradient(90deg, var(--border) 0 1px, transparent 1px 10%) bottom / 100% 8px no-repeat;
+}
+
+.tl-ruler-time {
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  font-family: var(--font-time);
+  font-size: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.tl-lane {
+  position: relative;
+  height: 52px;
+  border-radius: 0 0 10px 10px;
+  background: var(--bg);
+}
+
+/* Output length the strip keeps after an edit: the part that was cut away,
+   until "Sığdır". */
+.tl-cut-space {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255, 255, 255, 0.035) 6px 12px);
+  pointer-events: none;
+}
+
+/* The wrapper draws the piece; the select button fills it and the trim
+   handles sit on its edges. No overflow clipping, so a dragged handle and
+   its ghost stay visible past the piece's old edge. */
+.strip-clip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  min-width: 4px;
+  box-sizing: border-box;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: linear-gradient(160deg, #2a3236, #1b2124);
 }
 
 .strip-clip[data-selected='true'] {
-  border-color: var(--accent);
-  /* Room for two touch-sized handles plus the label between them. */
-  min-width: 104px;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 1px var(--panel), 0 0 0 3px rgba(210, 239, 120, 0.25);
+  z-index: 2;
 }
 
 .strip-clip-select {
@@ -911,23 +975,172 @@ input[type='range']:disabled::-webkit-slider-thumb {
   text-overflow: ellipsis;
   display: flex;
   align-items: flex-end;
+  cursor: pointer;
 }
 
 .strip-clip[data-selected='true'] .strip-clip-select {
   color: var(--accent);
-  padding: 6px 30px;
+  font-weight: 600;
+  padding: 6px 18px;
 }
 
 .strip-clip-select:focus-visible {
   outline-offset: -3px;
 }
 
-/* 28px wide hit area over the full clip height; the visible part is a slim
-   grip so the clip itself stays readable. */
+/* A drag in progress: the part it removes is hatched and dark, the part it
+   adds is outlined in the accent colour. Drawn in the drag's frozen pixels. */
+.tl-ghost {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tl-ghost[data-kind='remove'] {
+  background: repeating-linear-gradient(135deg, rgba(8, 10, 11, 0.78) 0 5px, rgba(8, 10, 11, 0.55) 5px 10px);
+  outline: 1px dashed var(--muted);
+  outline-offset: -1px;
+}
+
+.tl-ghost[data-kind='add'] {
+  background: rgba(210, 239, 120, 0.16);
+  outline: 1px dashed var(--accent);
+  outline-offset: -1px;
+}
+
+/* The playhead: a slider over the whole track height. Only its knob takes
+   the pointer (a press there scrubs, through the track); the line lets
+   clicks through to the pieces and trim handles below it. */
+.tl-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  margin-left: -12px;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  border-radius: 6px;
+}
+
+/* While an edge is dragged the playhead is parked; it steps back so the
+   length label above the lane stays readable. */
+.tl-track:has(.trim-handle[data-dragging='true']) .tl-playhead {
+  opacity: 0.3;
+}
+
+.tl-playhead:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 0;
+}
+
+.tl-playhead-knob {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  pointer-events: auto;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.tl-playhead-knob::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px 4px 7px 7px;
+  background: var(--text);
+  box-shadow: 0 0 0 2px var(--panel);
+}
+
+.tl-playhead-line {
+  position: absolute;
+  top: 16px;
+  bottom: 0;
+  left: 11px;
+  width: 2px;
+  background: var(--text);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+
+.tl-notice-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tl-notice {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.tl-notice:not(:empty) {
+  flex: 1;
+  padding: 6px 10px;
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  background: var(--raised);
+}
+
+.tl-empty {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+}
+
+.tl-empty-title {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tl-empty-body {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.tl-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.media-error .media-error-close {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--text);
+}
+
+.strip-captions-inner {
+  position: relative;
+  height: 100%;
+}
+
+/* 28px wide hit area over the full piece height, centred on the edge; the
+   visible part is a slim grip so the piece itself stays readable. */
 .trim-handle {
   position: absolute;
-  top: -1px;
-  bottom: -1px;
+  top: -2px;
+  bottom: -2px;
   width: 28px;
   display: flex;
   justify-content: center;
@@ -941,11 +1154,11 @@ input[type='range']:disabled::-webkit-slider-thumb {
 }
 
 .trim-handle[data-edge='in'] {
-  left: -1px;
+  left: -15px;
 }
 
 .trim-handle[data-edge='out'] {
-  right: -1px;
+  right: -15px;
 }
 
 .trim-grip {
@@ -969,10 +1182,13 @@ input[type='range']:disabled::-webkit-slider-thumb {
 
 /* Value readout: shown while dragging and while the handle has keyboard
    focus. It sits inside the track so the track's clipping never hides it. */
+/* The new length, shown above the lane (in the ruler row) so a narrow piece
+   never hides it; it grows away from the screen edge the piece is near. */
 .trim-label {
   display: none;
   position: absolute;
-  top: 3px;
+  top: -25px;
+  z-index: 4;
   padding: 1px 5px;
   border-radius: 6px;
   border: 1px solid var(--control-border);
@@ -986,11 +1202,11 @@ input[type='range']:disabled::-webkit-slider-thumb {
 }
 
 .trim-handle[data-edge='in'] .trim-label {
-  left: 26px;
+  left: 10px;
 }
 
 .trim-handle[data-edge='out'] .trim-label {
-  right: 26px;
+  right: 10px;
 }
 
 .trim-handle[data-dragging='true'] .trim-label,
@@ -1291,6 +1507,30 @@ input[type='range']:disabled::-webkit-slider-thumb {
 
 .editor-root[data-mode='phone'] .strip-head .strip-note {
   display: none;
+}
+
+/* On a phone the timeline gets the full width: the row names ("Video",
+   "Müzik") stay for screen readers only. */
+.editor-root[data-mode='phone'] .strip-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.editor-root[data-mode='phone'] .strip-row-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.editor-root[data-mode='phone'] .strip-hint {
+  margin-left: 0;
+}
+
+/* Room for the trim handles, which sit half outside the piece edges. */
+.editor-root[data-mode='phone'] .tl-track {
+  margin: 0 12px;
 }
 
 .editor-root[data-mode='phone'] .mobile-tabbar {

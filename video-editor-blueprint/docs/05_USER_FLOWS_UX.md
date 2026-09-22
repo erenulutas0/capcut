@@ -3,6 +3,15 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+> **Güncelleme 2026-09-22 — yeni ana akış:** İlk gerçek kullanıcı testinden sonra
+> web editörünün ana kesme akışı **tek zaman çizgisi** oldu (CapCut benzeri): açılan
+> video (≤ 5 dk) tek parça olarak zaman çizgisine gelir; tek oynatma çizgisi çıktı
+> zamanındadır; "Böl" oynatma çizgisinin altındaki parçayı böler, "Sil" seçili
+> parçayı siler, kenarlar sürüklenerek kısaltılır. Aşağıdaki F01 "aralık seç ve
+> ekle" akışı artık ikincil yoldur (Kaynak önizlemesi / "Aralık seçerek ekle").
+> Birim adı "an" değil "parça". Ayrıntı ve gerekçe:
+> [ADR-019](../../docs/adr/ADR-019-single-timeline-editing.md).
+
 ## Ekran sistemi
 
 Açılışta büyük “Video seç” eylemi, aşağıda mevcut yerel projeler. Kayıt ol modalı yok. “Örnekle dene” yalnızca bize ait kısa bir demo dosyası kullanır. İlk başarılı çıktıdan sonra Pro reklamı zorunlu gösterilmez; değer oluşturan davranış beklenir.

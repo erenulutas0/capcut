@@ -1,6 +1,8 @@
 import { join } from 'node:path';
 import { expect, test, type Download, type Locator, type Page } from '@playwright/test';
 
+import { startWithEmptyTimeline } from './rangeFlow';
+
 /**
  * SRT/VTT import and export, source-anchored captions and the clock change
  * (ADR-016), driven through the UI only.
@@ -59,6 +61,8 @@ async function openWithSample(page: Page) {
   await expect(page.getByTestId('open-export')).toBeVisible();
   await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
   await expect(page.getByTestId('preview-video')).toBeVisible();
+  // These tests build their pieces with the range flow (ADR-019).
+  await startWithEmptyTimeline(page);
   await expect(page.getByTestId('total-time')).toHaveText('00:24.000');
   return errors;
 }
@@ -215,7 +219,7 @@ test.describe('captions: SRT/VTT and source-anchored lines', () => {
     await expect(items.nth(0).getByTestId('cue-range')).toHaveText('00:01.000 — 00:03.000');
     await expect(items.nth(0).getByTestId('cue-badge-usage')).toHaveText('Sonuçta 1 kez görünüyor');
     await expect(items.nth(1).getByTestId('cue-badge-usage')).toHaveText('Sonuçta 1 kez görünüyor');
-    await expect(items.nth(2).getByTestId('cue-badge-unused')).toHaveText('Hiçbir anda yok, çıktıda görünmez');
+    await expect(items.nth(2).getByTestId('cue-badge-unused')).toHaveText('Hiçbir parçada yok, çıktıda görünmez');
     await expect(page.getByTestId('strip-caption-mark')).toHaveCount(2);
 
     // Output 0–6 s shows source 8–14 s; output 6–10 s shows source 0–4 s.
@@ -265,7 +269,7 @@ test.describe('captions: SRT/VTT and source-anchored lines', () => {
     await expect(page.getByTestId('cue-item')).toHaveCount(4);
     // It is cut at the moment's edge (source 14 s) in this result.
     const added = page.getByTestId('cue-item').nth(2);
-    await expect(added.getByTestId('cue-badge-partial')).toHaveText('Bir anın kenarında kesiliyor');
+    await expect(added.getByTestId('cue-badge-partial')).toHaveText('Bir parçanın kenarında kesiliyor');
     await expectActiveText(page, 5500, 'Köprünün sonu');
 
     // Played to the very end, the playhead is past every moment.
@@ -423,7 +427,7 @@ test.describe('captions: SRT/VTT and source-anchored lines', () => {
     // Source → output: explained first, then reported.
     await page.getByTestId('caption-clock-switch').click();
     const confirm = page.getByRole('dialog', { name: 'Satırlar sonuç videosuna bağlansın mı?' });
-    await expect(confirm).toContainText('hiçbir anın göstermediği satırlar silinir');
+    await expect(confirm).toContainText('hiçbir parçanın göstermediği satırlar silinir');
     await confirm.getByTestId('caption-clock-confirm').click();
     await expect(confirm).toHaveCount(0);
     await expect(page.getByTestId('caption-clock-report')).toHaveText(
@@ -477,7 +481,7 @@ test.describe('captions: SRT/VTT and source-anchored lines', () => {
     await expect(items.nth(2).getByTestId('cue-text')).toHaveValue('Farklı satır');
     await page.getByTestId('caption-clock-switch').click();
     await page.getByTestId('caption-clock-confirm').click();
-    await expect(page.getByTestId('caption-clock-error')).toContainText('Satır 2 ve Satır 3 orijinal videoda aynı ana düşüyor');
+    await expect(page.getByTestId('caption-clock-error')).toContainText('Satır 2 ve Satır 3 orijinal videoda aynı zamana düşüyor');
     await expect(page.getByTestId('caption-clock-now')).toHaveText('Sonuç videosuna bağlı');
     await expect(items).toHaveCount(3);
   });

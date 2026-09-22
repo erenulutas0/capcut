@@ -36,6 +36,12 @@ import { MIN_CLIP_DURATION_US, type Micros } from '../domain/time';
 import { buildTimeline, totalOutputDurationUs } from '../domain/timeline';
 import { piecesAfterRemoval, type ClipSilence } from '../domain/silence';
 import { splitPointAt, type SplitRejection } from '../domain/trim';
+import {
+  initialPlacement,
+  leadingRange,
+  splitAtPlayhead,
+  type TimelineSplitRejection,
+} from '../domain/timelineEdit';
 import { nextId } from './ids';
 
 export function createEmptyProject(projectId = 'p_local_001'): Project {
@@ -237,6 +243,64 @@ export function splitClip(
   };
   const clips = [...project.clips.slice(0, index), first, second, ...project.clips.slice(index + 1)];
   return { ok: true, project: bump(project, { clips }), newClipId };
+}
+
+export type TimelineSplitResult =
+  | {
+      ok: true;
+      project: Project;
+      /** The first half keeps the id of the piece that was cut. */
+      clipId: string;
+      newClipId: string;
+      /** Output index of the first half. */
+      index: number;
+    }
+  | { ok: false; reason: TimelineSplitRejection };
+
+/**
+ * "Böl" on the single timeline (ADR-019): cuts the piece under the playhead,
+ * at the playhead. Which piece is decided here, not by an earlier selection.
+ */
+export function splitAtTimelinePlayhead(
+  project: Project,
+  playhead: Parameters<typeof splitAtPlayhead>[1],
+  policy: ExportPolicy = WEB_LOCAL_POLICY,
+): TimelineSplitResult {
+  const point = splitAtPlayhead(project, playhead, policy);
+  if (!point.ok) return point;
+  const result = splitClip(project, point.clipId, point.sourceUs, policy);
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    project: result.project,
+    clipId: point.clipId,
+    newClipId: result.newClipId,
+    index: point.index,
+  };
+}
+
+/**
+ * Puts the opened video on the empty timeline the way `initialPlacement`
+ * says: the whole file as one piece when it fits the output limit. A longer
+ * file is NOT truncated here; the UI asks first (ADR-019).
+ */
+export function addWholeSource(
+  project: Project,
+  policy: ExportPolicy = WEB_LOCAL_POLICY,
+): CommandResult | { ok: false; reason: 'source_longer_than_output' } {
+  const asset = primaryVideoAsset(project);
+  if (!asset) return { ok: false, reason: 'no_source' };
+  const placement = initialPlacement(asset.durationUs, policy);
+  if (placement.kind === 'too_long') return { ok: false, reason: 'source_longer_than_output' };
+  if (placement.kind === 'too_short') return { ok: false, reason: 'clip_too_short' };
+  return addClip(project, { sourceInUs: placement.sourceInUs, sourceOutUs: placement.sourceOutUs }, policy);
+}
+
+/** "İlk 5 dakikayı ekle": the leading part of a video that is too long. */
+export function addLeadingSource(project: Project, policy: ExportPolicy = WEB_LOCAL_POLICY): CommandResult {
+  const asset = primaryVideoAsset(project);
+  if (!asset) return { ok: false, reason: 'no_source' };
+  return addClip(project, leadingRange(asset.durationUs, policy), policy);
 }
 
 export function setClipGain(project: Project, clipId: string, gainDb: number): Project {

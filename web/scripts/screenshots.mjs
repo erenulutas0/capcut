@@ -10,6 +10,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
+import { emptyTimeline } from './lib/range-flow.mjs';
+
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const outDir = join(root, 'screenshots');
 const sample = join(root, 'tests', 'media', 'sample-24s.mp4');
@@ -29,6 +31,7 @@ async function prepare(page) {
   await page.goto(`${baseURL}/editor`);
   await page.getByTestId('video-input').setInputFiles(sample);
   await page.getByTestId('preview-video').waitFor();
+  await emptyTimeline(page);
   for (const [start, end] of [
     ['00:00.000', '00:04.000'],
     ['00:08.000', '00:14.000'],

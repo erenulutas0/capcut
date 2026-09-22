@@ -15,6 +15,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
+import { emptyTimeline } from './lib/range-flow.mjs';
+
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const outDir = join(root, 'export-proof');
 const sample = join(root, 'tests', 'media', 'sample-24s.mp4');
@@ -57,6 +59,7 @@ page.on('request', (request) => {
 await page.goto(`${baseURL}/editor`);
 await page.getByTestId('video-input').setInputFiles(sample);
 await page.getByTestId('preview-video').waitFor();
+await emptyTimeline(page);
 
 // Two moments, deliberately not adjacent, so a naive "trim" cannot pass.
 for (const [start, end] of [['00:00.000', '00:03.000'], ['00:12.000', '00:16.000']]) {

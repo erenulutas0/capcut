@@ -5,10 +5,21 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Icon, Wordmark } from '@/components/Icon';
 import { useHydrated } from '@/components/useHydrated';
+import { safeFileName } from '@/adapters/browserMedia';
 import { DEFAULT_CAPTION_STYLE, activeCueAt, primaryCaptionTrack } from '@/domain/captions';
+import type { Project } from '@/domain/edl';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
-import type { Micros } from '@/domain/time';
-import { splitPointAt, type Playhead, type TrimEdge } from '@/domain/trim';
+import { formatLength, type Micros } from '@/domain/time';
+import { totalOutputDurationUs } from '@/domain/timeline';
+import {
+  dragMinimumUs,
+  floorAfterEdit,
+  initialPlacement,
+  outputStartOf,
+  playheadAfterRemoval,
+  splitAtPlayhead,
+} from '@/domain/timelineEdit';
+import type { TrimEdge } from '@/domain/trim';
 import { translator, type MessageKey } from '@/i18n/messages';
 import { listenForUncaughtErrors, recordError } from '@/adapters/diagnostics';
 import { ExportDialog } from './ExportDialog';
@@ -18,12 +29,13 @@ import { Sheet } from './Dialog';
 import { CaptionsPanel } from './CaptionsPanel';
 import { AudioPanel, FramePanel, Inspector, type InspectorTab } from './Inspector';
 import { LeftPanel, MomentsList, SourcesList, type LeftTab } from './LeftPanel';
-import { OutputStrip } from './OutputStrip';
+import { OutputStrip, type TimelineEmptyState } from './OutputStrip';
 import { PreviewStage } from './PreviewStage';
 import { RangeEditor } from './RangeEditor';
 import { RelinkPanel } from './RelinkPanel';
 import { SaveStateBadge } from './SaveStateBadge';
 import { SilenceDialog } from './SilenceDialog';
+import type { TrimCommitInfo } from './TrimHandle';
 import { useCaptionFont } from './useCaptionFont';
 import { useProjectPersistence } from './useProjectPersistence';
 import { useEditorState, type PreviewMode } from './useEditorState';
@@ -41,6 +53,11 @@ const CANVAS_ASPECT_CSS: Record<string, string> = {
   '1:1': '1 / 1',
 };
 
+/** Fills `{name}` slots; values are inserted literally (a file name may contain `$&`). */
+function fill(template: string, values: Record<string, string>): string {
+  return template.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
+}
+
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName;
@@ -51,6 +68,10 @@ export function EditorApp() {
   const hydrated = useHydrated();
   const layout = useLayoutMode();
   const state = useEditorState();
+  // An empty timeline has no result to show (for example after undoing the
+  // piece an opened video arrived with): the preview is then the source, and
+  // the range form is right there.
+  const previewMode: PreviewMode = state.project.clips.length === 0 ? 'source' : state.previewMode;
   // The component owns the media elements; the playback hook only drives them.
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const musicElementRef = useRef<HTMLAudioElement | null>(null);
@@ -58,7 +79,7 @@ export function EditorApp() {
     videoRef: videoElementRef,
     musicRef: musicElementRef,
     project: state.project,
-    mode: state.previewMode,
+    mode: previewMode,
     hasVideo: state.video !== null,
     hasMusicFile: state.audio !== null,
   });
@@ -84,6 +105,18 @@ export function EditorApp() {
   const silence = useSilenceAnalysis();
   const captionFont = useCaptionFont();
   const [reportOpen, setReportOpen] = useState(false);
+  /**
+   * The output length the timeline keeps after edits (ADR-019): a trim or a
+   * delete never stretches what is left back to full width. "Sığdır" and a
+   * newly opened video reset it.
+   */
+  const [scaleFloorUs, setScaleFloorUs] = useState<Micros>(0);
+  /** The last confirmation on the timeline, read politely. */
+  const [notice, setNotice] = useState<string | null>(null);
+  /** Where the preview was when an edge drag started, so Esc can put it back. */
+  const trimRestoreRef = useRef<{ mode: PreviewMode; outputUs: Micros; sourceUs: Micros } | null>(
+    null,
+  );
 
   // Error CODES seen in this tab, for the diagnostics file the user may
   // choose to download ("Sorun bildir"). Only the enum reaches the record —
@@ -95,7 +128,7 @@ export function EditorApp() {
   }, [mediaErrorReason]);
   const editError = state.actionError ?? state.timelineError;
   useEffect(() => {
-    if (editError) recordError('edit', editError.replace(/^error\./, ''));
+    if (editError) recordError('edit', editError.replace(/^(error|timeline)\./, ''));
   }, [editError]);
   const storeFailure =
     persistence.saveState.kind === 'failed' ? persistence.saveState.reason : persistence.loadFailure;
@@ -113,6 +146,14 @@ export function EditorApp() {
   const editingClip =
     state.project.clips.find((clip) => clip.clipId === editingClipId) ?? null;
 
+  const lengthText = (us: Micros) =>
+    formatLength(us, {
+      minute: t('time.minuteShort'),
+      second: t('time.secondShort'),
+      decimalMark: t('time.decimalMark'),
+    });
+  const pieceNumber = (index: number) => String(index + 1).padStart(2, '0');
+
   const pickVideo = useCallback(() => {
     if (state.project.clips.length > 0 && !window.confirm(t('sources.replaceWarning'))) return;
     videoInputRef.current?.click();
@@ -129,48 +170,124 @@ export function EditorApp() {
   );
 
   /**
+   * Opening a video (ADR-019): if it fits the output limit it is already on
+   * the timeline as one piece, and the preview shows the result.
+   */
+  const openVideo = async (file: File) => {
+    playback.stop();
+    const outcome = await state.importVideo(file);
+    if (outcome.kind === 'rejected') return;
+    setEditingClipId(null);
+    setScaleFloorUs(0);
+    if (outcome.kind === 'whole') {
+      playback.prepareMode('output');
+      setNotice(fill(t('timeline.notice.imported'), { length: lengthText(outcome.lengthUs) }));
+    } else {
+      playback.prepareMode('source');
+      setNotice(null);
+    }
+  };
+
+  /**
    * Captions sit on the output timeline, so moving to a line (or adding one)
    * always shows the result preview and parks playback there.
    */
   const seekCaption = useCallback(
     (outputUs: Micros) => {
-      if (state.previewMode !== 'output') changeMode('output');
+      if (previewMode !== 'output') changeMode('output');
       playback.stop();
       playback.seekOutput(outputUs);
     },
-    [changeMode, playback, state.previewMode],
+    [changeMode, playback, previewMode],
   );
 
   /**
-   * A source-anchored line that no moment shows has no place on the output
+   * A source-anchored line that no piece shows has no place on the output
    * timeline; "Buraya git" then shows its picture in the source preview.
    */
   const seekCaptionSource = useCallback(
     (sourceUs: Micros) => {
-      if (state.previewMode !== 'source') changeMode('source');
+      if (previewMode !== 'source') changeMode('source');
       playback.stop();
       playback.seekSource(sourceUs);
     },
-    [changeMode, playback, state.previewMode],
+    [changeMode, playback, previewMode],
   );
 
-  const removeMoment = useCallback(
-    (clipId: string) => {
-      // Leaving result mode with nothing to show is handled here, at the event,
-      // rather than by correcting state in an effect afterwards.
-      if (state.project.clips.length <= 1) {
-        playback.prepareMode('source');
-        state.setPreviewMode('source');
-      }
-      if (editingClipId === clipId) setEditingClipId(null);
-      state.dropMoment(clipId);
-    },
-    [editingClipId, playback, state],
-  );
+  /** The one playhead: every timeline click, drag or key lands here. */
+  const seekTimeline = (outputUs: Micros, selectClipId: string | null) => {
+    if (previewMode !== 'output') changeMode('output');
+    playback.seekOutput(outputUs);
+    if (selectClipId) state.setSelectedClipId(selectClipId);
+  };
+
+  /** Selecting a piece from the keyboard or the piece list also moves the playhead to it. */
+  const selectPiece = (clipId: string) => {
+    state.setSelectedClipId(clipId);
+    const startUs = outputStartOf(state.project, clipId);
+    if (startUs !== null && state.video) {
+      if (previewMode !== 'output') changeMode('output');
+      playback.seekOutput(startUs);
+    }
+  };
+
+  /** Deletes a piece (button, Delete key, or the piece list); the rest closes up. */
+  const deletePiece = (clipId: string) => {
+    const before = state.project;
+    const index = before.clips.findIndex((clip) => clip.clipId === clipId);
+    const clip = before.clips[index];
+    if (!clip) return;
+    const totalBefore = totalOutputDurationUs(before);
+    const playheadUs = playheadAfterRemoval(before, clipId);
+    // Leaving result mode with nothing to show is handled here, at the event,
+    // rather than by correcting state in an effect afterwards.
+    if (before.clips.length <= 1) {
+      playback.prepareMode('source');
+      state.setPreviewMode('source');
+    } else {
+      playback.stop();
+    }
+    if (editingClipId === clipId) setEditingClipId(null);
+    const after = state.deletePiece(clipId);
+    if (!after) return;
+    setScaleFloorUs((floor) => floorAfterEdit(floor, totalBefore));
+    if (after.clips.length > 0 && previewMode === 'output') {
+      playback.seekOutput(playheadUs, after);
+    }
+    if (after.clips.length > 0) {
+      // The deleted piece's button (or its edge) may have had focus; a
+      // keyboard user continues from the playhead instead of the page top.
+      window.requestAnimationFrame(() => {
+        const active = document.activeElement;
+        if (!active || active === document.body || !active.isConnected) {
+          document.querySelector<HTMLElement>('.tl-playhead')?.focus();
+        }
+      });
+    }
+    setNotice(
+      fill(t('timeline.notice.deleted'), {
+        index: pieceNumber(index),
+        length: lengthText(clip.sourceOutUs - clip.sourceInUs),
+      }),
+    );
+  };
+
+  const deleteSelected = () => {
+    const selected = state.selectedClip;
+    if (!selected) {
+      state.setTimelineError('timeline.deleteBlocked');
+      return;
+    }
+    deletePiece(selected.clipId);
+  };
 
   const handleAdd = useCallback(
     (inUs: number, outUs: number) => {
       playback.stop();
+      // The range form lives in the source preview; adding from it keeps the
+      // user there even when the stored mode was the result (the timeline
+      // was empty, so the result could not be shown).
+      if (state.previewMode !== 'source') state.setPreviewMode('source');
       return state.addMoment(inUs, outUs);
     },
     [playback, state],
@@ -191,62 +308,166 @@ export function EditorApp() {
       state.setSelectedClipId(clipId);
       setMobileSheet(null);
       setMomentsDrawerOpen(false);
+      // Editing a piece's range by typing is the secondary, source-side flow.
+      if (previewMode !== 'source') {
+        playback.prepareMode('source');
+        state.setPreviewMode('source');
+      }
       const clip = state.project.clips.find((item) => item.clipId === clipId);
-      if (clip && state.previewMode === 'source') playback.seekSource(clip.sourceInUs);
+      if (clip) playback.seekSource(clip.sourceInUs);
     },
-    [playback, state],
+    [playback, previewMode, state],
   );
 
-  // The playhead on the clock the preview is showing. Result mode shows output
-  // time; the domain maps it back through the timeline (see splitPointAt).
-  const playhead: Playhead =
-    state.previewMode === 'output'
-      ? { mode: 'output', outputUs: playback.outputTimeUs }
-      : { mode: 'source', sourceUs: playback.sourceTimeUs };
-
-  const splitBlockedFor = (clipId: string | null): MessageKey | null => {
-    if (!state.video) return 'error.no_source';
-    const point = splitPointAt(state.project, clipId, playhead, WEB_LOCAL_POLICY);
-    return point.ok ? null : (`error.${point.reason}` as MessageKey);
+  /** Puts a newly added first piece on screen: result preview, playhead at 0. */
+  const showNewTimeline = (after: Project, message: string) => {
+    setScaleFloorUs(0);
+    state.setPreviewMode('output');
+    playback.prepareMode('output');
+    playback.seekOutput(0, after);
+    setNotice(message);
   };
 
-  const { previewMode, video, setTimelineError, setSelectedClipId, splitMoment } = state;
-  const { outputTimeUs, sourceTimeUs, stop: stopPlayback } = playback;
-  const splitAtPlayhead = useCallback(
-    (clipId: string | null) => {
-      if (!video) {
-        setTimelineError('error.no_source');
-        return;
-      }
-      stopPlayback();
-      if (clipId) setSelectedClipId(clipId);
-      splitMoment(
-        clipId,
-        previewMode === 'output'
-          ? { mode: 'output', outputUs: outputTimeUs }
-          : { mode: 'source', sourceUs: sourceTimeUs },
+  const addWholeVideo = () => {
+    const after = state.addWholeVideo();
+    if (after) {
+      showNewTimeline(
+        after,
+        fill(t('timeline.notice.addedWhole'), { length: lengthText(totalOutputDurationUs(after)) }),
       );
-    },
-    [
-      outputTimeUs,
-      previewMode,
-      setSelectedClipId,
-      setTimelineError,
-      sourceTimeUs,
-      splitMoment,
-      stopPlayback,
-      video,
-    ],
-  );
+    }
+  };
 
-  // Trimming shows source frames, so a drag or key step in result mode drops
-  // back to the source preview rather than blurring the two clocks.
+  const addFirstMinutes = () => {
+    const after = state.addLeadingMinutes();
+    if (after) showNewTimeline(after, t('timeline.notice.addedFirst'));
+  };
+
+  /** "Aralık seçerek ekle": the secondary flow, the range form in the source preview. */
+  const addByRange = () => {
+    setEditingClipId(null);
+    if (previewMode !== 'source') changeMode('source');
+    setMobileSheet(null);
+    window.requestAnimationFrame(() => document.getElementById('range-start')?.focus());
+  };
+
+  // The playhead on the clock the preview is showing. The timeline's clock is
+  // the output; the source preview is the secondary range-picking view.
+  const splitPlayhead = (): Parameters<typeof state.splitPiece>[0] =>
+    previewMode === 'output'
+      ? { mode: 'output', outputUs: playback.outputTimeUs }
+      : { mode: 'source', sourceUs: playback.sourceTimeUs, preferClipId: state.selectedClipId };
+
+  const splitBlocked: MessageKey | null = (() => {
+    if (!state.video) return 'error.no_source';
+    const point = splitAtPlayhead(state.project, splitPlayhead(), WEB_LOCAL_POLICY);
+    return point.ok ? null : (`error.${point.reason}` as MessageKey);
+  })();
+
+  const deleteBlocked: MessageKey | null = state.selectedClip ? null : 'timeline.deleteBlocked';
+
+  /** "Böl" / S: cuts the piece under the playhead, right there. */
+  const splitNow = () => {
+    if (!state.video) {
+      state.setTimelineError('error.no_source');
+      return;
+    }
+    playback.stop();
+    const result = state.splitPiece(splitPlayhead());
+    if (!result.ok) {
+      setNotice(null);
+      return;
+    }
+    const first = result.project.clips[result.index];
+    const second = result.project.clips[result.index + 1];
+    // The output is unchanged frame for frame, but the piece indices after
+    // the cut moved by one: re-seat the clock on the new recipe.
+    if (previewMode === 'output') playback.seekOutput(playback.outputTimeUs, result.project);
+    if (first && second) {
+      setNotice(
+        fill(t('timeline.notice.split'), {
+          index: pieceNumber(result.index),
+          first: lengthText(first.sourceOutUs - first.sourceInUs),
+          second: lengthText(second.sourceOutUs - second.sourceInUs),
+        }),
+      );
+    }
+  };
+
+  // Edge trims: the preview shows the frame at the dragged edge without
+  // switching clocks, and parks back on the output timeline afterwards.
   const startTrim = () => {
     playback.stop();
-    if (state.previewMode === 'output') changeMode('source');
+    trimRestoreRef.current = {
+      mode: previewMode,
+      outputUs: playback.outputTimeUs,
+      sourceUs: playback.sourceTimeUs,
+    };
   };
 
-  // Silences are searched in the moments of the linked video; the button says
+  const previewTrim = (edge: TrimEdge, us: Micros) => {
+    // Ranges are half-open: the out-point itself is the first frame NOT kept,
+    // so the out handle shows the last kept frame instead.
+    playback.peekSource(edge === 'out' ? Math.max(0, us - 1) : us);
+  };
+
+  const cancelTrim = () => {
+    const saved = trimRestoreRef.current;
+    trimRestoreRef.current = null;
+    if (!saved) return;
+    if (saved.mode === 'output') playback.seekOutput(saved.outputUs);
+    else playback.seekSource(saved.sourceUs);
+  };
+
+  const commitTrim = (clipId: string, edge: TrimEdge, us: Micros, info: TrimCommitInfo) => {
+    const before = state.project;
+    const index = before.clips.findIndex((clip) => clip.clipId === clipId);
+    const clip = before.clips[index];
+    if (!clip) return;
+    const range =
+      edge === 'in'
+        ? { sourceInUs: us, sourceOutUs: clip.sourceOutUs }
+        : { sourceInUs: clip.sourceInUs, sourceOutUs: us };
+    const totalBefore = totalOutputDurationUs(before);
+    const after = state.trimPiece(clipId, range, info.coalesce);
+    if (!after) {
+      cancelTrim();
+      return;
+    }
+    trimRestoreRef.current = null;
+    setScaleFloorUs((floor) => floorAfterEdit(floor, totalBefore));
+    const fromUs = clip.sourceOutUs - clip.sourceInUs;
+    const toUs = range.sourceOutUs - range.sourceInUs;
+    if (previewMode === 'output') {
+      // The playhead goes to the new cut: the first kept frame of a trimmed
+      // start, or the last kept frame of a trimmed end.
+      const startUs = outputStartOf(after, clipId) ?? 0;
+      playback.seekOutput(edge === 'in' ? startUs : startUs + toUs - 1, after);
+    }
+    if (!info.pointer) return;
+    const values = {
+      index: pieceNumber(index),
+      from: lengthText(fromUs),
+      to: lengthText(toUs),
+      min: lengthText(dragMinimumUs(fromUs)),
+    };
+    if (info.heldAtMinimum) setNotice(fill(t('timeline.notice.heldAtMin'), values));
+    else setNotice(fill(t(toUs < fromUs ? 'timeline.notice.trimmed' : 'timeline.notice.extended'), values));
+  };
+
+  const undo = () => {
+    setNotice(null);
+    playback.stop();
+    state.undo();
+  };
+
+  const redo = () => {
+    setNotice(null);
+    playback.stop();
+    state.redo();
+  };
+
+  // Silences are searched in the pieces of the linked video; the button says
   // which of the two is missing instead of just greying out.
   const silenceBlocked: MessageKey | null =
     state.project.clips.length === 0
@@ -274,47 +495,91 @@ export function EditorApp() {
     setSilenceOpen(false);
   };
 
-  const previewTrim = (edge: TrimEdge, us: Micros) => {
-    // Ranges are half-open: the out-point itself is the first frame NOT kept,
-    // so the out handle shows the last kept frame instead.
-    playback.seekSource(edge === 'out' ? Math.max(0, us - 1) : us);
-  };
+  // The latest handlers for the window listener, which subscribes once.
+  // Written after render, never during it.
+  const keyActionsRef = useRef({ undo, redo, splitNow, deleteSelected });
+  useEffect(() => {
+    keyActionsRef.current = { undo, redo, splitNow, deleteSelected };
+  });
 
   // Keyboard shortcuts never fire while a text or time field has focus.
+  const hasVideo = state.video !== null;
+  const hasSelection = state.selectedClip !== null;
+  const { togglePlay } = playback;
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (isTypingTarget(event.target)) return;
       const meta = event.ctrlKey || event.metaKey;
+      const actions = keyActionsRef.current;
 
       if (meta && event.key.toLowerCase() === 'z') {
         event.preventDefault();
-        if (event.shiftKey) state.redo();
-        else state.undo();
+        if (event.shiftKey) actions.redo();
+        else actions.undo();
         return;
       }
       if (meta && event.key.toLowerCase() === 'y') {
         event.preventDefault();
-        state.redo();
+        actions.redo();
         return;
       }
-      // Inside a dialog or sheet, Space and S belong to the focused control
-      // (a "Dinle" button, a checkbox), not to the preview behind it.
+      // Inside a dialog or sheet, Space, S and Delete belong to the focused
+      // control (a "Dinle" button, a checkbox), not to the editor behind it.
       if (event.target instanceof Element && event.target.closest('[aria-modal="true"]')) return;
       if (event.key === ' ' || event.code === 'Space') {
-        if (!state.video) return;
+        if (!hasVideo) return;
         event.preventDefault();
-        playback.togglePlay();
+        togglePlay();
         return;
       }
-      if (!meta && !event.altKey && !event.repeat && event.key.toLowerCase() === 's') {
+      if (meta || event.altKey || event.repeat) return;
+      if (event.key.toLowerCase() === 's') {
         event.preventDefault();
-        splitAtPlayhead(state.selectedClipId);
+        actions.splitNow();
+        return;
+      }
+      if ((event.key === 'Delete' || event.key === 'Backspace') && hasSelection) {
+        event.preventDefault();
+        actions.deleteSelected();
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [playback, splitAtPlayhead, state]);
+  }, [hasSelection, hasVideo, togglePlay]);
+
+  const mediaErrorText = state.mediaError
+    ? (() => {
+        const error = state.mediaError;
+        const reason = t(`error.${error.reason}` as MessageKey);
+        const lowered = `${reason.charAt(0).toLocaleLowerCase('tr-TR')}${reason.slice(1)}`;
+        const main = fill(t('error.rejectedFile'), { name: safeFileName(error.fileName, 60), reason: lowered });
+        if (!error.keptOpen) return main;
+        return `${main} ${t(error.scope === 'video' ? 'error.keptVideo' : 'error.keptAudio')}`;
+      })()
+    : null;
+
+  const mediaErrorNode = mediaErrorText ? (
+    <div className="inline-error media-error" role="alert" data-testid="media-error">
+      <Icon name="alert" />
+      <span>{mediaErrorText}</span>
+      <button
+        type="button"
+        className="icon-btn media-error-close"
+        onClick={state.clearMediaError}
+        aria-label={t('error.dismiss')}
+        data-testid="media-error-dismiss"
+      >
+        <Icon name="close" size={16} />
+      </button>
+    </div>
+  ) : null;
+
+  const timelineEmpty: TimelineEmptyState = !state.video
+    ? { kind: 'no_video' }
+    : initialPlacement(state.video.durationUs, WEB_LOCAL_POLICY).kind === 'too_long'
+      ? { kind: 'too_long', durationUs: state.video.durationUs }
+      : { kind: 'fits', lengthUs: state.video.durationUs };
 
   const backupPanel = (
     <div data-testid="backup-panel">
@@ -357,12 +622,10 @@ export function EditorApp() {
     video: state.video,
     audio: state.audio,
     selectedClipId: state.selectedClipId,
-    onSelect: state.setSelectedClipId,
+    onSelect: selectPiece,
     onEdit: startEditing,
     onMove: state.shiftMoment,
-    onRemove: removeMoment,
-    splitBlockedFor,
-    onSplit: splitAtPlayhead,
+    onRemove: deletePiece,
     silenceBlocked,
     onFindSilences: openSilence,
     onPickVideo: pickVideo,
@@ -383,7 +646,7 @@ export function EditorApp() {
   // Nothing is drawn with a fallback font, and nothing past the output end
   // (the file has no frame there, even for a line that runs over it).
   const activeCaption =
-    state.previewMode === 'output' &&
+    previewMode === 'output' &&
     captionFont === 'ready' &&
     playback.outputTimeUs < playback.outputDurationUs
       ? activeCueAt(state.project, playback.outputTimeUs)
@@ -397,7 +660,7 @@ export function EditorApp() {
       outputDurationUs={playback.outputDurationUs}
       outputTimeUs={playback.outputTimeUs}
       sourceTimeUs={playback.sourceTimeUs}
-      previewMode={state.previewMode}
+      previewMode={previewMode}
       fontStatus={captionFont}
       onAdd={state.addCaption}
       onUpdate={state.updateCaption}
@@ -502,7 +765,7 @@ export function EditorApp() {
           <button
             type="button"
             className="icon-btn"
-            onClick={state.undo}
+            onClick={undo}
             disabled={!state.canUndo}
             aria-label={t('topbar.undo')}
             data-testid="undo"
@@ -512,7 +775,7 @@ export function EditorApp() {
           <button
             type="button"
             className="icon-btn"
-            onClick={state.redo}
+            onClick={redo}
             disabled={!state.canRedo}
             aria-label={t('topbar.redo')}
             data-testid="redo"
@@ -553,25 +816,20 @@ export function EditorApp() {
               t={t}
               binding={state.missingVideoBinding}
               onPick={state.relinkVideo}
-              onUseAsNew={(file) => void state.importVideo(file)}
+              onUseAsNew={(file) => void openVideo(file)}
               onDiscardProject={() => {
                 if (!window.confirm(t('relink.discardConfirm'))) return;
                 void persistence.forget().then(() => window.location.reload());
               }}
             />
-            {state.mediaError ? (
-              <p className="inline-error" role="alert" data-testid="media-error">
-                <Icon name="alert" />
-                {t(`error.${state.mediaError.reason}` as MessageKey)}
-              </p>
-            ) : null}
+            {mediaErrorNode}
           </section>
         ) : (
         <PreviewStage
           t={t}
           project={state.project}
           video={state.video}
-          mode={state.previewMode}
+          mode={previewMode}
           onModeChange={changeMode}
           videoRef={videoElementRef}
           playing={playback.playing}
@@ -595,14 +853,9 @@ export function EditorApp() {
             ) : null
           }
         >
-          {state.mediaError ? (
-            <p className="inline-error" role="alert" data-testid="media-error">
-              <Icon name="alert" />
-              {t(`error.${state.mediaError.reason}` as MessageKey)}
-            </p>
-          ) : null}
+          {mediaErrorNode}
 
-          {state.previewMode === 'source' ? (
+          {previewMode === 'source' ? (
             <RangeEditor
               // The edited range is part of the key: a trim or split from the
               // strip remounts the form with the stored values.
@@ -630,22 +883,35 @@ export function EditorApp() {
         project={state.project}
         audio={state.audio}
         selectedClipId={state.selectedClipId}
-        onSelect={state.setSelectedClipId}
+        onSelect={selectPiece}
         onPickAudio={pickAudio}
-        splitBlocked={splitBlockedFor(state.selectedClipId)}
-        onSplit={() => splitAtPlayhead(state.selectedClipId)}
+        // In the source preview the output clock is parked; the timeline
+        // shows where the result preview will continue.
+        outputTimeUs={playback.outputTimeUs}
+        onSeek={seekTimeline}
+        splitBlocked={splitBlocked}
+        onSplit={splitNow}
+        deleteBlocked={deleteBlocked}
+        onDelete={deleteSelected}
         error={state.timelineError}
-        playheadSourceUs={playback.sourceTimeUs}
+        notice={notice}
+        onDismissNotice={() => setNotice(null)}
+        scaleFloorUs={scaleFloorUs}
+        onFit={() => setScaleFloorUs(0)}
+        empty={timelineEmpty}
+        onAddWhole={addWholeVideo}
+        onAddFirst={addFirstMinutes}
+        onAddRange={addByRange}
         onTrimStart={startTrim}
         onTrimPreview={previewTrim}
-        onTrimCancel={playback.seekSource}
-        onTrimCommit={state.trimMoment}
+        onTrimCancel={cancelTrim}
+        onTrimCommit={commitTrim}
       />
 
       {layout === 'phone' ? null : (
         <footer className="status-bar">
           <span>{t('footer.local')}</span>
-          <span className="shortcut-hints">Space · I · O · S · Ctrl/Cmd+Z</span>
+          <span className="shortcut-hints">Space · ← → · S · Delete · Ctrl/Cmd+Z</span>
         </footer>
       )}
 
@@ -712,12 +978,10 @@ export function EditorApp() {
           t={t}
           project={state.project}
           selectedClipId={state.selectedClipId}
-          onSelect={state.setSelectedClipId}
+          onSelect={selectPiece}
           onEdit={startEditing}
           onMove={state.shiftMoment}
-          onRemove={removeMoment}
-          splitBlockedFor={splitBlockedFor}
-          onSplit={splitAtPlayhead}
+          onRemove={deletePiece}
           silenceBlocked={silenceBlocked}
           onFindSilences={openSilence}
           error={state.timelineError}
@@ -766,12 +1030,10 @@ export function EditorApp() {
           t={t}
           project={state.project}
           selectedClipId={state.selectedClipId}
-          onSelect={state.setSelectedClipId}
+          onSelect={selectPiece}
           onEdit={startEditing}
           onMove={state.shiftMoment}
-          onRemove={removeMoment}
-          splitBlockedFor={splitBlockedFor}
-          onSplit={splitAtPlayhead}
+          onRemove={deletePiece}
           silenceBlocked={silenceBlocked}
           onFindSilences={openSilence}
           error={state.timelineError}
@@ -917,7 +1179,7 @@ export function EditorApp() {
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = '';
-          if (file) void state.importVideo(file);
+          if (file) void openVideo(file);
         }}
       />
       <input

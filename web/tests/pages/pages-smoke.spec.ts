@@ -28,7 +28,14 @@ function watchRequests(page: Page) {
   return { failures, outside };
 }
 
-test('landing → editor → moments, caption, silence, export, report, privacy', async ({ page, context }) => {
+/** Moves the timeline playhead to a whole second with the keyboard. */
+async function playheadTo(page: Page, seconds: number) {
+  await page.getByTestId('timeline-playhead').focus();
+  await page.keyboard.press('Home');
+  for (let i = 0; i < seconds; i += 1) await page.keyboard.press('Shift+ArrowRight');
+}
+
+test('landing → editor → timeline cuts, caption, silence, export, report, privacy', async ({ page, context }) => {
   const seen = watchRequests(page);
 
   await page.goto('./');
@@ -36,16 +43,26 @@ test('landing → editor → moments, caption, silence, export, report, privacy'
   await page.getByRole('link', { name: /Editörü aç/ }).first().click();
   await expect(page).toHaveURL(/\/capcut\/editor\/?$/);
 
+  // The single timeline (ADR-019): the video arrives whole, as one piece.
   await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
   await expect(page.getByTestId('preview-video')).toBeVisible();
-  for (const [start, end] of [
-    ['00:00.000', '00:04.000'],
-    ['00:08.000', '00:14.000'],
-  ] as const) {
-    await page.getByTestId('range-start').fill(start);
-    await page.getByTestId('range-end').fill(end);
-    await page.getByTestId('add-moment').click();
+  await expect(page.getByTestId('strip-clip')).toHaveCount(1);
+
+  // Cut at 4 s, 8 s and 14 s; delete the second and the last piece.
+  for (const at of [4, 8, 14]) {
+    await playheadTo(page, at);
+    await page.keyboard.press('s');
   }
+  await expect(page.getByTestId('strip-clip')).toHaveCount(4);
+  await page.getByTestId('strip-clip').nth(3).getByRole('button').click();
+  await page.getByTestId('delete-selected').click();
+  await page.getByTestId('strip-clip').nth(1).getByRole('button').click();
+  await page.keyboard.press('Delete');
+  await expect(page.getByTestId('moment-card').locator('.moment-range')).toHaveText([
+    '00:00.000 — 00:04.000',
+    '00:08.000 — 00:14.000',
+  ]);
+  await expect(page.getByTestId('timeline-notice')).toContainText('Parça 02 silindi');
 
   // Caption: needs the bundled font from /capcut/fonts/caption/.
   await page.getByRole('tab', { name: 'Altyazı' }).click();

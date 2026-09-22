@@ -9,6 +9,7 @@ import { statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { emptyTimeline } from './range-flow.mjs';
 import {
   bandRmsDb,
   buildReference,
@@ -151,6 +152,7 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     });
 
     // --- moments -----------------------------------------------------------
+    await emptyTimeline(page);
     if (setup.repeatMoment) {
       const { count, lengthSeconds } = setup.repeatMoment;
       for (let i = 0; i < count; i += 1) {

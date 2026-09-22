@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 
+import { startWithEmptyTimeline } from './rangeFlow';
+
 /**
  * Privacy and support (roadmap P2-04, launch checklist B): the privacy page,
  * the local export log, "Sorun bildir" and the claim that a whole editing
@@ -26,6 +28,8 @@ async function openEditor(page: Page) {
 async function importSample(page: Page) {
   await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
   await expect(page.getByTestId('preview-video')).toBeVisible();
+  // These tests build their pieces with the range flow (ADR-019).
+  await startWithEmptyTimeline(page);
 }
 
 async function addMoment(page: Page, start: string, end: string) {
@@ -237,7 +241,7 @@ test.describe('report a problem', () => {
     await expect(page.getByTestId('save-state')).toContainText('Kaydedildi', { timeout: 15_000 });
     // After a reload the recipe is back but the file is not: export is blocked.
     await page.reload();
-    await expect(page.getByTestId('moment-count')).toHaveText('1 an', { timeout: 20_000 });
+    await expect(page.getByTestId('moment-count')).toHaveText('1 parça', { timeout: 20_000 });
     await page.getByTestId('open-export').click();
     await expect(page.getByTestId('export-blocked')).toBeVisible();
 
@@ -425,7 +429,7 @@ test.describe('local export log', () => {
     expect(version).toBe(1);
 
     await page.goto('/editor');
-    await expect(page.getByTestId('moment-count')).toHaveText('2 an', { timeout: 20_000 });
+    await expect(page.getByTestId('moment-count')).toHaveText('2 parça', { timeout: 20_000 });
     await expect(page.getByTestId('relink-filename')).toHaveText(FILE_NAME);
 
     const after = await page.evaluate(

@@ -1,6 +1,8 @@
 import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+import { startWithEmptyTimeline } from './rangeFlow';
+
 const SAMPLE_VIDEO = join(process.cwd(), 'tests', 'media', 'sample-24s.mp4');
 
 async function openWithSample(page: Page) {
@@ -10,6 +12,8 @@ async function openWithSample(page: Page) {
   await expect(page.getByTestId('open-export')).toBeVisible();
   await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
   await expect(page.getByTestId('preview-video')).toBeVisible();
+  // These tests build their pieces with the range flow (ADR-019).
+  await startWithEmptyTimeline(page);
   await expect(page.getByTestId('total-time')).toHaveText('00:24.000');
   return errors;
 }
@@ -50,14 +54,14 @@ function expectOnFrameGrid(seconds: number) {
 }
 
 test.describe('trim handles', () => {
-  test('dragging the start handle trims the moment, snaps to frames, and undoes in one step', async ({
+  test('dragging the start handle trims the piece, snaps to frames, and undoes in one step', async ({
     page,
   }) => {
     const errors = await openWithSample(page);
     await addMoment(page, '00:04.000', '00:08.000');
     await addMoment(page, '00:12.000', '00:16.000');
 
-    // Select the first moment on the strip; only the selected one has handles.
+    // Select the first piece on the timeline; only the selected one has handles.
     await page.getByTestId('strip-clip').first().getByRole('button').click();
     const start = page.getByTestId('trim-start');
     await expect(start).toHaveCount(1);
@@ -69,14 +73,16 @@ test.describe('trim handles', () => {
     expect(box?.width).toBeGreaterThanOrEqual(24);
     expect(box?.height).toBeGreaterThanOrEqual(24);
 
-    // Mid-drag: a value label is shown and the preview sits on that frame.
+    // Mid-drag: the new length is shown and the preview sits on that frame.
     await dragBy(page, start, -60, false);
     const label = start.getByTestId('trim-label');
     await expect(label).toBeVisible();
     const midValue = await valueNow(start);
     expect(midValue).toBeLessThan(4);
     await expect(page.getByTestId('source-time-us')).toHaveText(String(Math.round(midValue * 1000)));
-    await expect(label).toHaveText(new RegExp(`^00:0${Math.floor(midValue)}\\.`));
+    // Growing the piece: the label says the new length and the gain.
+    await expect(label).toHaveText(/^\d+,\d sn \(\+\d+,\d sn\)$/);
+    await expect(page.getByTestId('trim-ghost')).toHaveAttribute('data-kind', 'add');
     // Nothing is stored while the pointer is still down.
     await expect(ranges(page).first()).toHaveText('00:04.000 — 00:08.000');
     await page.mouse.up();
@@ -88,16 +94,17 @@ test.describe('trim handles', () => {
     await expect(ranges(page).first()).not.toHaveText('00:04.000 — 00:08.000');
     await expect(ranges(page).first()).toHaveText(/ — 00:08\.000$/);
     await expect(label).toBeHidden();
+    await expect(page.getByTestId('timeline-notice')).toContainText('Parça 01 uzatıldı: 4,0 sn → ');
     const trimmedText = await ranges(page).first().textContent();
 
     // The whole drag is a single undo step.
     await page.getByTestId('undo').click();
     await expect(ranges(page).first()).toHaveText('00:04.000 — 00:08.000');
-    await expect(page.getByTestId('moment-count')).toHaveText('2 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('2 parça');
     await page.getByTestId('redo').click();
     await expect(ranges(page).first()).toHaveText(trimmedText ?? '');
 
-    // The second moment was never touched.
+    // The second piece was never touched.
     await expect(ranges(page).nth(1)).toHaveText('00:12.000 — 00:16.000');
     expect(errors).toEqual([]);
   });
@@ -111,11 +118,15 @@ test.describe('trim handles', () => {
     await expect(end).toHaveAttribute('aria-valuenow', '24');
   });
 
-  test('the end handle cannot make the moment shorter than 0.1 s', async ({ page }) => {
+  test('a drag cannot leave a piece shorter than 0.5 s, and says so', async ({ page }) => {
     await openWithSample(page);
     await addMoment(page, '00:04.000', '00:08.000');
     await dragBy(page, page.getByTestId('trim-end'), -2000);
-    await expect(ranges(page).first()).toHaveText('00:04.000 — 00:04.100');
+    // Frame grid: 4.5 s is 135 frames exactly.
+    await expect(ranges(page).first()).toHaveText('00:04.000 — 00:04.500');
+    await expect(page.getByTestId('timeline-notice')).toHaveText(
+      'Parça 01 sürüklenerek 0,5 sn sürenin altına inemez; orada durdu: 4,0 sn → 0,5 sn · Geri al: Ctrl+Z',
+    );
   });
 
   test('Escape during a drag cancels it and restores the preview position', async ({ page }) => {
@@ -133,9 +144,10 @@ test.describe('trim handles', () => {
     await expect(ranges(page).first()).toHaveText('00:04.000 — 00:08.000');
     await expect(start).toHaveAttribute('aria-valuenow', '4');
     await expect(page.getByTestId('source-time-us')).toHaveText('6000');
-    // No trim entry was created: one undo removes the moment itself.
+    await expect(page.getByTestId('trim-ghost')).toHaveCount(0);
+    // No trim entry was created: one undo removes the piece itself.
     await page.getByTestId('undo').click();
-    await expect(page.getByTestId('moment-count')).toHaveText('0 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('0 parça');
   });
 
   test('handles are keyboard sliders: arrows move a frame, Shift a second', async ({ page }) => {
@@ -144,7 +156,7 @@ test.describe('trim handles', () => {
 
     const end = page.getByTestId('trim-end');
     await expect(end).toHaveAttribute('role', 'slider');
-    await expect(end).toHaveAttribute('aria-label', 'An 01 bitişi');
+    await expect(end).toHaveAttribute('aria-label', 'Parça 01 bitişi');
     await end.focus();
     await expect(end).toBeFocused();
 
@@ -173,7 +185,7 @@ test.describe('trim handles', () => {
     await expect(ranges(page).first()).toHaveText('00:00.000 — 00:08.000');
   });
 
-  test('a trim in result mode switches the preview to the source frames', async ({ page }) => {
+  test('a trim in result mode stays in the result and parks the playhead on the cut', async ({ page }) => {
     await openWithSample(page);
     await addMoment(page, '00:04.000', '00:08.000');
     await page.getByRole('tab', { name: 'Sonuç' }).click();
@@ -182,16 +194,15 @@ test.describe('trim handles', () => {
     await page.getByTestId('trim-start').focus();
     await page.keyboard.press('Shift+ArrowLeft');
     await expect(ranges(page).first()).toHaveText('00:03.000 — 00:08.000');
-    await expect(page.getByRole('tab', { name: 'Kaynak', exact: true })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
+    // One clock (ADR-019): the result preview stays, showing the new first frame.
+    await expect(page.getByRole('tab', { name: 'Sonuç' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('current-time')).toHaveText('00:00.000');
     await expect(page.getByTestId('source-time-us')).toHaveText('3000');
   });
 });
 
 test.describe('split', () => {
-  test('splits the selected moment at the source playhead, as one undo step', async ({ page }) => {
+  test('splits the piece at the source playhead in the source preview, as one undo step', async ({ page }) => {
     const errors = await openWithSample(page);
     await addMoment(page, '00:08.000', '00:14.000');
     await expect(page.getByTestId('output-duration-us')).toHaveText('6000000');
@@ -200,7 +211,7 @@ test.describe('split', () => {
     await expect(page.getByTestId('split-selected')).toHaveAttribute('aria-disabled', 'false');
     await page.getByTestId('split-selected').click();
 
-    await expect(page.getByTestId('moment-count')).toHaveText('2 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('2 parça');
     await expect(ranges(page)).toHaveText(['00:08.000 — 00:10.000', '00:10.000 — 00:14.000']);
     await expect(page.getByTestId('output-duration-us')).toHaveText('6000000');
     await expect(page.getByTestId('strip-clip')).toHaveCount(2);
@@ -220,46 +231,44 @@ test.describe('split', () => {
     await page.getByTestId('project-title').click();
     await page.keyboard.type('s');
     await expect(page.getByTestId('project-title')).toHaveValue('s');
-    await expect(page.getByTestId('moment-count')).toHaveText('1 an');
+    await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
 
     await page.getByTestId('open-export').focus();
     await page.keyboard.press('s');
     await expect(ranges(page)).toHaveText(['00:08.000 — 00:12.000', '00:12.000 — 00:14.000']);
   });
 
-  test('splitting is refused, with a reason, outside or too close to the edge', async ({ page }) => {
+  test('splitting is refused, with a reason, off every piece or too close to an edge', async ({ page }) => {
     await openWithSample(page);
     await addMoment(page, '00:08.000', '00:14.000');
     const button = page.getByTestId('split-selected');
 
+    // Source preview, at a source second no piece shows (the secondary flow).
     await seek(page, 3000);
     await expect(button).toHaveAttribute('aria-disabled', 'true');
-    await expect(button).toHaveAttribute('title', /seçili anın içinde değil/);
+    await expect(button).toHaveAttribute('title', /hiçbir parçanın içinde değil/);
     await page.getByTestId('open-export').focus();
     await page.keyboard.press('s');
-    await expect(page.getByTestId('strip-error')).toContainText(
-      'Oynatma çizgisi seçili anın içinde değil',
-    );
-    await expect(page.getByTestId('moment-count')).toHaveText('1 an');
+    await expect(page.getByTestId('strip-error')).toContainText('hiçbir parçanın içinde değil');
+    await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
 
     await seek(page, 8050);
-    await expect(button).toHaveAttribute('title', /en az 0,1 saniye/);
+    await expect(button).toHaveAttribute('title', /0,1 saniyeden yakın/);
     // aria-disabled keeps the button reachable: pressing it explains itself.
     // (Playwright's click() refuses aria-disabled elements, so use the keyboard.)
     await button.focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByTestId('strip-error')).toContainText('çok yakın');
-    await expect(page.getByTestId('moment-count')).toHaveText('1 an');
+    await expect(page.getByTestId('strip-error')).toContainText('0,1 saniyeden yakın');
+    await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
   });
 
   test('in result mode the output playhead is mapped to the right occurrence', async ({ page }) => {
     await openWithSample(page);
     await addMoment(page, '00:00.000', '00:04.000');
     await addMoment(page, '00:08.000', '00:14.000');
-    // The same range again: output 5 s must still cut moment 2, not 3.
+    // The same range again: output 5 s must still cut piece 2, not 3.
     await addMoment(page, '00:08.000', '00:14.000');
 
-    await page.getByTestId('strip-clip').nth(1).getByRole('button').click();
     await page.getByRole('tab', { name: 'Sonuç' }).click();
     await seek(page, 5000);
     await expect(page.getByTestId('current-time')).toHaveText('00:05.000');
@@ -271,27 +280,34 @@ test.describe('split', () => {
       '00:09.000 — 00:14.000',
       '00:08.000 — 00:14.000',
     ]);
-
-    // The playhead (output 5 s) is not inside moment 4, although source 9 s is.
-    await page.getByTestId('strip-clip').nth(3).getByRole('button').click();
-    await expect(page.getByTestId('split-selected')).toHaveAttribute('aria-disabled', 'true');
+    // The piece now under the playhead (the second half) is selected.
+    await expect(page.getByTestId('strip-clip').nth(2)).toHaveAttribute('data-selected', 'true');
   });
 
-  test('the per-moment split button splits that moment', async ({ page }) => {
+  test('the selection never blocks a split: Böl cuts the piece under the playhead', async ({ page }) => {
+    // The user test: a piece was selected, the playhead was elsewhere, and
+    // "Böl" answered "Oynatma çizgisi seçili anın içinde değil".
     await openWithSample(page);
     await addMoment(page, '00:00.000', '00:04.000');
     await addMoment(page, '00:08.000', '00:14.000');
-    await seek(page, 2000);
+    await page.getByRole('tab', { name: 'Sonuç' }).click();
 
-    const buttons = page.getByTestId('split-moment');
-    await expect(buttons.nth(1)).toHaveAttribute('aria-disabled', 'true');
-    await expect(buttons.first()).toHaveAttribute('aria-disabled', 'false');
-    await buttons.first().click();
+    // Select piece 1 with the keyboard (no seek to a click point) ...
+    await page.getByTestId('strip-clip').first().getByRole('button').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('strip-clip').first()).toHaveAttribute('data-selected', 'true');
+    // ... then put the playhead inside piece 2 (output 7 s = source 11 s).
+    await seek(page, 7000);
+    await expect(page.getByTestId('split-selected')).toHaveAttribute('aria-disabled', 'false');
+    await page.getByTestId('split-selected').click();
     await expect(ranges(page)).toHaveText([
-      '00:00.000 — 00:02.000',
-      '00:02.000 — 00:04.000',
-      '00:08.000 — 00:14.000',
+      '00:00.000 — 00:04.000',
+      '00:08.000 — 00:11.000',
+      '00:11.000 — 00:14.000',
     ]);
+    await expect(page.getByTestId('strip-error')).toHaveCount(0);
+    // No per-piece split buttons in the list: there is one "Böl".
+    await expect(page.getByTestId('split-moment')).toHaveCount(0);
   });
 });
 
@@ -310,7 +326,7 @@ test.describe('trim and split at phone width', () => {
 
     await seek(page, 6000);
     await page.getByTestId('split-selected').click();
-    await expect(page.getByTestId('output-summary')).toContainText('2 an');
+    await expect(page.getByTestId('output-summary')).toContainText('2 parça');
     await expect(page.getByTestId('strip-clip')).toHaveCount(2);
 
     const overflow = await page.evaluate(

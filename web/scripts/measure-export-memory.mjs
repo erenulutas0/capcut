@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 import { ffprobeJson } from './lib/media-measure.mjs';
+import { emptyTimeline } from './lib/range-flow.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const mediaDir = join(root, 'tests', 'media', 'matrix');
@@ -128,6 +129,7 @@ for (const seconds of durations) {
   // An absolute path measures any file, e.g. a user's own long recording.
   await page.getByTestId('video-input').setInputFiles(isAbsolute(fixture) ? fixture : join(mediaDir, fixture));
   await page.getByTestId('preview-video').waitFor({ timeout: 60_000 });
+  await emptyTimeline(page);
 
   // Long outputs from a 20 s source by reusing ranges (doc 10 allows repeats).
   // 15 s per moment keeps 300 s inside the 20-moment policy limit.

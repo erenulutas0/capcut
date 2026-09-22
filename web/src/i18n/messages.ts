@@ -5,7 +5,7 @@
 
 export const tr = {
   'app.name': 'clip',
-  'app.tagline': 'Videondan tutmak istediğin anları seç, sırala, hazırla.',
+  'app.tagline': 'Videonu aç, istemediğin yerleri kes, hazırla.',
   'app.workingName': 'Clip geçici çalışma adıdır.',
 
   // Names only assistive technology hears (landmarks, hidden labels).
@@ -54,13 +54,13 @@ export const tr = {
   'relink.audioTitle': 'Müzik dosyası açık değil.',
   'relink.audioBody':
     'Projede müzik var ama ses dosyası bu sekmede açık değil. Aynı dosyayı yeniden seçebilirsin.',
-  'relink.matched': 'Dosya tanındı, anların korundu.',
+  'relink.matched': 'Dosya tanındı, parçaların korundu.',
   'relink.matchedLikely':
     'Dosya aynı görünüyor (boyut ve süre uyuşuyor) ve yeniden bağlandı. Değiştirilme tarihi farklı.',
   'relink.mismatchTitle': 'Bu dosya kayıtlı dosyadan farklı görünüyor.',
   'relink.mismatchBody':
-    'Boyut veya süre uyuşmuyor. Bu dosyayı kullanırsak işaretlediğin anlar başka görüntülere denk gelebilir; bu yüzden anları saklamıyoruz.',
-  'relink.useAsNew': 'Yeni kaynak olarak kullan (anlar silinir)',
+    'Boyut veya süre uyuşmuyor. Bu dosyayı kullanırsak zaman çizgisindeki parçalar başka görüntülere denk gelebilir; bu yüzden parçaları saklamıyoruz.',
+  'relink.useAsNew': 'Yeni kaynak olarak kullan (parçalar silinir)',
   'relink.cancel': 'Vazgeç',
   'relink.discard': 'Kayıtlı projeyi sil',
   'relink.discardConfirm':
@@ -68,7 +68,7 @@ export const tr = {
 
   'backup.title': 'Proje yedeği',
   'backup.body':
-    'Düzenleme tarifini bir dosyaya indir. Bu dosya videonu içermez; seçtiğin anları, ayarlarını, altyazı metinlerini, proje adını ve kaynak dosyanın adını taşır. Paylaşmadan önce bunu bil.',
+    'Düzenleme tarifini bir dosyaya indir. Bu dosya videonu içermez; zaman çizgisindeki parçaları, ayarlarını, altyazı metinlerini, proje adını ve kaynak dosyanın adını taşır. Paylaşmadan önce bunu bil.',
   'backup.download': 'Yedek dosyasını indir',
   'backup.import': 'Yedek dosyasından geri yükle',
   'backup.importFailed': 'Yedek dosyası okunamadı veya bu sürümle uyumlu değil.',
@@ -109,7 +109,7 @@ export const tr = {
   'privacy.stored.howLong': 'Ne zaman silinir',
   'privacy.stored.project.name': 'Proje tarifi',
   'privacy.stored.project.body':
-    'Proje adı, seçtiğin anlar ve sırası, görüntü/oran ayarları, müzik ayarları, altyazı satırlarının metni ve biçimi. Kaynak dosyayı yeniden tanımak için dosyanın adı, boyutu, değiştirilme tarihi, süresi, çözünürlüğü ve türü. Video ve ses dosyasının kendisi saklanmaz.',
+    'Proje adı, zaman çizgisindeki parçalar ve sırası, görüntü/oran ayarları, müzik ayarları, altyazı satırlarının metni ve biçimi. Kaynak dosyayı yeniden tanımak için dosyanın adı, boyutu, değiştirilme tarihi, süresi, çözünürlüğü ve türü. Video ve ses dosyasının kendisi saklanmaz.',
   'privacy.stored.project.where': 'IndexedDB “clip-editor”, “projects” deposu',
   'privacy.stored.project.delete':
     'Sen silene kadar. Tarayıcı ayarlarından bu sitenin verilerini temizleyebilirsin; editör dosyayı yeniden istediğinde “Kayıtlı projeyi sil” de kullanılabilir. Tarayıcı yer açmak için kendisi de silebilir.',
@@ -134,7 +134,7 @@ export const tr = {
   'privacy.downloads.title': 'Senin indirdiğin dosyalar',
   'privacy.downloads.body':
     'Bu dosyalar yalnızca bir düğmeye bastığında oluşur ve bilgisayarına kaydedilir. Kiminle paylaşacağına sen karar verirsin.',
-  'privacy.downloads.mp4': 'Dışa aktarılan video (MP4): seçtiğin anlar, müzik ve videoya yazılmış altyazılar.',
+  'privacy.downloads.mp4': 'Dışa aktarılan video (MP4): zaman çizgisindeki parçalar, müzik ve videoya yazılmış altyazılar.',
   'privacy.downloads.backup':
     'Proje yedeği (.clip.json): proje tarifinin tamamı; proje adı, altyazı metinleri ve kaynak dosya adları dahil. Video içermez.',
   'privacy.downloads.subtitles': 'Altyazı dosyası (SRT veya VTT): altyazı satırların ve zamanları.',
@@ -173,7 +173,7 @@ export const tr = {
     'Tarayıcının her siteye zaten verdiği bilgiler: user agent, platform, dil, işlemci çekirdeği ve bellek tahmini, ekran boyutu',
   'support.contains.features':
     'Tarayıcı özellikleri (WebCodecs, OPFS, WebGPU) ve son dışa aktarma kontrolünün aşama sonuçları, depolama alanı (MB)',
-  'support.contains.project': 'Açık projenin yapısı: an ve altyazı satırı sayısı, oran, çıktı süresi',
+  'support.contains.project': 'Açık projenin yapısı: parça ve altyazı satırı sayısı, oran, çıktı süresi',
   'support.contains.log': 'Bu tarayıcıdaki son 20 dışa aktarma denemesi ve bu oturumda görülen hata kodları',
   'support.excludes': 'Dosya adı, proje adı, altyazı metni, video, ses veya görüntü yoktur.',
   'support.preview': 'Dosyanın tam içeriği',
@@ -201,7 +201,7 @@ export const tr = {
   'diag.route.opfs': 'disk',
   'diag.route.memory': 'bellek',
 
-  'tabs.moments': 'Anlar',
+  'tabs.moments': 'Parçalar',
   'tabs.sources': 'Kaynaklar',
   'tabs.frame': 'Görüntü',
   'tabs.audio': 'Ses',
@@ -222,43 +222,42 @@ export const tr = {
   'preview.pickVideo': 'Video seç',
   'preview.pickAnother': 'Başka video seç',
   'preview.importing': 'Video okunuyor…',
-  'preview.outputEmpty': 'Henüz an eklemedin. Sonuç önizlemesi boş.',
+  'preview.outputEmpty': 'Zaman çizgisi boş. Sonuç önizlemesi boş.',
   'preview.outputNote':
-    'Sonuç önizlemesi anları sırayla oynatır. Klip geçişlerinde kısa bir bekleme görebilirsin; bu final videoda boşluk demek değildir.',
+    'Sonuç önizlemesi zaman çizgisini oynatır. Parça geçişlerinde kısa bir bekleme görebilirsin; bu final videoda boşluk demek değildir.',
 
   'range.start': 'Başlangıç',
   'range.end': 'Bitiş',
   'range.setStart': 'Şu anı başlangıç yap',
   'range.setEnd': 'Şu anı bitiş yap',
-  'range.add': 'Anı ekle',
-  'range.update': 'Anı güncelle',
+  'range.add': 'Aralığı ekle',
+  'range.update': 'Parçayı güncelle',
   'range.cancelEdit': 'Vazgeç',
 
-  'moments.title': 'Sakladığın anlar',
-  'moments.count': 'an',
-  'moments.empty': 'Henüz an yok. Videoda bir başlangıç ve bitiş seçip “Anı ekle” de.',
-  'moments.hint': 'Sadece seçtiğin bölümler kalır. Sırasını dilediğin gibi değiştir.',
+  'moments.title': 'Zaman çizgisindeki parçalar',
+  'moments.count': 'parça',
+  'moments.empty': 'Zaman çizgisi boş. Alttaki “Tüm videoyu ekle” ile başla ya da Kaynak önizlemesinde bir aralık seçip “Aralığı ekle” de.',
+  'moments.hint': 'Çıktıya yalnızca zaman çizgisindeki parçalar girer. Sırasını buradan değiştirebilirsin.',
   'moments.moveUp': 'Yukarı taşı',
   'moments.moveDown': 'Aşağı taşı',
-  'moments.remove': 'Kaldır',
+  'moments.remove': 'Sil',
   'moments.edit': 'Düzenle',
-  'moments.item': 'An',
-  'moments.split': 'Böl',
+  'moments.item': 'Parça',
 
   'silence.open': 'Sessizlikleri bul',
-  'silence.blocked.noMoments': 'Önce bir an ekle; sessizlikler anların içinde aranır.',
+  'silence.blocked.noMoments': 'Önce zaman çizgisine bir parça ekle; sessizlikler parçaların içinde aranır.',
   'silence.blocked.noVideo': 'Önce videoyu bağla; ses bu dosyadan çözümlenir.',
   'silence.eyebrow': 'KESİM ÖNERİSİ',
   'silence.title': 'Sessizlikleri bul',
   'silence.intro':
-    'Anlardaki uzun duraklamaları bulur ve kesmeyi önerir. Hiçbir şey kendiliğinden kesilmez: listeyi dinle, istediklerini seç, sonra uygula.',
+    'Parçalardaki uzun duraklamaları bulur ve kesmeyi önerir. Hiçbir şey kendiliğinden kesilmez: listeyi dinle, istediklerini seç, sonra uygula.',
   'silence.local': 'Ses bu cihazda çözümlenir; dosya bilgisayardan çıkmaz.',
   'silence.close': 'Kapat',
   'silence.running': 'Ses çözümleniyor…',
   'silence.progressValue': '%{percent} · {done} / {total} sn ses',
   'silence.progressStarting': 'Başlıyor…',
   'silence.cancel': 'Durdur',
-  'silence.canceled': 'Çözümleme durduruldu. Bulunanlar aşağıda; kalan anlar için yeniden başlatabilirsin.',
+  'silence.canceled': 'Çözümleme durduruldu. Bulunanlar aşağıda; kalan parçalar için yeniden başlatabilirsin.',
   'silence.retry': 'Yeniden çözümle',
   'silence.failed.no_audio': 'Bu videoda ses yok; sessizlik aranamaz.',
   'silence.failed.undecodable': 'Bu tarayıcı videonun sesini çözemiyor; sessizlik aranamadı.',
@@ -276,11 +275,11 @@ export const tr = {
   'silence.resultsTitle': 'Öneriler',
   'silence.found': '{count} öneri bulundu, {checked} tanesi seçili.',
   'silence.foundNone': 'Önerilecek uzun sessizlik bulunamadı.',
-  'silence.moment': 'An {index}',
-  'silence.note.pending': 'Bu an henüz çözümlenmedi.',
-  'silence.note.low_contrast': 'Bu anda gürültü, müzik ya da sürekli bir ses var; konuşmayı kesmeden önerilebilecek bir sessizlik bulunamadı.',
-  'silence.note.too_short': 'Bu an, en kısa sessizlikten kısa; burada öneri yok.',
-  'silence.note.none': 'Bu anda ayarlara uyan uzun sessizlik yok.',
+  'silence.moment': 'Parça {index}',
+  'silence.note.pending': 'Bu parça henüz çözümlenmedi.',
+  'silence.note.low_contrast': 'Bu parçada gürültü, müzik ya da sürekli bir ses var; konuşmayı kesmeden önerilebilecek bir sessizlik bulunamadı.',
+  'silence.note.too_short': 'Bu parça, en kısa sessizlikten kısa; burada öneri yok.',
+  'silence.note.none': 'Bu parçada ayarlara uyan uzun sessizlik yok.',
   'silence.listen': 'Dinle',
   'silence.listenCut': 'Kesilmiş dinle',
   'silence.listenStop': 'Durdur',
@@ -289,22 +288,22 @@ export const tr = {
   'silence.listen.hint': '“Dinle” kesimin 1 sn öncesinden 1 sn sonrasına kadar kaynağı çalar; “Kesilmiş dinle” aynı yeri kesim atlanmış olarak çalar.',
   'silence.summary': 'Uygularsan',
   'silence.summary.duration': 'Çıktı süresi',
-  'silence.summary.moments': 'An sayısı',
+  'silence.summary.moments': 'Parça sayısı',
   'silence.summary.nothing': 'Seçili kesim yok; uygulanacak bir şey yok.',
   'silence.summary.dropped': '{count} parça 0,1 sn’den kısa kalacağı için bırakılır.',
-  'silence.limit.leftOut': '20 an sınırı: en uzun {selected} kesim seçildi; {leftOut} öneri sınır yüzünden dışarıda kaldı.',
+  'silence.limit.leftOut': '20 parça sınırı: en uzun {selected} kesim seçildi; {leftOut} öneri sınır yüzünden dışarıda kaldı.',
   'silence.limit.exceeded':
-    'Seçili kesimlerle {count} an olur; en çok {max} an olabilir. Birkaç kesimi kapat.',
+    'Seçili kesimlerle {count} parça olur; en çok {max} parça olabilir. Birkaç kesimi kapat.',
   'silence.captions.output':
     'Sonuca bağlı altyazılar yerinde kalır; kesimden sonra kayabilir. Görüntüye bağlamak için Altyazı sekmesi.',
   'silence.captions.source': 'Görüntüye bağlı altyazılar kesimle birlikte kendiliğinden kayar.',
-  'silence.editAfter': 'Uyguladıktan sonra her anın sınırını alttaki kırpma tutamaklarıyla yine düzeltebilirsin.',
+  'silence.editAfter': 'Uyguladıktan sonra her parçanın kenarını zaman çizgisinde sürükleyerek yine düzeltebilirsin.',
   'silence.how': 'Konuşmayı değil sessizliği bulur: müzik ya da gürültü altındaki duraklamalar önerilmez.',
   'silence.apply': 'Uygula',
   'silence.dismiss': 'Vazgeç',
   'silence.applied.title': 'Kesimler uygulandı',
   'silence.applied.removed': 'Çıkarılan süre',
-  'silence.applied.moments': 'An sayısı',
+  'silence.applied.moments': 'Parça sayısı',
   'silence.applied.dropped': 'Bırakılan kısa parça',
   'silence.applied.undo': 'Tek adımda geri alabilirsin (Geri al · Ctrl+Z).',
 
@@ -321,7 +320,7 @@ export const tr = {
   'sources.hasAudio.unknown': 'Tarayıcı bildirmiyor',
   'sources.replace': 'Videoyu değiştir',
   'sources.replaceWarning':
-    'Yeni bir video seçersen bu videodan oluşturduğun anlar silinir. Devam edilsin mi?',
+    'Yeni bir video seçersen zaman çizgisindeki parçalar silinir. Devam edilsin mi?',
   'sources.localOnly': 'Kaynak dosyana dokunmuyoruz. Hiçbir dosya yüklenmez.',
 
   'frame.title': 'Videonun çerçevesi',
@@ -337,13 +336,13 @@ export const tr = {
   'frame.zoomReset': 'Yakınlaştırmayı sıfırla',
   'frame.note':
     'Bu çerçeveleme tarifi önizleme ve çıktıda aynı hesaptan gelir; çıktıdaki kırpma alanı buradan üretilir.',
-  'frame.appliesToAll': 'Çerçeve ayarı bu projedeki bütün anlara uygulanır.',
+  'frame.appliesToAll': 'Çerçeve ayarı bu projedeki bütün parçalara uygulanır.',
 
   'audio.sourceTitle': 'Kaynak videonun sesi',
-  'audio.sourceLevel': 'Seçili anın ses seviyesi',
+  'audio.sourceLevel': 'Seçili parçanın ses seviyesi',
   'audio.mute': 'Sesi kapat',
   'audio.unmute': 'Sesi aç',
-  'audio.selectMoment': 'Ses seviyesini değiştirmek için soldan bir an seç.',
+  'audio.selectMoment': 'Ses seviyesini değiştirmek için zaman çizgisinden bir parça seç.',
   'audio.musicTitle': 'Eklediğin müzik',
   'audio.pickMusic': 'Kendi ses dosyanı ekle',
   'audio.replaceMusic': 'Ses dosyasını değiştir',
@@ -366,7 +365,7 @@ export const tr = {
   'captions.sourceModeHint':
     'Altyazılar sonuç videosunun zamanında durur, bu yüzden kaynak önizlemesinde görünmez. Satır eklemek önizlemeyi Sonuç moduna geçirir.',
   'captions.showResult': 'Sonuç önizlemesine geç',
-  'captions.needMoments': 'Altyazı eklemek için önce en az bir an ekle.',
+  'captions.needMoments': 'Altyazı eklemek için zaman çizgisinde en az bir parça olmalı.',
   'captions.empty':
     'Henüz altyazı satırı yok. Yazdığın satırlar videonun piksellerine işlenir, yani dışa aktardığın dosyada her oynatıcıda görünür. Her şey bu cihazda olur; internet gerekmez.',
   'captions.line': 'Satır',
@@ -418,7 +417,7 @@ export const tr = {
   'captions.error.invalid_time':
     'Zamanı 00:15.000 gibi dakika:saniye ya da yalnızca saniye (15) olarak yaz.',
   'captions.error.caption_playhead_off_video':
-    'Oynatma çizgisi şu an satırların bağlı olduğu görüntünün üzerinde değil (videonun sonundasın). Oynatma çizgisini bir anın içine taşı.',
+    'Oynatma çizgisi şu an satırların bağlı olduğu görüntünün üzerinde değil (videonun sonundasın). Oynatma çizgisini bir parçanın içine taşı.',
   'captions.addHintSource':
     'Satırlar görüntüye bağlı: yeni satır, oynatma çizgisinde oynayan görüntünün orijinal videodaki zamanına 2 saniyelik eklenir.',
   'captions.sourceModeHintSource':
@@ -429,7 +428,7 @@ export const tr = {
   'captions.clock.title': 'Satırlar neye bağlı?',
   'captions.clock.output': 'Sonuç videosuna bağlı',
   'captions.clock.outputBody':
-    'Satırlar sonuç videosunun zamanında durur. Anları taşıdığında ya da kırptığında satırlar yerinde kalır.',
+    'Satırlar sonuç videosunun zamanında durur. Parçaları taşıdığında ya da kırptığında satırlar yerinde kalır.',
   'captions.clock.source': 'Görüntüye bağlı',
   'captions.clock.sourceBody':
     'Satırlar orijinal videonun zamanında durur ve görüntüyle birlikte taşınır. Aynı bölümü iki kez kullanırsan o bölümün satırları da iki kez görünür.',
@@ -437,23 +436,23 @@ export const tr = {
   'captions.clock.toOutput': 'Sonuç videosuna bağla',
   'captions.clock.confirmTitle.source': 'Satırlar görüntüye bağlansın mı?',
   'captions.clock.confirmBody.source':
-    'Şu anki sonuç videosunda görünen hiçbir şey değişmez. Bundan sonra anları yeniden sıraladığında ya da kırptığında satırlar görüntüyle birlikte taşınır. Bir kesimin üzerinden geçen satır anlar kadar parçaya bölünür; 0,2 saniyeden kısa kalan parçalar düşer.',
+    'Şu anki sonuç videosunda görünen hiçbir şey değişmez. Bundan sonra parçaları yeniden sıraladığında ya da kırptığında satırlar görüntüyle birlikte taşınır. Bir kesimin üzerinden geçen satır, geçtiği parça sayısı kadar bölünür; 0,2 saniyeden kısa kalan kısımlar düşer.',
   'captions.clock.confirmTitle.output': 'Satırlar sonuç videosuna bağlansın mı?',
   'captions.clock.confirmBody.output':
-    'Şu anki sonuç videosunda görünen hiçbir şey değişmez. Bir satırın her görünüşü ayrı bir satır olur; hiçbir anın göstermediği satırlar silinir. Bundan sonra anları taşıdığında satırlar yerinde kalır.',
+    'Şu anki sonuç videosunda görünen hiçbir şey değişmez. Bir satırın her görünüşü ayrı bir satır olur; hiçbir parçanın göstermediği satırlar silinir. Bundan sonra parçaları taşıdığında satırlar yerinde kalır.',
   'captions.clock.undoNote': 'Geri al ile tek adımda eski hâline dönebilirsin.',
   'captions.clock.confirm': 'Dönüştür',
   'captions.clock.done': 'Dönüştürüldü. {split} satır bölündü, {dropped} satır ya da parça düştü.',
   'captions.clock.error.caption_conversion_conflict':
-    'Dönüştürülemedi: {lines} orijinal videoda aynı ana düşüyor. Aynı bölüm iki kez kullanılmış ve iki kullanımda farklı satırlar var; hangisinin kalacağını tahmin etmiyoruz. Satırlardan birini silip tekrar dene.',
+    'Dönüştürülemedi: {lines} orijinal videoda aynı zamana düşüyor. Aynı bölüm iki kez kullanılmış ve iki kullanımda farklı satırlar var; hangisinin kalacağını tahmin etmiyoruz. Satırlardan birini silip tekrar dene.',
   'captions.clock.error.caption_no_video': 'Görüntüye bağlamak için önce bir video aç.',
   'captions.clock.error.caption_no_track': 'Dönüştürülecek satır yok.',
 
   'captions.times.source': 'Videodaki zamanı',
   'captions.times.output': 'Sonuçtaki zamanı',
   'captions.usage.count': 'Sonuçta {count} kez görünüyor',
-  'captions.usage.none': 'Hiçbir anda yok, çıktıda görünmez',
-  'captions.usage.partial': 'Bir anın kenarında kesiliyor',
+  'captions.usage.none': 'Hiçbir parçada yok, çıktıda görünmez',
+  'captions.usage.partial': 'Bir parçanın kenarında kesiliyor',
 
   'captions.shift.title': 'Hepsini kaydır',
   'captions.shift.hint':
@@ -486,7 +485,7 @@ export const tr = {
     '{count} altyazıda 2’den fazla satır vardı; ikinci satırdan sonrası tek satırda birleştirildi.',
   'captions.import.question': 'Bu dosya neye göre zamanlandı?',
   'captions.import.option.source': 'Orijinal video (kaynak)',
-  'captions.import.option.sourceHelp': 'Satırlar görüntüye bağlanır ve anlarla birlikte taşınır.',
+  'captions.import.option.sourceHelp': 'Satırlar görüntüye bağlanır ve parçalarla birlikte taşınır.',
   'captions.import.option.output': 'Bu projenin sonucu',
   'captions.import.option.outputHelp': 'Satırlar sonuç videosunun zamanında durur.',
   'captions.import.suggest.source': 'Dosya sonucun süresini aşıyor; muhtemelen orijinal videoya göre.',
@@ -519,27 +518,29 @@ export const tr = {
 
   'captions.export.title': 'Altyazı dosyası indir',
   'captions.export.body':
-    'Dosya bitmiş videonun zamanına göre yazılır: satırlar sonuç videosunda göründükleri anlara denk gelir. Stil (kutu, konum, boyut) yalnızca videoya işlenen altyazıda vardır; SRT/VTT her oynatıcıda farklı görünebilir.',
+    'Dosya bitmiş videonun zamanına göre yazılır: satırlar sonuç videosunda göründükleri zamana denk gelir. Stil (kutu, konum, boyut) yalnızca videoya işlenen altyazıda vardır; SRT/VTT her oynatıcıda farklı görünebilir.',
   'captions.export.srt': 'SRT indir',
   'captions.export.vtt': 'VTT indir',
   'captions.export.none': 'Sonuç videosunda görünen satır yok; indirilecek bir şey yok.',
 
-  'output.title': 'Çıktı sırası',
-  'output.totalMoments': 'an',
+  'output.title': 'Zaman çizgisi',
+  'output.totalMoments': 'parça',
   'output.video': 'Video',
   'output.music': 'Müzik',
-  'output.note': 'Kaynak dosyanın değil, kliplerin sırası',
-  'output.empty': 'Eklediğin anlar burada sırayla görünür.',
+  'output.note': 'Soldan sağa, çıkacak videonun kendisi',
+  'output.empty': 'Zaman çizgisi boş.',
 
   'split.action': 'Böl',
-  'split.ready': 'Seçili anı oynatma çizgisinin olduğu yerden ikiye böl (S)',
+  'split.ready': 'Oynatma çizgisinin üstündeki parçayı oradan ikiye böl (S)',
   'trim.startOf': 'başlangıcı',
   'trim.endOf': 'bitişi',
   'trim.hint':
-    'Seçili anın kenarlarını sürükle ya da ok tuşlarıyla 1 kare (1/30 sn), Shift ile 1 saniye kaydır. Esc sürüklemeyi iptal eder.',
+    'Seçili parçanın kenarlarını sürükle ya da ok tuşlarıyla 1 kare (1/30 sn), Shift ile 1 saniye kaydır. Sürüklemek bir parçayı 0,5 saniyeden kısa bırakmaz. Esc sürüklemeyi iptal eder.',
   'time.minute': 'dakika',
   'time.second': 'saniye',
   'time.decimalMark': ',',
+  'time.minuteShort': 'dk',
+  'time.secondShort': 'sn',
 
   'export.title': 'Videonu hazırla.',
   'export.eyebrow': 'SON BİR BAKIŞ',
@@ -616,7 +617,7 @@ export const tr = {
     'Tarayıcının depolama alanı çıktı dosyası için yetmedi. Yer açıp tekrar dene.',
   'export.fail.worker_unavailable': 'Arka plan işleyicisi başlatılamadı.',
   'export.fail.internal_error': 'Beklenmeyen bir hata oluştu.',
-  'export.plan.no_clips': 'Henüz an eklenmedi.',
+  'export.plan.no_clips': 'Zaman çizgisi boş.',
   'export.plan.source_missing':
     'Projenin video dosyası bu sekmede açık değil. Çıktı almak için dosyayı yeniden seç.',
   'export.plan.missing_source_dimensions': 'Kaynak videonun boyutları okunamadı.',
@@ -637,7 +638,7 @@ export const tr = {
   'export.absent': 'yok',
   'export.detectedNote':
     'API’nin bulunması, bu cihazda H.264 + AAC çıktısının çalıştığı anlamına gelmez. Oynatma desteği de export desteği değildir.',
-  'export.blocked.no_clips': 'Henüz an eklenmedi.',
+  'export.blocked.no_clips': 'Zaman çizgisi boş.',
   'export.blocked.output_duration_exceeds_policy': 'Toplam çıktı süresi web sınırını aşıyor.',
   'export.blocked.source_duration_exceeds_policy': 'Toplam kaynak süresi web sınırını aşıyor.',
   'export.blocked.source_bytes_exceed_policy': 'Seçilen dosyalar toplam boyut sınırını aşıyor.',
@@ -656,36 +657,71 @@ export const tr = {
   'error.source_too_long': 'Video bu sürümdeki 60 dakika sınırının üzerinde.',
   'error.range_reversed': 'Bitiş zamanı başlangıçtan sonra olmalı.',
   'error.range_out_of_source': 'Seçilen aralık videonun dışında.',
-  'error.clip_too_short': 'Bir an en az 0,1 saniye olmalı.',
-  'error.clip_limit_exceeded': 'Bir projede en çok 20 an olabilir.',
+  'error.clip_too_short': 'Bir parça en az 0,1 saniye olmalı.',
+  'error.clip_limit_exceeded': 'Bir projede en çok 20 parça olabilir. Bölmek için önce bir parçayı sil.',
   'error.output_duration_exceeds_policy': 'Toplam çıktı süresi 5 dakikayı aşamaz.',
   'error.no_source': 'Önce bir video seç.',
   'error.invalid_time': 'Zamanı 00:15.000 gibi dakika:saniye ya da yalnızca saniye (15) olarak yaz.',
   'error.fade_exceeds_selection': 'Açılış ve kapanış toplamı müzik bölümünden uzun olamaz.',
   'error.music_start_after_output': 'Müzik, çıktı süresi dolmadan başlamalı.',
   'error.no_music': 'Önce bir ses dosyası seç.',
-  'error.no_selection': 'Bölmek için önce aşağıdaki çıktı sırasından bir an seç.',
+  'error.no_selection': 'Önce zaman çizgisinden bir parça seç.',
   'error.playhead_outside_clip':
-    'Oynatma çizgisi seçili anın içinde değil. Bölmek için önizlemede bu anın içindeki bir noktaya git.',
+    'Kaynak önizlemesinde oynatma çizgisi hiçbir parçanın içinde değil. Bölmek için zaman çizgisinde bölmek istediğin yere tıkla.',
   'error.split_too_close_to_edge':
-    'Oynatma çizgisi anın başına ya da sonuna çok yakın. Bölünen iki parça da en az 0,1 saniye olmalı.',
+    'Oynatma çizgisi parçanın başına ya da sonuna 0,1 saniyeden yakın; burada bölünmez. Oynatma çizgisini biraz kaydır.',
+  'error.timeline_empty': 'Zaman çizgisi boş; önce videoyu ekle.',
+  'error.rejectedFile': '“{name}” açılamadı: {reason}',
+  'error.keptVideo': 'Açık olan videon değişmedi.',
+  'error.keptAudio': 'Açık olan müziğin değişmedi.',
+  'error.dismiss': 'Uyarıyı kapat',
 
   'help.title': 'Kısayollar ve bu sürümün sınırları',
   'help.shortcuts': 'Kısayollar',
   'help.limits': 'Bu sürümde olmayanlar',
   'help.close': 'Kapat',
   'help.shortcut.space': 'Oynat / duraklat',
-  'help.shortcut.io': 'Başlangıç / bitiş işaretle',
+  'help.shortcut.io': 'Kaynak önizlemesinde başlangıç / bitiş işaretle',
+  'help.shortcut.playhead': 'Zaman çizgisi odaklıyken oynatma çizgisini 1 kare / Shift ile 1 saniye taşı; Home / End baş / son',
+  'help.shortcut.delete': 'Seçili parçayı sil',
   'help.shortcut.undo': 'Geri al / ileri al',
   'help.shortcut.escape': 'Açık paneli kapat',
-  'help.shortcut.split': 'Seçili anı oynatma çizgisinden böl',
-  'help.shortcut.trim': 'Odaklı kenarı 1 kare / Shift ile 1 saniye kaydır',
+  'help.shortcut.split': 'Oynatma çizgisindeki parçayı ikiye böl',
+  'help.shortcut.trim': 'Odaklı parça kenarını 1 kare / Shift ile 1 saniye kaydır',
   'help.shortcutNote': 'Bir metin veya zaman alanına yazarken kısayollar devre dışıdır.',
   'help.limit.export': 'Çıktı yalnızca uygunluk kontrolünü geçen tarayıcıda alınabilir.',
   'help.limit.mix': 'Önizlemede iki oynatıcı birlikte çalışır; gerçek miks yalnızca çıktıda yapılır.',
   'help.limit.save':
     'Proje tarifi bu tarayıcıya kaydedilir; bulut yedeği yoktur ve video dosyaları saklanmaz.',
   'help.limit.cloud': 'Bulut, hesap, ödeme ve yapay zekâ yok.',
+
+  'timeline.playhead': 'Oynatma çizgisi',
+  'timeline.playheadValue': '{now}, toplam {total}',
+  'timeline.hint':
+    'Zaman çizgisine tıkla ya da sürükle: oynatma çizgisi oraya gider. Bir parçaya tıklayınca seçilir; kenarlarını sürükleyerek kısaltırsın.',
+  'timeline.delete': 'Sil',
+  'timeline.deleteReady': 'Seçili parçayı sil (Delete)',
+  'timeline.deleteBlocked': 'Silmek için önce zaman çizgisinde bir parçaya tıkla.',
+  'timeline.fit': 'Sığdır',
+  'timeline.fitLabel': 'Zaman çizgisini genişliğe sığdır',
+  'timeline.addWhole': 'Tüm videoyu ekle',
+  'timeline.addRange': 'Aralık seçerek ekle',
+  'timeline.addFirst': 'İlk 5 dakikayı ekle',
+  'timeline.tooLongTitle': 'Bu video {duration}; çıktı en fazla 5 dakika olabilir.',
+  'timeline.tooLongBody':
+    'Videonu kendiliğinden kesmiyoruz. Baştan 5 dakikayı ekleyebilir ya da kaynakta istediğin aralığı seçebilirsin.',
+  'timeline.emptyBody': 'Videonun tamamını tek parça olarak ekle, sonra istemediğin yerleri böl ve sil.',
+  'timeline.notice.imported':
+    'Video zaman çizgisine tek parça olarak eklendi ({length}). Kesmek için oynatma çizgisini taşı ve Böl’e bas · Geri al: Ctrl+Z',
+  'timeline.notice.addedWhole': 'Video zaman çizgisine tek parça olarak eklendi ({length}) · Geri al: Ctrl+Z',
+  'timeline.notice.addedFirst': 'Videonun ilk 5 dakikası zaman çizgisine eklendi · Geri al: Ctrl+Z',
+  'timeline.notice.split': 'Parça {index} ikiye bölündü: {first} + {second} · Geri al: Ctrl+Z',
+  'timeline.notice.deleted': 'Parça {index} silindi ({length}); kalanlar birleşti · Geri al: Ctrl+Z',
+  'timeline.notice.trimmed': 'Parça {index} kısaltıldı: {from} → {to} · Geri al: Ctrl+Z',
+  'timeline.notice.extended': 'Parça {index} uzatıldı: {from} → {to} · Geri al: Ctrl+Z',
+  'timeline.notice.heldAtMin':
+    'Parça {index} sürüklenerek {min} sürenin altına inemez; orada durdu: {from} → {to} · Geri al: Ctrl+Z',
+  'timeline.notice.dismiss': 'Bildirimi kapat',
 
   'footer.local': 'Yerel düzenleme · kaynak dosya değişmez · bulut yüklemesi yok',
   'unsaved.prompt': 'Bu oturumdaki düzenlemen kaydedilmedi.',
@@ -695,7 +731,7 @@ export type MessageKey = keyof typeof tr;
 
 export const en: Record<MessageKey, string> = {
   'app.name': 'clip',
-  'app.tagline': 'Pick the moments you want to keep, order them, prepare the video.',
+  'app.tagline': 'Open your video, cut what you do not want, prepare it.',
   'app.workingName': 'Clip is a provisional working name.',
 
   // Names only assistive technology hears (landmarks, hidden labels).
@@ -744,13 +780,13 @@ export const en: Record<MessageKey, string> = {
   'relink.audioTitle': 'The music file is not open.',
   'relink.audioBody':
     'The project has music but its audio file is not open in this tab. You can pick the same file again.',
-  'relink.matched': 'File recognised; your moments are intact.',
+  'relink.matched': 'File recognised; your clips are intact.',
   'relink.matchedLikely':
     'The file looks the same (size and duration match) and was re-linked. Its modification time differs.',
   'relink.mismatchTitle': 'This file looks different from the saved one.',
   'relink.mismatchBody':
-    'The size or duration does not match. Using it could point your moments at different footage, so they are not kept.',
-  'relink.useAsNew': 'Use as a new source (moments are removed)',
+    'The size or duration does not match. Using it could point your timeline clips at different footage, so they are not kept.',
+  'relink.useAsNew': 'Use as a new source (clips are removed)',
   'relink.cancel': 'Cancel',
   'relink.discard': 'Delete the saved project',
   'relink.discardConfirm':
@@ -758,7 +794,7 @@ export const en: Record<MessageKey, string> = {
 
   'backup.title': 'Project backup',
   'backup.body':
-    'Download the editing recipe as a file. It does not contain your video; it carries your moments, settings, caption text, the project name and the source file name. Keep that in mind before sharing it.',
+    'Download the editing recipe as a file. It does not contain your video; it carries your timeline clips, settings, caption text, the project name and the source file name. Keep that in mind before sharing it.',
   'backup.download': 'Download the backup file',
   'backup.import': 'Restore from a backup file',
   'backup.importFailed': 'The backup file could not be read or is not compatible with this version.',
@@ -799,7 +835,7 @@ export const en: Record<MessageKey, string> = {
   'privacy.stored.howLong': 'When it is deleted',
   'privacy.stored.project.name': 'Project recipe',
   'privacy.stored.project.body':
-    'Project name, the moments you chose and their order, frame/aspect settings, music settings, the text and style of caption lines. To recognise the source file again: its name, size, modification date, duration, resolution and type. The video and audio files themselves are not stored.',
+    'Project name, the clips on your timeline and their order, frame/aspect settings, music settings, the text and style of caption lines. To recognise the source file again: its name, size, modification date, duration, resolution and type. The video and audio files themselves are not stored.',
   'privacy.stored.project.where': 'IndexedDB “clip-editor”, store “projects”',
   'privacy.stored.project.delete':
     'Until you delete it. You can clear this site’s data in your browser settings; when the editor asks for the file again, “Delete the saved project” also works. The browser may also evict it to free space.',
@@ -824,7 +860,7 @@ export const en: Record<MessageKey, string> = {
   'privacy.downloads.title': 'Files you download',
   'privacy.downloads.body':
     'These files are created only when you press a button, and are saved on your computer. You decide whom to share them with.',
-  'privacy.downloads.mp4': 'Exported video (MP4): your chosen moments, music and burned-in captions.',
+  'privacy.downloads.mp4': 'Exported video (MP4): your timeline clips, music and burned-in captions.',
   'privacy.downloads.backup':
     'Project backup (.clip.json): the full project recipe, including the project name, caption text and source file names. It contains no video.',
   'privacy.downloads.subtitles': 'Subtitle file (SRT or VTT): your caption lines and their timing.',
@@ -863,7 +899,7 @@ export const en: Record<MessageKey, string> = {
     'What your browser already tells every site: user agent, platform, language, CPU cores and memory estimate, screen size',
   'support.contains.features':
     'Browser features (WebCodecs, OPFS, WebGPU), the stage results of the last export check, storage space (MB)',
-  'support.contains.project': 'The shape of the open project: number of moments and caption lines, aspect, output duration',
+  'support.contains.project': 'The shape of the open project: number of clips and caption lines, aspect, output duration',
   'support.contains.log': 'The last 20 export attempts in this browser and the error codes seen in this session',
   'support.excludes': 'No file names, project name, caption text, video, audio or pictures.',
   'support.preview': 'Full content of the file',
@@ -891,7 +927,7 @@ export const en: Record<MessageKey, string> = {
   'diag.route.opfs': 'disk',
   'diag.route.memory': 'memory',
 
-  'tabs.moments': 'Moments',
+  'tabs.moments': 'Clips',
   'tabs.sources': 'Sources',
   'tabs.frame': 'Frame',
   'tabs.audio': 'Audio',
@@ -911,43 +947,42 @@ export const en: Record<MessageKey, string> = {
   'preview.pickVideo': 'Choose a video',
   'preview.pickAnother': 'Choose another video',
   'preview.importing': 'Reading the video…',
-  'preview.outputEmpty': 'No moments yet. The result preview is empty.',
+  'preview.outputEmpty': 'The timeline is empty. The result preview is empty.',
   'preview.outputNote':
-    'The result preview plays your moments in order. A short wait at a boundary is not a gap in the final video.',
+    'The result preview plays the timeline. A short wait at a clip boundary is not a gap in the final video.',
 
   'range.start': 'Start',
   'range.end': 'End',
   'range.setStart': 'Set start to current time',
   'range.setEnd': 'Set end to current time',
-  'range.add': 'Add moment',
-  'range.update': 'Update moment',
+  'range.add': 'Add range',
+  'range.update': 'Update clip',
   'range.cancelEdit': 'Cancel',
 
-  'moments.title': 'Moments you keep',
-  'moments.count': 'moments',
-  'moments.empty': 'No moments yet. Mark a start and an end, then press "Add moment".',
-  'moments.hint': 'Only the parts you pick are kept. Reorder them however you like.',
+  'moments.title': 'Clips on the timeline',
+  'moments.count': 'clips',
+  'moments.empty': 'The timeline is empty. Start with “Add the whole video” below, or pick a range in the source preview and press “Add range”.',
+  'moments.hint': 'Only the clips on the timeline go into the output. You can reorder them here.',
   'moments.moveUp': 'Move up',
   'moments.moveDown': 'Move down',
-  'moments.remove': 'Remove',
+  'moments.remove': 'Delete',
   'moments.edit': 'Edit',
-  'moments.item': 'Moment',
-  'moments.split': 'Split',
+  'moments.item': 'Clip',
 
   'silence.open': 'Find silences',
-  'silence.blocked.noMoments': 'Add a moment first; silences are searched inside moments.',
+  'silence.blocked.noMoments': 'Put a clip on the timeline first; silences are searched inside clips.',
   'silence.blocked.noVideo': 'Link the video first; the audio is analysed from that file.',
   'silence.eyebrow': 'CUT SUGGESTION',
   'silence.title': 'Find silences',
   'silence.intro':
-    'Finds long pauses in your moments and suggests cutting them. Nothing is cut on its own: listen, pick the ones you want, then apply.',
+    'Finds long pauses in your clips and suggests cutting them. Nothing is cut on its own: listen, pick the ones you want, then apply.',
   'silence.local': 'The audio is analysed on this device; the file never leaves your computer.',
   'silence.close': 'Close',
   'silence.running': 'Analysing audio…',
   'silence.progressValue': '{percent}% · {done} / {total} s of audio',
   'silence.progressStarting': 'Starting…',
   'silence.cancel': 'Stop',
-  'silence.canceled': 'Analysis stopped. What was found is below; restart it for the remaining moments.',
+  'silence.canceled': 'Analysis stopped. What was found is below; restart it for the remaining clips.',
   'silence.retry': 'Analyse again',
   'silence.failed.no_audio': 'This video has no audio; there is nothing to search.',
   'silence.failed.undecodable': 'This browser cannot decode the video’s audio; no silences were searched.',
@@ -965,11 +1000,11 @@ export const en: Record<MessageKey, string> = {
   'silence.resultsTitle': 'Suggestions',
   'silence.found': '{count} suggestions found, {checked} selected.',
   'silence.foundNone': 'No long silence worth suggesting was found.',
-  'silence.moment': 'Moment {index}',
-  'silence.note.pending': 'This moment has not been analysed yet.',
-  'silence.note.low_contrast': 'This moment has noise, music or a constant sound; no silence could be suggested without risking speech.',
-  'silence.note.too_short': 'This moment is shorter than the shortest silence; nothing to suggest.',
-  'silence.note.none': 'No long silence matching the settings in this moment.',
+  'silence.moment': 'Clip {index}',
+  'silence.note.pending': 'This clip has not been analysed yet.',
+  'silence.note.low_contrast': 'This clip has noise, music or a constant sound; no silence could be suggested without risking speech.',
+  'silence.note.too_short': 'This clip is shorter than the shortest silence; nothing to suggest.',
+  'silence.note.none': 'No long silence matching the settings in this clip.',
   'silence.listen': 'Listen',
   'silence.listenCut': 'Listen cut',
   'silence.listenStop': 'Stop',
@@ -978,22 +1013,22 @@ export const en: Record<MessageKey, string> = {
   'silence.listen.hint': '“Listen” plays the source from 1 s before to 1 s after the cut; “Listen cut” plays the same place with the cut skipped.',
   'silence.summary': 'If you apply',
   'silence.summary.duration': 'Output length',
-  'silence.summary.moments': 'Moments',
+  'silence.summary.moments': 'Clips',
   'silence.summary.nothing': 'No cut selected; nothing to apply.',
   'silence.summary.dropped': '{count} pieces shorter than 0.1 s are left out.',
-  'silence.limit.leftOut': '20-moment limit: the {selected} longest cuts were selected; {leftOut} suggestions were left out by the limit.',
+  'silence.limit.leftOut': '20-clip limit: the {selected} longest cuts were selected; {leftOut} suggestions were left out by the limit.',
   'silence.limit.exceeded':
-    'The selected cuts would make {count} moments; at most {max} are allowed. Turn a few cuts off.',
+    'The selected cuts would make {count} clips; at most {max} are allowed. Turn a few cuts off.',
   'silence.captions.output':
     'Captions tied to the result stay where they are and may drift after the cut. To tie them to the picture, use the Captions tab.',
   'silence.captions.source': 'Captions tied to the picture move with the cuts automatically.',
-  'silence.editAfter': 'After applying, you can still adjust each moment’s edges with the trim handles below.',
+  'silence.editAfter': 'After applying, you can still adjust each clip by dragging its edges on the timeline.',
   'silence.how': 'It finds silence, not “no speech”: pauses under music or noise are not suggested.',
   'silence.apply': 'Apply',
   'silence.dismiss': 'Cancel',
   'silence.applied.title': 'Cuts applied',
   'silence.applied.removed': 'Time removed',
-  'silence.applied.moments': 'Moments',
+  'silence.applied.moments': 'Clips',
   'silence.applied.dropped': 'Short pieces left out',
   'silence.applied.undo': 'You can undo it in one step (Undo · Ctrl+Z).',
 
@@ -1009,7 +1044,7 @@ export const en: Record<MessageKey, string> = {
   'sources.hasAudio.no': 'None',
   'sources.hasAudio.unknown': 'Browser does not report it',
   'sources.replace': 'Replace video',
-  'sources.replaceWarning': 'Choosing a new video removes the moments built from this one. Continue?',
+  'sources.replaceWarning': 'Choosing a new video removes the clips on the timeline. Continue?',
   'sources.localOnly': 'We never touch your source file. Nothing is uploaded.',
 
   'frame.title': 'Video frame',
@@ -1025,13 +1060,13 @@ export const en: Record<MessageKey, string> = {
   'frame.zoomReset': 'Reset zoom',
   'frame.note':
     'Preview and export read this framing recipe from the same calculation; the exported crop comes from here.',
-  'frame.appliesToAll': 'Framing applies to every moment in this project.',
+  'frame.appliesToAll': 'Framing applies to every clip in this project.',
 
   'audio.sourceTitle': 'Source video audio',
-  'audio.sourceLevel': 'Level of the selected moment',
+  'audio.sourceLevel': 'Level of the selected clip',
   'audio.mute': 'Mute',
   'audio.unmute': 'Unmute',
-  'audio.selectMoment': 'Select a moment on the left to change its level.',
+  'audio.selectMoment': 'Select a clip on the timeline to change its level.',
   'audio.musicTitle': 'Music you added',
   'audio.pickMusic': 'Add your own audio file',
   'audio.replaceMusic': 'Replace audio file',
@@ -1054,7 +1089,7 @@ export const en: Record<MessageKey, string> = {
   'captions.sourceModeHint':
     'Captions live on the result video’s clock, so the source preview does not show them. Adding a line switches the preview to Result.',
   'captions.showResult': 'Switch to the result preview',
-  'captions.needMoments': 'Add at least one moment before adding captions.',
+  'captions.needMoments': 'Captions need at least one clip on the timeline.',
   'captions.empty':
     'No caption lines yet. The lines you type are drawn into the video pixels, so they show in every player that plays the exported file. Everything happens on this device; no internet needed.',
   'captions.line': 'Line',
@@ -1105,7 +1140,7 @@ export const en: Record<MessageKey, string> = {
     'There is no room for a new line after the playhead. Move the playhead to a free spot.',
   'captions.error.invalid_time': 'Write the time as minutes:seconds like 00:15.000, or just seconds (15).',
   'captions.error.caption_playhead_off_video':
-    'The playhead is not over the picture these lines are tied to right now (you are at the end of the video). Move the playhead into a moment.',
+    'The playhead is not over the picture these lines are tied to right now (you are at the end of the video). Move the playhead into a clip.',
   'captions.addHintSource':
     'Lines are tied to the picture: a new line is added, 2 seconds long, at the original-video time of the picture under the playhead.',
   'captions.sourceModeHintSource':
@@ -1116,7 +1151,7 @@ export const en: Record<MessageKey, string> = {
   'captions.clock.title': 'What are the lines tied to?',
   'captions.clock.output': 'Tied to the result video',
   'captions.clock.outputBody':
-    'Lines stay on the result video’s clock. When you move or trim moments, the lines stay where they are.',
+    'Lines stay on the result video’s clock. When you move or trim clips, the lines stay where they are.',
   'captions.clock.source': 'Tied to the picture',
   'captions.clock.sourceBody':
     'Lines stay on the original video’s clock and move with the picture. If you use the same part twice, its lines show twice too.',
@@ -1124,10 +1159,10 @@ export const en: Record<MessageKey, string> = {
   'captions.clock.toOutput': 'Tie to the result video',
   'captions.clock.confirmTitle.source': 'Tie the lines to the picture?',
   'captions.clock.confirmBody.source':
-    'Nothing you see in the current result changes. From now on, when you reorder or trim moments, the lines move with the picture. A line that crosses a cut is split into one piece per moment; pieces shorter than 0.2 seconds are dropped.',
+    'Nothing you see in the current result changes. From now on, when you reorder or trim clips, the lines move with the picture. A line that crosses a cut is split into one piece per clip; pieces shorter than 0.2 seconds are dropped.',
   'captions.clock.confirmTitle.output': 'Tie the lines to the result video?',
   'captions.clock.confirmBody.output':
-    'Nothing you see in the current result changes. Every appearance of a line becomes its own line; lines no moment shows are removed. From now on, moving moments leaves the lines where they are.',
+    'Nothing you see in the current result changes. Every appearance of a line becomes its own line; lines no clip shows are removed. From now on, moving clips leaves the lines where they are.',
   'captions.clock.undoNote': 'Undo takes you back in one step.',
   'captions.clock.confirm': 'Convert',
   'captions.clock.done': 'Converted. {split} lines were split, {dropped} lines or pieces were dropped.',
@@ -1139,8 +1174,8 @@ export const en: Record<MessageKey, string> = {
   'captions.times.source': 'Time in the video',
   'captions.times.output': 'Time in the result',
   'captions.usage.count': 'Shows {count} times in the result',
-  'captions.usage.none': 'In no moment, not in the export',
-  'captions.usage.partial': 'Cut at the edge of a moment',
+  'captions.usage.none': 'In no clip, not in the export',
+  'captions.usage.partial': 'Cut at the edge of a clip',
 
   'captions.shift.title': 'Shift all',
   'captions.shift.hint':
@@ -1173,7 +1208,7 @@ export const en: Record<MessageKey, string> = {
     '{count} subtitles had more than 2 lines; everything after the second line was joined into one line.',
   'captions.import.question': 'What was this file timed against?',
   'captions.import.option.source': 'The original video (source)',
-  'captions.import.option.sourceHelp': 'Lines are tied to the picture and move with the moments.',
+  'captions.import.option.sourceHelp': 'Lines are tied to the picture and move with the clips.',
   'captions.import.option.output': 'This project’s result',
   'captions.import.option.outputHelp': 'Lines stay on the result video’s clock.',
   'captions.import.suggest.source': 'The file runs past the result; probably timed to the original video.',
@@ -1209,22 +1244,24 @@ export const en: Record<MessageKey, string> = {
   'captions.export.vtt': 'Download VTT',
   'captions.export.none': 'No line appears in the result video; there is nothing to download.',
 
-  'output.title': 'Output order',
-  'output.totalMoments': 'moments',
+  'output.title': 'Timeline',
+  'output.totalMoments': 'clips',
   'output.video': 'Video',
   'output.music': 'Music',
-  'output.note': 'The order of your clips, not of the source file',
-  'output.empty': 'The moments you add appear here in order.',
+  'output.note': 'Left to right, the video you will export',
+  'output.empty': 'The timeline is empty.',
 
   'split.action': 'Split',
-  'split.ready': 'Split the selected moment in two at the playhead (S)',
+  'split.ready': 'Split the clip under the playhead in two, right there (S)',
   'trim.startOf': 'start',
   'trim.endOf': 'end',
   'trim.hint':
-    'Drag the edges of the selected moment, or use the arrow keys for 1 frame (1/30 s) and Shift for 1 second. Esc cancels a drag.',
+    'Drag the edges of the selected clip, or use the arrow keys for 1 frame (1/30 s) and Shift for 1 second. Dragging never leaves a clip shorter than 0.5 seconds. Esc cancels a drag.',
   'time.minute': 'minute',
   'time.second': 'seconds',
   'time.decimalMark': '.',
+  'time.minuteShort': 'min',
+  'time.secondShort': 's',
 
   'export.title': 'Prepare your video.',
   'export.eyebrow': 'ONE LAST LOOK',
@@ -1304,7 +1341,7 @@ export const en: Record<MessageKey, string> = {
     'The browser ran out of storage for the output file. Free some space and try again.',
   'export.fail.worker_unavailable': 'The background worker could not be started.',
   'export.fail.internal_error': 'An unexpected error occurred.',
-  'export.plan.no_clips': 'No moments added yet.',
+  'export.plan.no_clips': 'The timeline is empty.',
   'export.plan.source_missing':
     'The project\u2019s video file is not open in this tab. Choose it again to export.',
   'export.plan.missing_source_dimensions': 'The source video dimensions could not be read.',
@@ -1325,7 +1362,7 @@ export const en: Record<MessageKey, string> = {
   'export.absent': 'absent',
   'export.detectedNote':
     'The API being present does not mean H.264 + AAC output works on this device. Playback support is not export support.',
-  'export.blocked.no_clips': 'No moments added yet.',
+  'export.blocked.no_clips': 'The timeline is empty.',
   'export.blocked.output_duration_exceeds_policy': 'Total output duration exceeds the web limit.',
   'export.blocked.source_duration_exceeds_policy': 'Total source duration exceeds the web limit.',
   'export.blocked.source_bytes_exceed_policy': 'Selected files exceed the total size limit.',
@@ -1342,36 +1379,71 @@ export const en: Record<MessageKey, string> = {
   'error.source_too_long': 'The video is above the 60 minute limit of this version.',
   'error.range_reversed': 'The end must come after the start.',
   'error.range_out_of_source': 'The selected range is outside the video.',
-  'error.clip_too_short': 'A moment must be at least 0.1 seconds.',
-  'error.clip_limit_exceeded': 'A project can hold at most 20 moments.',
+  'error.clip_too_short': 'A clip must be at least 0.1 seconds.',
+  'error.clip_limit_exceeded': 'A project can hold at most 20 clips. Delete a clip before splitting.',
   'error.output_duration_exceeds_policy': 'Total output duration cannot exceed 5 minutes.',
   'error.no_source': 'Choose a video first.',
   'error.invalid_time': 'Write the time as minutes:seconds like 00:15.000, or just seconds (15).',
   'error.fade_exceeds_selection': 'Fade in plus fade out cannot exceed the music segment.',
   'error.music_start_after_output': 'Music must start before the output ends.',
   'error.no_music': 'Choose an audio file first.',
-  'error.no_selection': 'To split, first select a moment in the output order below.',
+  'error.no_selection': 'Select a clip on the timeline first.',
   'error.playhead_outside_clip':
-    'The playhead is not inside the selected moment. Move the preview to a point inside it to split.',
+    'In the source preview the playhead is not inside any clip. To split, click the timeline where you want to cut.',
   'error.split_too_close_to_edge':
-    'The playhead is too close to the start or end of the moment. Both parts must be at least 0.1 seconds.',
+    'The playhead is less than 0.1 seconds from the start or end of the clip, so it cannot be split there. Move the playhead a little.',
+  'error.timeline_empty': 'The timeline is empty; add the video first.',
+  'error.rejectedFile': '“{name}” could not be opened: {reason}',
+  'error.keptVideo': 'Your open video is unchanged.',
+  'error.keptAudio': 'Your open music is unchanged.',
+  'error.dismiss': 'Dismiss the warning',
 
   'help.title': 'Shortcuts and the limits of this version',
   'help.shortcuts': 'Shortcuts',
   'help.limits': 'Not in this version',
   'help.close': 'Close',
   'help.shortcut.space': 'Play / pause',
-  'help.shortcut.io': 'Mark start / end',
+  'help.shortcut.io': 'Mark start / end in the source preview',
+  'help.shortcut.playhead': 'With the timeline focused, move the playhead by 1 frame / 1 second with Shift; Home / End for start / end',
+  'help.shortcut.delete': 'Delete the selected clip',
   'help.shortcut.undo': 'Undo / redo',
   'help.shortcut.escape': 'Close the open panel',
-  'help.shortcut.split': 'Split the selected moment at the playhead',
-  'help.shortcut.trim': 'Move the focused edge by 1 frame / 1 second with Shift',
+  'help.shortcut.split': 'Split the clip under the playhead',
+  'help.shortcut.trim': 'Move the focused clip edge by 1 frame / 1 second with Shift',
   'help.shortcutNote': 'Shortcuts are disabled while you type in a text or time field.',
   'help.limit.export': 'Export is only possible in a browser that passes the capability check.',
   'help.limit.mix': 'The preview runs two players together; the real mix happens only in the export.',
   'help.limit.save':
     'The project recipe is saved to this browser; there is no cloud backup and video files are not stored.',
   'help.limit.cloud': 'No cloud, account, payment or AI.',
+
+  'timeline.playhead': 'Playhead',
+  'timeline.playheadValue': '{now} of {total}',
+  'timeline.hint':
+    'Click or drag on the timeline to move the playhead there. Click a clip to select it; drag its edges to shorten it.',
+  'timeline.delete': 'Delete',
+  'timeline.deleteReady': 'Delete the selected clip (Delete)',
+  'timeline.deleteBlocked': 'To delete, first click a clip on the timeline.',
+  'timeline.fit': 'Fit',
+  'timeline.fitLabel': 'Fit the timeline to the width',
+  'timeline.addWhole': 'Add the whole video',
+  'timeline.addRange': 'Add a range',
+  'timeline.addFirst': 'Add the first 5 minutes',
+  'timeline.tooLongTitle': 'This video is {duration}; the output can be at most 5 minutes.',
+  'timeline.tooLongBody':
+    'We do not cut your video on our own. Add the first 5 minutes, or pick the range you want in the source.',
+  'timeline.emptyBody': 'Add the whole video as one clip, then split and delete the parts you do not want.',
+  'timeline.notice.imported':
+    'The video was added to the timeline as one clip ({length}). To cut, move the playhead and press Split · Undo: Ctrl+Z',
+  'timeline.notice.addedWhole': 'The video was added to the timeline as one clip ({length}) · Undo: Ctrl+Z',
+  'timeline.notice.addedFirst': 'The first 5 minutes of the video were added to the timeline · Undo: Ctrl+Z',
+  'timeline.notice.split': 'Clip {index} was split in two: {first} + {second} · Undo: Ctrl+Z',
+  'timeline.notice.deleted': 'Clip {index} was deleted ({length}); the rest closed up · Undo: Ctrl+Z',
+  'timeline.notice.trimmed': 'Clip {index} shortened: {from} → {to} · Undo: Ctrl+Z',
+  'timeline.notice.extended': 'Clip {index} lengthened: {from} → {to} · Undo: Ctrl+Z',
+  'timeline.notice.heldAtMin':
+    'A drag cannot make clip {index} shorter than {min}; it stopped there: {from} → {to} · Undo: Ctrl+Z',
+  'timeline.notice.dismiss': 'Dismiss the message',
 
   'footer.local': 'Local editing · your source file is unchanged · no cloud upload',
   'unsaved.prompt': 'Your edits in this session are not saved.',

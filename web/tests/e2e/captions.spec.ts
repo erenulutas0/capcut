@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
+import { startWithEmptyTimeline } from './rangeFlow';
+
 const SAMPLE_VIDEO = join(process.cwd(), 'tests', 'media', 'sample-24s.mp4');
 const LEGACY_V1 = join(process.cwd(), 'fixtures', 'edl', 'legacy-v1', 'single-clip.json');
 
@@ -12,6 +14,8 @@ async function openWithSample(page: Page) {
   await expect(page.getByTestId('open-export')).toBeVisible();
   await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
   await expect(page.getByTestId('preview-video')).toBeVisible();
+  // These tests build their pieces with the range flow (ADR-019).
+  await startWithEmptyTimeline(page);
   await expect(page.getByTestId('total-time')).toHaveText('00:24.000');
   return errors;
 }
@@ -364,7 +368,7 @@ test.describe('captions', () => {
       buffer: Buffer.from(JSON.stringify(record)),
     });
 
-    await expect(page.getByTestId('moment-count')).toHaveText('1 an', { timeout: 20_000 });
+    await expect(page.getByTestId('moment-count')).toHaveText('1 parça', { timeout: 20_000 });
     await expect(page.getByTestId('relink-filename')).toHaveText('eski-kayit.mp4');
     await page.getByTestId('inspector-tab-captions').click();
     await expect(page.getByTestId('captions-empty')).toBeVisible();

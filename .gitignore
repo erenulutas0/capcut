@@ -25,3 +25,6 @@ web/spike-results/
 
 # Generated silence-suggestion fixtures (ffmpeg, made by the e2e setup)
 web/tests/media/silence/
+
+# Generated single-timeline fixtures (ffmpeg, made by the e2e setup)
+web/tests/media/timeline/

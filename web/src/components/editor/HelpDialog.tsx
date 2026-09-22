@@ -7,9 +7,11 @@ import type { MessageKey } from '@/i18n/messages';
 
 const SHORTCUTS: Array<[string, MessageKey]> = [
   ['Space', 'help.shortcut.space'],
-  ['I / O', 'help.shortcut.io'],
+  ['← / → · Shift · Home / End', 'help.shortcut.playhead'],
   ['S', 'help.shortcut.split'],
+  ['Delete · Backspace', 'help.shortcut.delete'],
   ['← / → · Shift', 'help.shortcut.trim'],
+  ['I / O', 'help.shortcut.io'],
   ['Ctrl+Z · Ctrl+Shift+Z', 'help.shortcut.undo'],
   ['Esc', 'help.shortcut.escape'],
 ];
@@ -45,7 +47,7 @@ export function HelpDialog({
       <p className="field-label">{t('help.shortcuts')}</p>
       <ul className="meta-list">
         {SHORTCUTS.map(([keys, labelKey]) => (
-          <li key={keys}>
+          <li key={labelKey}>
             <span className="meta-key">{t(labelKey)}</span>
             <span className="meta-value">{keys}</span>
           </li>

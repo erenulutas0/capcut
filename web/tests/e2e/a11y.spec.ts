@@ -4,6 +4,8 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 
 import { tr } from '../../src/i18n/messages';
+import { startWithEmptyTimeline } from './rangeFlow';
+import { timelineFixture } from './timeline-media';
 
 /**
  * Accessibility audit (roadmap P2-03, launch checklist B).
@@ -62,9 +64,16 @@ async function openEditor(page: Page): Promise<string[]> {
   return errors;
 }
 
-async function importSample(page: Page) {
+/** Opens the sample: it arrives on the timeline as one piece (ADR-019). */
+async function openSample(page: Page) {
   await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
   await expect(page.getByTestId('preview-video')).toBeVisible();
+}
+
+/** Opens the sample and empties the timeline, for states built with the range flow. */
+async function importSample(page: Page) {
+  await openSample(page);
+  await startWithEmptyTimeline(page);
 }
 
 async function addMoment(page: Page, start: string, end: string) {
@@ -223,13 +232,20 @@ test.describe('a11y: axe audit', () => {
     const errors = await openEditor(page);
     await audit(page, 'editor-empty', testInfo);
 
-    await importSample(page);
+    // ADR-019: the video arrives as one piece, with a confirmation.
+    await openSample(page);
+    await expect(page.getByTestId('timeline-notice')).not.toBeEmpty();
+    await audit(page, 'editor-video-one-piece', testInfo);
+
+    // Undo empties the timeline; it offers the whole video or a range.
+    await startWithEmptyTimeline(page);
+    await expect(page.getByTestId('timeline-add-whole')).toBeVisible();
     await audit(page, 'editor-video', testInfo);
 
     await addMoment(page, '00:00.000', '00:02.000');
     await addMoment(page, '00:08.000', '00:10.000');
-    await expect(page.getByTestId('moment-count')).toHaveText('2 an');
-    // A selected moment shows the trim handles on the strip.
+    await expect(page.getByTestId('moment-count')).toHaveText('2 parça');
+    // A selected piece shows the trim handles on the timeline.
     await page.getByTestId('strip-clip').first().locator('.strip-clip-select').click();
     await expect(page.getByTestId('trim-start')).toBeVisible();
     await audit(page, 'editor-moments-inspector-frame', testInfo);
@@ -247,6 +263,21 @@ test.describe('a11y: axe audit', () => {
     await expect(page.getByTestId('output-note')).toBeVisible();
     await audit(page, 'editor-result-mode', testInfo);
     expect(errors).toEqual([]);
+  });
+
+  // Added with the single timeline (ADR-019).
+  test('timeline: the too-long choice and a rejected file message', async ({ page }, testInfo) => {
+    await openEditor(page);
+    await page.getByTestId('video-input').setInputFiles(timelineFixture('long').file);
+    await expect(page.getByTestId('timeline-too-long')).toBeVisible({ timeout: 60_000 });
+    await audit(page, 'timeline-too-long', testInfo);
+    await page.getByTestId('video-input').setInputFiles(timelineFixture('tooLong').file);
+    await expect(page.getByTestId('media-error')).toBeVisible({ timeout: 60_000 });
+    await audit(page, 'timeline-rejected-file', testInfo);
+    await page.getByTestId('timeline-add-first').click();
+    await page.getByTestId('strip-clip').first().locator('.strip-clip-select').click();
+    await expect(page.getByTestId('trim-end')).toBeVisible();
+    await audit(page, 'timeline-piece-selected', testInfo);
   });
 
   test('dialogs: help, export (ready), silence, caption import', async ({ page }, testInfo) => {
@@ -454,42 +485,52 @@ test.describe('a11y: keyboard only', () => {
     const errors = await openEditor(page);
     const unmarked: string[] = [];
 
-    // 1. Pick the video: the empty-state button opens the file chooser.
+    // 1. Pick the video: the empty-state button opens the file chooser. The
+    //    whole video arrives on the timeline as one piece (ADR-019).
     await tabTo(page, (stop) => stop.name.includes(tr['preview.pickVideo']), unmarked, 'Video seç');
     const chooser = page.waitForEvent('filechooser', { timeout: 15_000 });
     await page.keyboard.press('Enter');
     await (await chooser).setFiles(SAMPLE_VIDEO);
     await expect(page.getByTestId('preview-video')).toBeVisible();
+    await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
+    const ranges = page.getByTestId('moment-card').locator('.moment-range');
 
-    // 2. Mark a start with the "I" button, type an end, add.
-    await tabTo(page, byTestId('mark-start'), unmarked, 'the start mark button');
-    await page.keyboard.press('Enter');
-    await expect(page.getByTestId('range-start')).toHaveValue('00:00.000');
-    await tabTo(page, byTestId('range-end'), unmarked, 'the end field');
-    await page.keyboard.press('Control+A');
-    await page.keyboard.type('00:03.000');
-    await tabTo(page, byTestId('add-moment'), unmarked, 'Ekle');
-    await page.keyboard.press('Enter');
-    await expect(page.getByTestId('moment-count')).toHaveText('1 an');
+    // 2. Tab to the playhead on the timeline; Shift+Right is one second.
+    //    S cuts the piece under it, twice.
+    await tabTo(page, byTestId('timeline-playhead'), unmarked, 'the playhead');
+    await page.keyboard.press('Home');
+    for (let i = 0; i < 3; i += 1) await page.keyboard.press('Shift+ArrowRight');
+    await expect(page.getByTestId('current-time')).toHaveText('00:03.000');
+    await page.keyboard.press('s');
+    for (let i = 0; i < 7; i += 1) await page.keyboard.press('Shift+ArrowRight');
+    await page.keyboard.press('s');
+    await expect(ranges).toHaveText(['00:00.000 — 00:03.000', '00:03.000 — 00:10.000', '00:10.000 — 00:24.000']);
+    await expect(page.getByTestId('timeline-playhead')).toBeFocused();
 
-    // 3. A second moment, typed into both fields.
-    await page.getByTestId('range-start').focus();
-    await page.keyboard.press('Control+A');
-    await page.keyboard.type('00:10.000');
-    await page.keyboard.press('Tab');
-    await tabTo(page, byTestId('range-end'), unmarked, 'the end field');
-    await page.keyboard.press('Control+A');
-    await page.keyboard.type('00:12.000');
-    await tabTo(page, byTestId('add-moment'), unmarked, 'Ekle');
+    // 3. Select the middle piece from the keyboard and delete it. Focus
+    //    lands back on the playhead, not on the page body.
+    await tabTo(page, (stop) => stop.name.startsWith('button "Parça 02'), unmarked, 'piece 02');
     await page.keyboard.press('Enter');
-    await expect(page.getByTestId('moment-count')).toHaveText('2 an');
+    await expect(page.getByTestId('strip-clip').nth(1)).toHaveAttribute('data-selected', 'true');
+    await page.keyboard.press('Delete');
+    await expect(ranges).toHaveText(['00:00.000 — 00:03.000', '00:10.000 — 00:24.000']);
+    await expect(page.getByTestId('timeline-notice')).toContainText('Parça 02 silindi');
+    await expect(page.getByTestId('timeline-playhead')).toBeFocused();
 
-    // 4. Reorder: "move down" on the first card. Tab wraps round the page.
-    const firstRange = page.getByTestId('moment-card').first().locator('.moment-range');
-    await expect(firstRange).toHaveText('00:00.000 — 00:03.000');
+    // 4. Trim the end of the first piece with its edge slider, then undo it.
+    await tabTo(page, (stop) => stop.name.startsWith('button "Parça 01'), unmarked, 'piece 01');
+    await page.keyboard.press('Enter');
+    await tabTo(page, byTestId('trim-end'), unmarked, 'the end edge of piece 01');
+    await page.keyboard.press('Shift+ArrowLeft');
+    await expect(ranges.first()).toHaveText('00:00.000 — 00:02.000');
+    await page.keyboard.press('Control+z');
+    await expect(ranges.first()).toHaveText('00:00.000 — 00:03.000');
+
+    // 5. Reorder: "move down" on the first card. Tab wraps round the page.
+    const firstRange = ranges.first();
     await tabTo(page, byTestId('move-down'), unmarked, 'Arkaya al');
     await page.keyboard.press('Enter');
-    await expect(firstRange).toHaveText('00:10.000 — 00:12.000');
+    await expect(firstRange).toHaveText('00:10.000 — 00:24.000');
 
     // 5. Export dialog: opens with focus inside, Escape closes, focus returns.
     await tabTo(page, byTestId('open-export'), unmarked, 'Dışa aktar');
@@ -511,7 +552,12 @@ test.describe('a11y: keyboard only', () => {
     await expect(help).toHaveCount(0);
     expect((await focusStop(page)).testId).toBe('open-help');
 
-    // 7. The I / O shortcuts the help dialog promises.
+    // 7. The secondary range flow: the source preview and the I / O
+    //    shortcuts the help dialog promises.
+    const sourceTab = page.getByRole('tab', { name: tr['preview.source'], exact: true });
+    await tabTo(page, (stop) => stop.name.includes(tr['preview.output']), unmarked, 'the preview tabs');
+    await page.keyboard.press('ArrowLeft');
+    await expect(sourceTab).toHaveAttribute('aria-selected', 'true');
     await page.getByTestId('play-toggle').focus();
     await page.getByLabel(tr['preview.seekLabel']).focus();
     await page.keyboard.press('End');
@@ -804,9 +850,15 @@ test.describe('a11y: names a screen reader hears', () => {
 
     // Trim handles: sliders with a spoken Turkish value.
     await page.getByTestId('strip-clip').first().locator('.strip-clip-select').click();
-    const start = page.getByRole('slider', { name: 'An 01 başlangıcı' });
+    const start = page.getByRole('slider', { name: 'Parça 01 başlangıcı' });
     await expect(start).toBeVisible();
     await expect(start).toHaveAttribute('aria-valuetext', /saniye/);
+
+    // The one playhead is a named slider with a spoken value.
+    const playhead = page.getByRole('slider', { name: tr['timeline.playhead'] });
+    await expect(playhead).toBeVisible();
+    await expect(playhead).toHaveAttribute('aria-valuetext', /saniye, toplam 4 saniye$/);
+    await expect(playhead).toHaveAttribute('aria-describedby', 'timeline-hint');
 
     // The caption overlay is pixels; the words are in the caption panel.
     await page.getByRole('tab', { name: tr['preview.output'] }).click();

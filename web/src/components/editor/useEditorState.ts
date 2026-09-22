@@ -11,6 +11,8 @@ import {
 import {
   addCaptionCue,
   addClip,
+  addLeadingSource,
+  addWholeSource,
   applySilenceCuts,
   convertCaptionTimeBase,
   createEmptyProject,
@@ -31,7 +33,7 @@ import {
   setFraming,
   setMusicAsset,
   setVideoAsset,
-  splitClip,
+  splitAtTimelinePlayhead,
   updateCaptionCue,
   updateClipRange,
   updateMusic,
@@ -44,6 +46,7 @@ import {
   type ShiftCaptionsResult,
   type SilenceCutResult,
   type MusicRejection,
+  type TimelineSplitResult,
 } from '@/application/commands';
 import {
   canRedo as historyCanRedo,
@@ -67,7 +70,8 @@ import {
 import { totalOutputDurationUs } from '@/domain/timeline';
 import type { ClipSilence } from '@/domain/silence';
 import type { Micros } from '@/domain/time';
-import { splitPointAt, type Playhead, type SplitRejection } from '@/domain/trim';
+import type { SplitRejection } from '@/domain/trim';
+import { initialPlacement, type TimelineSplitRejection } from '@/domain/timelineEdit';
 import type { MessageKey } from '@/i18n/messages';
 
 export type PreviewMode = 'source' | 'output';
@@ -75,7 +79,20 @@ export type PreviewMode = 'source' | 'output';
 export interface MediaError {
   scope: 'video' | 'audio';
   reason: ProbeFailure;
+  /** The rejected file's name as picked; shown through `safeFileName`. */
+  fileName: string;
+  /** True when another file of the same kind was open and stays open. */
+  keptOpen: boolean;
 }
+
+/** What opening a video did, so the editor can say it and set up the preview. */
+export type VideoImportOutcome =
+  | { kind: 'rejected' }
+  /** The whole video went onto the timeline as one piece. */
+  | { kind: 'whole'; lengthUs: Micros }
+  /** Longer than the output limit: the timeline stays empty until the user chooses. */
+  | { kind: 'too_long'; durationUs: Micros }
+  | { kind: 'too_short' };
 
 const VIDEO_LIMITS = {
   maxBytes: WEB_LOCAL_POLICY.maxTotalSourceBytes,
@@ -87,15 +104,17 @@ const AUDIO_LIMITS = {
   maxDurationUs: WEB_LOCAL_POLICY.maxMusicDurationUs,
 };
 
-/** The shape every caption command returns: a new recipe, or a refusal. */
-type CaptionOutcome = { ok: true; project: Project } | { ok: false };
+/** The shape every caption or timeline command returns: a new recipe, or a refusal. */
+type CommandOutcome = { ok: true; project: Project } | { ok: false };
 
 /** The recipe to commit, or null when the command refused or changed nothing. */
-function changedProject(result: CaptionOutcome, base: Project): Project | null {
+function changedProject(result: CommandOutcome, base: Project): Project | null {
   return result.ok && result.project !== base ? result.project : null;
 }
 
-function rejectionKey(reason: AddClipRejection | MusicRejection | SplitRejection): MessageKey {
+function rejectionKey(
+  reason: AddClipRejection | MusicRejection | SplitRejection | TimelineSplitRejection,
+): MessageKey {
   return `error.${reason}` as MessageKey;
 }
 
@@ -143,32 +162,38 @@ export function useEditorState() {
   );
 
   const importVideo = useCallback(
-    async (file: File) => {
+    async (file: File): Promise<VideoImportOutcome> => {
       setMediaError(null);
       setActionError(null);
+      setTimelineError(null);
+      const keptOpen = liveHandles.current.video !== null;
       const musicBytes = liveHandles.current.audio?.file.size ?? 0;
       if (
         file.size <= VIDEO_LIMITS.maxBytes &&
         exceedsTotalSourceBytes(WEB_LOCAL_POLICY, file.size, musicBytes)
       ) {
-        setMediaError({ scope: 'video', reason: 'total_too_large' });
-        return;
+        setMediaError({ scope: 'video', reason: 'total_too_large', fileName: file.name, keptOpen });
+        return { kind: 'rejected' };
       }
       setImporting('video');
       const outcome = await probeVideoFile(file, VIDEO_LIMITS);
       setImporting(null);
 
       if (!outcome.ok) {
-        setMediaError({ scope: 'video', reason: outcome.reason });
-        return;
+        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen });
+        return { kind: 'rejected' };
       }
+
+      // ADR-019: a video that fits the output limit goes onto the timeline
+      // whole, as one piece. A longer one is not truncated silently.
+      const placement = initialPlacement(outcome.handle.durationUs, WEB_LOCAL_POLICY);
 
       setVideo((previous) => {
         previous?.release();
         return outcome.handle;
       });
       setSelectedClipId(null);
-      setPreviewMode('source');
+      setPreviewMode(placement.kind === 'whole' ? 'output' : 'source');
       setHistory((current) => {
         const assetId = nextAssetId(current.present, 'video');
         setBindings((previous) => [
@@ -179,7 +204,7 @@ export function useEditorState() {
             displayHeight: outcome.handle.displayHeight,
           }),
         ]);
-        return commit(
+        const withVideo = commit(
           current,
           setVideoAsset(current.present, {
             assetId,
@@ -196,7 +221,18 @@ export function useEditorState() {
               : { hasAudio: outcome.handle.hasAudio }),
           }),
         );
+        if (placement.kind !== 'whole') return withVideo;
+        // Its own undo step on top of the import: the first Ctrl+Z empties
+        // the timeline and keeps the video open (the secondary range flow).
+        const whole = addWholeSource(withVideo.present, WEB_LOCAL_POLICY);
+        return whole.ok ? commit(withVideo, whole.project) : withVideo;
       });
+      if (placement.kind === 'whole') {
+        return { kind: 'whole', lengthUs: placement.sourceOutUs - placement.sourceInUs };
+      }
+      return placement.kind === 'too_long'
+        ? { kind: 'too_long', durationUs: placement.durationUs }
+        : { kind: 'too_short' };
     },
     [],
   );
@@ -204,12 +240,13 @@ export function useEditorState() {
   const importAudio = useCallback(async (file: File) => {
     setMediaError(null);
     setActionError(null);
+    const keptOpen = liveHandles.current.audio !== null;
     const videoBytes = liveHandles.current.video?.file.size ?? 0;
     if (
       file.size <= AUDIO_LIMITS.maxBytes &&
       exceedsTotalSourceBytes(WEB_LOCAL_POLICY, file.size, videoBytes)
     ) {
-      setMediaError({ scope: 'audio', reason: 'total_too_large' });
+      setMediaError({ scope: 'audio', reason: 'total_too_large', fileName: file.name, keptOpen });
       return;
     }
     setImporting('audio');
@@ -217,7 +254,7 @@ export function useEditorState() {
     setImporting(null);
 
     if (!outcome.ok) {
-      setMediaError({ scope: 'audio', reason: outcome.reason });
+      setMediaError({ scope: 'audio', reason: outcome.reason, fileName: file.name, keptOpen });
       return;
     }
 
@@ -285,7 +322,7 @@ export function useEditorState() {
       const outcome = await probeVideoFile(file, VIDEO_LIMITS);
       setImporting(null);
       if (!outcome.ok) {
-        setMediaError({ scope: 'video', reason: outcome.reason });
+        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen: false });
         return { ok: false, reason: outcome.reason };
       }
 
@@ -330,7 +367,7 @@ export function useEditorState() {
       const outcome = await probeAudioFile(file, AUDIO_LIMITS);
       setImporting(null);
       if (!outcome.ok) {
-        setMediaError({ scope: 'audio', reason: outcome.reason });
+        setMediaError({ scope: 'audio', reason: outcome.reason, fileName: file.name, keptOpen: false });
         return { ok: false, reason: outcome.reason };
       }
 
@@ -403,67 +440,6 @@ export function useEditorState() {
     [],
   );
 
-  const dropMoment = useCallback(
-    (clipId: string) => {
-      setActionError(null);
-      setSelectedClipId((selected) => (selected === clipId ? null : selected));
-      setHistory((current) => commit(current, removeClip(current.present, clipId)));
-    },
-    [],
-  );
-
-  /**
-   * Splits a moment where the preview's playhead is. The playhead is passed
-   * with its clock (source or output) and mapped in the domain, so the result
-   * mode never cuts at a source second that belongs to another occurrence.
-   */
-  const splitMoment = useCallback((clipId: string | null, playhead: Playhead) => {
-    setActionError(null);
-    setHistory((current) => {
-      const point = splitPointAt(current.present, clipId, playhead, WEB_LOCAL_POLICY);
-      if (!point.ok || !clipId) {
-        setTimelineError(rejectionKey(point.ok ? 'no_selection' : point.reason));
-        return current;
-      }
-      const result = splitClip(current.present, clipId, point.sourceUs, WEB_LOCAL_POLICY);
-      if (!result.ok) {
-        setTimelineError(rejectionKey(result.reason));
-        return current;
-      }
-      setTimelineError(null);
-      return commit(current, result.project);
-    });
-  }, []);
-
-  /**
-   * Stores a trimmed range from the strip handles. `coalesce` folds the change
-   * into the undo step that is already on top — used for a held arrow key, so
-   * one long press is one undo, not thirty.
-   */
-  const trimMoment = useCallback(
-    (clipId: string, range: { sourceInUs: Micros; sourceOutUs: Micros }, coalesce = false) => {
-      setActionError(null);
-      setHistory((current) => {
-        const clip = current.present.clips.find((item) => item.clipId === clipId);
-        if (
-          clip &&
-          clip.sourceInUs === range.sourceInUs &&
-          clip.sourceOutUs === range.sourceOutUs
-        ) {
-          return current;
-        }
-        const result = updateClipRange(current.present, clipId, range, WEB_LOCAL_POLICY);
-        if (!result.ok) {
-          setTimelineError(rejectionKey(result.reason));
-          return current;
-        }
-        setTimelineError(null);
-        return coalesce ? historyReplace(current, result.project) : commit(current, result.project);
-      });
-    },
-    [],
-  );
-
   const shiftMoment = useCallback((clipId: string, delta: -1 | 1) => {
     setActionError(null);
     setHistory((current) => {
@@ -510,24 +486,28 @@ export function useEditorState() {
   }, []);
 
   /**
-   * Runs a caption command (or the silence-cut command, which has the same
-   * result shape) and commits it as one undo step.
+   * Runs a command (captions, silence cuts, the timeline actions) and commits
+   * it as one undo step — or, with `coalesce`, folds it into the step on top
+   * (a held arrow key on a trim edge is one undo, not thirty).
    *
-   * Unlike the moment commands, the caller needs the outcome right away (the
-   * new cue id to focus, or the reason to show under the line), so the command
-   * runs against the rendered project first. The updater re-runs it only if
-   * another update landed in between, so nothing is committed on top of a
-   * stale recipe.
+   * The caller needs the outcome right away (the new cue id to focus, the
+   * piece to announce, the reason to show), so the command runs against the
+   * rendered project first. The updater re-runs it only if another update
+   * landed in between, so nothing is committed on top of a stale recipe.
+   * A successful edit also clears a stale file-rejection message.
    */
-  const runCaption = useCallback(
-    <R extends CaptionOutcome>(run: (base: Project) => R): R => {
+  const runCommand = useCallback(
+    <R extends CommandOutcome>(run: (base: Project) => R, coalesce = false): R => {
       const result = run(project);
       const changed = changedProject(result, project);
       if (changed) {
+        const store = (history: History<Project>, next: Project) =>
+          coalesce ? historyReplace(history, next) : commit(history, next);
+        setMediaError(null);
         setHistory((current) => {
-          if (current.present === project) return commit(current, changed);
+          if (current.present === project) return store(current, changed);
           const again = changedProject(run(current.present), current.present);
-          return again ? commit(current, again) : current;
+          return again ? store(current, again) : current;
         });
       }
       return result;
@@ -535,34 +515,127 @@ export function useEditorState() {
     [project],
   );
 
+  /** Deletes a piece; the pieces after it close up. One undo step. Returns the new recipe. */
+  const deletePiece = useCallback(
+    (clipId: string): Project | null => {
+      setActionError(null);
+      setTimelineError(null);
+      const result = runCommand((base): CommandOutcome => {
+        const next = removeClip(base, clipId);
+        return next === base ? { ok: false } : { ok: true, project: next };
+      });
+      if (!result.ok) return null;
+      setSelectedClipId((selected) => (selected === clipId ? null : selected));
+      return result.project;
+    },
+    [runCommand],
+  );
+
+  /**
+   * "Böl": cuts the piece under the playhead (ADR-019). The piece now under
+   * the playhead — the second half — becomes the selection, so "Sil" right
+   * after a split removes what follows the cut.
+   */
+  const splitPiece = useCallback(
+    (playhead: Parameters<typeof splitAtTimelinePlayhead>[1]): TimelineSplitResult => {
+      setActionError(null);
+      const result = runCommand((base) => splitAtTimelinePlayhead(base, playhead, WEB_LOCAL_POLICY));
+      if (!result.ok) {
+        setTimelineError(rejectionKey(result.reason));
+        return result;
+      }
+      setTimelineError(null);
+      setSelectedClipId(result.newClipId);
+      return result;
+    },
+    [runCommand],
+  );
+
+  /**
+   * Stores a trimmed range from an edge of a piece. `coalesce` folds the
+   * change into the undo step on top (held arrow key). Returns the new
+   * recipe, or null when nothing changed.
+   */
+  const trimPiece = useCallback(
+    (
+      clipId: string,
+      range: { sourceInUs: Micros; sourceOutUs: Micros },
+      coalesce = false,
+    ): Project | null => {
+      setActionError(null);
+      const result = runCommand((base) => {
+        const clip = base.clips.find((item) => item.clipId === clipId);
+        if (clip && clip.sourceInUs === range.sourceInUs && clip.sourceOutUs === range.sourceOutUs) {
+          return { ok: false as const, reason: null };
+        }
+        return updateClipRange(base, clipId, range, WEB_LOCAL_POLICY);
+      }, coalesce);
+      if (result.ok) {
+        setTimelineError(null);
+        return result.project;
+      }
+      if (result.reason) setTimelineError(rejectionKey(result.reason));
+      return null;
+    },
+    [runCommand],
+  );
+
+  /** "Tüm videoyu ekle" on an empty timeline. */
+  const addWholeVideo = useCallback((): Project | null => {
+    setActionError(null);
+    const result = runCommand((base) => addWholeSource(base, WEB_LOCAL_POLICY));
+    if (!result.ok) {
+      setTimelineError(
+        rejectionKey(
+          result.reason === 'source_longer_than_output' ? 'output_duration_exceeds_policy' : result.reason,
+        ),
+      );
+      return null;
+    }
+    setTimelineError(null);
+    return result.project;
+  }, [runCommand]);
+
+  /** "İlk 5 dakikayı ekle" for a video longer than the output limit. */
+  const addLeadingMinutes = useCallback((): Project | null => {
+    setActionError(null);
+    const result = runCommand((base) => addLeadingSource(base, WEB_LOCAL_POLICY));
+    if (!result.ok) {
+      setTimelineError(rejectionKey(result.reason));
+      return null;
+    }
+    setTimelineError(null);
+    return result.project;
+  }, [runCommand]);
+
   const addCaption = useCallback(
-    (input: CaptionCueInput) => runCaption((base) => addCaptionCue(base, input)),
-    [runCaption],
+    (input: CaptionCueInput) => runCommand((base) => addCaptionCue(base, input)),
+    [runCommand],
   );
 
   const updateCaption = useCallback(
     (cueId: string, patch: Partial<CaptionCueInput>) =>
-      runCaption((base) => updateCaptionCue(base, cueId, patch)),
-    [runCaption],
+      runCommand((base) => updateCaptionCue(base, cueId, patch)),
+    [runCommand],
   );
 
   /** Re-anchors the track to the other clock (ADR-016). One undo step. */
   const convertCaptions = useCallback(
     (target: 'output' | 'source'): CaptionConversionResult =>
-      runCaption((base) => convertCaptionTimeBase(base, target)),
-    [runCaption],
+      runCommand((base) => convertCaptionTimeBase(base, target)),
+    [runCommand],
   );
 
   const shiftAllCaptions = useCallback(
-    (deltaUs: Micros): ShiftCaptionsResult => runCaption((base) => shiftCaptions(base, deltaUs)),
-    [runCaption],
+    (deltaUs: Micros): ShiftCaptionsResult => runCommand((base) => shiftCaptions(base, deltaUs)),
+    [runCommand],
   );
 
   /** Replaces the track with lines from a subtitle file. One undo step. */
   const importCaptions = useCallback(
     (cues: readonly ImportedCueInput[], timeBase: 'output' | 'source'): CaptionImportResult =>
-      runCaption((base) => importCaptionTrack(base, cues, timeBase)),
-    [runCaption],
+      runCommand((base) => importCaptionTrack(base, cues, timeBase)),
+    [runCommand],
   );
 
   /**
@@ -571,8 +644,8 @@ export function useEditorState() {
    */
   const cutSilences = useCallback(
     (removals: readonly ClipSilence[]): SilenceCutResult =>
-      runCaption((base) => applySilenceCuts(base, removals, WEB_LOCAL_POLICY)),
-    [runCaption],
+      runCommand((base) => applySilenceCuts(base, removals, WEB_LOCAL_POLICY)),
+    [runCommand],
   );
 
   const removeCaption = useCallback((cueId: string) => {
@@ -669,9 +742,11 @@ export function useEditorState() {
     dropAudio,
     addMoment,
     editMomentRange,
-    dropMoment,
-    splitMoment,
-    trimMoment,
+    deletePiece,
+    splitPiece,
+    trimPiece,
+    addWholeVideo,
+    addLeadingMinutes,
     shiftMoment,
     changeFraming,
     changeClipGain,
