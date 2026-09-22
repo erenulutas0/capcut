@@ -155,7 +155,9 @@ export function useExport(project: Project, videoFile: File | null, audioFile: F
       totalFrames: plan.totalFrames,
     });
 
-    for await (const event of client().export(plan, videoFile, audioFile)) {
+    for await (const event of client().export(plan, videoFile, audioFile, {
+      memoryRouteLimitUs: WEB_LOCAL_POLICY.maxMemoryRouteOutputDurationUs,
+    })) {
       switch (event.type) {
         case 'preparing':
           setState({

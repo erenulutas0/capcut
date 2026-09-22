@@ -71,7 +71,7 @@ import { totalOutputDurationUs } from '@/domain/timeline';
 import type { ClipSilence } from '@/domain/silence';
 import type { Micros } from '@/domain/time';
 import type { SplitRejection } from '@/domain/trim';
-import { initialPlacement, type TimelineSplitRejection } from '@/domain/timelineEdit';
+import { aspectForVideo, initialPlacement, type TimelineSplitRejection } from '@/domain/timelineEdit';
 import type { MessageKey } from '@/i18n/messages';
 
 export type PreviewMode = 'source' | 'output';
@@ -89,10 +89,10 @@ export interface MediaError {
 export type VideoImportOutcome =
   | { kind: 'rejected' }
   /** The whole video went onto the timeline as one piece. */
-  | { kind: 'whole'; lengthUs: Micros }
+  | { kind: 'whole'; lengthUs: Micros; aspect: AspectRatio | null }
   /** Longer than the output limit: the timeline stays empty until the user chooses. */
-  | { kind: 'too_long'; durationUs: Micros }
-  | { kind: 'too_short' };
+  | { kind: 'too_long'; durationUs: Micros; aspect: AspectRatio | null }
+  | { kind: 'too_short'; aspect: AspectRatio | null };
 
 const VIDEO_LIMITS = {
   maxBytes: WEB_LOCAL_POLICY.maxTotalSourceBytes,
@@ -187,6 +187,11 @@ export function useEditorState() {
       // ADR-019: a video that fits the output limit goes onto the timeline
       // whole, as one piece. A longer one is not truncated silently.
       const placement = initialPlacement(outcome.handle.durationUs, WEB_LOCAL_POLICY);
+      // Opening a video always starts an empty timeline (the new asset keeps
+      // no old pieces), so the frame follows the video's orientation. Part of
+      // the import step: undoing the import restores the previous frame too.
+      // Restoring a saved project does not come here and keeps its frame.
+      const aspect = aspectForVideo(outcome.handle.displayWidth, outcome.handle.displayHeight);
 
       setVideo((previous) => {
         previous?.release();
@@ -204,23 +209,25 @@ export function useEditorState() {
             displayHeight: outcome.handle.displayHeight,
           }),
         ]);
-        const withVideo = commit(
-          current,
-          setVideoAsset(current.present, {
-            assetId,
-            kind: 'video',
-            durationUs: outcome.handle.durationUs,
-            ...(outcome.handle.displayWidth
-              ? { displayWidth: outcome.handle.displayWidth }
-              : {}),
-            ...(outcome.handle.displayHeight
-              ? { displayHeight: outcome.handle.displayHeight }
-              : {}),
-            ...(outcome.handle.hasAudio === undefined
-              ? {}
-              : { hasAudio: outcome.handle.hasAudio }),
-          }),
-        );
+        const replaced = setVideoAsset(current.present, {
+          assetId,
+          kind: 'video',
+          durationUs: outcome.handle.durationUs,
+          ...(outcome.handle.displayWidth
+            ? { displayWidth: outcome.handle.displayWidth }
+            : {}),
+          ...(outcome.handle.displayHeight
+            ? { displayHeight: outcome.handle.displayHeight }
+            : {}),
+          ...(outcome.handle.hasAudio === undefined
+            ? {}
+            : { hasAudio: outcome.handle.hasAudio }),
+        });
+        const framed =
+          aspect && replaced.clips.length === 0 && replaced.canvas.aspect !== aspect
+            ? setFraming(replaced, { aspect })
+            : replaced;
+        const withVideo = commit(current, framed);
         if (placement.kind !== 'whole') return withVideo;
         // Its own undo step on top of the import: the first Ctrl+Z empties
         // the timeline and keeps the video open (the secondary range flow).
@@ -228,11 +235,11 @@ export function useEditorState() {
         return whole.ok ? commit(withVideo, whole.project) : withVideo;
       });
       if (placement.kind === 'whole') {
-        return { kind: 'whole', lengthUs: placement.sourceOutUs - placement.sourceInUs };
+        return { kind: 'whole', lengthUs: placement.sourceOutUs - placement.sourceInUs, aspect };
       }
       return placement.kind === 'too_long'
-        ? { kind: 'too_long', durationUs: placement.durationUs }
-        : { kind: 'too_short' };
+        ? { kind: 'too_long', durationUs: placement.durationUs, aspect }
+        : { kind: 'too_short', aspect };
     },
     [],
   );
@@ -596,7 +603,7 @@ export function useEditorState() {
     return result.project;
   }, [runCommand]);
 
-  /** "İlk 5 dakikayı ekle" for a video longer than the output limit. */
+  /** "İlk N dakikayı ekle" for a video longer than the output limit. */
   const addLeadingMinutes = useCallback((): Project | null => {
     setActionError(null);
     const result = runCommand((base) => addLeadingSource(base, WEB_LOCAL_POLICY));

@@ -1566,6 +1566,14 @@ html:has(.editor-root[data-mode='phone']) {
   }
 }
 
+/* "Videoyu indir" is longer than the old "Dışa aktar": at 320 px the words
+   stay and the icon goes, so the top bar never scrolls sideways. */
+@media (max-width: 360px) {
+  .topbar-download svg {
+    display: none;
+  }
+}
+
 /* --------------------------------------------------------------- progress */
 
 .progress-track {

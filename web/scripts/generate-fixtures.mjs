@@ -174,10 +174,12 @@ const invalid = {
   ],
   'range-out-of-source': [project({ clips: [clip('c_001', 15, 25)] }), ['range_out_of_source']],
   'clip-too-short': [project({ clips: [clip('c_001', 0, 0.05)] }), ['clip_too_short']],
+  // Policy v3: 60 minutes of output. A 40-minute source (inside the 60-minute
+  // input limit) used twice gives 65 minutes: only the output rule fails.
   'output-duration-exceeds-policy': [
     project({
-      assets: [{ ...videoAsset, durationUs: 400 * S }],
-      clips: [clip('c_001', 0, 400)],
+      assets: [{ ...videoAsset, durationUs: 40 * 60 * S }],
+      clips: [clip('c_001', 0, 40 * 60), clip('c_002', 0, 25 * 60)],
     }),
     ['output_duration_exceeds_policy'],
   ],

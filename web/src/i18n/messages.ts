@@ -29,7 +29,7 @@ export const tr = {
   'topbar.undo': 'Geri al',
   'topbar.redo': 'İleri al',
   'topbar.help': 'Kısayollar ve sınırlar',
-  'topbar.export': 'Dışa aktar',
+  'topbar.export': 'Videoyu indir',
   'topbar.saveState.idle': 'Henüz kaydedilmedi',
   'topbar.saveState.saving': 'Kaydediliyor…',
   'topbar.saveState.saved': 'Kaydedildi',
@@ -542,7 +542,7 @@ export const tr = {
   'time.minuteShort': 'dk',
   'time.secondShort': 'sn',
 
-  'export.title': 'Videonu hazırla.',
+  'export.title': 'Videoyu indir',
   'export.eyebrow': 'SON BİR BAKIŞ',
   'export.subtitle': 'Çıktı ayarları · gerçek proje değerlerinden hesaplandı',
   'export.subtitleReady': 'Kodlama bu bilgisayarda yapılır · dosya yüklenmez',
@@ -588,7 +588,7 @@ export const tr = {
   'export.route.memory': 'bellek',
   'export.framesMissing': 'Çözülemeyen kare',
   'export.framesMissing.value': '{count} kare, yerine önceki kare gösterildi',
-  'export.save': 'Dosyayı kaydet',
+  'export.save': 'Bilgisayara kaydet',
   'export.again': 'Yeniden oluştur',
   'export.noAudioTrack': 'ses yok',
   'export.failedTitle': 'Çıktı alınamadı.',
@@ -615,6 +615,10 @@ export const tr = {
   'export.fail.out_of_memory': 'Tarayıcının belleği yetmedi. Daha kısa bir çıktı dene.',
   'export.fail.output_storage_full':
     'Tarayıcının depolama alanı çıktı dosyası için yetmedi. Yer açıp tekrar dene.',
+  'export.fail.output_too_long_for_memory':
+    'Bu tarayıcı videoyu diske yazamıyor; burada en fazla 5 dakikalık video indirilebilir. Zaman çizgisini kısalt ya da gizli olmayan bir pencerede, güncel bir tarayıcıda dene.',
+  'export.fail.output_storage_insufficient':
+    'Bu uzunlukta bir video için tarayıcının kullanabileceği boş disk alanı yetmiyor. Diskte yer aç ya da zaman çizgisini 5 dakikaya kadar kısalt; hiçbir kare kodlanmadı.',
   'export.fail.worker_unavailable': 'Arka plan işleyicisi başlatılamadı.',
   'export.fail.internal_error': 'Beklenmeyen bir hata oluştu.',
   'export.plan.no_clips': 'Zaman çizgisi boş.',
@@ -622,7 +626,7 @@ export const tr = {
     'Projenin video dosyası bu sekmede açık değil. Çıktı almak için dosyayı yeniden seç.',
   'export.plan.missing_source_dimensions': 'Kaynak videonun boyutları okunamadı.',
   'export.plan.unknown_asset': 'Tarifte tanımsız bir kaynak var.',
-  'export.plan.output_duration_exceeds_policy': 'Toplam çıktı süresi 5 dakikayı aşıyor.',
+  'export.plan.output_duration_exceeds_policy': 'Toplam çıktı süresi 60 dakikayı aşıyor.',
   'export.plan.zero_frames': 'Çıktıda tek kare bile yok.',
   'export.localNote':
     'Kodlama tamamen bu bilgisayarda, tarayıcı içinde yapılır. Hiçbir dosya yüklenmez.',
@@ -659,7 +663,7 @@ export const tr = {
   'error.range_out_of_source': 'Seçilen aralık videonun dışında.',
   'error.clip_too_short': 'Bir parça en az 0,1 saniye olmalı.',
   'error.clip_limit_exceeded': 'Bir projede en çok 20 parça olabilir. Bölmek için önce bir parçayı sil.',
-  'error.output_duration_exceeds_policy': 'Toplam çıktı süresi 5 dakikayı aşamaz.',
+  'error.output_duration_exceeds_policy': 'Toplam çıktı süresi 60 dakikayı aşamaz.',
   'error.no_source': 'Önce bir video seç.',
   'error.invalid_time': 'Zamanı 00:15.000 gibi dakika:saniye ya da yalnızca saniye (15) olarak yaz.',
   'error.fade_exceeds_selection': 'Açılış ve kapanış toplamı müzik bölümünden uzun olamaz.',
@@ -689,6 +693,8 @@ export const tr = {
   'help.shortcut.split': 'Oynatma çizgisindeki parçayı ikiye böl',
   'help.shortcut.trim': 'Odaklı parça kenarını 1 kare / Shift ile 1 saniye kaydır',
   'help.shortcutNote': 'Bir metin veya zaman alanına yazarken kısayollar devre dışıdır.',
+  'help.limit.length':
+    'Açılan video en fazla 60 dakika ve 2 GiB. İndirilen video en fazla 60 dakika; tarayıcı videoyu diske yazamıyorsa en fazla 5 dakika.',
   'help.limit.export': 'Çıktı yalnızca uygunluk kontrolünü geçen tarayıcıda alınabilir.',
   'help.limit.mix': 'Önizlemede iki oynatıcı birlikte çalışır; gerçek miks yalnızca çıktıda yapılır.',
   'help.limit.save':
@@ -706,15 +712,15 @@ export const tr = {
   'timeline.fitLabel': 'Zaman çizgisini genişliğe sığdır',
   'timeline.addWhole': 'Tüm videoyu ekle',
   'timeline.addRange': 'Aralık seçerek ekle',
-  'timeline.addFirst': 'İlk 5 dakikayı ekle',
-  'timeline.tooLongTitle': 'Bu video {duration}; çıktı en fazla 5 dakika olabilir.',
+  'timeline.addFirst': 'İlk 60 dakikayı ekle',
+  'timeline.tooLongTitle': 'Bu video {duration}; çıktı en fazla 60 dakika olabilir.',
   'timeline.tooLongBody':
-    'Videonu kendiliğinden kesmiyoruz. Baştan 5 dakikayı ekleyebilir ya da kaynakta istediğin aralığı seçebilirsin.',
+    'Videonu kendiliğinden kesmiyoruz. Baştan 60 dakikayı ekleyebilir ya da kaynakta istediğin aralığı seçebilirsin.',
   'timeline.emptyBody': 'Videonun tamamını tek parça olarak ekle, sonra istemediğin yerleri böl ve sil.',
   'timeline.notice.imported':
     'Video zaman çizgisine tek parça olarak eklendi ({length}). Kesmek için oynatma çizgisini taşı ve Böl’e bas · Geri al: Ctrl+Z',
   'timeline.notice.addedWhole': 'Video zaman çizgisine tek parça olarak eklendi ({length}) · Geri al: Ctrl+Z',
-  'timeline.notice.addedFirst': 'Videonun ilk 5 dakikası zaman çizgisine eklendi · Geri al: Ctrl+Z',
+  'timeline.notice.addedFirst': 'Videonun ilk 60 dakikası zaman çizgisine eklendi · Geri al: Ctrl+Z',
   'timeline.notice.split': 'Parça {index} ikiye bölündü: {first} + {second} · Geri al: Ctrl+Z',
   'timeline.notice.deleted': 'Parça {index} silindi ({length}); kalanlar birleşti · Geri al: Ctrl+Z',
   'timeline.notice.trimmed': 'Parça {index} kısaltıldı: {from} → {to} · Geri al: Ctrl+Z',
@@ -722,6 +728,10 @@ export const tr = {
   'timeline.notice.heldAtMin':
     'Parça {index} sürüklenerek {min} sürenin altına inemez; orada durdu: {from} → {to} · Geri al: Ctrl+Z',
   'timeline.notice.dismiss': 'Bildirimi kapat',
+  'timeline.notice.aspectPortrait': 'Dikey video: çerçeve 9:16 seçildi',
+  'timeline.notice.aspectLandscape': 'Yatay video: çerçeve 16:9 seçildi',
+  'timeline.notice.aspectSquare': 'Kare video: çerçeve 1:1 seçildi',
+  'timeline.outputHint': 'İndirilen video, zaman çizgisindeki parçalardan oluşur.',
 
   'footer.local': 'Yerel düzenleme · kaynak dosya değişmez · bulut yüklemesi yok',
   'unsaved.prompt': 'Bu oturumdaki düzenlemen kaydedilmedi.',
@@ -755,7 +765,7 @@ export const en: Record<MessageKey, string> = {
   'topbar.undo': 'Undo',
   'topbar.redo': 'Redo',
   'topbar.help': 'Shortcuts and limits',
-  'topbar.export': 'Export',
+  'topbar.export': 'Download video',
   'topbar.saveState.idle': 'Not saved yet',
   'topbar.saveState.saving': 'Saving…',
   'topbar.saveState.saved': 'Saved',
@@ -1263,7 +1273,7 @@ export const en: Record<MessageKey, string> = {
   'time.minuteShort': 'min',
   'time.secondShort': 's',
 
-  'export.title': 'Prepare your video.',
+  'export.title': 'Download video',
   'export.eyebrow': 'ONE LAST LOOK',
   'export.subtitle': 'Export settings · computed from the real project values',
   'export.subtitleReady': 'Encoding runs on this computer · nothing is uploaded',
@@ -1309,7 +1319,7 @@ export const en: Record<MessageKey, string> = {
   'export.route.memory': 'memory',
   'export.framesMissing': 'Undecodable frames',
   'export.framesMissing.value': '{count} frames, the previous frame was held',
-  'export.save': 'Save the file',
+  'export.save': 'Save to this computer',
   'export.again': 'Export again',
   'export.noAudioTrack': 'no audio',
   'export.failedTitle': 'Export failed.',
@@ -1339,6 +1349,10 @@ export const en: Record<MessageKey, string> = {
   'export.fail.out_of_memory': 'The browser ran out of memory. Try a shorter output.',
   'export.fail.output_storage_full':
     'The browser ran out of storage for the output file. Free some space and try again.',
+  'export.fail.output_too_long_for_memory':
+    'This browser cannot write the video to disk; here you can download at most 5 minutes of video. Shorten the timeline, or try an up-to-date browser in a normal (not private) window.',
+  'export.fail.output_storage_insufficient':
+    'There is not enough free disk space available to the browser for a video this long. Free some disk space or shorten the timeline to 5 minutes; no frame was encoded.',
   'export.fail.worker_unavailable': 'The background worker could not be started.',
   'export.fail.internal_error': 'An unexpected error occurred.',
   'export.plan.no_clips': 'The timeline is empty.',
@@ -1346,7 +1360,7 @@ export const en: Record<MessageKey, string> = {
     'The project\u2019s video file is not open in this tab. Choose it again to export.',
   'export.plan.missing_source_dimensions': 'The source video dimensions could not be read.',
   'export.plan.unknown_asset': 'The recipe references an unknown source.',
-  'export.plan.output_duration_exceeds_policy': 'Total output duration exceeds 5 minutes.',
+  'export.plan.output_duration_exceeds_policy': 'Total output duration exceeds 60 minutes.',
   'export.plan.zero_frames': 'The output would contain no frames at all.',
   'export.localNote':
     'Encoding happens entirely on this computer, inside the browser. Nothing is uploaded.',
@@ -1381,7 +1395,7 @@ export const en: Record<MessageKey, string> = {
   'error.range_out_of_source': 'The selected range is outside the video.',
   'error.clip_too_short': 'A clip must be at least 0.1 seconds.',
   'error.clip_limit_exceeded': 'A project can hold at most 20 clips. Delete a clip before splitting.',
-  'error.output_duration_exceeds_policy': 'Total output duration cannot exceed 5 minutes.',
+  'error.output_duration_exceeds_policy': 'Total output duration cannot exceed 60 minutes.',
   'error.no_source': 'Choose a video first.',
   'error.invalid_time': 'Write the time as minutes:seconds like 00:15.000, or just seconds (15).',
   'error.fade_exceeds_selection': 'Fade in plus fade out cannot exceed the music segment.',
@@ -1411,6 +1425,8 @@ export const en: Record<MessageKey, string> = {
   'help.shortcut.split': 'Split the clip under the playhead',
   'help.shortcut.trim': 'Move the focused clip edge by 1 frame / 1 second with Shift',
   'help.shortcutNote': 'Shortcuts are disabled while you type in a text or time field.',
+  'help.limit.length':
+    'An opened video can be up to 60 minutes and 2 GiB. The downloaded video can be up to 60 minutes; at most 5 minutes if the browser cannot write the video to disk.',
   'help.limit.export': 'Export is only possible in a browser that passes the capability check.',
   'help.limit.mix': 'The preview runs two players together; the real mix happens only in the export.',
   'help.limit.save':
@@ -1428,15 +1444,15 @@ export const en: Record<MessageKey, string> = {
   'timeline.fitLabel': 'Fit the timeline to the width',
   'timeline.addWhole': 'Add the whole video',
   'timeline.addRange': 'Add a range',
-  'timeline.addFirst': 'Add the first 5 minutes',
-  'timeline.tooLongTitle': 'This video is {duration}; the output can be at most 5 minutes.',
+  'timeline.addFirst': 'Add the first 60 minutes',
+  'timeline.tooLongTitle': 'This video is {duration}; the output can be at most 60 minutes.',
   'timeline.tooLongBody':
-    'We do not cut your video on our own. Add the first 5 minutes, or pick the range you want in the source.',
+    'We do not cut your video on our own. Add the first 60 minutes, or pick the range you want in the source.',
   'timeline.emptyBody': 'Add the whole video as one clip, then split and delete the parts you do not want.',
   'timeline.notice.imported':
     'The video was added to the timeline as one clip ({length}). To cut, move the playhead and press Split · Undo: Ctrl+Z',
   'timeline.notice.addedWhole': 'The video was added to the timeline as one clip ({length}) · Undo: Ctrl+Z',
-  'timeline.notice.addedFirst': 'The first 5 minutes of the video were added to the timeline · Undo: Ctrl+Z',
+  'timeline.notice.addedFirst': 'The first 60 minutes of the video were added to the timeline · Undo: Ctrl+Z',
   'timeline.notice.split': 'Clip {index} was split in two: {first} + {second} · Undo: Ctrl+Z',
   'timeline.notice.deleted': 'Clip {index} was deleted ({length}); the rest closed up · Undo: Ctrl+Z',
   'timeline.notice.trimmed': 'Clip {index} shortened: {from} → {to} · Undo: Ctrl+Z',
@@ -1444,6 +1460,10 @@ export const en: Record<MessageKey, string> = {
   'timeline.notice.heldAtMin':
     'A drag cannot make clip {index} shorter than {min}; it stopped there: {from} → {to} · Undo: Ctrl+Z',
   'timeline.notice.dismiss': 'Dismiss the message',
+  'timeline.notice.aspectPortrait': 'Portrait video: the 9:16 frame was chosen',
+  'timeline.notice.aspectLandscape': 'Landscape video: the 16:9 frame was chosen',
+  'timeline.notice.aspectSquare': 'Square video: the 1:1 frame was chosen',
+  'timeline.outputHint': 'The downloaded video is made of the clips on the timeline.',
 
   'footer.local': 'Local editing · your source file is unchanged · no cloud upload',
   'unsaved.prompt': 'Your edits in this session are not saved.',

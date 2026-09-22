@@ -42,6 +42,14 @@ const fixture = argValue('fixture', 'l01-dense-1080p.mp4');
  * so a disk-route measurement there only moves memory between processes.
  */
 const persistent = args.includes('--persistent');
+/**
+ * `--whole`: export the automatic single piece (ADR-019) — the whole source,
+ * e.g. a 60-minute file for the doc 15 v3 limit — instead of building a
+ * recipe from 15 s ranges. `--seconds` is then ignored (one run).
+ */
+const whole = args.includes('--whole');
+/** Long exports take longer than the default 15 minutes. */
+const timeoutMs = Number(argValue('timeout-min', '15')) * 60_000;
 
 if (process.platform !== 'win32') {
   console.error('Bu ölçüm şimdilik yalnızca Windows süreç örnekleyicisiyle çalışıyor.');
@@ -114,7 +122,7 @@ console.log(`profil: ${persistent ? 'kalıcı (disk)' : 'kalıcı olmayan (Playw
 
 const rows = [];
 
-for (const seconds of durations) {
+for (const seconds of whole ? [0] : durations) {
   const page = await context.newPage();
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
@@ -129,18 +137,33 @@ for (const seconds of durations) {
   // An absolute path measures any file, e.g. a user's own long recording.
   await page.getByTestId('video-input').setInputFiles(isAbsolute(fixture) ? fixture : join(mediaDir, fixture));
   await page.getByTestId('preview-video').waitFor({ timeout: 60_000 });
-  await emptyTimeline(page);
 
-  // Long outputs from a 20 s source by reusing ranges (doc 10 allows repeats).
-  // 15 s per moment keeps 300 s inside the 20-moment policy limit.
-  const perMoment = 15;
-  const moments = Math.max(1, Math.round(seconds / perMoment));
-  for (let i = 0; i < moments; i += 1) {
-    const from = i % 2 === 0 ? 0 : 5;
-    await page.getByTestId('range-start').fill(from.toFixed(3));
-    await page.getByTestId('range-end').fill((from + perMoment).toFixed(3));
-    await page.getByTestId('add-moment').click();
+  let requestedSeconds;
+  if (whole) {
+    // The video arrived as one full-length piece; export exactly that.
+    await page.getByTestId('strip-clip').first().waitFor({ timeout: 60_000 });
+    // The recipe's own output length, in microseconds.
+    const us = Number((await page.getByTestId('output-duration-us').textContent()) ?? '');
+    requestedSeconds = Number.isFinite(us) && us > 0 ? us / 1_000_000 : null;
+  } else {
+    await emptyTimeline(page);
+    // Long outputs from a 20 s source by reusing ranges (doc 10 allows repeats).
+    // 15 s per moment keeps 300 s inside the 20-moment policy limit.
+    const perMoment = 15;
+    const moments = Math.max(1, Math.round(seconds / perMoment));
+    for (let i = 0; i < moments; i += 1) {
+      const from = i % 2 === 0 ? 0 : 5;
+      await page.getByTestId('range-start').fill(from.toFixed(3));
+      await page.getByTestId('range-end').fill((from + perMoment).toFixed(3));
+      await page.getByTestId('add-moment').click();
+    }
+    requestedSeconds = moments * perMoment;
   }
+  // What the browser says it has room for, before the export starts.
+  const storageBefore = await page.evaluate(async () => {
+    const estimate = await navigator.storage.estimate();
+    return { quota: estimate.quota ?? null, usage: estimate.usage ?? null };
+  });
 
   await page.getByTestId('open-export').click();
   await page.getByTestId('export-quality').selectOption(quality);
@@ -165,7 +188,7 @@ for (const seconds of durations) {
   await page.getByTestId('export-create').click();
 
   let finished = false;
-  while (Date.now() - startedAt < 900_000) {
+  while (Date.now() - startedAt < timeoutMs) {
     if ((await page.getByTestId('export-succeeded').count()) > 0) {
       finished = true;
       break;
@@ -184,22 +207,45 @@ for (const seconds of durations) {
   const peakTotal = during.reduce((max, s) => Math.max(max, s.total), 0);
   const peakLargest = during.reduce((max, s) => Math.max(max, s.largest), 0);
 
+  // Flat or growing? The peak of each tenth of the run shows the trend a
+  // single peak number hides.
+  const tenths = [];
+  if (during.length > 0) {
+    const span = Math.max(1, elapsedMs);
+    for (let i = 0; i < 10; i += 1) {
+      const from = startedAt + (span * i) / 10;
+      const to = startedAt + (span * (i + 1)) / 10;
+      const slice = during.filter((s) => s.at >= from && s.at < to);
+      tenths.push(slice.length ? Number((slice.reduce((m, s) => Math.max(m, s.total), 0) / MIB).toFixed(0)) : null);
+    }
+  }
+
   const row = {
-    requestedSeconds: moments * perMoment,
+    requestedSeconds,
     quality,
     finished,
     elapsedMs,
+    realTimeFactor: requestedSeconds ? Number((requestedSeconds / (elapsedMs / 1000)).toFixed(2)) : null,
     sampleCount: during.length,
     baselineTotalMib: baseline ? Number((baseline.total / MIB).toFixed(0)) : null,
     peakTotalMib: Number((peakTotal / MIB).toFixed(0)),
     peakLargestProcessMib: Number((peakLargest / MIB).toFixed(0)),
     growthMib: baseline ? Number(((peakTotal - baseline.total) / MIB).toFixed(0)) : null,
+    peakMibPerTenth: tenths,
+    storageBefore,
   };
 
   if (finished) {
     row.route = ((await page.getByTestId('measured-route').textContent().catch(() => '')) ?? '').trim();
+    // The finished file sits in OPFS while the dialog offers it.
+    row.exportFilesWhileOffered = await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      let count = 0;
+      for await (const name of root.keys()) if (name.startsWith('clip-export-')) count += 1;
+      return count;
+    });
     const artefact = join(outDir, `mem-${row.requestedSeconds}s-${quality}.mp4`);
-    const download = page.waitForEvent('download', { timeout: 120_000 });
+    const download = page.waitForEvent('download', { timeout: 600_000 });
     await page.getByTestId('export-download').click();
     await (await download).saveAs(artefact);
     const probe = ffprobeJson(artefact);
@@ -211,7 +257,8 @@ for (const seconds of durations) {
     row.videoBitrateMbps = video?.bit_rate ? Number((Number(video.bit_rate) / 1e6).toFixed(2)) : null;
     // An absolute fixture is someone's own recording: do not leave a copy of
     // it behind once it has been measured.
-    if (isAbsolute(fixture)) rmSync(artefact, { force: true });
+    // `--delete-output`: a 60-minute 1080p file is gigabytes; keep the numbers.
+    if (isAbsolute(fixture) || args.includes('--delete-output')) rmSync(artefact, { force: true });
   } else {
     const failure = await page.getByTestId('export-failed').textContent().catch(() => null);
     row.failure = failure ? failure.replace(/\s+/g, ' ').trim() : 'zaman aşımı';
@@ -234,7 +281,7 @@ for (const seconds of durations) {
   console.log(
     `${String(row.requestedSeconds).padStart(4)} s ${quality}p -> ${finished ? 'OK  ' : 'FAIL'} ` +
       `çıktı ${row.outputMib ?? '—'} MiB (${row.videoBitrateMbps ?? '—'} Mbit/s), ` +
-      `${row.frames ?? '—'} kare, ${(elapsedMs / 1000).toFixed(1)} s, yol: ${row.route ?? '—'} | ` +
+      `${row.frames ?? '—'} kare, ${(elapsedMs / 1000).toFixed(1)} s (x${row.realTimeFactor ?? '—'}), yol: ${row.route ?? '—'} | ` +
       `bellek: taban ${row.baselineTotalMib} MiB, tepe ${row.peakTotalMib} MiB ` +
       `(+${row.growthMib}), en büyük süreç ${row.peakLargestProcessMib} MiB, ${row.sampleCount} örnek, ` +
       `kalan geçici dosya ${row.leftoverExportFiles}` +

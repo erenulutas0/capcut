@@ -17,6 +17,7 @@ const SHORTCUTS: Array<[string, MessageKey]> = [
 ];
 
 const LIMITS: MessageKey[] = [
+  'help.limit.length',
   'help.limit.export',
   'help.limit.mix',
   'help.limit.save',

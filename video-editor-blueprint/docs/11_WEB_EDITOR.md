@@ -27,7 +27,7 @@ Demux/decode/transform/encode mümkün olan kısımlarda worker'da çalışır. 
 
 OffscreenCanvas veya worker encoder kabiliyeti olmayan ortam ayrı sonuç verir. Fallback performansı ölçülmeden destek listesine alınmaz. SharedArrayBuffer gerektiren opsiyonel bileşen varsa cross-origin isolation, üçüncü taraf script ve checkout etkileri ayrı ADR ister.
 
-P0 sonrası test edilmiş limit yükseltilene kadar web yerel işlerde **tüm planlarda 2 GiB toplam kaynak, 60 dakika toplam video girdi süresi, 5 dakika çıktı** (politika `2026-09-21.v2`) başlangıç koruması vardır. Bir abonelik tarayıcının bellek/codec sınırını ortadan kaldırmaz. Sayılar kanonik [politika belgesinde](15_PRICING_FREE_PRO.md) bulunur.
+P0 sonrası test edilmiş limit yükseltilene kadar web yerel işlerde **tüm planlarda 2 GiB toplam kaynak, 60 dakika toplam video girdi süresi, 60 dakika çıktı** (politika `2026-09-22.v3`) başlangıç koruması vardır. Çıktı sınırı yola bağlıdır: 60 dakika yalnızca çıktı dosyası tarayıcının özel diskine (OPFS) akıtılabildiğinde geçerlidir; tarayıcı diske yazamıyor ve dosya bellekte tutulmak zorundaysa çıktı en fazla **5 dakika**dır ve daha uzun bir çıktı kodlama başlamadan açık bir mesajla reddedilir (ADR-013, ADR-020). Depolama tahmini dosyaya yetmiyorsa da uzun çıktı baştan reddedilir. Bir abonelik tarayıcının bellek/codec sınırını ortadan kaldırmaz. Sayılar kanonik [politika belgesinde](15_PRICING_FREE_PRO.md) bulunur.
 
 ## Önizleme
 

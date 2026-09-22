@@ -296,7 +296,7 @@ export function addWholeSource(
   return addClip(project, { sourceInUs: placement.sourceInUs, sourceOutUs: placement.sourceOutUs }, policy);
 }
 
-/** "İlk 5 dakikayı ekle": the leading part of a video that is too long. */
+/** "İlk N dakikayı ekle": the leading part of a video longer than the output limit. */
 export function addLeadingSource(project: Project, policy: ExportPolicy = WEB_LOCAL_POLICY): CommandResult {
   const asset = primaryVideoAsset(project);
   if (!asset) return { ok: false, reason: 'no_source' };

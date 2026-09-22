@@ -266,15 +266,17 @@ test.describe('a11y: axe audit', () => {
   });
 
   // Added with the single timeline (ADR-019).
-  test('timeline: the too-long choice and a rejected file message', async ({ page }, testInfo) => {
+  // Policy v3 (ADR-020): a 5:10 video now arrives whole; the too-long choice
+  // cannot be reached with the web policy (a video over 60 min is refused on
+  // open), so it is no longer audited here.
+  test('timeline: a long video as one piece and a rejected file message', async ({ page }, testInfo) => {
     await openEditor(page);
     await page.getByTestId('video-input').setInputFiles(timelineFixture('long').file);
-    await expect(page.getByTestId('timeline-too-long')).toBeVisible({ timeout: 60_000 });
-    await audit(page, 'timeline-too-long', testInfo);
+    await expect(page.getByTestId('strip-clip')).toHaveCount(1, { timeout: 60_000 });
+    await audit(page, 'timeline-long-whole', testInfo);
     await page.getByTestId('video-input').setInputFiles(timelineFixture('tooLong').file);
     await expect(page.getByTestId('media-error')).toBeVisible({ timeout: 60_000 });
     await audit(page, 'timeline-rejected-file', testInfo);
-    await page.getByTestId('timeline-add-first').click();
     await page.getByTestId('strip-clip').first().locator('.strip-clip-select').click();
     await expect(page.getByTestId('trim-end')).toBeVisible();
     await audit(page, 'timeline-piece-selected', testInfo);
@@ -533,7 +535,7 @@ test.describe('a11y: keyboard only', () => {
     await expect(firstRange).toHaveText('00:10.000 — 00:24.000');
 
     // 5. Export dialog: opens with focus inside, Escape closes, focus returns.
-    await tabTo(page, byTestId('open-export'), unmarked, 'Dışa aktar');
+    await tabTo(page, byTestId('open-export'), unmarked, 'Videoyu indir');
     await page.keyboard.press('Enter');
     const exportDialog = page.getByRole('dialog', { name: tr['export.title'] });
     await expect(exportDialog).toBeVisible();

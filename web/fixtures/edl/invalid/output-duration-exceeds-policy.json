@@ -6,7 +6,7 @@
     {
       "assetId": "a_video_001",
       "kind": "video",
-      "durationUs": 400000000,
+      "durationUs": 2400000000,
       "displayWidth": 1080,
       "displayHeight": 1920,
       "hasAudio": true
@@ -21,7 +21,22 @@
       "clipId": "c_001",
       "assetId": "a_video_001",
       "sourceInUs": 0,
-      "sourceOutUs": 400000000,
+      "sourceOutUs": 2400000000,
+      "sourceGainDb": 0,
+      "muted": false,
+      "view": {
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1,
+        "fit": "cover"
+      }
+    },
+    {
+      "clipId": "c_002",
+      "assetId": "a_video_001",
+      "sourceInUs": 0,
+      "sourceOutUs": 1500000000,
       "sourceGainDb": 0,
       "muted": false,
       "view": {

@@ -37,6 +37,10 @@ export type ExportFailureCode =
   | 'output_duration_mismatch'
   | 'out_of_memory'
   | 'output_storage_full'
+  /** Refused up front: the file cannot go to disk and is longer than memory allows (doc 15 v3). */
+  | 'output_too_long_for_memory'
+  /** Refused up front: disk access exists but the storage estimate has no room for the file. */
+  | 'output_storage_insufficient'
   | 'worker_unavailable'
   | 'internal_error';
 

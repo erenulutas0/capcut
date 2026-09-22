@@ -1,6 +1,6 @@
 /**
  * Local web limits. The single source of truth is
- * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-09-21.v2)
+ * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-09-22.v3)
  * plus the web guard rails in doc 11. Plan names are deliberately NOT hardcoded
  * into the domain: this is one policy object the app passes in.
  *
@@ -12,6 +12,13 @@ import { US_PER_SECOND, type Micros } from './time';
 export interface ExportPolicy {
   policyId: string;
   maxOutputDurationUs: Micros;
+  /**
+   * Output limit when the browser cannot stream the file to disk (OPFS) and
+   * the finished video has to be held in memory. ADR-013 measured that route
+   * growing with output length (~1 GiB at 5 min 1080p), so it keeps the old
+   * 5-minute cap (doc 15 v3, ADR-020).
+   */
+  maxMemoryRouteOutputDurationUs: Micros;
   maxTotalSourceDurationUs: Micros;
   maxTotalSourceBytes: number;
   maxVideoAssets: number;
@@ -26,8 +33,11 @@ export interface ExportPolicy {
 const MIB = 1_048_576;
 
 export const WEB_LOCAL_POLICY: ExportPolicy = {
-  policyId: '2026-09-21.v2/web-local',
-  maxOutputDurationUs: 5 * 60 * US_PER_SECOND,
+  policyId: '2026-09-22.v3/web-local',
+  // Raised from 5 min by founder decision (doc 15 v3): on the disk (OPFS)
+  // route export memory stays flat with output length (ADR-013, ADR-020).
+  maxOutputDurationUs: 60 * 60 * US_PER_SECOND,
+  maxMemoryRouteOutputDurationUs: 5 * 60 * US_PER_SECOND,
   // Raised from 20 min / 250 MiB by founder decision (doc 15 v2): export
   // memory follows output length, the source is read from disk (ADR-013).
   maxTotalSourceDurationUs: 60 * 60 * US_PER_SECOND,
@@ -51,6 +61,31 @@ export function exceedsTotalSourceBytes(
   otherSourceBytes: number,
 ): boolean {
   return fileBytes + otherSourceBytes > policy.maxTotalSourceBytes;
+}
+
+/**
+ * Why an export could not use the disk (OPFS) route, as the output sink saw it.
+ * `no_disk_access`: no OPFS sync access in the worker (older browsers, some
+ * private windows). `not_enough_space`: there is access, but the storage
+ * estimate leaves no room for the file.
+ */
+export type OutputRouteAvailability = 'opfs' | 'no_disk_access' | 'not_enough_space';
+
+export type OutputRouteRefusal = 'output_too_long_for_memory' | 'output_storage_insufficient';
+
+/**
+ * Doc 15 v3: 60 minutes only where the file goes to disk. Without that route a
+ * short output still falls back to memory (the proven W1 route); a longer one
+ * is refused before any frame is encoded, with the reason the user can act on.
+ */
+export function outputRouteRefusal(
+  policy: Pick<ExportPolicy, 'maxMemoryRouteOutputDurationUs'>,
+  availability: OutputRouteAvailability,
+  outputDurationUs: Micros,
+): OutputRouteRefusal | null {
+  if (availability === 'opfs') return null;
+  if (outputDurationUs <= policy.maxMemoryRouteOutputDurationUs) return null;
+  return availability === 'not_enough_space' ? 'output_storage_insufficient' : 'output_too_long_for_memory';
 }
 
 export function formatBytes(bytes: number): string {

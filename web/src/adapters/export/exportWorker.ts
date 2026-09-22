@@ -48,6 +48,7 @@ import {
   type RenderPlan,
   type RenderSegment,
 } from '@/domain/renderPlan';
+import { outputRouteRefusal } from '@/domain/policy';
 import { US_PER_SECOND } from '@/domain/time';
 import {
   CAPTION_FONT_FAMILY,
@@ -519,6 +520,9 @@ async function runExport(
   videoFile: File,
   audioFile: File | null,
   origin: string,
+  memoryRouteLimitUs: number,
+  forceMemoryRoute: boolean,
+  storageFreeBytes: number | null,
 ): Promise<void> {
   const startedAt = Date.now();
   emit(requestId, { type: 'preparing', attemptId: requestId });
@@ -556,7 +560,22 @@ async function runExport(
   // Generous upper estimate: bitrates plus 25% for container overhead.
   const expectedBytes =
     ((plan.videoBitrate + plan.audioBitrate) * (plan.expectedDurationUs / US_PER_SECOND) * 1.25) / 8;
-  const sink = await prepareOutput(requestId, expectedBytes);
+  const sink = await prepareOutput(requestId, expectedBytes, {
+    forceMemory: forceMemoryRoute,
+    storageFreeBytes,
+  });
+
+  // Doc 15 v3: 60 minutes only on the disk route. Refused here, before the
+  // first frame, not after minutes of encoding into memory.
+  const refusal = outputRouteRefusal(
+    { maxMemoryRouteOutputDurationUs: memoryRouteLimitUs },
+    sink.availability,
+    plan.expectedDurationUs,
+  );
+  if (refusal) {
+    await sink.discard();
+    throw new ExportFailure(refusal);
+  }
 
   const output = new Output({ format: sink.format, target: sink.target });
 
@@ -804,6 +823,9 @@ scope.onmessage = async (message: MessageEvent<WorkerRequest>) => {
         request.videoFile,
         request.audioFile,
         request.origin,
+        request.memoryRouteLimitUs,
+        request.forceMemoryRoute,
+        request.storageFreeBytes,
       );
     } catch (error) {
       if (error instanceof CanceledError) {

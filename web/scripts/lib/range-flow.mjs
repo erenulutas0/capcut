@@ -1,5 +1,5 @@
 /**
- * ADR-019: a video that fits the 5-minute output limit arrives on the
+ * ADR-019: a video that fits the output limit (60 minutes, policy v3) arrives on the
  * timeline as ONE full-length piece. The scripts here build their recipes
  * with the range flow (start/end fields, "Aralığı ekle"), so they start from
  * an empty timeline: one undo removes that piece and keeps the video open.

@@ -59,6 +59,20 @@ export type WorkerRequest =
        * happened to load the worker script (module URL, blob URL, CDN).
        */
       origin: string;
+      /** Doc 15 v3: the longest output the memory (non-OPFS) route may produce. */
+      memoryRouteLimitUs: number;
+      /**
+       * Test hook only (`window.__clipForceMemoryRoute`): behave like a browser
+       * without OPFS sync access, so the memory-route limit is testable.
+       */
+      forceMemoryRoute: boolean;
+      /**
+       * Test hook only (`window.__clipStorageFreeBytes`): the free space the
+       * storage estimate should report. Chromium's quota override (CDP) does
+       * not reach the estimate in Playwright's browser, so a test cannot
+       * shrink the real quota. `null` in the app.
+       */
+      storageFreeBytes: number | null;
     }
   | { type: 'cancel'; requestId: string };
 

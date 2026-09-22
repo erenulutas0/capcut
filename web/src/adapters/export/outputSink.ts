@@ -13,9 +13,15 @@
  * disk-backed `File`. It is used only when the browser offers OPFS sync access
  * in workers and the storage estimate says the file will fit; otherwise the
  * proven in-memory route is used and the result says which one ran.
+ *
+ * Policy v3 (doc 15, ADR-020): the memory route keeps a 5-minute cap. The
+ * sink only reports why the disk route was unavailable; the worker applies
+ * the policy before the first frame is encoded.
  */
 
 import { BufferTarget, Mp4OutputFormat, StreamTarget, type StreamTargetChunk, type Target } from 'mediabunny';
+
+import type { OutputRouteAvailability } from '@/domain/policy';
 
 import { EXPORT_ENTRY_PREFIX, opfsRoot } from './opfsEntries';
 
@@ -36,6 +42,11 @@ export interface CollectedOutput {
 
 export interface PreparedOutput {
   route: OutputRoute;
+  /**
+   * `opfs`, or why the disk route was not available. The caller decides with
+   * the policy whether a memory-route export of this length may run at all.
+   */
+  availability: OutputRouteAvailability;
   target: Target;
   format: Mp4OutputFormat;
   /** Call after `output.finalize()`. */
@@ -54,9 +65,10 @@ type OpfsFileHandle = FileSystemFileHandle & {
   createSyncAccessHandle?: () => Promise<SyncAccessHandle>;
 };
 
-function memoryRoute(): PreparedOutput {
+function memoryRoute(availability: Exclude<OutputRouteAvailability, 'opfs'>): PreparedOutput {
   return {
     route: 'memory',
+    availability,
     target: new BufferTarget(),
     format: new Mp4OutputFormat({ fastStart: 'in-memory' }),
     async collect(target: Target) {
@@ -73,17 +85,28 @@ function memoryRoute(): PreparedOutput {
 /**
  * Picks the route for one export. `expectedBytes` is an upper estimate of the
  * finished file; the storage estimate must leave room for it twice over.
+ *
+ * `forceMemory` and `storageFreeBytes` are test hooks (see `exportClient`):
+ * the path a browser without OPFS sync access would take, and a storage
+ * estimate with little room, so both refusals can be tested in a browser
+ * that has plenty of both.
  */
-export async function prepareOutput(requestId: string, expectedBytes: number): Promise<PreparedOutput> {
+export async function prepareOutput(
+  requestId: string,
+  expectedBytes: number,
+  options: { forceMemory?: boolean; storageFreeBytes?: number | null } = {},
+): Promise<PreparedOutput> {
+  if (options.forceMemory) return memoryRoute('no_disk_access');
   const root = await opfsRoot();
-  if (!root) return memoryRoute();
+  if (!root) return memoryRoute('no_disk_access');
 
   try {
     const estimate = await navigator.storage.estimate();
-    const free = (estimate.quota ?? 0) - (estimate.usage ?? 0);
-    if (free < expectedBytes * 2) return memoryRoute();
+    const free =
+      options.storageFreeBytes ?? (estimate.quota ?? 0) - (estimate.usage ?? 0);
+    if (free < expectedBytes * 2) return memoryRoute('not_enough_space');
   } catch {
-    return memoryRoute();
+    return memoryRoute('no_disk_access');
   }
 
   const entryName = `${EXPORT_ENTRY_PREFIX}${requestId}.mp4`;
@@ -93,12 +116,12 @@ export async function prepareOutput(requestId: string, expectedBytes: number): P
     handle = (await root.getFileHandle(entryName, { create: true })) as OpfsFileHandle;
     if (typeof handle.createSyncAccessHandle !== 'function') {
       await root.removeEntry(entryName).catch(() => undefined);
-      return memoryRoute();
+      return memoryRoute('no_disk_access');
     }
     access = await handle.createSyncAccessHandle();
   } catch {
     await root.removeEntry(entryName).catch(() => undefined);
-    return memoryRoute();
+    return memoryRoute('no_disk_access');
   }
 
   let open = true;
@@ -133,6 +156,7 @@ export async function prepareOutput(requestId: string, expectedBytes: number): P
 
   return {
     route: 'opfs',
+    availability: 'opfs',
     target: new StreamTarget(writable, { chunked: true, chunkSize: CHUNK_SIZE }),
     // moov at the end: nothing has to be held back to write it first.
     format: new Mp4OutputFormat({ fastStart: false }),

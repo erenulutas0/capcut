@@ -468,6 +468,10 @@ export function OutputStrip({
           </div>
         )}
       </div>
+      {/* Says what "Videoyu indir" downloads: the pieces, not the whole source. */}
+      <p className="strip-hint" hidden={timeline.length === 0} data-testid="timeline-output-hint">
+        {t('timeline.outputHint')}
+      </p>
       <p id={TIMELINE_HINT_ID} className="strip-hint" hidden={timeline.length === 0}>
         {t('timeline.hint')}
       </p>

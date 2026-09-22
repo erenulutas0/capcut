@@ -82,11 +82,15 @@ yedek dosyası. Gizli dosya seçicileri hâlâ yalnızca hidrasyondan sonra çiz
 
 - Çıktı en fazla **5 dakika** (politika 2026-09-21.v2); daha uzun videonun
   tamamı tek parça olamaz. Kaynak sınırı 60 dakika, 20 parça.
+  *Güncelleme (ADR-020, politika 2026-09-22.v3):* çıktı 60 dakika (diske
+  yazamayan tarayıcıda 5 dakika); açılabilen her video artık tek parça gelir.
 - Görsel yakınlaştırma yok: uzun zaman çizgisinde 1 px ≈ 0,1–0,3 sn. Kesin konum
   için oynatma çizgisi klavyeyle (kare / saniye) taşınabilir.
 - Önizleme hâlâ tek `<video>` ile sıralı oynatmadır; parça geçişinde kısa bekleme
   olabilir (dosyada boşluk yoktur).
 - Yeni açılan dikey videoda tuval oranı yine varsayılan 16:9'dur (değişmedi).
+  *Güncelleme (ADR-020):* boş zaman çizgisine açılan video çerçeveyi yönüne
+  göre seçer (dikey 9:16, yatay 16:9, kareye yakın 1:1).
 
 ## Test edilen
 

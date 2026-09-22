@@ -326,36 +326,24 @@ test.describe('the automatic piece is clearly undoable', () => {
 });
 
 test.describe('videos the timeline cannot take whole', () => {
-  test('a video longer than 5 minutes asks instead of truncating', async ({ page }) => {
+  // Policy v3 (doc 15, ADR-020): the output limit is 60 minutes, the same as
+  // the input limit, so a video that opens at all now fits as one piece. The
+  // "too long" choice (İlk N dakikayı ekle / Aralık seçerek ekle) stays for a
+  // stricter policy and is covered by the unit tests; a browser cannot reach
+  // it with v3, because a video over 60 minutes is refused on open (below).
+  test('a video longer than the old 5-minute limit arrives whole (policy v3)', async ({ page }) => {
     test.setTimeout(120_000);
     await openEditor(page);
     const { file } = timelineFixture('long');
     await page.getByTestId('video-input').setInputFiles(file);
     await expect(page.getByTestId('preview-video')).toBeVisible();
 
-    const choice = page.getByTestId('timeline-too-long');
-    await expect(choice).toContainText('Bu video 5:10 dk; çıktı en fazla 5 dakika olabilir.');
-    await expect(page.getByTestId('strip-clip')).toHaveCount(0);
-
-    await page.getByTestId('timeline-add-first').click();
+    await expect(page.getByTestId('timeline-too-long')).toHaveCount(0);
     await expect(page.getByTestId('strip-clip')).toHaveCount(1);
-    await expect(page.getByTestId('output-summary')).toHaveText('1 parça · 5:00 dk');
-    await expect(page.getByTestId('timeline-notice')).toContainText('ilk 5 dakikası');
+    await expect(page.getByTestId('output-summary')).toHaveText('1 parça · 5:10 dk');
+    await expect(ranges(page)).toHaveText(['00:00.000 — 05:10.000']);
+    await expect(page.getByTestId('timeline-notice')).toContainText('tek parça olarak eklendi (5 dk 10,0 sn)');
     await expect(page.getByRole('tab', { name: 'Sonuç' })).toHaveAttribute('aria-selected', 'true');
-
-    // One undo step: back to the choice, the video still open.
-    await page.getByTestId('undo').click();
-    await expect(choice).toBeVisible();
-    await expect(page.getByTestId('preview-video')).toBeVisible();
-
-    // The other way: pick a range in the source preview.
-    await page.getByTestId('timeline-add-range').click();
-    await expect(page.getByRole('tab', { name: 'Kaynak', exact: true })).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByTestId('range-start')).toBeFocused();
-    await page.getByTestId('range-start').fill('01:00.000');
-    await page.getByTestId('range-end').fill('01:30.000');
-    await page.getByTestId('add-moment').click();
-    await expect(ranges(page)).toHaveText(['01:00.000 — 01:30.000']);
   });
 
   test('a rejected file is named, the open video stays, the message can be closed', async ({ page }) => {

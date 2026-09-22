@@ -7,7 +7,7 @@ import { Icon, Wordmark } from '@/components/Icon';
 import { useHydrated } from '@/components/useHydrated';
 import { safeFileName } from '@/adapters/browserMedia';
 import { DEFAULT_CAPTION_STYLE, activeCueAt, primaryCaptionTrack } from '@/domain/captions';
-import type { Project } from '@/domain/edl';
+import type { AspectRatio, Project } from '@/domain/edl';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import { formatLength, type Micros } from '@/domain/time';
 import { totalOutputDurationUs } from '@/domain/timeline';
@@ -51,6 +51,13 @@ const CANVAS_ASPECT_CSS: Record<string, string> = {
   '9:16': '9 / 16',
   '16:9': '16 / 9',
   '1:1': '1 / 1',
+};
+
+/** What the import confirmation says about the frame chosen from the video. */
+const ASPECT_NOTICE: Record<AspectRatio, MessageKey> = {
+  '9:16': 'timeline.notice.aspectPortrait',
+  '16:9': 'timeline.notice.aspectLandscape',
+  '1:1': 'timeline.notice.aspectSquare',
 };
 
 /** Fills `{name}` slots; values are inserted literally (a file name may contain `$&`). */
@@ -179,12 +186,15 @@ export function EditorApp() {
     if (outcome.kind === 'rejected') return;
     setEditingClipId(null);
     setScaleFloorUs(0);
+    // The frame was chosen from the video's orientation; say which, and why.
+    const aspectNote = outcome.aspect ? t(ASPECT_NOTICE[outcome.aspect]) : null;
     if (outcome.kind === 'whole') {
       playback.prepareMode('output');
-      setNotice(fill(t('timeline.notice.imported'), { length: lengthText(outcome.lengthUs) }));
+      const imported = fill(t('timeline.notice.imported'), { length: lengthText(outcome.lengthUs) });
+      setNotice(aspectNote ? `${aspectNote}. ${imported}` : imported);
     } else {
       playback.prepareMode('source');
-      setNotice(null);
+      setNotice(aspectNote);
     }
   };
 
@@ -795,7 +805,7 @@ export function EditorApp() {
           )}
           <button
             type="button"
-            className="btn btn-accent"
+            className="btn btn-accent topbar-download"
             onClick={() => setExportOpen(true)}
             data-testid="open-export"
           >

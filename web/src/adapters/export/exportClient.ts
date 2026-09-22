@@ -16,6 +16,12 @@ import type { CapabilityStageResult, EncoderProbeConfig, WorkerRequest, WorkerRe
 /** Stage C renders a tiny file, so this is generous but finite. */
 const CAPABILITY_TIMEOUT_MS = 60_000;
 
+/** Test hook (see protocol): a finite, non-negative number, or nothing. */
+function testStorageFreeBytes(): number | null {
+  const value = (globalThis as { __clipStorageFreeBytes?: unknown }).__clipStorageFreeBytes;
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
 function createWorker(): Worker {
   return new Worker(new URL('./exportWorker.ts', import.meta.url), {
     type: 'module',
@@ -95,6 +101,7 @@ export class ExportWorkerClient {
     plan: RenderPlan,
     videoFile: File,
     audioFile: File | null,
+    options: { memoryRouteLimitUs: number },
   ): AsyncGenerator<ExportEvent, void, unknown> {
     const worker = this.ensureWorker();
     const requestId = this.nextId('exp');
@@ -132,6 +139,11 @@ export class ExportWorkerClient {
       videoFile,
       audioFile,
       origin: window.location.origin,
+      memoryRouteLimitUs: options.memoryRouteLimitUs,
+      // Same pattern as `__clipSilenceEnvelopes`: an e2e test sets it before
+      // the page loads; nothing in the app does.
+      forceMemoryRoute: (globalThis as { __clipForceMemoryRoute?: unknown }).__clipForceMemoryRoute === true,
+      storageFreeBytes: testStorageFreeBytes(),
     };
     worker.postMessage(request);
 

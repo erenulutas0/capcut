@@ -16,6 +16,7 @@ import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import { formatLength, MIN_CLIP_DURATION_US, US_PER_SECOND } from '@/domain/time';
 import { buildTimeline, totalOutputDurationUs } from '@/domain/timeline';
 import {
+  aspectForVideo,
   dragMinimumUs,
   dragTargetUs,
   floorAfterEdit,
@@ -35,7 +36,14 @@ import {
 import { validateProject } from '@/domain/validation';
 
 const S = US_PER_SECOND;
-const FIVE_MIN = 5 * 60 * S;
+const MIN = 60 * S;
+/** Doc 15 v3: 60 minutes of output (the input limit is 60 minutes too). */
+const OUTPUT_LIMIT = WEB_LOCAL_POLICY.maxOutputDurationUs;
+/**
+ * The too-long branch cannot be reached with the v3 web policy (a video over
+ * 60 minutes is refused on open), but the rule stays for any stricter policy.
+ */
+const FIVE_MIN_POLICY = { ...WEB_LOCAL_POLICY, maxOutputDurationUs: 5 * MIN };
 
 function withVideo(durationUs: number): Project {
   const video: AssetV1 = {
@@ -73,16 +81,34 @@ describe('import: the whole video becomes one piece', () => {
   });
 
   it('places a video of exactly the output limit whole', () => {
-    expect(initialPlacement(FIVE_MIN, WEB_LOCAL_POLICY).kind).toBe('whole');
+    expect(OUTPUT_LIMIT).toBe(60 * MIN);
+    expect(initialPlacement(OUTPUT_LIMIT, WEB_LOCAL_POLICY).kind).toBe('whole');
+  });
+
+  it('policy v3: a 5:10 video and a 60-minute video both arrive as one piece', () => {
+    expect(initialPlacement(310 * S, WEB_LOCAL_POLICY)).toEqual({
+      kind: 'whole',
+      sourceInUs: 0,
+      sourceOutUs: 310 * S,
+    });
+    const result = addWholeSource(withVideo(60 * MIN));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(totalOutputDurationUs(result.project)).toBe(60 * MIN);
+    expect(validateProject(result.project).ok).toBe(true);
   });
 
   it('does not truncate a longer video: the user has to choose', () => {
-    expect(initialPlacement(FIVE_MIN + 1, WEB_LOCAL_POLICY)).toEqual({
+    expect(initialPlacement(OUTPUT_LIMIT + 1, WEB_LOCAL_POLICY)).toEqual({
       kind: 'too_long',
-      durationUs: FIVE_MIN + 1,
-      limitUs: FIVE_MIN,
+      durationUs: OUTPUT_LIMIT + 1,
+      limitUs: OUTPUT_LIMIT,
     });
-    expect(initialPlacement(62 * 60 * S, WEB_LOCAL_POLICY).kind).toBe('too_long');
+    expect(initialPlacement(5 * MIN + 1, FIVE_MIN_POLICY)).toEqual({
+      kind: 'too_long',
+      durationUs: 5 * MIN + 1,
+      limitUs: 5 * MIN,
+    });
   });
 
   it('refuses a video shorter than the minimum piece, and nonsense durations', () => {
@@ -101,17 +127,18 @@ describe('import: the whole video becomes one piece', () => {
   });
 
   it('addWholeSource refuses a video longer than the output limit instead of cutting it', () => {
-    const result = addWholeSource(withVideo(12 * 60 * S));
+    const result = addWholeSource(withVideo(12 * MIN), FIVE_MIN_POLICY);
     expect(result).toEqual({ ok: false, reason: 'source_longer_than_output' });
   });
 
-  it('"İlk 5 dakikayı ekle" adds the leading five minutes, valid for export', () => {
-    expect(leadingRange(12 * 60 * S, WEB_LOCAL_POLICY)).toEqual({ sourceInUs: 0, sourceOutUs: FIVE_MIN });
-    const result = addLeadingSource(withVideo(12 * 60 * S));
+  it('"İlk N dakikayı ekle" adds the leading part up to the limit, valid for export', () => {
+    expect(leadingRange(70 * MIN, WEB_LOCAL_POLICY)).toEqual({ sourceInUs: 0, sourceOutUs: OUTPUT_LIMIT });
+    expect(leadingRange(12 * MIN, FIVE_MIN_POLICY)).toEqual({ sourceInUs: 0, sourceOutUs: 5 * MIN });
+    const result = addLeadingSource(withVideo(12 * MIN), FIVE_MIN_POLICY);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.project.clips[0]).toMatchObject({ sourceInUs: 0, sourceOutUs: FIVE_MIN });
-    expect(validateProject(result.project).ok).toBe(true);
+    expect(result.project.clips[0]).toMatchObject({ sourceInUs: 0, sourceOutUs: 5 * MIN });
+    expect(validateProject(result.project, FIVE_MIN_POLICY).ok).toBe(true);
   });
 
   it('the piece is its own undo step on top of the import', () => {
@@ -321,10 +348,12 @@ describe('edge drag: never an accidental sub-second leftover', () => {
   });
 
   it('extending past the output limit stops at the limit', () => {
-    const long = withRanges([[0, 4 * 60 * S]], 10 * 60 * S);
-    const id = long.clips[0]?.clipId ?? '';
-    const target = resolveEdgeTrim(long, id, 'out', 9 * 60 * S, WEB_LOCAL_POLICY);
-    expect(target?.valueUs).toBe(FIVE_MIN);
+    // Two pieces of a 55-minute video: 50 + 4 minutes. The second one can
+    // only grow to 10 minutes before the output reaches 60.
+    const long = withRanges([[0, 50 * MIN], [0, 4 * MIN]], 55 * MIN);
+    const id = long.clips[1]?.clipId ?? '';
+    const target = resolveEdgeTrim(long, id, 'out', 20 * MIN, WEB_LOCAL_POLICY);
+    expect(target?.valueUs).toBe(10 * MIN);
     expect(target?.heldAtMinimum).toBe(false);
   });
 });
@@ -338,5 +367,36 @@ describe('confirmation lengths', () => {
     expect(formatLength(110 * S, tr)).toBe('1 dk 50,0 sn');
     expect(formatLength(59.96 * S, tr)).toBe('1 dk 0,0 sn');
     expect(formatLength(3.5 * S, { minute: 'min', second: 's', decimalMark: '.' })).toBe('3.5 s');
+  });
+});
+
+describe('the frame follows the opened video', () => {
+  it('portrait → 9:16, landscape → 16:9', () => {
+    expect(aspectForVideo(1080, 1920)).toBe('9:16');
+    expect(aspectForVideo(360, 640)).toBe('9:16');
+    expect(aspectForVideo(480, 724)).toBe('9:16');
+    expect(aspectForVideo(1920, 1080)).toBe('16:9');
+    expect(aspectForVideo(640, 360)).toBe('16:9');
+    // 4:3 and 3:4 are clearly not square.
+    expect(aspectForVideo(1440, 1080)).toBe('16:9');
+    expect(aspectForVideo(1080, 1440)).toBe('9:16');
+  });
+
+  it('near-square (within 5%) → 1:1', () => {
+    expect(aspectForVideo(1080, 1080)).toBe('1:1');
+    expect(aspectForVideo(1080, 1034)).toBe('1:1');
+    expect(aspectForVideo(1034, 1080)).toBe('1:1');
+    expect(aspectForVideo(1130, 1080)).toBe('1:1');
+    // Just outside the tolerance.
+    expect(aspectForVideo(1140, 1080)).toBe('16:9');
+    expect(aspectForVideo(1020, 1080)).toBe('9:16');
+  });
+
+  it('an unknown size leaves the frame alone', () => {
+    expect(aspectForVideo(undefined, 1080)).toBeNull();
+    expect(aspectForVideo(1080, 0)).toBeNull();
+    expect(aspectForVideo(Number.NaN, 1080)).toBeNull();
+    expect(aspectForVideo(Number.POSITIVE_INFINITY, 1080)).toBeNull();
+    expect(aspectForVideo(-1080, 1920)).toBeNull();
   });
 });

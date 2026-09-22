@@ -9,7 +9,7 @@
  * commands do.
  */
 
-import type { Project } from './edl';
+import type { AspectRatio, Project } from './edl';
 import type { ExportPolicy } from './policy';
 import { MIN_CLIP_DURATION_US, type Micros } from './time';
 import { buildTimeline, totalOutputDurationUs, type TimelineEntry } from './timeline';
@@ -56,7 +56,28 @@ export function initialPlacement(
   return { kind: 'too_long', durationUs: sourceDurationUs, limitUs: policy.maxOutputDurationUs };
 }
 
-/** The range "İlk 5 dakikayı ekle" adds for a video that is too long. */
+/**
+ * How far from exactly square a video may be and still get the 1:1 frame:
+ * 5%, so 1080×1080, 1080×1034 and 1034×1080 all count as square.
+ */
+export const SQUARE_TOLERANCE = 0.05;
+
+/**
+ * The frame a video suggests for itself when it is opened into an EMPTY
+ * timeline: portrait → 9:16, landscape → 16:9, near-square → 1:1. Uses the
+ * display size (rotation already applied). `null` when the size is unknown;
+ * then the project's frame is left alone. A restored project never asks this:
+ * its saved frame is the user's choice.
+ */
+export function aspectForVideo(displayWidth: number | undefined, displayHeight: number | undefined): AspectRatio | null {
+  if (!displayWidth || !displayHeight || !(displayWidth > 0) || !(displayHeight > 0)) return null;
+  if (!Number.isFinite(displayWidth) || !Number.isFinite(displayHeight)) return null;
+  const ratio = displayWidth / displayHeight;
+  if (Math.abs(ratio - 1) <= SQUARE_TOLERANCE) return '1:1';
+  return ratio < 1 ? '9:16' : '16:9';
+}
+
+/** The range "İlk N dakikayı ekle" adds for a video longer than the output limit. */
 export function leadingRange(
   sourceDurationUs: Micros,
   policy: Pick<ExportPolicy, 'maxOutputDurationUs'>,

@@ -7,7 +7,7 @@
 
 **Bu belge bütün fiyat/kota sayıların tek kaynağıdır.** Bunlar pazar araştırmasıyla doğrulanmış ideal fiyatlar veya yapılmış özellikler değildir. P0/P1/P2 alfa-beta sırasında ödeme kapalıdır; teslim edilen temel özellikler ücretsiz denenir. P3 satış, gerçek Pro değeri + billing/restore + hukuk + destek + maliyet kapıları geçince açılır.
 
-Politika kimliği: `2026-09-21.v2`. Limitler ürün güvenliği için başlangıç önerisidir; teknik motorların mutlak maksimum kapasitesi değildir. Daha fazla para ödemek desteklenmeyen codec/donanımı destekli yapmaz.
+Politika kimliği: `2026-09-22.v3`. Limitler ürün güvenliği için başlangıç önerisidir; teknik motorların mutlak maksimum kapasitesi değildir. Daha fazla para ödemek desteklenmeyen codec/donanımı destekli yapmaz.
 
 ## Planlar
 
@@ -23,7 +23,7 @@ Politika kimliği: `2026-09-21.v2`. Limitler ürün güvenliği için başlangı
 | Mobil yerel çıktı süresi | En çok 5 dakika/proje | En çok 30 dakika/proje |
 | Mobil toplam video kaynak süresi | En çok 20 dakika/proje | En çok 60 dakika/proje |
 | Mobil toplam seçili medya boyutu | En çok 2 GiB/proje | En çok 5 GiB/proje |
-| Web yerel limitleri | 5 dakika çıktı / 60 dakika video girdi / 2 GiB toplam | İlk destek matrisinde aynı; Pro tarayıcı sınırını artırmaz |
+| Web yerel limitleri | 60 dakika çıktı (diske yazamayan tarayıcıda 5 dakika) / 60 dakika video girdi / 2 GiB toplam | İlk destek matrisinde aynı; Pro tarayıcı sınırını artırmaz |
 | Tek projede kaynak/klip | En çok 5 video kaynağı, 20 klip, 1 harici müzik | İlk sürümde aynı |
 | Harici müzik dosyası | En çok 10 dakika ve 100 MiB; toplam byte limitine dahil | Aynı |
 | Kaydedilebilir çalışma profilleri | Yok; hazır temel oranlar ve ayarlar dahil | Yerelde kullanıcı profilleri; pratik disk sınırı |
@@ -33,6 +33,8 @@ Politika kimliği: `2026-09-21.v2`. Limitler ürün güvenliği için başlangı
 | Kalıcı cloud arşivi / cihazlar arası medya senkronu | Yok | Yok |
 
 GiB = 1.073.741.824 byte, MiB = 1.048.576 byte. Kullanıcı arayüzü hangi birimi gösteriyorsa gerçek kontrol aynı birimde yapılmalı. “2 GB” deyip farklı limit uygulama.
+
+**Değişiklik `2026-09-22.v3` (kurucu kararı, 22 Eylül 2026):** Web yerel çıktı limiti 5 dakikadan 60 dakikaya çıkarıldı; yalnızca çıktının tarayıcının özel diskine (OPFS) akıtılabildiği yolda. Tarayıcı diske yazamıyorsa (bellek yolu) çıktı 5 dakikada kaldı ve daha uzun çıktı kodlamadan önce açık mesajla reddedilir; depolama tahmini dosyaya yetmiyorsa da uzun çıktı baştan reddedilir. Dayanak: `docs/adr/ADR-020-output-limit-60min.md` ölçümü — Chromium'da kalıcı profil ve OPFS yoluyla 60 dakikalık 1080p çıktı tamamlandı (2447 MiB, 108000 kare, süre birebir 3600 sn); tarayıcı süreç ağacının belleği kodlama boyunca 476–506 MiB aralığında düz kaldı, tepe 664 MiB (taban 218, artış +446), geçici dosya sonra silindi; Chrome'da aynı çıktı 720–736 MiB aralığında düz kaldı (tepe 774 MiB). Bellek yolunda bellek çıktıyla büyüdüğü için (ADR-013: 5 dakikada ~1 GiB) o yolun sınırı değişmedi. Girdi limiti, 20 parça, mobil ve cloud satırları, fiyat ve ücretli haklar değişmedi. Mevcut kullanıcı haklarına etkisi: yalnızca genişleme, daha önce indirilebilen hiçbir çıktı reddedilmez. Ölçülmeyen: başka makineler, düşük RAM'li dizüstüler, Safari, Firefox, gerçek uzun kamera kayıtları; ölçüm tek makine ve sentetik kaynakla (n=1) yapıldı.
 
 **Değişiklik `2026-09-21.v2` (kurucu kararı, 21 Eylül 2026):** Web yerel girdi limiti 20 dakika / 250 MiB'den 60 dakika / 2 GiB'ye çıkarıldı; 5 dakika çıktı limiti değişmedi. Dayanak: `docs/adr/ADR-013-w4-output-to-opfs.md` ölçümü — dışa aktarmada bellek çıktı süresiyle büyür, kaynak dosya diskten okunur; 32 dakikalık 257,7 MiB gerçek kayıt 720p'de 363–434 MiB tepe bellekle tamamlandı. Yalnızca yerel web rotasını etkiler; mobil ve cloud satırları, fiyat ve ücretli haklar değişmedi. Mevcut kullanıcı haklarına etkisi: yalnızca genişleme, hiçbir proje daha önce açılabilirken kapanmaz. 2 GiB üzerinde dosya henüz ölçülmedi.
 
@@ -69,7 +71,7 @@ Mağazada kullanıcının yerel para birimi, vergisi, dönem ve yenileme koşull
 
 ## Paywall ve plan değişiklikleri
 
-Paywall'da çalışır özellik listesi, platform sınırları, bulutun aylık kotası, toplam yıllık bedel, iptal/geri yükleme ve destek görünür. Webde 5 dakika sınırı varken genel “Pro 30 dakika” ifadesi küçük yazıyla saklanmaz; “Mobil yerel projelerde 30 dakika” denir.
+Paywall'da çalışır özellik listesi, platform sınırları, bulutun aylık kotası, toplam yıllık bedel, iptal/geri yükleme ve destek görünür. Web ve mobil süre sınırları farklıyken genel “Pro 30 dakika” ifadesi küçük yazıyla saklanmaz; “Mobil yerel projelerde 30 dakika” denir.
 
 Bir kullanıcıda başka sağlayıcıdan etkin Pro varsa yeni aboneliğe yönlendirmeden önce mevcut hak ve yönetim kaynağı gösterilir. Plan iptali mevcut ödenmiş süreyi normalde bitirmez; geri ödeme/revoke ayrı durumdur. Ayrıntılar [billing belgesinde](16_BILLING_ENTITLEMENTS.md).
 
