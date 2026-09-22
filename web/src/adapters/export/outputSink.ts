@@ -21,6 +21,8 @@
 
 import { BufferTarget, Mp4OutputFormat, StreamTarget, type StreamTargetChunk, type Target } from 'mediabunny';
 
+import type { StorageShortfall } from '@/domain/exportEvents';
+import { hasRoomForOutput } from '@/domain/outputStorage';
 import type { OutputRouteAvailability } from '@/domain/policy';
 
 import { EXPORT_ENTRY_PREFIX, opfsRoot } from './opfsEntries';
@@ -47,6 +49,8 @@ export interface PreparedOutput {
    * the policy whether a memory-route export of this length may run at all.
    */
   availability: OutputRouteAvailability;
+  /** With `not_enough_space`: what was needed and what the browser reported. */
+  storage: StorageShortfall | null;
   target: Target;
   format: Mp4OutputFormat;
   /** Call after `output.finalize()`. */
@@ -57,6 +61,8 @@ export interface PreparedOutput {
 
 type SyncAccessHandle = {
   write(buffer: BufferSource, options?: { at?: number }): number;
+  truncate(newSize: number): void;
+  getSize(): number;
   flush(): void;
   close(): void;
 };
@@ -65,10 +71,14 @@ type OpfsFileHandle = FileSystemFileHandle & {
   createSyncAccessHandle?: () => Promise<SyncAccessHandle>;
 };
 
-function memoryRoute(availability: Exclude<OutputRouteAvailability, 'opfs'>): PreparedOutput {
+function memoryRoute(
+  availability: Exclude<OutputRouteAvailability, 'opfs'>,
+  storage: StorageShortfall | null = null,
+): PreparedOutput {
   return {
     route: 'memory',
     availability,
+    storage,
     target: new BufferTarget(),
     format: new Mp4OutputFormat({ fastStart: 'in-memory' }),
     async collect(target: Target) {
@@ -83,31 +93,53 @@ function memoryRoute(availability: Exclude<OutputRouteAvailability, 'opfs'>): Pr
 }
 
 /**
- * Picks the route for one export. `expectedBytes` is an upper estimate of the
- * finished file; the storage estimate must leave room for it twice over.
+ * Picks the route for one export. `requiredBytes` is the space the disk route
+ * needs (`requiredFreeBytes`, ADR-023): the file is written once, so it is an
+ * upper estimate of the finished file, not a multiple of it.
  *
- * `forceMemory` and `storageFreeBytes` are test hooks (see `exportClient`):
- * the path a browser without OPFS sync access would take, and a storage
- * estimate with little room, so both refusals can be tested in a browser
- * that has plenty of both.
+ * Two checks, both before the first frame:
+ *
+ * 1. `navigator.storage.estimate()`. Chromium reports a static
+ *    "usage + 10 GiB" there (anti-fingerprinting), not the disk, so this only
+ *    catches an export larger than that.
+ * 2. The real one: the file is created at its estimated size
+ *    (`truncate(requiredBytes)`). The browser charges that against its real
+ *    quota and the operating system allocates it, so a disk without room
+ *    refuses here, in milliseconds, instead of minutes into the encode. The
+ *    space stays claimed while encoding; the file is cut to its real length
+ *    when the muxer closes it.
+ *
+ * `forceMemory`, `storageFreeBytes` and `reserveBytes` are test hooks (see
+ * `exportClient`): the path a browser without OPFS sync access would take, a
+ * storage estimate with little room, and a smaller up-front claim so that a
+ * test can let a small (CDP-overridden) quota run out mid-file.
  */
 export async function prepareOutput(
   requestId: string,
-  expectedBytes: number,
-  options: { forceMemory?: boolean; storageFreeBytes?: number | null } = {},
+  requiredBytes: number,
+  options: {
+    forceMemory?: boolean;
+    storageFreeBytes?: number | null;
+    reserveBytes?: number | null;
+  } = {},
 ): Promise<PreparedOutput> {
   if (options.forceMemory) return memoryRoute('no_disk_access');
   const root = await opfsRoot();
   if (!root) return memoryRoute('no_disk_access');
 
+  let free: number;
   try {
     const estimate = await navigator.storage.estimate();
-    const free =
-      options.storageFreeBytes ?? (estimate.quota ?? 0) - (estimate.usage ?? 0);
-    if (free < expectedBytes * 2) return memoryRoute('not_enough_space');
+    free = options.storageFreeBytes ?? (estimate.quota ?? 0) - (estimate.usage ?? 0);
   } catch {
     return memoryRoute('no_disk_access');
   }
+  const shortfall = (reason: StorageShortfall['reason']): StorageShortfall => ({
+    requiredBytes,
+    freeBytes: Math.max(0, Number.isFinite(free) ? free : 0),
+    reason,
+  });
+  if (!hasRoomForOutput(free, requiredBytes)) return memoryRoute('not_enough_space', shortfall('estimate'));
 
   const entryName = `${EXPORT_ENTRY_PREFIX}${requestId}.mp4`;
   let handle: OpfsFileHandle;
@@ -124,6 +156,28 @@ export async function prepareOutput(
     return memoryRoute('no_disk_access');
   }
 
+  // Claim the space now. A browser that cannot give it throws
+  // QuotaExceededError; an in-memory file system (private windows) was seen
+  // to leave the size at 0 without throwing, so the size is checked too.
+  const reserve = Math.max(0, Math.ceil(options.reserveBytes ?? requiredBytes));
+  let reserved = false;
+  try {
+    access.truncate(reserve);
+    access.flush();
+    reserved = access.getSize() >= reserve;
+  } catch {
+    reserved = false;
+  }
+  if (!reserved) {
+    try {
+      access.close();
+    } catch {
+      // Already closed.
+    }
+    await root.removeEntry(entryName).catch(() => undefined);
+    return memoryRoute('not_enough_space', shortfall('reservation'));
+  }
+
   let open = true;
   let written = 0;
   const closeAccess = () => {
@@ -135,10 +189,21 @@ export async function prepareOutput(
       access.close();
     }
   };
+  // The file was created at its estimated size; give back what was not used.
+  const trimAndClose = () => {
+    if (!open) return;
+    try {
+      access.truncate(written);
+    } finally {
+      closeAccess();
+    }
+  };
 
   // The muxer seeks (to patch box sizes), so writes carry their own position.
   const writable = new WritableStream<StreamTargetChunk>({
     write(chunk) {
+      // Past the claimed size the file grows again, and a full disk or quota
+      // throws QuotaExceededError here (ADR-023).
       const count = access.write(chunk.data, { at: chunk.position });
       if (count !== chunk.data.byteLength) {
         // A short write means the disk or quota ran out mid-file.
@@ -147,7 +212,7 @@ export async function prepareOutput(
       written = Math.max(written, chunk.position + chunk.data.byteLength);
     },
     close() {
-      closeAccess();
+      trimAndClose();
     },
     abort() {
       closeAccess();
@@ -157,11 +222,12 @@ export async function prepareOutput(
   return {
     route: 'opfs',
     availability: 'opfs',
+    storage: null,
     target: new StreamTarget(writable, { chunked: true, chunkSize: CHUNK_SIZE }),
     // moov at the end: nothing has to be held back to write it first.
     format: new Mp4OutputFormat({ fastStart: false }),
     async collect() {
-      closeAccess();
+      trimAndClose();
       const file = await handle.getFile();
       return { route: 'opfs', sizeBytes: file.size || written, bytes: null, file, entryName };
     },

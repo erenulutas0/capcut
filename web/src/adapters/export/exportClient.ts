@@ -16,9 +16,9 @@ import type { CapabilityStageResult, EncoderProbeConfig, WorkerRequest, WorkerRe
 /** Stage C renders a tiny file, so this is generous but finite. */
 const CAPABILITY_TIMEOUT_MS = 60_000;
 
-/** Test hook (see protocol): a finite, non-negative number, or nothing. */
-function testStorageFreeBytes(): number | null {
-  const value = (globalThis as { __clipStorageFreeBytes?: unknown }).__clipStorageFreeBytes;
+/** Test hooks (see protocol): a finite, non-negative number, or nothing. */
+function testHookBytes(name: '__clipStorageFreeBytes' | '__clipStorageReserveBytes'): number | null {
+  const value = (globalThis as Record<string, unknown>)[name];
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
@@ -143,7 +143,8 @@ export class ExportWorkerClient {
       // Same pattern as `__clipSilenceEnvelopes`: an e2e test sets it before
       // the page loads; nothing in the app does.
       forceMemoryRoute: (globalThis as { __clipForceMemoryRoute?: unknown }).__clipForceMemoryRoute === true,
-      storageFreeBytes: testStorageFreeBytes(),
+      storageFreeBytes: testHookBytes('__clipStorageFreeBytes'),
+      storageReserveBytes: testHookBytes('__clipStorageReserveBytes'),
     };
     worker.postMessage(request);
 

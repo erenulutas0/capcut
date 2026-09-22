@@ -62,7 +62,8 @@ script, aynı profil tipi, aynı fixture ile ölçüldü.
 `src/adapters/export/outputSink.ts`:
 
 - Worker'da `navigator.storage.getDirectory()` + `createSyncAccessHandle()`
-  varsa ve depolama tahmini çıktının iki katına yetiyorsa, muxer bir
+  varsa ve depolama tahmini çıktının iki katına yetiyorsa (ADR-023'te değişti:
+  tahmin diski görmüyordu; artık dosyanın tahmini boyutu baştan ayrılıyor), muxer bir
   `StreamTarget` üzerinden doğrudan OPFS dosyasına yazar (`fastStart: false`,
   moov sonda). Yazımlar konumlu, çünkü muxer kutu boyutlarını geri dönüp düzeltiyor.
 - Kısa yazım (disk/kota bitti) `output_storage_full` hatası olur; yarım dosya
@@ -190,6 +191,8 @@ reddediliyor), rotasyon metadata'lı gerçek bir telefon kaydı, HDR.
 - Sekme kapandıktan sonra indirilmemiş bir çıktı en fazla 6 saat (bir sonraki
   editör açılışına kadar) tarayıcı depolamasında kalabilir.
 - Depolama kotasının export ortasında dolması kod yolu var ama tetiklenmedi.
+  (ADR-023: tarayıcının gerçek kota uygulamasıyla tetiklendi ve e2e ile sınandı;
+  yarım dosya siliniyor.)
 
 ## Sonraki tek görev
 

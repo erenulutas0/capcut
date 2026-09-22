@@ -145,6 +145,10 @@ test.describe('storage estimate: refused up front when the file will not fit', (
     await expect(page.getByTestId('export-failed')).toContainText(
       'Bu uzunlukta bir video için tarayıcının kullanabileceği boş disk alanı yetmiyor.',
     );
+    // Both numbers, so the user knows how much to free (ADR-023).
+    await expect(page.getByTestId('export-failed-storage')).toHaveText(
+      /^Bu video için gereken boş alan: \d+ MiB\. Tarayıcının bildirdiği boş alan: 40 MiB\.$/,
+    );
     expect(await listExportFiles(page)).toEqual([]);
     await page.keyboard.press('Escape');
 
@@ -159,6 +163,70 @@ test.describe('storage estimate: refused up front when the file will not fit', (
     const short = await runUntilEnd(page);
     expect(short.end).toBe('succeeded');
     await expect(page.getByTestId('measured-route')).toHaveText('tarayıcının geçici diski');
+  });
+});
+
+/**
+ * A real, small quota (ADR-023). Chromium's CDP override does not change what
+ * `navigator.storage.estimate()` reports (a static "usage + 10 GiB"), but the
+ * browser enforces it on every OPFS write and truncate, exactly like a full
+ * disk: both fail with QuotaExceededError. So these runs hit the browser's
+ * own refusal, not a simulated one.
+ */
+async function limitQuota(page: Page, bytes: number) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Storage.overrideQuotaForOrigin', { origin: new URL(page.url()).origin, quotaSize: bytes });
+  // The estimate still says there is room: only the real claim can tell.
+  const free = await page.evaluate(async () => {
+    const estimate = await navigator.storage.estimate();
+    return (estimate.quota ?? 0) - (estimate.usage ?? 0);
+  });
+  expect(free).toBeGreaterThan(bytes * 10);
+}
+
+test.describe('real quota: the space is claimed before encoding (ADR-023)', () => {
+  test('a disk without room refuses before the first frame, and says how much is needed', async ({ page }) => {
+    test.setTimeout(180_000);
+    const errors = await openEditor(page);
+    await limitQuota(page, 64 * 1024 * 1024);
+    await openVideo(page, timelineFixture('long').file);
+    await openExportReady(page);
+    const run = await runUntilEnd(page);
+    expect(run.end).toBe('failed');
+    expect(run.sawEncoding).toBe(false);
+    await expect(page.getByTestId('export-failed')).toContainText(
+      'Bu uzunlukta bir video için tarayıcının kullanabileceği boş disk alanı yetmiyor.',
+    );
+    await expect(page.getByTestId('export-failed-storage')).toContainText(
+      /Bu video için gereken boş alan: \d+ MiB\. Tarayıcı bu kadar yeri diskte ayıramadı/,
+    );
+    await expect(page.getByTestId('export-download')).toHaveCount(0);
+    expect(await listExportFiles(page)).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  test('a disk that fills up mid-file ends in an honest failure; the partial file is deleted', async ({ page }) => {
+    test.setTimeout(240_000);
+    // Claim only 1 MiB up front (test hook), so the file must grow into a
+    // 3 MiB quota and the browser's own write refusal ends the export.
+    await page.addInitScript(() => {
+      (window as unknown as { __clipStorageReserveBytes: number }).__clipStorageReserveBytes = 1024 * 1024;
+    });
+    const errors = await openEditor(page);
+    await limitQuota(page, 3 * 1024 * 1024);
+    await openVideo(page, timelineFixture('long').file);
+    await openExportReady(page);
+    const run = await runUntilEnd(page);
+    expect(run.end).toBe('failed');
+    // It really was mid-file: frames were being encoded when the disk filled.
+    expect(run.sawEncoding).toBe(true);
+    await expect(page.getByTestId('export-failed')).toContainText(
+      'Video yazılırken tarayıcının depolama alanı doldu. Yarım dosya silindi',
+    );
+    await expect(page.getByTestId('export-succeeded')).toHaveCount(0);
+    await expect(page.getByTestId('export-download')).toHaveCount(0);
+    expect(await listExportFiles(page)).toEqual([]);
+    expect(errors).toEqual([]);
   });
 });
 

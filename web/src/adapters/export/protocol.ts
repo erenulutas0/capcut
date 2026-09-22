@@ -73,6 +73,12 @@ export type WorkerRequest =
        * shrink the real quota. `null` in the app.
        */
       storageFreeBytes: number | null;
+      /**
+       * Test hook only (`window.__clipStorageReserveBytes`): claim this much
+       * up front instead of the estimate, so a test with a small quota (CDP
+       * override) can see the disk run out mid-file. `null` in the app.
+       */
+      storageReserveBytes: number | null;
     }
   | { type: 'cancel'; requestId: string };
 

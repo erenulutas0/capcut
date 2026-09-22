@@ -8,6 +8,7 @@ import { useExport, type ExportUiState } from './useExport';
 import type { CapabilityReportV1 } from '@/adapters/exportCapability';
 import { environmentPasses } from '@/adapters/exportCapability';
 import type { Project } from '@/domain/edl';
+import { formatStorageBytes } from '@/domain/outputStorage';
 import { WEB_LOCAL_POLICY, formatBytes } from '@/domain/policy';
 import { compileRenderPlan } from '@/domain/renderPlan';
 import { formatDurationShort, formatTimecode } from '@/domain/time';
@@ -332,6 +333,13 @@ export function ExportDialog({
                 {t('export.fail.captionCue')
                   .replace('{index}', String(state.captionCue.index))
                   .replace('{text}', () => state.captionCue?.text ?? '')}
+              </span>
+            ) : null}
+            {state.storage ? (
+              <span style={{ display: 'block', marginTop: 6 }} data-testid="export-failed-storage">
+                {t(state.storage.reason === 'reservation' ? 'export.fail.storageReservation' : 'export.fail.storageNumbers')
+                  .replace('{required}', formatStorageBytes(state.storage.requiredBytes, 'up'))
+                  .replace('{free}', formatStorageBytes(state.storage.freeBytes, 'down'))}
               </span>
             ) : null}
           </span>
