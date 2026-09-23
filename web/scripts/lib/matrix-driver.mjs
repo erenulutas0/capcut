@@ -9,6 +9,7 @@ import { statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { assessHdrExport, blackFrames } from './hdr-check.mjs';
 import { emptyTimeline } from './range-flow.mjs';
 import {
   bandRmsDb,
@@ -701,6 +702,11 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       }
       if (driveResult.blocked) {
         add('uygunluk kapısında açık şekilde reddedildi', true, driveResult.blockedText ?? '');
+        if (want.hdrColors) {
+          // An HDR refusal must name HDR, not fail for some unrelated reason.
+          const combined = `${driveResult.blockedText ?? ''} ${(driveResult.blockerTexts ?? []).join(' ')}`;
+          add('gerekçe HDR olarak gösterildi', /HDR/i.test(combined), combined.slice(0, 160));
+        }
         return { checks, measured: { outcome: 'gate_blocked' } };
       }
       if (driveResult.failed) {
@@ -818,6 +824,42 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
         );
       } catch (error) {
         add('referans karşılaştırması', false, String(error).slice(0, 160));
+      }
+    }
+
+    // HDR -> SDR (ADR-022): colours against the nearest standard tone-mapping
+    // operator, structure against that operator's reference, no black frames.
+    if (want.hdrColors) {
+      try {
+        const colors = assessHdrExport({
+          output: artefactPath,
+          source: join(mediaDir, testCase.setup.video),
+          reference: want.hdrColors,
+          width: measured.width,
+          height: measured.height,
+          frames: measured.frames,
+          workDir: outDir,
+          id: testCase.id,
+        });
+        measured.hdr = { nearest: colors.nearest, operatorSet: colors.operatorSet, operators: colors.operators, frames: colors.frames, ...colors.worst };
+        const score = ssim(artefactPath, colors.nearestRefPath);
+        measured.ssim = Number.isFinite(score) ? Number(score.toFixed(4)) : null;
+        add(
+          `görüntü ffmpeg referansıyla eşleşiyor (ton eşleme ${colors.nearest}, SSIM ≥ ${want.minSsim})`,
+          Number.isFinite(score) && score >= want.minSsim,
+          `SSIM ${Number.isFinite(score) ? score.toFixed(4) : 'ölçülemedi'}`,
+        );
+        add(
+          `HDR→SDR renkleri standart bir ton eşlemeye yakın (en yakını ${colors.nearest})`,
+          colors.verdict.pass,
+          colors.verdict.pass
+            ? `ΔE00 ${colors.worst.meanDeltaE00}, kayma ${colors.worst.cast}, doygunluk ${colors.worst.saturationRatioMin}..${colors.worst.saturationRatioMax}, ton ${colors.worst.hueError}°, kırpma ${colors.worst.clipDelta}`
+            : colors.verdict.failures.join('; '),
+        );
+        const black = blackFrames(artefactPath);
+        add('siyah kare yok', black.length === 0, black.length ? `${black.length} siyah kare` : '');
+      } catch (error) {
+        add('HDR renk ölçümü', false, String(error).slice(0, 200));
       }
     }
 

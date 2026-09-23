@@ -71,6 +71,9 @@ function encoderLine(browser) {
   return `H.264 ${asText(capability.h264)} · AAC ${asText(capability.aac)}`;
 }
 
+const hdrText = (h) =>
+  `HDR→SDR: en yakın ${h.nearest}, ΔE00 ${h.meanDeltaE00}, kayma ${h.cast}, doygunluk ${h.saturationRatioMin}..${h.saturationRatioMax}, ton ${h.hueError}°, kırpma ${h.clipDelta}`;
+
 const lines = [];
 lines.push('# Destek matrisi — W2 ölçümleri');
 lines.push('');
@@ -151,6 +154,7 @@ if (reference) {
     if (m.fade) extras.push(`fade ${m.fade.quiet} → ${m.fade.loud} dB`);
     if (m.toneBelow) extras.push(`440 Hz ${m.toneBelow.level} / 330 Hz ${m.toneBelow.reference} dB`);
     if (m.outcome) extras.push(`sonuç: ${m.outcome}`);
+    if (m.hdr) extras.push(hdrText(m.hdr));
     lines.push(
       `| ${result.id} | ${m.durationSeconds ? `${m.durationSeconds} s` : '—'} | ${m.frames ?? '—'} | ` +
         `${m.width ? `${m.width}x${m.height}` : '—'} | ${m.ssim ?? '—'} | ${extras.join('; ') || '—'} |`,
@@ -236,6 +240,9 @@ if (realFiles.length === 0) {
       );
     }
     lines.push('');
+    const hdrRows = data.results.filter((r) => r.measured?.hdr);
+    for (const r of hdrRows) lines.push(`- ${r.id} ${hdrText(r.measured.hdr)}`);
+    if (hdrRows.length > 0) lines.push('');
   }
 }
 
@@ -257,6 +264,12 @@ lines.push(
   '- Bilinen sınır: yeniden sıralamayı SPS’te az bildiren H.264 akışları (R07) yazılım çözücüsünde ' +
     'kare atıyordu. Artık SPS düzeltilerek çözülüyor. Düzeltilemeyen durumda (paket içi SPS) dışa aktarma ' +
     'açıkça duruyor. Başka bir sebeple kare atan bir çözücü damgalardan hâlâ tespit edilemiyor. Ayrıntı ADR-014 §3.',
+);
+lines.push(
+  '- HDR (PQ/HLG) kaynaklar ADR-022 ile SDR’ye çevriliyor: tarayıcının dönüşümü + parlak renk yumuşak kırpma, ' +
+    'çalışma anında sentetik bir kareyle doğrulanarak. Renkler standart ton eşleme operatörlerinden en yakınına ' +
+    'karşı eşiklerle ölçülür (docs/spikes/2026-09-23-hdr-tonemap.md). HDR ekranda önizleme, Safari/Firefox’ta HDR ' +
+    've AV1 HDR ölçülmedi. Edge ve Playwright Chromium’da bu makinede HEVC çözücüsü yok.',
 );
 lines.push('- Bellek ölçümü yalnızca Windows’ta ve Chromium’da yapıldı; macOS/Linux ve diğer tarayıcılar ölçülmedi.');
 lines.push('- Düşük bellekli cihazlar ve bellek yetmediğinde davranış.');

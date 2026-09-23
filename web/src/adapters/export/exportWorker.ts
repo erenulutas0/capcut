@@ -50,6 +50,7 @@ import {
   type RenderSegment,
 } from '@/domain/renderPlan';
 import { requiredFreeBytes } from '@/domain/outputStorage';
+import { hdrTransferOf, type HdrTransfer } from '@/domain/hdr';
 import { outputRouteRefusal } from '@/domain/policy';
 import { US_PER_SECOND } from '@/domain/time';
 import {
@@ -67,6 +68,8 @@ import {
   reorderDepth,
 } from './avcReorder';
 import { pickFrames } from './framePicker';
+import { createHdrContext, softClippedImage } from './hdrCanvas';
+import { probeHdrToneMapping, type HdrProbeResult } from './hdrProbe';
 import { removeExportEntry, sweepExportEntries } from './opfsEntries';
 import { prepareOutput } from './outputSink';
 import type {
@@ -224,6 +227,7 @@ async function prepareCaptionLayouts(plan: RenderPlan, origin: string): Promise<
 async function runSelfTest(
   config: EncoderProbeConfig,
   captionFontOrigin: string | null,
+  hdrTransfer: HdrTransfer | null,
 ): Promise<CapabilityStageResult> {
   const result: CapabilityStageResult = {
     videoConfigSupported: false,
@@ -232,6 +236,7 @@ async function runSelfTest(
     selfTestDurationUs: null,
     selfTestHasAudio: false,
     captionFont: null,
+    hdrToneMap: null,
     failure: null,
   };
 
@@ -241,6 +246,12 @@ async function runSelfTest(
     result.captionFont = await loadWorkerCaptionFont(captionFontOrigin).catch(
       (): CaptionFontStatus => 'load_failed',
     );
+  }
+
+  // Only for an HDR source: does this browser's own conversion, drawn the way
+  // the export draws, give a correct SDR picture (ADR-022)?
+  if (hdrTransfer !== null) {
+    result.hdrToneMap = (await hdrToneMapping(hdrTransfer)).status;
   }
 
   try {
@@ -328,6 +339,41 @@ async function runSelfTest(
   }
 
   return result;
+}
+
+/* --------------------------------------------------------- HDR -> SDR check */
+
+const hdrChecks = new Map<HdrTransfer, Promise<HdrProbeResult>>();
+
+/** One check per transfer and worker; the answer cannot change while it lives. */
+function hdrToneMapping(transfer: HdrTransfer): Promise<HdrProbeResult> {
+  let check = hdrChecks.get(transfer);
+  if (!check) {
+    check = probeHdrToneMapping(transfer).catch(
+      (): HdrProbeResult => ({ status: 'api_missing', failures: ['api:exception'], patches: null }),
+    );
+    hdrChecks.set(transfer, check);
+  }
+  return check;
+}
+
+/**
+ * An HDR source is exported only where the browser's conversion was proven
+ * correct; checked here as well as in the gate, so no path reaches the
+ * encoder with an unverified HDR picture.
+ */
+async function refuseUnverifiedHdr(track: InputVideoTrack): Promise<HdrTransfer | null> {
+  let transfer: HdrTransfer | null = null;
+  try {
+    transfer = hdrTransferOf((await track.getColorSpace()).transfer);
+  } catch {
+    transfer = null;
+  }
+  if (transfer === null) return null;
+  if ((await hdrToneMapping(transfer)).status !== 'verified') {
+    throw new ExportFailure('hdr_source_unsupported');
+  }
+  return transfer;
 }
 
 /* ------------------------------------------------------- H.264 reorder fix */
@@ -580,6 +626,7 @@ async function runExport(
   const videoTrack = await videoInput.getPrimaryVideoTrack();
   if (!videoTrack) throw new ExportFailure('no_video_track');
   if (!(await videoTrack.canDecode())) throw new ExportFailure('source_undecodable');
+  const hdrTransfer = await refuseUnverifiedHdr(videoTrack);
   await correctAvcReorder(videoTrack, plan.segments);
 
   const sourceAudioTrack = await videoInput.getPrimaryAudioTrack();
@@ -637,6 +684,11 @@ async function runExport(
   const canvas = new OffscreenCanvas(plan.width, plan.height);
   const context = canvas.getContext('2d', { alpha: false });
   if (!context) throw new ExportFailure('internal_error');
+  // HDR frames are drawn into a float16 canvas and soft clipped (ADR-022),
+  // the same path the runtime check verified; SDR frames draw directly.
+  const hdrContext = hdrTransfer ? createHdrContext(plan.width, plan.height) : null;
+  if (hdrTransfer && !hdrContext) throw new ExportFailure('hdr_source_unsupported');
+  const frameContext = hdrContext ?? context;
 
   const videoSource = new CanvasSource(canvas, {
     codec: 'avc',
@@ -699,8 +751,8 @@ async function runExport(
       for await (const { frame: sample, missing } of pickFrames(decoded, timestamps, frameDuration)) {
         checkCanceled(requestId);
 
-        context.fillStyle = plan.background;
-        context.fillRect(0, 0, plan.width, plan.height);
+        frameContext.fillStyle = plan.background;
+        frameContext.fillRect(0, 0, plan.width, plan.height);
 
         // A frame the decoder did not deliver is counted, never hidden: the
         // previous frame is held (or the background shown when none exists)
@@ -709,8 +761,13 @@ async function runExport(
         if (sample) {
           // Same rectangle the preview uses, taken straight from the plan.
           // The picker owns the sample and closes it; do not close it here.
-          drawSegmentFrame(context, sample, segment, plan);
+          drawSegmentFrame(frameContext, sample, segment, plan);
           framesDrawn += 1;
+        }
+        if (hdrContext) {
+          const image = softClippedImage(hdrContext, plan.width, plan.height);
+          if (!image) throw new ExportFailure('hdr_source_unsupported');
+          context.putImageData(image, 0, 0);
         }
 
         // Burned in on top of the picture, before the frame is handed to the
@@ -864,7 +921,7 @@ scope.onmessage = async (message: MessageEvent<WorkerRequest>) => {
 
 
   if (request.type === 'capability') {
-    const result = await runSelfTest(request.config, request.captionFontOrigin);
+    const result = await runSelfTest(request.config, request.captionFontOrigin, request.hdrTransfer);
     const response: WorkerResponse = { type: 'capability', requestId: request.requestId, result };
     scope.postMessage(response);
     return;

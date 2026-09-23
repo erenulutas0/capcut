@@ -119,6 +119,14 @@ function CapabilityGate({
           state={report.source ? report.source.videoDecodable : null}
           testId="gate-source"
         />
+        {report.source?.isHdr ? (
+          <GateRow
+            t={t}
+            label={t('export.gate.hdr')}
+            state={encoder && encoder.hdrToneMap !== null ? encoder.hdrToneMap === 'verified' : null}
+            testId="gate-hdr"
+          />
+        ) : null}
       </ul>
     </>
   );
@@ -293,6 +301,12 @@ export function ExportDialog({
             <Icon name="check" size={16} />
             <span data-testid="export-ready">{t('export.ready')}</span>
           </div>
+          {state.report.source?.isHdr ? (
+            <div className="notice" style={{ marginTop: 12 }} data-testid="export-hdr-note">
+              <Icon name="info" size={16} />
+              <span>{t('export.hdrNote')}</span>
+            </div>
+          ) : null}
           <div style={{ marginTop: 16 }}>
             <CapabilityGate t={t} report={state.report} />
           </div>

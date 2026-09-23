@@ -7,7 +7,9 @@
  */
 
 import type { ExportEvent, ExportFailureCode } from '@/domain/exportEvents';
+import type { HdrTransfer } from '@/domain/hdr';
 import type { RenderPlan } from '@/domain/renderPlan';
+import type { HdrToneMapStatus } from './hdrProbe';
 
 export interface EncoderProbeConfig {
   width: number;
@@ -34,6 +36,12 @@ export interface CapabilityStageResult {
    * `api_missing`: the worker has no FontFace / `self.fonts` at all.
    */
   captionFont: CaptionFontStatus | null;
+  /**
+   * Whether this browser's own HDR -> SDR conversion, drawn through the same
+   * call the export uses, came back correct (ADR-022). `null` when the source
+   * is not HDR and nothing was tried.
+   */
+  hdrToneMap: HdrToneMapStatus | null;
   failure: ExportFailureCode | null;
 }
 
@@ -46,6 +54,8 @@ export type WorkerRequest =
       config: EncoderProbeConfig;
       /** Page origin to load the caption font from; null when the plan has no captions. */
       captionFontOrigin: string | null;
+      /** The source's HDR transfer, when it has one: the tone-mapping check to run. */
+      hdrTransfer: HdrTransfer | null;
     }
   | {
       type: 'export';

@@ -166,4 +166,6 @@ başlatıyor ve sonucu `real-media-<tarayıcı>-swdecode.json` olarak yazıyor.
 
 ## Hâlâ sınanmayanlar
 
-Gerçek bir HDR kaydın SDR'ye tonlanarak çıktısı (şu an reddediliyor), 618 MiB'tan büyük ya da 32 dakikadan uzun gerçek kaynak, Safari, fiziksel telefon tarayıcısı. R15'in Chromium'daki düşük skoru ADR-024 ile kapandı.
+HDR kaydın Edge ve Chromium'da çıktısı (HEVC çözücüsü yok; aşağıdaki güncelleme), 618 MiB'tan büyük ya da 32 dakikadan uzun gerçek kaynak, Safari, fiziksel telefon tarayıcısı. R15'in Chromium'daki düşük skoru ADR-024 ile kapandı.
+
+> Güncelleme 2026-09-23: HDR kayıtların SDR'ye tonlanarak dışa aktarılması ölçüldü ve açıldı (ADR-022). R09 ve R11 Chrome'da artık PASS; Edge ve Chromium'da HEVC çözücüsü olmadığı için içe aktarma reddi sürüyor.

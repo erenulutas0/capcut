@@ -74,7 +74,7 @@ export function ssim(fileA, fileB) {
  * Builds the same edit independently with ffmpeg, so the browser's picture can
  * be compared against something our code had no hand in producing.
  */
-export function buildReference(sourceFile, { filter, trims }, width, height, outFile) {
+export function buildReference(sourceFile, { filter, trims }, width, height, outFile, preInput = []) {
   // Each output instant must show the frame a player shows there: the latest
   // source frame that started at or before it. The old `trim=from,setpts=
   // PTS-STARTPTS` dropped the frame covering `from` and restarted the clock on
@@ -102,7 +102,7 @@ export function buildReference(sourceFile, { filter, trims }, width, height, out
 
   const result = spawnSync(
     'ffmpeg',
-    ['-y', '-hide_banner', '-loglevel', 'error', '-i', sourceFile,
+    ['-y', '-hide_banner', '-loglevel', 'error', ...preInput, '-i', sourceFile,
      '-filter_complex', graph, '-map', '[outv]', '-an',
      '-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p', '-s', `${width}x${height}`, outFile],
     { encoding: 'utf8' },

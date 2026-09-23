@@ -114,10 +114,12 @@ export function useExport(project: Project, videoFile: File | null, audioFile: F
 
     const environment = checkEnvironment();
     try {
+      // The source first: an HDR file adds the tone-mapping check to stage C.
+      const source = await probeSource(videoFile, audioFile);
       const encoder = await client().checkCapability(probeConfigFromPlan(compiled.plan), {
         withCaptionFont: compiled.plan.captions !== null,
+        hdrTransfer: source.hdrTransfer,
       });
-      const source = await probeSource(videoFile, audioFile);
       const report = buildReport(environment, encoder, source);
       recordCapability(report);
       setState(report.canExport ? { phase: 'ready', report } : { phase: 'blocked', report, planRejection: null });
