@@ -13,6 +13,7 @@
  */
 
 import type { ExportFailureCode } from '@/domain/exportEvents';
+import { hdrTransferOf, type HdrTransfer } from '@/domain/hdr';
 import type { RenderPlan } from '@/domain/renderPlan';
 import type { CapabilityStageResult, EncoderProbeConfig } from './export/protocol';
 
@@ -39,15 +40,14 @@ export interface SourceStage {
   transfer: string | null;
   primaries: string | null;
   /**
-   * True when the source declares an HDR transfer. There is no verified tone
-   * mapping path, so doc 09 says refuse clearly rather than produce wrong
-   * colours and call it a success.
+   * True when the source declares an HDR transfer (PQ or HLG). Doc 09: it is
+   * exported only through a tone-mapping path verified in THIS browser
+   * (ADR-022); otherwise it is refused clearly rather than flattened into
+   * wrong colours and called a success.
    */
   isHdr: boolean;
+  hdrTransfer: HdrTransfer | null;
 }
-
-/** PQ and HLG are the HDR transfer functions we must not silently flatten. */
-const HDR_TRANSFERS = new Set(['pq', 'smpte2084', 'hlg', 'arib-std-b67']);
 
 export interface CapabilityReportV1 {
   /** True only when every stage that matters actually passed. */
@@ -145,7 +145,8 @@ export async function probeSource(videoFile: File, audioFile: File | null): Prom
     rotation: videoTrack ? await videoTrack.getRotation() : null,
     transfer,
     primaries,
-    isHdr: transfer !== null && HDR_TRANSFERS.has(transfer),
+    isHdr: hdrTransferOf(transfer) !== null,
+    hdrTransfer: hdrTransferOf(transfer),
   };
 }
 
@@ -176,9 +177,12 @@ export function buildReport(
   }
 
   if (source && !source.videoDecodable) blockers.push('source_undecodable');
-  // An HDR source decodes fine but would come out with wrong colours, so it is
-  // refused here instead of being quietly flattened to SDR (doc 09).
-  if (source && source.isHdr) blockers.push('hdr_source_unsupported');
+  // An HDR source is exported only when this browser's own HDR -> SDR
+  // conversion was checked and came back correct (ADR-022). Anything else —
+  // failed, API missing, or not checked at all — is refused rather than
+  // quietly flattened into wrong colours (doc 09).
+  const hdrUnverified = source !== null && source.isHdr && encoder?.hdrToneMap !== 'verified';
+  if (hdrUnverified) blockers.push('hdr_source_unsupported');
 
   const unique = Array.from(new Set(blockers));
   const canExport =
@@ -189,7 +193,7 @@ export function buildReport(
     (encoder.captionFont === null || encoder.captionFont === 'loaded') &&
     source !== null &&
     source.videoDecodable &&
-    !source.isHdr;
+    !hdrUnverified;
 
   return { canExport, environment, encoder, source, blockers: unique };
 }

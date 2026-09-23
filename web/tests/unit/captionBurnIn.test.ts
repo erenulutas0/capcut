@@ -147,6 +147,7 @@ describe('capability gate and the caption font', () => {
     transfer: null,
     primaries: null,
     isHdr: false,
+    hdrTransfer: null,
   };
   const encoder = (captionFont: CapabilityStageResult['captionFont']): CapabilityStageResult => ({
     videoConfigSupported: true,
@@ -155,6 +156,7 @@ describe('capability gate and the caption font', () => {
     selfTestDurationUs: 1_000_000,
     selfTestHasAudio: true,
     captionFont,
+    hdrToneMap: null,
     failure: null,
   });
 

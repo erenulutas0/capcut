@@ -124,15 +124,43 @@ if (wanted('M10')) {
       '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc',
       '-tag:v', 'hvc1', ...AAC, '-shortest', p('m10-hdr10.mp4')], 'M10 hdr');
   record('M10', 'm10-hdr10.mp4', '1080p HEVC HDR10 (bt2020 / PQ)');
+  // The former 8-bit H.264 file "with PQ signalling" (a mislabelled SDR
+  // pattern) is gone: M10-hdr now uses real 10-bit HDR content, below.
+}
 
-  // The same HDR signalling in H.264, which browsers will actually play — so
-  // the file reaches the capability gate instead of being refused at import.
-  ff([...videoIn('1280x720', 30, 6), ...toneIn(440, 6),
-      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '34', '-pix_fmt', 'yuv420p',
-      '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc',
-      '-x264-params', 'colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc',
-      ...AAC, '-shortest', p('m10-hdr-h264.mp4')], 'M10 hdr h264');
-  record('M10', 'm10-hdr-h264.mp4', '720p H.264 with bt2020 / PQ signalling');
+// M10-hdr-pq / M10-hdr-hlg — real 10-bit HDR content that every Chromium can
+// decode (VP9 profile 2, software libvpx), so the HDR -> SDR path of ADR-022
+// is testable without phone files or an HEVC decoder. A moving SDR pattern is
+// placed in HDR the standard way (SDR white = 203 cd/m², ITU-R BT.2408), plus
+// a neutral 1000 cd/m² box, so a clipping or non-tone-mapping conversion
+// shows. The HLG clip is coded landscape with a 90° display matrix.
+const hdrClip = (transfer, name, rotate) => {
+  const toHdr = (npl) =>
+    `format=gbrpf32le,zscale=tin=iec61966-2-1:pin=bt709:min=gbr:rin=pc:t=linear:p=bt709:m=gbr:r=pc:npl=${npl},` +
+    `zscale=p=bt2020:t=${transfer}:m=2020_ncl:r=limited:npl=${npl},format=yuv420p10le`;
+  const graph =
+    `[0:v]${toHdr(203)}[base];` +
+    `color=c=white:size=288x160:rate=30:duration=4,${toHdr(1000)}[box];` +
+    '[base][box]overlay=x=W*0.72:y=H*0.08:format=yuv420p10,' +
+    // libvpx takes the colour tags from the frames, not from -color_trc.
+    `setparams=color_primaries=bt2020:color_trc=${transfer}:colorspace=bt2020nc:range=tv[v]`;
+  const tmp = p(`${name}.tmp.mp4`);
+  ff([...videoIn('1280x720', 30, 4, 'testsrc2'), ...toneIn(440, 4),
+      '-filter_complex', graph, '-map', '[v]', '-map', '1:a',
+      '-c:v', 'libvpx-vp9', '-profile:v', '2', '-pix_fmt', 'yuv420p10le', '-b:v', '0', '-crf', '30',
+      '-deadline', 'realtime', '-cpu-used', '8', '-row-mt', '1', '-g', '30',
+      '-color_primaries', 'bt2020', '-color_trc', transfer, '-colorspace', 'bt2020nc', '-color_range', 'tv',
+      ...AAC, '-shortest', rotate ? tmp : p(name)], `M10 ${transfer}`);
+  if (rotate) {
+    ff(['-display_rotation', '90', '-i', tmp, '-c', 'copy', p(name)], `M10 ${transfer} remux`);
+    rmSync(tmp, { force: true });
+  }
+};
+if (wanted('M10-hdr')) {
+  hdrClip('smpte2084', 'm10-hdr-pq-vp9.mp4', false);
+  record('M10', 'm10-hdr-pq-vp9.mp4', '1280x720 VP9 profile 2, 10-bit bt2020 / PQ, 4 s, 1000 cd/m² box');
+  hdrClip('arib-std-b67', 'm10-hdr-hlg-vp9-rot90.mp4', true);
+  record('M10', 'm10-hdr-hlg-vp9-rot90.mp4', 'coded 1280x720 VP9 profile 2, 10-bit bt2020 / HLG, 90° display matrix');
 }
 
 // M11 — a real file cut in half: the header is valid, the data is not complete.

@@ -556,10 +556,13 @@ export const tr = {
   'export.gate.encoderConfig': 'H.264 + AAC hedef ayarı',
   'export.gate.selfTest': 'Küçük deneme dosyası üretildi ve yeniden açıldı',
   'export.gate.source': 'Senin dosyan çözülebiliyor',
+  'export.gate.hdr': 'HDR → SDR dönüşümü bu tarayıcıda doğru (deneme karesiyle ölçüldü)',
   'export.gate.pass': 'geçti',
   'export.gate.fail': 'geçmedi',
   'export.gate.pending': 'çalıştırılmadı',
   'export.ready': 'Bu tarayıcıda gerçek MP4 üretilebilir.',
+  'export.hdrNote':
+    'Bu video HDR. İndirilen dosya SDR olacak; renkler telefondaki görüntüden biraz farklı görünebilir.',
   'export.recheck': 'Yeniden kontrol et',
   'export.blockedTitle': 'Bu tarayıcıda çıktı alınamıyor.',
   'export.blockedBody':
@@ -596,7 +599,7 @@ export const tr = {
   'export.fail.no_video_track': 'Seçilen dosyada video izi bulunamadı.',
   'export.fail.source_undecodable': 'Bu tarayıcı kaynak videoyu çözemiyor.',
   'export.fail.hdr_source_unsupported':
-    'Bu video HDR. Doğrulanmış bir HDR→SDR dönüşümümüz olmadığı için renkleri bozmamak adına çıktı alınmıyor.',
+    'Bu video HDR. Bu tarayıcı HDR görüntüyü SDR’ye doğru çeviremedi (deneme karesiyle test edildi), bu yüzden renkleri bozuk bir dosya üretmemek için çıktı alınmıyor. Google Chrome’da deneyebilirsin.',
   'export.fail.audio_undecodable': 'Bu tarayıcı seçilen ses dosyasını çözemiyor.',
   'export.fail.video_encoder_unsupported': 'Bu tarayıcıda H.264 kodlama bu ayarla desteklenmiyor.',
   'export.fail.audio_encoder_unsupported': 'Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor.',
@@ -1287,10 +1290,13 @@ export const en: Record<MessageKey, string> = {
   'export.gate.encoderConfig': 'H.264 + AAC target configuration',
   'export.gate.selfTest': 'A small test file was produced and re-opened',
   'export.gate.source': 'Your file can be decoded',
+  'export.gate.hdr': 'HDR to SDR conversion is correct in this browser (measured on a test frame)',
   'export.gate.pass': 'passed',
   'export.gate.fail': 'failed',
   'export.gate.pending': 'not run',
   'export.ready': 'This browser can produce a real MP4.',
+  'export.hdrNote':
+    'This video is HDR. The downloaded file will be SDR; colours may look slightly different from what you see on your phone.',
   'export.recheck': 'Check again',
   'export.blockedTitle': 'Export is not possible in this browser.',
   'export.blockedBody':
@@ -1327,7 +1333,7 @@ export const en: Record<MessageKey, string> = {
   'export.fail.no_video_track': 'No video track was found in the selected file.',
   'export.fail.source_undecodable': 'This browser cannot decode the source video.',
   'export.fail.hdr_source_unsupported':
-    'This video is HDR. We have no verified HDR to SDR conversion, so export is refused rather than producing wrong colours.',
+    'This video is HDR. This browser did not convert HDR to SDR correctly (checked with a test frame), so export is refused rather than producing a file with wrong colours. You can try Google Chrome.',
   'export.fail.audio_undecodable': 'This browser cannot decode the selected audio file.',
   'export.fail.video_encoder_unsupported':
     'H.264 encoding is unsupported here with this configuration.',

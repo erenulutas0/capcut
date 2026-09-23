@@ -23,6 +23,10 @@ import { chromium, firefox, webkit } from '@playwright/test';
 import { createDriver } from './lib/matrix-driver.mjs';
 import { ffprobeJson, runFfmpeg } from './lib/media-measure.mjs';
 
+const COVER_9_16 = "crop=w='min(iw,ih*9/16)':h='min(ih,iw*16/9)',scale=720:1280";
+const HDR_TRANSFERS = new Set(['smpte2084', 'arib-std-b67']);
+const MIN_SSIM = 0.85;
+
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const outDir = join(root, 'matrix-results');
 /**
@@ -72,7 +76,10 @@ const keepArtefacts = args.includes('--keep');
  * behaved differently on real camera footage (ADR-014 §3).
  */
 const swDecode = args.includes('--sw-decode');
-const runLabel = swDecode ? `${browserName}-swdecode` : browserName;
+/** Re-run a subset (file name substrings) into its own result file, e.g. --files=hdr --label=hdr. */
+const fileFilter = argValue('files', '').split(',').filter(Boolean);
+const extraLabel = argValue('label', '');
+const runLabel = `${swDecode ? `${browserName}-swdecode` : browserName}${extraLabel ? `-${extraLabel}` : ''}`;
 const chromiumArgs = swDecode ? ['--disable-accelerated-video-decode'] : [];
 
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.m4v', '.webm', '.mkv', '.3gp']);
@@ -110,6 +117,8 @@ const files = readdirSync(mediaDir)
     return false;
   })
   .sort();
+// Ids stay those of the full, sorted folder listing, so R09 is R09 in every run.
+const selectedFiles = new Set(files.filter((name) => fileFilter.length === 0 || fileFilter.some((f) => name.includes(f))));
 if (skipped.length > 0) {
   console.log(`video içermediği için atlandı: ${skipped.length} dosya`);
 }
@@ -210,6 +219,7 @@ const results = [];
 console.log(`${files.length} kayıt, tarayıcı: ${runLabel}, sunucu: ${baseURL}\n`);
 
 for (const [index, fileName] of files.entries()) {
+  if (!selectedFiles.has(fileName)) continue;
   const id = `R${String(index + 1).padStart(2, '0')}`;
   const path = join(mediaDir, fileName);
   const properties = describe(path);
@@ -218,6 +228,7 @@ for (const [index, fileName] of files.entries()) {
 
   const trims = momentsFor(properties?.durationSeconds ?? NaN);
   const expectedSeconds = trims.reduce((sum, [a, b]) => sum + (b - a), 0);
+  const hdr = HDR_TRANSFERS.has(properties?.colorTransfer ?? '');
 
   const testCase = {
     id,
@@ -237,14 +248,13 @@ for (const [index, fileName] of files.entries()) {
       size: [720, 1280],
       videoCodec: 'h264',
       ...(properties?.audioCodec ? { audioCodec: 'aac' } : {}),
-      reference: {
-        // Cover-crop to 9:16 from whatever orientation ffmpeg decodes to.
-        filter: "crop=w='min(iw,ih*9/16)':h='min(ih,iw*16/9)',scale=720:1280",
-        trims,
-      },
+      // Cover-crop to 9:16 from whatever orientation ffmpeg decodes to. An HDR
+      // source gets its reference below instead: tone mapped by the standard
+      // operator nearest to the output (ADR-022), never raw PQ/HLG.
+      ...(hdr ? { hdrColors: { filter: COVER_9_16, trims } } : { reference: { filter: COVER_9_16, trims } }),
       // Real footage with motion goes through two lossy encodes; a wrong range
       // or a wrong crop lands far below this.
-      minSsim: 0.85,
+      minSsim: MIN_SSIM,
     },
   };
 
@@ -312,6 +322,10 @@ for (const [index, fileName] of files.entries()) {
     if (!keepArtefacts) {
       rmSync(artefactPath, { force: true });
       rmSync(join(outDir, `${id}-reference.mp4`), { force: true });
+      // HDR sources: one tone-mapped reference per operator (ADR-022).
+      for (const name of readdirSync(outDir)) {
+        if (name.startsWith(`${id}-hdrref-`)) rmSync(join(outDir, name), { force: true });
+      }
     }
   }
 

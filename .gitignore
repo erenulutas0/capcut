@@ -22,6 +22,10 @@ web/tests/media/real/
 # Speech fixtures for the transcript spike (rights-clean, local only)
 web/tests/media/speech/
 web/spike-results/
+web/hdr-spike-results/
+
+# Generated HDR fixture for the HDR -> SDR e2e test (ffmpeg, ADR-022)
+web/tests/media/hdr/
 
 # Generated silence-suggestion fixtures (ffmpeg, made by the e2e setup)
 web/tests/media/silence/

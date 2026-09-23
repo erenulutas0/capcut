@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>HDR spike probe</title>
+<style>
+  html, body { margin: 0; background: #000; }
+  video { display: block; object-fit: fill; }
+</style>
+</head>
+<body>
+<video id="v" muted playsinline preload="auto"></video>
+<script type="module">
+/*
+ * HDR spike probe (docs/spikes/2026-09-23-hdr-tonemap.md). Local only: media
+ * is served from 127.0.0.1 by run-hdr-spike.mjs and results are POSTed back
+ * to the same local server. Nothing leaves the machine.
+ */
+import * as mb from '/mb/mediabunny.mjs';
+
+async function upload(name, data) {
+  const response = await fetch(`/upload/${encodeURIComponent(name)}`, { method: 'POST', body: data });
+  if (!response.ok) throw new Error(`upload ${name}: ${response.status}`);
+}
+
+async function capabilities(file) {
+  const input = new mb.Input({ formats: mb.ALL_FORMATS, source: new mb.UrlSource(`/media/${file}`) });
+  const track = await input.getPrimaryVideoTrack();
+  const config = await track.getDecoderConfig();
+  const codecString = config?.codec ?? null;
+  const out = {
+    codecString,
+    mediabunnyCanDecode: await track.canDecode(),
+    colorSpaceFromContainer: await track.getColorSpace().catch(() => null),
+    rotation: await track.getRotation(),
+    canPlayType: codecString ? document.createElement('video').canPlayType(`video/mp4; codecs="${codecString}"`) : null,
+    mseIsTypeSupported: codecString && typeof MediaSource !== 'undefined'
+      ? MediaSource.isTypeSupported(`video/mp4; codecs="${codecString}"`) : null,
+    decoderSupport: {},
+    webgpuMain: typeof navigator.gpu !== 'undefined',
+    float16Canvas: null,
+  };
+  if (config) {
+    for (const hw of ['no-preference', 'prefer-hardware', 'prefer-software']) {
+      try {
+        const support = await VideoDecoder.isConfigSupported({ ...config, description: config.description, hardwareAcceleration: hw });
+        out.decoderSupport[hw] = support.supported;
+      } catch (error) {
+        out.decoderSupport[hw] = `throws: ${error.name}`;
+      }
+    }
+  }
+  try {
+    const c = document.createElement('canvas');
+    const ctx = c.getContext('2d', { colorType: 'float16' });
+    out.float16Canvas = ctx ? (ctx.getContextAttributes?.().colorType ?? 'unknown') : false;
+  } catch { out.float16Canvas = false; }
+  return out;
+}
+
+function runWorker(message) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker('/spike/probe-worker.js', { type: 'module' });
+    setTimeout(() => { worker.terminate(); reject(new Error('worker timeout 120 s')); }, 120000);
+    worker.onmessage = (event) => { worker.terminate(); resolve(event.data); };
+    worker.onerror = (event) => { worker.terminate(); reject(new Error(event.message)); };
+    worker.postMessage(message);
+  });
+}
+
+const video = document.getElementById('v');
+
+window.spike = {
+  capabilities,
+  worker: (message) => runWorker(message),
+  async loadVideo(file, width, height) {
+    video.style.width = `${width}px`;
+    video.style.height = `${height}px`;
+    video.src = `/media/${file}`;
+    return await new Promise((resolve) => {
+      const done = (value) => { video.onloadeddata = null; video.onerror = null; resolve(value); };
+      video.onloadeddata = () => done({ ok: true, videoWidth: video.videoWidth, videoHeight: video.videoHeight });
+      video.onerror = () => done({ ok: false, error: video.error ? `${video.error.code} ${video.error.message}` : 'unknown' });
+      setTimeout(() => done({ ok: false, error: 'timeout' }), 20000);
+    });
+  },
+  /** Seek so the element shows the frame whose timestamp is `t`, then draw it too. */
+  async seekAndDraw(t, name, width, height) {
+    await new Promise((resolve) => {
+      video.onseeked = () => resolve();
+      video.currentTime = t;
+    });
+    // The frame may already be presented by the time the callback is set.
+    await new Promise((resolve) => {
+      video.requestVideoFrameCallback(() => resolve());
+      setTimeout(resolve, 1500);
+    });
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const canvas = new OffscreenCanvas(width, height);
+    const ctx = canvas.getContext('2d', { alpha: false });
+    ctx.drawImage(video, 0, 0, width, height);
+    await upload(name, await canvas.convertToBlob({ type: 'image/png' }));
+    return { currentTime: video.currentTime };
+  },
+};
+window.spikeReady = true;
+</script>
+</body>
+</html>

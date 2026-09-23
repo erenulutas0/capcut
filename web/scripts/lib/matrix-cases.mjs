@@ -235,17 +235,51 @@ export const CASES = [
   },
   {
     id: 'M10-hdr',
-    title: 'HDR (bt2020 / PQ) kaynağı',
-    expectation: 'Tone mapping doğrulanmadığı için açıkça reddedilmeli',
-    // H.264 on purpose: an HEVC file is already refused at import, which would
-    // never let the HDR gate run.
+    title: 'HDR (bt2020 / PQ, 10-bit) kaynağı',
+    expectation:
+      'Doğrulanmış HDR→SDR ile doğru renkli SDR çıktı ya da HDR gerekçeli açık ret; yanlış renkli başarı yok (ADR-022)',
+    // VP9 profile 2 on purpose: every Chromium decodes it in software, so the
+    // tone-mapping path is exercised without an HEVC decoder or phone files.
     setup: {
-      video: 'm10-hdr-h264.mp4',
-      moments: [['00:00.000', '00:03.000']],
+      video: 'm10-hdr-pq-vp9.mp4',
+      moments: [['00:00.500', '00:03.500']],
       aspect: '16-9',
       quality: '720',
     },
-    expect: { blocksWith: 'hdr_source_unsupported' },
+    expect: {
+      exportsOrBlocks: true,
+      durationSeconds: 3,
+      frames: 90,
+      size: [1280, 720],
+      videoCodec: 'h264',
+      audioCodec: 'aac',
+      tonePresent: [TONE.source],
+      hdrColors: { filter: 'scale=1280:720', trims: [[0.5, 3.5]] },
+      minSsim: 0.9,
+    },
+  },
+  {
+    id: 'M10-hdr-hlg',
+    title: 'HDR (bt2020 / HLG, 10-bit) kaynağı, 90° döndürmeli',
+    expectation: 'M10-hdr ile aynı; ayrıca dönüş doğru (dikey çıktı)',
+    setup: {
+      video: 'm10-hdr-hlg-vp9-rot90.mp4',
+      moments: [['00:00.000', '00:03.000']],
+      aspect: '9-16',
+      quality: '720',
+    },
+    expect: {
+      exportsOrBlocks: true,
+      durationSeconds: 3,
+      frames: 90,
+      size: [720, 1280],
+      videoCodec: 'h264',
+      audioCodec: 'aac',
+      tonePresent: [TONE.source],
+      editorDisplaySize: [720, 1280],
+      hdrColors: { filter: 'scale=720:1280', trims: [[0, 3]] },
+      minSsim: 0.9,
+    },
   },
   {
     id: 'M11',

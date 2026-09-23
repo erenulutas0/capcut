@@ -9,6 +9,7 @@
  */
 
 import type { ExportEvent } from '@/domain/exportEvents';
+import type { HdrTransfer } from '@/domain/hdr';
 import { TERMINAL_EXPORT_TYPES } from '@/domain/exportEvents';
 import type { RenderPlan } from '@/domain/renderPlan';
 import type { CapabilityStageResult, EncoderProbeConfig, WorkerRequest, WorkerResponse } from './protocol';
@@ -52,7 +53,9 @@ export class ExportWorkerClient {
    */
   async checkCapability(
     config: EncoderProbeConfig,
-    options: { withCaptionFont: boolean; timeoutMs?: number } = { withCaptionFont: false },
+    options: { withCaptionFont: boolean; hdrTransfer?: HdrTransfer | null; timeoutMs?: number } = {
+      withCaptionFont: false,
+    },
   ): Promise<CapabilityStageResult> {
     const worker = this.ensureWorker();
     const requestId = this.nextId('cap');
@@ -88,6 +91,7 @@ export class ExportWorkerClient {
         requestId,
         config,
         captionFontOrigin: options.withCaptionFont ? window.location.origin : null,
+        hdrTransfer: options.hdrTransfer ?? null,
       };
       worker.postMessage(request);
     });
