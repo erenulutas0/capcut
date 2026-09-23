@@ -529,6 +529,8 @@ export const tr = {
   'output.music': 'Müzik',
   'output.note': 'Soldan sağa, çıkacak videonun kendisi',
   'output.empty': 'Zaman çizgisi boş.',
+  'output.overLimit': 'Sonuç {total}. İndirmek için en az {excess} sil — sınır {limit} dakika.',
+  'output.limitMark': '{limit} dk sınırı',
 
   'split.action': 'Böl',
   'split.ready': 'Oynatma çizgisinin üstündeki parçayı oradan ikiye böl (S)',
@@ -562,6 +564,8 @@ export const tr = {
   'export.ready': 'Bu tarayıcıda gerçek MP4 üretilebilir.',
   'export.recheck': 'Yeniden kontrol et',
   'export.blockedTitle': 'Bu tarayıcıda çıktı alınamıyor.',
+  'export.overLimitTitle': 'Video indirmek için çok uzun.',
+  'export.overLimitHint': 'Zaman çizgisinde oynatma çizgisini taşı, Böl’e bas ve istemediğin parçaları sil. Hiçbir kare kodlanmadı.',
   'export.blockedBody':
     'Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz.',
   'export.run': 'Videoyu oluştur',
@@ -626,7 +630,7 @@ export const tr = {
     'Projenin video dosyası bu sekmede açık değil. Çıktı almak için dosyayı yeniden seç.',
   'export.plan.missing_source_dimensions': 'Kaynak videonun boyutları okunamadı.',
   'export.plan.unknown_asset': 'Tarifte tanımsız bir kaynak var.',
-  'export.plan.output_duration_exceeds_policy': 'Toplam çıktı süresi 60 dakikayı aşıyor.',
+  'export.plan.output_duration_exceeds_policy': 'Sonuç, indirme sınırı olan 60 dakikadan uzun.',
   'export.plan.zero_frames': 'Çıktıda tek kare bile yok.',
   'export.localNote':
     'Kodlama tamamen bu bilgisayarda, tarayıcı içinde yapılır. Hiçbir dosya yüklenmez.',
@@ -658,12 +662,12 @@ export const tr = {
     'Video ve müzik birlikte bu sürümdeki 2 GiB (yaklaşık 2,15 GB) sınırını aşıyor.',
   'error.music_too_large': 'Müzik dosyası bu sürümdeki 100 MiB (yaklaşık 105 MB) sınırının üzerinde.',
   'error.music_too_long': 'Müzik bu sürümdeki 10 dakika sınırının üzerinde.',
-  'error.source_too_long': 'Video bu sürümdeki 60 dakika sınırının üzerinde.',
+  'error.source_too_long': 'Video bu sürümdeki 120 dakika sınırının üzerinde.',
   'error.range_reversed': 'Bitiş zamanı başlangıçtan sonra olmalı.',
   'error.range_out_of_source': 'Seçilen aralık videonun dışında.',
   'error.clip_too_short': 'Bir parça en az 0,1 saniye olmalı.',
   'error.clip_limit_exceeded': 'Bir projede en çok 20 parça olabilir. Bölmek için önce bir parçayı sil.',
-  'error.output_duration_exceeds_policy': 'Toplam çıktı süresi 60 dakikayı aşamaz.',
+  'error.timeline_duration_exceeds_policy': 'Zaman çizgisi en fazla 120 dakika olabilir.',
   'error.no_source': 'Önce bir video seç.',
   'error.invalid_time': 'Zamanı 00:15.000 gibi dakika:saniye ya da yalnızca saniye (15) olarak yaz.',
   'error.fade_exceeds_selection': 'Açılış ve kapanış toplamı müzik bölümünden uzun olamaz.',
@@ -694,7 +698,7 @@ export const tr = {
   'help.shortcut.trim': 'Odaklı parça kenarını 1 kare / Shift ile 1 saniye kaydır',
   'help.shortcutNote': 'Bir metin veya zaman alanına yazarken kısayollar devre dışıdır.',
   'help.limit.length':
-    'Açılan video en fazla 60 dakika ve 2 GiB. İndirilen video en fazla 60 dakika; tarayıcı videoyu diske yazamıyorsa en fazla 5 dakika.',
+    'Açılan video en fazla 120 dakika ve 2 GiB. İndirilen video en fazla 60 dakika; tarayıcı videoyu diske yazamıyorsa en fazla 5 dakika. Daha uzun videoyu zaman çizgisinde böl ve fazlasını sil.',
   'help.limit.export': 'Çıktı yalnızca uygunluk kontrolünü geçen tarayıcıda alınabilir.',
   'help.limit.mix': 'Önizlemede iki oynatıcı birlikte çalışır; gerçek miks yalnızca çıktıda yapılır.',
   'help.limit.save':
@@ -712,15 +716,12 @@ export const tr = {
   'timeline.fitLabel': 'Zaman çizgisini genişliğe sığdır',
   'timeline.addWhole': 'Tüm videoyu ekle',
   'timeline.addRange': 'Aralık seçerek ekle',
-  'timeline.addFirst': 'İlk 60 dakikayı ekle',
-  'timeline.tooLongTitle': 'Bu video {duration}; çıktı en fazla 60 dakika olabilir.',
-  'timeline.tooLongBody':
-    'Videonu kendiliğinden kesmiyoruz. Baştan 60 dakikayı ekleyebilir ya da kaynakta istediğin aralığı seçebilirsin.',
   'timeline.emptyBody': 'Videonun tamamını tek parça olarak ekle, sonra istemediğin yerleri böl ve sil.',
   'timeline.notice.imported':
     'Video zaman çizgisine tek parça olarak eklendi ({length}). Kesmek için oynatma çizgisini taşı ve Böl’e bas · Geri al: Ctrl+Z',
+  'timeline.notice.importedOverLimit':
+    'Video zaman çizgisine tek parça olarak eklendi ({length}). İndirilen video en fazla {limit} dakika olabilir: fazlasını Böl ve Sil ile çıkar · Geri al: Ctrl+Z',
   'timeline.notice.addedWhole': 'Video zaman çizgisine tek parça olarak eklendi ({length}) · Geri al: Ctrl+Z',
-  'timeline.notice.addedFirst': 'Videonun ilk 60 dakikası zaman çizgisine eklendi · Geri al: Ctrl+Z',
   'timeline.notice.split': 'Parça {index} ikiye bölündü: {first} + {second} · Geri al: Ctrl+Z',
   'timeline.notice.deleted': 'Parça {index} silindi ({length}); kalanlar birleşti · Geri al: Ctrl+Z',
   'timeline.notice.trimmed': 'Parça {index} kısaltıldı: {from} → {to} · Geri al: Ctrl+Z',
@@ -1260,6 +1261,8 @@ export const en: Record<MessageKey, string> = {
   'output.music': 'Music',
   'output.note': 'Left to right, the video you will export',
   'output.empty': 'The timeline is empty.',
+  'output.overLimit': 'The result is {total}. To download it, delete at least {excess} — the limit is {limit} minutes.',
+  'output.limitMark': '{limit} min limit',
 
   'split.action': 'Split',
   'split.ready': 'Split the clip under the playhead in two, right there (S)',
@@ -1293,6 +1296,8 @@ export const en: Record<MessageKey, string> = {
   'export.ready': 'This browser can produce a real MP4.',
   'export.recheck': 'Check again',
   'export.blockedTitle': 'Export is not possible in this browser.',
+  'export.overLimitTitle': 'The video is too long to download.',
+  'export.overLimitHint': 'On the timeline, move the playhead, press Split and delete the clips you do not want. No frame was encoded.',
   'export.blockedBody':
     'A check did not pass, so no file is produced. We do not silently fall back to another codec or drop audio to look successful.',
   'export.run': 'Create the video',
@@ -1360,7 +1365,7 @@ export const en: Record<MessageKey, string> = {
     'The project\u2019s video file is not open in this tab. Choose it again to export.',
   'export.plan.missing_source_dimensions': 'The source video dimensions could not be read.',
   'export.plan.unknown_asset': 'The recipe references an unknown source.',
-  'export.plan.output_duration_exceeds_policy': 'Total output duration exceeds 60 minutes.',
+  'export.plan.output_duration_exceeds_policy': 'The result is longer than the 60 minutes download limit.',
   'export.plan.zero_frames': 'The output would contain no frames at all.',
   'export.localNote':
     'Encoding happens entirely on this computer, inside the browser. Nothing is uploaded.',
@@ -1390,12 +1395,12 @@ export const en: Record<MessageKey, string> = {
   'error.total_too_large': 'Video and music together exceed the 2 GiB (about 2.15 GB) limit of this version.',
   'error.music_too_large': 'The music file is above the 100 MiB (about 105 MB) limit of this version.',
   'error.music_too_long': 'The music is above the 10 minute limit of this version.',
-  'error.source_too_long': 'The video is above the 60 minute limit of this version.',
+  'error.source_too_long': 'The video is above the 120 minute limit of this version.',
   'error.range_reversed': 'The end must come after the start.',
   'error.range_out_of_source': 'The selected range is outside the video.',
   'error.clip_too_short': 'A clip must be at least 0.1 seconds.',
   'error.clip_limit_exceeded': 'A project can hold at most 20 clips. Delete a clip before splitting.',
-  'error.output_duration_exceeds_policy': 'Total output duration cannot exceed 60 minutes.',
+  'error.timeline_duration_exceeds_policy': 'The timeline can be at most 120 minutes.',
   'error.no_source': 'Choose a video first.',
   'error.invalid_time': 'Write the time as minutes:seconds like 00:15.000, or just seconds (15).',
   'error.fade_exceeds_selection': 'Fade in plus fade out cannot exceed the music segment.',
@@ -1426,7 +1431,7 @@ export const en: Record<MessageKey, string> = {
   'help.shortcut.trim': 'Move the focused clip edge by 1 frame / 1 second with Shift',
   'help.shortcutNote': 'Shortcuts are disabled while you type in a text or time field.',
   'help.limit.length':
-    'An opened video can be up to 60 minutes and 2 GiB. The downloaded video can be up to 60 minutes; at most 5 minutes if the browser cannot write the video to disk.',
+    'An opened video can be up to 120 minutes and 2 GiB. The downloaded video can be up to 60 minutes; at most 5 minutes if the browser cannot write the video to disk. Split a longer video on the timeline and delete the rest.',
   'help.limit.export': 'Export is only possible in a browser that passes the capability check.',
   'help.limit.mix': 'The preview runs two players together; the real mix happens only in the export.',
   'help.limit.save':
@@ -1444,15 +1449,12 @@ export const en: Record<MessageKey, string> = {
   'timeline.fitLabel': 'Fit the timeline to the width',
   'timeline.addWhole': 'Add the whole video',
   'timeline.addRange': 'Add a range',
-  'timeline.addFirst': 'Add the first 60 minutes',
-  'timeline.tooLongTitle': 'This video is {duration}; the output can be at most 60 minutes.',
-  'timeline.tooLongBody':
-    'We do not cut your video on our own. Add the first 60 minutes, or pick the range you want in the source.',
   'timeline.emptyBody': 'Add the whole video as one clip, then split and delete the parts you do not want.',
   'timeline.notice.imported':
     'The video was added to the timeline as one clip ({length}). To cut, move the playhead and press Split · Undo: Ctrl+Z',
+  'timeline.notice.importedOverLimit':
+    'The video was added to the timeline as one clip ({length}). A downloaded video can be at most {limit} minutes: remove the rest with Split and Delete · Undo: Ctrl+Z',
   'timeline.notice.addedWhole': 'The video was added to the timeline as one clip ({length}) · Undo: Ctrl+Z',
-  'timeline.notice.addedFirst': 'The first 60 minutes of the video were added to the timeline · Undo: Ctrl+Z',
   'timeline.notice.split': 'Clip {index} was split in two: {first} + {second} · Undo: Ctrl+Z',
   'timeline.notice.deleted': 'Clip {index} was deleted ({length}); the rest closed up · Undo: Ctrl+Z',
   'timeline.notice.trimmed': 'Clip {index} shortened: {from} → {to} · Undo: Ctrl+Z',

@@ -34,26 +34,25 @@ export const MIN_DRAG_PIECE_US: Micros = 500_000;
 // ---------------------------------------------------------------- import
 
 export type InitialPlacement =
-  /** The whole video fits the output limit: it becomes one piece. */
+  /** The whole video becomes one piece. */
   | { kind: 'whole'; sourceInUs: Micros; sourceOutUs: Micros }
-  /**
-   * Longer than the output limit. Nothing is added silently; the user
-   * chooses between the first `limitUs` or picking a range.
-   */
-  | { kind: 'too_long'; durationUs: Micros; limitUs: Micros }
   /** Shorter than the minimum piece: nothing can be added. */
   | { kind: 'too_short' };
 
-/** What the timeline receives when a video with this duration is opened. */
-export function initialPlacement(
-  sourceDurationUs: Micros,
-  policy: Pick<ExportPolicy, 'maxOutputDurationUs'>,
-): InitialPlacement {
+/**
+ * What the timeline receives when a video with this duration is opened.
+ *
+ * ADR-021: always the whole video, even when it is longer than the OUTPUT
+ * limit. The user splits and deletes on the timeline down to that limit; the
+ * export gate says how much is left to remove. (Before v4 a video over the
+ * output limit left the timeline empty and asked "İlk N dakikayı ekle" or
+ * "Aralık seçerek ekle".) A video can only be opened when it fits the input
+ * limit, and the timeline may be exactly that long (`maxTimelineDurationUs`),
+ * so there is no "too long" case left here.
+ */
+export function initialPlacement(sourceDurationUs: Micros): InitialPlacement {
   if (!(sourceDurationUs >= MIN_CLIP_DURATION_US)) return { kind: 'too_short' };
-  if (sourceDurationUs <= policy.maxOutputDurationUs) {
-    return { kind: 'whole', sourceInUs: 0, sourceOutUs: sourceDurationUs };
-  }
-  return { kind: 'too_long', durationUs: sourceDurationUs, limitUs: policy.maxOutputDurationUs };
+  return { kind: 'whole', sourceInUs: 0, sourceOutUs: sourceDurationUs };
 }
 
 /**
@@ -75,14 +74,6 @@ export function aspectForVideo(displayWidth: number | undefined, displayHeight: 
   const ratio = displayWidth / displayHeight;
   if (Math.abs(ratio - 1) <= SQUARE_TOLERANCE) return '1:1';
   return ratio < 1 ? '9:16' : '16:9';
-}
-
-/** The range "İlk N dakikayı ekle" adds for a video longer than the output limit. */
-export function leadingRange(
-  sourceDurationUs: Micros,
-  policy: Pick<ExportPolicy, 'maxOutputDurationUs'>,
-): { sourceInUs: Micros; sourceOutUs: Micros } {
-  return { sourceInUs: 0, sourceOutUs: Math.min(sourceDurationUs, policy.maxOutputDurationUs) };
 }
 
 // ------------------------------------------------------------ the playhead
@@ -249,7 +240,7 @@ export function resolveEdgeTrim(
   clipId: string,
   edge: TrimEdge,
   rawUs: number,
-  policy: Pick<ExportPolicy, 'maxOutputDurationUs'>,
+  policy: Pick<ExportPolicy, 'maxTotalSourceDurationUs'>,
 ): EdgeTrimTarget | null {
   const clip = project.clips.find((item) => item.clipId === clipId);
   if (!clip) return null;

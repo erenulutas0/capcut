@@ -266,14 +266,19 @@ test.describe('a11y: axe audit', () => {
   });
 
   // Added with the single timeline (ADR-019).
-  // Policy v3 (ADR-020): a 5:10 video now arrives whole; the too-long choice
-  // cannot be reached with the web policy (a video over 60 min is refused on
-  // open), so it is no longer audited here.
-  test('timeline: a long video as one piece and a rejected file message', async ({ page }, testInfo) => {
+  // Policy v4 (ADR-021): a 90-minute video arrives whole, over the 60-minute
+  // download limit; the strip marks the limit and the excess, and the
+  // download dialog refuses with the amount to delete. Both are audited.
+  test('timeline: a video over the download limit as one piece, the gate, a rejected file', async ({ page }, testInfo) => {
     await openEditor(page);
-    await page.getByTestId('video-input').setInputFiles(timelineFixture('long').file);
+    await page.getByTestId('video-input').setInputFiles(timelineFixture('ninety').file);
     await expect(page.getByTestId('strip-clip')).toHaveCount(1, { timeout: 60_000 });
-    await audit(page, 'timeline-long-whole', testInfo);
+    await expect(page.getByTestId('timeline-over-limit')).toBeVisible();
+    await audit(page, 'timeline-over-limit', testInfo);
+    await page.getByTestId('open-export').click();
+    await expect(page.getByTestId('export-over-limit')).toBeVisible({ timeout: 60_000 });
+    await audit(page, 'dialog-export-over-limit', testInfo);
+    await page.keyboard.press('Escape');
     await page.getByTestId('video-input').setInputFiles(timelineFixture('tooLong').file);
     await expect(page.getByTestId('media-error')).toBeVisible({ timeout: 60_000 });
     await audit(page, 'timeline-rejected-file', testInfo);
@@ -389,6 +394,24 @@ test.describe('a11y: axe audit', () => {
         await page.keyboard.press('Escape');
         await expect(sheet).toHaveCount(0);
       }
+    });
+
+    test('a video over the download limit (ADR-021)', async ({ page }, testInfo) => {
+      await openEditor(page);
+      await page.getByTestId('video-input').setInputFiles(timelineFixture('ninety').file);
+      await expect(page.getByTestId('timeline-over-limit')).toBeVisible({ timeout: 60_000 });
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await audit(page, 'phone-timeline-over-limit', testInfo);
+      // The open dialog's edge passes over the import notice's close button
+      // on the page behind it, and axe's target-size rule counts the covered
+      // part of that (44 px) button as small. The page behind a modal cannot
+      // be used, so the notice is dismissed first; the dialog is what is
+      // audited here.
+      await page.getByRole('button', { name: tr['timeline.notice.dismiss'] }).click();
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.getByTestId('open-export').click();
+      await expect(page.getByTestId('export-over-limit')).toBeVisible({ timeout: 60_000 });
+      await audit(page, 'phone-dialog-export-over-limit', testInfo);
     });
   });
 
@@ -755,6 +778,11 @@ test.describe('a11y: reflow at 320 CSS px (WCAG 1.4.10)', () => {
           expect(sheetOverflow, `${testId} sheet`).toBe(0);
           await page.keyboard.press('Escape');
         }
+        // ADR-021: the limit line, its label and the over-limit sentence.
+        await page.getByTestId('video-input').setInputFiles(timelineFixture('ninety').file);
+        await expect(page.getByTestId('timeline-over-limit')).toBeVisible({ timeout: 60_000 });
+        await expect(page.getByTestId('timeline-limit-label')).toBeVisible();
+        expect(await horizontalOverflow(page), 'editor over the download limit').toBe(0);
       });
     });
   }
@@ -828,6 +856,19 @@ test.describe('a11y: text spacing (WCAG 1.4.12)', () => {
       await page.getByTestId('open-export').click();
       await expect(page.getByTestId('export-ready')).toBeVisible({ timeout: 60_000 });
       expect(await clippedControls(page), 'export dialog').toEqual([]);
+    });
+
+    test(`over the download limit, nothing clips at ${viewport.width} px (ADR-021)`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await openEditor(page);
+      await page.getByTestId('video-input').setInputFiles(timelineFixture('ninety').file);
+      await expect(page.getByTestId('timeline-over-limit')).toBeVisible({ timeout: 60_000 });
+      await page.addStyleTag({ content: TEXT_SPACING_CSS });
+      expect(await clippedControls(page), 'editor over the limit').toEqual([]);
+      expect(await horizontalOverflow(page), 'editor page width').toBe(0);
+      await page.getByTestId('open-export').click();
+      await expect(page.getByTestId('export-over-limit')).toBeVisible({ timeout: 60_000 });
+      expect(await clippedControls(page), 'export dialog over the limit').toEqual([]);
     });
   }
 });

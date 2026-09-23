@@ -30,18 +30,13 @@ import {
   sortCues,
   type CaptionTextProblem,
 } from '../domain/captions';
-import { WEB_LOCAL_POLICY, type ExportPolicy } from '../domain/policy';
+import { WEB_LOCAL_POLICY, maxTimelineDurationUs, type ExportPolicy } from '../domain/policy';
 import { computeSourceView, viewZoom } from '../domain/transform';
 import { MIN_CLIP_DURATION_US, type Micros } from '../domain/time';
 import { buildTimeline, totalOutputDurationUs } from '../domain/timeline';
 import { piecesAfterRemoval, type ClipSilence } from '../domain/silence';
 import { splitPointAt, type SplitRejection } from '../domain/trim';
-import {
-  initialPlacement,
-  leadingRange,
-  splitAtPlayhead,
-  type TimelineSplitRejection,
-} from '../domain/timelineEdit';
+import { initialPlacement, splitAtPlayhead, type TimelineSplitRejection } from '../domain/timelineEdit';
 import { nextId } from './ids';
 
 export function createEmptyProject(projectId = 'p_local_001'): Project {
@@ -122,7 +117,11 @@ export type AddClipRejection =
   | 'range_out_of_source'
   | 'clip_too_short'
   | 'clip_limit_exceeded'
-  | 'output_duration_exceeds_policy';
+  /**
+   * The timeline would be longer than the input limit (ADR-021). Longer than
+   * the OUTPUT limit is allowed: the export gate asks to remove the excess.
+   */
+  | 'timeline_duration_exceeds_policy';
 
 export function addClip(
   project: Project,
@@ -138,8 +137,8 @@ export function addClip(
   const durationUs = input.sourceOutUs - input.sourceInUs;
   if (durationUs < MIN_CLIP_DURATION_US) return { ok: false, reason: 'clip_too_short' };
   if (project.clips.length >= policy.maxClips) return { ok: false, reason: 'clip_limit_exceeded' };
-  if (totalOutputDurationUs(project) + durationUs > policy.maxOutputDurationUs) {
-    return { ok: false, reason: 'output_duration_exceeds_policy' };
+  if (totalOutputDurationUs(project) + durationUs > maxTimelineDurationUs(policy)) {
+    return { ok: false, reason: 'timeline_duration_exceeds_policy' };
   }
 
   const reference = project.clips[0];
@@ -204,8 +203,8 @@ export function updateClipRange(
   const current = findClip(project, clipId);
   if (!current) return { ok: false, reason: 'no_source' };
   const otherTotal = totalOutputDurationUs(project) - (current.sourceOutUs - current.sourceInUs);
-  if (otherTotal + durationUs > policy.maxOutputDurationUs) {
-    return { ok: false, reason: 'output_duration_exceeds_policy' };
+  if (otherTotal + durationUs > maxTimelineDurationUs(policy)) {
+    return { ok: false, reason: 'timeline_duration_exceeds_policy' };
   }
 
   const clips = project.clips.map((clip) =>
@@ -281,26 +280,15 @@ export function splitAtTimelinePlayhead(
 
 /**
  * Puts the opened video on the empty timeline the way `initialPlacement`
- * says: the whole file as one piece when it fits the output limit. A longer
- * file is NOT truncated here; the UI asks first (ADR-019).
+ * says: the whole file as one piece, even when it is longer than the output
+ * limit (ADR-021; the export gate asks to split and delete down to it).
  */
-export function addWholeSource(
-  project: Project,
-  policy: ExportPolicy = WEB_LOCAL_POLICY,
-): CommandResult | { ok: false; reason: 'source_longer_than_output' } {
+export function addWholeSource(project: Project, policy: ExportPolicy = WEB_LOCAL_POLICY): CommandResult {
   const asset = primaryVideoAsset(project);
   if (!asset) return { ok: false, reason: 'no_source' };
-  const placement = initialPlacement(asset.durationUs, policy);
-  if (placement.kind === 'too_long') return { ok: false, reason: 'source_longer_than_output' };
+  const placement = initialPlacement(asset.durationUs);
   if (placement.kind === 'too_short') return { ok: false, reason: 'clip_too_short' };
   return addClip(project, { sourceInUs: placement.sourceInUs, sourceOutUs: placement.sourceOutUs }, policy);
-}
-
-/** "İlk N dakikayı ekle": the leading part of a video longer than the output limit. */
-export function addLeadingSource(project: Project, policy: ExportPolicy = WEB_LOCAL_POLICY): CommandResult {
-  const asset = primaryVideoAsset(project);
-  if (!asset) return { ok: false, reason: 'no_source' };
-  return addClip(project, leadingRange(asset.durationUs, policy), policy);
 }
 
 export function setClipGain(project: Project, clipId: string, gainDb: number): Project {

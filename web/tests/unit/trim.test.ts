@@ -125,8 +125,8 @@ describe('trim targets', () => {
     expect(out).toBe(24_010_000);
   });
 
-  it('never lets an edge grow past the output duration policy', () => {
-    const policy = { maxOutputDurationUs: 10 * S };
+  it('never lets an edge grow past the timeline limit (the input limit, ADR-021)', () => {
+    const policy = { maxTotalSourceDurationUs: 10 * S };
     const project = withRanges([
       [0, 4 * S],
       [10 * S, 14 * S],

@@ -11,7 +11,6 @@ import {
 import {
   addCaptionCue,
   addClip,
-  addLeadingSource,
   addWholeSource,
   applySilenceCuts,
   convertCaptionTimeBase,
@@ -88,10 +87,11 @@ export interface MediaError {
 /** What opening a video did, so the editor can say it and set up the preview. */
 export type VideoImportOutcome =
   | { kind: 'rejected' }
-  /** The whole video went onto the timeline as one piece. */
+  /**
+   * The whole video went onto the timeline as one piece — also when it is
+   * longer than the output limit (ADR-021): the user cuts it down there.
+   */
   | { kind: 'whole'; lengthUs: Micros; aspect: AspectRatio | null }
-  /** Longer than the output limit: the timeline stays empty until the user chooses. */
-  | { kind: 'too_long'; durationUs: Micros; aspect: AspectRatio | null }
   | { kind: 'too_short'; aspect: AspectRatio | null };
 
 const VIDEO_LIMITS = {
@@ -184,9 +184,10 @@ export function useEditorState() {
         return { kind: 'rejected' };
       }
 
-      // ADR-019: a video that fits the output limit goes onto the timeline
-      // whole, as one piece. A longer one is not truncated silently.
-      const placement = initialPlacement(outcome.handle.durationUs, WEB_LOCAL_POLICY);
+      // ADR-019/ADR-021: the video goes onto the timeline whole, as one
+      // piece, even when it is longer than the output limit (the probe has
+      // already held it to the input limit, which is the timeline's limit).
+      const placement = initialPlacement(outcome.handle.durationUs);
       // Opening a video always starts an empty timeline (the new asset keeps
       // no old pieces), so the frame follows the video's orientation. Part of
       // the import step: undoing the import restores the previous frame too.
@@ -237,9 +238,7 @@ export function useEditorState() {
       if (placement.kind === 'whole') {
         return { kind: 'whole', lengthUs: placement.sourceOutUs - placement.sourceInUs, aspect };
       }
-      return placement.kind === 'too_long'
-        ? { kind: 'too_long', durationUs: placement.durationUs, aspect }
-        : { kind: 'too_short', aspect };
+      return { kind: 'too_short', aspect };
     },
     [],
   );
@@ -592,22 +591,6 @@ export function useEditorState() {
     setActionError(null);
     const result = runCommand((base) => addWholeSource(base, WEB_LOCAL_POLICY));
     if (!result.ok) {
-      setTimelineError(
-        rejectionKey(
-          result.reason === 'source_longer_than_output' ? 'output_duration_exceeds_policy' : result.reason,
-        ),
-      );
-      return null;
-    }
-    setTimelineError(null);
-    return result.project;
-  }, [runCommand]);
-
-  /** "İlk N dakikayı ekle" for a video longer than the output limit. */
-  const addLeadingMinutes = useCallback((): Project | null => {
-    setActionError(null);
-    const result = runCommand((base) => addLeadingSource(base, WEB_LOCAL_POLICY));
-    if (!result.ok) {
       setTimelineError(rejectionKey(result.reason));
       return null;
     }
@@ -753,7 +736,6 @@ export function useEditorState() {
     splitPiece,
     trimPiece,
     addWholeVideo,
-    addLeadingMinutes,
     shiftMoment,
     changeFraming,
     changeClipGain,

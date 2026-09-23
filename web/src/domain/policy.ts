@@ -1,6 +1,6 @@
 /**
  * Local web limits. The single source of truth is
- * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-09-22.v3)
+ * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-09-23.v4)
  * plus the web guard rails in doc 11. Plan names are deliberately NOT hardcoded
  * into the domain: this is one policy object the app passes in.
  *
@@ -33,14 +33,15 @@ export interface ExportPolicy {
 const MIB = 1_048_576;
 
 export const WEB_LOCAL_POLICY: ExportPolicy = {
-  policyId: '2026-09-22.v3/web-local',
+  policyId: '2026-09-23.v4/web-local',
   // Raised from 5 min by founder decision (doc 15 v3): on the disk (OPFS)
   // route export memory stays flat with output length (ADR-013, ADR-020).
   maxOutputDurationUs: 60 * 60 * US_PER_SECOND,
   maxMemoryRouteOutputDurationUs: 5 * 60 * US_PER_SECOND,
-  // Raised from 20 min / 250 MiB by founder decision (doc 15 v2): export
-  // memory follows output length, the source is read from disk (ADR-013).
-  maxTotalSourceDurationUs: 60 * 60 * US_PER_SECOND,
+  // 20 min / 250 MiB -> 60 min / 2 GiB (doc 15 v2, ADR-013) -> 120 min
+  // (doc 15 v4, ADR-021): export memory follows the OUTPUT, the source is
+  // read from disk. The byte limit did not change with v4.
+  maxTotalSourceDurationUs: 120 * 60 * US_PER_SECOND,
   maxTotalSourceBytes: 2048 * MIB,
   maxVideoAssets: 5,
   maxClips: 20,
@@ -50,6 +51,35 @@ export const WEB_LOCAL_POLICY: ExportPolicy = {
   minGainDb: -60,
   maxGainDb: 0,
 };
+
+/**
+ * How long the timeline (the recipe) may be (ADR-021). It is the INPUT limit:
+ * a video that may be opened at all arrives whole, as one piece, even when it
+ * is longer than the output limit. The output limit is an export gate — the
+ * user splits and deletes down to it — not a rule of the recipe. There is no
+ * separate number in doc 15 for this on purpose: tying it to the input limit
+ * means an openable video can never be too long for the timeline.
+ */
+export function maxTimelineDurationUs(policy: Pick<ExportPolicy, 'maxTotalSourceDurationUs'>): Micros {
+  return policy.maxTotalSourceDurationUs;
+}
+
+/** How far a result is over an output limit (ADR-021). */
+export interface OutputOverrun {
+  totalUs: Micros;
+  limitUs: Micros;
+  /** What must be removed, at least, before the result may be downloaded. */
+  excessUs: Micros;
+}
+
+/**
+ * The export gate's arithmetic: null when a result of `totalUs` fits
+ * `limitUs` (the limit itself fits), otherwise by how much it does not.
+ */
+export function outputOverrun(totalUs: Micros, limitUs: Micros): OutputOverrun | null {
+  if (!(totalUs > limitUs)) return null;
+  return { totalUs, limitUs, excessUs: totalUs - limitUs };
+}
 
 /**
  * Doc 15 limits the project's video and music together ("toplam byte limitine
@@ -74,7 +104,7 @@ export type OutputRouteAvailability = 'opfs' | 'no_disk_access' | 'not_enough_sp
 export type OutputRouteRefusal = 'output_too_long_for_memory' | 'output_storage_insufficient';
 
 /**
- * Doc 15 v3: 60 minutes only where the file goes to disk. Without that route a
+ * Doc 15 v3/v4: 60 minutes only where the file goes to disk. Without that route a
  * short output still falls back to memory (the proven W1 route); a longer one
  * is refused before any frame is encoded, with the reason the user can act on.
  */

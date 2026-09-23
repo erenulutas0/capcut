@@ -9,12 +9,11 @@ import { safeFileName } from '@/adapters/browserMedia';
 import { DEFAULT_CAPTION_STYLE, activeCueAt, primaryCaptionTrack } from '@/domain/captions';
 import type { AspectRatio, Project } from '@/domain/edl';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
-import { formatLength, type Micros } from '@/domain/time';
+import { formatLength, US_PER_SECOND, type Micros } from '@/domain/time';
 import { totalOutputDurationUs } from '@/domain/timeline';
 import {
   dragMinimumUs,
   floorAfterEdit,
-  initialPlacement,
   outputStartOf,
   playheadAfterRemoval,
   splitAtPlayhead,
@@ -177,8 +176,9 @@ export function EditorApp() {
   );
 
   /**
-   * Opening a video (ADR-019): if it fits the output limit it is already on
-   * the timeline as one piece, and the preview shows the result.
+   * Opening a video (ADR-019, ADR-021): it is already on the timeline as one
+   * piece — also when it is longer than the output limit — and the preview
+   * shows the result.
    */
   const openVideo = async (file: File) => {
     playback.stop();
@@ -190,7 +190,12 @@ export function EditorApp() {
     const aspectNote = outcome.aspect ? t(ASPECT_NOTICE[outcome.aspect]) : null;
     if (outcome.kind === 'whole') {
       playback.prepareMode('output');
-      const imported = fill(t('timeline.notice.imported'), { length: lengthText(outcome.lengthUs) });
+      // Longer than can be downloaded: say so right away, with the limit.
+      const over = outcome.lengthUs > WEB_LOCAL_POLICY.maxOutputDurationUs;
+      const imported = fill(t(over ? 'timeline.notice.importedOverLimit' : 'timeline.notice.imported'), {
+        length: lengthText(outcome.lengthUs),
+        limit: String(WEB_LOCAL_POLICY.maxOutputDurationUs / (60 * US_PER_SECOND)),
+      });
       setNotice(aspectNote ? `${aspectNote}. ${imported}` : imported);
     } else {
       playback.prepareMode('source');
@@ -346,11 +351,6 @@ export function EditorApp() {
         fill(t('timeline.notice.addedWhole'), { length: lengthText(totalOutputDurationUs(after)) }),
       );
     }
-  };
-
-  const addFirstMinutes = () => {
-    const after = state.addLeadingMinutes();
-    if (after) showNewTimeline(after, t('timeline.notice.addedFirst'));
   };
 
   /** "Aralık seçerek ekle": the secondary flow, the range form in the source preview. */
@@ -587,9 +587,7 @@ export function EditorApp() {
 
   const timelineEmpty: TimelineEmptyState = !state.video
     ? { kind: 'no_video' }
-    : initialPlacement(state.video.durationUs, WEB_LOCAL_POLICY).kind === 'too_long'
-      ? { kind: 'too_long', durationUs: state.video.durationUs }
-      : { kind: 'fits', lengthUs: state.video.durationUs };
+    : { kind: 'fits', lengthUs: state.video.durationUs };
 
   const backupPanel = (
     <div data-testid="backup-panel">
@@ -910,7 +908,6 @@ export function EditorApp() {
         onFit={() => setScaleFloorUs(0)}
         empty={timelineEmpty}
         onAddWhole={addWholeVideo}
-        onAddFirst={addFirstMinutes}
         onAddRange={addByRange}
         onTrimStart={startTrim}
         onTrimPreview={previewTrim}

@@ -938,6 +938,77 @@ input[type='range']:disabled::-webkit-slider-thumb {
   pointer-events: none;
 }
 
+/* ADR-021: the output (download) limit on the strip. A line over the ruler
+   and the lane at the limit, a label on the ruler, and the part of the
+   result past it hatched in the danger colour. Above ordinary pieces, under
+   the selected one (its trim handles stay clear) and under the playhead. */
+.tl-limit {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px dashed var(--danger);
+  margin-left: -1px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.tl-limit-label {
+  position: absolute;
+  top: 4px;
+  z-index: 2;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--panel);
+  font-family: var(--font-time);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  color: var(--danger);
+  pointer-events: none;
+}
+
+.tl-limit-label[data-side='before'] {
+  margin-left: -4px;
+  transform: translateX(-100%);
+}
+
+.tl-over {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  border-top: 3px solid var(--danger);
+  border-radius: 0 8px 8px 0;
+  background: repeating-linear-gradient(135deg, rgba(255, 180, 170, 0.32) 0 6px, rgba(255, 180, 170, 0.1) 6px 12px);
+  pointer-events: none;
+}
+
+.strip-head .strip-sub[data-over='true'] {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.tl-over-limit {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 10px;
+  border-left: 3px solid var(--danger);
+  border-radius: 6px;
+  background: var(--raised);
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.tl-over-limit svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
 /* The wrapper draws the piece; the select button fills it and the trim
    handles sit on its edges. No overflow clipping, so a dragged handle and
    its ghost stay visible past the piece's old edge. */

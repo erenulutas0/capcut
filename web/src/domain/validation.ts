@@ -28,7 +28,7 @@ import {
   isCaptionLanguage,
   normalizeCaptionText,
 } from './captions';
-import { WEB_LOCAL_POLICY, type ExportPolicy } from './policy';
+import { WEB_LOCAL_POLICY, maxTimelineDurationUs, type ExportPolicy } from './policy';
 import { MIN_CLIP_DURATION_US, isSafeMicros } from './time';
 
 export type IssueCode =
@@ -60,7 +60,7 @@ export type IssueCode =
   | 'color_invalid'
   | 'export_spec_invalid'
   | 'revision_invalid'
-  | 'output_duration_exceeds_policy'
+  | 'timeline_duration_exceeds_policy'
   | 'source_duration_exceeds_policy'
   | 'video_asset_limit_exceeded'
   | 'caption_track_limit_exceeded'
@@ -681,9 +681,12 @@ export function validateProject(
   validateClips(bag, input.clips, assets, policy);
   validateExportSpec(bag, input.export);
 
+  // ADR-021: the recipe may be as long as the input limit. The OUTPUT limit
+  // is not a recipe rule any more: a timeline over it is a valid project that
+  // loads, saves and undoes; only the export (render plan) refuses it.
   const totalOutputUs = sumClipDurations(input.clips);
-  if (totalOutputUs > policy.maxOutputDurationUs) {
-    bag.add('output_duration_exceeds_policy', 'clips', 'Toplam çıktı süresi web sınırını aşıyor.');
+  if (totalOutputUs > maxTimelineDurationUs(policy)) {
+    bag.add('timeline_duration_exceeds_policy', 'clips', 'Zaman çizgisi web girdi süresi sınırını aşıyor.');
   }
 
   let totalSourceUs = 0;

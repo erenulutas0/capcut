@@ -7,7 +7,7 @@ import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
 import { captionMarks } from '@/domain/captionEditing';
 import { outputCues, primaryCaptionTrack } from '@/domain/captions';
 import type { Project } from '@/domain/edl';
-import { WEB_LOCAL_POLICY } from '@/domain/policy';
+import { WEB_LOCAL_POLICY, outputOverrun } from '@/domain/policy';
 import {
   formatDurationShort,
   formatSpokenTime,
@@ -26,13 +26,14 @@ import {
 } from '@/domain/timelineEdit';
 import { frameStepUs, trimBounds, type TrimEdge } from '@/domain/trim';
 import type { MessageKey } from '@/i18n/messages';
+import { overLimitText } from './outputLimitText';
 import { TrimHandle, type TrimCommitInfo, type TrimDragState } from './TrimHandle';
 
-/** What the empty timeline offers once a video is open. */
-export type TimelineEmptyState =
-  | { kind: 'no_video' }
-  | { kind: 'fits'; lengthUs: Micros }
-  | { kind: 'too_long'; durationUs: Micros };
+/**
+ * What the empty timeline offers once a video is open. Since ADR-021 every
+ * video that opens fits the timeline whole, so there is no "too long" choice.
+ */
+export type TimelineEmptyState = { kind: 'no_video' } | { kind: 'fits'; lengthUs: Micros };
 
 interface Props {
   t: (key: MessageKey) => string;
@@ -62,7 +63,6 @@ interface Props {
   onFit: () => void;
   empty: TimelineEmptyState;
   onAddWhole: () => void;
-  onAddFirst: () => void;
   onAddRange: () => void;
   onTrimStart: () => void;
   onTrimPreview: (edge: TrimEdge, us: Micros) => void;
@@ -109,7 +109,6 @@ export function OutputStrip({
   onFit,
   empty,
   onAddWhole,
-  onAddFirst,
   onAddRange,
   onTrimStart,
   onTrimPreview,
@@ -127,6 +126,14 @@ export function OutputStrip({
   const marks = captionMarks(outputCues(project), totalUs);
   const pct = (us: Micros) => `${(us / referenceUs) * 100}%`;
   const playheadUs = Math.max(0, Math.min(outputTimeUs, totalUs));
+  // ADR-021: the output limit is an export gate, drawn on the strip. The
+  // line shows wherever the strip reaches past it; the part of the result
+  // beyond it is marked, and a sentence says how much to remove.
+  const limitUs = WEB_LOCAL_POLICY.maxOutputDurationUs;
+  const overrun = outputOverrun(totalUs, limitUs);
+  const showLimit = timeline.length > 0 && limitUs < referenceUs;
+  const limitFraction = limitUs / referenceUs;
+  const limitMinutes = String(Math.round(limitUs / (60 * US_PER_SECOND)));
 
   const [drag, setDrag] = useState<(TrimDragState & { clipId: string }) | null>(null);
   const scrubRef = useRef<ScrubSession | null>(null);
@@ -266,25 +273,6 @@ export function OutputStrip({
   };
 
   const emptyLane = () => {
-    if (empty.kind === 'too_long') {
-      return (
-        <div className="tl-empty" data-testid="timeline-too-long">
-          <p className="tl-empty-title">
-            {t('timeline.tooLongTitle').replace('{duration}', formatDurationShort(empty.durationUs))}
-          </p>
-          <p className="tl-empty-body">{t('timeline.tooLongBody')}</p>
-          <div className="tl-empty-actions">
-            <button type="button" className="btn btn-accent btn-compact" onClick={onAddFirst} data-testid="timeline-add-first">
-              <Icon name="plus" size={16} />
-              {t('timeline.addFirst')}
-            </button>
-            <button type="button" className="btn btn-compact" onClick={onAddRange} data-testid="timeline-add-range">
-              {t('timeline.addRange')}
-            </button>
-          </div>
-        </div>
-      );
-    }
     if (empty.kind === 'fits') {
       return (
         <div className="tl-empty" data-testid="timeline-empty">
@@ -308,7 +296,7 @@ export function OutputStrip({
     <section className="output-strip" aria-label={t('output.title')}>
       <div className="strip-head">
         <h2>{t('output.title')}</h2>
-        <span className="strip-sub" data-testid="output-summary">
+        <span className="strip-sub" data-testid="output-summary" data-over={overrun !== null}>
           {project.clips.length} {t('output.totalMoments')} · {formatDurationShort(totalUs)}
         </span>
         {timeline.length > 0 ? (
@@ -354,6 +342,13 @@ export function OutputStrip({
         ) : null}
         <span className="strip-note">{t('output.note')}</span>
       </div>
+
+      {overrun ? (
+        <p className="tl-over-limit" data-testid="timeline-over-limit">
+          <Icon name="alert" size={16} />
+          <span>{overLimitText(t, overrun)}</span>
+        </p>
+      ) : null}
 
       {error ? (
         <p className="inline-error strip-error" role="alert" data-testid="strip-error">
@@ -444,7 +439,37 @@ export function OutputStrip({
                   </div>
                 );
               })}
+              {overrun && showLimit ? (
+                <span
+                  className="tl-over"
+                  style={{ left: pct(limitUs), width: pct(overrun.excessUs) }}
+                  aria-hidden="true"
+                  data-testid="timeline-over-region"
+                />
+              ) : null}
+              {showLimit ? (
+                // Inside the lane, at the top: piece labels sit at the bottom,
+                // the playhead time on the ruler stays clear. Right of the line
+                // while there is room, left of it near the end of the strip.
+                <span
+                  className="tl-limit-label"
+                  data-side={limitFraction > 0.7 ? 'before' : 'after'}
+                  style={{ left: pct(limitUs) }}
+                  aria-hidden="true"
+                  data-testid="timeline-limit-label"
+                >
+                  {t('output.limitMark').replace('{limit}', limitMinutes)}
+                </span>
+              ) : null}
             </div>
+            {showLimit ? (
+              <span
+                className="tl-limit"
+                style={{ left: pct(limitUs) }}
+                aria-hidden="true"
+                data-testid="timeline-limit-mark"
+              />
+            ) : null}
             <div
               role="slider"
               tabIndex={0}

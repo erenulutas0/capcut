@@ -150,9 +150,12 @@ hiçbir zaman saklanmaz; proje geri geldiğinde dosya yeniden seçilir.
 Çıktı Chromium/Chrome/Edge'de doğrulandı. **Firefox'ta AAC encode olmadığı
 için çıktı kapalıdır** ve uygulama bunu açıkça söyler. Gerçek Safari, gerçek
 telefon ve gerçek kamera kayıtları hâlâ test edilmedi; ayrıntı ve ölçümler
-[destek matrisinde](docs/SUPPORT_MATRIX.md). Çıktı süresi 60 dakika ile
-sınırlıdır; videoyu diske yazamayan tarayıcıda 5 dakika (politika
-`2026-09-22.v3`, [ADR-020](docs/adr/ADR-020-output-limit-60min.md)).
+[destek matrisinde](docs/SUPPORT_MATRIX.md). Açılan video en fazla 120 dakika
+ve 2 GiB olabilir; her zaman zaman çizgisine tek parça gelir. İndirilen video
+en fazla 60 dakikadır (videoyu diske yazamayan tarayıcıda 5 dakika): daha uzun
+bir sonucu böl ve sil, "Videoyu indir" ne kadar silmen gerektiğini söyler
+(politika `2026-09-23.v4`, [ADR-020](docs/adr/ADR-020-output-limit-60min.md),
+[ADR-021](docs/adr/ADR-021-input-limit-120min.md)).
 
 Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
 [ADR-009 (altyazı sınırı)](docs/adr/ADR-009-captions-boundary.md),
@@ -165,7 +168,8 @@ Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
 [ADR-016 (SRT/VTT, görüntüye bağlı altyazı)](docs/adr/ADR-016-captions-srt-vtt-source-time.md),
 [ADR-017 (cihaz üstü transkript denemesi)](docs/adr/ADR-017-transcript-on-device.md),
 [ADR-018 (sessizlik kesim önerisi)](docs/adr/ADR-018-silence-cut-suggestions.md),
-[ADR-020 (60 dakika çıktı ve ölçümü)](docs/adr/ADR-020-output-limit-60min.md).
+[ADR-020 (60 dakika çıktı ve ölçümü)](docs/adr/ADR-020-output-limit-60min.md),
+[ADR-021 (120 dakika girdi, çıktı sınırı indirme kapısı)](docs/adr/ADR-021-input-limit-120min.md).
 
 ## Sıradaki tek görev
 

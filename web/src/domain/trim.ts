@@ -7,7 +7,7 @@
  */
 
 import type { Project } from './edl';
-import type { ExportPolicy } from './policy';
+import { maxTimelineDurationUs, type ExportPolicy } from './policy';
 import { frameAtUs, frameToUs } from './renderPlan';
 import { MIN_CLIP_DURATION_US, type Micros } from './time';
 import { mapOutputToSource, totalOutputDurationUs } from './timeline';
@@ -56,14 +56,16 @@ export interface TrimBounds {
 
 /**
  * Where one edge of a moment may go. Only per-clip rules apply: other moments
- * may reuse or overlap the same source range (doc 10). The output-duration
- * policy is the one project-wide rule, and it caps how far an edge may grow.
+ * may reuse or overlap the same source range (doc 10). The timeline limit
+ * (ADR-021: the input limit) is the one project-wide rule, and it caps how far
+ * an edge may grow. The OUTPUT limit does not: a timeline may be longer than
+ * what can be downloaded, and the export gate says how much to remove.
  */
 export function trimBounds(
   project: Project,
   clipId: string,
   edge: TrimEdge,
-  policy: Pick<ExportPolicy, 'maxOutputDurationUs'>,
+  policy: Pick<ExportPolicy, 'maxTotalSourceDurationUs'>,
   /** Shortest length the edge may leave; the recipe minimum by default. */
   minLengthUs: Micros = MIN_CLIP_DURATION_US,
 ): TrimBounds | null {
@@ -73,7 +75,10 @@ export function trimBounds(
   if (!asset) return null;
 
   const ownUs = clip.sourceOutUs - clip.sourceInUs;
-  const maxLengthUs = Math.max(ownUs, policy.maxOutputDurationUs - (totalOutputDurationUs(project) - ownUs));
+  const maxLengthUs = Math.max(
+    ownUs,
+    maxTimelineDurationUs(policy) - (totalOutputDurationUs(project) - ownUs),
+  );
   const minimumUs = Math.max(MIN_CLIP_DURATION_US, Math.min(minLengthUs, ownUs));
 
   if (edge === 'in') {
@@ -97,7 +102,7 @@ export function trimBounds(
  *
  * The source start (0) and the source end are real edges of the media, so an
  * edge may sit exactly on them even when the end is not on the grid. A limit
- * that comes from a rule (minimum length, output cap) is met by the nearest
+ * that comes from a rule (minimum length, timeline cap) is met by the nearest
  * grid point inside it; only if no grid point fits does the exact limit win.
  */
 export function resolveTrimTarget(
@@ -105,7 +110,7 @@ export function resolveTrimTarget(
   clipId: string,
   edge: TrimEdge,
   rawUs: Micros,
-  policy: Pick<ExportPolicy, 'maxOutputDurationUs'>,
+  policy: Pick<ExportPolicy, 'maxTotalSourceDurationUs'>,
   minLengthUs: Micros = MIN_CLIP_DURATION_US,
 ): Micros | null {
   const bounds = trimBounds(project, clipId, edge, policy, minLengthUs);

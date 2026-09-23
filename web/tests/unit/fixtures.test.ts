@@ -3,12 +3,15 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { loadProject } from '@/domain/migration';
-import { issueCodes, validateProject } from '@/domain/validation';
+import { WEB_LOCAL_POLICY } from '@/domain/policy';
+import { compileRenderPlan } from '@/domain/renderPlan';
+import { issueCodes, validateProject, type Project } from '@/domain/validation';
 
 const FIXTURE_ROOT = join(process.cwd(), 'fixtures', 'edl');
 
 interface Manifest {
-  valid: Array<{ file: string }>;
+  /** `exportRejection`: valid recipe, but the render plan refuses it (ADR-021). */
+  valid: Array<{ file: string; exportRejection?: string }>;
   invalid: Array<{ file: string; expectedIssueCodes: string[] }>;
   legacy: Array<{ file: string; expect: 'valid' | 'invalid' }>;
 }
@@ -42,6 +45,18 @@ describe('EDL v2 shared fixtures', () => {
       throw new Error(`${file} should be valid, got: ${JSON.stringify(result.issues)}`);
     }
     expect(result.ok).toBe(true);
+  });
+
+  // ADR-021: a timeline over the output limit is a valid recipe; the export
+  // gate (render plan) is what refuses it, before any frame is encoded.
+  it.each(
+    manifest.valid
+      .filter((entry) => entry.exportRejection)
+      .map((entry) => [entry.file, entry.exportRejection] as const),
+  )('valid %s is refused by the export gate: %s', (file, reason) => {
+    const result = validateProject(load(file));
+    expect(result.ok).toBe(true);
+    expect(compileRenderPlan(load(file) as Project, WEB_LOCAL_POLICY)).toEqual({ ok: false, reason });
   });
 
   it.each(manifest.invalid.map((entry) => [entry.file, entry.expectedIssueCodes] as const))(
