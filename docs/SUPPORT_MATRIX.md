@@ -18,9 +18,9 @@ Her satır `video-editor-blueprint/docs/22_QA_TEST_MATRIX.md` içindeki bir fixt
 
 | Tarayıcı | Sürüm | Encoder kabiliyeti | Çalıştırma |
 |---|---|---|---|
-| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-09-23 11:34 UTC |
-| Google Chrome | 153.0.0.0 | H.264 var · AAC var | 2026-09-23 11:37 UTC |
-| Microsoft Edge | 153.0.0.0 | H.264 var · AAC var | 2026-09-23 11:41 UTC |
+| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-09-23 12:35 UTC |
+| Google Chrome | 153.0.0.0 | H.264 var · AAC var | 2026-09-23 12:38 UTC |
+| Microsoft Edge | 153.0.0.0 | H.264 var · AAC var | 2026-09-23 12:41 UTC |
 | Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-21 18:36 UTC |
 | WebKit (Playwright) | 26.6 | WebCodecs yok | 2026-09-21 18:36 UTC |
 
@@ -58,9 +58,9 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari,
 
 | # | Süre | Kare | Çözünürlük | SSIM | Diğer ölçümler |
 |---|---|---|---|---|---|
-| M01 | 10.005333 s | 300 | 720x1280 | 0.9409 | an sesleri -22.1 / -22.1 dB |
+| M01 | 10.005333 s | 300 | 720x1280 | 0.9411 | an sesleri -22.1 / -22.1 dB |
 | M02 | 5.013333 s | 150 | 720x1280 | 0.9413 | — |
-| M03 | 5.013333 s | 150 | 720x1280 | 0.922 | — |
+| M03 | 5.013333 s | 150 | 720x1280 | 0.9219 | — |
 | M04 | 6.016 s | 180 | 1280x720 | — | 440 Hz -56.3 / 330 Hz -36.1 dB |
 | M05 | 5.013333 s | 150 | 720x1280 | — | perde -36.1 / -55.4 dB |
 | M06 | 6.016 s | 180 | 1280x720 | — | — |
@@ -68,8 +68,8 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari,
 | M08 | 10.005333 s | 300 | 720x1280 | — | müzik önce -69.5 → sonra -36.1 dB |
 | M09 | 6.016 s | 180 | 1280x720 | — | sınır -24.4 / genel -24.1 dB |
 | M10-hevc | — | — | — | — | sonuç: import_rejected |
-| M10-hdr | 3.008 s | 90 | 1280x720 | 0.9699 | HDR→SDR: en yakın ref-hable, ΔE00 3.074, kayma 3.619, doygunluk 1.004..1.005, ton 1.953°, kırpma -0.047 |
-| M10-hdr-hlg | 3.008 s | 90 | 720x1280 | 0.9729 | HDR→SDR: en yakın placebo-spline, ΔE00 3.258, kayma 2.245, doygunluk 1.038..1.038, ton 2.345°, kırpma -0.001 |
+| M10-hdr | 3.008 s | 90 | 1280x720 | 0.9699 | HDR→SDR: en yakın ref-hable, ΔE00 3.081, kayma 3.625, doygunluk 1.004..1.005, ton 1.957°, kırpma -0.047 |
+| M10-hdr-hlg | 3.008 s | 90 | 720x1280 | 0.9729 | HDR→SDR: en yakın placebo-spline, ΔE00 3.259, kayma 2.248, doygunluk 1.038..1.038, ton 2.347°, kırpma -0.001 |
 | M12 | 4.010667 s | 120 | 1280x720 | — | — |
 | M14 | 10.005333 s | 300 | 720x1280 | — | — |
 | M15 | 6.016 s | 180 | 1280x720 | — | — |
@@ -118,7 +118,7 @@ Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer�
 | R14 | REFUSED | hevc | 1920x1080 | -90° | 30.017 | 11.8 s | 14.4 MiB | bt709 | aac | — |
 | R15 | PASS | h264 | 1920x1080 | -90° | 60.042 | 4.4 s | 14.8 MiB | bt709 | aac | 0.8702 |
 
-### Google Chrome — 15 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-23 11:49 UTC)
+### Google Chrome — 15 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-23 12:47 UTC)
 
 | # | Durum | Codec | Boyut | Rotasyon | fps | Süre | Dosya | Renk | Ses | SSIM |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -139,7 +139,7 @@ Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer�
 | R15 | PASS | h264 | 1920x1080 | -90° | 60.042 | 4.4 s | 14.8 MiB | bt709 | aac | 0.8607 |
 
 - R09 HDR→SDR: en yakın ref-hable, ΔE00 5.316, kayma 1.049, doygunluk 1.082..1.092, ton 1.356°, kırpma 0.016
-- R11 HDR→SDR: en yakın placebo-spline, ΔE00 5.287, kayma 1.103, doygunluk 1.019..1.154, ton 8.443°, kırpma 0
+- R11 HDR→SDR: en yakın placebo-spline, ΔE00 5.288, kayma 1.083, doygunluk 1.017..1.154, ton 8.443°, kırpma 0
 
 ### Microsoft Edge — 11 PASS, 4 REFUSED, 0 FAIL, 0 ERROR (2026-09-23 11:52 UTC)
 
