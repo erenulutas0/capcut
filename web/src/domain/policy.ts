@@ -1,6 +1,6 @@
 /**
  * Local web limits. The single source of truth is
- * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-09-23.v4)
+ * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-09-23.v5)
  * plus the web guard rails in doc 11. Plan names are deliberately NOT hardcoded
  * into the domain: this is one policy object the app passes in.
  *
@@ -33,16 +33,18 @@ export interface ExportPolicy {
 const MIB = 1_048_576;
 
 export const WEB_LOCAL_POLICY: ExportPolicy = {
-  policyId: '2026-09-23.v4/web-local',
+  policyId: '2026-09-23.v5/web-local',
   // Raised from 5 min by founder decision (doc 15 v3): on the disk (OPFS)
   // route export memory stays flat with output length (ADR-013, ADR-020).
   maxOutputDurationUs: 60 * 60 * US_PER_SECOND,
   maxMemoryRouteOutputDurationUs: 5 * 60 * US_PER_SECOND,
   // 20 min / 250 MiB -> 60 min / 2 GiB (doc 15 v2, ADR-013) -> 120 min
   // (doc 15 v4, ADR-021): export memory follows the OUTPUT, the source is
-  // read from disk. The byte limit did not change with v4.
+  // read from disk. 2 GiB -> 4 GiB (doc 15 v5, ADR-025): files past the 2 and
+  // 4 GiB byte offsets measured in Chrome, Edge and Chromium. Video and music
+  // together.
   maxTotalSourceDurationUs: 120 * 60 * US_PER_SECOND,
-  maxTotalSourceBytes: 2048 * MIB,
+  maxTotalSourceBytes: 4096 * MIB,
   maxVideoAssets: 5,
   maxClips: 20,
   maxMusicTracks: 1,
@@ -118,10 +120,16 @@ export function outputRouteRefusal(
   return availability === 'not_enough_space' ? 'output_storage_insufficient' : 'output_too_long_for_memory';
 }
 
+/**
+ * A file size as the user sees it next to the limit. The values are binary
+ * (1024-based), so the units are spelled as binary too: doc 15 asks that the
+ * unit shown is the unit checked, and a "4.00 GB" file next to a "4 GiB
+ * (about 4.29 GB)" limit would be neither.
+ */
 export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return '—';
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < MIB) return `${(bytes / 1024).toFixed(0)} KB`;
-  if (bytes < 1024 * MIB) return `${(bytes / MIB).toFixed(1)} MB`;
-  return `${(bytes / (1024 * MIB)).toFixed(2)} GB`;
+  if (bytes < MIB) return `${(bytes / 1024).toFixed(0)} KiB`;
+  if (bytes < 1024 * MIB) return `${(bytes / MIB).toFixed(1)} MiB`;
+  return `${(bytes / (1024 * MIB)).toFixed(2)} GiB`;
 }

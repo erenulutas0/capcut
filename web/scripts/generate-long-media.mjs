@@ -19,6 +19,7 @@
  *   node scripts/generate-long-media.mjs                 # 120 min 1080p + 720p
  *   node scripts/generate-long-media.mjs --only=1080     # one of them
  *   node scripts/generate-long-media.mjs --only=big      # >4 GiB, 60 min 1080p (byte-limit evidence)
+ *   node scripts/generate-long-media.mjs --only=edges    # just under / just over 4 GiB, cut from `big` (ADR-025)
  *   node scripts/generate-long-media.mjs --seconds=20 --only=1080   # quick check of the filter graph
  */
 import { spawn } from 'node:child_process';
@@ -50,7 +51,7 @@ const SPECS = {
     width: 1920,
     height: 1080,
     seconds: 7200,
-    // Under the 2 GiB input limit for two hours (~1.7 GiB with audio).
+    // Two hours in ~1.7 GiB with audio (under 2 GiB, the byte limit until v4).
     video: ['-b:v', '1800k', '-maxrate', '2200k', '-bufsize', '4400k'],
     noise: false,
   },
@@ -62,7 +63,7 @@ const SPECS = {
     video: ['-b:v', '1100k', '-maxrate', '1400k', '-bufsize', '2800k'],
     noise: false,
   },
-  // Over 4 GiB on purpose (byte-limit evidence only, no policy change):
+  // Over 4 GiB on purpose (byte-limit evidence, ADR-021 and ADR-025):
   // 60 minutes of noisy 1080p at ~10.5 Mbit/s.
   big: {
     name: 'big-60min-1080p-4gib.mp4',
@@ -97,7 +98,44 @@ function run(ffArgs) {
   });
 }
 
+/**
+ * `--only=edges` (ADR-025): a file just UNDER and one just OVER the 4 GiB
+ * total, cut from the start of the big file by stream copy (no re-encode:
+ * same frames, same barcodes, index still at the end). The cut points follow
+ * from the big file's own bytes per second, then the sizes are checked.
+ */
+const GIB = 1073741824;
+const EDGES = [
+  { name: 'under-4gib-1080p.mp4', targetBytes: 4 * GIB - 40 * 1048576, under: true },
+  { name: 'over-4gib-1080p.mp4', targetBytes: 4 * GIB + 8 * 1048576, under: false },
+];
+
+async function makeEdges() {
+  const big = join(out, SPECS.big.name);
+  if (!existsSync(big)) throw new Error(`önce --only=big: ${big}`);
+  const bytesPerSecond = statSync(big).size / SPECS.big.seconds;
+  for (const edge of EDGES) {
+    const file = join(out, edge.name);
+    if (!existsSync(file)) {
+      const seconds = Math.round(edge.targetBytes / bytesPerSecond);
+      const partial = `${file}.part.mp4`;
+      rmSync(partial, { force: true });
+      console.log(`kesiliyor: ${edge.name} (ilk ${seconds} s, akış kopyası)…`);
+      await run(['-hide_banner', '-loglevel', 'error', '-y', '-i', big, '-t', String(seconds), '-map', '0', '-c', 'copy', partial]);
+      renameSync(partial, file);
+    }
+    const size = statSync(file).size;
+    const ok = edge.under ? size <= 4 * GIB : size > 4 * GIB;
+    console.log(`${ok ? 'hazır' : 'YANLIŞ BOYUT'}: ${file} — ${size} byte (${(size / GIB).toFixed(4)} GiB, 4 GiB ${edge.under ? 'altı' : 'üstü'} olmalı)`);
+    if (!ok) process.exitCode = 1;
+  }
+}
+
 for (const key of only) {
+  if (key === 'edges') {
+    await makeEdges();
+    continue;
+  }
   const spec = SPECS[key];
   if (!spec) throw new Error(`unknown --only value: ${key}`);
   const seconds = secondsOverride ? Number(secondsOverride) : spec.seconds;

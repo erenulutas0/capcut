@@ -2,7 +2,8 @@
  * Opens one local file in the editor and prints what the editor says: the
  * timeline summary when it opened, the refusal message when it did not.
  * Used for the byte-limit evidence in ADR-021 (a >4 GiB file against the
- * 2 GiB policy). Nothing is uploaded; the file stays on this machine.
+ * 2 GiB policy) and ADR-025 (files just under and just over 4 GiB against the
+ * 4 GiB policy). Nothing is uploaded; the file stays on this machine.
  *
  *   node scripts/probe-open.mjs --file=tests/media/long/big-60min-1080p-4gib.mp4 [--browser=chrome]
  */

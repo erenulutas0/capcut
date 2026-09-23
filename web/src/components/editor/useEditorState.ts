@@ -7,6 +7,7 @@ import {
   probeVideoFile,
   type MediaHandle,
   type ProbeFailure,
+  type ProbeHint,
 } from '@/adapters/browserMedia';
 import {
   addCaptionCue,
@@ -82,6 +83,8 @@ export interface MediaError {
   fileName: string;
   /** True when another file of the same kind was open and stays open. */
   keptOpen: boolean;
+  /** Extra context the probe found (HEVC without a decoder); shown after the reason. */
+  hint?: ProbeHint;
 }
 
 /** What opening a video did, so the editor can say it and set up the preview. */
@@ -180,7 +183,7 @@ export function useEditorState() {
       setImporting(null);
 
       if (!outcome.ok) {
-        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen });
+        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen, hint: outcome.hint });
         return { kind: 'rejected' };
       }
 
@@ -328,7 +331,7 @@ export function useEditorState() {
       const outcome = await probeVideoFile(file, VIDEO_LIMITS);
       setImporting(null);
       if (!outcome.ok) {
-        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen: false });
+        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen: false, hint: outcome.hint });
         return { ok: false, reason: outcome.reason };
       }
 

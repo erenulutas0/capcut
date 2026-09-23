@@ -4,6 +4,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 
 import { tr } from '../../src/i18n/messages';
+import { browserDecodesHevc, hevcFixture } from './hevc-media';
 import { startWithEmptyTimeline } from './rangeFlow';
 import { timelineFixture } from './timeline-media';
 
@@ -871,6 +872,79 @@ test.describe('a11y: text spacing (WCAG 1.4.12)', () => {
       expect(await clippedControls(page), 'export dialog over the limit').toEqual([]);
     });
   }
+});
+
+// ------------------------------- the HEVC import hint and the save-space note
+
+/** Opens the HEVC clip; false when this browser decodes HEVC (no hint then). */
+async function openHevcWithoutDecoder(page: Page): Promise<boolean> {
+  await openEditor(page);
+  if (await browserDecodesHevc(page)) return false;
+  await page.getByTestId('video-input').setInputFiles(hevcFixture());
+  await expect(page.getByTestId('media-error-hint')).toBeVisible({ timeout: 60_000 });
+  return true;
+}
+
+/** A finished one-second export, so the note under "Bilgisayara kaydet" shows. */
+async function exportSucceeded(page: Page) {
+  await openEditor(page);
+  await importSample(page);
+  await addMoment(page, '00:00.000', '00:01.000');
+  await page.getByTestId('open-export').click();
+  await page.getByTestId('export-quality').selectOption('720');
+  await expect(page.getByTestId('export-create')).toBeEnabled({ timeout: 60_000 });
+  await page.getByTestId('export-create').click();
+  await page.getByTestId('export-succeeded').waitFor({ timeout: 180_000 });
+  await expect(page.getByTestId('export-save-space')).toBeVisible();
+}
+
+test.describe('a11y: HEVC hint and the save-space note', () => {
+  test.use({ storageState: { cookies: [], origins: [] }, reducedMotion: 'reduce' });
+  test.describe.configure({ timeout: 240_000 });
+
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    test(`axe and text spacing at ${viewport.width} px`, async ({ page }, testInfo) => {
+      await page.setViewportSize(viewport);
+      await clearStorage(page);
+      if (await openHevcWithoutDecoder(page)) {
+        await audit(page, `hevc-hint-${viewport.width}`, testInfo);
+        await page.addStyleTag({ content: TEXT_SPACING_CSS });
+        expect(await clippedControls(page), 'HEVC hint').toEqual([]);
+        expect(await horizontalOverflow(page), 'HEVC hint page width').toBe(0);
+      } else {
+        testInfo.annotations.push({ type: 'skipped-part', description: 'browser decodes HEVC: no hint state' });
+      }
+
+      await clearStorage(page);
+      await exportSucceeded(page);
+      await audit(page, `dialog-export-succeeded-${viewport.width}`, testInfo);
+      await page.addStyleTag({ content: TEXT_SPACING_CSS });
+      expect(await clippedControls(page), 'export succeeded').toEqual([]);
+      expect(await horizontalOverflow(page), 'export succeeded page width').toBe(0);
+    });
+  }
+
+  test.describe('320 px', () => {
+    test.use({ viewport: { width: 320, height: 720 } });
+
+    test('reflow: neither scrolls sideways', async ({ page }) => {
+      await clearStorage(page);
+      if (await openHevcWithoutDecoder(page)) {
+        expect(await horizontalOverflow(page), 'HEVC hint').toBe(0);
+      }
+      await clearStorage(page);
+      await exportSucceeded(page);
+      expect(await horizontalOverflow(page), 'export succeeded').toBe(0);
+      const dialogOverflow = await page.evaluate(() => {
+        const dialog = document.querySelector('[role="dialog"]');
+        return dialog ? dialog.scrollWidth - dialog.clientWidth : 0;
+      });
+      expect(dialogOverflow, 'export dialog').toBe(0);
+    });
+  });
 });
 
 // ------------------------------------------------------ screen reader names

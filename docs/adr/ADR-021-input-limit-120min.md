@@ -195,7 +195,9 @@ dosyaları ölçüldükten sonra silindi.
 ## Byte sınırı kanıtı (politika değişikliği YOK)
 
 Kurucu kararı olmadığı için 2 GiB toplam boyut sınırı **değişmedi**. Yalnızca
-kurucunun sonra karar verebilmesi için kanıt toplandı.
+kurucunun sonra karar verebilmesi için kanıt toplandı. (Sonra: kurucu 4 GiB'ı
+seçti; Edge dahil yeniden ölçüm ve politika `2026-09-23.v5`:
+[ADR-025](ADR-025-source-bytes-4gib.md).)
 
 **Neden önemli (hesap, ölçüm değil):** 2 GiB, 120 dakikada ortalama ~2,4 Mbit/s
 demek. 17 Mbit/s'lik bir 1080p H.264 kayıt 2 GiB'a ~17 dakikada, 9 Mbit/s'lik

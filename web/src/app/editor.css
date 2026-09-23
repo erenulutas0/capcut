@@ -1201,6 +1201,12 @@ input[type='range']:disabled::-webkit-slider-thumb {
   color: var(--text);
 }
 
+/* The HEVC decoder hint: its own line under the reason, same colour. */
+.media-error .media-error-hint {
+  display: block;
+  margin-top: 6px;
+}
+
 .strip-captions-inner {
   position: relative;
   height: 100%;

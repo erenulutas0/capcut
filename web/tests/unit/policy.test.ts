@@ -3,9 +3,12 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { isHevcWithoutDecoder } from '@/adapters/browserMedia';
+import { formatStorageBytes } from '@/domain/outputStorage';
 import {
   WEB_LOCAL_POLICY,
   exceedsTotalSourceBytes,
+  formatBytes,
   maxTimelineDurationUs,
   outputOverrun,
   outputRouteRefusal,
@@ -29,7 +32,7 @@ describe('web local policy', () => {
 
     const row = doc15.split(/\r?\n/).find((line) => line.startsWith('| Web yerel limitleri |'));
     expect(row).toBeDefined();
-    // v4 row: "60 dakika çıktı (diske yazamayan tarayıcıda 5 dakika) / 120 dakika video girdi / 2 GiB toplam"
+    // v5 row: "60 dakika çıktı (diske yazamayan tarayıcıda 5 dakika) / 120 dakika video girdi / 4 GiB toplam"
     const output = Number(/\| (\d+) dakika çıktı \(/.exec(row!)?.[1]);
     const memoryRoute = Number(/\(diske yazamayan tarayıcıda (\d+) dakika\)/.exec(row!)?.[1]);
     const input = Number(/\/ (\d+) dakika video girdi \//.exec(row!)?.[1]);
@@ -43,24 +46,29 @@ describe('web local policy', () => {
     for (const value of [output, memoryRoute, input, total]) expect(Number.isInteger(value)).toBe(true);
     // The memory route is the tighter one, never the other way round.
     expect(WEB_LOCAL_POLICY.maxMemoryRouteOutputDurationUs).toBeLessThan(WEB_LOCAL_POLICY.maxOutputDurationUs);
-    // v4 (founder decision 2026-09-23): 120 minutes in, 60 minutes out, 2 GiB unchanged.
+    // v5 (founder decision 2026-09-23): 120 minutes in, 60 minutes out, 4 GiB
+    // total (2 GiB until v4).
     expect(input).toBe(120);
     expect(output).toBe(60);
-    expect(total).toBe(2);
+    expect(total).toBe(4);
+    expect(WEB_LOCAL_POLICY.maxTotalSourceBytes).toBe(4_294_967_296);
   });
 
-  it('records the v4 change with its evidence in doc 15, and keeps the v3 and v2 notes', () => {
+  it('records the v5 change with its evidence in doc 15, and keeps the v4, v3 and v2 notes', () => {
     const [docId] = WEB_LOCAL_POLICY.policyId.split('/');
-    expect(docId).toBe('2026-09-23.v4');
+    expect(docId).toBe('2026-09-23.v5');
     const lines = doc15.split(/\r?\n/);
     const note = lines.find((line) => line.startsWith(`**Değişiklik \`${docId}\``));
     expect(note).toBeDefined();
-    expect(note).toContain('ADR-021');
+    expect(note).toContain('ADR-025');
+    expect(note).toContain('Edge');
     expect(note).toContain('yalnızca genişleme');
     expect(note).toContain('ölçülmedi');
-    for (const older of ['2026-09-22.v3', '2026-09-21.v2']) {
+    for (const older of ['2026-09-23.v4', '2026-09-22.v3', '2026-09-21.v2']) {
       expect(lines.some((line) => line.startsWith(`**Değişiklik \`${older}\``))).toBe(true);
     }
+    // The mobile rows did not change with the web limit.
+    expect(doc15).toContain('| Mobil toplam seçili medya boyutu | En çok 2 GiB/proje | En çok 5 GiB/proje |');
   });
 
   it('ADR-021: the timeline may be as long as the input limit, the output limit is a gate', () => {
@@ -93,9 +101,22 @@ describe('web local policy', () => {
   });
 
   it('tells the user the same numbers it enforces', () => {
+    // Doc 15: the unit shown is the unit checked. The check is in GiB; the
+    // decimal GB figure is only the "about" in brackets, and it is right.
+    const gib = WEB_LOCAL_POLICY.maxTotalSourceBytes / GIB;
+    const gb = (WEB_LOCAL_POLICY.maxTotalSourceBytes / 1e9).toFixed(2);
+    expect(gb).toBe('4.29');
+    for (const [locale, about] of [
+      [tr, `yaklaşık ${gb.replace('.', ',')} GB`],
+      [en, `about ${gb} GB`],
+    ] as const) {
+      for (const key of ['error.file_too_large', 'error.total_too_large'] as const) {
+        expect(locale[key]).toContain(`${gib} GiB (${about})`);
+      }
+      expect(locale['help.limit.length']).toContain(`${gib} GiB`);
+      expect(locale['help.limit.length']).not.toContain('2 GiB');
+    }
     for (const locale of [tr, en]) {
-      expect(locale['error.file_too_large']).toContain('2 GiB');
-      expect(locale['error.total_too_large']).toContain('2 GiB');
       expect(locale['error.source_too_long']).toContain(
         String(WEB_LOCAL_POLICY.maxTotalSourceDurationUs / (60 * US_PER_SECOND)),
       );
@@ -148,5 +169,54 @@ describe('web local policy', () => {
     expect(exceedsTotalSourceBytes(WEB_LOCAL_POLICY, limit, 1)).toBe(true);
     expect(exceedsTotalSourceBytes(WEB_LOCAL_POLICY, limit - 50 * MIB, 50 * MIB)).toBe(false);
     expect(exceedsTotalSourceBytes(WEB_LOCAL_POLICY, limit - 50 * MIB, 50 * MIB + 1)).toBe(true);
+    // v5: a video just under 4 GiB plus a music file within its own 100 MiB
+    // limit can still be one too many together.
+    const video = limit - 20 * MIB;
+    expect(exceedsTotalSourceBytes(WEB_LOCAL_POLICY, video, 0)).toBe(false);
+    expect(exceedsTotalSourceBytes(WEB_LOCAL_POLICY, 5 * MIB, video)).toBe(false);
+    expect(exceedsTotalSourceBytes(WEB_LOCAL_POLICY, 60 * MIB, video)).toBe(true);
+  });
+
+  it('shows file sizes in the binary units the limit is checked in', () => {
+    expect(formatBytes(512)).toBe('512 B');
+    expect(formatBytes(20 * 1024)).toBe('20 KiB');
+    expect(formatBytes(245 * MIB)).toBe('245.0 MiB');
+    expect(formatBytes(WEB_LOCAL_POLICY.maxTotalSourceBytes)).toBe('4.00 GiB');
+    expect(formatBytes(4_247_142_000)).toBe('3.96 GiB');
+    expect(formatBytes(Number.NaN)).toBe('—');
+    // Never a decimal "GB" label for a binary value.
+    expect(formatBytes(3 * GIB)).not.toMatch(/\bGB\b/);
+  });
+});
+
+describe('export: the note under "Bilgisayara kaydet" (ADR-023)', () => {
+  it('names the space saving needs, rounded up, in both languages', () => {
+    for (const locale of [tr, en]) expect(locale['export.saveSpace']).toContain('{size}');
+    const size = formatStorageBytes(2_577_000_000, 'up');
+    expect(size).toBe('2.41 GiB');
+    expect(tr['export.saveSpace'].replace('{size}', size)).toBe(
+      'Kaydederken bilgisayarında yaklaşık 2.41 GiB daha boş yer gerekir.',
+    );
+    expect(en['export.saveSpace'].replace('{size}', size)).toBe(
+      'Saving needs about 2.41 GiB more free space on this computer.',
+    );
+  });
+});
+
+describe('import: the HEVC decoder hint (ADR-022)', () => {
+  it('is given only for HEVC that this browser cannot decode', () => {
+    expect(isHevcWithoutDecoder('hevc', false)).toBe(true);
+    expect(isHevcWithoutDecoder('hevc', true)).toBe(false);
+    expect(isHevcWithoutDecoder('avc', false)).toBe(false);
+    expect(isHevcWithoutDecoder(null, false)).toBe(false);
+  });
+
+  it('suggests, and does not promise', () => {
+    expect(tr['error.hint.hevc_decoder_missing']).toContain('HEVC Video Uzantıları');
+    expect(tr['error.hint.hevc_decoder_missing']).toContain('gerekebilir');
+    expect(tr['error.hint.hevc_decoder_missing']).toContain('Chrome');
+    expect(en['error.hint.hevc_decoder_missing']).toContain('HEVC Video Extensions');
+    expect(en['error.hint.hevc_decoder_missing']).toContain('may be needed');
+    for (const locale of [tr, en]) expect(locale['error.hint.hevc_decoder_missing']).not.toMatch(/https?:/);
   });
 });

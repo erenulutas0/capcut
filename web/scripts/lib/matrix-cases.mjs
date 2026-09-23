@@ -305,7 +305,7 @@ export const CASES = [
     id: 'M13',
     title: 'Politika sınırını aşan büyük dosya',
     expectation: 'Ön kontrol/hata; yarım çıktı başarı sayılmıyor',
-    setup: { video: 'm13-oversize.mp4', expectImportFailure: true },
+    setup: { video: 'm13-oversize-4gib.mp4', expectImportFailure: true },
     expect: { importRejected: true, appStillUsable: true },
   },
   {

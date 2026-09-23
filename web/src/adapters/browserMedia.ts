@@ -33,9 +33,17 @@ export interface MediaHandle extends ProbeResult {
   release(): void;
 }
 
+/**
+ * Extra, actionable context for a refusal. `hevc_decoder_missing`: the file is
+ * HEVC (H.265) and this browser reports no decoder for it (ADR-022 measured
+ * Edge and Playwright Chromium on Windows without one). Only a hint: whether
+ * installing a system decoder helps is not something the page can know.
+ */
+export type ProbeHint = 'hevc_decoder_missing';
+
 export type ProbeOutcome =
   | { ok: true; handle: MediaHandle }
-  | { ok: false; reason: ProbeFailure };
+  | { ok: false; reason: ProbeFailure; hint?: ProbeHint };
 
 const PROBE_TIMEOUT_MS = 15_000;
 
@@ -127,6 +135,9 @@ async function probeFile(
   cleanupProbe();
   if (!result.ok) {
     URL.revokeObjectURL(objectUrl);
+    if (kind === 'video' && result.reason === 'unsupported_preview' && (await hevcWithoutDecoder(file))) {
+      return { ...result, hint: 'hevc_decoder_missing' };
+    }
     return result;
   }
 
@@ -179,6 +190,42 @@ async function detectHasAudioFromContainer(file: File): Promise<boolean | undefi
     return audioTrack !== null;
   } catch {
     return undefined;
+  }
+}
+
+/**
+ * The HEVC hint is shown only for this pair of facts, both read from the
+ * browser: the container says HEVC, and the decoder check says no.
+ */
+export function isHevcWithoutDecoder(codec: string | null, decodable: boolean): boolean {
+  return codec === 'hevc' && !decodable;
+}
+
+/**
+ * After the preview refused a file: is it HEVC with no decoder here? Reads the
+ * container's track list (the file's index, not its frames) and asks the
+ * browser's own decoder check, `VideoDecoder.isConfigSupported`, with the
+ * file's real decoder configuration. Any doubt answers "no" — an unreadable
+ * configuration, no WebCodecs, a parse error: the hint is never a guess.
+ */
+async function hevcWithoutDecoder(file: File): Promise<boolean> {
+  let input: { dispose(): void } | null = null;
+  try {
+    const { ALL_FORMATS, BlobSource, Input } = await import('mediabunny');
+    const opened = new Input({ formats: ALL_FORMATS, source: new BlobSource(file) });
+    input = opened;
+    const track = await opened.getPrimaryVideoTrack();
+    if (!track) return false;
+    const codec = await track.getCodec();
+    if (codec !== 'hevc') return false;
+    const config = await track.getDecoderConfig();
+    if (!config || typeof VideoDecoder === 'undefined') return false;
+    const support = await VideoDecoder.isConfigSupported(config);
+    return isHevcWithoutDecoder(codec, support.supported === true);
+  } catch {
+    return false;
+  } finally {
+    input?.dispose();
   }
 }
 

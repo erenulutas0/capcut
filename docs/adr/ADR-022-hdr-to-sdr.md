@@ -87,12 +87,25 @@ SDR gerçek kayıtlarında gerileme yok (Chrome 13→13, Edge 11→11, Chromium 
 R15 Chromium FAIL aynı). R11'in export düzeyindeki referans seti ölçümden sonra 5'ten 7'ye
 genişletildi (kalibrasyondaki set); bu açıkça ölçüm belgesinde ve kurucu sorularında.
 
+**Kurucu kararı 2026-09-23:** HDR HLG açık kalır (seçenek A). R11 HLG'nin geçişi, önceden
+kaydedilen 5 operatörlük referans set kaldıktan (6 karenin birinde ton açısı 9.37° > 9°) sonra
+genişletilen 7 operatörlük sete dayanıyor; kurucu bunu bilerek kabul etti. Eşikler ve çalışma
+anı kontrolü değişmedi.
+
 ## Sonuçlar
 
 - HDR telefon videosu, HEVC'yi çözebilen ve kontrolü geçen tarayıcıda (bu makinede
   Chrome) SDR H.264 olarak dışa aktarılır. Edge ve Chromium'da bu makinede HEVC
   yok; 10-bit VP9 profil 2 HDR dosyaları (sentetik M10-hdr satırları) orada da
   çalışır (AV1 HDR denenmedi).
+- **Sonradan eklendi (2026-09-23, kurucu isteği):** önizleme bir dosyayı açamadığında
+  uygulama dosyanın dizinini (kareleri değil) mediabunny ile okur; video izi HEVC ise ve
+  `VideoDecoder.isConfigSupported` dosyanın kendi yapılandırmasına "hayır" diyorsa, içe
+  aktarma hatasının altına bir ipucu eklenir: Windows'ta Edge'de Microsoft Store'daki
+  "HEVC Video Uzantıları" gerekebilir ya da video Chrome'da açılmayı denenebilir. Yükleme
+  işe yarayacak diye söz verilmez, dış bağlantı yok. Başka her hatada ipucu çıkmaz
+  (`tests/e2e/hevc.spec.ts`, a11y: axe, 320 px, metin aralığı). Bu tarayıcıda HEVC
+  çözülebiliyorsa dosya zaten açılır ve e2e testi kendini atlar.
 - Maliyet: HDR karesi başına float16 çizim + okuma ve yumuşak kırpma. Örnek
   ölçüm 960×540'ta kare başına 7–24 ms okuma + 4–27 ms kırpma (Chrome, spike
   sayfası). Uzun HDR çıktıda süre bu kadar uzar; ayrı bir süre ölçümü yapılmadı.

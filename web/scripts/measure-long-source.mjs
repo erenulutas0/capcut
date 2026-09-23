@@ -26,6 +26,11 @@
  *            --quality=1080|720  --skip=silence,export,relink  --keep-output
  *            --source-width=1920 (barcode scale; 1280 for the 720p file)
  *            --keep='[[1200,3000],[4200,6000]]' (seconds kept; the rest is deleted)
+ *            --music=path        a music file added on top after opening (it is
+ *                                mixed into the export and relinked with the video;
+ *                                doc 15 counts it toward the total byte limit)
+ *            --music-over=path   a music file tried first that must be refused
+ *                                because video + music exceed the total (ADR-025)
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -65,6 +70,9 @@ const keep =
     ? Array.from({ length: piecesArg }, (_, i) => [(i * 7200) / piecesArg, (i * 7200) / piecesArg + 3600 / piecesArg])
     : JSON.parse(argValue('keep', '[[1200,3000],[4200,6000]]'));
 const exportTimeoutMs = Number(argValue('timeout-min', '40')) * 60_000;
+const absolute = (path) => (path ? (isAbsolute(path) ? path : join(root, path)) : '');
+const music = absolute(argValue('music', ''));
+const musicOver = absolute(argValue('music-over', ''));
 
 const MIB = 1048576;
 const FPS = 30;
@@ -213,6 +221,7 @@ const report = {
   browser: channel || 'chromium',
   fixture: basename(fixture),
   fixtureBytes: statSync(fixture).size,
+  musicBytes: music ? statSync(music).size : null,
   quality,
   ranAt: new Date().toISOString(),
   profile: 'persistent',
@@ -282,6 +291,54 @@ try {
     };
     log(`open: ${JSON.stringify(report.phases.open)}`);
   }
+
+  // 1b. Music on top: first one that must not fit with the video, then one
+  // that does. Both counted together against the total (doc 15).
+  if (musicOver) {
+    const t0 = Date.now();
+    await page.getByTestId('audio-input').setInputFiles(musicOver);
+    await page.getByTestId('media-error').waitFor({ timeout: 60_000 });
+    const overBytes = statSync(musicOver).size;
+    report.phases.musicOver = {
+      ms: Date.now() - t0,
+      musicBytes: overBytes,
+      totalBytes: report.fixtureBytes + overBytes,
+      text: (await page.getByTestId('media-error').textContent())?.trim(),
+      videoStillOpen: (await page.getByTestId('strip-clip').count()) === 1,
+    };
+    await page.getByTestId('media-error-dismiss').click();
+    log(`music-over: ${JSON.stringify(report.phases.musicOver)}`);
+  }
+  if (music) {
+    const t0 = Date.now();
+    await page.locator('#inspector-tab-audio').click();
+    await page.getByTestId('audio-input').setInputFiles(music);
+    const outcome = await Promise.race([
+      page.getByTestId('music-file-name').waitFor({ timeout: 60_000 }).then(() => 'added'),
+      page.getByTestId('media-error').waitFor({ timeout: 60_000 }).then(() => 'refused'),
+    ]);
+    report.phases.music = {
+      outcome,
+      ms: Date.now() - t0,
+      totalBytes: report.fixtureBytes + report.musicBytes,
+      text:
+        outcome === 'added'
+          ? (await page.getByTestId('music-file-name').textContent())?.trim()
+          : (await page.getByTestId('media-error').textContent())?.trim(),
+    };
+    log(`music: ${JSON.stringify(report.phases.music)}`);
+    if (outcome !== 'added') throw new Error('the music file was refused');
+  }
+
+  /** After a restore: the music asks for its file too; the same file is given. */
+  const relinkMusic = async () => {
+    if (!music) return null;
+    const t0 = Date.now();
+    await page.locator('#inspector-tab-audio').click();
+    await page.getByTestId('relink-audio-input').setInputFiles(music);
+    await page.getByTestId('music-file-name').waitFor({ timeout: 60_000 });
+    return Date.now() - t0;
+  };
 
   // 4 (gate). "Videoyu indir" while the result is over the limit -----------
   if (report.phases.open.overLimit) {
@@ -485,6 +542,7 @@ try {
       row.measuredDuration = (await page.getByTestId('measured-duration').textContent())?.trim();
       row.framesMissing = (await page.getByTestId('measured-frames-missing').textContent().catch(() => null)) ?? '0';
       row.exportFilesWhileOffered = await exportFiles(page);
+      row.saveNote = (await page.getByTestId('export-save-space').textContent().catch(() => null))?.trim() ?? null;
       const artefact = join(outDir, `long-${label}-${quality}.mp4`);
       const download = page.waitForEvent('download', { timeout: 20 * 60_000 });
       await page.getByTestId('export-download').click();
@@ -555,10 +613,12 @@ try {
     await page.getByTestId('relink-video-input').setInputFiles(fixture);
     await page.getByTestId('preview-video').waitFor({ timeout: 120_000 });
     const tRelinked = Date.now();
+    const msMusicRelink = await relinkMusic();
     await page.waitForTimeout(2500);
     const restore = {
       msReloadToRelinkPrompt: tRestored - t0,
       msRelink: tRelinked - t1,
+      msMusicRelink,
       summary: (await page.getByTestId('output-summary').textContent())?.trim(),
       memory: memoryBetween(sampling.samples, t0, Date.now()),
     };
@@ -576,12 +636,15 @@ try {
     await page.getByTestId('relink-video-input').setInputFiles(fixture);
     await page.getByTestId('preview-video').waitFor({ timeout: 120_000 });
     const tBackupRelinked = Date.now();
+    const msBackupMusicRelink = await relinkMusic();
     rmSync(backupPath, { force: true });
     report.phases.relink = {
       ...restore,
       backupBytes: JSON.stringify(record).length,
       msBackupImport: tImported - t2,
       msBackupRelink: tBackupRelinked - tImported,
+      msBackupMusicRelink,
+      clipsAfterBackup: await page.getByTestId('strip-clip').count(),
       summaryAfterBackup: (await page.getByTestId('output-summary').textContent())?.trim(),
       fingerprint: 'size + lastModified + duration only (projectRecord.computeFingerprint); no byte of the file is hashed',
     };
