@@ -127,6 +127,13 @@ birkaç MiB. Kodlayıcı taşmasına karşı bir tampondu ve uzun çıktıda ger
      diskin gerçek doluluğunu göstermez."
 5. **Kodlama ortasında dolan disk:** `output_storage_full` mesajı artık yarım
    dosyanın silindiğini ve indirilecek bir şey olmadığını söylüyor.
+6. **"Bilgisayara kaydet"in altında sessiz bir not** (sonradan eklendi,
+   2026-09-23, kurucu isteği): "Kaydederken bilgisayarında yaklaşık X daha boş
+   yer gerekir." X, çıkan dosyanın gerçek boyutu (yukarı yuvarlanmış, ikili
+   birim). Bulgu 3'e dayanır: kaydetme sırasında dosya iki kez durur ve sayfa
+   indirme klasörünün sürücüsünü göremez, bu yüzden kontrol değil not. İkincil
+   metin (`hint-small`), uyarı kutusu değil; e2e testi indirilen dosyanın
+   boyutuyla karşılaştırır.
 
 Sayılar (60 dk 1080p, donanım kodlayıcı): önce ~6,0 GiB isteniyordu ama
 ölçülmüyordu. Şimdi 2,67 GiB isteniyor ve gerçekten ayrılıyor.

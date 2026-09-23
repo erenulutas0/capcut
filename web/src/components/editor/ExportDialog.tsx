@@ -469,6 +469,14 @@ export function ExportDialog({
             <Icon name="download" />
             {t('export.save')}
           </a>
+          {/* ADR-023: saving streams the finished file into the downloads
+              folder, so the file is there twice while it saves, and the page
+              cannot see that drive. Said quietly, rounded up (a need). */}
+          <p className="hint-small" data-testid="export-save-space">
+            {state.result.sizeBytes > 0
+              ? t('export.saveSpace').replace('{size}', formatStorageBytes(state.result.sizeBytes, 'up'))
+              : t('export.saveSpaceUnknown')}
+          </p>
           <button
             type="button"
             className="btn btn-block"

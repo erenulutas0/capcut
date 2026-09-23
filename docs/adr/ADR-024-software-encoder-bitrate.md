@@ -98,6 +98,10 @@ Seçenekler: 3× (şimdiki), 2,5× (R15 eşikte: 0,851, ~2,3 kat büyüklük) ve
 (küçük dosya, R15 eşiğin altında). Ölçüm yalnızca bu makinedeki OpenH264
 içindir.
 
+**Kurucu kararı 2026-09-23:** 3× kalır. Kurucu, yazılım kodlayıcılı kullanıcının
+dosyasının ~2,7–2,9 kat büyümesini (60 dk 1080p ~7,1 GiB) donanımla aynı kalite
+sınıfı karşılığında bilerek kabul etti. Açık soru kapandı.
+
 ## Ölçülmeyenler
 
 - Linux/macOS'ta yazılım kodlayıcısı, Brave ve gerçek bir donanımsız makine.

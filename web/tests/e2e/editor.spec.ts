@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -310,6 +311,17 @@ test.describe('editor', () => {
     await page.getByTestId('export-download').click();
     const saved = await download;
     expect(saved.suggestedFilename()).toMatch(/\.mp4$/);
+
+    // ADR-023: saving needs the file's size again on the downloads drive.
+    // The note names the real size of the saved file (rounded up), quietly:
+    // secondary text, not an alert.
+    const savedBytes = statSync(await saved.path()).size;
+    const note = page.getByTestId('export-save-space');
+    await expect(note).toHaveText(
+      `Kaydederken bilgisayarında yaklaşık ${Math.ceil(savedBytes / 1_048_576)} MiB daha boş yer gerekir.`,
+    );
+    await expect(note).toHaveClass(/hint-small/);
+    await expect(note).not.toHaveAttribute('role', 'alert');
   });
 
   test('writes the output to temporary storage and removes it afterwards', async ({ page }) => {

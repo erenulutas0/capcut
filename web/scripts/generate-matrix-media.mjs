@@ -171,32 +171,39 @@ if (wanted('M11')) {
   record('M11', 'm11-truncated.mp4', 'first 40% of M01; moov is missing');
 }
 
-// M13 — over the 2 GiB policy limit (doc 15 v2), but still a valid, readable
-// file. Encoding 2 GiB of real frames would take minutes, so a short clip is
-// followed by a top-level `free` box: ISO BMFF readers skip it, the file stays
-// playable, and only its size crosses the limit.
+// M13 — over the 4 GiB policy limit (doc 15 v5; 2 GiB until v4), but still a
+// valid, readable file. Encoding 4 GiB of real frames would take minutes, so a
+// short clip is followed by top-level `free` boxes: ISO BMFF readers skip
+// them, the file stays playable, and only its size crosses the limit. A box's
+// 32-bit size cannot hold 4 GiB, so the padding is several boxes of at most
+// 1 GiB. The name carries the limit: a file made for the old 2 GiB limit
+// (which v5 would accept) is never mistaken for this one.
 if (wanted('M13')) {
   const clip = p('m13-clip.tmp.mp4');
   ff([...videoIn('1280x720', 30, 4), ...toneIn(440, 4), ...H264, ...AAC, '-shortest', clip], 'M13');
-  const target = 2048 * 1048576 + 16 * 1048576;
+  const target = 4096 * 1048576 + 16 * 1048576;
   const clipBytes = readFileSync(clip);
-  const freeSize = target - clipBytes.length;
-  const header = Buffer.alloc(8);
-  header.writeUInt32BE(freeSize, 0);
-  header.write('free', 4, 'ascii');
-  const fd = openSync(p('m13-oversize.mp4'), 'w');
+  const fd = openSync(p('m13-oversize-4gib.mp4'), 'w');
   writeSync(fd, clipBytes);
-  writeSync(fd, header);
   const zeros = Buffer.alloc(64 * 1048576);
-  let left = freeSize - header.length;
-  while (left > 0) {
-    const n = Math.min(left, zeros.length);
-    writeSync(fd, zeros, 0, n);
-    left -= n;
+  let padding = target - clipBytes.length;
+  while (padding > 0) {
+    const boxSize = Math.min(padding, 1024 * 1048576);
+    const header = Buffer.alloc(8);
+    header.writeUInt32BE(boxSize, 0);
+    header.write('free', 4, 'ascii');
+    writeSync(fd, header);
+    let left = boxSize - header.length;
+    while (left > 0) {
+      const n = Math.min(left, zeros.length);
+      writeSync(fd, zeros, 0, n);
+      left -= n;
+    }
+    padding -= boxSize;
   }
   closeSync(fd);
   rmSync(clip, { force: true });
-  record('M13', 'm13-oversize.mp4', '4 s 720p clip + free box, intentionally over 2 GiB');
+  record('M13', 'm13-oversize-4gib.mp4', '4 s 720p clip + free boxes, intentionally over 4 GiB');
 }
 
 // L01 — dense 1080p content for memory measurements.

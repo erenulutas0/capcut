@@ -124,6 +124,11 @@ sonucunu gördükten **sonra** yapıldı; karar kurucuya açık soru olarak yaz�
 makinede (CI) kontrol hâlâ 5 operatörle (daha sıkı) çalışır ve sonuçta hangi setin
 kullanıldığı yazılır (`operatorSet`).
 
+**Kurucu kararı 2026-09-23:** HDR HLG açık kalır (seçenek A). Kurucu, R11 HLG'nin
+geçişinin önceden kaydedilen 5 operatörlük sette kaldıktan (6 karenin birinde ton açısı
+9.37° > 9°) **sonra** genişletilen 7 operatörlük referans sete dayandığını bilerek kabul etti.
+Eşikler değişmedi; açık soru kapandı.
+
 ### Dışa aktarılan dosya — sentetik matris satırları (`run-matrix.mjs`)
 
 M10-hdr: 1280×720 VP9 profil 2 PQ, 0.5–3.5 s. M10-hdr-hlg: 1280×720 VP9 profil 2 HLG,

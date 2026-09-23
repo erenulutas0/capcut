@@ -596,6 +596,8 @@ export const tr = {
   'export.framesMissing': 'Çözülemeyen kare',
   'export.framesMissing.value': '{count} kare, yerine önceki kare gösterildi',
   'export.save': 'Bilgisayara kaydet',
+  'export.saveSpace': 'Kaydederken bilgisayarında yaklaşık {size} daha boş yer gerekir.',
+  'export.saveSpaceUnknown': 'Kaydederken bilgisayarında dosyanın boyutu kadar daha boş yer gerekir.',
   'export.again': 'Yeniden oluştur',
   'export.noAudioTrack': 'ses yok',
   'export.failedTitle': 'Çıktı alınamadı.',
@@ -663,9 +665,9 @@ export const tr = {
   'error.unknown_duration': 'Dosyanın süresi okunamadı; bu haliyle düzenlenemez.',
   'error.timeout': 'Dosya okunurken zaman aşımı oldu.',
   'error.file_too_large':
-    'Dosya bu sürümdeki 2 GiB (yaklaşık 2,15 GB) sınırının üzerinde.',
+    'Dosya bu sürümdeki 4 GiB (yaklaşık 4,29 GB) sınırının üzerinde.',
   'error.total_too_large':
-    'Video ve müzik birlikte bu sürümdeki 2 GiB (yaklaşık 2,15 GB) sınırını aşıyor.',
+    'Video ve müzik birlikte bu sürümdeki 4 GiB (yaklaşık 4,29 GB) sınırını aşıyor.',
   'error.music_too_large': 'Müzik dosyası bu sürümdeki 100 MiB (yaklaşık 105 MB) sınırının üzerinde.',
   'error.music_too_long': 'Müzik bu sürümdeki 10 dakika sınırının üzerinde.',
   'error.source_too_long': 'Video bu sürümdeki 120 dakika sınırının üzerinde.',
@@ -688,6 +690,8 @@ export const tr = {
   'error.rejectedFile': '“{name}” açılamadı: {reason}',
   'error.keptVideo': 'Açık olan videon değişmedi.',
   'error.keptAudio': 'Açık olan müziğin değişmedi.',
+  'error.hint.hevc_decoder_missing':
+    'Bu video HEVC (H.265) biçiminde ve bu tarayıcıda HEVC çözücüsü yok. Windows’ta Edge kullanıyorsan Microsoft Store’daki “HEVC Video Uzantıları” gerekebilir; ya da videoyu Google Chrome’da açmayı dene.',
   'error.dismiss': 'Uyarıyı kapat',
 
   'help.title': 'Kısayollar ve bu sürümün sınırları',
@@ -704,7 +708,7 @@ export const tr = {
   'help.shortcut.trim': 'Odaklı parça kenarını 1 kare / Shift ile 1 saniye kaydır',
   'help.shortcutNote': 'Bir metin veya zaman alanına yazarken kısayollar devre dışıdır.',
   'help.limit.length':
-    'Açılan video en fazla 120 dakika ve 2 GiB. İndirilen video en fazla 60 dakika; tarayıcı videoyu diske yazamıyorsa en fazla 5 dakika. Daha uzun videoyu zaman çizgisinde böl ve fazlasını sil.',
+    'Açılan video en fazla 120 dakika ve 4 GiB.İndirilen video en fazla 60 dakika; tarayıcı videoyu diske yazamıyorsa en fazla 5 dakika. Daha uzun videoyu zaman çizgisinde böl ve fazlasını sil.',
   'help.limit.export': 'Çıktı yalnızca uygunluk kontrolünü geçen tarayıcıda alınabilir.',
   'help.limit.mix': 'Önizlemede iki oynatıcı birlikte çalışır; gerçek miks yalnızca çıktıda yapılır.',
   'help.limit.save':
@@ -1334,6 +1338,8 @@ export const en: Record<MessageKey, string> = {
   'export.framesMissing': 'Undecodable frames',
   'export.framesMissing.value': '{count} frames, the previous frame was held',
   'export.save': 'Save to this computer',
+  'export.saveSpace': 'Saving needs about {size} more free space on this computer.',
+  'export.saveSpaceUnknown': 'Saving needs about the file’s size again in free space on this computer.',
   'export.again': 'Export again',
   'export.noAudioTrack': 'no audio',
   'export.failedTitle': 'Export failed.',
@@ -1403,8 +1409,8 @@ export const en: Record<MessageKey, string> = {
     'The browser could not open a preview for this file. It may be corrupt or in an unsupported format.',
   'error.unknown_duration': 'The duration could not be read, so the file cannot be edited.',
   'error.timeout': 'Reading the file timed out.',
-  'error.file_too_large': 'The file is above the 2 GiB (about 2.15 GB) limit of this version.',
-  'error.total_too_large': 'Video and music together exceed the 2 GiB (about 2.15 GB) limit of this version.',
+  'error.file_too_large': 'The file is above the 4 GiB (about 4.29 GB) limit of this version.',
+  'error.total_too_large': 'Video and music together exceed the 4 GiB (about 4.29 GB) limit of this version.',
   'error.music_too_large': 'The music file is above the 100 MiB (about 105 MB) limit of this version.',
   'error.music_too_long': 'The music is above the 10 minute limit of this version.',
   'error.source_too_long': 'The video is above the 120 minute limit of this version.',
@@ -1427,6 +1433,8 @@ export const en: Record<MessageKey, string> = {
   'error.rejectedFile': '“{name}” could not be opened: {reason}',
   'error.keptVideo': 'Your open video is unchanged.',
   'error.keptAudio': 'Your open music is unchanged.',
+  'error.hint.hevc_decoder_missing':
+    'This video is HEVC (H.265) and this browser has no HEVC decoder. In Edge on Windows, the “HEVC Video Extensions” from the Microsoft Store may be needed; or try opening the video in Google Chrome.',
   'error.dismiss': 'Dismiss the warning',
 
   'help.title': 'Shortcuts and the limits of this version',
@@ -1443,7 +1451,7 @@ export const en: Record<MessageKey, string> = {
   'help.shortcut.trim': 'Move the focused clip edge by 1 frame / 1 second with Shift',
   'help.shortcutNote': 'Shortcuts are disabled while you type in a text or time field.',
   'help.limit.length':
-    'An opened video can be up to 120 minutes and 2 GiB. The downloaded video can be up to 60 minutes; at most 5 minutes if the browser cannot write the video to disk. Split a longer video on the timeline and delete the rest.',
+    'An opened video can be up to 120 minutes and 4 GiB.The downloaded video can be up to 60 minutes; at most 5 minutes if the browser cannot write the video to disk. Split a longer video on the timeline and delete the rest.',
   'help.limit.export': 'Export is only possible in a browser that passes the capability check.',
   'help.limit.mix': 'The preview runs two players together; the real mix happens only in the export.',
   'help.limit.save':

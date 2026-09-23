@@ -572,7 +572,19 @@ export function EditorApp() {
   const mediaErrorNode = mediaErrorText ? (
     <div className="inline-error media-error" role="alert" data-testid="media-error">
       <Icon name="alert" />
-      <span>{mediaErrorText}</span>
+      <span>
+        {mediaErrorText}
+        {state.mediaError?.hint === 'hevc_decoder_missing' ? (
+          // The space keeps the two sentences apart in the text a screen
+          // reader or a copy gets; the block display puts the hint on its line.
+          <>
+            {' '}
+            <span className="media-error-hint" data-testid="media-error-hint">
+              {t('error.hint.hevc_decoder_missing')}
+            </span>
+          </>
+        ) : null}
+      </span>
       <button
         type="button"
         className="icon-btn media-error-close"
