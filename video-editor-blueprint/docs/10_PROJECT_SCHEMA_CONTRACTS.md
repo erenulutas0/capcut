@@ -136,7 +136,7 @@ Zamanlar güvenli integer ve ≥0; JSON'da stringe çevrilmez. JavaScript safe-i
 
 `view` normalize edilmiş, orientation sonrası görüntü koordinatıdır: x/y≥0, width/height>0, x+width≤1, y+height≤1. Kabul edilen hassasiyet ve float karşılaştırma epsilon'u fixture'larla tanımlanır; kırpma koordinatları zaman gibi integer olma zorunluluğu taşımaz.
 
-Gain mute hariç −60…0 dB; fade değerleri ≥0, toplamı müzik seçiminin süresini aşamaz. Müzik timeline başlangıcı çıktı süresinden küçük olmalı; çıktı dışına taşan son kısmı render planı keser. Süre ve byte limitleri [politikadan](15_PRICING_FREE_PRO.md) gelir; domain formatının kendisi plan adlarını hardcode etmez.
+Gain mute hariç −60…0 dB; fade değerleri ≥0, toplamı müzik seçiminin süresini aşamaz. Müzik timeline başlangıcı çıktı süresinden küçük olmalı; çıktı dışına taşan son kısmı render planı keser. Süre ve byte limitleri [politikadan](15_PRICING_FREE_PRO.md) gelir; domain formatının kendisi plan adlarını hardcode etmez. Tarifin toplam süresi (zaman çizgisi) en çok girdi süresi sınırı kadar olabilir (`timeline_duration_exceeds_policy`); çıktı süresi sınırı tarifin kuralı değildir, render planı uygular (`output_duration_exceeds_policy`): çıktı sınırından uzun bir zaman çizgisi geçerli bir projedir, açılır, kaydedilir ve geri alınır, yalnızca indirilemez (ADR-021).
 
 Cloud, istemcinin `durationUs`, çözünürlük, MIME veya toplam süre beyanını yetkilendirme kaynağı yapmaz. Gerçek probe sonuçları ile recipe eşleşir; farklılık varsa kullanıcıya yeni quote/uyumsuzluk durumu döner.
 

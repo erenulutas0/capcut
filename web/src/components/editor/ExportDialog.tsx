@@ -8,11 +8,12 @@ import { useExport, type ExportUiState } from './useExport';
 import type { CapabilityReportV1 } from '@/adapters/exportCapability';
 import { environmentPasses } from '@/adapters/exportCapability';
 import type { Project } from '@/domain/edl';
-import { WEB_LOCAL_POLICY, formatBytes } from '@/domain/policy';
+import { WEB_LOCAL_POLICY, formatBytes, outputOverrun } from '@/domain/policy';
 import { compileRenderPlan } from '@/domain/renderPlan';
 import { formatDurationShort, formatTimecode } from '@/domain/time';
 import { totalOutputDurationUs } from '@/domain/timeline';
 import type { MessageKey } from '@/i18n/messages';
+import { overLimitText } from './outputLimitText';
 
 interface Props {
   t: (key: MessageKey) => string;
@@ -40,7 +41,9 @@ function phaseAnnouncement(t: (key: MessageKey) => string, state: ExportUiState)
     case 'ready':
       return t('export.ready');
     case 'blocked':
-      return t('export.blockedTitle');
+      return state.planRejection === 'output_duration_exceeds_policy'
+        ? t('export.overLimitTitle')
+        : t('export.blockedTitle');
     case 'running':
       return t(`export.running.${state.step}` as MessageKey);
     case 'canceled':
@@ -205,6 +208,20 @@ export function ExportDialog({
   };
 
   const settingsDisabled = isRunning || state.phase === 'succeeded';
+  // ADR-021: the output limit is checked here, at the download, not in the
+  // recipe. The plan compiler refuses a longer result before any worker
+  // starts; the dialog says by how much, on the same terms as the timeline.
+  const overrun =
+    state.phase === 'blocked' && state.planRejection === 'output_duration_exceeds_policy'
+      ? outputOverrun(totalUs, WEB_LOCAL_POLICY.maxOutputDurationUs)
+      : null;
+  // The memory-route refusals come from the worker (the route is only known
+  // there); the same sentence then uses the 5-minute cap of that route.
+  const memoryOverrun =
+    state.phase === 'failed' &&
+    (state.code === 'output_too_long_for_memory' || state.code === 'output_storage_insufficient')
+      ? outputOverrun(totalUs, WEB_LOCAL_POLICY.maxMemoryRouteOutputDurationUs)
+      : null;
 
   return (
     <Dialog open={open} onClose={closeDialog} labelledBy="export-title">
@@ -281,7 +298,18 @@ export function ExportDialog({
         </>
       ) : null}
 
-      {state.phase === 'blocked' ? (
+      {overrun ? (
+        <div className="notice notice-warning" data-testid="export-over-limit">
+          <Icon name="alert" size={16} />
+          <span>
+            <b>{t('export.overLimitTitle')}</b>
+            <span data-testid="export-over-limit-text">{overLimitText(t, overrun)}</span>
+            <span style={{ display: 'block', marginTop: 6 }}>{t('export.overLimitHint')}</span>
+          </span>
+        </div>
+      ) : null}
+
+      {state.phase === 'blocked' && !overrun ? (
         <>
           <div className="notice notice-warning" data-testid="export-blocked">
             <Icon name="alert" size={16} />
@@ -327,6 +355,11 @@ export function ExportDialog({
           <span>
             <b>{t('export.failedTitle')}</b>
             {t(`export.fail.${state.code}` as MessageKey)}
+            {memoryOverrun ? (
+              <span style={{ display: 'block', marginTop: 6 }} data-testid="export-failed-over-limit">
+                {overLimitText(t, memoryOverrun)}
+              </span>
+            ) : null}
             {state.captionCue ? (
               <span style={{ display: 'block', marginTop: 6 }} data-testid="export-failed-caption">
                 {t('export.fail.captionCue')
@@ -440,7 +473,8 @@ export function ExportDialog({
             {t('export.recheck')}
           </button>
         ) : null}
-        {state.phase === 'blocked' || state.phase === 'failed' ? (
+        {/* Too long is not a fault to report: the user removes the excess. */}
+        {(state.phase === 'blocked' && !overrun) || state.phase === 'failed' ? (
           <button type="button" className="btn" onClick={onReportProblem} data-testid="export-report">
             {t('support.open')}
           </button>

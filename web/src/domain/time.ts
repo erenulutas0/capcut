@@ -68,6 +68,24 @@ export function formatDurationShort(us: Micros): string {
 }
 
 /**
+ * A length as a clock, to whole seconds: `0:07`, `12:30`, `1:12:30`.
+ *
+ * Rounded UP by default: the export gate (ADR-021) says "delete at least
+ * 12:30", and a rounded-down amount would leave the result a fraction of a
+ * second over the limit. Because the limits are whole seconds, the rounded
+ * result and the rounded excess stay consistent (limit + excess = result).
+ */
+export function formatClock(us: Micros, rounding: 'ceil' | 'floor' = 'ceil'): string {
+  const exact = Math.max(0, us) / US_PER_SECOND;
+  const total = rounding === 'ceil' ? Math.ceil(exact - 1e-9) : Math.floor(exact + 1e-9);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const ss = String(seconds).padStart(2, '0');
+  return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${ss}` : `${minutes}:${ss}`;
+}
+
+/**
  * A piece length for messages people read and hear, to a tenth of a second:
  * "14,0 sn", "1 dk 50,0 sn". Words and decimal mark come from the caller.
  * Tenths, not frames: "14,0 → 10,0" is what a confirmation needs to say.

@@ -136,6 +136,20 @@ const valid = {
     clips: [clip('c_001', 1, 4, { view: { x: 0, y: 0, width: 1, height: 1, fit: 'contain' } })],
   }),
   'minimum-length-clip': project({ clips: [clip('c_001', 0, 0.1)] }),
+  // ADR-021 (policy v4): the 60-minute OUTPUT limit is an export gate, not a
+  // recipe rule. This was `invalid/output-duration-exceeds-policy` under v3
+  // (same content): a 40-minute source used twice, 65 minutes of timeline. It
+  // loads, saves and undoes; the render plan refuses it (`exportRejection`).
+  'timeline-over-output-limit': project({
+    assets: [{ ...videoAsset, durationUs: 40 * 60 * S }],
+    clips: [clip('c_001', 0, 40 * 60), clip('c_002', 0, 25 * 60)],
+  }),
+  // The longest video that opens (120 minutes, the input limit) as it
+  // arrives: one whole piece. Valid; not exportable until cut to 60 minutes.
+  'whole-input-limit-video': project({
+    assets: [{ ...videoAsset, durationUs: 120 * 60 * S }],
+    clips: [clip('c_001', 0, 120 * 60)],
+  }),
   // A cue may outlive the current output; the render plan cuts it (ADR-015).
   'caption-past-output': project({
     captionTracks: [captionTrack([cue('q_001', 3, 6, 'Sonuna kadar')])],
@@ -174,14 +188,24 @@ const invalid = {
   ],
   'range-out-of-source': [project({ clips: [clip('c_001', 15, 25)] }), ['range_out_of_source']],
   'clip-too-short': [project({ clips: [clip('c_001', 0, 0.05)] }), ['clip_too_short']],
-  // Policy v3: 60 minutes of output. A 40-minute source (inside the 60-minute
-  // input limit) used twice gives 65 minutes: only the output rule fails.
-  'output-duration-exceeds-policy': [
+  // Policy v4 (ADR-021): the timeline may be as long as the input limit,
+  // 120 minutes. A 100-minute source (inside the input limit) used for
+  // 100 + 25 minutes gives 125: only the timeline rule fails.
+  'timeline-duration-exceeds-policy': [
     project({
-      assets: [{ ...videoAsset, durationUs: 40 * 60 * S }],
-      clips: [clip('c_001', 0, 40 * 60), clip('c_002', 0, 25 * 60)],
+      assets: [{ ...videoAsset, durationUs: 100 * 60 * S }],
+      clips: [clip('c_001', 0, 100 * 60), clip('c_002', 0, 25 * 60)],
     }),
-    ['output_duration_exceeds_policy'],
+    ['timeline_duration_exceeds_policy'],
+  ],
+  // The input limit itself: a 121-minute source is refused by the recipe,
+  // not only by the file picker.
+  'source-duration-exceeds-policy': [
+    project({
+      assets: [{ ...videoAsset, durationUs: 121 * 60 * S }],
+      clips: [clip('c_001', 0, 4)],
+    }),
+    ['source_duration_exceeds_policy'],
   ],
   'unsupported-codec-spec': [
     project({ export: { ...exportSpec, videoCodec: 'hevc' } }),
@@ -340,9 +364,19 @@ mkdirSync(join(root, 'legacy-v1'), { recursive: true });
 
 const manifest = { schemaVersion: 2, valid: [], invalid: [], legacy: [] };
 
+// Valid recipes the export refuses as they are (ADR-021): the reason the
+// render plan gives. Every other valid fixture is not checked for export here.
+const exportRejections = {
+  'timeline-over-output-limit': 'output_duration_exceeds_policy',
+  'whole-input-limit-video': 'output_duration_exceeds_policy',
+};
+
 for (const [name, value] of Object.entries(valid)) {
   writeFileSync(join(root, 'valid', `${name}.json`), `${JSON.stringify(value, null, 2)}\n`);
-  manifest.valid.push({ file: `valid/${name}.json` });
+  manifest.valid.push({
+    file: `valid/${name}.json`,
+    ...(exportRejections[name] ? { exportRejection: exportRejections[name] } : {}),
+  });
 }
 // v1 recipes written by older builds. Readers migrate them (migration.ts);
 // `expect` is the verdict AFTER migration.

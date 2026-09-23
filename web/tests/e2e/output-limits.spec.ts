@@ -99,6 +99,10 @@ test.describe('memory route: at most 5 minutes (doc 15 v3)', () => {
     await expect(page.getByTestId('export-failed')).toContainText(
       'Bu tarayıcı videoyu diske yazamıyor; burada en fazla 5 dakikalık video indirilebilir.',
     );
+    // ADR-021: the same sentence as the 60-minute gate, with this route's cap.
+    await expect(page.getByTestId('export-failed-over-limit')).toHaveText(
+      'Sonuç 5:10. İndirmek için en az 0:10 sil — sınır 5 dakika.',
+    );
     expect(await listExportFiles(page)).toEqual([]);
     expect(errors).toEqual([]);
   });

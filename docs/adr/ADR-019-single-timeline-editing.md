@@ -1,6 +1,8 @@
 # ADR-019 — Tek zaman çizgisi: kesme akışı CapCut'taki gibi
 
-> Tarih: 2026-09-22 · Durum: KABUL EDİLDİ (kurucu: "CapCut gibi tek zaman çizgisi")
+> Tarih: 2026-09-22 · Durum: KABUL EDİLDİ (kurucu: "CapCut gibi tek zaman çizgisi");
+> "5 dakikadan uzun video" satırı [ADR-021](ADR-021-input-limit-120min.md) ile
+> değişti: girdi sınırına sığan her video tek parça gelir, çıktı sınırı indirmenin kapısıdır.
 > Kapsam: web editörünün ana kesme akışı. EDL v2 şeması **değişmedi** (belge 10):
 > `clips` hâlâ çıktı sırasındaki saklanan aralıklardır.
 
@@ -84,6 +86,10 @@ yedek dosyası. Gizli dosya seçicileri hâlâ yalnızca hidrasyondan sonra çiz
   tamamı tek parça olamaz. Kaynak sınırı 60 dakika, 20 parça.
   *Güncelleme (ADR-020, politika 2026-09-22.v3):* çıktı 60 dakika (diske
   yazamayan tarayıcıda 5 dakika); açılabilen her video artık tek parça gelir.
+  *Güncelleme (ADR-021, politika 2026-09-23.v4):* girdi 120 dakika; çıktı
+  sınırından uzun video da tek parça gelir, zaman çizgisi sınırı ve fazlasını
+  gösterir, "Videoyu indir" kodlamadan önce ne kadar silinmesi gerektiğini
+  söyler. "İlk N dakikayı ekle" seçimi ve `leadingRange` kaldırıldı.
 - Görsel yakınlaştırma yok: uzun zaman çizgisinde 1 px ≈ 0,1–0,3 sn. Kesin konum
   için oynatma çizgisi klavyeyle (kare / saniye) taşınabilir.
 - Önizleme hâlâ tek `<video>` ile sıralı oynatmadır; parça geçişinde kısa bekleme

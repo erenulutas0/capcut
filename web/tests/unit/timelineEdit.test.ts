@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   addClip,
-  addLeadingSource,
   addWholeSource,
   createEmptyProject,
   removeClip,
@@ -12,7 +11,8 @@ import {
 } from '@/application/commands';
 import { commit, initHistory, undo } from '@/application/history';
 import type { AssetV1, Project } from '@/domain/edl';
-import { WEB_LOCAL_POLICY } from '@/domain/policy';
+import { WEB_LOCAL_POLICY, maxTimelineDurationUs } from '@/domain/policy';
+import { compileRenderPlan } from '@/domain/renderPlan';
 import { formatLength, MIN_CLIP_DURATION_US, US_PER_SECOND } from '@/domain/time';
 import { buildTimeline, totalOutputDurationUs } from '@/domain/timeline';
 import {
@@ -22,7 +22,6 @@ import {
   floorAfterEdit,
   freezeScale,
   initialPlacement,
-  leadingRange,
   MIN_DRAG_PIECE_US,
   outputStartOf,
   pieceAtOutput,
@@ -37,13 +36,9 @@ import { validateProject } from '@/domain/validation';
 
 const S = US_PER_SECOND;
 const MIN = 60 * S;
-/** Doc 15 v3: 60 minutes of output (the input limit is 60 minutes too). */
+/** Doc 15 v4: 60 minutes of output, 120 minutes of input. */
 const OUTPUT_LIMIT = WEB_LOCAL_POLICY.maxOutputDurationUs;
-/**
- * The too-long branch cannot be reached with the v3 web policy (a video over
- * 60 minutes is refused on open), but the rule stays for any stricter policy.
- */
-const FIVE_MIN_POLICY = { ...WEB_LOCAL_POLICY, maxOutputDurationUs: 5 * MIN };
+const INPUT_LIMIT = WEB_LOCAL_POLICY.maxTotalSourceDurationUs;
 
 function withVideo(durationUs: number): Project {
   const video: AssetV1 = {
@@ -73,47 +68,47 @@ function lengths(project: Project): number[] {
 
 describe('import: the whole video becomes one piece', () => {
   it('places a 1:50 video whole', () => {
-    expect(initialPlacement(110 * S, WEB_LOCAL_POLICY)).toEqual({
+    expect(initialPlacement(110 * S)).toEqual({
       kind: 'whole',
       sourceInUs: 0,
       sourceOutUs: 110 * S,
     });
   });
 
-  it('places a video of exactly the output limit whole', () => {
+  it('ADR-021: a video longer than the output limit still arrives whole', () => {
     expect(OUTPUT_LIMIT).toBe(60 * MIN);
-    expect(initialPlacement(OUTPUT_LIMIT, WEB_LOCAL_POLICY).kind).toBe('whole');
+    expect(INPUT_LIMIT).toBe(120 * MIN);
+    for (const durationUs of [310 * S, OUTPUT_LIMIT, OUTPUT_LIMIT + 1, 90 * MIN, INPUT_LIMIT]) {
+      expect(initialPlacement(durationUs)).toEqual({ kind: 'whole', sourceInUs: 0, sourceOutUs: durationUs });
+    }
   });
 
-  it('policy v3: a 5:10 video and a 60-minute video both arrive as one piece', () => {
-    expect(initialPlacement(310 * S, WEB_LOCAL_POLICY)).toEqual({
-      kind: 'whole',
-      sourceInUs: 0,
-      sourceOutUs: 310 * S,
-    });
-    const result = addWholeSource(withVideo(60 * MIN));
+  it('a 90-minute piece is a valid recipe that the export gate refuses', () => {
+    const result = addWholeSource(withVideo(90 * MIN));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(totalOutputDurationUs(result.project)).toBe(60 * MIN);
+    expect(result.project.clips).toHaveLength(1);
+    expect(totalOutputDurationUs(result.project)).toBe(90 * MIN);
+    // Loads, saves, undoes: the recipe allows it.
+    expect(validateProject(result.project).ok).toBe(true);
+    // Only the download refuses it.
+    expect(compileRenderPlan(result.project, WEB_LOCAL_POLICY)).toEqual({
+      ok: false,
+      reason: 'output_duration_exceeds_policy',
+    });
+  });
+
+  it('the longest openable video (the input limit) fits the timeline exactly', () => {
+    expect(maxTimelineDurationUs(WEB_LOCAL_POLICY)).toBe(INPUT_LIMIT);
+    const result = addWholeSource(withVideo(INPUT_LIMIT));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
     expect(validateProject(result.project).ok).toBe(true);
   });
 
-  it('does not truncate a longer video: the user has to choose', () => {
-    expect(initialPlacement(OUTPUT_LIMIT + 1, WEB_LOCAL_POLICY)).toEqual({
-      kind: 'too_long',
-      durationUs: OUTPUT_LIMIT + 1,
-      limitUs: OUTPUT_LIMIT,
-    });
-    expect(initialPlacement(5 * MIN + 1, FIVE_MIN_POLICY)).toEqual({
-      kind: 'too_long',
-      durationUs: 5 * MIN + 1,
-      limitUs: 5 * MIN,
-    });
-  });
-
   it('refuses a video shorter than the minimum piece, and nonsense durations', () => {
-    expect(initialPlacement(MIN_CLIP_DURATION_US - 1, WEB_LOCAL_POLICY).kind).toBe('too_short');
-    expect(initialPlacement(Number.NaN, WEB_LOCAL_POLICY).kind).toBe('too_short');
+    expect(initialPlacement(MIN_CLIP_DURATION_US - 1).kind).toBe('too_short');
+    expect(initialPlacement(Number.NaN).kind).toBe('too_short');
   });
 
   it('addWholeSource adds exactly one valid full-length piece', () => {
@@ -126,19 +121,30 @@ describe('import: the whole video becomes one piece', () => {
     expect(validateProject(result.project).ok).toBe(true);
   });
 
-  it('addWholeSource refuses a video longer than the output limit instead of cutting it', () => {
-    const result = addWholeSource(withVideo(12 * MIN), FIVE_MIN_POLICY);
-    expect(result).toEqual({ ok: false, reason: 'source_longer_than_output' });
-  });
-
-  it('"İlk N dakikayı ekle" adds the leading part up to the limit, valid for export', () => {
-    expect(leadingRange(70 * MIN, WEB_LOCAL_POLICY)).toEqual({ sourceInUs: 0, sourceOutUs: OUTPUT_LIMIT });
-    expect(leadingRange(12 * MIN, FIVE_MIN_POLICY)).toEqual({ sourceInUs: 0, sourceOutUs: 5 * MIN });
-    const result = addLeadingSource(withVideo(12 * MIN), FIVE_MIN_POLICY);
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.project.clips[0]).toMatchObject({ sourceInUs: 0, sourceOutUs: 5 * MIN });
-    expect(validateProject(result.project, FIVE_MIN_POLICY).ok).toBe(true);
+  it('split and delete a 2-hour piece down to the limit: then the export plan is exactly 60 minutes', () => {
+    const whole = addWholeSource(withVideo(INPUT_LIMIT));
+    if (!whole.ok) throw new Error('expected a piece');
+    // Cut at 40:00 and 1:40:00 on the output clock, then delete both ends.
+    const first = splitAtTimelinePlayhead(whole.project, { mode: 'output', outputUs: 40 * MIN });
+    if (!first.ok) throw new Error(first.reason);
+    const second = splitAtTimelinePlayhead(first.project, { mode: 'output', outputUs: 100 * MIN });
+    if (!second.ok) throw new Error(second.reason);
+    const [head, middle, tail] = second.project.clips;
+    if (!head || !middle || !tail) throw new Error('expected three pieces');
+    const kept = removeClip(removeClip(second.project, head.clipId), tail.clipId);
+    expect(kept.clips).toEqual([expect.objectContaining({ sourceInUs: 40 * MIN, sourceOutUs: 100 * MIN })]);
+    const plan = compileRenderPlan(kept, WEB_LOCAL_POLICY);
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    expect(plan.plan.expectedDurationUs).toBe(OUTPUT_LIMIT);
+    expect(plan.plan.totalFrames).toBe(108_000);
+    // One microsecond more is refused, before any frame.
+    const over = updateClipRange(kept, middle.clipId, { sourceInUs: 40 * MIN, sourceOutUs: 100 * MIN + 1 });
+    if (!over.ok) throw new Error(over.reason);
+    expect(compileRenderPlan(over.project, WEB_LOCAL_POLICY)).toEqual({
+      ok: false,
+      reason: 'output_duration_exceeds_policy',
+    });
   });
 
   it('the piece is its own undo step on top of the import', () => {
@@ -347,13 +353,23 @@ describe('edge drag: never an accidental sub-second leftover', () => {
     expect(dragMinimumUs(10 * S)).toBe(MIN_DRAG_PIECE_US);
   });
 
-  it('extending past the output limit stops at the limit', () => {
-    // Two pieces of a 55-minute video: 50 + 4 minutes. The second one can
-    // only grow to 10 minutes before the output reaches 60.
+  it('ADR-021: extending past the OUTPUT limit is allowed (the export gate asks to cut)', () => {
+    // Two pieces of a 55-minute video: 50 + 4 minutes. The second one may
+    // grow to 20 minutes: 70 minutes of timeline, over the download limit.
     const long = withRanges([[0, 50 * MIN], [0, 4 * MIN]], 55 * MIN);
     const id = long.clips[1]?.clipId ?? '';
     const target = resolveEdgeTrim(long, id, 'out', 20 * MIN, WEB_LOCAL_POLICY);
-    expect(target?.valueUs).toBe(10 * MIN);
+    expect(target?.valueUs).toBe(20 * MIN);
+    expect(target?.heldAtMinimum).toBe(false);
+  });
+
+  it('extending past the timeline limit (the input limit) stops at that limit', () => {
+    // 100 + 4 minutes of a 110-minute video: the second piece can only grow
+    // to 20 minutes before the timeline reaches 120.
+    const long = withRanges([[0, 100 * MIN], [0, 4 * MIN]], 110 * MIN);
+    const id = long.clips[1]?.clipId ?? '';
+    const target = resolveEdgeTrim(long, id, 'out', 60 * MIN, WEB_LOCAL_POLICY);
+    expect(target?.valueUs).toBe(20 * MIN);
     expect(target?.heldAtMinimum).toBe(false);
   });
 });

@@ -24,8 +24,17 @@ const SPECS = {
   portrait: { name: 'portrait-110s.mp4', durationS: 110, width: 360, height: 640, fps: 30, audio: true },
   /** Longer than the old 5-minute output limit (and the memory-route cap), tiny and cheap to make. */
   long: { name: 'long-310s.mp4', durationS: 310, width: 160, height: 90, fps: 5, audio: false },
-  /** Longer than the 60-minute source limit: must be rejected on open. */
-  tooLong: { name: 'uzun-video.mp4', durationS: 3660, width: 64, height: 64, fps: 1, audio: false },
+  /**
+   * 90 minutes: over the 60-minute OUTPUT limit, inside the 120-minute input
+   * limit (ADR-021). One frame a second at 64x64 keeps it tiny and fast.
+   */
+  ninety: { name: 'doksan-dakika.mp4', durationS: 5400, width: 64, height: 64, fps: 1, audio: false },
+  /**
+   * 121 minutes: over the 120-minute source limit, must be rejected on open.
+   * (A new name, so an old 61-minute `uzun-video.mp4` from an earlier
+   * checkout is never mistaken for it.)
+   */
+  tooLong: { name: 'cok-uzun-video.mp4', durationS: 7260, width: 64, height: 64, fps: 1, audio: false },
 } satisfies Record<string, Spec>;
 
 export type TimelineFixture = keyof typeof SPECS;

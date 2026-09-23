@@ -26,6 +26,14 @@
       "file": "valid/minimum-length-clip.json"
     },
     {
+      "file": "valid/timeline-over-output-limit.json",
+      "exportRejection": "output_duration_exceeds_policy"
+    },
+    {
+      "file": "valid/whole-input-limit-video.json",
+      "exportRejection": "output_duration_exceeds_policy"
+    },
+    {
       "file": "valid/caption-past-output.json"
     },
     {
@@ -73,9 +81,15 @@
       ]
     },
     {
-      "file": "invalid/output-duration-exceeds-policy.json",
+      "file": "invalid/timeline-duration-exceeds-policy.json",
       "expectedIssueCodes": [
-        "output_duration_exceeds_policy"
+        "timeline_duration_exceeds_policy"
+      ]
+    },
+    {
+      "file": "invalid/source-duration-exceeds-policy.json",
+      "expectedIssueCodes": [
+        "source_duration_exceeds_policy"
       ]
     },
     {

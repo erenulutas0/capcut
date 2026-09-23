@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
@@ -325,12 +325,11 @@ test.describe('the automatic piece is clearly undoable', () => {
   });
 });
 
-test.describe('videos the timeline cannot take whole', () => {
-  // Policy v3 (doc 15, ADR-020): the output limit is 60 minutes, the same as
-  // the input limit, so a video that opens at all now fits as one piece. The
-  // "too long" choice (İlk N dakikayı ekle / Aralık seçerek ekle) stays for a
-  // stricter policy and is covered by the unit tests; a browser cannot reach
-  // it with v3, because a video over 60 minutes is refused on open (below).
+test.describe('long videos arrive whole; only a video over the input limit is refused', () => {
+  // Policy v4 (doc 15, ADR-021): a video that opens at all (up to 120
+  // minutes) arrives whole as one piece, even when it is longer than the
+  // 60-minute download limit. The old "too long" choice (İlk N dakikayı ekle)
+  // is gone. A video over 120 minutes is refused on open (below).
   test('a video longer than the old 5-minute limit arrives whole (policy v3)', async ({ page }) => {
     test.setTimeout(120_000);
     await openEditor(page);
@@ -355,7 +354,7 @@ test.describe('videos the timeline cannot take whole', () => {
 
     const error = page.getByTestId('media-error');
     await expect(error).toHaveText(
-      '“uzun-video.mp4” açılamadı: video bu sürümdeki 60 dakika sınırının üzerinde. Açık olan videon değişmedi.',
+      '“cok-uzun-video.mp4” açılamadı: video bu sürümdeki 120 dakika sınırının üzerinde. Açık olan videon değişmedi.',
       { timeout: 60_000 },
     );
     await expect(error).toHaveAttribute('role', 'alert');
@@ -385,5 +384,236 @@ test.describe('videos the timeline cannot take whole', () => {
     const error = page.getByTestId('media-error');
     await expect(error).toContainText('“bozuk.mp4” açılamadı: ');
     await expect(error).not.toContainText('değişmedi');
+  });
+});
+
+// ------------------------------------------------ ADR-021: over the download limit
+
+/** Names of the export files in the browser's private disk (OPFS). */
+function listExportFiles(page: Page) {
+  return page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory();
+    const names: string[] = [];
+    for await (const name of (root as unknown as { keys(): AsyncIterable<string> }).keys()) {
+      if (name.startsWith('clip-export-')) names.push(name);
+    }
+    return names;
+  });
+}
+
+async function openNinety(page: Page) {
+  const { file } = timelineFixture('ninety');
+  await page.getByTestId('video-input').setInputFiles(file);
+  await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId('strip-clip')).toHaveCount(1);
+}
+
+/** Left edge of `testId` as a fraction of the timeline lane's width. */
+async function laneFraction(page: Page, testId: string): Promise<number> {
+  const lane = await page.getByTestId('timeline-lane').boundingBox();
+  const box = await page.getByTestId(testId).boundingBox();
+  if (!lane || !box) throw new Error(`${testId} not visible`);
+  return (box.x - lane.x) / lane.width;
+}
+
+const OVER_90 = 'Sonuç 1:30:00. İndirmek için en az 30:00 sil — sınır 60 dakika.';
+
+test.describe('a video over the download limit (ADR-021)', () => {
+  test('a 90-minute video arrives whole; the strip shows the limit and the excess', async ({ page }) => {
+    test.setTimeout(120_000);
+    const errors = await openEditor(page);
+    await openNinety(page);
+
+    // One piece, the whole video: no choice screen, nothing cut.
+    await expect(page.getByTestId('timeline-too-long')).toHaveCount(0);
+    await expect(page.getByTestId('output-summary')).toHaveText('1 parça · 90:00 dk');
+    await expect(page.getByTestId('output-summary')).toHaveAttribute('data-over', 'true');
+    await expect(ranges(page)).toHaveText(['00:00.000 — 01:30:00.000']);
+    await expect(page.getByTestId('timeline-notice')).toContainText('tek parça olarak eklendi');
+    await expect(page.getByTestId('timeline-notice')).toContainText('en fazla 60 dakika olabilir');
+
+    // The readout says how long the result is and how much must go.
+    await expect(page.getByTestId('timeline-over-limit')).toHaveText(OVER_90);
+    // The limit line sits at 60 of 90 minutes, the marked excess starts there.
+    await expect(page.getByTestId('timeline-limit-mark')).toBeVisible();
+    await expect(page.getByTestId('timeline-limit-label')).toHaveText('60 dk sınırı');
+    await expect(page.getByTestId('timeline-over-region')).toBeVisible();
+    expect(await laneFraction(page, 'timeline-over-region')).toBeCloseTo(2 / 3, 2);
+    const lane = await page.getByTestId('timeline-lane').boundingBox();
+    const over = await page.getByTestId('timeline-over-region').boundingBox();
+    expect(over!.width / lane!.width).toBeCloseTo(1 / 3, 2);
+    await shot(page, 'timeline-over-limit-desktop-1440x900.png');
+    expect(errors).toEqual([]);
+  });
+
+  test('"Videoyu indir" refuses before encoding and says how much to delete', async ({ page }) => {
+    test.setTimeout(120_000);
+    const errors = await openEditor(page);
+    await openNinety(page);
+
+    await expect(page.getByTestId('open-export')).toBeVisible();
+    await page.getByTestId('open-export').click();
+    await expect(page.getByTestId('export-over-limit')).toBeVisible();
+    await expect(page.getByTestId('export-over-limit')).toContainText('Video indirmek için çok uzun.');
+    await expect(page.getByTestId('export-over-limit-text')).toHaveText(OVER_90);
+    await expect(page.getByTestId('export-status')).toHaveText('Video indirmek için çok uzun.');
+    // No capability check, no encode, nothing to report, nothing on disk.
+    await expect(page.getByTestId('export-create')).toBeDisabled();
+    await expect(page.getByTestId('export-running')).toHaveCount(0);
+    await expect(page.getByTestId('export-blocked')).toHaveCount(0);
+    await expect(page.getByTestId('export-report')).toHaveCount(0);
+    expect(await listExportFiles(page)).toEqual([]);
+    await shot(page, 'timeline-over-limit-export-gate.png');
+    await page.getByTestId('export-recheck').click();
+    await expect(page.getByTestId('export-over-limit-text')).toHaveText(OVER_90);
+    expect(await listExportFiles(page)).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  test('split and delete down to the limit, then the download works', async ({ page }) => {
+    test.setTimeout(240_000);
+    const errors = await openEditor(page);
+    await openNinety(page);
+
+    // Cut at about 40:00 and delete the first part: about 50 minutes remain.
+    await clickTimelineAt(page, 40 * 60, 90 * 60);
+    await page.getByTestId('split-selected').click();
+    await expect(page.getByTestId('strip-clip')).toHaveCount(2);
+    await page.getByTestId('strip-clip').first().locator('.strip-clip-select').click();
+    await page.getByTestId('delete-selected').click();
+    await expect(page.getByTestId('strip-clip')).toHaveCount(1);
+    const [remaining] = await rangeLengths(page);
+    expect(remaining).toBeGreaterThan(48 * 60);
+    expect(remaining).toBeLessThan(52 * 60);
+
+    // Under the limit: the sentence and the marked excess are gone; the
+    // line stays where the strip still reaches past 60:00.
+    await expect(page.getByTestId('timeline-over-limit')).toHaveCount(0);
+    await expect(page.getByTestId('timeline-over-region')).toHaveCount(0);
+    await expect(page.getByTestId('output-summary')).toHaveAttribute('data-over', 'false');
+    await expect(page.getByTestId('timeline-limit-mark')).toBeVisible();
+
+    // The gate is open: the real capability check runs and passes.
+    await page.getByTestId('open-export').click();
+    await page.getByTestId('export-quality').selectOption('720');
+    await expect(page.getByTestId('export-ready')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId('export-create')).toBeEnabled();
+    await expect(page.getByTestId('export-over-limit')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+
+    // Encoding 50 minutes here would make CI slow (the 60-minute export is
+    // measured in ADR-021). Keep the last 3 seconds of the source instead:
+    // the same long file, read near its end.
+    const playhead = page.getByTestId('timeline-playhead');
+    await playhead.focus();
+    await page.keyboard.press('End');
+    for (let i = 0; i < 3; i += 1) await page.keyboard.press('Shift+ArrowLeft');
+    await page.getByTestId('split-selected').click();
+    await expect(page.getByTestId('strip-clip')).toHaveCount(2);
+    await page.getByTestId('strip-clip').first().locator('.strip-clip-select').click();
+    await page.getByTestId('delete-selected').click();
+    await expect(page.getByTestId('strip-clip')).toHaveCount(1);
+    await expect(ranges(page)).toHaveText([/^01:29:5[67]\.\d{3} — 01:30:00\.000$/]);
+
+    await page.getByTestId('open-export').click();
+    await page.getByTestId('export-quality').selectOption('720');
+    await expect(page.getByTestId('export-ready')).toBeVisible({ timeout: 60_000 });
+    await page.getByTestId('export-create').click();
+    await page.getByTestId('export-succeeded').waitFor({ timeout: 180_000 });
+    await expect(page.getByTestId('measured-duration')).toHaveText(/^00:0[34]\./);
+    expect(errors).toEqual([]);
+  });
+
+  test('undo, redo and a backup round trip keep a timeline over the limit', async ({ page }, testInfo) => {
+    test.setTimeout(180_000);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/editor');
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          const request = indexedDB.deleteDatabase('clip-editor');
+          request.onsuccess = () => resolve();
+          request.onerror = () => resolve();
+          request.onblocked = () => resolve();
+        }),
+    );
+    const errors = await openEditor(page);
+    await openNinety(page);
+    // Split 10 s before the end with the keyboard (the lane may be below the
+    // fold at this width).
+    await page.getByTestId('timeline-playhead').focus();
+    await page.keyboard.press('End');
+    for (let i = 0; i < 10; i += 1) await page.keyboard.press('Shift+ArrowLeft');
+    await page.getByTestId('split-selected').click();
+    await expect(page.getByTestId('output-summary')).toHaveText('2 parça · 90:00 dk');
+    await page.getByTestId('undo').click();
+    await expect(page.getByTestId('output-summary')).toHaveText('1 parça · 90:00 dk');
+    await page.getByTestId('redo').click();
+    await expect(page.getByTestId('output-summary')).toHaveText('2 parça · 90:00 dk');
+    await expect(page.getByTestId('timeline-over-limit')).toHaveText(OVER_90);
+
+    // The backup carries the 90-minute recipe.
+    await page.getByTestId('tab-file').click();
+    const download = page.waitForEvent('download');
+    await page.getByTestId('backup-download').click();
+    const saved = await download;
+    const chunks: Buffer[] = [];
+    for await (const chunk of await saved.createReadStream()) chunks.push(chunk as Buffer);
+    const record = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    const clips = record.edl.clips as Array<{ sourceInUs: number; sourceOutUs: number }>;
+    expect(clips).toHaveLength(2);
+    expect(clips.reduce((sum, clip) => sum + clip.sourceOutUs - clip.sourceInUs, 0)).toBe(5400 * 1_000_000);
+    await page.keyboard.press('Escape');
+
+    // A fresh browser profile: nothing saved, then the backup is imported.
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          const request = indexedDB.deleteDatabase('clip-editor');
+          request.onsuccess = () => resolve();
+          request.onerror = () => resolve();
+          request.onblocked = () => resolve();
+        }),
+    );
+    await page.reload();
+    await expect(page.getByTestId('open-export')).toBeVisible();
+    await expect(page.getByTestId('strip-clip')).toHaveCount(0);
+    const path = testInfo.outputPath('over-limit.clip.json');
+    writeFileSync(path, JSON.stringify(record));
+    await page.getByTestId('backup-input').setInputFiles(path);
+    await expect(page.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId('output-summary')).toHaveText('2 parça · 90:00 dk');
+    await page.getByTestId('relink-video-input').setInputFiles(timelineFixture('ninety').file);
+    await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('output-summary')).toHaveText('2 parça · 90:00 dk');
+    await expect(page.getByTestId('timeline-over-limit')).toHaveText(OVER_90);
+    expect(errors).toEqual([]);
+  });
+});
+
+test.describe('over the download limit at phone width (ADR-021)', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+  test('the limit line, the marked excess and the sentence fit the phone', async ({ page }) => {
+    test.setTimeout(120_000);
+    const errors = await openEditor(page);
+    await openNinety(page);
+    await expect(page.getByTestId('timeline-over-limit')).toHaveText(OVER_90);
+    await expect(page.getByTestId('timeline-limit-mark')).toBeVisible();
+    await expect(page.getByTestId('timeline-limit-label')).toBeVisible();
+    await expect(page.getByTestId('timeline-over-region')).toBeVisible();
+    expect(await laneFraction(page, 'timeline-over-region')).toBeCloseTo(2 / 3, 2);
+    // The label stays inside the strip and the page does not scroll sideways.
+    const label = await page.getByTestId('timeline-limit-label').boundingBox();
+    const track = await page.getByTestId('timeline-track').boundingBox();
+    expect(label!.x).toBeGreaterThanOrEqual(track!.x);
+    expect(label!.x + label!.width).toBeLessThanOrEqual(track!.x + track!.width + 1);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBe(0);
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await shot(page, 'timeline-over-limit-phone-390.png');
+    expect(errors).toEqual([]);
   });
 });
