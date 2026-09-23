@@ -128,7 +128,9 @@ Chromium'un çözdüğü 264 karenin 264'ü ffmpeg'in karesiyle aynı yerde.
 düşüyor. Düşük skor kodlamadan geliyor. Çok ayrıntılı 1080p60 bir kayıt bu.
 x264 bile Chrome'un bit hızında (3.8 Mbit/s) referansa karşı yalnızca 0.856
 alıyor. Chromium'un yazılım kodlayıcısı 0.825 veriyor, Chrome ve Edge 0.861.
-Yani bu, eşik ve bit hızı konusu (açık). Kare çözme hatası değil.
+Yani bu, eşik ve bit hızı konusu. Kare çözme hatası değil. (Kapandı, ADR-024:
+sebep Chromium'un yazılım kodlayıcısı. Yazılım kodlayıcıya 3 kat bit hızıyla R15
+Chromium'da 0.870 PASS; Chrome ve Edge dosyaları değişmedi.)
 
 ### 4. Koşucu kontrollü durdurmayı PASS sayıyordu (düzeltildi)
 
@@ -164,4 +166,4 @@ başlatıyor ve sonucu `real-media-<tarayıcı>-swdecode.json` olarak yazıyor.
 
 ## Hâlâ sınanmayanlar
 
-Gerçek bir HDR kaydın SDR'ye tonlanarak çıktısı (şu an reddediliyor), 618 MiB'tan büyük ya da 32 dakikadan uzun gerçek kaynak, Safari, fiziksel telefon tarayıcısı. R15'in Chromium'daki düşük skoru için bit hızı/eşik kararı açık.
+Gerçek bir HDR kaydın SDR'ye tonlanarak çıktısı (şu an reddediliyor), 618 MiB'tan büyük ya da 32 dakikadan uzun gerçek kaynak, Safari, fiziksel telefon tarayıcısı. R15'in Chromium'daki düşük skoru ADR-024 ile kapandı.

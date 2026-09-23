@@ -77,6 +77,8 @@ deseni + zamansal gürültü (`testsrc2 … noise=alls=12:allf=t+u`), 440 Hz AAC
 - Süre birebir: 3600,000 sn, 108000 kare; hiç kare eksik değil.
 - Depolama tahmini ölçüm öncesi kota ~10 GiB, kullanım ~1 KB gösterdi;
   gereken (tahmini dosyanın iki katı) ~6,0 GiB idi (tahmini dosya ~3,0 GiB; gerçek 2,4 GiB), OPFS yolu seçildi.
+  (ADR-023: bu 10 GiB, Chrome'un her durumda bildirdiği sabit "kullanım + 10 GiB"
+  değeridir, gerçek disk değil. Gereksinim artık 2,67 GiB ve yer baştan ayrılıyor.)
 - İndirme (`Bilgisayara kaydet`) 2,4 GiB dosyayı diske kopyaladı; pencere
   kapanınca OPFS'teki geçici dosya silindi (kalan 0).
 
@@ -95,7 +97,9 @@ Kanıt dosyaları git dışında: `web/matrix-results/export-memory-1080-whole60
   (mevcut `__clipSilenceEnvelopes` deseni). Uygulama bunları hiç ayarlamaz.
   Chromium'un CDP kota geçersiz kılması (`Storage.overrideQuotaForOrigin`)
   Playwright tarayıcısında `navigator.storage.estimate()`'e yansımadı; bu
-  yüzden gerçek kota küçültülemedi, tahmin kancayla verildi.
+  yüzden gerçek kota küçültülemedi, tahmin kancayla verildi. (ADR-023: kota
+  tahmine yansımıyor ama yazma ve yer ayırmada uygulanıyor; gerçek kotayla
+  e2e testleri eklendi.)
 
 ## Kullanıcı için değişenler (aynı değişiklik)
 
@@ -146,7 +150,8 @@ Kanıt dosyaları git dışında: `web/matrix-results/export-memory-1080-whole60
   1080p/4K telefon kaydı (daha pahalı çözme), altyazı veya müzik ekli 60 dakika
   denenmedi.
 - **Düşük disk.** Depolama tahmininin gerçekten az olduğu bir makinede davranış
-  yalnızca test kancasıyla sınandı. Tahminin iki kat payı, 60 dakika 1080p
+  yalnızca test kancasıyla sınandı (ADR-023'te gerçek tarayıcı kotasıyla sınandı ve
+  pay ölçümle küçültüldü). Tahminin iki kat payı, 60 dakika 1080p
   için ~6 GiB boş alan istiyor; daha az boş alanı olan kullanıcı 5 dakikadan
   uzun video indiremez (mesajla söylenir). Payın küçültülmesi ayrı karar.
 - **Edge** ve Chromium'da 720p 60 dakika ölçülmedi (Chrome'da 720p ölçüldü).

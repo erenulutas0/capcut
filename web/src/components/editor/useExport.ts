@@ -13,7 +13,7 @@ import { recordCapability, recordError } from '@/adapters/diagnostics';
 import { ExportWorkerClient } from '@/adapters/export/exportClient';
 import { exportLog } from '@/adapters/exportLogStore';
 import { removeExportEntry, sweepExportEntries } from '@/adapters/export/opfsEntries';
-import type { ExportFailureCode, ExportResult } from '@/domain/exportEvents';
+import type { ExportFailureCode, ExportResult, StorageShortfall } from '@/domain/exportEvents';
 import type { Project } from '@/domain/edl';
 import { exportLogEntry, type AttemptEnd } from '@/domain/exportLog';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
@@ -42,6 +42,8 @@ export type ExportUiState =
       code: ExportFailureCode;
       /** The caption line to shorten, numbered as the user sees the list. */
       captionCue?: { index: number; text: string };
+      /** Needed vs reported free space, with `output_storage_insufficient`. */
+      storage?: StorageShortfall;
     }
   | { phase: 'canceled' };
 
@@ -224,6 +226,7 @@ export function useExport(project: Project, videoFile: File | null, audioFile: F
             phase: 'failed',
             code: event.code,
             ...(cue ? { captionCue: { index: position + 1, text: cue.text } } : {}),
+            ...(event.storage ? { storage: event.storage } : {}),
           });
           break;
         }

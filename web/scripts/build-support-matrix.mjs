@@ -260,7 +260,9 @@ lines.push(
 );
 lines.push('- Bellek ölçümü yalnızca Windows’ta ve Chromium’da yapıldı; macOS/Linux ve diğer tarayıcılar ölçülmedi.');
 lines.push('- Düşük bellekli cihazlar ve bellek yetmediğinde davranış.');
-lines.push('- Disk dolması, uzun süreli kararlılık ve termal davranış.');
+lines.push(
+  '- Gerçekten dolu bir disk: yer ayırma ve yazma sırasında dolan disk yalnızca tarayıcının kota kısıtıyla (CDP) sınandı, ADR-023. Uzun süreli kararlılık ve termal davranış.',
+);
 lines.push('- Ekran okuyucu ve erişilebilirlik denetimi.');
 lines.push('');
 lines.push('## Yeniden üretmek için');

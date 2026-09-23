@@ -39,7 +39,7 @@ export type ExportFailureCode =
   | 'output_storage_full'
   /** Refused up front: the file cannot go to disk and is longer than memory allows (doc 15 v3). */
   | 'output_too_long_for_memory'
-  /** Refused up front: disk access exists but the storage estimate has no room for the file. */
+  /** Refused up front: disk access exists but the browser could not give the file its space (ADR-023). */
   | 'output_storage_insufficient'
   | 'worker_unavailable'
   | 'internal_error';
@@ -121,8 +121,26 @@ export type ExportEvent =
        * which one to shorten. An id from the recipe, never the text itself.
        */
       cueId?: string;
+      /**
+       * With `output_storage_insufficient`: what the export needed and what
+       * the browser's storage estimate offered, so the user is told both.
+       */
+      storage?: StorageShortfall;
     }
   | { type: 'canceled'; attemptId: string };
+
+/** Bytes the disk route asked for, and the free space the browser reported. */
+export interface StorageShortfall {
+  requiredBytes: number;
+  /** `navigator.storage.estimate()`: quota minus usage. */
+  freeBytes: number;
+  /**
+   * `estimate`: the browser's own estimate was too small. `reservation`: the
+   * estimate looked fine, but claiming the space on disk failed; the
+   * estimate does not see the real disk (ADR-023).
+   */
+  reason: 'estimate' | 'reservation';
+}
 
 export const TERMINAL_EXPORT_TYPES: ReadonlySet<ExportEvent['type']> = new Set([
   'succeeded',

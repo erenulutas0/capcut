@@ -614,11 +614,14 @@ export const tr = {
   'export.fail.caption_does_not_fit':
     'Bir altyazı satırı videoya iki satırda sığmıyor. O satırı kısalt ya da ikiye böl, sonra yeniden dene.',
   'export.fail.captionCue': 'Kısaltılması gereken: {index}. altyazı satırı, “{text}”',
+  'export.fail.storageNumbers': 'Bu video için gereken boş alan: {required}. Tarayıcının bildirdiği boş alan: {free}.',
+  'export.fail.storageReservation':
+    'Bu video için gereken boş alan: {required}. Tarayıcı bu kadar yeri diskte ayıramadı, yani diskte o kadar boş yer yok. Tarayıcının tahmini {free} gösteriyordu; bu tahmin diskin gerçek doluluğunu göstermez.',
   'export.fail.output_probe_failed': 'Oluşan dosya yeniden açılamadı; başarılı sayılmadı.',
   'export.fail.output_duration_mismatch': 'Oluşan dosyanın süresi beklenen süreyle uyuşmadı.',
   'export.fail.out_of_memory': 'Tarayıcının belleği yetmedi. Daha kısa bir çıktı dene.',
   'export.fail.output_storage_full':
-    'Tarayıcının depolama alanı çıktı dosyası için yetmedi. Yer açıp tekrar dene.',
+    'Video yazılırken tarayıcının depolama alanı doldu. Yarım dosya silindi, indirilecek bir şey yok. Diskte yer açıp tekrar dene.',
   'export.fail.output_too_long_for_memory':
     'Bu tarayıcı videoyu diske yazamıyor; burada en fazla 5 dakikalık video indirilebilir. Zaman çizgisini kısalt ya da gizli olmayan bir pencerede, güncel bir tarayıcıda dene.',
   'export.fail.output_storage_insufficient':
@@ -1348,12 +1351,15 @@ export const en: Record<MessageKey, string> = {
   'export.fail.caption_does_not_fit':
     'A caption line does not fit the video in two lines. Shorten or split that line, then try again.',
   'export.fail.captionCue': 'Needs shortening: caption line {index}, “{text}”',
+  'export.fail.storageNumbers': 'Free space this video needs: {required}. Free space the browser reports: {free}.',
+  'export.fail.storageReservation':
+    'Free space this video needs: {required}. The browser could not claim that much on disk, so the disk does not have it free. The browser\'s estimate said {free}; that estimate does not reflect how full the disk really is.',
   'export.fail.output_probe_failed':
     'The produced file could not be re-opened, so it does not count as success.',
   'export.fail.output_duration_mismatch': 'The produced file did not have the expected duration.',
   'export.fail.out_of_memory': 'The browser ran out of memory. Try a shorter output.',
   'export.fail.output_storage_full':
-    'The browser ran out of storage for the output file. Free some space and try again.',
+    'The browser ran out of storage while writing the video. The partial file was deleted; there is nothing to download. Free some disk space and try again.',
   'export.fail.output_too_long_for_memory':
     'This browser cannot write the video to disk; here you can download at most 5 minutes of video. Shorten the timeline, or try an up-to-date browser in a normal (not private) window.',
   'export.fail.output_storage_insufficient':

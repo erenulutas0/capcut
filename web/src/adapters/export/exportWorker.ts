@@ -40,7 +40,8 @@ import {
 } from '@/domain/audioMix';
 import { cueIndexAtFrame, preflightCaptions } from '@/domain/captionBurnIn';
 import type { CaptionLayout } from '@/domain/captionLayout';
-import type { ExportEvent, ExportFailureCode, ExportProbe } from '@/domain/exportEvents';
+import type { ExportEvent, ExportFailureCode, ExportProbe, StorageShortfall } from '@/domain/exportEvents';
+import { encoderVideoBitrate, type VideoEncoderKind } from '@/domain/encoderBitrate';
 import { durationWithinTolerance, missingFramesAllowed } from '@/domain/exportEvents';
 import {
   frameToUs,
@@ -48,6 +49,7 @@ import {
   type RenderPlan,
   type RenderSegment,
 } from '@/domain/renderPlan';
+import { requiredFreeBytes } from '@/domain/outputStorage';
 import { outputRouteRefusal } from '@/domain/policy';
 import { US_PER_SECOND } from '@/domain/time';
 import {
@@ -94,6 +96,8 @@ class ExportFailure extends Error {
     readonly code: ExportFailureCode,
     /** Set for `caption_does_not_fit`: which recipe line to shorten. */
     readonly cueId?: string,
+    /** Set for `output_storage_insufficient`: needed vs reported free space. */
+    readonly storage?: StorageShortfall,
   ) {
     super(code);
     this.name = 'ExportFailure';
@@ -402,6 +406,46 @@ async function correctAvcReorder(
   track.getDecoderConfig = () => Promise.resolve(correctedConfig);
 }
 
+/* ------------------------------------------------------------ encoder kind */
+
+/**
+ * Whether this browser has a hardware H.264 encoder for the plan's picture.
+ * The browser never says which encoder `no-preference` picks, but it does say
+ * whether a hardware one exists; without one it is the software encoder
+ * (measured: Playwright's Chromium reports none, and its files match Chrome's
+ * own `prefer-software` output class, ADR-024).
+ */
+async function videoEncoderKind(plan: RenderPlan): Promise<VideoEncoderKind> {
+  try {
+    const hardware = await canEncodeVideo('avc', {
+      width: plan.width,
+      height: plan.height,
+      bitrate: plan.videoBitrate,
+      frameRate: plan.fpsNum / plan.fpsDen,
+      hardwareAcceleration: 'prefer-hardware',
+    });
+    return hardware ? 'hardware' : 'software';
+  } catch {
+    // Unknown: keep the plan's bitrate, as before.
+    return 'hardware';
+  }
+}
+
+/** The bitrate the encoder is configured with (ADR-024). */
+async function exportVideoBitrate(plan: RenderPlan): Promise<number> {
+  const kind = await videoEncoderKind(plan);
+  const bitrate = encoderVideoBitrate(plan.videoBitrate, kind);
+  if (bitrate === plan.videoBitrate) return bitrate;
+  // A software encoder that would refuse the higher bitrate keeps the plan's.
+  const supported = await canEncodeVideo('avc', {
+    width: plan.width,
+    height: plan.height,
+    bitrate,
+    frameRate: plan.fpsNum / plan.fpsDen,
+  }).catch(() => false);
+  return supported ? bitrate : plan.videoBitrate;
+}
+
 /* ------------------------------------------------------------------- export */
 
 interface AudioContextSources {
@@ -523,6 +567,7 @@ async function runExport(
   memoryRouteLimitUs: number,
   forceMemoryRoute: boolean,
   storageFreeBytes: number | null,
+  storageReserveBytes: number | null,
 ): Promise<void> {
   const startedAt = Date.now();
   emit(requestId, { type: 'preparing', attemptId: requestId });
@@ -557,13 +602,19 @@ async function runExport(
   ownEntries.clear();
   await sweepExportEntries().catch(() => 0);
 
-  // Generous upper estimate: bitrates plus 25% for container overhead.
-  const expectedBytes =
-    ((plan.videoBitrate + plan.audioBitrate) * (plan.expectedDurationUs / US_PER_SECOND) * 1.25) / 8;
-  const sink = await prepareOutput(requestId, expectedBytes, {
-    forceMemory: forceMemoryRoute,
-    storageFreeBytes,
-  });
+  const videoBitrate = await exportVideoBitrate(plan);
+
+  // Measured, not guessed (ADR-023): the file is written once, and its size
+  // stays under this estimate.
+  const sink = await prepareOutput(
+    requestId,
+    requiredFreeBytes({
+      videoBitrate,
+      audioBitrate: plan.audioBitrate,
+      durationUs: plan.expectedDurationUs,
+    }),
+    { forceMemory: forceMemoryRoute, storageFreeBytes, reserveBytes: storageReserveBytes },
+  );
 
   // Doc 15 v3: 60 minutes only on the disk route. Refused here, before the
   // first frame, not after minutes of encoding into memory.
@@ -574,7 +625,11 @@ async function runExport(
   );
   if (refusal) {
     await sink.discard();
-    throw new ExportFailure(refusal);
+    throw new ExportFailure(
+      refusal,
+      undefined,
+      refusal === 'output_storage_insufficient' ? (sink.storage ?? undefined) : undefined,
+    );
   }
 
   const output = new Output({ format: sink.format, target: sink.target });
@@ -585,7 +640,7 @@ async function runExport(
 
   const videoSource = new CanvasSource(canvas, {
     codec: 'avc',
-    bitrate: plan.videoBitrate,
+    bitrate: videoBitrate,
     keyFrameInterval: 2,
   });
   output.addVideoTrack(videoSource, { frameRate: plan.fpsNum / plan.fpsDen });
@@ -826,6 +881,7 @@ scope.onmessage = async (message: MessageEvent<WorkerRequest>) => {
         request.memoryRouteLimitUs,
         request.forceMemoryRoute,
         request.storageFreeBytes,
+        request.storageReserveBytes,
       );
     } catch (error) {
       if (error instanceof CanceledError) {
@@ -836,6 +892,7 @@ scope.onmessage = async (message: MessageEvent<WorkerRequest>) => {
           attemptId: request.requestId,
           code: error.code,
           ...(error.cueId !== undefined ? { cueId: error.cueId } : {}),
+          ...(error.storage !== undefined ? { storage: error.storage } : {}),
         });
       } else {
         const name = error instanceof Error ? error.name : '';
