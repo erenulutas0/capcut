@@ -741,25 +741,8 @@ async function runExport(
   }
 
   const videoSink = new VideoSampleSink(videoTrack);
-  // The source's audio is read through its own input with exact reads
-  // (ADR-028). Through the shared one, every audio read that lands away from
-  // the video reader's position opened a new read-ahead stream to the end of
-  // the file; in a 60-minute export that made memory climb (or, before audio
-  // ran alongside the frames, jump at the end of each segment). The same
-  // file, the same track, only the reading differs.
-  let clipAudioInput: Input | null = null;
-  let clipAudioTrack: InputAudioTrack | null = null;
-  if (sourceAudioUsable) {
-    clipAudioInput = new Input({ formats: ALL_FORMATS, source: new BlobSource(videoFile, { useStreamReader: false }) });
-    clipAudioTrack = await clipAudioInput.getPrimaryAudioTrack();
-    if (!clipAudioTrack || !(await clipAudioTrack.canDecode())) {
-      clipAudioInput.dispose();
-      clipAudioInput = null;
-      clipAudioTrack = null;
-    }
-  }
   const sources: AudioContextSources = {
-    clipReader: sourceAudioUsable && sourceAudioTrack ? new AudioStreamReader(new AudioSampleSink(clipAudioTrack ?? sourceAudioTrack)) : null,
+    clipReader: sourceAudioUsable && sourceAudioTrack ? new AudioStreamReader(new AudioSampleSink(sourceAudioTrack)) : null,
     musicReader: musicTrack ? new AudioStreamReader(new AudioSampleSink(musicTrack)) : null,
   };
   const audioLane = clock.lane();
@@ -1016,7 +999,6 @@ async function runExport(
     hdrQueue.length = 0;
     await sources.clipReader?.close();
     await sources.musicReader?.close();
-    clipAudioInput?.dispose();
     // `finalize()` already tore the output down on the success path; cancel()
     // is the cleanup path for every other exit.
     if (output.state !== 'finalized') {
