@@ -320,8 +320,10 @@ type PickedFileHandle = FileSystemFileHandle & {
  * - Writes carry their position: the muxer patches box sizes it already wrote.
  * - The save dialog creates the chosen file (empty) as soon as the user picks
  *   it. If the export then fails, that empty file is removed again, so a
- *   failure leaves nothing behind. A file that already existed (the user chose
- *   to replace it) is left as it was, because the temporary file is dropped.
+ *   failure leaves nothing behind. When the user picks an existing file and
+ *   answers "replace", Chrome and Edge empty it right in the dialog (measured,
+ *   ADR-026): the old content is gone before the first frame, whatever
+ *   happens next, and a failed or canceled export removes the empty file.
  */
 async function prepareFileOutput(
   handle: FileSystemFileHandle,

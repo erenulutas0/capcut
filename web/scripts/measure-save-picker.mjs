@@ -11,6 +11,9 @@
  *   B  overwrite: the same, into a file that already exists (the dialog's
  *      "replace?" question is answered yes). Shows whether the old file and
  *      the new bytes are on disk at the same time.
+ *   D  replace, then cancel: an existing file is picked ("replace" answered
+ *      yes) and the download is stopped as soon as it shows. Records the
+ *      file size right after the pick and what is left after the cancel.
  *   C  disk full at the reservation: on a bare https test page, a picked file
  *      is opened for writing and `truncate()` asks for more than the free
  *      space of the disk (2 TiB). Records what the browser throws and what is
@@ -111,7 +114,7 @@ const browser = await chromium.connect(server.wsEndpoint());
 if (!browserPid) throw new Error('no browser process id');
 const report = { browser: `${channel} ${browser.version()}`, video: videoArg, cases: {} };
 
-async function downloadInto(caseName, fileName, existingMiB) {
+async function downloadInto(caseName, fileName, existingMiB, cancel = false) {
   const dir = join(outDir, caseName);
   mkdirSync(dir, { recursive: true });
   const target = join(dir, fileName);
@@ -128,7 +131,16 @@ async function downloadInto(caseName, fileName, existingMiB) {
   const t0 = Date.now();
   await page.getByTestId('download-all').click();
   const dialog = await fillDialog(browserPid, target, Boolean(existingMiB));
+  console.log(`${caseName} dialog: ${dialog.code} ${dialog.lines.join(' | ')}`);
+  let sizeAtPick = null;
+  if (cancel) {
+    // Stop as soon as the encode shows; what is left under the chosen name?
+    await page.getByTestId('download-running').waitFor({ timeout: 60_000 });
+    sizeAtPick = existsSync(target) ? mib(statSync(target).size) : null;
+    await page.getByTestId('export-cancel').click();
+  }
   const outcome = await Promise.race([
+    ...(cancel ? [page.getByTestId('export-canceled').waitFor({ timeout: 60_000 }).then(() => 'canceled')] : []),
     page.getByTestId('download-saved').waitFor({ timeout: 15 * 60_000 }).then(() => 'saved'),
     page.getByTestId('export-failed').waitFor({ timeout: 15 * 60_000 }).then(() => 'failed'),
   ]).catch((error) => `timeout: ${error.message}`);
@@ -149,6 +161,7 @@ async function downloadInto(caseName, fileName, existingMiB) {
     ms,
     appMeasuredSize: sizeText?.trim() ?? null,
     existingMiB: existingMiB ?? 0,
+    sizeAtPick,
     finalMiB: finalBytes === null ? null : mib(finalBytes),
     folder,
     leftAfter: readdirSync(dir),
@@ -162,6 +175,11 @@ if (cases.has('A')) {
 if (cases.has('B')) {
   report.cases.B = await downloadInto('B-overwrite', 'var-olan.mp4', 200);
   console.log(`B: ${JSON.stringify(report.cases.B)}`);
+}
+
+if (cases.has('D')) {
+  report.cases.D = await downloadInto('D-replace-cancel', 'var-olan.mp4', 200, true);
+  console.log(`D: ${JSON.stringify(report.cases.D)}`);
 }
 
 if (cases.has('C')) {

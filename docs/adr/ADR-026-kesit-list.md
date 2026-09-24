@@ -53,10 +53,12 @@ birini ayrı indir ya da hepsini birleştirip indir.**
   `write({ type: 'write', position, data })`). Önce tahmini boyut kadar yer
   `truncate()` ile ayrılır (ADR-023'ün aynısı), sonunda gerçek boya kesilir.
   İptal ya da hata: `abort()` — seçilen ad altında yarım video kalmaz; pencerenin
-  oluşturduğu boş dosya da silinir. Var olan bir dosyanın yerine yazılıyorsa o
-  dosya olduğu gibi kalır.
-- İlerleme kartın (ya da üst düğmenin) altında, gerçek kare sayısıyla ve "Durdur"
-  düğmesiyle. Bitince **"Kaydedildi: tatil_00-12-01-40.mp4"** ve yöntem satırı:
+  oluşturduğu boş dosya da silinir. Kullanıcı var olan bir dosyayı seçip
+  "değiştir" derse Chrome ve Edge o dosyayı **pencerede hemen boşaltır**
+  (ölçüldü, aşağıda D): eski içerik ilk kareden önce gider; iptal ya da hatada
+  boş dosya silinir.
+- İlerleme kartın (ya da üst düğmenin) altında, gerçek kare sayısıyla ve "İptal
+  et" düğmesiyle. Bitince **"Kaydedildi: tatil_00-12-01-40.mp4"** ve yöntem satırı:
   "Kodlandı" ya da (paralel çalışan hızlı yol eklendiğinde) "Hızlı kesim — yeniden
   kodlanmadı" / "Hızlı kesim — yalnızca kesim yerleri yeniden kodlandı".
   Ayrıntılar (süre, çözünürlük, codec, boyut, yazıldığı yer) üretilen dosyanın
@@ -160,11 +162,34 @@ Script: `web/scripts/measure-save-picker.mjs` (kurulu Chrome/Edge, gerçek
 Windows kaydetme penceresi; pencere UI Automation ve pencere mesajlarıyla
 doldurulur, `scripts/lib/fill-save-dialog.ps1` — tuş vuruşu gönderilmez).
 
-⟨A/B ölçümleri buraya⟩
+Kaynak: `tests/media/timeline/portrait-110s.mp4` (1:50, dikey), kesit yok →
+"Videoyu indir", 1080p. Klasör 50 ms'de bir örneklendi. Chrome 153.0.8010.53 ve
+Edge 153.0.4234.48, aynı Windows 11 makinesinde; iki tarayıcıda sonuçlar aynı
+(süre ±1 sn).
+
+| Durum | Ne görüldü | Diskte en çok | Sonuç dosyası |
+|---|---|---|---|
+| **A — yeni dosya** | Pencere 0 baytlık `yeni-dosya.mp4` oluşturur. Yazıcı açılınca yanında `yeni-dosya.mp4.crswap` belirir, hemen **114,6 MiB** (uygulamanın yer ayırması = tahmin × 1,1 + 32 MiB). Kodlama o dosyaya yazar; `close()`'da takas dosyası adın üstüne taşınır (kopya yok: ikisi hiçbir örnekte birlikte dolu görünmedi). 17,5 sn (Chrome) / 16,5 sn (Edge). | 114,6 MiB (sonucun 1,52 katı; tamamı ayırma) | 75,56 MiB, "Kaydedildi: yeni-dosya.mp4" |
+| **B — var olan 200 MiB dosyanın yerine** | Windows "Farklı Kaydetmeyi Onayla" sorar (evet). Takas dosyası belirdiğinde eski dosya artık 200 MiB **değil**: en yüksek toplam eski dosyanın kendisi (200 MiB), takas + eski hiçbir örnekte birlikte görülmedi. | 200 MiB (eski dosya), sonra 114,6 MiB | 75,56 MiB |
+| **D — B + hemen iptal** | Kodlama görünür görünmez "İptal et". Seçimden hemen sonra dosya **0 bayt** (tarayıcı "değiştir"de boşalttı). İptalde takas atılır, uygulama boş dosyayı siler. | 200 MiB (seçimden önce) | yok (klasör boş) |
+
+Sonuç: **çift alan gerekmez.** Takas dosyası hedefle aynı klasörde durur ve
+kapanışta yeniden adlandırılır; en çok alan, uygulamanın kendi yer ayırmasıdır
+(tahmin × 1,1 + 32 MiB). Var olan dosyanın yerine yazarken eski dosya pencerede
+boşaltıldığı için eski + yeni birlikte yer kaplamaz — ama bu, "değiştir"e
+basıldığı anda eski dosyanın gittiği anlamına gelir (iptal edilse bile). Bu
+tarayıcının davranışı; uygulama değiştiremez, yalnızca boş kalan dosyayı temizler.
+
+Otomasyon notu: ilk A denemesinde pencere doldurma yarışı kaybedildi (dosya
+seçilmedi, uygulama bekledi); ikinci denemede ve sonraki bütün koşularda çalıştı.
+Chrome, `AppData\Local\Temp` altındaki bir klasöre kaydetmeyi reddeder (seçim
+sessizce `AbortError` olur; uygulama bunu "Vazgeç" gibi karşılar, hiçbir şey
+başlamaz).
 
 **C — Diskte yer yokken (yer ayırma).** Gerçek bir diski doldurmadan ölçüldü:
 seçilen dosyanın yazıcısında `truncate()` boş alandan büyük bir boyut istedi
-(E: sürücüsünde 784 GiB boşken 800 GiB ve 2 TiB). Chrome ve Edge'de sonuç aynı:
+(E: sürücüsünde 784 GiB boşken boş alan + 16 GiB ve 2 TiB). Chrome ve Edge'de
+sonuç aynı:
 
 | İstenen | Sonuç | Süre |
 |---|---|---|

@@ -268,7 +268,10 @@ describe('file route: straight into the file picked in the save dialog (ADR-026)
     expect(file.removed).toBe(true);
   });
 
-  it('cancel or failure mid-file leaves no half file: a new file is removed, an existing one is untouched', async () => {
+  // Chrome and Edge empty a replaced file in the dialog (ADR-026), so there it
+  // arrives empty and is removed like a new one; a handle that still has
+  // content is never touched.
+  it('cancel or failure mid-file leaves no half file: an empty picked file is removed, one with content is untouched', async () => {
     const fresh = pick();
     const sink = await prepareOutput('k', 40 * MIB, { destination: fresh as unknown as FileSystemFileHandle });
     const w = writerOf(sink.target);
