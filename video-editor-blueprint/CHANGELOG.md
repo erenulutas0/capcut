@@ -3,6 +3,18 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Teknik — 25 Eylül 2026: dışa aktarma hızı ve bellek (ADR-028, politika değişmedi)
+
+**Ölçülen:** Yeniden kodlayan dışa aktarmada Chrome ve Edge'de sürenin %74–85'i donanım H.264 kodlayıcısını beklemek (1080p'de ~4 ms/kare); çözme, çizim ve kare kopyası %10–13. Playwright'ın headless Chromium kabuğunda (GPU yok) süre tuvale çizmek (%85–95). Aşama profili bir test kancasıyla açılır (`window.__clipExportProfile`, `measure-export-memory.mjs --profile`); uygulama bunu açmaz.
+
+**Değişen:** Bir parçanın sesi artık kareleriyle birlikte, kodlayıcı beklenirken işleniyor (önce: parçanın videosundan sonra). Chrome/Edge'de %2–12 hızlı; 60 dk 1080p Chrome 468 → 441 s. HDR videolarda parlak renk yumuşak kırpması tablo tabanlı ve ikinci bir iş parçacığında: 2 dk 1080p HDR 156 → 62 s (2,5 kat). Çıktılar önce/sonra kare kare aynı; matris 21/21/21 PASS ve gerçek kayıtlar (11/15/11 PASS) aynı.
+
+**Düzeltilen:** Yüksek bit hızlı videoda sessizlik önerileri çok bellek tutuyordu (10,5 Mbit/s kaynakta tepe ~950–980 MiB, pencere kapanınca da ~930). Sebep kaynağın okunma şekliydi; artık yalnızca gereken aralıklar okunuyor ve uzun aralık 4 parça hâlinde çözülüyor: tepe ~720 MiB (Chromium 855 → 580). Öneriler bit bit aynı. Bedel: yüksek bit hızlı dosyada analiz ~2 kat uzun (20 dakikada 4,5 → 9 s). Aynı sebep eski dışa aktarmada parçanın ses geçişinde sıçramaya yol açıyordu (10,5 Mbit/s kaynakta tepe 927 → 799 MiB).
+
+**Bilinen:** 60 dakikalık dışa aktarmada tepe bellek aynı (873 → 874 MiB), ama artık sonda sıçramak yerine süre boyunca yavaşça yükseliyor (~+120 MiB/saat, ses işiyle ölçekleniyor); nerede tutulduğu ölçülmedi.
+
+Mevcut kullanıcı haklarına etkisi: yok. Sınırlar ve fiyatlar değişmedi.
+
 ## Politika 2026-09-23.v5 — 23 Eylül 2026
 
 **Değişen:** Web yerel toplam kaynak boyutu limiti (video ve müzik birlikte) 2 GiB → 4 GiB (doc 15, doc 11). Kurucu kararı, Edge'de de ölçülme koşuluyla; dayanak ADR-025: 4,45 GiB'lık dosya (yalnızca ölçüm için limiti 8 GiB olan yerel derlemede) ve gerçek politikayla 3,96 GiB'lık dosya Edge, Chrome ve Chromium'da açıldı, 4 GiB ofsetine yakın doğru kareye gidildi, sessizlik önerileri çalıştı, üstüne müzik eklendi, 2 ve 4 GiB ofsetlerini geçen 5 dakika indirildi (9000 kare, 10/10 kare doğru), yeniden yükleme ve yedek dosyasıyla video ve müzik yeniden bağlandı; tepe bellek 916–1265 MiB. 4 GiB'ı aşan dosya ve toplamı aşan müzik dosya adıyla ve "4 GiB (yaklaşık 4,29 GB)" mesajıyla reddedilir. Matris satırı M13 artık 4 GiB + 16 MiB (`m13-oversize-4gib.mp4`). Girdi 120 dakika, çıktı 60 dakika (bellek yolunda 5), 5 video kaynağı, 20 parça, 1 müzik, mobil (2 GiB / 5 GiB) ve cloud limitleri, fiyatlar değişmedi.
