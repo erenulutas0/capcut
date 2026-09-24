@@ -8,10 +8,12 @@ import type { MessageKey } from '@/i18n/messages';
 const SHORTCUTS: Array<[string, MessageKey]> = [
   ['Space', 'help.shortcut.space'],
   ['← / → · Shift · Home / End', 'help.shortcut.playhead'],
-  ['S', 'help.shortcut.split'],
+  ['I / O', 'help.shortcut.io'],
+  ['Enter', 'help.shortcut.add'],
   ['Delete · Backspace', 'help.shortcut.delete'],
   ['← / → · Shift', 'help.shortcut.trim'],
-  ['I / O', 'help.shortcut.io'],
+  ['Ctrl / ⌘ + tekerlek', 'help.shortcut.zoom'],
+  ['F', 'help.shortcut.fullscreen'],
   ['Ctrl+Z · Ctrl+Shift+Z', 'help.shortcut.undo'],
   ['Esc', 'help.shortcut.escape'],
 ];
@@ -44,6 +46,14 @@ export function HelpDialog({
           <Icon name="close" />
         </button>
       </div>
+
+      <p className="field-label">{t('help.howTo')}</p>
+      <ol className="help-steps">
+        <li>{t('help.step.watch')}</li>
+        <li>{t('help.step.mark')}</li>
+        <li>{t('help.step.add')}</li>
+        <li>{t('help.step.download')}</li>
+      </ol>
 
       <p className="field-label">{t('help.shortcuts')}</p>
       <ul className="meta-list">

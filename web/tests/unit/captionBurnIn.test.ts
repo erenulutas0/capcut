@@ -98,6 +98,13 @@ describe('render plan to burn-in frames', () => {
       if (!added.ok) throw new Error(added.reason);
       current = added.project;
     }
+    // Output lines (the joined download's clock): the frames follow the output.
+    current = {
+      ...current,
+      captionTracks: [
+        { trackId: 't_001', origin: 'manual', timeBase: 'output', language: 'tr', style: { preset: 'box', position: 'bottom', size: 'medium' }, cues: [] },
+      ],
+    };
     for (const [from, to, text] of [
       [0.5, 2.5, 'Günaydın İstanbul'],
       [3.5, 7, `Dağlar ışıl ışıl${LF}Şimdi başlıyoruz`],

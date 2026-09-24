@@ -28,8 +28,9 @@ import {
   primaryCaptionTrack,
   sortCues,
   sourceCueUsage,
-  trackTimeAtOutput,
+  videoCues,
 } from '@/domain/captions';
+import { buildTimeline } from '@/domain/timeline';
 import {
   outputPixelSize,
   type CaptionCueV2,
@@ -46,7 +47,6 @@ import {
   CaptionShiftSection,
 } from './CaptionTools';
 import type { CaptionFontStatus } from './useCaptionFont';
-import type { PreviewMode } from './useEditorState';
 
 type CaptionUiError = CaptionRejection | 'caption_no_room' | 'invalid_time' | 'caption_playhead_off_video';
 
@@ -73,10 +73,12 @@ interface Props {
   project: Project;
   /** Project title, for the name of a downloaded SRT/VTT file. */
   title: string;
+  /** Length of the joined download (all kesitler), the clock of output-anchored lines. */
   outputDurationUs: Micros;
-  outputTimeUs: Micros;
-  sourceTimeUs: Micros;
-  previewMode: PreviewMode;
+  /** The playhead: the video's own time, the editor's one clock (ADR-026). */
+  videoTimeUs: Micros;
+  /** The kesit being played or selected: decides which one an output line is typed into. */
+  preferClipId: string | null;
   fontStatus: CaptionFontStatus;
   onAdd: (input: CaptionCueInput) => CaptionResult;
   onUpdate: (cueId: string, patch: Partial<CaptionCueInput>) => CaptionResult;
@@ -86,11 +88,8 @@ interface Props {
   onConvert: (target: CaptionTrackV2['timeBase']) => CaptionConversionResult;
   onShift: (deltaUs: Micros) => ShiftCaptionsResult;
   onImport: (cues: readonly ImportedCueInput[], timeBase: CaptionTrackV2['timeBase']) => CaptionImportResult;
-  onShowResult: () => void;
-  /** Moves the OUTPUT playhead, switching the preview to result mode first. */
-  onSeek: (outputUs: Micros) => void;
-  /** Moves the SOURCE playhead, switching the preview to source mode first. */
-  onSeekSource: (sourceUs: Micros) => void;
+  /** Moves the playhead (video time). */
+  onSeek: (videoUs: Micros) => void;
 }
 
 interface Draft {
@@ -295,7 +294,7 @@ function CueEditor({
     >
       <div className="cue-head">
         <b>{label}</b>
-        <span className="moment-range" title={clockLabel} data-testid="cue-range">
+        <span className="cue-range" title={clockLabel} data-testid="cue-range">
           {formatTimecode(startUs)} — {formatTimecode(endUs)}
         </span>
       </div>
@@ -447,9 +446,8 @@ export function CaptionsPanel({
   project,
   title,
   outputDurationUs,
-  outputTimeUs,
-  sourceTimeUs,
-  previewMode,
+  videoTimeUs,
+  preferClipId,
   fontStatus,
   onAdd,
   onUpdate,
@@ -459,22 +457,23 @@ export function CaptionsPanel({
   onConvert,
   onShift,
   onImport,
-  onShowResult,
   onSeek,
-  onSeekSource,
 }: Props) {
   const uid = useId();
   const track = primaryCaptionTrack(project);
   const cues = useMemo(() => sortCues(track?.cues ?? []), [track]);
   const style = track?.style ?? DEFAULT_CAPTION_STYLE;
-  const canAdd = project.clips.length > 0 && outputDurationUs > 0;
+  const video = project.assets.find((asset) => asset.kind === 'video');
   // Cue times are always on the track's own clock (ADR-016): source time for a
   // source-anchored track, output time otherwise. Everything that shows or
-  // edits a stored time below must respect that.
-  const isSource = track?.timeBase === 'source';
+  // edits a stored time below must respect that. A new track is anchored to
+  // the video (ADR-026), so without a track the clock is the video's.
+  const isSource = track ? track.timeBase === 'source' : video !== undefined;
   const clockEndUs = isSource
-    ? (project.assets.find((asset) => asset.assetId === track?.assetId)?.durationUs ?? 0)
+    ? (project.assets.find((asset) => asset.assetId === (track?.assetId ?? video?.assetId))?.durationUs ?? 0)
     : outputDurationUs;
+  // A video line needs only the video; an output line needs kesitler to be in.
+  const canAdd = isSource ? clockEndUs > 0 : project.clips.length > 0 && outputDurationUs > 0;
   const clockLabel = t(isSource ? 'captions.times.source' : 'captions.times.output');
   // Where each line appears in the output now; only needed for source tracks.
   const shown = useMemo(() => (isSource ? outputCues(project) : []), [isSource, project]);
@@ -498,18 +497,19 @@ export function CaptionsPanel({
     setErrors((previous) => ({ ...previous, [cueId]: error }));
 
   /**
-   * The playhead on the track's clock, for "Satır ekle". Null when a
-   * source-anchored track's picture is not what plays at the output playhead.
+   * The playhead on the track's clock, for "Satır ekle". A video line is on
+   * the playhead's own clock. An output line goes where the joined download
+   * shows this picture: through the kesit being played or selected, else the
+   * first kesit that contains it; null when no kesit does.
    */
   const playheadOnTrackClock = (): Micros | null => {
-    if (!isSource) {
-      // Leaving source mode parks the output playhead at 0 (usePlayback), so
-      // that is where a line added from source mode goes.
-      return previewMode === 'output' ? outputTimeUs : 0;
-    }
-    // The source preview already shows the track's own clock.
-    if (previewMode === 'source') return sourceTimeUs;
-    return trackTimeAtOutput(project, outputTimeUs);
+    if (isSource) return videoTimeUs;
+    const timeline = buildTimeline(project);
+    const contains = (entry: (typeof timeline)[number]) =>
+      videoTimeUs >= entry.sourceInUs && videoTimeUs < entry.sourceOutUs;
+    const entry =
+      timeline.find((item) => item.clipId === preferClipId && contains(item)) ?? timeline.find(contains);
+    return entry ? entry.startUs + (videoTimeUs - entry.sourceInUs) : null;
   };
 
   const addLine = () => {
@@ -530,9 +530,7 @@ export function CaptionsPanel({
       setAddError(isSource && range.reason === 'caption_outside_output' ? 'range_out_of_source' : range.reason);
       return;
     }
-    // An output line is added where the result preview can show it; a source
-    // line is added at the picture already on screen, so nothing moves.
-    if (!isSource) onSeek(range.startUs);
+    // The line is added at the picture already on screen, so nothing moves.
     setDraft({ startUs: range.startUs, endUs: range.endUs, text: '' });
     setDraftError(null);
     setDraftSerial((serial) => serial + 1);
@@ -624,15 +622,14 @@ export function CaptionsPanel({
     return badges;
   };
 
-  /** Output tracks: the stored time. Source tracks: the first appearance, else the picture itself. */
+  /** The picture the line belongs to: its own time for a video line, the first kesit showing it otherwise. */
   const goTo = (cue: CaptionCueV2) => {
-    if (!isSource) {
+    if (isSource) {
       onSeek(cue.startUs);
       return;
     }
-    const first = shown.find((item) => item.cueId === cue.cueId);
+    const first = videoCues(project).find((item) => item.cueId === cue.cueId);
     if (first) onSeek(first.startUs);
-    else onSeekSource(cue.startUs);
   };
 
   type Row = { kind: 'cue'; startUs: Micros; index: number } | { kind: 'draft'; startUs: Micros };
@@ -661,17 +658,6 @@ export function CaptionsPanel({
 
       <CaptionClockSection t={t} project={project} onConvert={convert} />
 
-      {canAdd && previewMode === 'source' ? (
-        <div className="caption-source-hint" data-testid="captions-source-hint">
-          <p className="hint-small">
-            {t(isSource ? 'captions.sourceModeHintSource' : 'captions.sourceModeHint')}
-          </p>
-          <button type="button" className="link-button" onClick={onShowResult}>
-            {t('captions.showResult')}
-          </button>
-        </div>
-      ) : null}
-
       <button
         type="button"
         className="btn btn-accent btn-block caption-add"
@@ -685,7 +671,9 @@ export function CaptionsPanel({
         {t('captions.add')}
       </button>
       <p className="hint-small" id={`${uid}-add-hint`}>
-        {canAdd ? t(isSource ? 'captions.addHintSource' : 'captions.addHint') : t('captions.needMoments')}
+        {canAdd
+          ? t(isSource ? 'captions.addHintSource' : 'captions.addHint')
+          : t(isSource ? 'captions.needVideo' : 'captions.needMoments')}
       </p>
       <div aria-live="polite">
         {addError ? (

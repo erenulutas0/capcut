@@ -1,31 +1,16 @@
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
-import { startWithEmptyTimeline } from './rangeFlow';
+import { addKesit as addMoment, openEditor, openMore, openSettings, installSavePicker } from './kesitFlow';
 
 const SAMPLE_VIDEO = join(process.cwd(), 'tests', 'media', 'sample-24s.mp4');
 const OTHER_VIDEO = join(process.cwd(), 'tests', 'media', 'other-8s.mp4');
 const SAMPLE_AUDIO = join(process.cwd(), 'tests', 'media', 'tone-30s.m4a');
 
-async function openEditor(page: Page) {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/editor');
-  await expect(page.getByTestId('open-export')).toBeVisible();
-  return errors;
-}
-
-async function addMoment(page: Page, start: string, end: string) {
-  await page.getByTestId('range-start').fill(start);
-  await page.getByTestId('range-end').fill(end);
-  await page.getByTestId('add-moment').click();
-}
-
-/** Builds a two-moment project and waits until it is really on disk. */
+/** Builds a two-kesit project and waits until it is really on disk. */
 async function buildAndSave(page: Page) {
   await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
   await expect(page.getByTestId('preview-video')).toBeVisible();
-  await startWithEmptyTimeline(page);
   await addMoment(page, '00:00.000', '00:04.000');
   await addMoment(page, '00:08.000', '00:14.000');
   await expect(page.getByTestId('save-state')).toContainText('Kaydedildi', { timeout: 15_000 });
@@ -68,10 +53,9 @@ test.describe('local persistence', () => {
 
     await page.reload();
 
-    // The recipe came back. The preview stage is replaced by the re-link
-    // prompt, so the total is read from the output strip, which is always there.
-    await expect(page.getByTestId('moment-count')).toHaveText('2 parça', { timeout: 20_000 });
-    await expect(page.getByTestId('output-summary')).toContainText('10.0 sn');
+    // The recipe came back: the kesit list is always there.
+    await expect(page.getByTestId('moment-count')).toHaveText('(2)', { timeout: 20_000 });
+    await expect(page.getByTestId('kesit-range')).toHaveText(['00:00 → 00:04', '00:08 → 00:14']);
 
     // ...and the editor asks for exactly the file it is missing.
     await expect(page.getByTestId('relink-video')).toBeVisible();
@@ -81,6 +65,7 @@ test.describe('local persistence', () => {
   });
 
   test('re-linking the same file restores playback and export (M14)', async ({ page }) => {
+    await installSavePicker(page);
     await openEditor(page);
     await buildAndSave(page);
     await page.reload();
@@ -91,15 +76,14 @@ test.describe('local persistence', () => {
     // The file is recognised, the moments are untouched, the preview is back.
     await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('relink-video')).toHaveCount(0);
-    await expect(page.getByTestId('moment-count')).toHaveText('2 parça');
+    await expect(page.getByTestId('moment-count')).toHaveText('(2)');
     await expect(page.getByTestId('output-duration-us')).toHaveText('10000000');
-    await expect(page.getByTestId('output-summary')).toContainText('10.0 sn');
 
-    // And the restored project can actually be exported.
-    await page.getByTestId('open-export').click();
+    // And the restored project can actually be downloaded, joined.
+    await openSettings(page, 'frame');
     await page.getByTestId('export-quality').selectOption('720');
-    await page.getByTestId('export-ready').waitFor({ timeout: 90_000 });
-    await page.getByTestId('export-create').click();
+    await page.keyboard.press('Escape');
+    await page.getByTestId('download-all').click();
     await page.getByTestId('export-succeeded').waitFor({ timeout: 180_000 });
     await expect(page.getByTestId('measured-duration')).toContainText(/^00:1[01]\./);
   });
@@ -114,7 +98,7 @@ test.describe('local persistence', () => {
 
     await expect(page.getByTestId('relink-mismatch')).toBeVisible({ timeout: 30_000 });
     // Nothing has been changed yet: the moments and the prompt are still there.
-    await expect(page.getByTestId('moment-count')).toHaveText('2 parça');
+    await expect(page.getByTestId('moment-count')).toHaveText('(2)');
     await expect(page.getByTestId('preview-video')).toHaveCount(0);
   });
 
@@ -129,12 +113,9 @@ test.describe('local persistence', () => {
     await page.getByTestId('relink-use-as-new').click();
 
     // The ranges belonged to the old footage, so they are gone — as warned.
-    // Like any newly opened video (ADR-019), the new file is one whole piece.
+    // Like any newly opened video (ADR-026), nothing is placed on its own.
     await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
-    await expect(page.getByTestId('moment-card').locator('.moment-range')).toHaveText([
-      '00:00.000 — 00:08.000',
-    ]);
+    await expect(page.getByTestId('moment-count')).toHaveText('(0)');
     await expect(page.getByTestId('total-time')).toHaveText('00:08.000');
   });
 
@@ -142,10 +123,9 @@ test.describe('local persistence', () => {
     await openEditor(page);
     await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
     await expect(page.getByTestId('preview-video')).toBeVisible();
-    await startWithEmptyTimeline(page);
     await addMoment(page, '00:00.000', '00:06.000');
     await page.getByTestId('audio-input').setInputFiles(SAMPLE_AUDIO);
-    await page.getByRole('tab', { name: 'Ses' }).click();
+    await openSettings(page, 'audio');
     await expect(page.getByTestId('music-in')).toBeVisible();
     await page.getByTestId('music-out').fill('00:05.000');
     await page.getByTestId('music-out').blur();
@@ -155,7 +135,7 @@ test.describe('local persistence', () => {
     await page.getByTestId('relink-video-input').setInputFiles(SAMPLE_VIDEO);
     await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 30_000 });
 
-    await page.getByRole('tab', { name: 'Ses' }).click();
+    await openSettings(page, 'audio');
     await expect(page.getByTestId('relink-audio')).toBeVisible();
     await page.getByTestId('relink-audio-input').setInputFiles(SAMPLE_AUDIO);
 
@@ -170,10 +150,11 @@ test.describe('local persistence', () => {
     await page.reload();
     await expect(page.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
 
-    await page.getByTestId('open-export').click();
+    // The top button waits for the video; a kesit's ⬇ says why it cannot run.
+    await expect(page.getByTestId('download-all')).toBeDisabled();
+    await page.getByTestId('kesit-download').first().click();
     await expect(page.getByTestId('export-blocked')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('export-blocked')).toContainText('video dosyası bu sekmede açık değil');
-    await expect(page.getByTestId('export-create')).toBeDisabled();
   });
 
   test('deleting the saved project clears it and keeps the app usable', async ({ page }) => {
@@ -185,7 +166,7 @@ test.describe('local persistence', () => {
     page.once('dialog', (dialog) => void dialog.accept());
     await page.getByTestId('relink-discard').click();
 
-    await expect(page.getByTestId('moment-count')).toHaveText('0 parça', { timeout: 30_000 });
+    await expect(page.getByTestId('moment-count')).toHaveText('(0)', { timeout: 30_000 });
     await expect(page.getByTestId('relink-video')).toHaveCount(0);
 
     // A fresh project can be started right away.
@@ -211,11 +192,10 @@ test.describe('storage failures are shown, not hidden', () => {
     const errors = await openEditor(page);
     await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
     await expect(page.getByTestId('preview-video')).toBeVisible();
-    await startWithEmptyTimeline(page);
     await addMoment(page, '00:00.000', '00:04.000');
 
     // The editor keeps working...
-    await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
+    await expect(page.getByTestId('moment-count')).toHaveText('(1)');
     // ...and it does not claim the work is saved.
     await expect(page.getByTestId('save-state')).toContainText('Kaydedilemedi', { timeout: 15_000 });
     await expect(page.getByTestId('save-state')).not.toContainText('Kaydedildi ·');
@@ -229,10 +209,9 @@ test.describe('storage failures are shown, not hidden', () => {
     await openEditor(page);
     await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
     await expect(page.getByTestId('preview-video')).toBeVisible();
-    await startWithEmptyTimeline(page);
     await addMoment(page, '00:00.000', '00:04.000');
 
-    await page.getByTestId('tab-file').click();
+    await openMore(page);
     const download = page.waitForEvent('download');
     await page.getByTestId('backup-download').click();
     const saved = await download;

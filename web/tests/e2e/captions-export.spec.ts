@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
-import { startWithEmptyTimeline } from './rangeFlow';
+import { installSavePicker } from './kesitFlow';
 
 /**
  * Caption burn-in through the real export worker (ADR-015).
@@ -64,11 +64,11 @@ async function projectWithCaptions(
   testInfo: TestInfo,
   cues: { startUs: number; endUs: number; text: string }[],
 ): Promise<void> {
+  await installSavePicker(page);
   await page.goto('/editor');
-  await expect(page.getByTestId('open-export')).toBeVisible();
+  await expect(page.getByTestId('download-all')).toBeVisible();
   await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
   await expect(page.getByTestId('preview-video')).toBeVisible();
-  await startWithEmptyTimeline(page);
   await page.getByTestId('range-start').fill('00:00.000');
   await page.getByTestId('range-end').fill('00:03.000');
   await page.getByTestId('add-moment').click();
@@ -109,11 +109,11 @@ test.describe('caption burn-in export', () => {
     page.on('pageerror', (error) => errors.push(error.message));
     await projectWithCaptions(page, testInfo, [{ startUs: 500_000, endUs: 2_500_000, text: 'Günaydın İstanbul' }]);
 
-    await page.getByTestId('open-export').click();
-    await expect(page.getByTestId('export-create')).toBeEnabled({ timeout: 60_000 });
-    await page.getByTestId('export-create').click();
+    await page.getByTestId('download-all').click();
     await page.getByTestId('export-succeeded').waitFor({ timeout: 180_000 });
     await expect(page.getByTestId('measured-resolution')).toContainText('×');
+    // ADR-027: burned-in captions change the pictures, so nothing is copied.
+    await expect(page.getByTestId('export-method')).toHaveAttribute('data-fallback', 'captions');
     expect(errors).toEqual([]);
   });
 
@@ -127,9 +127,7 @@ test.describe('caption burn-in export', () => {
       { startUs: 1_200_000, endUs: 2_800_000, text: long },
     ]);
 
-    await page.getByTestId('open-export').click();
-    await expect(page.getByTestId('export-create')).toBeEnabled({ timeout: 60_000 });
-    await page.getByTestId('export-create').click();
+    await page.getByTestId('download-all').click();
     const failed = page.getByTestId('export-failed');
     await failed.waitFor({ timeout: 60_000 });
     await expect(failed).toContainText('sığmıyor');
@@ -143,9 +141,10 @@ test.describe('caption burn-in export', () => {
     await context.route('**/fonts/caption/**', (route) => route.abort());
     await projectWithCaptions(page, testInfo, [{ startUs: 500_000, endUs: 2_500_000, text: 'Günaydın İstanbul' }]);
 
-    await page.getByTestId('open-export').click();
+    await page.getByTestId('download-all').click();
     await page.getByTestId('export-blocked').waitFor({ timeout: 60_000 });
     await expect(page.getByTestId('export-blockers')).toContainText('yazı tipi');
-    await expect(page.getByTestId('export-create')).toBeDisabled();
+    await expect(page.getByTestId('export-succeeded')).toHaveCount(0);
+    await expect(page.getByTestId('download-running')).toHaveCount(0);
   });
 });

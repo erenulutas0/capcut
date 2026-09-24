@@ -54,11 +54,25 @@ describe('web local policy', () => {
     expect(WEB_LOCAL_POLICY.maxTotalSourceBytes).toBe(4_294_967_296);
   });
 
-  it('records the v5 change with its evidence in doc 15, and keeps the v4, v3 and v2 notes', () => {
+  it('records the v6 change (at most 30 fps, fast cut keeps the source rate and bitrate) in doc 15', () => {
     const [docId] = WEB_LOCAL_POLICY.policyId.split('/');
-    expect(docId).toBe('2026-09-23.v5');
+    expect(docId).toBe('2026-09-24.v6');
     const lines = doc15.split(/\r?\n/);
     const note = lines.find((line) => line.startsWith(`**Değişiklik \`${docId}\``));
+    expect(note).toBeDefined();
+    expect(note).toContain('ADR-027');
+    expect(note).toContain('en çok 30 fps');
+    expect(note).toContain('bit hızını');
+    expect(note).toContain('yalnızca genişleme');
+    expect(note).toContain('Ölçülmeyen');
+    // The quality row says it too; the cloud row keeps its fixed 30 fps.
+    expect(doc15).toContain('| 720p / 1080p, SDR, en çok 30 fps | Desteklenen cihazda dahil | Desteklenen cihazda dahil |');
+    expect(doc15).toContain('| Çıktı kalitesi | 1080p veya 720p, SDR, 30 fps | Aynı |');
+  });
+
+  it('records the v5 change with its evidence in doc 15, and keeps the v4, v3 and v2 notes', () => {
+    const lines = doc15.split(/\r?\n/);
+    const note = lines.find((line) => line.startsWith('**Değişiklik `2026-09-23.v5`'));
     expect(note).toBeDefined();
     expect(note).toContain('ADR-025');
     expect(note).toContain('Edge');

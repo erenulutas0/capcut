@@ -38,3 +38,7 @@ web/tests/media/timeline/
 
 # Synthetic 60-minute source for the output-limit measurement (ADR-020)
 web/tests/media/long/
+
+# Fast-cut spike: synthetic sources and results (ffmpeg, ADR-027)
+web/tests/media/fastcut/
+web/fastcut-spike-results/

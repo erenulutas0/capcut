@@ -46,6 +46,19 @@ function withMoments(ranges: Array<[number, number]>): Project {
   return project;
 }
 
+/**
+ * An empty track on the output clock (the joined download). Since ADR-026 a
+ * new track is anchored to the video; these tests are about output lines.
+ */
+function withOutputTrack(project: Project): Project {
+  return {
+    ...project,
+    captionTracks: [
+      { trackId: 't_001', origin: 'manual', timeBase: 'output', language: 'tr', style: { preset: 'box', position: 'bottom', size: 'medium' }, cues: [] },
+    ],
+  };
+}
+
 function importSource(project: Project, cues: Array<[number, number, string]>): Project {
   const result = importCaptionTrack(
     project,
@@ -139,7 +152,7 @@ describe('source-anchored captions follow their moments', () => {
 describe('converting between clocks keeps the current output identical', () => {
   it('output → source splits a line at a cut and joins contiguous moments', () => {
     // Output 0–4 is source 0–4, 4–8 is source 10–14, 8–12 is source 14–18.
-    let project = withMoments([[0, 4], [10, 14], [14, 18]]);
+    let project = withOutputTrack(withMoments([[0, 4], [10, 14], [14, 18]]));
     for (const [from, to, text] of [[3, 5, 'kesiği aşan'], [6, 10, 'bitişik anlar']] as const) {
       const result = addCaptionCue(project, { startUs: from * S, endUs: to * S, text });
       if (!result.ok) throw new Error(result.reason);
@@ -166,7 +179,7 @@ describe('converting between clocks keeps the current output identical', () => {
 
   it('output → source refuses when two different lines would share a source instant', () => {
     // The same source 0–4 is used twice with different captions over it.
-    let project = withMoments([[0, 4], [0, 4]]);
+    let project = withOutputTrack(withMoments([[0, 4], [0, 4]]));
     for (const [from, to, text] of [[1, 2, 'ilk kez'], [5, 6, 'ikinci kez']] as const) {
       const result = addCaptionCue(project, { startUs: from * S, endUs: to * S, text });
       if (!result.ok) throw new Error(result.reason);
@@ -253,5 +266,40 @@ describe('shift and import', () => {
     expect(suggestTimeBase([{ endUs: 18 * S }], 9 * S, 20 * S, false)).toBe('source');
     expect(suggestTimeBase([{ endUs: 25 * S }], 30 * S, 20 * S, false)).toBe('output');
     expect(suggestTimeBase([{ endUs: 18 * S }], 20 * S, 20 * S, true)).toBe('same');
+  });
+});
+
+describe('opening a different video (setVideoAsset)', () => {
+  const other: AssetV1 = { ...video, assetId: 'a_video_002', durationUs: 30 * S };
+
+  it('removes the old video’s kesitler and every caption track with them', () => {
+    const sourceAnchored = importSource(withMoments([[1, 4]]), [[1, 2, 'eski video']]);
+    const both: Project = {
+      ...sourceAnchored,
+      captionTracks: [...sourceAnchored.captionTracks, ...withOutputTrack(sourceAnchored).captionTracks],
+    };
+    expect(both.captionTracks.map((track) => track.timeBase)).toEqual(['source', 'output']);
+
+    const replaced = setVideoAsset(both, other);
+    expect(replaced.clips).toEqual([]);
+    expect(replaced.captionTracks).toEqual([]);
+    // Nothing of the old video can reach the new video's download.
+    const added = addClip(replaced, { sourceInUs: 0, sourceOutUs: 2 * S });
+    if (!added.ok) throw new Error(added.reason);
+    const plan = compileRenderPlan(added.project, WEB_LOCAL_POLICY);
+    if (!plan.ok) throw new Error('plan refused');
+    expect(plan.plan.captions).toBeFalsy();
+  });
+
+  it('keeps kesitler and captions when the same asset is opened again (relink)', () => {
+    const project = importSource(withMoments([[1, 4]]), [[1, 2, 'aynı video']]);
+    const again = setVideoAsset(project, video);
+    expect(again.clips).toHaveLength(1);
+    expect(again.captionTracks).toHaveLength(1);
+  });
+
+  it('keeps captions when the first video is opened into a project without one', () => {
+    const empty = withOutputTrack(createEmptyProject());
+    expect(setVideoAsset(empty, video).captionTracks).toHaveLength(1);
   });
 });

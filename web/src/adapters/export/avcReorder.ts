@@ -53,7 +53,7 @@ export function reorderDepth(
 
 /* ----------------------------------------------------------- bit utilities */
 
-function unescapeRbsp(nal: Uint8Array): Uint8Array {
+export function unescapeRbsp(nal: Uint8Array): Uint8Array {
   const out: number[] = [];
   let zeros = 0;
   for (const byte of nal) {
@@ -81,7 +81,7 @@ function escapeRbsp(rbsp: Uint8Array): Uint8Array {
   return Uint8Array.from(out);
 }
 
-class BitReader {
+export class BitReader {
   pos = 0;
   constructor(private readonly bytes: Uint8Array) {}
 

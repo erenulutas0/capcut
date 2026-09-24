@@ -22,11 +22,20 @@ tıkanılan yerleri görmek. Memnuniyet sözü ödeme isteği değildir (araşt�
 
 1. **Klip:** "Videondan en sevdiğin iki bölümü seç, 30–45 saniyelik dikey bir video
    hazırla ve bilgisayarına indir."
+   Arayüz 23 Eylül 2026'dan beri kesit listesidir (ADR-026): beklenen yol
+   Başlangıç → Bitiş → "Kesit ekle" (iki kez), Ayarlar'da 9:16, sağ üstte
+   "Hepsini birleştirip indir", kaydetme penceresinde yer ve ad. Not al:
+   katılımcı ⬇'ın tek kesiti, sağ üst düğmenin hepsini indirdiğini fark etti mi;
+   "kesit" kelimesini anladı mı; kaydetme penceresi şaşırttı mı; tam ekranı
+   (⛶) buldu mu.
+1b. **Tek kesit:** "Şimdi yalnızca ikinci bölümü ayrı bir video olarak indir."
+   (Beklenen: o kartın ⬇'ı; tek tıklama + pencere.)
 2. **Altyazı ve ses:** "Videoya iki satır altyazı ekle; birinde bilerek bir yazım hatası
    yap ve sonra düzelt. Müzik ekle ve seviyesini konuşma duyulacak şekilde ayarla."
    (Kendi müziği yoksa görüşmeyi yapan kişi telifsiz kısa bir müzik dosyası verir.)
 3. **Sessizlik:** "Konuşmadaki uzun duraklamaları kısalt, sonucu dinle, beğenmediğin bir
-   kesimi geri al."
+   kesimi geri al." (Sessizlikleri bul "Diğer" ⋯ menüsündedir; bulmakta
+   zorlanırsa bu da bir tıkanma olarak yazılır.)
 
 Rakip karşılaştırması (araştırma eki: iki doğrudan rakip) ikinci turda; ilk turda
 yalnızca kendi ürünümüzdeki tıkanmaları görüyoruz.
@@ -68,6 +77,8 @@ Katılımcı: P01   Tarih:   Tarayıcı/sürüm:   Cihaz (RAM):
 Video: süre ≈   kaynak (telefon marka/model, katılımcı biliyorsa):
 
 Görev 1  başarı: E/Y/B   aktif süre:   export süresi:   takıldığı yer:
+         ⬇ / "Hepsini birleştirip indir" farkı anlaşıldı: E/H   kaydetme penceresi: sorunsuz/şaşırttı
+Görev 1b başarı: E/Y/B   takıldığı yer:
 Görev 2  başarı: E/Y/B   aktif süre:   takıldığı yer:
 Görev 3  başarı: E/Y/B   aktif süre:   takıldığı yer:
 Hata/tanı dosyası: var/yok  kod:

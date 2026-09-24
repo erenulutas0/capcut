@@ -260,3 +260,74 @@ export function suggestTimeBase(
   if (lastEnd > outputDurationUs + slack) return 'source';
   return null;
 }
+
+// ------------------------------------------------ the video's clock (ADR-026)
+
+/** A caption line placed on the VIDEO's own clock, for the preview and the strip. */
+export interface VideoCue {
+  cueId: string;
+  startUs: Micros;
+  endUs: Micros;
+  text: string;
+}
+
+/**
+ * Where each line shows on the video's own clock, the one clock of the
+ * editor since ADR-026.
+ *
+ * - A source-anchored line already is on that clock.
+ * - An output-anchored line (older projects) is timed on the joined download.
+ *   It is placed wherever a kesit shows that moment of the joined video; a
+ *   line no kesit reaches has no place on the video.
+ */
+export function videoCues(project: Project): VideoCue[] {
+  const track = primaryCaptionTrack(project);
+  if (!track) return [];
+  if (track.timeBase === 'source') {
+    const video = project.assets.find((asset) => asset.kind === 'video');
+    if (!video || video.assetId !== track.assetId) return [];
+    return sortCues(track.cues).map(({ cueId, startUs, endUs, text }) => ({ cueId, startUs, endUs, text }));
+  }
+  const placed: VideoCue[] = [];
+  for (const entry of buildTimeline(project)) {
+    for (const cue of track.cues) {
+      const from = Math.max(cue.startUs, entry.startUs);
+      const to = Math.min(cue.endUs, entry.endUs);
+      if (to <= from) continue;
+      placed.push({
+        cueId: cue.cueId,
+        startUs: entry.sourceInUs + (from - entry.startUs),
+        endUs: entry.sourceInUs + (to - entry.startUs),
+        text: cue.text,
+      });
+    }
+  }
+  return placed.sort((a, b) => a.startUs - b.startUs);
+}
+
+/**
+ * The line to draw at a moment of the video. For an output-anchored track the
+ * same video moment can belong to two kesitler with different lines (a range
+ * used twice); the kesit being played or selected (`preferClipId`) decides,
+ * otherwise the first kesit in the list that shows it.
+ */
+export function captionAtVideoTime(
+  project: Project,
+  videoUs: Micros,
+  preferClipId: string | null,
+): VideoCue | undefined {
+  const track = primaryCaptionTrack(project);
+  if (!track) return undefined;
+  if (track.timeBase === 'source') {
+    return videoCues(project).find((cue) => cue.startUs <= videoUs && videoUs < cue.endUs);
+  }
+  const timeline = buildTimeline(project);
+  const contains = (entry: (typeof timeline)[number]) =>
+    videoUs >= entry.sourceInUs && videoUs < entry.sourceOutUs;
+  const entry =
+    timeline.find((item) => item.clipId === preferClipId && contains(item)) ?? timeline.find(contains);
+  if (!entry) return undefined;
+  const outputUs = entry.startUs + (videoUs - entry.sourceInUs);
+  const cue = track.cues.find((item) => item.startUs <= outputUs && outputUs < item.endUs);
+  return cue ? { cueId: cue.cueId, startUs: cue.startUs, endUs: cue.endUs, text: cue.text } : undefined;
+}

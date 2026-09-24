@@ -3,16 +3,16 @@
  * browser with a persistent profile (OPFS on disk, like a real user):
  *
  *   1. open a 2-hour file: time to a playable preview, memory after open;
- *   2. seek the result preview to ~1:59:00 and play: time to the first frame,
+ *   2. seek the preview to ~1:59:00 and play: time to the first frame,
  *      and which source frame is on screen (read from the burned barcode);
  *   3. silence suggestions over the whole 2-hour audio: time, peak memory;
- *   4. "Videoyu indir" while the result is 2 hours: refused before encoding,
- *      no temporary file;
- *   5. split and delete down to 60 minutes (keep 0:20:00–0:50:00 and
- *      1:10:00–1:40:00, i.e. one cut inside the result), export 1080p on
- *      the disk route: time, memory per tenth of the run, ffprobe duration
- *      and frame count, frame-accurate spot checks at the start, on both
- *      sides of the cut and at the end (barcode);
+ *   4. "Videoyu indir" with no kesit (the whole 2 hours): refused before
+ *      encoding, no temporary file;
+ *   5. two kesitler typed in (0:20:00–0:50:00 and 1:10:00–1:40:00, i.e.
+ *      one cut inside the joined result), "Hepsini birleştirip indir" at
+ *      1080p on the disk (OPFS) route: time, memory per tenth of the run,
+ *      ffprobe duration and frame count, frame-accurate spot checks at the
+ *      start, on both sides of the cut and at the end (barcode);
  *   6. reload → restore from the browser → relink the same file; and a
  *      backup file → import in an empty profile → relink: times.
  *
@@ -25,7 +25,7 @@
  *   options: --browser=chrome|msedge (default: Playwright's Chromium)
  *            --quality=1080|720  --skip=silence,export,relink  --keep-output
  *            --source-width=1920 (barcode scale; 1280 for the 720p file)
- *            --keep='[[1200,3000],[4200,6000]]' (seconds kept; the rest is deleted)
+ *            --keep='[[1200,3000],[4200,6000]]' (seconds of each kesit, in list order)
  *            --music=path        a music file added on top after opening (it is
  *                                mixed into the export and relinked with the video;
  *                                doc 15 counts it toward the total byte limit)
@@ -39,6 +39,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 import { readFrameNumber } from './lib/frame-barcode.mjs';
+import { addKesit, closeSheet, openSettings, removeSavePicker, setQuality } from './lib/kesit-flow.mjs';
 import { ffprobeJson } from './lib/media-measure.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -208,11 +209,17 @@ async function pressMany(page, key, count) {
   for (let i = 0; i < count; i += 1) await page.keyboard.press(key);
 }
 
-async function playheadTo(page, seconds, fromSeconds) {
-  const playhead = page.getByTestId('timeline-playhead');
-  await playhead.focus();
-  if (fromSeconds === 0) await page.keyboard.press('Home');
-  await pressMany(page, 'Shift+ArrowRight', seconds - fromSeconds);
+/** `h:mm:ss` for the Başlangıç / Bitiş fields. */
+function clock(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+/** The video's own length in microseconds (the editor's one clock). */
+function videoUs(page) {
+  return page.evaluate(() => Math.round((document.querySelector('video')?.duration ?? 0) * 1_000_000));
 }
 
 // -------------------------------------------------------------------- run
@@ -246,6 +253,8 @@ if (!browserPid) {
 }
 const sampling = startSampler(browserPid);
 const page = context.pages()[0] ?? (await context.newPage());
+// This script measures the OPFS route (ADR-013/020/023): no save dialog.
+await removeSavePicker(page);
 report.browserVersion ??= await page.evaluate(() => navigator.userAgent);
 const pageErrors = [];
 page.on('pageerror', (error) => pageErrors.push(error.message));
@@ -256,7 +265,7 @@ try {
   await page.goto(`${baseURL}/editor`);
   await clearStorage(page);
   await page.reload();
-  await page.getByTestId('open-export').waitFor();
+  await page.getByTestId('download-all').waitFor();
   // Let PowerShell start sampling and the page settle.
   const waitUntil = Date.now() + 20_000;
   while (sampling.samples.length < 5 && Date.now() < waitUntil) await page.waitForTimeout(250);
@@ -268,7 +277,7 @@ try {
   {
     const t0 = Date.now();
     await page.getByTestId('video-input').setInputFiles(fixture);
-    await page.getByTestId('strip-clip').first().waitFor({ timeout: 120_000 });
+    await page.getByTestId('preview-video').waitFor({ timeout: 120_000 });
     const tStrip = Date.now();
     await page.waitForFunction(
       () => {
@@ -281,10 +290,10 @@ try {
     const tReady = Date.now();
     await page.waitForTimeout(3000);
     report.phases.open = {
-      msToTimeline: tStrip - t0,
+      msToOpen: tStrip - t0,
       msToFirstPreviewFrame: tReady - t0,
-      summary: (await page.getByTestId('output-summary').textContent())?.trim(),
-      overLimit: (await page.getByTestId('timeline-over-limit').textContent().catch(() => null))?.trim() ?? null,
+      summary: (await page.getByTestId('source-meta').textContent())?.trim(),
+      overLimit: (await videoUs(page)) > 60 * 60 * 1_000_000,
       memory: memoryBetween(sampling.samples, t0, Date.now()),
       memoryAfterOpenMib: mib(sampling.samples[sampling.samples.length - 1]?.total ?? 0),
       thumbnailsOrWaveform: 'none: the editor draws no filmstrip, thumbnails or waveform',
@@ -304,14 +313,14 @@ try {
       musicBytes: overBytes,
       totalBytes: report.fixtureBytes + overBytes,
       text: (await page.getByTestId('media-error').textContent())?.trim(),
-      videoStillOpen: (await page.getByTestId('strip-clip').count()) === 1,
+      videoStillOpen: (await page.getByTestId('preview-video').count()) === 1,
     };
     await page.getByTestId('media-error-dismiss').click();
     log(`music-over: ${JSON.stringify(report.phases.musicOver)}`);
   }
   if (music) {
     const t0 = Date.now();
-    await page.locator('#inspector-tab-audio').click();
+    await openSettings(page, 'audio');
     await page.getByTestId('audio-input').setInputFiles(music);
     const outcome = await Promise.race([
       page.getByTestId('music-file-name').waitFor({ timeout: 60_000 }).then(() => 'added'),
@@ -327,6 +336,7 @@ try {
           : (await page.getByTestId('media-error').textContent())?.trim(),
     };
     log(`music: ${JSON.stringify(report.phases.music)}`);
+    await closeSheet(page);
     if (outcome !== 'added') throw new Error('the music file was refused');
   }
 
@@ -334,25 +344,26 @@ try {
   const relinkMusic = async () => {
     if (!music) return null;
     const t0 = Date.now();
-    await page.locator('#inspector-tab-audio').click();
+    await openSettings(page, 'audio');
     await page.getByTestId('relink-audio-input').setInputFiles(music);
     await page.getByTestId('music-file-name').waitFor({ timeout: 60_000 });
-    return Date.now() - t0;
+    const ms = Date.now() - t0;
+    await closeSheet(page);
+    return ms;
   };
 
-  // 4 (gate). "Videoyu indir" while the result is over the limit -----------
+  // 4 (gate). "Videoyu indir" with no kesit, the whole video over the limit
   if (report.phases.open.overLimit) {
     const t0 = Date.now();
-    await page.getByTestId('open-export').click();
+    await page.getByTestId('download-all').click();
     await page.getByTestId('export-over-limit').waitFor({ timeout: 30_000 });
     report.phases.gate = {
       msToMessage: Date.now() - t0,
       text: (await page.getByTestId('export-over-limit-text').textContent())?.trim(),
-      createDisabled: await page.getByTestId('export-create').isDisabled(),
-      encodingShown: (await page.getByTestId('export-running').count()) > 0,
+      encodingShown: (await page.getByTestId('download-running').count()) > 0,
       exportFilesInOpfs: await exportFiles(page),
     };
-    await page.keyboard.press('Escape');
+    await page.getByTestId('download-dismiss').click().catch(() => undefined);
     log(`gate: ${JSON.stringify(report.phases.gate)}`);
   }
 
@@ -370,7 +381,7 @@ try {
     const seekWallMs = Date.now() - t0;
     await page.waitForTimeout(300);
     const shown = await previewFrame(page);
-    const totalUs = Number(await page.getByTestId('output-duration-us').textContent());
+    const totalUs = await videoUs(page);
     const expectedFrame = Math.floor((totalUs - 1 - 60 * 1_000_000) / (1_000_000 / FPS));
     // Play from there.
     await armFirstFrame(page, shown?.currentTime ?? null);
@@ -399,7 +410,9 @@ try {
   // 3. Silence suggestions over the whole 2-hour audio --------------------
   if (!skip.has('silence')) {
     const t0 = Date.now();
-    await page.getByTestId('open-silence').click();
+    // No kesit yet: Diğer → "Sessizlikleri bul (tüm video)".
+    await page.getByTestId('open-more').click();
+    await page.getByTestId('find-silences').click();
     await page.getByTestId('silence-running').waitFor({ timeout: 30_000 }).catch(() => undefined);
     await page.getByTestId('silence-running').waitFor({ state: 'detached', timeout: 30 * 60_000 });
     const tDone = Date.now();
@@ -420,13 +433,12 @@ try {
     log(`silence: ${JSON.stringify(report.phases.silence)}`);
   }
 
-  // 5. Split and delete down to 60 minutes --------------------------------
-  const sourceSeconds = Number(await page.getByTestId('output-duration-us').textContent()) / 1_000_000;
-  const cuts = keep.flat().filter((s) => s > 0 && s < sourceSeconds);
+  // 5. The kesitler: typed into Başlangıç / Bitiş, "Kesit ekle" ----------
   const keptSeconds = keep.reduce((sum, [from, to]) => sum + (to - from), 0);
   if (piecesArg > 0) {
-    // The recipe as a backup file: N pieces, each with the automatic piece's
+    // The recipe as a backup file: N kesitler, each with the first one's
     // settings. Imported like a user's backup, then the same file relinked.
+    await addKesit(page, clock(keep[0][0]), clock(keep[0][1]));
     const t0 = Date.now();
     let record = null;
     while (!record && Date.now() - t0 < 30_000) {
@@ -468,46 +480,34 @@ try {
         relinked = true;
         break;
       }
-      if ((await page.getByTestId('strip-clip').count()) === piecesArg) break;
+      if ((await page.getByTestId('kesit-card').count()) === piecesArg) break;
       await page.waitForTimeout(250);
     }
     await page.getByTestId('preview-video').waitFor({ timeout: 120_000 });
     rmSync(backupPath, { force: true });
     report.phases.edit = {
-      how: `backup import of ${piecesArg} pieces${relinked ? ', then relink' : ''}`,
+      how: `backup import of ${piecesArg} kesitler${relinked ? ', then relink' : ''}`,
       ms: Date.now() - t0,
-      pieces: await page.getByTestId('strip-clip').count(),
+      pieces: await page.getByTestId('kesit-card').count(),
       outputUs: Number(await page.getByTestId('output-duration-us').textContent()),
     };
     log(`edit: ${JSON.stringify(report.phases.edit)}`);
   } else {
     const t0 = Date.now();
-    let at = 0;
-    for (const cut of cuts) {
-      await playheadTo(page, cut, at);
-      at = cut;
-      await page.getByTestId('split-selected').click();
-    }
-    // Pieces now alternate drop / keep, starting with a drop before 0:20:00.
-    const pieces = await page.getByTestId('strip-clip').count();
-    for (let index = pieces - 1; index >= 0; index -= 2) {
-      await page.getByTestId('strip-clip').nth(index).locator('.strip-clip-select').click();
-      await page.getByTestId('delete-selected').click();
-    }
+    for (const [from, to] of keep) await addKesit(page, clock(from), clock(to));
     report.phases.edit = {
       ms: Date.now() - t0,
-      ranges: await page.getByTestId('moment-card').locator('.moment-range').allTextContents(),
+      ranges: await page.getByTestId('kesit-range').allTextContents(),
       outputUs: Number(await page.getByTestId('output-duration-us').textContent()),
-      overLimitShown: (await page.getByTestId('timeline-over-limit').count()) > 0,
     };
     log(`edit: ${JSON.stringify(report.phases.edit)}`);
   }
 
   // 5b. Export the 60-minute result --------------------------------------
   if (!skip.has('export')) {
-    await page.getByTestId('open-export').click();
-    await page.getByTestId('export-quality').selectOption(quality);
-    await page.getByTestId('export-ready').waitFor({ timeout: 120_000 });
+    await setQuality(page, quality);
+    // The capability gate runs in the background for the new size.
+    await page.waitForTimeout(3000);
     const storage = await page.evaluate(async () => {
       const estimate = await navigator.storage.estimate();
       return { quotaGiB: Number(((estimate.quota ?? 0) / 2 ** 30).toFixed(1)), usageMiB: Number(((estimate.usage ?? 0) / 2 ** 20).toFixed(1)) };
@@ -515,7 +515,7 @@ try {
     await page.waitForTimeout(2000);
     const base = memoryBetween(sampling.samples, Date.now() - 2000, Date.now());
     const t0 = Date.now();
-    await page.getByTestId('export-create').click();
+    await page.getByTestId('download-all').click();
     let finished = false;
     while (Date.now() - t0 < exportTimeoutMs) {
       if ((await page.getByTestId('export-succeeded').count()) > 0) {
@@ -583,7 +583,7 @@ try {
     } else {
       row.failure = ((await page.getByTestId('export-failed').textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ').trim() || 'timeout';
     }
-    await page.keyboard.press('Escape');
+    await page.getByTestId('download-dismiss').first().click().catch(() => undefined);
     await page.waitForTimeout(1000);
     row.leftoverExportFiles = await exportFiles(page);
     report.phases.export = row;
@@ -619,7 +619,7 @@ try {
       msReloadToRelinkPrompt: tRestored - t0,
       msRelink: tRelinked - t1,
       msMusicRelink,
-      summary: (await page.getByTestId('output-summary').textContent())?.trim(),
+      summary: (await page.getByTestId('kesit-range').allTextContents()).join(' | '),
       memory: memoryBetween(sampling.samples, t0, Date.now()),
     };
 
@@ -628,7 +628,7 @@ try {
     writeFileSync(backupPath, JSON.stringify(record));
     await clearStorage(page);
     await page.reload();
-    await page.getByTestId('open-export').waitFor();
+    await page.getByTestId('download-all').waitFor();
     const t2 = Date.now();
     await page.getByTestId('backup-input').setInputFiles(backupPath);
     await page.getByTestId('relink-video').waitFor({ timeout: 60_000 });
@@ -644,8 +644,8 @@ try {
       msBackupImport: tImported - t2,
       msBackupRelink: tBackupRelinked - tImported,
       msBackupMusicRelink,
-      clipsAfterBackup: await page.getByTestId('strip-clip').count(),
-      summaryAfterBackup: (await page.getByTestId('output-summary').textContent())?.trim(),
+      clipsAfterBackup: await page.getByTestId('kesit-card').count(),
+      summaryAfterBackup: (await page.getByTestId('kesit-range').allTextContents()).join(' | '),
       fingerprint: 'size + lastModified + duration only (projectRecord.computeFingerprint); no byte of the file is hashed',
     };
     log(`relink: ${JSON.stringify(report.phases.relink)}`);

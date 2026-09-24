@@ -3,17 +3,10 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 
 import type { Project } from '@/domain/edl';
-import {
-  buildTimeline,
-  dbToLinear,
-  mapOutputToMusic,
-  mapOutputToSource,
-  totalOutputDurationUs,
-} from '@/domain/timeline';
+import { dbToLinear, mapOutputToMusic } from '@/domain/timeline';
 import { US_PER_SECOND, secondsToUs, type Micros } from '@/domain/time';
-import type { PreviewMode } from './useEditorState';
 
-/** Resync the music element when it drifts more than this from the master clock. */
+/** Resync the music element when it drifts more than this from the video. */
 const MUSIC_RESYNC_US = 150_000;
 
 interface PlaybackArgs {
@@ -21,124 +14,83 @@ interface PlaybackArgs {
   videoRef: RefObject<HTMLVideoElement | null>;
   musicRef: RefObject<HTMLAudioElement | null>;
   project: Project;
-  mode: PreviewMode;
   hasVideo: boolean;
   hasMusicFile: boolean;
 }
 
+/** A kesit being played on its own (the card's ▶): its source range. */
+export interface PlayingRange {
+  clipId: string;
+  inUs: Micros;
+  outUs: Micros;
+}
+
 /**
- * Master clock for the two preview modes.
+ * The one clock of the editor (ADR-026): the video's own time.
  *
- * Source mode is plain media playback. Result mode drives the same element
- * through the output timeline: at a clip end it seeks to the next clip's source
- * in-point. That is an ordered preview, not a rendered file — the boundary can
- * stall while the browser seeks, and the UI says so.
+ * Watching is plain media playback of the source file. A kesit's ▶ plays
+ * only that range — it starts at the kesit's start and stops at its end —
+ * with the kesit's sound settings and the music as that kesit's own download
+ * would have them (music starts with each downloaded video).
  */
-export function usePlayback({
-  videoRef,
-  musicRef,
-  project,
-  mode,
-  hasVideo,
-  hasMusicFile,
-}: PlaybackArgs) {
-  const clipIndexRef = useRef(0);
+export function usePlayback({ videoRef, musicRef, project, hasVideo, hasMusicFile }: PlaybackArgs) {
   const frameRef = useRef<number | null>(null);
-  /**
-   * True while an edge drag shows a source frame that may lie outside the
-   * piece being played (ADR-019). The output clock is parked meanwhile.
-   */
+  const rangeRef = useRef<PlayingRange | null>(null);
+  /** True while an edge drag shows a frame; the clock is not followed then. */
   const peekingRef = useRef(false);
 
   const [playing, setPlaying] = useState(false);
-  const [sourceTimeUs, setSourceTimeUs] = useState<Micros>(0);
-  const [outputTimeUs, setOutputTimeUs] = useState<Micros>(0);
+  const [timeUs, setTimeUs] = useState<Micros>(0);
+  const [range, setRange] = useState<PlayingRange | null>(null);
   const [playbackError, setPlaybackError] = useState(false);
 
-  const outputDurationUs = totalOutputDurationUs(project);
+  const endRange = useCallback(() => {
+    rangeRef.current = null;
+    setRange(null);
+  }, []);
 
   const stop = useCallback(() => {
     videoRef.current?.pause();
     musicRef.current?.pause();
     setPlaying(false);
-  }, [videoRef, musicRef]);
+    endRange();
+  }, [endRange, videoRef, musicRef]);
 
-  /**
-   * Positions the video (and music) for an output timestamp. An edit passes
-   * the recipe it just produced (`target`), because the rendered one is still
-   * the old recipe until React re-renders.
-   */
-  const seekOutput = useCallback(
-    (targetUs: Micros, target: Project = project) => {
+  /** Moves the playhead. Playback of a kesit's range ends here: the user went elsewhere. */
+  const seek = useCallback(
+    (targetUs: Micros) => {
       peekingRef.current = false;
       const video = videoRef.current;
-      if (!video) return;
-      const totalUs = totalOutputDurationUs(target);
-      const clamped = Math.max(0, Math.min(targetUs, Math.max(0, totalUs - 1)));
-      const position = mapOutputToSource(target, clamped);
-      if (!position) {
-        setOutputTimeUs(0);
-        return;
+      const us = Math.max(0, Math.round(targetUs));
+      if (rangeRef.current && (us < rangeRef.current.inUs || us >= rangeRef.current.outUs)) {
+        endRange();
+        musicRef.current?.pause();
       }
-      clipIndexRef.current = position.entry.index;
-      video.currentTime = position.sourceUs / US_PER_SECOND;
-      setOutputTimeUs(clamped);
-      setSourceTimeUs(position.sourceUs);
-
-      const music = musicRef.current;
-      if (music && target.music) {
-        const musicPosition = mapOutputToMusic(target.music, clamped);
-        if (musicPosition.sourceUs === null) {
-          music.pause();
-        } else {
-          music.currentTime = musicPosition.sourceUs / US_PER_SECOND;
-        }
-      }
+      if (video) video.currentTime = us / US_PER_SECOND;
+      setTimeUs(us);
     },
-    [project, videoRef, musicRef],
+    [endRange, videoRef, musicRef],
   );
 
   /**
-   * Shows one source frame without moving the output clock: the frame at a
-   * dragged edge. `endPeek` (or any seek) returns control to the clock.
+   * Shows one frame without moving the playhead state: the frame at an edge
+   * being dragged. Any seek hands control back to the clock.
    */
-  const peekSource = useCallback(
-    (sourceUs: Micros) => {
+  const peek = useCallback(
+    (us: Micros) => {
       const video = videoRef.current;
       if (!video) return;
       peekingRef.current = true;
-      video.currentTime = Math.max(0, sourceUs) / US_PER_SECOND;
-      setSourceTimeUs(Math.max(0, sourceUs));
+      video.currentTime = Math.max(0, us) / US_PER_SECOND;
     },
     [videoRef],
   );
 
-  const seekSource = useCallback(
-    (targetUs: Micros) => {
-      const video = videoRef.current;
-      if (!video) return;
-      peekingRef.current = false;
-      video.currentTime = Math.max(0, targetUs) / US_PER_SECOND;
-      setSourceTimeUs(Math.max(0, targetUs));
-    },
-    [videoRef],
-  );
-
-  const togglePlay = useCallback(() => {
+  const start = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
-    if (playing) {
-      stop();
-      return;
-    }
-    if (mode === 'output') {
-      if (outputDurationUs <= 0) return;
-      // Re-seat the clock on the current recipe before playing: an undo or
-      // redo may have changed the pieces while playback was parked.
-      seekOutput(outputTimeUs >= outputDurationUs - 1 ? 0 : outputTimeUs);
-    }
-    // Playback can be refused (autoplay policy, unsupported stream); surface it
-    // instead of leaving a dead play button.
+    // Playback can be refused (autoplay policy, unsupported stream); surface
+    // it instead of leaving a dead play button.
     video
       .play()
       .then(() => {
@@ -148,77 +100,89 @@ export function usePlayback({
       .catch(() => {
         setPlaying(false);
         setPlaybackError(true);
+        endRange();
       });
-  }, [mode, outputDurationUs, outputTimeUs, playing, seekOutput, stop, videoRef]);
+  }, [endRange, videoRef]);
 
-  // Master loop.
+  const togglePlay = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (playing) {
+      stop();
+      return;
+    }
+    peekingRef.current = false;
+    // At the very end, play again from the start.
+    if (video.ended || (video.duration > 0 && video.currentTime >= video.duration - 0.001)) {
+      video.currentTime = 0;
+      setTimeUs(0);
+    }
+    endRange();
+    start();
+  }, [endRange, playing, start, stop, videoRef]);
+
+  /** ▶ on a kesit: plays exactly [in, out) and stops at its end. */
+  const playRange = useCallback(
+    (next: PlayingRange) => {
+      const video = videoRef.current;
+      if (!video) return;
+      peekingRef.current = false;
+      rangeRef.current = next;
+      setRange(next);
+      video.currentTime = next.inUs / US_PER_SECOND;
+      setTimeUs(next.inUs);
+      const music = musicRef.current;
+      if (music && project.music && hasMusicFile) {
+        const position = mapOutputToMusic(project.music, 0);
+        if (position.sourceUs !== null) music.currentTime = position.sourceUs / US_PER_SECOND;
+      }
+      start();
+    },
+    [hasMusicFile, musicRef, project.music, start, videoRef],
+  );
+
+  // The clock follows the video element.
   useEffect(() => {
     if (!hasVideo) return undefined;
 
     const tick = () => {
       const video = videoRef.current;
-      if (video) {
-        const sourceUs = secondsToUs(video.currentTime);
-        setSourceTimeUs(sourceUs);
-        // A parked clock is only moved by seeks: while paused (or peeking at
-        // a dragged edge) the video may show a frame outside the current
-        // piece, and that must not advance the output time. A video that
-        // ran to the end of the file is paused too, but still has to finish.
-        const parked = peekingRef.current || (video.paused && !video.ended);
-
-        if (mode === 'output' && parked) {
-          // Nothing to follow.
-        } else if (mode === 'output') {
-          const timeline = buildTimeline(project);
-          const entry = timeline[clipIndexRef.current];
-          if (!entry) {
+      if (video && !peekingRef.current) {
+        const us = secondsToUs(video.currentTime);
+        setTimeUs(us);
+        const active = rangeRef.current;
+        if (active && !video.paused) {
+          if (us >= active.outUs - 1000 || video.ended) {
+            // The end of the kesit: stop on its last frame, not past it.
             video.pause();
+            musicRef.current?.pause();
             setPlaying(false);
-          } else if (sourceUs >= entry.sourceOutUs - 1000) {
-            const next = timeline[clipIndexRef.current + 1];
-            if (next) {
-              clipIndexRef.current += 1;
-              video.currentTime = next.sourceInUs / US_PER_SECOND;
-              setOutputTimeUs(next.startUs);
-            } else {
-              video.pause();
-              musicRef.current?.pause();
-              setPlaying(false);
-              setOutputTimeUs(outputDurationUs);
-            }
+            rangeRef.current = null;
+            setRange(null);
           } else {
-            const outputUs = entry.startUs + Math.max(0, sourceUs - entry.sourceInUs);
-            setOutputTimeUs(outputUs);
-
-            const clip = project.clips[entry.index];
-            video.volume = clip && !clip.muted ? dbToLinear(clip.sourceGainDb) : 0;
+            const clip = project.clips.find((item) => item.clipId === active.clipId);
             video.muted = clip ? clip.muted : false;
-
+            video.volume = clip && !clip.muted ? dbToLinear(clip.sourceGainDb) : 1;
             const music = musicRef.current;
             if (music && project.music && hasMusicFile) {
-              const position = mapOutputToMusic(project.music, outputUs);
+              const position = mapOutputToMusic(project.music, us - active.inUs);
               if (position.sourceUs === null || project.music.muted) {
                 if (!music.paused) music.pause();
               } else {
-                music.volume = Math.max(
-                  0,
-                  Math.min(1, dbToLinear(project.music.gainDb) * position.fadeGain),
-                );
+                music.volume = Math.max(0, Math.min(1, dbToLinear(project.music.gainDb) * position.fadeGain));
                 const drift = Math.abs(secondsToUs(music.currentTime) - position.sourceUs);
-                if (drift > MUSIC_RESYNC_US) {
-                  music.currentTime = position.sourceUs / US_PER_SECOND;
-                }
-                if (music.paused && !video.paused) {
-                  void music.play().catch(() => undefined);
-                }
+                if (drift > MUSIC_RESYNC_US) music.currentTime = position.sourceUs / US_PER_SECOND;
+                if (music.paused) void music.play().catch(() => undefined);
               }
             }
           }
-        } else {
-          video.volume = 1;
+        } else if (!active) {
+          // Watching the video itself: its own sound, no music.
           video.muted = false;
-          musicRef.current?.pause();
+          video.volume = 1;
+          if (musicRef.current && !musicRef.current.paused) musicRef.current.pause();
         }
+        if (video.paused && playing && !active) setPlaying(false);
       }
       frameRef.current = window.requestAnimationFrame(tick);
     };
@@ -227,39 +191,17 @@ export function usePlayback({
     return () => {
       if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
     };
-  }, [hasVideo, hasMusicFile, mode, outputDurationUs, project, videoRef, musicRef]);
-
-  /**
-   * Called by the mode switch, not from an effect: changing mode is a user
-   * event, so playback parks at a defined position exactly once.
-   */
-  const prepareMode = useCallback(
-    (next: PreviewMode) => {
-      stop();
-      if (next === 'output') {
-        clipIndexRef.current = 0;
-        const first = project.clips[0];
-        const video = videoRef.current;
-        if (first && video) {
-          video.currentTime = first.sourceInUs / US_PER_SECOND;
-        }
-        setOutputTimeUs(0);
-      }
-    },
-    [project.clips, stop, videoRef],
-  );
+  }, [hasMusicFile, hasVideo, musicRef, playing, project.clips, project.music, videoRef]);
 
   return {
-    prepareMode,
     playing,
     playbackError,
-    sourceTimeUs,
-    outputTimeUs,
-    outputDurationUs,
+    timeUs,
+    range,
     togglePlay,
     stop,
-    seekSource,
-    seekOutput,
-    peekSource,
+    seek,
+    peek,
+    playRange,
   };
 }

@@ -1,6 +1,8 @@
 /**
- * Captures real application screenshots at the four review widths, plus a
- * 200% zoom check. These are screenshots of the running app, not mockups.
+ * Captures real application screenshots of the kesit editor (ADR-026) at
+ * 1440 px and 390 px. These are screenshots of the running app, not mockups.
+ * New file names (`kesit-list-*.png`), so the older screenshots in
+ * web/screenshots/ are never overwritten.
  *
  * Usage: npx next build && npx next start -p 3100   (in another shell)
  *        node scripts/screenshots.mjs
@@ -10,109 +12,77 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
-import { emptyTimeline } from './lib/range-flow.mjs';
+import { addKesit, closeSheet, installSavePicker, openSettings } from './lib/kesit-flow.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const outDir = join(root, 'screenshots');
 const sample = join(root, 'tests', 'media', 'sample-24s.mp4');
-const music = join(root, 'tests', 'media', 'tone-30s.m4a');
 const baseURL = process.env.SHOT_URL ?? 'http://127.0.0.1:3100';
 
 mkdirSync(outDir, { recursive: true });
 
-const SIZES = [
-  { name: 'desktop-1440x900', width: 1440, height: 900 },
-  { name: 'desktop-1366x768', width: 1366, height: 768 },
-  { name: 'tablet-1024x768', width: 1024, height: 768 },
-  { name: 'phone-390x844', width: 390, height: 844 },
-];
+async function seek(page, seconds) {
+  await page.evaluate((at) => {
+    const video = document.querySelector('[data-testid="preview-video"]');
+    if (video) video.currentTime = at;
+  }, seconds);
+  await page.waitForTimeout(300);
+}
 
+/** Video open, three kesitler, the first one saved; the playhead in kesit 2. */
 async function prepare(page) {
+  await installSavePicker(page, { plainNames: true });
   await page.goto(`${baseURL}/editor`);
   await page.getByTestId('video-input').setInputFiles(sample);
   await page.getByTestId('preview-video').waitFor();
-  await emptyTimeline(page);
+  await page.getByTestId('project-title').first().fill('Tatil').catch(() => undefined);
   for (const [start, end] of [
-    ['00:00.000', '00:04.000'],
-    ['00:08.000', '00:14.000'],
-    ['00:18.000', '00:22.000'],
+    ['00:01.000', '00:05.000'],
+    ['00:09.000', '00:14.500'],
+    ['00:18.000', '00:21.000'],
   ]) {
-    await page.getByTestId('range-start').fill(start);
-    await page.getByTestId('range-end').fill(end);
-    await page.getByTestId('add-moment').click();
+    await addKesit(page, start, end);
   }
-  await page.getByTestId('audio-input').setInputFiles(music);
-  await page.getByTestId('music-file-name').waitFor({ state: 'attached' }).catch(() => {});
-  await page.waitForTimeout(400);
+  await page.getByTestId('kesit-download').first().click();
+  await page.getByTestId('download-saved').waitFor({ timeout: 120_000 });
+  // A range being marked: I at 15.5 s, O at 17 s.
+  await seek(page, 15.5);
+  await page.getByTestId('mark-start').click();
+  await seek(page, 17);
+  await page.getByTestId('mark-end').click();
+  await seek(page, 11);
+  await page.waitForTimeout(1500);
 }
 
 const browser = await chromium.launch();
 
-for (const size of SIZES) {
-  const context = await browser.newContext({
-    viewport: { width: size.width, height: size.height },
-    deviceScaleFactor: 1,
-  });
+for (const size of [
+  { name: 'desktop', width: 1440, height: 900 },
+  { name: 'phone', width: 390, height: 844 },
+]) {
+  const context = await browser.newContext({ viewport: { width: size.width, height: size.height }, deviceScaleFactor: 1 });
   const page = await context.newPage();
   await prepare(page);
-  await page.screenshot({ path: join(outDir, `editor-${size.name}.png`) });
+  await page.screenshot({ path: join(outDir, `kesit-list-${size.name}.png`), fullPage: size.name === 'phone' });
 
-  if (size.name === 'phone-390x844') {
-    await page.getByTestId('tab-frame').click();
-    await page.waitForTimeout(250);
-    await page.screenshot({ path: join(outDir, 'phone-390x844-frame-sheet.png') });
-    await page.keyboard.press('Escape');
-  }
-  if (size.name === 'desktop-1440x900') {
-    await page.getByTestId('open-export').click();
-    await page.getByTestId('export-ready').waitFor({ timeout: 60_000 }).catch(() => {});
-    await page.waitForTimeout(250);
-    await page.screenshot({ path: join(outDir, 'export-dialog-1440x900.png') });
+  await page.getByTestId('kesit-select').nth(1).click();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: join(outDir, `kesit-list-selected-${size.name}.png`), fullPage: size.name === 'phone' });
+  await page.getByTestId('kesit-done').click();
 
-    // A real export, captured while encoding and once it has finished.
-    await page.getByTestId('export-create').click().catch(() => {});
-    await page.getByTestId('export-running').waitFor({ timeout: 30_000 }).catch(() => {});
-    await page.waitForTimeout(400);
-    await page.screenshot({ path: join(outDir, 'export-progress-1440x900.png') });
-    await page.getByTestId('export-succeeded').waitFor({ timeout: 180_000 }).catch(() => {});
-    await page.waitForTimeout(250);
-    await page.screenshot({ path: join(outDir, 'export-succeeded-1440x900.png') });
-    await page.keyboard.press('Escape');
+  await openSettings(page, 'frame');
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: join(outDir, `kesit-list-settings-${size.name}.png`) });
+  await closeSheet(page);
 
-    await page.goto(`${baseURL}/`);
-    await page.waitForTimeout(200);
-    await page.screenshot({ path: join(outDir, 'landing-1440x900.png') });
-  }
-  if (size.name === 'desktop-1366x768') {
-    // The re-link prompt: reload so the recipe comes back without its file.
-    await page.getByTestId('save-state').filter({ hasText: 'Kaydedildi' }).waitFor({ timeout: 30_000 }).catch(() => {});
-    await page.reload();
-    await page.getByTestId('relink-video').waitFor({ timeout: 30_000 }).catch(() => {});
+  if (size.name === 'desktop') {
+    await page.getByTestId('strip-zoom-in').click();
+    await page.getByTestId('strip-zoom-in').click();
     await page.waitForTimeout(300);
-    await page.screenshot({ path: join(outDir, 'relink-1366x768.png') });
-  }
-  if (size.name === 'tablet-1024x768') {
-    await page.getByTestId('open-inspector-drawer').click();
-    await page.waitForTimeout(250);
-    await page.screenshot({ path: join(outDir, 'tablet-1024x768-inspector-drawer.png') });
-    await page.keyboard.press('Escape');
+    await page.screenshot({ path: join(outDir, 'kesit-list-zoomed-desktop.png') });
   }
   await context.close();
 }
 
-// 200% browser zoom on a 1440x900 screen behaves like a 720x450 CSS viewport.
-const zoomContext = await browser.newContext({
-  viewport: { width: 720, height: 450 },
-  deviceScaleFactor: 2,
-});
-const zoomPage = await zoomContext.newPage();
-await prepare(zoomPage);
-const overflow = await zoomPage.evaluate(
-  () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-);
-await zoomPage.screenshot({ path: join(outDir, 'zoom-200-1440x900.png') });
-await zoomContext.close();
 await browser.close();
-
 console.log(`screenshots written to ${outDir}`);
-console.log(`200% zoom horizontal overflow: ${overflow}px`);

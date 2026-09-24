@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 import { tr } from '../../src/i18n/messages';
-import { startWithEmptyTimeline } from './rangeFlow';
+import { closeSheet, openMore, openSettings } from './kesitFlow';
 import { ffmpegEnvelope, silenceFixture, type FixtureName } from './silence-media';
 
 /**
@@ -22,11 +22,9 @@ async function openWith(page: Page, name: FixtureName) {
   page.on('pageerror', (error) => errors.push(error.message));
   const { file } = silenceFixture(name);
   await page.goto('/editor');
-  await expect(page.getByTestId('open-export')).toBeVisible();
+  await expect(page.getByTestId('download-all')).toBeVisible();
   await page.getByTestId('video-input').setInputFiles(file);
   await expect(page.getByTestId('preview-video')).toBeVisible();
-  // These tests build their pieces with the range flow (ADR-019).
-  await startWithEmptyTimeline(page);
   return errors;
 }
 
@@ -40,9 +38,10 @@ function dialog(page: Page) {
   return page.getByRole('dialog', { name: 'Sessizlikleri bul' });
 }
 
-/** Opens the dialog and waits for the analysis to finish. */
+/** Opens the dialog from Diğer (⋯) and waits for the analysis to finish. */
 async function findSilences(page: Page) {
-  await page.getByTestId('open-silence').click();
+  await openMore(page);
+  await page.getByTestId('find-silences').click();
   await expect(dialog(page)).toBeVisible();
   await expect(page.getByTestId('silence-running')).toHaveCount(0, { timeout: 30_000 });
   await expect(page.getByTestId('silence-clips')).toBeVisible();
@@ -67,17 +66,42 @@ function expectNear(actualUs: number, expectedUs: number) {
 }
 
 test.describe('silence suggestions', () => {
-  test('the button explains why it is unavailable until there is a moment', async ({ page }) => {
+  test('without a video the action waits; with no kesit the whole video becomes kesitler', async ({ page }) => {
     await page.goto('/editor');
-    const button = page.getByTestId('open-silence');
-    await expect(button).toHaveAttribute('aria-disabled', 'true');
-    await expect(page.getByTestId('silence-open-hint')).toHaveText(
-      'Önce zaman çizgisine bir parça ekle; sessizlikler parçaların içinde aranır.',
-    );
-    // Playwright will not click an aria-disabled button; a keyboard press can.
-    await button.focus();
-    await page.keyboard.press('Enter');
-    await expect(dialog(page)).toHaveCount(0);
+    await openMore(page);
+    await expect(page.getByTestId('find-silences')).toBeDisabled();
+    await closeSheet(page);
+
+    const errors = await openWith(page, 'bursts');
+    await openMore(page);
+    await expect(page.getByTestId('find-silences')).toHaveText('Sessizlikleri bul (tüm video)');
+    await closeSheet(page);
+    await findSilences(page);
+    await expect(page.getByTestId('silence-scope')).toHaveText('Aranan: videonun tamamı. Kalan bölümler kesit olur.');
+    await expect(page.getByTestId('silence-suggestion')).toHaveCount(1);
+    await page.getByTestId('silence-apply').click();
+    await expect(page.getByTestId('silence-report-moments')).toHaveText('1 → 2');
+    await page.getByTestId('silence-done').click();
+    // The pieces that remain are the kesitler; one undo step brings back none.
+    await expect(page.getByTestId('moment-count')).toHaveText('(2)');
+    await page.getByTestId('undo').click();
+    await expect(page.getByTestId('moment-count')).toHaveText('(0)');
+    expect(errors).toEqual([]);
+  });
+
+  test('with a kesit selected only that kesit is searched, within the kesit limit', async ({ page }) => {
+    await openWith(page, 'bursts');
+    await addMoment(page, '00:00.000', '00:00.800');
+    await addMoment(page, '00:00.000', '00:04.500');
+    await page.getByTestId('kesit-select').nth(1).click();
+    await findSilences(page);
+    await expect(page.getByTestId('silence-scope')).toHaveText('Aranan: Kesit 2.');
+    await expect(page.getByTestId('silence-clip')).toHaveCount(1);
+    await expect(page.getByTestId('silence-clip')).toContainText('Kesit 2');
+    await page.getByTestId('silence-apply').click();
+    await expect(page.getByTestId('silence-report-moments')).toHaveText('2 → 3');
+    await page.getByTestId('silence-done').click();
+    await expect(page.getByTestId('kesit-range')).toHaveText(['00:00 → 00:00', '00:00 → 00:01', '00:02 → 00:04']);
   });
 
   for (const name of ['bursts', 'noisy'] as const) {
@@ -86,7 +110,7 @@ test.describe('silence suggestions', () => {
     }) => {
       const errors = await openWith(page, name);
       await addMoment(page, '00:00.000', '00:04.500');
-      await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
+      await expect(page.getByTestId('moment-count')).toHaveText('(1)');
       await findSilences(page);
 
       // Exactly one suggestion: the 1.2 s gap minus 150 ms on each side.
@@ -117,7 +141,7 @@ test.describe('silence suggestions', () => {
       for (let step = 0; step < 8; step += 1) await page.keyboard.press('ArrowRight');
       await expect(min).toHaveValue('1.5');
       await expect(page.getByTestId('silence-suggestion')).toHaveCount(0);
-      await expect(page.getByTestId('silence-note')).toHaveText('Bu parçada ayarlara uyan uzun sessizlik yok.');
+      await expect(page.getByTestId('silence-note')).toHaveText('Bu kesitte ayarlara uyan uzun sessizlik yok.');
       await expect(page.getByTestId('silence-running')).toHaveCount(0);
       await page.getByTestId('silence-reset').click();
       await expect(page.getByTestId('silence-suggestion')).toHaveCount(1);
@@ -132,15 +156,15 @@ test.describe('silence suggestions', () => {
       await expect(page.getByTestId('silence-report-removed')).toHaveText(/^0\.9 sn$/);
       await page.getByTestId('silence-done').click();
       await expect(dialog(page)).toHaveCount(0);
-      await expect(page.getByTestId('moment-count')).toHaveText('2 parça');
+      await expect(page.getByTestId('moment-count')).toHaveText('(2)');
       const after = Number(await page.getByTestId('output-duration-us').textContent());
       expectNear(before - after, only!.endUs - only!.startUs);
       expect(before - after).toBe(only!.endUs - only!.startUs);
-      const rangesText = await page.getByTestId('moment-card').locator('.moment-range').allTextContents();
+      const rangesText = await page.getByTestId('kesit-range').allTextContents();
       expect(rangesText).toHaveLength(2);
 
       await page.getByTestId('undo').click();
-      await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
+      await expect(page.getByTestId('moment-count')).toHaveText('(1)');
       await expect(page.getByTestId('output-duration-us')).toHaveText(String(4.5 * S));
       expect(errors).toEqual([]);
     });
@@ -206,7 +230,7 @@ test.describe('silence suggestions', () => {
     // Vazgeç leaves the recipe untouched.
     await page.getByTestId('silence-dismiss').click();
     await expect(dialog(page)).toHaveCount(0);
-    await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
+    await expect(page.getByTestId('moment-count')).toHaveText('(1)');
     await expect(page.getByTestId('undo')).toBeEnabled();
   });
 
@@ -216,7 +240,7 @@ test.describe('silence suggestions', () => {
     await findSilences(page);
     await expect(page.getByTestId('silence-clip')).toHaveAttribute('data-status', 'too_short');
     await expect(page.getByTestId('silence-note')).toHaveText(
-      'Bu parça, en kısa sessizlikten kısa; burada öneri yok.',
+      'Bu kesit, en kısa sessizlikten kısa; burada öneri yok.',
     );
   });
 
@@ -227,33 +251,37 @@ test.describe('silence suggestions', () => {
     await expect(page.getByTestId('silence-suggestion')).toHaveCount(20);
     await expect(page.getByTestId('silence-check').and(page.locator(':checked'))).toHaveCount(19);
     await expect(page.getByTestId('silence-left-out')).toHaveText(
-      '20 parça sınırı: en uzun 19 kesim seçildi; 1 öneri sınır yüzünden dışarıda kaldı.',
+      '20 kesit sınırı: en uzun 19 kesim seçildi; 1 öneri sınır yüzünden dışarıda kaldı.',
     );
     await expect(page.getByTestId('silence-summary-moments')).toHaveText('1 → 20');
 
     // Checking the left-out one too would exceed the limit: said, not applied.
     await page.getByTestId('silence-check').and(page.locator(':not(:checked)')).check();
     await expect(page.getByTestId('silence-limit-exceeded')).toHaveText(
-      'Seçili kesimlerle 21 parça olur; en çok 20 parça olabilir. Birkaç kesimi kapat.',
+      'Seçili kesimlerle 21 kesit olur; en çok 20 kesit olabilir. Birkaç kesimi kapat.',
     );
     await expect(page.getByTestId('silence-apply')).toBeDisabled();
   });
 
-  test('warns that result-anchored captions stay put', async ({ page }) => {
+  test('warns that captions tied to the joined video stay put', async ({ page }) => {
     await openWith(page, 'bursts');
     await addMoment(page, '00:00.000', '00:04.500');
-    await page.getByTestId('inspector-tab-captions').click();
-    await page.getByRole('tab', { name: 'Sonuç', exact: true }).click();
-    await page.getByTestId('captions-add').click();
-    const field = page.getByTestId('cue-draft').getByTestId('cue-text');
-    await expect(field).toBeFocused();
-    await page.keyboard.type('Merhaba');
-    await field.blur();
-    await expect(page.getByTestId('cue-draft')).toHaveCount(0);
+    await openSettings(page, 'captions');
+    // Lines timed to the joined video, as older projects have them.
+    await page.getByTestId('caption-file-input').setInputFiles({
+      name: 'birlesik.srt',
+      mimeType: 'application/x-subrip',
+      buffer: Buffer.from('1\r\n00:00:00,500 --> 00:00:02,000\r\nMerhaba\r\n'),
+    });
+    const importer = page.getByRole('dialog', { name: 'Altyazı dosyasını içe aktar' });
+    await importer.getByTestId('caption-import-choice-output').check();
+    await importer.getByTestId('caption-import-confirm').click();
+    await expect(page.getByTestId('cue-item')).toHaveCount(1);
+    await closeSheet(page);
 
     await findSilences(page);
     await expect(page.getByTestId('silence-captions-output')).toHaveText(
-      'Sonuca bağlı altyazılar yerinde kalır; kesimden sonra kayabilir. Görüntüye bağlamak için Altyazı sekmesi.',
+      'Birleştirilmiş videoya bağlı altyazılar yerinde kalır; kesimden sonra kayabilir. Görüntüye bağlamak için Ayarlar › Altyazı.',
     );
   });
 
@@ -261,9 +289,10 @@ test.describe('silence suggestions', () => {
     test.setTimeout(120_000);
     const errors = await openWith(page, 'long');
     await addMoment(page, '00:00.000', '04:50.000');
-    await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
+    await expect(page.getByTestId('moment-count')).toHaveText('(1)');
 
-    await page.getByTestId('open-silence').click();
+    await openMore(page);
+    await page.getByTestId('find-silences').click();
     await expect(page.getByTestId('silence-running')).toBeVisible();
     // Progress counts seconds of audio really decoded, out of the moment's 290 s.
     await expect(page.getByTestId('silence-progress')).toHaveText(/^%\d+ · \d+\.\d \/ 290\.0 sn ses$/, {
@@ -281,7 +310,7 @@ test.describe('silence suggestions', () => {
     await page.getByTestId('silence-cancel').click();
     await expect(page.getByTestId('silence-problem')).toHaveAttribute('data-reason', 'canceled');
     await page.getByTestId('silence-dismiss').click();
-    await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
+    await expect(page.getByTestId('moment-count')).toHaveText('(1)');
     expect(errors).toEqual([]);
   });
 
@@ -343,11 +372,11 @@ test.describe('silence suggestions', () => {
 test.describe('silence suggestions on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test('opens from the moments sheet, fits 390 px, applies', async ({ page }) => {
+  test('opens from the Diğer sheet, fits 390 px, applies', async ({ page }) => {
     await openWith(page, 'bursts');
     await addMoment(page, '00:00.000', '00:04.500');
-    await page.getByTestId('tab-moments').click();
-    await page.getByTestId('open-silence').click();
+    await openMore(page);
+    await page.getByTestId('find-silences').click();
     await expect(dialog(page)).toBeVisible();
     await expect(page.getByTestId('silence-running')).toHaveCount(0, { timeout: 30_000 });
     await expect(page.getByTestId('silence-suggestion')).toHaveCount(1);
@@ -397,7 +426,6 @@ test.describe('silence screenshots', () => {
       await openWith(page, 'showcase');
       await addMoment(page, '00:00.000', '00:06.000');
       await addMoment(page, '00:06.000', '00:12.000');
-      if (label === 'phone') await page.getByTestId('tab-moments').click();
       await findSilences(page);
       await expect(page.getByTestId('silence-suggestion').first()).toBeVisible();
       // On a phone the settings fill the first screen; show the list instead.

@@ -21,6 +21,13 @@ const PATHS = {
   check: 'M5 12.5l4.5 4.5L19 7',
   captions: 'M4 5h16v14H4zM7 12h4M13 12h4M7 15.5h7M16 15.5h1',
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-13h.01M11 12h1v5h1',
+  minus: 'M5 12h14',
+  fullscreen: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
+  exitFullscreen: 'M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5',
+  settings:
+    'M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4',
+  more: 'M5 12h.01M12 12h.01M19 12h.01',
+  grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
 } as const;
 
 export type IconName = keyof typeof PATHS;

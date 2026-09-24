@@ -35,8 +35,7 @@ import { computeSourceView, viewZoom } from '../domain/transform';
 import { MIN_CLIP_DURATION_US, type Micros } from '../domain/time';
 import { buildTimeline, totalOutputDurationUs } from '../domain/timeline';
 import { piecesAfterRemoval, type ClipSilence } from '../domain/silence';
-import { splitPointAt, type SplitRejection } from '../domain/trim';
-import { initialPlacement, splitAtPlayhead, type TimelineSplitRejection } from '../domain/timelineEdit';
+import { clampIndex, clipWithSettings, DEFAULT_KESIT_SETTINGS, type KesitSettings } from '../domain/kesit';
 import { nextId } from './ids';
 
 export function createEmptyProject(projectId = 'p_local_001'): Project {
@@ -82,14 +81,24 @@ export function nextAssetId(project: Project, kind: 'video' | 'audio'): string {
 
 /**
  * W0 keeps a single video source. Picking a different file replaces it and
- * drops the moments that pointed at the old one — the UI confirms first.
+ * drops the kesitler that pointed at the old one — the UI confirms first.
+ *
+ * The captions go with them: a `source` track is tied to the old file, and an
+ * `output` track to the kesitler that were just removed. Kept, they would stay
+ * invisible in the project and an `output` track would be burned into the new
+ * video's download. Re-opening the same asset (a relink) keeps everything.
  */
 export function setVideoAsset(project: Project, asset: AssetV1): Project {
+  const previous = project.assets.find((existing) => existing.kind === 'video');
+  const replacing = previous !== undefined && previous.assetId !== asset.assetId;
   const others = project.assets.filter((existing) => existing.kind !== 'video');
   const keptClips = project.clips.filter((clip) => clip.assetId === asset.assetId);
   return bump(project, {
     assets: [asset, ...others],
     clips: keptClips,
+    captionTracks: replacing
+      ? project.captionTracks.filter((track) => track.timeBase === 'source' && track.assetId === asset.assetId)
+      : project.captionTracks,
   });
 }
 
@@ -127,6 +136,11 @@ export function addClip(
   project: Project,
   input: AddClipInput,
   policy: ExportPolicy = WEB_LOCAL_POLICY,
+  /**
+   * Framing and video sound for the first kesit (ADR-026). Later kesitler
+   * copy the first one: these settings are the same for every download.
+   */
+  settings: KesitSettings = DEFAULT_KESIT_SETTINGS,
 ): CommandResult {
   const asset = primaryVideoAsset(project);
   if (!asset) return { ok: false, reason: 'no_source' };
@@ -141,25 +155,20 @@ export function addClip(
     return { ok: false, reason: 'timeline_duration_exceeds_policy' };
   }
 
+  const clipId = input.clipId ?? nextClipId(project);
+  const range = { sourceInUs: input.sourceInUs, sourceOutUs: input.sourceOutUs };
   const reference = project.clips[0];
-  const view = reference
-    ? { ...reference.view }
-    : computeSourceView(
-        asset.displayWidth ?? 0,
-        asset.displayHeight ?? 0,
-        project.canvas.aspect,
-        'cover',
-      );
-
-  const clip: ClipV1 = {
-    clipId: input.clipId ?? nextClipId(project),
-    assetId: asset.assetId,
-    sourceInUs: input.sourceInUs,
-    sourceOutUs: input.sourceOutUs,
-    sourceGainDb: 0,
-    muted: false,
-    view,
-  };
+  const clip: ClipV1 | null = reference
+    ? {
+        clipId,
+        assetId: asset.assetId,
+        ...range,
+        sourceGainDb: reference.sourceGainDb,
+        muted: reference.muted,
+        view: { ...reference.view },
+      }
+    : clipWithSettings(project, clipId, range, settings);
+  if (!clip) return { ok: false, reason: 'no_source' };
 
   return { ok: true, project: bump(project, { clips: [...project.clips, clip] }) };
 }
@@ -170,19 +179,29 @@ export function removeClip(project: Project, clipId: string): Project {
   return bump(project, { clips });
 }
 
+/**
+ * Moves a kesit to another place in the list (drag, or the arrow keys on its
+ * grip). Only the joined download depends on the order.
+ */
+export function moveClipTo(project: Project, clipId: string, toIndex: number): Project {
+  const index = project.clips.findIndex((clip) => clip.clipId === clipId);
+  if (index < 0 || project.clips.length < 2) return project;
+  const target = clampIndex(project.clips.length, toIndex);
+  if (target === index) return project;
+  const clips = [...project.clips];
+  const [moved] = clips.splice(index, 1);
+  if (!moved) return project;
+  clips.splice(target, 0, moved);
+  return bump(project, { clips });
+}
+
+/** One step up (-1) or down (+1) the list. */
 export function moveClip(project: Project, clipId: string, delta: -1 | 1): Project {
   const index = project.clips.findIndex((clip) => clip.clipId === clipId);
   if (index < 0) return project;
   const target = index + delta;
   if (target < 0 || target >= project.clips.length) return project;
-
-  const clips = [...project.clips];
-  const moved = clips[index];
-  const swapped = clips[target];
-  if (!moved || !swapped) return project;
-  clips[index] = swapped;
-  clips[target] = moved;
-  return bump(project, { clips });
+  return moveClipTo(project, clipId, target);
 }
 
 export function updateClipRange(
@@ -214,97 +233,37 @@ export function updateClipRange(
 }
 
 /**
- * Cuts one moment in two at a source time. Both halves keep every setting of
- * the original (gain, mute, view); the first keeps the clip id, the second
- * gets the next free id and sits right after it, so the output is unchanged
- * frame for frame — only the moment count grows.
+ * The whole video as one kesit, for "Sessizlikleri bul" on a video that has
+ * no kesit yet (ADR-026): the silences are then cut out of the whole video,
+ * and the pieces that remain become the kesitler, in one undo step.
  */
-export function splitClip(
+export function withWholeKesit(
   project: Project,
-  clipId: string,
-  atSourceUs: Micros,
+  settings: KesitSettings = DEFAULT_KESIT_SETTINGS,
   policy: ExportPolicy = WEB_LOCAL_POLICY,
-): { ok: true; project: Project; newClipId: string } | { ok: false; reason: SplitRejection } {
-  const point = splitPointAt(project, clipId, { mode: 'source', sourceUs: atSourceUs }, policy);
-  if (!point.ok) return point;
-
-  const index = project.clips.findIndex((clip) => clip.clipId === clipId);
-  const original = project.clips[index];
-  if (!original) return { ok: false, reason: 'no_selection' };
-
-  const newClipId = nextClipId(project);
-  const first: ClipV1 = { ...original, view: { ...original.view }, sourceOutUs: point.sourceUs };
-  const second: ClipV1 = {
-    ...original,
-    view: { ...original.view },
-    clipId: newClipId,
-    sourceInUs: point.sourceUs,
-  };
-  const clips = [...project.clips.slice(0, index), first, second, ...project.clips.slice(index + 1)];
-  return { ok: true, project: bump(project, { clips }), newClipId };
-}
-
-export type TimelineSplitResult =
-  | {
-      ok: true;
-      project: Project;
-      /** The first half keeps the id of the piece that was cut. */
-      clipId: string;
-      newClipId: string;
-      /** Output index of the first half. */
-      index: number;
-    }
-  | { ok: false; reason: TimelineSplitRejection };
-
-/**
- * "Böl" on the single timeline (ADR-019): cuts the piece under the playhead,
- * at the playhead. Which piece is decided here, not by an earlier selection.
- */
-export function splitAtTimelinePlayhead(
-  project: Project,
-  playhead: Parameters<typeof splitAtPlayhead>[1],
-  policy: ExportPolicy = WEB_LOCAL_POLICY,
-): TimelineSplitResult {
-  const point = splitAtPlayhead(project, playhead, policy);
-  if (!point.ok) return point;
-  const result = splitClip(project, point.clipId, point.sourceUs, policy);
-  if (!result.ok) return result;
-  return {
-    ok: true,
-    project: result.project,
-    clipId: point.clipId,
-    newClipId: result.newClipId,
-    index: point.index,
-  };
-}
-
-/**
- * Puts the opened video on the empty timeline the way `initialPlacement`
- * says: the whole file as one piece, even when it is longer than the output
- * limit (ADR-021; the export gate asks to split and delete down to it).
- */
-export function addWholeSource(project: Project, policy: ExportPolicy = WEB_LOCAL_POLICY): CommandResult {
+): CommandResult {
   const asset = primaryVideoAsset(project);
   if (!asset) return { ok: false, reason: 'no_source' };
-  const placement = initialPlacement(asset.durationUs);
-  if (placement.kind === 'too_short') return { ok: false, reason: 'clip_too_short' };
-  return addClip(project, { sourceInUs: placement.sourceInUs, sourceOutUs: placement.sourceOutUs }, policy);
+  return addClip(project, { sourceInUs: 0, sourceOutUs: asset.durationUs }, policy, settings);
 }
 
-export function setClipGain(project: Project, clipId: string, gainDb: number): Project {
+/**
+ * The video's own sound, for every kesit (Ayarlar applies to every download).
+ * Stored per clip, like the framing, so per-kesit sound could come later
+ * without a schema change.
+ */
+export function setVideoGain(project: Project, gainDb: number): Project {
   const clamped = Math.max(
     WEB_LOCAL_POLICY.minGainDb,
     Math.min(WEB_LOCAL_POLICY.maxGainDb, Math.round(gainDb)),
   );
-  const clips = project.clips.map((clip) =>
-    clip.clipId === clipId ? { ...clip, sourceGainDb: clamped } : clip,
-  );
-  return bump(project, { clips });
+  if (project.clips.every((clip) => clip.sourceGainDb === clamped)) return project;
+  return bump(project, { clips: project.clips.map((clip) => ({ ...clip, sourceGainDb: clamped })) });
 }
 
-export function setClipMuted(project: Project, clipId: string, muted: boolean): Project {
-  const clips = project.clips.map((clip) => (clip.clipId === clipId ? { ...clip, muted } : clip));
-  return bump(project, { clips });
+export function setVideoMuted(project: Project, muted: boolean): Project {
+  if (project.clips.every((clip) => clip.muted === muted)) return project;
+  return bump(project, { clips: project.clips.map((clip) => ({ ...clip, muted })) });
 }
 
 /**
@@ -451,8 +410,9 @@ export type CaptionResult =
  * output tracks, the anchored video file for source tracks (ADR-016).
  */
 function trackClock(project: Project): { endUs: Micros; outside: CaptionRejection } {
-  const track = primaryCaptionTrack(project);
-  if (track?.timeBase === 'source') {
+  // Without a track, the clock of the track the first line will create.
+  const track = primaryCaptionTrack(project) ?? newTrack(project);
+  if (track.timeBase === 'source') {
     const asset = project.assets.find((item) => item.assetId === track.assetId);
     return { endUs: asset?.durationUs ?? 0, outside: 'range_out_of_source' };
   }
@@ -489,15 +449,26 @@ function resolveCue(
   return { ok: true, cue: { startUs, endUs, text } };
 }
 
-function withTrack(project: Project, update: (track: CaptionTrackV2) => CaptionTrackV2): Project {
-  const existing = primaryCaptionTrack(project) ?? {
+/**
+ * A new track is anchored to the video (ADR-026): the editor shows the
+ * video's own clock, and a line typed at a picture must stay with that
+ * picture in every kesit that shows it. Without a video (nothing to anchor
+ * to) it is an output track, as before.
+ */
+function newTrack(project: Project): CaptionTrackV2 {
+  const video = primaryVideoAsset(project);
+  const base = {
     trackId: 't_001',
     origin: 'manual' as const,
-    timeBase: 'output' as const,
     language: 'tr',
     style: { ...DEFAULT_CAPTION_STYLE },
     cues: [],
   };
+  return video ? { ...base, timeBase: 'source', assetId: video.assetId } : { ...base, timeBase: 'output' };
+}
+
+function withTrack(project: Project, update: (track: CaptionTrackV2) => CaptionTrackV2): Project {
+  const existing = primaryCaptionTrack(project) ?? newTrack(project);
   const next = update(existing);
   return bump(project, { captionTracks: [{ ...next, cues: sortCues(next.cues) }] });
 }

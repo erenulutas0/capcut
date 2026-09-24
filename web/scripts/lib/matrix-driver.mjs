@@ -10,7 +10,17 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { assessHdrExport, blackFrames } from './hdr-check.mjs';
-import { emptyTimeline } from './range-flow.mjs';
+import {
+  addKesit,
+  closeSheet,
+  installSavePicker,
+  lastPickedName,
+  openSettings,
+  readPickedFile,
+  removePickedFiles,
+  setAspect,
+  setQuality,
+} from './kesit-flow.mjs';
 import {
   bandRmsDb,
   buildReference,
@@ -120,8 +130,12 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     const setup = testCase.setup;
     const notes = [];
 
+    // ADR-026: ⬇ writes straight into the file picked in the save dialog.
+    // The stand-in dialog (see kesit-flow.mjs) hands out an OPFS file, so the
+    // same worker file route runs in every browser the matrix drives.
+    await installSavePicker(page);
     await page.goto(`${baseURL}/editor`);
-    await page.getByTestId('open-export').waitFor({ timeout: 30_000 });
+    await page.getByTestId('download-all').waitFor({ timeout: 30_000 });
 
     // --- import ------------------------------------------------------------
     await page.getByTestId('video-input').setInputFiles(join(mediaDir, setup.video));
@@ -152,40 +166,31 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       return video ? [video.videoWidth, video.videoHeight] : null;
     });
 
-    // --- moments -----------------------------------------------------------
-    await emptyTimeline(page);
+    // --- kesitler (the setup's "moments") ------------------------------------
     if (setup.repeatMoment) {
       const { count, lengthSeconds } = setup.repeatMoment;
       for (let i = 0; i < count; i += 1) {
         const from = i * lengthSeconds;
-        await page.getByTestId('range-start').fill(from.toFixed(3));
-        await page.getByTestId('range-end').fill((from + lengthSeconds).toFixed(3));
-        await page.getByTestId('add-moment').click();
+        await addKesit(page, from.toFixed(3), (from + lengthSeconds).toFixed(3));
       }
       if (setup.expectExtraRejected) {
-        await page.getByTestId('range-start').fill('15.000');
-        await page.getByTestId('range-end').fill('16.000');
-        await page.getByTestId('add-moment').click();
+        await addKesit(page, '15.000', '16.000');
         const error = await page.getByTestId('range-error').textContent().catch(() => null);
-        notes.push(`21. an reddi: ${error ? error.trim() : 'MESAJ YOK'}`);
+        notes.push(`21. kesit reddi: ${error ? error.trim() : 'MESAJ YOK'}`);
       }
     } else {
-      for (const [from, to] of setup.moments ?? []) {
-        await page.getByTestId('range-start').fill(from);
-        await page.getByTestId('range-end').fill(to);
-        await page.getByTestId('add-moment').click();
-      }
+      for (const [from, to] of setup.moments ?? []) await addKesit(page, from, to);
     }
 
     const momentCount = (await page.getByTestId('moment-count').textContent()) ?? '';
 
     // --- framing -----------------------------------------------------------
-    if (setup.aspect) await page.getByTestId(`aspect-${setup.aspect}`).click();
+    if (setup.aspect) await setAspect(page, setup.aspect);
 
     // --- music -------------------------------------------------------------
     if (setup.music) {
       await page.getByTestId('audio-input').setInputFiles(join(mediaDir, setup.music));
-      await page.getByRole('tab', { name: 'Ses' }).click();
+      await openSettings(page, 'audio');
       await page.getByTestId('music-in').waitFor({ timeout: 30_000 });
 
       if (setup.musicSegment) {
@@ -206,6 +211,7 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
         await page.locator('#fade-out').fill(setup.fades.outTime);
         await page.locator('#fade-out').blur();
       }
+      await closeSheet(page);
     }
 
     // --- losing access to the source, then getting it back -----------------
@@ -291,33 +297,29 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
   }
 
   /**
-   * Opens the export dialog, runs the gate and, when it passes, exports and
-   * saves the file. Shared by the plain cases and the caption variants.
+   * Presses the top download button (all kesitler joined, or the one kesit)
+   * and follows the download to its end: the capability gate runs first (a
+   * refusal shows its blockers), then the encode writes into the file picked
+   * in the stand-in save dialog, which is copied out to `savePath`. Shared by
+   * the plain cases and the caption variants.
    */
   async function exportOnce(page, setup, savePath, notes) {
-    await page.getByTestId('open-export').click();
-    if (setup.quality) {
-      await page.getByTestId('export-quality').selectOption(setup.quality);
-    }
+    if (setup.quality) await setQuality(page, setup.quality);
+    await removePickedFiles(page);
 
-    const blocked = page.getByTestId('export-blocked');
-    await waitForAny(page, ['export-ready', 'export-blocked'], 90_000);
-
-    const gate = {};
-    for (const row of ['gate-environment', 'gate-encoder', 'gate-selftest', 'gate-source']) {
-      gate[row.replace('gate-', '')] = ((await page.getByTestId(row).textContent().catch(() => '')) ?? '')
-        .replace(/\s+/g, ' ')
-        .trim();
-    }
-
-    if ((await blocked.count()) > 0) {
+    await page.getByTestId('download-all').click();
+    const first = await waitForAny(
+      page,
+      ['download-running', 'export-blocked', 'export-over-limit', 'export-failed', 'export-succeeded'],
+      90_000,
+    );
+    // The gate's stages are no longer drawn one by one (ADR-026): it passed
+    // when the encode ran, and a refusal names its blockers.
+    if (first === 'export-blocked' || first === 'export-over-limit') {
       const blockerTexts = await page.getByTestId('export-blockers').allTextContents().catch(() => []);
-      const body = ((await blocked.textContent()) ?? '').replace(/\s+/g, ' ').trim();
-      return { blocked: true, gate, blockerTexts, blockedText: body };
+      const body = ((await page.getByTestId(first).textContent()) ?? '').replace(/\s+/g, ' ').trim();
+      return { blocked: true, gate: { passed: false }, blockerTexts, blockedText: body };
     }
-
-    await page.getByTestId('export-create').click();
-    await waitForAny(page, ['export-running', 'export-succeeded', 'export-failed'], 60_000);
 
     if (setup.backgroundDuringExport) {
       // Push the page to the background while it encodes.
@@ -330,33 +332,49 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       await page.bringToFront();
     }
 
-    const succeeded = page.getByTestId('export-succeeded');
+    await waitForAny(page, ['export-succeeded', 'export-failed', 'export-blocked'], 300_000);
     const failed = page.getByTestId('export-failed');
-    await waitForAny(page, ['export-succeeded', 'export-failed'], 300_000);
-
     if ((await failed.count()) > 0) {
       const text = ((await failed.textContent()) ?? '').replace(/\s+/g, ' ').trim();
-      return { failed: true, failureText: text, gate };
+      return { failed: true, failureText: text, gate: { passed: true } };
+    }
+    if ((await page.getByTestId('export-blocked').count()) > 0) {
+      const blockerTexts = await page.getByTestId('export-blockers').allTextContents().catch(() => []);
+      const body = ((await page.getByTestId('export-blocked').textContent()) ?? '').replace(/\s+/g, ' ').trim();
+      return { blocked: true, gate: { passed: false }, blockerTexts, blockedText: body };
     }
 
+    const succeeded = page.getByTestId('export-succeeded');
     const reported = {
       duration: await succeeded.locator('[data-testid="measured-duration"]').textContent(),
       resolution: await succeeded.locator('[data-testid="measured-resolution"]').textContent(),
       codecs: await succeeded.locator('[data-testid="measured-codecs"]').textContent(),
       delta: await succeeded.locator('[data-testid="measured-delta"]').textContent(),
+      route: await succeeded.locator('[data-testid="measured-route"]').textContent(),
+      saved: await succeeded.locator('[data-testid="download-saved"]').textContent().catch(() => null),
     };
+    // ADR-027: how the video was produced (copy / smart / encode) and why not faster.
+    const method = succeeded.locator('[data-testid="export-method"]');
+    if ((await method.count()) > 0) {
+      reported.method = await method.getAttribute('data-method');
+      reported.fallbackReason = (await method.getAttribute('data-fallback')) || null;
+      reported.framesEncoded = Number(await method.getAttribute('data-frames-encoded'));
+    }
     // Held frames are an honest partial result, and must show up in reports.
     const held = succeeded.locator('[data-testid="measured-frames-missing"]');
     if ((await held.count()) > 0) {
       notes.push(`çözülemeyen kare: ${((await held.textContent()) ?? '').trim()}`);
     }
 
-    const downloadPromise = page.waitForEvent('download', { timeout: 120_000 });
-    await page.getByTestId('export-download').click();
-    const download = await downloadPromise;
-    await download.saveAs(savePath);
+    const picked = await lastPickedName(page);
+    if (!picked) return { failed: true, failureText: 'seçilen dosya OPFS’te bulunamadı', gate: { passed: true } };
+    const bytes = await readPickedFile(page, picked, savePath);
+    notes.push(`kaydetme penceresiyle seçilen dosyaya yazıldı (${bytes} bayt)`);
+    await removePickedFiles(page);
+    // The result stays on screen; dismiss it so the next run starts clean.
+    await page.getByTestId('download-dismiss').first().click().catch(() => undefined);
 
-    return { exported: true, gate, reported };
+    return { exported: true, gate: { passed: true }, reported };
   }
 
   /* ------------------------------------------------------------- captions */
@@ -473,9 +491,6 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       if (!outcome.exported) return { ...outcome, ...base };
 
       runs.push({ label: variant.label, style: variant.style, path: savePath, gate: outcome.gate, reported: outcome.reported });
-      // Close the dialog so the next import starts from a clean export state.
-      await page.keyboard.press('Escape');
-      await page.getByTestId('export-succeeded').waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {});
     }
 
     const first = runs[0];
@@ -542,7 +557,7 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     if (!record) {
       return {
         failed: true,
-        failureText: `proje kaydı bulunamadı (yedek alınamadı); editördeki an sayısı: ${base.momentCount.trim()}`,
+        failureText: `proje kaydı bulunamadı (yedek alınamadı); editördeki kesit sayısı: ${base.momentCount.trim()}`,
         ...base,
       };
     }
@@ -637,8 +652,6 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       const outcome = await exportOnce(page, setup, savePath, notes);
       if (!outcome.exported) return { ...outcome, ...base };
       runs.push({ label: variant.label, track: variant.track, path: savePath, gate: outcome.gate, reported: outcome.reported });
-      await page.keyboard.press('Escape');
-      await page.getByTestId('export-succeeded').waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {});
     }
 
     return {
@@ -659,9 +672,10 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
    * broken". It is only ever consulted when the app refused cleanly.
    */
   function browserCannotEncode(driveResult) {
-    const gate = driveResult.gate ?? {};
-    const failedStage =
-      /geçmedi/.test(gate.environment ?? '') || /geçmedi/.test(gate.encoder ?? '') || /geçmedi/.test(gate.selftest ?? '');
+    // ADR-026: the gate's stages are not drawn one by one any more; a
+    // refusal lists its blockers, which name the missing encoder or worker.
+    const blockers = (driveResult.blockerTexts ?? []).join(' ');
+    const failedStage = /kodlama bu ayarla desteklenmiyor|işleyicisi başlatılamadı/.test(blockers);
     return driveResult.blocked === true && failedStage;
   }
 
@@ -746,16 +760,38 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     const audio = probe.streams.find((s) => s.codec_type === 'audio');
     const duration = Number(probe.format.duration);
 
+    // ADR-027: a fast-cut file keeps the source's rotation as metadata (the
+    // stored picture is landscape, the display matrix turns it). What a player
+    // shows is the display size, so that is what is checked; the stored size
+    // and rotation are recorded next to it.
+    const rotation = Number(
+      video?.side_data_list?.find((d) => d.rotation !== undefined)?.rotation ?? video?.tags?.rotate ?? 0,
+    );
+    const quarterTurn = Math.abs(rotation) % 180 === 90;
     const measured = {
       durationSeconds: Number(duration.toFixed(6)),
       frames: video ? Number(video.nb_frames) : null,
-      width: video?.width ?? null,
-      height: video?.height ?? null,
+      width: (quarterTurn ? video?.height : video?.width) ?? null,
+      height: (quarterTurn ? video?.width : video?.height) ?? null,
+      storedSize: video ? [video.width, video.height] : null,
+      rotation,
       videoCodec: video?.codec_name ?? null,
       audioCodec: audio?.codec_name ?? null,
       frameRate: video?.r_frame_rate ?? null,
       sizeBytes: Number(probe.format.size),
+      method: driveResult.reported?.method ?? null,
+      fallbackReason: driveResult.reported?.fallbackReason ?? null,
     };
+
+    if (want.method) {
+      const methods = [want.method].flat();
+      add(
+        `yöntem ${methods.join(' / ')} (ADR-027)`,
+        methods.includes(measured.method),
+        `bildirilen ${measured.method}${measured.fallbackReason ? ` (${measured.fallbackReason})` : ''}, ` +
+          `kodlanan kare ${driveResult.reported?.framesEncoded ?? '—'}`,
+      );
+    }
 
     if (want.durationSeconds !== undefined) {
       const delta = Math.abs(duration - want.durationSeconds);
@@ -782,11 +818,9 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       add(`ses codec ${want.audioCodec}`, measured.audioCodec === want.audioCodec, `${measured.audioCodec}`);
     }
     if (want.constantFrameRate) {
-      add(
-        `sabit ${want.constantFrameRate} fps`,
-        measured.frameRate === `${want.constantFrameRate}/1`,
-        `${measured.frameRate}`,
-      );
+      // A number is an integer rate (`30/1`); a string is ffprobe's exact rational.
+      const rate = typeof want.constantFrameRate === 'string' ? want.constantFrameRate : `${want.constantFrameRate}/1`;
+      add(`sabit ${rate} fps`, measured.frameRate === rate, `${measured.frameRate}`);
     }
     if (want.relinked) {
       add(
@@ -815,7 +849,10 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
           measured.height,
           referencePath,
         );
-        const score = ssim(artefactPath, referencePath);
+        // A fast-cut file keeps the source's own frame times (doc 15 v6);
+        // the reference is on the 30 fps grid, so the file is put on it too.
+        const copied = measured.method === 'copy' || measured.method === 'smart';
+        const score = ssim(artefactPath, referencePath, copied ? { gridFps: 30 } : {});
         measured.ssim = Number.isFinite(score) ? Number(score.toFixed(4)) : null;
         add(
           `görüntü ffmpeg referansıyla eşleşiyor (SSIM ≥ ${want.minSsim})`,

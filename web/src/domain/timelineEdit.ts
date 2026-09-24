@@ -1,59 +1,28 @@
 /**
- * Single-timeline editing rules (ADR-019).
+ * Rules of the video strip under the preview (ADR-026; ADR-019 for the drag
+ * rules that stayed).
  *
- * The editor has ONE playhead, on the output timeline. These pure functions
- * answer the questions the timeline asks — what goes on the timeline when a
- * video is opened, which piece is under the playhead, where the playhead goes
- * after a delete, how pixels map to time while a drag is in progress, and how
- * short a dragged edge may make a piece. Nothing here changes the recipe;
+ * The strip shows the WHOLE source video on its own clock: the kesitler as
+ * coloured regions, the pending Başlangıç/Bitiş range, and the one playhead.
+ * These pure functions answer the questions the strip asks — how far it may
+ * zoom, which time is under a pointer, where to scroll so the playhead stays
+ * in view, and where a dragged edge may go. Nothing here changes the recipe;
  * commands do.
  */
 
 import type { AspectRatio, Project } from './edl';
 import type { ExportPolicy } from './policy';
 import { MIN_CLIP_DURATION_US, type Micros } from './time';
-import { buildTimeline, totalOutputDurationUs, type TimelineEntry } from './timeline';
-import {
-  frameStepUs,
-  resolveTrimTarget,
-  splitPointAt,
-  type SplitRejection,
-  type TrimEdge,
-} from './trim';
+import { frameStepUs, resolveTrimTarget, snapToFrameGrid, type FrameRate, type TrimEdge } from './trim';
 
 /**
- * The shortest piece an edge DRAG (or an arrow key on an edge) may leave.
+ * The shortest kesit an edge DRAG (or an arrow key on an edge) may leave.
  *
- * The user test ended with forgotten 0.2 s leftovers: a fit-to-width strip
- * hid how much a drag removed. The recipe still allows 0.1 s pieces (typed
- * ranges, splits); only the imprecise gesture is held at half a second. A
- * piece that is already shorter can only grow.
+ * The first user test ended with forgotten 0.2 s leftovers (ADR-019). The
+ * recipe still allows 0.1 s kesitler (typed times); only the imprecise
+ * gesture is held at half a second. A kesit already shorter can only grow.
  */
 export const MIN_DRAG_PIECE_US: Micros = 500_000;
-
-// ---------------------------------------------------------------- import
-
-export type InitialPlacement =
-  /** The whole video becomes one piece. */
-  | { kind: 'whole'; sourceInUs: Micros; sourceOutUs: Micros }
-  /** Shorter than the minimum piece: nothing can be added. */
-  | { kind: 'too_short' };
-
-/**
- * What the timeline receives when a video with this duration is opened.
- *
- * ADR-021: always the whole video, even when it is longer than the OUTPUT
- * limit. The user splits and deletes on the timeline down to that limit; the
- * export gate says how much is left to remove. (Before v4 a video over the
- * output limit left the timeline empty and asked "İlk N dakikayı ekle" or
- * "Aralık seçerek ekle".) A video can only be opened when it fits the input
- * limit, and the timeline may be exactly that long (`maxTimelineDurationUs`),
- * so there is no "too long" case left here.
- */
-export function initialPlacement(sourceDurationUs: Micros): InitialPlacement {
-  if (!(sourceDurationUs >= MIN_CLIP_DURATION_US)) return { kind: 'too_short' };
-  return { kind: 'whole', sourceInUs: 0, sourceOutUs: sourceDurationUs };
-}
 
 /**
  * How far from exactly square a video may be and still get the 1:1 frame:
@@ -62,11 +31,11 @@ export function initialPlacement(sourceDurationUs: Micros): InitialPlacement {
 export const SQUARE_TOLERANCE = 0.05;
 
 /**
- * The frame a video suggests for itself when it is opened into an EMPTY
- * timeline: portrait → 9:16, landscape → 16:9, near-square → 1:1. Uses the
- * display size (rotation already applied). `null` when the size is unknown;
- * then the project's frame is left alone. A restored project never asks this:
- * its saved frame is the user's choice.
+ * The frame a video suggests for itself when it is opened: portrait → 9:16,
+ * landscape → 16:9, near-square → 1:1. Uses the display size (rotation
+ * already applied). `null` when the size is unknown; then the project's frame
+ * is left alone. A restored project never asks this: its saved frame is the
+ * user's choice.
  */
 export function aspectForVideo(displayWidth: number | undefined, displayHeight: number | undefined): AspectRatio | null {
   if (!displayWidth || !displayHeight || !(displayWidth > 0) || !(displayHeight > 0)) return null;
@@ -76,117 +45,90 @@ export function aspectForVideo(displayWidth: number | undefined, displayHeight: 
   return ratio < 1 ? '9:16' : '16:9';
 }
 
-// ------------------------------------------------------------ the playhead
+// ------------------------------------------------------------------- zoom
 
 /**
- * The piece the output playhead is on. The end of the timeline (half-open,
- * so no piece owns it) counts as the last piece: that is where the playhead
- * parks after playback, and the user is looking at the last piece's frame.
+ * The shortest stretch of video the strip shows across its width when fully
+ * zoomed in: 10 seconds. A 2-hour video is ~5 s per pixel at 1440 px when it
+ * fits the width; fully zoomed in the same pixel is ~7 ms, finer than a frame.
  */
-export function pieceAtOutput(project: Pick<Project, 'clips'>, outputUs: Micros): TimelineEntry | null {
-  const timeline = buildTimeline(project);
-  if (timeline.length === 0) return null;
-  const clamped = Math.max(0, outputUs);
-  return (
-    timeline.find((entry) => clamped >= entry.startUs && clamped < entry.endUs) ??
-    timeline[timeline.length - 1] ??
-    null
-  );
+export const MIN_VISIBLE_SPAN_US: Micros = 10_000_000;
+
+/** One zoom button press or pinch notch multiplies the zoom by this. */
+export const ZOOM_STEP = 2;
+
+/** The largest zoom for a video this long: 1 (fits the width) for short videos. */
+export function maxStripZoom(durationUs: Micros): number {
+  if (!(durationUs > 0)) return 1;
+  return Math.max(1, durationUs / MIN_VISIBLE_SPAN_US);
+}
+
+export function clampStripZoom(zoom: number, durationUs: Micros): number {
+  if (!Number.isFinite(zoom)) return 1;
+  return Math.max(1, Math.min(maxStripZoom(durationUs), zoom));
+}
+
+/** The strip's scroll state: zoom (1 = whole video fits) and the scroll offset in px. */
+export interface StripView {
+  zoom: number;
+  scrollPx: number;
+}
+
+/** Keeps the scroll inside the zoomed content. */
+export function clampScroll(scrollPx: number, zoom: number, viewportPx: number): number {
+  const maxScroll = Math.max(0, viewportPx * zoom - viewportPx);
+  return Math.max(0, Math.min(maxScroll, Number.isFinite(scrollPx) ? scrollPx : 0));
 }
 
 /**
- * For the secondary source preview: the piece that shows this source time.
- * The selected piece wins when it contains it (the same range may be used
- * twice), otherwise the first one in output order.
+ * Zooms by `factor` keeping the time under `anchorPx` (a position inside the
+ * visible strip) where it is: the pointer for Ctrl/⌘+wheel and pinch, the
+ * playhead for the buttons.
  */
-export function pieceAtSource(
-  project: Pick<Project, 'clips'>,
-  sourceUs: Micros,
-  preferClipId: string | null,
-): TimelineEntry | null {
-  const timeline = buildTimeline(project);
-  const contains = (entry: TimelineEntry) => sourceUs >= entry.sourceInUs && sourceUs < entry.sourceOutUs;
-  const preferred = timeline.find((entry) => entry.clipId === preferClipId);
-  if (preferred && contains(preferred)) return preferred;
-  return timeline.find(contains) ?? null;
+export function zoomAround(
+  view: StripView,
+  factor: number,
+  anchorPx: number,
+  viewportPx: number,
+  durationUs: Micros,
+): StripView {
+  const zoom = clampStripZoom(view.zoom * factor, durationUs);
+  if (!(viewportPx > 0)) return { zoom, scrollPx: 0 };
+  const contentBefore = viewportPx * view.zoom;
+  const fraction = (view.scrollPx + anchorPx) / contentBefore;
+  const scrollPx = fraction * viewportPx * zoom - anchorPx;
+  return { zoom, scrollPx: clampScroll(scrollPx, zoom, viewportPx) };
 }
 
-export type TimelineSplitRejection = SplitRejection | 'timeline_empty';
-
-export type TimelineSplit =
-  | { ok: true; clipId: string; index: number; sourceUs: Micros }
-  | { ok: false; reason: TimelineSplitRejection };
+/** Pixel position of a time in the zoomed content. */
+export function usToContentPx(us: Micros, durationUs: Micros, zoom: number, viewportPx: number): number {
+  if (!(durationUs > 0)) return 0;
+  return (us / durationUs) * viewportPx * zoom;
+}
 
 /**
- * Where "Böl" cuts: the piece under the playhead, at the playhead. There is
- * no "select first" step and no "the playhead is not in the selected piece"
- * error; the only refusals are a cut too close to a piece edge (both halves
- * must keep the minimum length) and the piece-count limit.
+ * The scroll that keeps the playhead in view. Nothing moves while it is
+ * inside the visible part (with a margin); when it leaves, the strip pages so
+ * the playhead sits a margin in from the edge it was heading to.
  */
-export function splitAtPlayhead(
-  project: Project,
-  playhead: { mode: 'output'; outputUs: Micros } | { mode: 'source'; sourceUs: Micros; preferClipId: string | null },
-  policy: Pick<ExportPolicy, 'maxClips'>,
-): TimelineSplit {
-  if (project.clips.length === 0) return { ok: false, reason: 'timeline_empty' };
-  if (playhead.mode === 'output') {
-    const entry = pieceAtOutput(project, playhead.outputUs);
-    if (!entry) return { ok: false, reason: 'timeline_empty' };
-    const outputUs = Math.max(0, playhead.outputUs);
-    // The end of the timeline is the last piece's out-point: too close.
-    if (outputUs >= entry.endUs) return { ok: false, reason: 'split_too_close_to_edge' };
-    // The piece is named explicitly, so another piece that reuses the same
-    // source range can never be the one that gets cut.
-    const sourceUs = entry.sourceInUs + (outputUs - entry.startUs);
-    const point = splitPointAt(project, entry.clipId, { mode: 'source', sourceUs }, policy);
-    return point.ok
-      ? { ok: true, clipId: entry.clipId, index: entry.index, sourceUs: point.sourceUs }
-      : { ok: false, reason: point.reason };
+export function scrollToShow(
+  us: Micros,
+  durationUs: Micros,
+  view: StripView,
+  viewportPx: number,
+  marginPx = 24,
+): number {
+  if (view.zoom <= 1 || !(viewportPx > 0)) return 0;
+  const x = usToContentPx(us, durationUs, view.zoom, viewportPx);
+  const margin = Math.min(marginPx, viewportPx / 4);
+  if (x < view.scrollPx + margin) return clampScroll(x - margin, view.zoom, viewportPx);
+  if (x > view.scrollPx + viewportPx - margin) {
+    return clampScroll(x - viewportPx + margin, view.zoom, viewportPx);
   }
-  const entry = pieceAtSource(project, playhead.sourceUs, playhead.preferClipId);
-  if (!entry) return { ok: false, reason: 'playhead_outside_clip' };
-  const point = splitPointAt(project, entry.clipId, { mode: 'source', sourceUs: playhead.sourceUs }, policy);
-  return point.ok
-    ? { ok: true, clipId: entry.clipId, index: entry.index, sourceUs: point.sourceUs }
-    : { ok: false, reason: point.reason };
+  return view.scrollPx;
 }
 
-/** Output time where a piece starts, or null when it is not on the timeline. */
-export function outputStartOf(project: Pick<Project, 'clips'>, clipId: string): Micros | null {
-  return buildTimeline(project).find((entry) => entry.clipId === clipId)?.startUs ?? null;
-}
-
-/**
- * After a piece is deleted the rest closes up. The playhead goes to where
- * the deleted piece began — now the start of the piece that followed it —
- * clamped to the new end, so the user sees the new cut.
- */
-export function playheadAfterRemoval(before: Pick<Project, 'clips'>, clipId: string): Micros {
-  const start = outputStartOf(before, clipId) ?? 0;
-  const removed = buildTimeline(before).find((entry) => entry.clipId === clipId);
-  const totalAfter = totalOutputDurationUs(before) - (removed?.durationUs ?? 0);
-  return Math.max(0, Math.min(start, totalAfter));
-}
-
-// ------------------------------------------------------------------ scale
-
-/**
- * The output length the strip's width stands for.
- *
- * Edits never rescale the timeline by themselves: after a trim or a delete
- * the strip keeps the length it had (`floorUs`), so the removed part shows as
- * empty track instead of the remaining piece silently growing back to full
- * width ("başa dönüyor"). It only grows when the output does, and the user
- * shrinks it on purpose with "Sığdır".
- */
-export function timelineReferenceUs(totalUs: Micros, floorUs: Micros): Micros {
-  return Math.max(1, totalUs, floorUs);
-}
-
-/** The floor to keep after an edit that changed the output from `totalBeforeUs`. */
-export function floorAfterEdit(floorUs: Micros, totalBeforeUs: Micros): Micros {
-  return Math.max(floorUs, totalBeforeUs);
-}
+// ------------------------------------------------------ pointer and drags
 
 /**
  * A drag's scale, frozen when the pointer goes down. Nothing that happens
@@ -203,37 +145,35 @@ export function freezeScale(trackLeftPx: number, trackWidthPx: number, reference
   return { usPerPx: referenceUs / width, originPx: trackLeftPx };
 }
 
-/** Output time under a pointer x, clamped to [0, maxUs]. */
-export function pointerToOutputUs(scale: FrozenScale, clientX: number, maxUs: Micros): Micros {
+/** Video time under a pointer x, clamped to [0, maxUs]. */
+export function pointerToUs(scale: FrozenScale, clientX: number, maxUs: Micros): Micros {
   const us = Math.round((clientX - scale.originPx) * scale.usPerPx);
   return Math.max(0, Math.min(maxUs, us));
 }
-
-/** Where an edge wishes to go after the pointer moved `deltaPx` since the press. */
-export function dragTargetUs(scale: FrozenScale, startUs: Micros, deltaPx: number): number {
-  return startUs + deltaPx * scale.usPerPx;
-}
-
-// ------------------------------------------------------ edge trim (drag)
 
 export interface EdgeTrimTarget {
   valueUs: Micros;
   /** True when the wish would have left less than the drag minimum. */
   heldAtMinimum: boolean;
-  /** Length the piece would have with this value. */
+  /** Length the kesit would have with this value. */
   lengthUs: Micros;
 }
 
-/** The shortest length a drag may leave this piece: MIN_DRAG_PIECE_US, or its own length if shorter. */
+/** The shortest length a drag may leave this kesit: MIN_DRAG_PIECE_US, or its own length if shorter. */
 export function dragMinimumUs(ownLengthUs: Micros): Micros {
   return Math.max(MIN_CLIP_DURATION_US, Math.min(MIN_DRAG_PIECE_US, ownLengthUs));
 }
 
+function wishedLength(edge: TrimEdge, rawUs: number, inUs: Micros, outUs: Micros): number {
+  if (Number.isFinite(rawUs)) return edge === 'in' ? outUs - rawUs : rawUs - inUs;
+  return rawUs > 0 === (edge === 'out') ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+}
+
 /**
- * The edge value a drag or arrow key actually stores: frame-snapped and
- * clamped like `resolveTrimTarget`, and never leaving the piece shorter than
- * the drag minimum. When the wish goes past that minimum the edge stops there
- * and `heldAtMinimum` tells the UI to say so.
+ * The edge value a drag or arrow key actually stores for a kesit: frame-
+ * snapped and clamped like `resolveTrimTarget`, and never leaving the kesit
+ * shorter than the drag minimum. When the wish goes past that minimum the
+ * edge stops there and `heldAtMinimum` tells the UI to say so.
  */
 export function resolveEdgeTrim(
   project: Project,
@@ -249,15 +189,41 @@ export function resolveEdgeTrim(
   const value = resolveTrimTarget(project, clipId, edge, rawUs, policy, minimumUs);
   if (value === null) return null;
   const lengthUs = edge === 'in' ? clip.sourceOutUs - value : value - clip.sourceInUs;
-  const wishedLengthUs = Number.isFinite(rawUs)
-    ? edge === 'in'
-      ? clip.sourceOutUs - rawUs
-      : rawUs - clip.sourceInUs
-    : rawUs > 0 === (edge === 'out')
-      ? Number.POSITIVE_INFINITY
-      : Number.NEGATIVE_INFINITY;
   // Half a frame of slack: the snapped minimum may sit a hair above the wish.
   const heldAtMinimum =
-    wishedLengthUs < minimumUs && lengthUs - minimumUs < frameStepUs(project.export);
+    wishedLength(edge, rawUs, clip.sourceInUs, clip.sourceOutUs) < minimumUs &&
+    lengthUs - minimumUs < frameStepUs(project.export);
   return { valueUs: value, heldAtMinimum, lengthUs };
+}
+
+/**
+ * The same for an edge of the range being marked (before "Kesit ekle"):
+ * inside the video, on the frame grid, and at least the drag minimum long.
+ * `range` is the pending range with its unmarked edges already filled in.
+ */
+export function resolvePendingEdge(
+  range: { sourceInUs: Micros; sourceOutUs: Micros },
+  edge: TrimEdge,
+  rawUs: number,
+  durationUs: Micros,
+  rate: FrameRate,
+): EdgeTrimTarget {
+  const minimumUs = dragMinimumUs(range.sourceOutUs - range.sourceInUs);
+  const low = edge === 'in' ? 0 : range.sourceInUs + minimumUs;
+  const high = edge === 'in' ? range.sourceOutUs - minimumUs : durationUs;
+  // The video's own start and end are real edges; rule limits go to the
+  // nearest grid point inside them.
+  const lowSnapped = low === 0 ? 0 : Math.min(high, snapToFrameGrid(low, rate, 'ceil'));
+  const highSnapped = high === durationUs ? high : Math.max(lowSnapped, snapToFrameGrid(high, rate, 'floor'));
+  const wished = Number.isFinite(rawUs)
+    ? snapToFrameGrid(Math.max(0, Math.round(rawUs)), rate)
+    : rawUs > 0
+      ? highSnapped
+      : lowSnapped;
+  const valueUs = Math.min(highSnapped, Math.max(lowSnapped, wished));
+  const lengthUs = edge === 'in' ? range.sourceOutUs - valueUs : valueUs - range.sourceInUs;
+  const heldAtMinimum =
+    wishedLength(edge, rawUs, range.sourceInUs, range.sourceOutUs) < minimumUs &&
+    lengthUs - minimumUs < frameStepUs(rate);
+  return { valueUs, heldAtMinimum, lengthUs };
 }

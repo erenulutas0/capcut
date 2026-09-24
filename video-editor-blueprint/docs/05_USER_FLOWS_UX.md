@@ -3,20 +3,31 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
-> **Güncelleme 2026-09-22 — yeni ana akış:** İlk gerçek kullanıcı testinden sonra
-> web editörünün ana kesme akışı **tek zaman çizgisi** oldu (CapCut benzeri): açılan
-> video (≤ 5 dk) tek parça olarak zaman çizgisine gelir; tek oynatma çizgisi çıktı
-> zamanındadır; "Böl" oynatma çizgisinin altındaki parçayı böler, "Sil" seçili
-> parçayı siler, kenarlar sürüklenerek kısaltılır. Aşağıdaki F01 "aralık seç ve
-> ekle" akışı artık ikincil yoldur (Kaynak önizlemesi / "Aralık seçerek ekle").
-> Birim adı "an" değil "parça". Ayrıntı ve gerekçe:
-> [ADR-019](../../docs/adr/ADR-019-single-timeline-editing.md).
+> **Güncelleme 2026-09-23 — kesit listesi (geçerli ana akış):** Kurucu onayıyla
+> web editörü **"işaretle, ekle, kartından indir"** modeline geçti. Video açılınca
+> hiçbir şey otomatik eklenmez; tek saat videonun kendi zamanıdır. Kullanıcı
+> Başlangıç (I) ve Bitiş (O) işaretler, "Kesit ekle" (Enter) der; kesit
+> "Kesitler" listesinin sonuna düşer (küçük resim, başlangıç → bitiş, süre).
+> Kartta ▶ yalnız o aralığı oynatır, ⬇ yalnız o kesiti indirir, ✕ siler (geri
+> alınabilir); karta tıklamak ince ayar için seçer; sıra yalnızca birleştirilmiş
+> indirmeyi etkiler. Sağ üstte: 0 kesit "Videoyu indir", 1 kesit "Kesiti indir",
+> ≥ 2 kesit "Hepsini birleştirip indir". ⬇ kaydetme penceresini hemen açar ve
+> video doğrudan seçilen dosyaya kodlanır ("Kaydedildi: ad.mp4"); pencereyi
+> desteklemeyen tarayıcıda eski "Bilgisayara kaydet" yolu kalır. Önizleme tam
+> ekran yapılabilir (⛶ / F). Görüntü, ses ve altyazı ayarları "Ayarlar"
+> çekmecesinde, her indirmeye uygulanır. Kaynak/Sonuç sekmeleri, çıktı zaman
+> çizgisi, Böl/Sil ve "parça" kelimesi kaldırıldı. Ayrıntı:
+> [ADR-026](../../docs/adr/ADR-026-kesit-list.md). Bu, 2026-09-22'deki tek zaman
+> çizgisi akışının ([ADR-019](../../docs/adr/ADR-019-single-timeline-editing.md))
+> yerine geçer; aşağıdaki F01/F02 bu modele göre okunmalıdır (klip = kesit,
+> "Buraya kadar al" = Bitiş, "Klip kaldırıldı — Geri al" = "Kesit N silindi ·
+> Geri al: Ctrl+Z", F04 çıktı özeti "Ayrıntılar" altında).
 
 ## Ekran sistemi
 
 Açılışta büyük “Video seç” eylemi, aşağıda mevcut yerel projeler. Kayıt ol modalı yok. “Örnekle dene” yalnızca bize ait kısa bir demo dosyası kullanır. İlk başarılı çıktıdan sonra Pro reklamı zorunlu gösterilmez; değer oluşturan davranış beklenir.
 
-Editörün üç adımı: **Parçalar**, **Görünüm ve ses**, **Çıktı**. Preview üstte, seçili parçalar kart olarak altta; ayrıntı ayarı ihtiyaca göre açılır. Varsayılan ekran profesyonel çok katmanlı timeline değildir.
+Editör tek ekrandır: preview üstte, altında videonun tamamını gösteren şerit ve Başlangıç/Bitiş/"Kesit ekle" satırı; kesit kartları yanda (telefonda altta); görüntü ve ses ayarları "Ayarlar" çekmecesinde, indirme sağ üstte ve her kartta. Varsayılan ekran profesyonel çok katmanlı timeline değildir (ADR-026).
 
 ## F01 — İyi anları seç
 
