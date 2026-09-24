@@ -46,7 +46,7 @@ export type FastCutFallbackReason =
   | 'resolution'
   /** Non-square pixels. */
   | 'pixel_aspect'
-  /** The source's frames are not on the download's 30 fps grid (60, 29.97, 25 fps, variable rate). */
+  /** The source is faster than the download's 30 fps (e.g. 50/60 fps, or variable rate above 30). */
   | 'fps'
   /** The source needs the decoder reorder fix (ADR-014 §3). */
   | 'reorder'
@@ -96,11 +96,14 @@ function isFullFrame(segment: RenderSegment, width: number, height: number): boo
 /**
  * Whether the plan can be produced without re-encoding the source's pictures.
  * Only checks that need no packet: the frame rate and keyframes are checked
- * against the real packets afterwards (`frameRateMatchesPlan`, `planSegmentCut`).
+ * against the real packets afterwards (`frameRateWithinPlan`, `planSegmentCut`).
  *
  * The copy keeps the source's own resolution, so it is allowed only when that
- * already IS the download's resolution (doc 15: 720p/1080p). A 4K or
- * differently shaped source is encoded, exactly as before.
+ * already IS the download's resolution — "within the 720p/1080p tier" (doc 15,
+ * founder decision 2026-09-24) means exactly the sizes the editor offers:
+ * 1280x720, 720x1280, 720x720, 1920x1080, 1080x1920, 1080x1080 (after the
+ * source's rotation). 1440p, 4K, 480p and odd sizes (e.g. 1920x1088, 592x1280)
+ * are encoded to the chosen size, exactly as before.
  */
 export function fastCutEligibility(
   plan: Pick<RenderPlan, 'width' | 'height' | 'captions' | 'segments'>,
@@ -141,37 +144,71 @@ export function fastCutEligibility(
 }
 
 /**
- * Doc 15 lists the download as "720p / 1080p, SDR, 30 fps", and the full
- * encode always writes a constant 30 fps grid. The copy keeps the source's
- * own frame times, so it is allowed only when those already ARE that grid:
- * every copied frame starts on the 30 fps grid of the first one (±1 source
- * tick for clocks that do not divide evenly, e.g. 1/12288 s, plus 0.5% of a
- * frame). The download then has exactly the
- * frames and frame rate the full encode would give.
+ * Doc 15 v6 (founder decision 2026-09-24): the download is "en çok 30 fps".
+ * A fast-cut copy keeps the source's own frame times, so it is allowed when
+ * the source is not faster than the download's rate (`fpsNum/fpsDen`, 30):
+ * 24, 25, 29.97, 30 fps and phones' variable rate around 30 are copied at
+ * their own rate; 50/60 fps is encoded to 30 fps as before.
  *
- * 24, 25 and 29.97 fps and phones' variable rate are encoded, as before. The
- * fast cut handles them correctly (measured, ADR-027), but the file would keep
- * their own rate instead of 30 fps; whether that is acceptable is a founder
- * question, not a technical one.
+ * How "not faster" is judged on a variable-rate source (measured on the real
+ * recordings, ADR-027):
+ * - Not by the shortest frame interval: nominal 30 fps phone files have
+ *   single intervals as short as 1/31.6 s (timestamp jitter), which would
+ *   refuse every one of them.
+ * - Not by the mean alone: a moment that is 60 fps for a few seconds and slow
+ *   elsewhere can average under 30.
+ * - Rule: in every stretch of up to one second, the number of frame
+ *   intervals may exceed `rate × stretch` by at most ONE frame, and the
+ *   moment's mean rate may exceed `rate` by at most 1%. Nominal 30 fps phone
+ *   files reach 31 frame starts per second at most; every faster source we
+ *   have reaches 47 (a 40 fps VFR file) or 60.
  *
  * `ticks`: presentation times of the moment's frames in source ticks,
  * ascending; `resolution`: ticks per second.
  */
-export function frameRateMatchesPlan(
+export function frameRateWithinPlan(
   ticks: ArrayLike<number>,
   resolution: number,
   fpsNum: number,
   fpsDen: number,
 ): boolean {
-  const frameTicks = (resolution * fpsDen) / fpsNum;
+  const rate = fpsNum / fpsDen;
+  const n = ticks.length;
+  if (n <= 1) return true;
   const first = ticks[0] ?? 0;
-  // Against the grid from the first frame, so a small per-frame difference
-  // (29.97 vs 30 fps: 0.1%) is caught as the drift it becomes.
-  const tolerance = 1 + frameTicks * 0.005;
-  for (let i = 1; i < ticks.length; i += 1) {
-    if (Math.abs((ticks[i] ?? 0) - first - i * frameTicks) > tolerance) return false;
+  const last = ticks[n - 1] ?? 0;
+  const span = (last - first) / resolution;
+  if (!(span > 0)) return false;
+  if ((n - 1) / span > rate * 1.01) return false;
+  // Slack for timestamps rounded to the source clock.
+  const slack = 1e-6 + 2 / resolution;
+  let from = 0;
+  for (let j = 1; j < n; j += 1) {
+    const tj = (ticks[j] ?? 0) / resolution;
+    while (tj - (ticks[from] ?? 0) / resolution > 1 + slack) from += 1;
+    for (let i = from; i < j; i += 1) {
+      const stretch = tj - (ticks[i] ?? 0) / resolution;
+      if (j - i > rate * (stretch + slack) + 1) return false;
+    }
   }
   return true;
+}
+
+/**
+ * The reason code for a moment's frame times, or null when they may be
+ * copied: `timing` for frames that share a timestamp (nothing to judge a rate
+ * on), `fps` for a source faster than the download.
+ */
+export function frameRateRefusal(
+  ticks: ArrayLike<number>,
+  resolution: number,
+  fpsNum: number,
+  fpsDen: number,
+): 'fps' | 'timing' | null {
+  for (let i = 1; i < ticks.length; i += 1) {
+    if ((ticks[i] ?? 0) <= (ticks[i - 1] ?? 0)) return 'timing';
+  }
+  return frameRateWithinPlan(ticks, resolution, fpsNum, fpsDen) ? null : 'fps';
 }
 
 /* ---------------------------------------------------------------- planning */

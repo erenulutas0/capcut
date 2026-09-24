@@ -14,12 +14,20 @@
  *   node scripts/run-real-media.mjs                       # tests/media/real
  *   node scripts/run-real-media.mjs --dir=D:/telefon-videolari --browser=chrome
  *   node scripts/run-real-media.mjs --browser=chrome --sw-decode   # no GPU decoder
+ *   node scripts/run-real-media.mjs --browser=chrome --native      # frame = the file's own shape/size
+ *
+ * `--native` (ADR-027): instead of the fixed 9:16 720p frame, each file is
+ * exported in the frame that matches its own display shape, at 1080p when its
+ * short edge is at least 1080 and 720p otherwise. A file whose size then IS
+ * the download's size takes the fast cut; for those the result also records
+ * which frames were copied bit for bit and the SSIM of the re-encoded ones.
  */
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, extname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, firefox, webkit } from '@playwright/test';
 
+import { fastCutIdentity } from './lib/fast-cut-check.mjs';
 import { createDriver } from './lib/matrix-driver.mjs';
 import { ffprobeJson, runFfmpeg } from './lib/media-measure.mjs';
 
@@ -76,10 +84,11 @@ const keepArtefacts = args.includes('--keep');
  * behaved differently on real camera footage (ADR-014 §3).
  */
 const swDecode = args.includes('--sw-decode');
+const native = args.includes('--native');
 /** Re-run a subset (file name substrings) into its own result file, e.g. --files=hdr --label=hdr. */
 const fileFilter = argValue('files', '').split(',').filter(Boolean);
 const extraLabel = argValue('label', '');
-const runLabel = `${swDecode ? `${browserName}-swdecode` : browserName}${extraLabel ? `-${extraLabel}` : ''}`;
+const runLabel = `${swDecode ? `${browserName}-swdecode` : browserName}${native ? '-native' : ''}${extraLabel ? `-${extraLabel}` : ''}`;
 const chromiumArgs = swDecode ? ['--disable-accelerated-video-decode'] : [];
 
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.m4v', '.webm', '.mkv', '.3gp']);
@@ -230,6 +239,23 @@ for (const [index, fileName] of files.entries()) {
   const expectedSeconds = trims.reduce((sum, [a, b]) => sum + (b - a), 0);
   const hdr = HDR_TRANSFERS.has(properties?.colorTransfer ?? '');
 
+  // --native: the frame that matches the file (display orientation), 1080p or 720p.
+  let frame = { aspect: '9-16', quality: '720', size: [720, 1280], filter: COVER_9_16 };
+  if (native && properties?.width && properties?.height) {
+    const quarter = Math.abs(properties.rotation) % 180 === 90;
+    const dw = quarter ? properties.height : properties.width;
+    const dh = quarter ? properties.width : properties.height;
+    const q = Math.min(dw, dh) >= 1080 ? 1080 : 720;
+    const long = Math.round((q * 16) / 9 / 2) * 2;
+    if (dw > dh * 1.05) {
+      frame = { aspect: '16-9', quality: String(q), size: [long, q], filter: `crop=w='min(iw,ih*16/9)':h='min(ih,iw*9/16)',scale=${long}:${q}` };
+    } else if (dh > dw * 1.05) {
+      frame = { aspect: '9-16', quality: String(q), size: [q, long], filter: `crop=w='min(iw,ih*9/16)':h='min(ih,iw*16/9)',scale=${q}:${long}` };
+    } else {
+      frame = { aspect: '1-1', quality: String(q), size: [q, q], filter: `crop=w='min(iw,ih)':h='min(iw,ih)',scale=${q}:${q}` };
+    }
+  }
+
   const testCase = {
     id,
     title: 'gerçek kayıt',
@@ -237,21 +263,21 @@ for (const [index, fileName] of files.entries()) {
     setup: {
       video: fileName,
       moments: trims.map(([a, b]) => [timecode(a), timecode(b)]),
-      aspect: '9-16',
-      quality: '720',
+      aspect: frame.aspect,
+      quality: frame.quality,
     },
     expect: {
       // Import refusal (policy or unplayable) and gate refusal are acceptable
       // outcomes; they are recorded as such, not as passes of the export.
       exportsOrBlocks: true,
       durationSeconds: Number(expectedSeconds.toFixed(3)),
-      size: [720, 1280],
+      size: frame.size,
       videoCodec: 'h264',
       ...(properties?.audioCodec ? { audioCodec: 'aac' } : {}),
       // Cover-crop to 9:16 from whatever orientation ffmpeg decodes to. An HDR
       // source gets its reference below instead: tone mapped by the standard
       // operator nearest to the output (ADR-022), never raw PQ/HLG.
-      ...(hdr ? { hdrColors: { filter: COVER_9_16, trims } } : { reference: { filter: COVER_9_16, trims } }),
+      ...(hdr ? { hdrColors: { filter: frame.filter, trims } } : { reference: { filter: frame.filter, trims } }),
       // Real footage with motion goes through two lossy encodes; a wrong range
       // or a wrong crop lands far below this.
       minSsim: MIN_SSIM,
@@ -293,6 +319,39 @@ for (const [index, fileName] of files.entries()) {
               detail: `kaynak ${source.toFixed(1)} dB, çıktı ${produced.toFixed(1)} dB`,
             },
       );
+    }
+    // ADR-027: a fast cut must copy every frame it did not re-encode bit for
+    // bit, at the cut offset, and re-encode the rest well.
+    if (driveResult.exported && (measured.method === 'copy' || measured.method === 'smart')) {
+      const identity = fastCutIdentity({ outputFile: artefactPath, sourceFile: path, moments: trims });
+      const encoded = driveResult.reported?.framesEncoded ?? NaN;
+      measured.fastCut = {
+        method: measured.method,
+        frames: identity.frames,
+        identical: identity.identical,
+        differing: identity.differing,
+        framesEncodedReported: encoded,
+        seamSsimMin: identity.ssimMin === null ? null : Number(identity.ssimMin.toFixed(4)),
+        seamSsimMean: identity.ssimMean === null ? null : Number(identity.ssimMean.toFixed(4)),
+        offsetSpreadMs: identity.offsetSpreadMs,
+      };
+      checks.push({
+        label: 'hızlı kesim: kodlanmayan her kare kaynakla bit bit aynı (framemd5)',
+        ok: identity.differing <= encoded && identity.identical === identity.frames - identity.differing,
+        detail: `${identity.identical}/${identity.frames} aynı, farklı ${identity.differing}, bildirilen kodlanan ${encoded}`,
+      });
+      checks.push({
+        label: 'hızlı kesim: kopyalanan karelerin zamanı kaynakla aynı kaymada (≤ 1 ms)',
+        ok: identity.offsetSpreadMs !== null && identity.offsetSpreadMs <= 1,
+        detail: `yayılım ${identity.offsetSpreadMs} ms`,
+      });
+      if (identity.ssimMin !== null) {
+        checks.push({
+          label: `hızlı kesim: yeniden kodlanan kareler SSIM ≥ ${MIN_SSIM}`,
+          ok: identity.ssimMin >= MIN_SSIM && identity.ssim.length === identity.differing,
+          detail: `en düşük ${identity.ssimMin.toFixed(4)}, ort. ${identity.ssimMean.toFixed(4)} (${identity.ssim.length} kare)`,
+        });
+      }
     }
     checks.push({ label: 'sayfada JS hatası yok', ok: pageErrors.length === 0, detail: pageErrors.join(' | ') });
 
@@ -336,7 +395,10 @@ for (const [index, fileName] of files.entries()) {
       (p
         ? `${p.videoCodec} ${p.width}x${p.height} rot${p.rotation} ${p.fps}fps${p.likelyVfr ? ' VFR?' : ''} ` +
           `${p.durationSeconds.toFixed(1)}s ${p.sizeMib}MiB ${p.colorTransfer ?? ''} ${p.audioCodec ?? 'sessiz'}`
-        : 'ffprobe açamadı'),
+        : 'ffprobe açamadı') +
+      (record.measured?.method
+        ? `  → ${record.measured.method}${record.measured.fallbackReason ? ` (${record.measured.fallbackReason})` : ''}`
+        : ''),
   );
   for (const check of record.checks ?? []) {
     console.log(`         ${check.ok ? 'ok  ' : 'FAIL'} ${check.label}${check.detail ? ` — ${check.detail}` : ''}`);

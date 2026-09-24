@@ -39,7 +39,7 @@ import {
 import {
   copyStartCandidates,
   fastCutEligibility,
-  frameRateMatchesPlan,
+  frameRateRefusal,
   planSegmentCut,
   type ExportMode,
   type FastCutFallbackReason,
@@ -73,7 +73,7 @@ const MAX_ENCODE_QUEUE = 8;
 export interface FastCutVariant {
   /** `avc3` sample entry instead of `avc1`. */
   sampleEntry?: 'avc1' | 'avc3';
-  /** Skip the 30 fps grid rule, to measure the technique on 25/29.97/60 fps sources. */
+  /** Skip the "at most 30 fps" rule, to measure the technique on 50/60 fps sources. */
   anyFrameRate?: boolean;
 }
 
@@ -259,9 +259,8 @@ async function scanSegment(
   const planned = planSegmentCut(pts, start, first, last);
   if (!planned.ok) throw new FastCutFallback(planned.reason);
   const cut = planned.cut;
-  if (!anyFrameRate && !frameRateMatchesPlan(cut.frames, srcRes, fpsNum, fpsDen)) {
-    throw new FastCutFallback('fps');
-  }
+  const rateRefusal = anyFrameRate ? null : frameRateRefusal(cut.frames, srcRes, fpsNum, fpsDen);
+  if (rateRefusal) throw new FastCutFallback(rateRefusal);
 
   // Output timeline: the moment starts on its frame of the output grid and
   // keeps the source's own frame times from there; the first frame covers

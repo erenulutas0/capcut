@@ -168,8 +168,13 @@ export const CASES = [
     expect: {
       exports: true,
       durationSeconds: 10,
-      frames: 300,
-      constantFrameRate: 30,
+      // Doc 15 v6 / ADR-027: a 1280x720 29.97 fps source in a 720p 16:9 frame
+      // is copied at its own rate. The moment shows source frames 0..298: the
+      // last one is the frame on screen at the last 30 fps instant (9.967 s),
+      // the full encode's rule; it is held to 10.000 s.
+      method: ['copy', 'smart'],
+      frames: 299,
+      constantFrameRate: '30000/1001',
     },
   },
   {

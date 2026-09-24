@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   copyStartCandidates,
   fastCutEligibility,
-  frameRateMatchesPlan,
+  frameRateRefusal,
+  frameRateWithinPlan,
   planSegmentCut,
   type FastCutSourceFacts,
 } from '@/domain/fastPath';
@@ -82,6 +83,15 @@ describe('fastCutEligibility', () => {
     const uhdPlan = plan({ segments: [segment({ crop: { x: 0, y: 0, width: 3840, height: 2160 } })] });
     expect(fastCutEligibility(uhdPlan, uhd, 'auto')).toEqual({ ok: false, reason: 'resolution' });
 
+    // "Within the 720p/1080p tier" means the download's exact size: a 1440p
+    // source is encoded to 1080p, a 1920x1088 source is not 16:9.
+    const qhd = facts({ displayWidth: 2560, displayHeight: 1440 });
+    const qhdPlan = plan({ segments: [segment({ crop: { x: 0, y: 0, width: 2560, height: 1440 } })] });
+    expect(fastCutEligibility(qhdPlan, qhd, 'auto')).toEqual({ ok: false, reason: 'resolution' });
+    const odd = facts({ displayWidth: 1920, displayHeight: 1088 });
+    const oddPlan = plan({ segments: [segment({ crop: { x: 0, y: 0, width: 1920, height: 1080 } })] });
+    expect(fastCutEligibility(oddPlan, odd, 'auto')).toEqual({ ok: false, reason: 'aspect' });
+
     // 720p source at 720p is fine; 720p source in a 1080p download is not.
     const hd = facts({ displayWidth: 1280, displayHeight: 720 });
     const hdSegments = [segment({ crop: { x: 0, y: 0, width: 1280, height: 720 } })];
@@ -114,31 +124,70 @@ describe('fastCutEligibility', () => {
   });
 });
 
-describe('frameRateMatchesPlan', () => {
+describe('frameRateWithinPlan (doc 15 v6: at most 30 fps)', () => {
   const grid = (count: number, step: number, from = 0) =>
     Array.from({ length: count }, (_, i) => Math.round(from + i * step));
+  const within = (ticks: number[], resolution: number) => frameRateWithinPlan(ticks, resolution, 30, 1);
 
-  it('accepts a source whose frames sit on the 30 fps grid, in any clock', () => {
-    expect(frameRateMatchesPlan(grid(300, 512), 15360, 30, 1)).toBe(true);
-    expect(frameRateMatchesPlan(grid(300, 20), 600, 30, 1)).toBe(true);
-    expect(frameRateMatchesPlan(grid(300, 3000, 4500), 90000, 30, 1)).toBe(true);
+  it('copies 30 fps in any clock, and slower constant rates at their own rate', () => {
+    expect(within(grid(300, 512), 15360)).toBe(true);
+    expect(within(grid(300, 20), 600)).toBe(true);
     // 12288 / 30 = 409.6 ticks: rounded frame times alternate 409/410.
-    expect(frameRateMatchesPlan(grid(300, 409.6), 12288, 30, 1)).toBe(true);
+    expect(within(grid(300, 409.6), 12288)).toBe(true);
+    expect(within(grid(300, 1001), 30000)).toBe(true); // 29.97
+    expect(within(grid(250, 24), 600)).toBe(true); // 25
+    expect(within(grid(240, 512), 12288)).toBe(true); // 24
+    expect(within(grid(150, 40), 600)).toBe(true); // 15
   });
 
-  it('refuses 60, 29.97, 25 fps and a variable rate (the full encode puts them on the grid)', () => {
-    expect(frameRateMatchesPlan(grid(300, 1500), 90000, 30, 1)).toBe(false);
-    expect(frameRateMatchesPlan(grid(300, 1001), 30000, 30, 1)).toBe(false);
-    expect(frameRateMatchesPlan(grid(250, 24), 600, 30, 1)).toBe(false);
-    const vfr = [...grid(30, 20), ...grid(30, 21, 600)];
-    expect(frameRateMatchesPlan(vfr, 600, 30, 1)).toBe(false);
-    // One dropped frame (a 2-frame gap) is not the grid either.
-    expect(frameRateMatchesPlan([0, 512, 1536, 2048], 15360, 30, 1)).toBe(false);
+  it('refuses 50/60 fps and anything clearly above 30', () => {
+    expect(within(grid(300, 1500), 90000)).toBe(false); // 60
+    expect(within(grid(300, 1001), 60000)).toBe(false); // 59.94
+    expect(within(grid(300, 1800), 90000)).toBe(false); // 50
+    expect(within(grid(300, 2812.5), 90000)).toBe(false); // 32
+    // Three frames 1/60 s apart is already more than one frame over 30 fps.
+    expect(within([0, 1500, 3000], 90000)).toBe(false);
   });
 
-  it('accepts a single frame', () => {
-    expect(frameRateMatchesPlan([0], 15360, 30, 1)).toBe(true);
-    expect(frameRateMatchesPlan([], 15360, 30, 1)).toBe(true);
+  it('keeps nominal 30 fps phone files with timestamp jitter (measured on R03/R04)', () => {
+    // R03 (timescale 60000): all intervals 2000 ticks except one of 1900 —
+    // 31 frame starts inside one second.
+    const r03 = grid(40, 2000);
+    for (let i = 30; i < r03.length; i += 1) r03[i] = (r03[i] ?? 0) - 100;
+    expect(within(r03, 60000)).toBe(true);
+    // Alternating 1/30.3 s and 1/29.7 s intervals (R04-like), 29.934 fps mean.
+    const r04: number[] = [0];
+    for (let i = 1; i < 600; i += 1) r04.push((r04[i - 1] ?? 0) + (i % 2 ? 297030 : 303030));
+    expect(within(r04, 9_000_000)).toBe(true);
+  });
+
+  it('variable rate: a slow average does not hide a fast stretch', () => {
+    // 3 s at 60 fps, then 7 s at 12 fps: mean 23 fps, but not "at most 30".
+    const fast = grid(180, 10, 0);
+    const slow = grid(84, 50, 1800);
+    expect(within([...fast, ...slow], 600)).toBe(false);
+    // A 12 fps stretch then a 30 fps stretch is fine (M06's first two parts).
+    expect(within([...grid(60, 50), ...grid(90, 20, 3000)], 600)).toBe(true);
+  });
+
+  it('refuses a mean slightly above 30 fps even without a single fast second', () => {
+    // 30.5 fps constant: 30.5 frames per second never exceeds 31 in a window,
+    // but the mean is 1.7% over the download's rate.
+    expect(within(grid(610, 600 / 30.5), 600)).toBe(false);
+  });
+
+  it('accepts a single frame, refuses frames sharing one timestamp', () => {
+    expect(within([0], 15360)).toBe(true);
+    expect(within([], 15360)).toBe(true);
+    expect(within([100, 100], 15360)).toBe(false);
+  });
+
+  it('names the reason: fps for a fast source, timing for broken timestamps, none otherwise', () => {
+    expect(frameRateRefusal(grid(300, 1001), 30000, 30, 1)).toBeNull();
+    expect(frameRateRefusal(grid(300, 1500), 90000, 30, 1)).toBe('fps');
+    expect(frameRateRefusal([...grid(180, 10), ...grid(84, 50, 1800)], 600, 30, 1)).toBe('fps');
+    expect(frameRateRefusal([0, 20, 20, 40], 600, 30, 1)).toBe('timing');
+    expect(frameRateRefusal([0, 40, 20], 600, 30, 1)).toBe('timing');
   });
 });
 

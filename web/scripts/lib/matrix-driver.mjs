@@ -777,9 +777,10 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     };
 
     if (want.method) {
+      const methods = [want.method].flat();
       add(
-        `yöntem ${want.method} (ADR-027)`,
-        measured.method === want.method,
+        `yöntem ${methods.join(' / ')} (ADR-027)`,
+        methods.includes(measured.method),
         `bildirilen ${measured.method}${measured.fallbackReason ? ` (${measured.fallbackReason})` : ''}, ` +
           `kodlanan kare ${driveResult.reported?.framesEncoded ?? '—'}`,
       );
@@ -810,11 +811,9 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       add(`ses codec ${want.audioCodec}`, measured.audioCodec === want.audioCodec, `${measured.audioCodec}`);
     }
     if (want.constantFrameRate) {
-      add(
-        `sabit ${want.constantFrameRate} fps`,
-        measured.frameRate === `${want.constantFrameRate}/1`,
-        `${measured.frameRate}`,
-      );
+      // A number is an integer rate (`30/1`); a string is ffprobe's exact rational.
+      const rate = typeof want.constantFrameRate === 'string' ? want.constantFrameRate : `${want.constantFrameRate}/1`;
+      add(`sabit ${rate} fps`, measured.frameRate === rate, `${measured.frameRate}`);
     }
     if (want.relinked) {
       add(

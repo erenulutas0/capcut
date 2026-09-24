@@ -11,11 +11,11 @@ import { startWithEmptyTimeline } from './rangeFlow';
  * re-encoded is bit-for-bit the source's decoded frame.
  */
 
-async function openFixture(page: Page): Promise<string[]> {
+async function openFixture(page: Page, rate: 25 | 30 | 60 = 30): Promise<string[]> {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/editor');
-  await page.getByTestId('video-input').setInputFiles(fastCutFixture());
+  await page.getByTestId('video-input').setInputFiles(fastCutFixture(rate));
   await expect(page.getByTestId('preview-video')).toBeVisible();
   await startWithEmptyTimeline(page);
   return errors;
@@ -82,7 +82,7 @@ test.describe('fast cut', () => {
 
     const method = page.getByTestId('measured-method');
     await expect(method).toHaveAttribute('data-method', 'copy');
-    await expect(method).toHaveText('Hızlı kesim — görüntü yeniden kodlanmadı');
+    await expect(method).toHaveText('Hızlı kesim — görüntü yeniden kodlanmadı, orijinal kalite');
 
     const file = await savedFile(page);
     const expected = range(60, 119);
@@ -115,6 +115,33 @@ test.describe('fast cut', () => {
     await page.getByTestId('export-succeeded').waitFor({ timeout: 180_000 });
     await expect(page.getByTestId('measured-method')).toHaveAttribute('data-fallback', 'resolution');
     await expect(page.getByTestId('measured-resolution')).toHaveText('1920×1080');
+    expect(errors).toEqual([]);
+  });
+
+  test('doc 15 v6: a 25 fps source is copied at its own rate, frames exact', async ({ page }) => {
+    const errors = await openFixture(page, 25);
+    // Source frames 30..99 (1.2 s to 4.0 s at 25 fps; IDR every 25 frames).
+    await addMoment(page, '00:01.200', '00:04.000');
+    await exportAt720(page);
+    await expect(page.getByTestId('measured-method')).toHaveAttribute('data-method', 'smart');
+    const file = await savedFile(page);
+    const expected = range(30, 99);
+    expect(barcodeFrames(file)).toEqual(expected);
+    const probe = probeFrames(file);
+    expect(probe.frames).toBe(70);
+    expect(Math.abs(probe.durationS - 2.8)).toBeLessThanOrEqual(1 / 30 + 0.002);
+    expect(errors).toEqual([]);
+  });
+
+  test('doc 15 v6: a 60 fps source is encoded to 30 fps and the dialog says why', async ({ page }) => {
+    const errors = await openFixture(page, 60);
+    await addMoment(page, '00:01.000', '00:03.000');
+    await exportAt720(page);
+    const method = page.getByTestId('measured-method');
+    await expect(method).toHaveAttribute('data-method', 'encode');
+    await expect(method).toHaveAttribute('data-fallback', 'fps');
+    await expect(method).toHaveText('Kodlandı (kaynak 30 fps’den hızlı, 30 fps’ye çevrildi)');
+    expect(probeFrames(await savedFile(page)).frames).toBe(60);
     expect(errors).toEqual([]);
   });
 

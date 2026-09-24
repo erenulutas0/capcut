@@ -1,6 +1,6 @@
 /**
- * Synthetic source for the fast-cut e2e test (ADR-027), made with ffmpeg on
- * first use into a gitignored folder: 10 s of 1280x720 30 fps H.264 (High,
+ * Synthetic sources for the fast-cut e2e test (ADR-027), made with ffmpeg on
+ * first use into a gitignored folder: 10 s of 1280x720 H.264 (High,
  * 3 B-frames, an IDR every second) whose every frame carries its number as a
  * 20-bit barcode (the long sources' barcode, scripts/lib/frame-barcode.mjs),
  * plus a quiet tone. No real footage.
@@ -14,8 +14,12 @@ import { join } from 'node:path';
 
 export const FASTCUT_MEDIA_DIR = join(process.cwd(), 'tests', 'media', 'fastcut');
 
-export function fastCutFixture(): string {
-  const file = join(FASTCUT_MEDIA_DIR, 'e2e-720p30-barcode.mp4');
+/**
+ * `rate`: 30 (default), 25 (slower than the download: copied at its own
+ * rate, doc 15 v6) or 60 (faster: encoded to 30 fps). IDR every second.
+ */
+export function fastCutFixture(rate: 25 | 30 | 60 = 30): string {
+  const file = join(FASTCUT_MEDIA_DIR, rate === 30 ? 'e2e-720p30-barcode.mp4' : `e2e-720p${rate}-barcode.mp4`);
   if (existsSync(file)) return file;
   mkdirSync(FASTCUT_MEDIA_DIR, { recursive: true });
   const partial = `${file}.part.mp4`;
@@ -29,11 +33,11 @@ export function fastCutFixture(): string {
     'ffmpeg',
     [
       '-hide_banner', '-loglevel', 'error', '-y',
-      '-f', 'lavfi', '-i', 'testsrc2=size=1280x720:rate=30:duration=10',
+      '-f', 'lavfi', '-i', `testsrc2=size=1280x720:rate=${rate}:duration=10`,
       '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000:duration=10',
       '-filter_complex', `[0:v]${chain}[v]`, '-map', '[v]', '-map', '1:a',
       '-c:v', 'libx264', '-preset', 'veryfast', '-profile:v', 'high', '-pix_fmt', 'yuv420p',
-      '-x264-params', 'bframes=3:keyint=30:min-keyint=30:scenecut=0', '-b:v', '3M',
+      '-x264-params', `bframes=3:keyint=${rate}:min-keyint=${rate}:scenecut=0`, '-b:v', '3M',
       '-c:a', 'aac', '-b:a', '96k', partial,
     ],
     { stdio: 'pipe' },
