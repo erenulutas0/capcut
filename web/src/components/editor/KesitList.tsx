@@ -54,6 +54,11 @@ interface Props {
   onMove: (clipId: string, toIndex: number) => void;
   /** What to say when there is no kesit (depends on whether a video is open). */
   emptyText: string;
+  /**
+   * Shown under the list where ⬇ opens the save dialog: the browser empties a
+   * file the user chooses to replace as soon as they confirm (ADR-026).
+   */
+  saveNote: string | null;
 }
 
 interface DragState {
@@ -89,6 +94,7 @@ export function KesitList({
   onDelete,
   onMove,
   emptyText,
+  saveNote,
 }: Props) {
   const listRef = useRef<HTMLOListElement | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -273,6 +279,11 @@ export function KesitList({
           })}
         </ol>
       )}
+      {saveNote ? (
+        <p className="kesits-note" data-testid="save-overwrite-note">
+          {saveNote}
+        </p>
+      ) : null}
       <p id="kesit-move-hint" className="visually-hidden">
         {t('kesit.moveHint')}
       </p>

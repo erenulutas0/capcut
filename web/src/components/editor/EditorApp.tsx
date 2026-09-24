@@ -44,7 +44,7 @@ import { SilenceDialog } from './SilenceDialog';
 import { SourceStrip, type EditableRange } from './SourceStrip';
 import type { TrimCommitInfo } from './TrimHandle';
 import { useCaptionFont } from './useCaptionFont';
-import { entryIsCurrent, useDownloads } from './useDownloads';
+import { canPickSaveFile, entryIsCurrent, useDownloads } from './useDownloads';
 import { useEditorState } from './useEditorState';
 import { useLayoutMode } from './useLayoutMode';
 import { usePlayback } from './usePlayback';
@@ -893,6 +893,7 @@ export function EditorApp() {
           onDelete={deleteKesit}
           onMove={state.moveKesit}
           emptyText={emptyText}
+          saveNote={hydrated && state.video !== null && canPickSaveFile() ? t('download.overwriteNote') : null}
         />
       </main>
 

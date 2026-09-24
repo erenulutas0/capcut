@@ -657,6 +657,8 @@ export const tr = {
   'download.route.file': 'seçtiğin dosya',
   'download.details': 'Ayrıntılar',
   'download.dismiss': 'Mesajı kapat',
+  'download.overwriteNote':
+    'Var olan bir dosyanın üzerine kaydedersen eski dosya hemen silinir; indirmeyi durdursan da geri gelmez.',
   'download.overLimit.kesit': 'Kesit {total}. İndirmek için en az {excess} kısalt — sınır {limit} dakika.',
   'download.overLimit.merged':
     'Kesitler birlikte {total}. Birleştirip indirmek için en az {excess} çıkar — sınır {limit} dakika. Kesitleri tek tek de indirebilirsin.',
@@ -1356,6 +1358,8 @@ export const en: Record<MessageKey, string> = {
   'download.route.file': 'the file you chose',
   'download.details': 'Details',
   'download.dismiss': 'Dismiss the message',
+  'download.overwriteNote':
+    'If you save over an existing file, the old file is deleted at once; stopping the download does not bring it back.',
   'download.overLimit.kesit':
     'The clip is {total}. To download it, shorten it by at least {excess} — the limit is {limit} minutes.',
   'download.overLimit.merged':

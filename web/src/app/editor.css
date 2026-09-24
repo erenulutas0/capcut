@@ -2133,6 +2133,13 @@ input[type='range']:disabled::-webkit-slider-thumb {
   color: var(--muted);
 }
 
+.kesits-note {
+  margin: 12px 2px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
 .kesit-list {
   list-style: none;
   margin: 0;

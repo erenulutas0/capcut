@@ -72,6 +72,11 @@ test.describe('kesit list: mark, add, play, download', () => {
     await expect(page.getByTestId('kesit-card')).toHaveCount(0);
     await expect(page.getByTestId('download-all')).toHaveText('Videoyu indir');
     await expect(page.getByTestId('timeline-notice')).toContainText('Video açıldı (24,0 sn)');
+    // The save dialog replaces a chosen file as soon as the user confirms;
+    // the list says so before the first ⬇.
+    await expect(page.getByTestId('save-overwrite-note')).toHaveText(
+      'Var olan bir dosyanın üzerine kaydedersen eski dosya hemen silinir; indirmeyi durdursan da geri gelmez.',
+    );
 
     // Mark on the video's own clock with the keyboard: 2 s → I, 6 s → O.
     await playheadTo(page, 2);
@@ -366,6 +371,8 @@ test.describe('browsers without the save dialog', () => {
     await openEditor(page);
     await openVideo(page, SAMPLE);
     await addKesit(page, '3', '5');
+    // No save dialog, nothing gets replaced: no overwrite note.
+    await expect(page.getByTestId('save-overwrite-note')).toHaveCount(0);
     await card(page, 0).getByTestId('kesit-download').click();
     const link = card(page, 0).getByTestId('export-download');
     await expect(link).toBeVisible({ timeout: 120_000 });
