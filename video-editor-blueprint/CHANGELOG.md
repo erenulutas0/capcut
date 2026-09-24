@@ -11,6 +11,8 @@
 
 **Düzeltilen:** Yüksek bit hızlı videoda sessizlik önerileri çok bellek tutuyordu (10,5 Mbit/s kaynakta tepe ~950–980 MiB, pencere kapanınca da ~930). Sebep kaynağın okunma şekliydi; artık yalnızca gereken aralıklar okunuyor ve uzun aralık 4 parça hâlinde çözülüyor: tepe ~720 MiB (Chromium 855 → 580). Öneriler bit bit aynı. Bedel: yüksek bit hızlı dosyada analiz ~2 kat uzun (20 dakikada 4,5 → 9 s). Aynı sebep eski dışa aktarmada parçanın ses geçişinde sıçramaya yol açıyordu (10,5 Mbit/s kaynakta tepe 927 → 799 MiB).
 
+**Hızlı kesimle birlikte (main ile birleşim):** değişiklikler yalnızca tam kodlama yoluna (kırpma, altyazı, HDR, 60 fps, farklı çözünürlük) uygulandı; hızlı kesim aynı dosyayı aynı hızda veriyor (10 dk kesit 8,5–10,4 s, `smart`). Tam kodlamanın çıktısı main'inkiyle kare kare aynı; 2 dk 1080p HDR 202 → 98 s. Matris 22/22/22 PASS.
+
 **Bilinen:** 60 dakikalık dışa aktarmada tepe bellek aynı (873 → 874 MiB), ama artık sonda sıçramak yerine süre boyunca yavaşça yükseliyor (~+120 MiB/saat, ses işiyle ölçekleniyor); nerede tutulduğu ölçülmedi.
 
 Mevcut kullanıcı haklarına etkisi: yok. Sınırlar ve fiyatlar değişmedi.

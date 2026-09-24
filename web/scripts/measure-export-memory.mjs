@@ -15,6 +15,9 @@
  *   --profile        ask the encode worker for stage timings (decode wait,
  *                    draw, frame capture, encode, audio, ...) and store them
  *                    in the row (`window.__clipExportProfile`, a test hook)
+ *   --mode=encode    force the full encode (`window.__clipExportMode`, a test
+ *                    hook; ADR-027): otherwise an unchanged H.264 picture is
+ *                    fast-cut (copied), which is not the path measured here
  *   --aspect=9-16    pick this output frame after import (e.g. a landscape
  *                    source into 9:16 is the crop case); default: automatic
  */
@@ -61,6 +64,7 @@ const profile = args.includes('--profile');
 /** `--browser-args=--flag1,--flag2`: extra browser switches (e.g. no video encode acceleration). */
 const browserArgs = argValue('browser-args', '').split(',').filter(Boolean);
 const aspect = argValue('aspect', '');
+const forceEncode = argValue('mode', 'auto') === 'encode';
 
 if (process.platform !== 'win32') {
   console.error('Bu ölçüm şimdilik yalnızca Windows süreç örnekleyicisiyle çalışıyor.');
@@ -158,6 +162,11 @@ for (const seconds of whole ? [0] : durations) {
   // The OPFS route is what this script measures (ADR-013/023), so the save
   // dialog of ADR-026 is taken away, as in a browser that has none.
   await removeSavePicker(page);
+  if (forceEncode) {
+    await page.addInitScript(() => {
+      window.__clipExportMode = 'encode';
+    });
+  }
   await page.goto(`${baseURL}/editor`);
   await page.evaluate(async () => {
     const root = await navigator.storage.getDirectory();
@@ -173,6 +182,11 @@ for (const seconds of whole ? [0] : durations) {
   if (whole) {
     // No kesit: the top button downloads the whole video (ADR-026).
     // The video's own length, in microseconds.
+    // Read once the metadata is in: before that `duration` is NaN and the
+    // row had no real-time factor.
+    await page
+      .waitForFunction(() => (document.querySelector('video')?.duration ?? 0) > 0, null, { timeout: 60_000 })
+      .catch(() => undefined);
     const us = await page.evaluate(() => Math.round((document.querySelector('video')?.duration ?? 0) * 1_000_000));
     requestedSeconds = Number.isFinite(us) && us > 0 ? us / 1_000_000 : null;
   } else {

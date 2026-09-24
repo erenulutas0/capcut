@@ -151,8 +151,10 @@ aynı** çıktı (2 kaynak × Chrome/Chromium × 2 koşu, 120 000'er değer, en 
 
 ### d) Ölçüm araçları
 
-`measure-export-memory.mjs`: `--profile`, `--aspect=9-16` (içe aktarmadan sonra çerçeve
-seçer; yatay kaynakta kırpma durumu), `--browser-args`, `--keep-output=<yol>`.
+`measure-export-memory.mjs` (main'in kesit akışıyla): `--profile`, `--aspect=9-16`
+(Ayarlar'dan çerçeve seçer; yatay kaynakta kırpma durumu), `--mode=encode` (hızlı kesimi
+kapatır), `--browser-args`, `--keep-output=<yol>`; satıra yöntem (`copy`/`smart`/`encode`)
+yazılıyor ve süre, video meta verisi gelince okunuyor.
 `generate-long-media.mjs --only=rot90`.
 
 ## 3. Önce / sonra (20 dk çıktı, önce ve sonra sırayla aynı saatte koşuldu)
@@ -199,6 +201,39 @@ aynı oturumda art arda koşuldu. Bellek: kodlama boyunca süreç ağacının te
 | Gerçek kayıt Chrome | 15 PASS | **15 PASS** |
 | Gerçek kayıt Edge | 11 PASS, 4 REFUSED | **11 PASS, 4 REFUSED** |
 | Gerçek kayıt SSIM, en kötü fark | — | −0,0002 (Chromium), −0,0001 (Chrome), 0 (Edge); süreler ve kareler aynı |
+
+### Birleşimden sonra (main `f761911`: kesit listesi ADR-026, hızlı kesim ADR-027)
+
+Değişiklikler main'in yeni yapısına taşındı: `produceOutput`'un **tam kodlama** dalında
+ses kareleriyle birlikte (`SegmentAudioWriter.advanceTo` ile, aynı 4096'lık parçalar),
+HDR kırpma yardımcıda, `VideoSampleSource` + aşama saati. **Hızlı kesim** kendi ses
+iç içeliğini kullanmaya devam ediyor (kopyalanan videonun ardından `advanceTo`); ona
+dokunulmadı. Görüntüsü değişmeyen H.264 kaynak artık hızlı kesimle kopyalandığı için
+tam kodlamanın ölçümü `--mode=encode` (test kancası `window.__clipExportMode`) ile
+yapıldı. "Önce" = main `f761911`, "sonra" = birleşim; art arda, aynı oturumda, Chrome.
+Makine bu oturumda öncekinden yavaştı (aynı durumun "önce"si 155 → 202 s); oranlar
+karşılaştırılabilir, mutlak süreler değil.
+
+| Durum | Önce (main) | Sonra (birleşim) | Tepe bellek |
+|---|---|---|---|
+| 20 dk 1080p, tam kodlama | 183,7 / 175,7 s | 176,6 / 170,3 s (%3–4) | 761 / 789 → 792 / 790 |
+| 2 dk 1080p HDR PQ | 202,0 s (×0,59) | **97,7 s (×1,23)**, yardımcı iş parçacığında | 756 → 734 |
+| 10 dk kesit, hızlı kesim (`smart`, 50 kare kodlandı) | 16,1 (ilk, soğuk önbellek) / 11,5 / 8,9 s | 8,9 / 10,4 / 8,5 s | 738–771 → 764–786 |
+
+- Çıktılar main'inkiyle **birebir aynı** (framemd5): 20 dk 1080p 36 000 kare, HDR 3600
+  kare, video ve ses.
+- Hızlı kesim ikisinde de aynı dosyayı verdi: 18 000 kare, 600,000 s, 120 denetlenen
+  kareden 70'i kaynakla bit bit aynı (geri kalanı kesim yerlerindeki 50 kodlanan kare,
+  SSIM ≥ 0,9988), ses 0,06 ms içinde; yavaşlama yok.
+- Matris üç tarayıcıda **22/22 PASS** (hızlı kesim ajanının 24 Eylül 21:45–21:51 koşusuyla
+  aynı), her satırda SSIM, süre, kare sayısı ve yöntem (`copy`/`smart`/`encode`) aynı.
+  Gerçek kayıt Chrome 15/15 (en kötü SSIM farkı −0,0001), Chromium 11 PASS 4 REFUSED,
+  Edge 11 PASS 4 REFUSED.
+- Tam e2e: main 136 geçti, 1 kaldı, 2 atlandı; birleşim de 136 / 1 / 2 (ikinci koşu;
+  ilk koşuda 135 / 2 / 2). Kalan `kesit.spec.ts:63` main'de de kalıyor: test
+  "Kodlandı" bekliyor, hızlı kesimden beri "Kodlandı (çözünürlük kaynağınkinden farklı)"
+  yazıyor. İlk koşudaki ikinci hata `a11y.spec.ts:483` main'de de oynak (main: 1 geçti,
+  sonra 3/3 kaldı; birleşim: 1/3 geçti).
 
 ## 4. Bellek artışının sebebi
 
@@ -275,7 +310,17 @@ hızlı kaynakta süre aynı, tepe +20…+30 MiB (4 çözücü aynı anda).
 
 ## Test edilen
 
-`web/` içinde, son kodla:
+Birleşimden sonra (main `f761911` ile), `web/` içinde:
+
+- `npx tsc --noEmit -p .` → hata yok; `npx eslint .` → 0 sorun.
+- `npx vitest run` → 37 dosya, **477 test geçti**.
+- `npm run build` → başarılı.
+- `E2E_PORT=3171 npx playwright test` → 136 geçti, 1 kaldı (main'de de kalan
+  `kesit.spec.ts:63`), 2 atlandı. Main'in kendi ağacında aynı komut: 136 / 1 / 2.
+- `run-matrix.mjs` Chromium / Chrome / Edge → 22 / 22 / 22 PASS.
+- `run-real-media.mjs` Chrome 15 PASS; Chromium 11 PASS 4 REFUSED; Edge 11 PASS 4 REFUSED.
+
+Birleşimden önce, `web/` içinde, son kodla:
 
 - `npx tsc --noEmit -p .` → hata yok; `npx eslint .` → 0 sorun.
 - `npx vitest run` → 34 dosya, **437 test geçti** (yeni: `exportProfile`, `exportPacing`,
