@@ -10,9 +10,16 @@
  *
  *   node scripts/measure-export-memory.mjs
  *   node scripts/measure-export-memory.mjs --seconds=60,300 --quality=1080 --browser=chrome
+ *
+ * ADR-028 options:
+ *   --profile        ask the encode worker for stage timings (decode wait,
+ *                    draw, frame capture, encode, audio, ...) and store them
+ *                    in the row (`window.__clipExportProfile`, a test hook)
+ *   --aspect=9-16    pick this output frame after import (e.g. a landscape
+ *                    source into 9:16 is the crop case); default: automatic
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,6 +57,10 @@ const persistent = args.includes('--persistent');
 const whole = args.includes('--whole');
 /** Long exports take longer than the default 15 minutes. */
 const timeoutMs = Number(argValue('timeout-min', '15')) * 60_000;
+const profile = args.includes('--profile');
+/** `--browser-args=--flag1,--flag2`: extra browser switches (e.g. no video encode acceleration). */
+const browserArgs = argValue('browser-args', '').split(',').filter(Boolean);
+const aspect = argValue('aspect', '');
 
 if (process.platform !== 'win32') {
   console.error('Bu ölçüm şimdilik yalnızca Windows süreç örnekleyicisiyle çalışıyor.');
@@ -104,6 +115,7 @@ if (persistent) {
   profileDir = mkdtempSync(join(tmpdir(), 'clip-profile-'));
   context = await chromium.launchPersistentContext(profileDir, {
     ...(channel ? { channel } : {}),
+    ...(browserArgs.length > 0 ? { args: browserArgs } : {}),
     viewport: { width: 1440, height: 900 },
     acceptDownloads: true,
   });
@@ -126,6 +138,22 @@ for (const seconds of whole ? [0] : durations) {
   const page = await context.newPage();
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
+  const profiles = [];
+  if (profile) {
+    await page.addInitScript(() => {
+      window.__clipExportProfile = true;
+    });
+    page.on('console', (message) => {
+      const text = message.text();
+      if (text.startsWith('[clip-export-profile] ')) {
+        try {
+          profiles.push(JSON.parse(text.slice('[clip-export-profile] '.length)));
+        } catch {
+          // A malformed line is not a measurement.
+        }
+      }
+    });
+  }
 
   await page.goto(`${baseURL}/editor`);
   await page.evaluate(async () => {
@@ -165,6 +193,7 @@ for (const seconds of whole ? [0] : durations) {
     return { quota: estimate.quota ?? null, usage: estimate.usage ?? null };
   });
 
+  if (aspect) await page.getByTestId(`aspect-${aspect}`).click();
   await page.getByTestId('open-export').click();
   await page.getByTestId('export-quality').selectOption(quality);
   await page.getByTestId('export-ready').waitFor({ timeout: 90_000 });
@@ -258,12 +287,17 @@ for (const seconds of whole ? [0] : durations) {
     // An absolute fixture is someone's own recording: do not leave a copy of
     // it behind once it has been measured.
     // `--delete-output`: a 60-minute 1080p file is gigabytes; keep the numbers.
-    if (isAbsolute(fixture) || args.includes('--delete-output')) rmSync(artefact, { force: true });
+    // `--keep-output=<path>`: keep this run's file there instead (ADR-028: a
+    // frame-by-frame comparison of two builds' outputs).
+    const keepAs = argValue('keep-output', '');
+    if (keepAs) renameSync(artefact, keepAs);
+    else if (isAbsolute(fixture) || args.includes('--delete-output')) rmSync(artefact, { force: true });
   } else {
     const failure = await page.getByTestId('export-failed').textContent().catch(() => null);
     row.failure = failure ? failure.replace(/\s+/g, ' ').trim() : 'zaman aşımı';
   }
   row.pageErrors = pageErrors;
+  if (profile) row.profile = profiles.at(-1) ?? null;
 
   // Close the dialog like a user would; the app then deletes its temp file.
   await page.keyboard.press('Escape');
@@ -287,6 +321,12 @@ for (const seconds of whole ? [0] : durations) {
       `kalan geçici dosya ${row.leftoverExportFiles}` +
       (row.failure ? ` — ${row.failure}` : ''),
   );
+  if (row.profile) {
+    const stages = Object.entries(row.profile.stages ?? {})
+      .sort((a, b) => b[1].totalMs - a[1].totalMs)
+      .map(([name, s]) => `${name} ${(s.totalMs / 1000).toFixed(1)} s (${(s.share * 100).toFixed(1)}%, ort. ${s.meanMs} ms)`);
+    console.log(`  profil: ${row.profile.framesPerSecond} kare/sn — ${stages.join(', ')}`);
+  }
 }
 
 await context.close();

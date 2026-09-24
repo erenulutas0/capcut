@@ -12,6 +12,7 @@ import type { ExportEvent } from '@/domain/exportEvents';
 import type { HdrTransfer } from '@/domain/hdr';
 import { TERMINAL_EXPORT_TYPES } from '@/domain/exportEvents';
 import type { RenderPlan } from '@/domain/renderPlan';
+import { EXPORT_PROFILE_WORKER_SUFFIX } from './exportProfile';
 import type { CapabilityStageResult, EncoderProbeConfig, WorkerRequest, WorkerResponse } from './protocol';
 
 /** Stage C renders a tiny file, so this is generous but finite. */
@@ -24,9 +25,12 @@ function testHookBytes(name: '__clipStorageFreeBytes' | '__clipStorageReserveByt
 }
 
 function createWorker(): Worker {
+  // Test hook (`window.__clipExportProfile`, ADR-028): the measurement scripts
+  // ask the worker for stage timings; nothing in the app sets it.
+  const profile = (globalThis as { __clipExportProfile?: unknown }).__clipExportProfile === true;
   return new Worker(new URL('./exportWorker.ts', import.meta.url), {
     type: 'module',
-    name: 'clip-export',
+    name: profile ? `clip-export${EXPORT_PROFILE_WORKER_SUFFIX}` : 'clip-export',
   });
 }
 

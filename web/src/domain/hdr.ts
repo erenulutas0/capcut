@@ -249,6 +249,161 @@ export function softClipToRgba8(source: ArrayLike<number>, target: Uint8ClampedA
 /** The knee in sRGB encoding, for the fast path. */
 const KNEE_ENCODED = 1.055 * SOFT_CLIP_KNEE ** (1 / 2.4) - 0.055;
 
+/** The exact value of an IEEE 754 half-precision number, from its 16 bits. */
+export function halfToFloat(bits: number): number {
+  const sign = bits & 0x8000 ? -1 : 1;
+  const exponent = (bits >> 10) & 0x1f;
+  const fraction = bits & 0x3ff;
+  if (exponent === 0) return sign * fraction * 2 ** -24;
+  if (exponent === 0x1f) return fraction === 0 ? sign * Infinity : NaN;
+  return sign * (1 + fraction / 1024) * 2 ** (exponent - 15);
+}
+
+interface HalfTables {
+  /** Every half value as a number (exact: halves fit in a float32). */
+  value: Float32Array;
+  /** `srgbDecodeExtended` of every half value: the same doubles, computed once. */
+  linear: Float64Array;
+  /** The under-the-knee result, `Uint8ClampedArray` rounding of value × 255. */
+  quantised: Uint8Array;
+  /** 1 when the value is NOT under the knee (NaN included), as in the loop above. */
+  overKnee: Uint8Array;
+}
+
+let halfTables: HalfTables | null = null;
+
+function tablesForHalves(): HalfTables {
+  if (halfTables) return halfTables;
+  const value = new Float32Array(65536);
+  const linear = new Float64Array(65536);
+  const quantised = new Uint8Array(65536);
+  const overKnee = new Uint8Array(65536);
+  const clamp = new Uint8ClampedArray(1);
+  for (let bits = 0; bits < 65536; bits += 1) {
+    const v = halfToFloat(bits);
+    value[bits] = v;
+    linear[bits] = srgbDecodeExtended(v);
+    clamp[0] = v * 255;
+    quantised[bits] = clamp[0] ?? 0;
+    overKnee[bits] = v <= KNEE_ENCODED ? 0 : 1;
+  }
+  halfTables = { value, linear, quantised, overKnee };
+  return halfTables;
+}
+
+interface EncodeTable {
+  /** `thresholds[k]`: the smallest linear value `srgbEncode8` maps to at least k. */
+  thresholds: Float64Array;
+  /** How many thresholds (k >= 1) lie at or below `j / ENCODE_BUCKETS`. */
+  bucketStart: Uint8Array;
+}
+
+/** Buckets of the linear range [0, 1): each holds at most a couple of steps. */
+const ENCODE_BUCKETS = 4096;
+
+let encodeTable: EncodeTable | null = null;
+
+/**
+ * `thresholds[k]` is the smallest linear value that `srgbEncode8` maps to at
+ * least k (k = 1..255), found by bisection down to adjacent doubles with the
+ * function itself. `srgbEncode8` only clamps, applies a monotonic curve and
+ * rounds, so counting the thresholds at or below a value gives its result
+ * without the `pow` call (unit tested densely around every threshold).
+ */
+function srgbEncodeTable(): EncodeTable {
+  if (encodeTable) return encodeTable;
+  const thresholds = new Float64Array(256);
+  thresholds[0] = -Infinity;
+  for (let k = 1; k < 256; k += 1) {
+    let lo = 0; // srgbEncode8(lo) < k
+    let hi = 1; // srgbEncode8(hi) >= k
+    for (;;) {
+      const mid = lo + (hi - lo) / 2;
+      if (mid <= lo || mid >= hi) break;
+      if (srgbEncode8(mid) >= k) hi = mid;
+      else lo = mid;
+    }
+    thresholds[k] = hi;
+  }
+  const bucketStart = new Uint8Array(ENCODE_BUCKETS);
+  let k = 0;
+  for (let j = 0; j < ENCODE_BUCKETS; j += 1) {
+    const start = j / ENCODE_BUCKETS;
+    while (k < 255 && thresholds[k + 1]! <= start) k += 1;
+    bucketStart[j] = k;
+  }
+  encodeTable = { thresholds, bucketStart };
+  return encodeTable;
+}
+
+/**
+ * `srgbEncode8` through the threshold table: the number of thresholds at or
+ * below `linear`. NaN, zero and negatives give 0 and 1 or more gives 255, as
+ * the clamp there does. The bucket of `linear` (`linear * 4096` is exact, a
+ * power-of-two scale) gives a count that is never too high; the loop then
+ * walks up the remaining one or two thresholds.
+ */
+function srgbEncode8Table(table: EncodeTable, linear: number): number {
+  if (!(linear > 0)) return 0;
+  if (linear >= 1) return 255;
+  const { thresholds, bucketStart } = table;
+  let k = bucketStart[Math.floor(linear * ENCODE_BUCKETS)]!;
+  while (k < 255 && thresholds[k + 1]! <= linear) k += 1;
+  return k;
+}
+
+/** Exported for the tests: the table form of the 8-bit sRGB encode. */
+export function srgbEncode8ByTable(linear: number): number {
+  return srgbEncode8Table(srgbEncodeTable(), linear);
+}
+
+/** Exported for the tests: the reference 8-bit sRGB encode. */
+export function srgbEncode8Reference(linear: number): number {
+  return srgbEncode8(linear);
+}
+
+/**
+ * `softClipToRgba8` for the raw bits of a float16 read-back (ADR-028): the
+ * same result, byte for byte, without converting two million half floats to
+ * numbers per 1080p frame. Each channel's quantised value and its "over the
+ * knee" answer come from 64 Ki-entry tables built once; only the rare pixels
+ * over the knee take the exact arithmetic path, with exactly the numbers the
+ * float loop would have seen.
+ */
+export function softClipHalfToRgba8(bits: Uint16Array, target: Uint8ClampedArray): void {
+  if (bits.length < target.length) {
+    // Never on a real read-back; kept exact for any caller.
+    const values = Array.from(bits, (b) => halfToFloat(b));
+    softClipToRgba8(values, target);
+    return;
+  }
+  const { linear, quantised, overKnee } = tablesForHalves();
+  const encode = srgbEncodeTable();
+  const length = target.length;
+  for (let i = 0; i < length; i += 4) {
+    const rb = bits[i]!;
+    const gb = bits[i + 1]!;
+    const bb = bits[i + 2]!;
+    if ((overKnee[rb]! | overKnee[gb]! | overKnee[bb]!) === 0) {
+      target[i] = quantised[rb]!;
+      target[i + 1] = quantised[gb]!;
+      target[i + 2] = quantised[bb]!;
+    } else {
+      let r = linear[rb]!;
+      let g = linear[gb]!;
+      let b = linear[bb]!;
+      const scale = softClip(Math.max(r, g, b)) / Math.max(r, g, b);
+      r *= scale;
+      g *= scale;
+      b *= scale;
+      target[i] = srgbEncode8Table(encode, r);
+      target[i + 1] = srgbEncode8Table(encode, g);
+      target[i + 2] = srgbEncode8Table(encode, b);
+    }
+    target[i + 3] = 255;
+  }
+}
+
 /* ------------------------------------------------------------ the probe */
 
 type PatchKind = 'neutral' | 'primary' | 'bright';

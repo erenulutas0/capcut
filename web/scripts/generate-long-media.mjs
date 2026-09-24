@@ -21,6 +21,8 @@
  *   node scripts/generate-long-media.mjs --only=big      # >4 GiB, 60 min 1080p (byte-limit evidence)
  *   node scripts/generate-long-media.mjs --only=edges    # just under / just over 4 GiB, cut from `big` (ADR-025)
  *   node scripts/generate-long-media.mjs --seconds=20 --only=1080   # quick check of the filter graph
+ *   node scripts/generate-long-media.mjs --only=rot90    # 1080p coded landscape, displayed portrait
+ *                                                         # (rotation metadata, like a phone; ADR-028)
  */
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
@@ -62,6 +64,18 @@ const SPECS = {
     seconds: 7200,
     video: ['-b:v', '1100k', '-maxrate', '1400k', '-bufsize', '2800k'],
     noise: false,
+  },
+  // A phone held upright: coded 1920×1080, shown 1080×1920 through the
+  // container's rotation (display matrix), so the export draws it rotated
+  // (ADR-028). The barcode is rotated with the picture.
+  rot90: {
+    name: 'long-120min-1080p-rot90.mp4',
+    width: 1920,
+    height: 1080,
+    seconds: 7200,
+    video: ['-b:v', '1800k', '-maxrate', '2200k', '-bufsize', '4400k'],
+    noise: false,
+    rotate: 90,
   },
   // Over 4 GiB on purpose (byte-limit evidence, ADR-021 and ADR-025):
   // 60 minutes of noisy 1080p at ~10.5 Mbit/s.
@@ -177,6 +191,14 @@ for (const key of only) {
     '-c:a', 'aac', '-b:a', '96k', '-ac', '1',
     partial,
   ]);
+  if (spec.rotate) {
+    // Stream copy with a display matrix: same frames, shown rotated.
+    const rotated = `${file}.rot.mp4`;
+    rmSync(rotated, { force: true });
+    await run(['-hide_banner', '-loglevel', 'error', '-y', '-display_rotation:v:0', String(spec.rotate), '-i', partial, '-map', '0', '-c', 'copy', rotated]);
+    rmSync(partial, { force: true });
+    renameSync(rotated, partial);
+  }
   renameSync(partial, file);
   console.log(
     `hazır: ${file} — ${(statSync(file).size / 1048576).toFixed(1)} MiB, ${((Date.now() - started) / 60000).toFixed(1)} dk`,

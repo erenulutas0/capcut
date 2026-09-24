@@ -24,8 +24,9 @@ import {
   Input,
   Mp4OutputFormat,
   Output,
+  VideoSample,
   VideoSampleSink,
-  type VideoSample,
+  VideoSampleSource,
   canEncodeAudio,
   canEncodeVideo,
   type InputAudioTrack,
@@ -61,6 +62,13 @@ import {
   loadCaptionFont,
 } from '../captionRender';
 import { AudioStreamReader } from './audioStream';
+import { MediaPacer } from './exportPacing';
+import {
+  EXPORT_PROFILE_LOG_PREFIX,
+  EXPORT_PROFILE_WORKER_SUFFIX,
+  createStageClock,
+  type StageLane,
+} from './exportProfile';
 import {
   avcLengthSize,
   inBandSpsUnderstates,
@@ -68,7 +76,8 @@ import {
   reorderDepth,
 } from './avcReorder';
 import { pickFrames } from './framePicker';
-import { createHdrContext, softClippedImage } from './hdrCanvas';
+import { createHdrContext, readHdrPixels } from './hdrCanvas';
+import { HDR_CLIP_WORKER_NAME, HDR_PIPELINE_DEPTH, HdrClipper, serveHdrClips } from './hdrClip';
 import { probeHdrToneMapping, type HdrProbeResult } from './hdrProbe';
 import { removeExportEntry, sweepExportEntries } from './opfsEntries';
 import { prepareOutput } from './outputSink';
@@ -82,8 +91,17 @@ import type {
 
 const scope = self as unknown as DedicatedWorkerGlobalScope;
 
+/** Stage timings (ADR-028); only when a measurement script asked for them. */
+const profiling = typeof scope.name === 'string' && scope.name.endsWith(EXPORT_PROFILE_WORKER_SUFFIX);
+
 /** Audio is mixed in chunks so memory stays flat regardless of duration. */
 const AUDIO_CHUNK_FRAMES = 4096;
+/**
+ * How far a segment's audio may run ahead of its frames, in output seconds
+ * (ADR-028): enough to fill the encoder waits, close enough that both tracks
+ * are written to the file side by side.
+ */
+const AUDIO_LEAD_SECONDS = 1;
 /** How often the encoding progress event is emitted, in output frames. */
 const PROGRESS_EVERY_FRAMES = 5;
 
@@ -505,6 +523,8 @@ async function writeSegmentAudio(
   sources: AudioContextSources,
   audioSource: AudioSampleSource,
   requestId: string,
+  clock: StageLane,
+  pacer: MediaPacer,
 ): Promise<void> {
   const outRate = plan.audio.sampleRate;
   const channels = plan.audio.channelCount;
@@ -517,14 +537,22 @@ async function writeSegmentAudio(
   const { clipReader, musicReader } = sources;
 
   if (clipReader && segment.gain > 0) {
+    clock.mark();
     await clipReader.open(
       segment.sourceInUs / US_PER_SECOND,
       segment.sourceOutUs / US_PER_SECOND,
     );
+    clock.lap('audioDecode');
   }
 
   for (let frame = firstAudioFrame; frame < lastAudioFrame; frame += AUDIO_CHUNK_FRAMES) {
+    // Not further ahead of the frames than the lead (ADR-028); the wait is
+    // time spent on video, not audio work, so it is outside the marks.
+    const turn = pacer.until(frame / outRate);
+    if (turn) await turn;
+    if (pacer.isStopped) return;
     checkCanceled(requestId);
+    clock.mark();
     const chunkFrames = Math.min(AUDIO_CHUNK_FRAMES, lastAudioFrame - frame);
     const planar: Float32Array[] = [];
     for (let channel = 0; channel < channels; channel += 1) {
@@ -542,7 +570,9 @@ async function writeSegmentAudio(
 
       // Buffer forward first, then mix: `pcm` only exists once something
       // has been decoded, and a silent source legitimately never fills it.
+      clock.lap('audioMix');
       await clipReader.ensure(Math.ceil(positionStart + chunkFrames * positionStep) + 2);
+      clock.lap('audioDecode');
       if (clipReader.pcm) {
         mixStreamInto(
           planar,
@@ -574,7 +604,9 @@ async function writeSegmentAudio(
         const positionStart = (musicSourceUs / US_PER_SECOND) * srcRate;
         const positionStep = srcRate / outRate;
 
+        clock.lap('audioMix');
         await musicReader.ensure(Math.ceil(positionStart + chunkFrames * positionStep) + 2);
+        clock.lap('audioDecode');
         if (musicReader.pcm) {
           mixStreamInto(planar, chunkFrames, musicReader.pcm, positionStart, positionStep, gains);
           musicReader.release(Math.floor(positionStart) - 1);
@@ -591,16 +623,17 @@ async function writeSegmentAudio(
       }
     }
     clampBuffers(planar, chunkFrames);
+    const mixed = new AudioSample({
+      data: interleave(planar, chunkFrames),
+      format: 'f32',
+      numberOfChannels: channels,
+      sampleRate: outRate,
+      timestamp: frame / outRate,
+    });
+    clock.lap('audioMix');
 
-    await audioSource.add(
-      new AudioSample({
-        data: interleave(planar, chunkFrames),
-        format: 'f32',
-        numberOfChannels: channels,
-        sampleRate: outRate,
-        timestamp: frame / outRate,
-      }),
-    );
+    await audioSource.add(mixed);
+    clock.lap('audioEncode');
   }
 }
 
@@ -616,6 +649,7 @@ async function runExport(
   storageReserveBytes: number | null,
 ): Promise<void> {
   const startedAt = Date.now();
+  const clock = createStageClock(profiling);
   emit(requestId, { type: 'preparing', attemptId: requestId });
 
   // Before any decoding or output file exists: a missing font or a line that
@@ -690,7 +724,10 @@ async function runExport(
   if (hdrTransfer && !hdrContext) throw new ExportFailure('hdr_source_unsupported');
   const frameContext = hdrContext ?? context;
 
-  const videoSource = new CanvasSource(canvas, {
+  // The canvas is snapshotted into a sample here rather than by mediabunny's
+  // CanvasSource: the same `new VideoSample(canvas)` it makes, but the
+  // snapshot and the encoder hand-off can be timed apart (ADR-028).
+  const videoSource = new VideoSampleSource({
     codec: 'avc',
     bitrate: videoBitrate,
     keyFrameInterval: 2,
@@ -708,6 +745,10 @@ async function runExport(
     clipReader: sourceAudioUsable && sourceAudioTrack ? new AudioStreamReader(new AudioSampleSink(sourceAudioTrack)) : null,
     musicReader: musicTrack ? new AudioStreamReader(new AudioSampleSink(musicTrack)) : null,
   };
+  const audioLane = clock.lane();
+  // HDR: the soft clip runs on a helper thread when one starts (ADR-028).
+  const hdrClipper = hdrContext ? new HdrClipper(plan.width * plan.height * 4) : null;
+  const hdrQueue: { frame: number; picture: Promise<Uint8ClampedArray> }[] = [];
 
   const frameDuration = plan.fpsDen / plan.fpsNum;
   let framesDone = 0;
@@ -715,8 +756,66 @@ async function runExport(
   let framesMissing = 0;
   let succeeded = false;
 
+  /**
+   * Captions, snapshot and encoder hand-off of the picture now on `canvas`,
+   * as output frame `frameIndex`, then the bookkeeping of a finished frame.
+   */
+  const encodeCanvasFrame = async (frameIndex: number, pacer: MediaPacer): Promise<void> => {
+    // Burned in on top of the picture, before the frame is handed to the
+    // encoder. Drawn even on a held/background frame: the caption belongs
+    // to output time, not to the source frame.
+    if (captionLayouts && plan.captions) {
+      const cueIndex = cueIndexAtFrame(plan.captions.cues, frameIndex);
+      const layout = cueIndex >= 0 ? captionLayouts[cueIndex] : undefined;
+      if (layout) drawCaptionLayout(context, layout, plan.captions.style.preset);
+      clock.lap('captions');
+    }
+
+    const picture = new VideoSample(canvas, { timestamp: frameIndex * frameDuration, duration: frameDuration });
+    clock.lap('frameCapture');
+    try {
+      await videoSource.add(picture);
+    } finally {
+      picture.close();
+    }
+    clock.lap('encode');
+    framesDone += 1;
+    pacer.advance((frameIndex + 1) * frameDuration);
+
+    if (framesDone % PROGRESS_EVERY_FRAMES === 0 || framesDone === plan.totalFrames) {
+      emit(requestId, {
+        type: 'encoding',
+        attemptId: requestId,
+        progress: plan.totalFrames > 0 ? framesDone / plan.totalFrames : null,
+        framesDone,
+        totalFrames: plan.totalFrames,
+      });
+      clock.lap('progress');
+    }
+  };
+
+  /** The oldest HDR frame in flight: its clipped picture onto `canvas`, then encoded. */
+  const finishHdrFrame = async (pacer: MediaPacer): Promise<void> => {
+    const next = hdrQueue.shift();
+    if (!next || !hdrClipper) return;
+    clock.mark();
+    let rgba: Uint8ClampedArray;
+    try {
+      rgba = await next.picture;
+    } catch {
+      throw new ExportFailure('internal_error');
+    }
+    clock.lap('hdrClip');
+    context.putImageData(new ImageData(rgba as Uint8ClampedArray<ArrayBuffer>, plan.width, plan.height), 0, 0);
+    hdrClipper.recycle(rgba);
+    clock.lap('hdrWrite');
+    await encodeCanvasFrame(next.frame, pacer);
+  };
+
   try {
     await output.start();
+    if (hdrClipper) await hdrClipper.ready();
+    clock.lap('setup');
 
     if (sources.musicReader && plan.audio.music) {
       await sources.musicReader.open(
@@ -742,60 +841,77 @@ async function runExport(
       }
       if (timestamps.length === 0) continue;
 
-      // One continuous decode per moment (see framePicker): a flush at every
-      // GOP boundary made Chromium drop whole GOPs of real camera footage.
-      const firstTs = timestamps[0] ?? 0;
-      const lastTs = timestamps[timestamps.length - 1] ?? firstTs;
-      const decoded = videoSink.samples(firstTs, lastTs + 0.001);
-      let frame = segment.startFrame;
-      for await (const { frame: sample, missing } of pickFrames(decoded, timestamps, frameDuration)) {
-        checkCanceled(requestId);
+      // The segment's audio is mixed and encoded alongside its frames, in the
+      // time the worker would otherwise only wait for the video encoder
+      // (ADR-028). It is paced to the frames and finished before the next
+      // segment starts, so each track stays in order. A failure (or cancel)
+      // on either side stops the other.
+      const pacer = new MediaPacer(AUDIO_LEAD_SECONDS);
+      let audioFailure: { error: unknown } | null = null;
+      const audioTask =
+        audioSource
+          ? writeSegmentAudio(plan, segment, sources, audioSource, requestId, audioLane, pacer).catch(
+              (error: unknown) => {
+                audioFailure = { error };
+              },
+            )
+          : null;
 
-        frameContext.fillStyle = plan.background;
-        frameContext.fillRect(0, 0, plan.width, plan.height);
+      try {
+        // One continuous decode per moment (see framePicker): a flush at every
+        // GOP boundary made Chromium drop whole GOPs of real camera footage.
+        const firstTs = timestamps[0] ?? 0;
+        const lastTs = timestamps[timestamps.length - 1] ?? firstTs;
+        const decoded = videoSink.samples(firstTs, lastTs + 0.001);
+        let frame = segment.startFrame;
+        clock.mark();
+        for await (const { frame: sample, missing } of pickFrames(decoded, timestamps, frameDuration)) {
+          clock.lap('decodeWait');
+          checkCanceled(requestId);
+          if (audioFailure) throw (audioFailure as { error: unknown }).error;
 
-        // A frame the decoder did not deliver is counted, never hidden: the
-        // previous frame is held (or the background shown when none exists)
-        // and the total decides below whether this is still an honest result.
-        if (missing) framesMissing += 1;
-        if (sample) {
-          // Same rectangle the preview uses, taken straight from the plan.
-          // The picker owns the sample and closes it; do not close it here.
-          drawSegmentFrame(frameContext, sample, segment, plan);
-          framesDrawn += 1;
+          frameContext.fillStyle = plan.background;
+          frameContext.fillRect(0, 0, plan.width, plan.height);
+
+          // A frame the decoder did not deliver is counted, never hidden: the
+          // previous frame is held (or the background shown when none exists)
+          // and the total decides below whether this is still an honest result.
+          if (missing) framesMissing += 1;
+          if (sample) {
+            // Same rectangle the preview uses, taken straight from the plan.
+            // The picker owns the sample and closes it; do not close it here.
+            drawSegmentFrame(frameContext, sample, segment, plan);
+            framesDrawn += 1;
+          }
+          clock.lap('draw');
+
+          if (hdrContext && hdrClipper) {
+            // HDR (ADR-022): read the float picture back now; its soft clip
+            // runs on the helper while the next frame is drawn (ADR-028).
+            const pixels = readHdrPixels(hdrContext, plan.width, plan.height);
+            if (!pixels) throw new ExportFailure('hdr_source_unsupported');
+            clock.lap('hdrRead');
+            const picture = hdrClipper.clip(pixels);
+            // Awaited below in order; a failure is raised there, not here.
+            picture.catch(() => undefined);
+            hdrQueue.push({ frame, picture });
+            frame += 1;
+            if (hdrQueue.length >= HDR_PIPELINE_DEPTH) await finishHdrFrame(pacer);
+          } else {
+            await encodeCanvasFrame(frame, pacer);
+            frame += 1;
+          }
+          clock.mark();
         }
-        if (hdrContext) {
-          const image = softClippedImage(hdrContext, plan.width, plan.height);
-          if (!image) throw new ExportFailure('hdr_source_unsupported');
-          context.putImageData(image, 0, 0);
-        }
-
-        // Burned in on top of the picture, before the frame is handed to the
-        // encoder. Drawn even on a held/background frame: the caption belongs
-        // to output time, not to the source frame.
-        if (captionLayouts && plan.captions) {
-          const cueIndex = cueIndexAtFrame(plan.captions.cues, frame);
-          const layout = cueIndex >= 0 ? captionLayouts[cueIndex] : undefined;
-          if (layout) drawCaptionLayout(context, layout, plan.captions.style.preset);
-        }
-
-        await videoSource.add(frame * frameDuration, frameDuration);
-        frame += 1;
-        framesDone += 1;
-
-        if (framesDone % PROGRESS_EVERY_FRAMES === 0 || framesDone === plan.totalFrames) {
-          emit(requestId, {
-            type: 'encoding',
-            attemptId: requestId,
-            progress: plan.totalFrames > 0 ? framesDone / plan.totalFrames : null,
-            framesDone,
-            totalFrames: plan.totalFrames,
-          });
-        }
-      }
-
-      if (audioSource) {
-        await writeSegmentAudio(plan, segment, sources, audioSource, requestId);
+        while (hdrQueue.length > 0) await finishHdrFrame(pacer);
+        pacer.finish();
+        await audioTask;
+        if (audioFailure) throw (audioFailure as { error: unknown }).error;
+      } finally {
+        // On any early exit the audio stops at its next chunk and is awaited,
+        // so nothing still writes into the output while it is torn down.
+        pacer.stop();
+        await audioTask;
       }
     }
 
@@ -807,6 +923,7 @@ async function runExport(
     checkCanceled(requestId);
     emit(requestId, { type: 'finalizing', attemptId: requestId });
 
+    clock.mark();
     videoSource.close();
     audioSource?.close();
     await output.finalize();
@@ -814,9 +931,11 @@ async function runExport(
     const collected = await sink.collect(output.target);
     const produced = collected.file ?? collected.bytes;
     if (!produced || collected.sizeBytes === 0) throw new ExportFailure('output_probe_failed');
+    clock.lap('finalize');
 
     emit(requestId, { type: 'verifying', attemptId: requestId });
     const probe = await probeProduced(produced);
+    clock.lap('probe');
 
     if (!durationWithinTolerance(plan.expectedDurationUs, probe.durationUs, plan.fpsNum, plan.fpsDen)) {
       throw new ExportFailure('output_duration_mismatch');
@@ -858,6 +977,26 @@ async function runExport(
       throw new ExportFailure('output_probe_failed');
     }
   } finally {
+    if (clock.enabled) {
+      // Measurement only (ADR-028): read by the scripts from the console.
+      console.info(
+        `${EXPORT_PROFILE_LOG_PREFIX} ${JSON.stringify({
+          succeeded,
+          width: plan.width,
+          height: plan.height,
+          totalFrames: plan.totalFrames,
+          segments: plan.segments.length,
+          hdr: hdrTransfer !== null,
+          captions: captionLayouts !== null,
+          audio: wantsAudio,
+          route: sink.route,
+          videoBitrate,
+          ...clock.summary(framesDone),
+        })}`,
+      );
+    }
+    hdrClipper?.close();
+    hdrQueue.length = 0;
     await sources.clipReader?.close();
     await sources.musicReader?.close();
     // `finalize()` already tore the output down on the success path; cancel()
@@ -911,7 +1050,14 @@ function drawSegmentFrame(
 
 /* ------------------------------------------------------------- message loop */
 
-scope.onmessage = async (message: MessageEvent<WorkerRequest>) => {
+if (scope.name === HDR_CLIP_WORKER_NAME) {
+  // This instance is the HDR clip helper of another export (hdrClip.ts).
+  serveHdrClips(scope);
+} else {
+  scope.onmessage = onRequest;
+}
+
+async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
   const request = message.data;
 
   if (request.type === 'cancel') {
@@ -969,4 +1115,4 @@ scope.onmessage = async (message: MessageEvent<WorkerRequest>) => {
       if (cancelRequestedFor === request.requestId) cancelRequestedFor = null;
     }
   }
-};
+}
