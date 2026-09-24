@@ -189,10 +189,11 @@ export function EditorApp() {
   // ------------------------------------------------------------ files
 
   const pickVideo = useCallback(() => {
-    if (state.project.clips.length > 0 && !window.confirm(t('sources.replaceWarning'))) return;
+    const hasWork = state.project.clips.length > 0 || state.project.captionTracks.length > 0;
+    if (hasWork && !window.confirm(t('sources.replaceWarning'))) return;
     setMoreOpen(false);
     videoInputRef.current?.click();
-  }, [state.project.clips.length]);
+  }, [state.project.clips.length, state.project.captionTracks.length]);
 
   const pickAudio = useCallback(() => audioInputRef.current?.click(), []);
 

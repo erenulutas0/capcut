@@ -268,3 +268,38 @@ describe('shift and import', () => {
     expect(suggestTimeBase([{ endUs: 18 * S }], 20 * S, 20 * S, true)).toBe('same');
   });
 });
+
+describe('opening a different video (setVideoAsset)', () => {
+  const other: AssetV1 = { ...video, assetId: 'a_video_002', durationUs: 30 * S };
+
+  it('removes the old video’s kesitler and every caption track with them', () => {
+    const sourceAnchored = importSource(withMoments([[1, 4]]), [[1, 2, 'eski video']]);
+    const both: Project = {
+      ...sourceAnchored,
+      captionTracks: [...sourceAnchored.captionTracks, ...withOutputTrack(sourceAnchored).captionTracks],
+    };
+    expect(both.captionTracks.map((track) => track.timeBase)).toEqual(['source', 'output']);
+
+    const replaced = setVideoAsset(both, other);
+    expect(replaced.clips).toEqual([]);
+    expect(replaced.captionTracks).toEqual([]);
+    // Nothing of the old video can reach the new video's download.
+    const added = addClip(replaced, { sourceInUs: 0, sourceOutUs: 2 * S });
+    if (!added.ok) throw new Error(added.reason);
+    const plan = compileRenderPlan(added.project, WEB_LOCAL_POLICY);
+    if (!plan.ok) throw new Error('plan refused');
+    expect(plan.plan.captions).toBeFalsy();
+  });
+
+  it('keeps kesitler and captions when the same asset is opened again (relink)', () => {
+    const project = importSource(withMoments([[1, 4]]), [[1, 2, 'aynı video']]);
+    const again = setVideoAsset(project, video);
+    expect(again.clips).toHaveLength(1);
+    expect(again.captionTracks).toHaveLength(1);
+  });
+
+  it('keeps captions when the first video is opened into a project without one', () => {
+    const empty = withOutputTrack(createEmptyProject());
+    expect(setVideoAsset(empty, video).captionTracks).toHaveLength(1);
+  });
+});

@@ -81,14 +81,24 @@ export function nextAssetId(project: Project, kind: 'video' | 'audio'): string {
 
 /**
  * W0 keeps a single video source. Picking a different file replaces it and
- * drops the moments that pointed at the old one — the UI confirms first.
+ * drops the kesitler that pointed at the old one — the UI confirms first.
+ *
+ * The captions go with them: a `source` track is tied to the old file, and an
+ * `output` track to the kesitler that were just removed. Kept, they would stay
+ * invisible in the project and an `output` track would be burned into the new
+ * video's download. Re-opening the same asset (a relink) keeps everything.
  */
 export function setVideoAsset(project: Project, asset: AssetV1): Project {
+  const previous = project.assets.find((existing) => existing.kind === 'video');
+  const replacing = previous !== undefined && previous.assetId !== asset.assetId;
   const others = project.assets.filter((existing) => existing.kind !== 'video');
   const keptClips = project.clips.filter((clip) => clip.assetId === asset.assetId);
   return bump(project, {
     assets: [asset, ...others],
     clips: keptClips,
+    captionTracks: replacing
+      ? project.captionTracks.filter((track) => track.timeBase === 'source' && track.assetId === asset.assetId)
+      : project.captionTracks,
   });
 }
 

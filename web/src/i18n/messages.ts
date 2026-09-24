@@ -278,7 +278,8 @@ export const tr = {
   'sources.none': 'Seçili dosya yok.',
   'sources.duration': 'Süre',
   'sources.size': 'Boyut',
-  'sources.replaceWarning': 'Yeni bir video seçersen kesitlerin silinir. Devam edilsin mi?',
+  'sources.replaceWarning':
+    'Yeni bir video seçersen kesitlerin ve altyazıların silinir. Devam edilsin mi?',
   'sources.localOnly': 'Kaynak dosyana dokunmuyoruz. Hiçbir dosya yüklenmez.',
 
   'frame.title': 'Videonun çerçevesi',
@@ -1003,7 +1004,8 @@ export const en: Record<MessageKey, string> = {
   'sources.none': 'No file selected.',
   'sources.duration': 'Duration',
   'sources.size': 'Size',
-  'sources.replaceWarning': 'Choosing a new video removes your clips. Continue?',
+  'sources.replaceWarning':
+    'Choosing a new video removes your clips and captions. Continue?',
   'sources.localOnly': 'We never touch your source file. Nothing is uploaded.',
 
   'frame.title': 'Video frame',
