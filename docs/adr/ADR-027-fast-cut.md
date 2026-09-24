@@ -53,8 +53,13 @@ hangisinin olduğunu söyler.
    Tutmazsa geçici dosya silinir, **tam kodlama çalışır** ve sonuç sebebi söyler
    (`seam_check`). İptal, disk dolması, bellek ve politika retleri tam kodlamayı
    denemeden aynı hatayla biter.
-8. **Uygunluk dar tutuldu (doc 15'e dokunulmadı).** Hızlı kesim yalnızca kaynak zaten
-   tam o indirmeyse çalışır:
+8. **Uygunluk (politika `2026-09-24.v6`, kurucu kararı 24 Eylül 2026).** Hızlı kesim
+   yalnızca kaynak zaten 720p/1080p katmanındaki o indirmeyse çalışır. "Katmanın içinde"
+   tam olarak şu demek: kaynağın görüntülenen boyutu (döndürmeden sonra) editörün
+   sunduğu indirme boyutlarından biri ve seçilen boyutla aynı — 1280×720, 720×1280,
+   720×720, 1920×1080, 1080×1920, 1080×1080. 1440p, 4K, 480p ve tek sayılı/tuhaf boyutlar
+   (1920×1088, 592×1280 gibi) seçilen boyuta kodlanır; 4K ve 1080p60 bilerek hızlı
+   kesime girmez (kurucu: hayır).
 
    | Kural | Uymazsa (`fallbackReason`) |
    |---|---|
@@ -69,7 +74,7 @@ hangisinin olduğunu söyler.
    | 8-bit 4:2:0 progresif, 4 baytlık NAL uzunluğu | `bitstream` |
    | Sınırlı renk aralığı, bt709/bt601 renkleri | `color` |
    | ADR-014 §3 yeniden sıralama düzeltmesi gerekmiyor | `reorder` |
-   | Kareler 30 fps ızgarasında (ilk kareden itibaren, ±1 tik + %0,5 kare) | `fps` |
+   | Kaynak en çok 30 fps (aşağıdaki ölçü) | `fps` |
    | Aralıklardan en az birinde IDR var | `no_keyframe` |
    | Zaman damgaları tutarlı | `timing` |
    | Tarayıcı kaynak boyutunda H.264 kodlayabiliyor (dikiş) | `encoder` |
@@ -109,24 +114,44 @@ hangisinin olduğunu söyler.
   denetliyor (döndürme matrisle taşındığı için kodlu boyut 1280×720 kalabiliyor).
   Gerçek kayıt koşucusu Chrome'da 15/15.
 
-## Kurucu soruları
+## Kurucu kararları (24 Eylül 2026) — politika `2026-09-24.v6`
 
-1. **Kare hızı (doc 15: "720p / 1080p, SDR, 30 fps").** Bugünkü kural yalnızca 30 fps
-   ızgarasındaki kaynağı kopyalıyor. Eldeki **gerçek telefon kayıtlarının hiçbiri** buna
-   uymuyor (iPhone 29,97 ve değişken, 24 fps, 60 fps), yani hızlı kesim bugün
-   neredeyse yalnızca 30 fps ekran/kamera kayıtlarında çalışır. Teknik bu kayıtlarda da
-   ölçüldü ve doğru. Öneri: **"en çok 30 fps"** okuması — 24/25/29,97 fps ve 30 fps'i
-   aşmayan değişken hızlı kaynak kendi hızında kopyalansın (kareler ve süre aynı, yalnızca
-   indirilen dosya 30 değil 29,97 fps olur; tam kodlama bugün bu kaynaklarda kare
-   çoğaltıyor). 50/60 fps kaynak 30 fps'e kodlanmaya devam etsin. Karar kurucunun;
-   değişirse tek satır (`frameRateMatchesPlan` → üst sınır kuralı) ve belge.
-2. **Çözünürlük.** 4K kaynağın 1080p indirmesi ve 1080p60 kodlanmaya devam ediyor. 4K
-   veya 60 fps'i olduğu gibi kopyalamak doc 15'in katmanını aşar (Pro/ücret konusu);
-   önerilmiyor.
-3. **Dosya boyutu.** Hızlı kesimin dosyası kaynağın bit hızındadır: sentetik kaynakta
-   3 kat küçük, gerçek bir telefon kaydında (15–20 Mbit/s) tam kodlamadan (5,6 Mbit/s)
-   2–3 kat büyük olabilir. Kabul edilebilir mi, yoksa belli bir bit hızının üstünde
-   tam kodlama mı tercih edilsin?
+1. **Kare hızı: "en çok 30 fps".** 24, 25, 29,97, 30 fps ve 30 fps'i aşmayan değişken
+   hızlı telefon kaydı kendi hızında kopyalanır; 50/60 fps kaynak 30 fps'e kodlanır.
+   Doc 15'in kalite satırı "720p / 1080p, SDR, en çok 30 fps" oldu (değişiklik notu v6).
+2. **Çözünürlük: hayır.** 4K ve 1080p60 tam kodlamada kalır; hızlı kesim yalnızca
+   yukarıda tanımlanan 720p/1080p boyutlarında.
+3. **Dosya boyutu: kabul.** Kopya kaynağın bit hızını korur, üst sınır yok. Sonuç satırı
+   bunu söyler: "Hızlı kesim — görüntü yeniden kodlanmadı, orijinal kalite".
+
+### Değişken hızlı kaynakta "en çok 30 fps" nasıl ölçülüyor
+
+Gerçek kayıtlarda paket zamanları ölçüldü (`scripts/fast-cut-spike/frame-rate-stats.mjs`):
+
+| Kayıt | Ortalama | Medyan | En kısa aralık (hız olarak) | 1 s'lik pencerede en çok kare |
+|---|---|---|---|---|
+| R03 720×1280 (nominal 30) | 30,004 | 30,00 | 31,6 | 31 |
+| R04 480×724 (nominal 30, VFR) | 29,934 | 30,02 | 30,3 | 31 |
+| R05 1080×1920 30 | 30,000 | 30,00 | 30,0 | 30 |
+| R06 iPhone 4 (VFR) | 24,335 | 24,00 | 30,0 | 30 |
+| R10 iPhone 11 (29,97 VFR) | 29,974 | 30,00 | 30,0 | 30 |
+| R13/R14 HEVC (nominal 30) | 29,83/30,02 | 30,00 | 31,1/30,1 | 31 |
+| R02 592×1280 (VFR) | 40,600 | 60,00 | 200 | **47** |
+| R07/R12/R15 (59,94/60) | 59,9–60,0 | 60 | 60–60,5 | **60–61** |
+
+- **En kısa aralık (anlık en yüksek hız) kullanılamaz:** nominal 30 fps dosyaların tek tük
+  aralıkları 1/31,6 s'ye iniyor (zaman damgası titremesi); bu ölçü onların hepsini reddederdi.
+- **Yalnızca ortalama da yetmez:** 60 fps'lik birkaç saniye, yavaş bir bölümle ortalamada
+  30'un altına düşebilir.
+- **Kural (`frameRateWithinPlan`):** kopyalanacak anın karelerinde, bir saniyeye kadar her
+  aralıkta kare aralığı sayısı `30 × süre + 1`'i aşmaz (30 fps'nin üstünde en çok **bir**
+  kare titremesi) ve anın ortalama hızı 30,3 fps'yi aşmaz. Nominal 30 fps dosyalar bir
+  saniyede en çok 31 kare gösterdi, daha hızlı her kaynak 47–61: aradaki boşluk geniş.
+  Birim testleri: R03/R04 benzeri titreme kabul, 60/59,94/50/32 fps ret, "3 s 60 fps +
+  7 s 12 fps" (ortalama 23) ret, 30,5 fps sabit ret (ortalama), aynı zaman damgası `timing`.
+- Kopyalanan anın son karesi, tam kodlamanın kuralıyla seçilir: 30 fps ızgarasının son
+  anında ekranda olan kaynak karesi (ör. 29,97 fps'de 10 s'lik an 299 kare, son kare
+  10,000 s'ye kadar tutulur). Tam kodlama aynı anı 300 kareyle, bir kareyi çoğaltarak verir.
 
 ## Ölçülmeyenler
 
