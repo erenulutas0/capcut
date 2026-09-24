@@ -120,7 +120,10 @@ test.describe('kesit list: mark, add, play, download', () => {
     );
     expect(await pickerCalls(page)).toEqual(['sample-24s_00-02-00-06.mp4']);
     // Only the encode path exists in this build (the fast path reports its own).
-    await expect(card(page, 0).getByTestId('export-method')).toHaveText('Kodlandı');
+    // The sample is not a 720p/1080p frame, so the fast cut (ADR-027) does
+    // not apply: encoded, and the line says why.
+    await expect(card(page, 0).getByTestId('export-method')).toHaveAttribute('data-method', 'encode');
+    await expect(card(page, 0).getByTestId('export-method')).toHaveText('Kodlandı (çözünürlük kaynağınkinden farklı)');
     await expect(page.getByTestId('export-download')).toHaveCount(0);
     await expect(card(page, 0).getByTestId('measured-route')).toHaveText('seçtiğin dosya');
     // Only the picked file: no temporary copy is left in OPFS.

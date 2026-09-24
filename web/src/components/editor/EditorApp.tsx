@@ -247,6 +247,17 @@ export function EditorApp() {
     );
   };
 
+  const refocusAfterDelete = useRef<number | null>(null);
+  useEffect(() => {
+    const index = refocusAfterDelete.current;
+    if (index === null) return;
+    refocusAfterDelete.current = null;
+    const active = document.activeElement;
+    if (active && active !== document.body && active.isConnected) return;
+    const cards = document.querySelectorAll<HTMLElement>('[data-testid="kesit-select"]');
+    (cards[Math.min(index, cards.length - 1)] ?? document.querySelector<HTMLElement>('[data-testid="add-moment"]'))?.focus();
+  }, [project.clips]);
+
   const deleteKesit = (clipId: string) => {
     const index = project.clips.findIndex((clip) => clip.clipId === clipId);
     if (index < 0) return;
@@ -254,14 +265,10 @@ export function EditorApp() {
     const after = state.deleteKesit(clipId);
     if (!after) return;
     setNotice(fill(t('notice.deleted'), { n: String(index + 1) }));
-    // The deleted card's button had focus; continue from the list.
-    window.requestAnimationFrame(() => {
-      const active = document.activeElement;
-      if (!active || active === document.body || !active.isConnected) {
-        const cards = document.querySelectorAll<HTMLElement>('[data-testid="kesit-select"]');
-        (cards[Math.min(index, cards.length - 1)] ?? document.querySelector<HTMLElement>('[data-testid="add-moment"]'))?.focus();
-      }
-    });
+    // The deleted card's button had focus; the effect below continues from
+    // the list once the card is really gone (a frame callback could run
+    // before React removed it, and focus then fell to the page).
+    refocusAfterDelete.current = index;
   };
 
   const playKesit = (clipId: string) => {
