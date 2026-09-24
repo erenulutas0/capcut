@@ -128,3 +128,40 @@ export class LoudnessMeter {
     return { startUs: this.startUs, frameUs: this.frameUs, db };
   }
 }
+
+export interface MeterPart {
+  startUs: Micros;
+  endUs: Micros;
+}
+
+/**
+ * Splits one analysed range into at most `maxParts` consecutive parts that
+ * start on the range's own 10 ms grid (ADR-028), so the parts can be decoded
+ * at the same time and their envelopes put end to end. A part that starts at
+ * `startUs + m·frameUs` has exactly the frame boundaries frames m… of the
+ * whole range have (`LoudnessMeter.boundary` rounds absolute times), and the
+ * frame counts add up to the whole range's. A part is never shorter than
+ * `minPartUs` (the last may be longer).
+ */
+export function splitMeterRange(
+  startUs: Micros,
+  endUs: Micros,
+  maxParts: number,
+  minPartUs: Micros,
+  frameUs: Micros = ENVELOPE_FRAME_US,
+): MeterPart[] {
+  const frames = Math.max(0, Math.ceil((endUs - startUs) / frameUs));
+  const byLength = Math.floor((endUs - startUs) / Math.max(1, minPartUs));
+  const parts = Math.max(1, Math.min(Math.floor(maxParts), byLength, frames));
+  if (parts <= 1) return [{ startUs, endUs }];
+  const out: MeterPart[] = [];
+  for (let i = 0; i < parts; i += 1) {
+    const firstFrame = Math.floor((frames * i) / parts);
+    const nextFrame = Math.floor((frames * (i + 1)) / parts);
+    out.push({
+      startUs: startUs + firstFrame * frameUs,
+      endUs: i === parts - 1 ? endUs : startUs + nextFrame * frameUs,
+    });
+  }
+  return out;
+}
