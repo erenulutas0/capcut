@@ -13,7 +13,7 @@
  * `fastcut-spike-results/`. Real recordings are read from
  * `tests/media/real/` (or --real-dir) and never leave the machine.
  */
-import { createReadStream, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, createReadStream, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -52,7 +52,9 @@ const SYNTHETIC = [
   { name: 'bframes-avc3', clip: 'fc-1080p30-bframes.mp4', ranges: [[f(93), f(285)]], fps: 30, variant: { sampleEntry: 'avc3' } },
   { name: 'noB-one', clip: 'fc-1080p30-noB.mp4', ranges: [[f(47), f(403)]], fps: 30 },
   { name: 'noB-joined', clip: 'fc-1080p30-noB.mp4', ranges: [[f(10), f(100)], [f(200), f(333)]], fps: 30 },
-  { name: 'opengop', clip: 'fc-720p2997-opengop.mp4', ranges: [[3.1, 9.5]], fps: 30 },
+  // Open GOP at 29.97 fps: the app encodes it (30 fps grid rule); the technique is measured anyway.
+  { name: 'opengop-app', clip: 'fc-720p2997-opengop.mp4', ranges: [[3.1, 9.5]], fps: 30 },
+  { name: 'opengop', clip: 'fc-720p2997-opengop.mp4', ranges: [[3.1, 9.5]], fps: 30, sourceFps: 30000 / 1001, variant: { anyFrameRate: true } },
   { name: 'rot90', clip: 'fc-1080x1920-rot90.mp4', ranges: [[f(71), f(299)], [f(350), f(410)]], fps: 30 },
   { name: 'pyramid-longgop', clip: 'fc-1080p30-pyramid-longgop.mp4', ranges: [[f(50), f(500)]], fps: 30 },
   { name: 'inband', clip: 'fc-1080p30-inband.mp4', ranges: [[f(93), f(285)]], fps: 30 },
@@ -115,7 +117,10 @@ const server = createServer((request, response) => {
     const chunks = [];
     request.on('data', (c) => chunks.push(c));
     request.on('end', () => {
-      writeFileSync(join(outDir, name), Buffer.concat(chunks));
+      const offset = Number(url.searchParams.get('offset') ?? '0');
+      const target = join(outDir, name);
+      if (offset === 0) writeFileSync(target, Buffer.concat(chunks));
+      else appendFileSync(target, Buffer.concat(chunks));
       response.writeHead(200).end('ok');
     });
     return;
@@ -153,14 +158,22 @@ const browser = await chromium.launch({
   ...(browserName === 'chromium' ? {} : { channel: browserName }),
   args: launchArgs,
 });
-const page = await browser.newPage();
 const pageErrors = [];
-page.on('pageerror', (e) => pageErrors.push(e.message));
-page.on('console', (m) => {
-  if (m.type() === 'error') pageErrors.push(m.text());
-});
-await page.goto(`http://127.0.0.1:${port}/`);
-await page.waitForFunction(() => Boolean(window.spike));
+/** No page call may hang the run: 10 minutes, then the case is an ERROR. */
+const within = (promise, ms = 600_000) =>
+  Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error(`timeout ${ms} ms`)), ms))]);
+async function freshPage() {
+  const p = await browser.newPage();
+  p.on('pageerror', (e) => pageErrors.push(e.message));
+  p.on('console', (m) => {
+    if (m.type() === 'error') pageErrors.push(m.text());
+    else if (m.text().startsWith('[spike]')) console.log(`  ${m.text()}`);
+  });
+  await p.goto(`http://127.0.0.1:${port}/`);
+  await p.waitForFunction(() => Boolean(window.spike));
+  return p;
+}
+let page = await freshPage();
 
 /* ------------------------------------------------------------------- run */
 
@@ -173,7 +186,7 @@ for (const c of cases) {
   console.log(`\n== ${c.name}${c.real ? ` (${c.file})` : ''}`);
   try {
     if (c.kind === 'editlist') {
-      const r = await page.evaluate((o) => window.spike.editListCut(o), { url: sourceUrl, name: outName, inS: c.inS, outS: c.outS });
+      const r = await within(page.evaluate((o) => window.spike.editListCut(o), { url: sourceUrl, name: outName, inS: c.inS, outS: c.outS }));
       record.cut = r;
       const out = join(outDir, outName);
       const probe = probeVideo(out);
@@ -182,16 +195,16 @@ for (const c of cases) {
       const { barcodes } = await import('./verify-cut.mjs');
       const codes = barcodes(out);
       record.ffmpegDecoded = { frames: codes.length, first: codes[0]?.frame, expectedFirst: Math.round(c.inS * c.fps) };
-      const decoded = await page.evaluate((o) => window.spike.decodeAll(o), { url: `/out/${outName}` });
+      const decoded = await within(page.evaluate((o) => window.spike.decodeAll(o), { url: `/out/${outName}` }));
       record.webcodecs = { frames: decoded.length, first: decoded[0] };
-      const play = await page.evaluate((o) => window.spike.playCheck(o), {
+      const play = await within(page.evaluate((o) => window.spike.playCheck(o), {
         url: `/out/${outName}`,
         times: [0, 0.5 / c.fps, 1.5 / c.fps],
         codedWidth: 1920,
         codedHeight: 1080,
         rotation: 0,
         play: true,
-      });
+      }));
       record.video = {
         duration: play.duration,
         seeks: play.seeks,
@@ -205,13 +218,13 @@ for (const c of cases) {
       continue;
     }
 
-    const r = await page.evaluate((o) => window.spike.fastCut(o), {
+    const r = await within(page.evaluate((o) => window.spike.fastCut(o), {
       url: sourceUrl,
       name: outName,
       ranges: c.ranges,
       fps: c.fps,
       variant: c.variant,
-    });
+    }));
     record.cut = { ...r, segments: r.segments?.map(({ sourceTimesS, outputTimesS, ...rest }) => rest) };
     if (!r.ok) {
       console.log(`fallback: ${r.reason}`);
@@ -248,14 +261,16 @@ for (const c of cases) {
       }
     }
     const [w, h] = r.rotation % 180 === 0 ? [r.plan.segments[0].crop.width, r.plan.segments[0].crop.height] : [r.plan.segments[0].crop.height, r.plan.segments[0].crop.width];
-    const play = await page.evaluate((o) => window.spike.playCheck(o), {
+    const play = await within(page.evaluate((o) => window.spike.playCheck(o), {
       url: `/out/${outName}`,
       times,
       codedWidth: w,
       codedHeight: h,
       rotation: r.rotation,
       play: true,
-    });
+      // Real outputs are up to 2 minutes: played at 2x (still start to end).
+      rate: c.real ? 2 : 1,
+    }));
     const seekOk = c.real ? null : play.seeks.every((s, i) => s.frame === expected[i]);
     const playedFrames = play.played?.frames ?? [];
     record.video = {
@@ -277,10 +292,15 @@ for (const c of cases) {
   } catch (error) {
     record.error = String(error).split('\n').slice(0, 3).join(' | ');
     console.log(`ERROR ${record.error}`);
+    // A stuck page must not take the next case with it.
+    await page.close().catch(() => undefined);
+    page = await freshPage();
   } finally {
     if (!keep && record.real) rmSync(join(outDir, outName), { force: true });
   }
   results.push(record);
+  // Written after every case, so a hang or crash keeps what was measured.
+  writeFileSync(join(outDir, `spike-${label}.json`), `${JSON.stringify({ browser: label, ranAt: new Date().toISOString(), pageErrors, results }, null, 1)}\n`);
 }
 
 await browser.close();
@@ -288,3 +308,5 @@ server.close();
 const summary = { browser: label, ranAt: new Date().toISOString(), pageErrors, results };
 writeFileSync(join(outDir, `spike-${label}.json`), `${JSON.stringify(summary, null, 1)}\n`);
 console.log(`\nsonuç: ${join(outDir, `spike-${label}.json`)}; sayfa hataları: ${pageErrors.length}`);
+// Keep-alive connections from the browser would hold the server (and this process) open.
+process.exit(0);

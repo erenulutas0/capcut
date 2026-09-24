@@ -32,9 +32,15 @@ declare global {
   }
 }
 
-async function upload(name: string, data: Uint8Array | Blob): Promise<void> {
-  const response = await fetch(`/upload/${encodeURIComponent(name)}`, { method: 'POST', body: data as BodyInit });
-  if (!response.ok) throw new Error(`upload ${name}: ${response.status}`);
+/** Sends a file to the local spike server in 8 MiB pieces (one huge POST body stalled in Chrome). */
+async function upload(name: string, data: Uint8Array): Promise<void> {
+  const piece = 8 * 1024 * 1024;
+  for (let offset = 0; offset < Math.max(1, data.byteLength); offset += piece) {
+    const body = data.slice(offset, Math.min(data.byteLength, offset + piece));
+    const response = await fetch(`/upload/${encodeURIComponent(name)}?offset=${offset}`, { method: 'POST', body });
+    if (!response.ok) throw new Error(`upload ${name}: ${response.status}`);
+  }
+  console.log(`[spike] ${name}: uploaded ${data.byteLength} bytes`);
 }
 
 async function sourceFile(url: string): Promise<File> {
@@ -128,6 +134,7 @@ async function fastCut(options: {
   const height = await track.getDisplayHeight();
   const plan = makePlan(options.ranges, width, height, options.fps ?? 30);
   const reorderFix = await needsReorderFix(input);
+  console.log(`[spike] ${options.name}: opened, preparing`);
 
   const prepared = await prepareFastCut({
     plan,
@@ -140,6 +147,7 @@ async function fastCut(options: {
     variant: options.variant,
   });
   const preparedMs = performance.now() - started;
+  console.log(`[spike] ${options.name}: prepared ${Math.round(preparedMs)} ms`);
   if (!prepared.ok) return { ok: false, reason: prepared.reason, preparedMs };
   const job = prepared.job;
 
@@ -155,6 +163,7 @@ async function fastCut(options: {
   await output.start();
   for (const [index, segment] of plan.segments.entries()) {
     const writer = audioSource ? new SegmentAudioWriter(plan, segment, sources, audioSource, () => undefined) : null;
+    console.log(`[spike] ${options.name}: segment ${index}`);
     await job.writeSegment(index, async (us) => {
       await writer?.advanceTo(us);
     });
@@ -166,6 +175,7 @@ async function fastCut(options: {
   await sources.clipReader?.close();
   const buffer = new Uint8Array(output.target.buffer ?? new ArrayBuffer(0));
   const writtenMs = performance.now() - started;
+  console.log(`[spike] ${options.name}: written, verifying`);
   let verify = 'passed';
   try {
     await job.verify(buffer);
@@ -174,6 +184,7 @@ async function fastCut(options: {
   }
   job.close();
   const verifiedMs = performance.now() - started;
+  console.log(`[spike] ${options.name}: verified (${verify})`);
   await upload(options.name, buffer);
   return {
     ok: true,
@@ -272,12 +283,21 @@ function readBarcode(
  * requested time and read which frame is on screen, then play it through at
  * 2x and count what the element presented.
  */
-async function playCheck(options: { url: string; times: number[]; codedWidth: number; codedHeight: number; rotation: number; play: boolean }) {
+async function playCheck(options: {
+  url: string;
+  times: number[];
+  codedWidth: number;
+  codedHeight: number;
+  rotation: number;
+  play: boolean;
+  rate?: number;
+}) {
   const video = document.createElement('video');
   video.muted = true;
   video.preload = 'auto';
   video.src = options.url;
   document.body.append(video);
+  console.log(`[spike] playCheck ${options.url}: ${options.times.length} seeks`);
   const errors: string[] = [];
   video.addEventListener('error', () => errors.push(`error ${video.error?.code}: ${video.error?.message}`));
   await new Promise<void>((resolve, reject) => {
@@ -293,7 +313,19 @@ async function playCheck(options: { url: string; times: number[]; codedWidth: nu
   const seeks: { t: number; frame: number; confidence: number }[] = [];
   for (const t of options.times) {
     await new Promise<void>((resolve) => {
-      video.addEventListener('seeked', () => resolve(), { once: true });
+      // A seek that never completes is reported, not waited for forever.
+      const timer = setTimeout(() => {
+        errors.push(`seek ${t} timed out`);
+        resolve();
+      }, 10_000);
+      video.addEventListener(
+        'seeked',
+        () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        { once: true },
+      );
       video.currentTime = t;
     });
     // One more presented frame so the compositor really shows the seeked picture.
@@ -310,8 +342,11 @@ async function playCheck(options: { url: string; times: number[]; codedWidth: nu
 
   let played: { presented: number; frames: number[]; ended: boolean; quality: unknown } | null = null;
   if (options.play) {
-    video.currentTime = 0;
-    await new Promise<void>((resolve) => video.addEventListener('seeked', () => resolve(), { once: true }));
+    await new Promise<void>((resolve) => {
+      video.addEventListener('seeked', () => resolve(), { once: true });
+      setTimeout(resolve, 10_000);
+      video.currentTime = 0;
+    });
     const frames: number[] = [];
     let presented = 0;
     const v = video as HTMLVideoElement & {
@@ -324,11 +359,11 @@ async function playCheck(options: { url: string; times: number[]; codedWidth: nu
       if (!video.ended) v.requestVideoFrameCallback(onFrame);
     };
     v.requestVideoFrameCallback(onFrame);
-    video.playbackRate = 1;
+    video.playbackRate = options.rate ?? 1;
     const ended = await new Promise<boolean>((resolve) => {
       video.addEventListener('ended', () => resolve(true), { once: true });
       video.play().catch(() => resolve(false));
-      setTimeout(() => resolve(false), (video.duration + 10) * 1000);
+      setTimeout(() => resolve(false), (video.duration / (options.rate ?? 1) + 10) * 1000);
     });
     played = { presented, frames, ended, quality: video.getVideoPlaybackQuality() };
   }
