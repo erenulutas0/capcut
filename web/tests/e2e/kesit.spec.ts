@@ -106,6 +106,9 @@ test.describe('kesit list: mark, add, play, download', () => {
     await card(page, 0).getByTestId('kesit-play').click();
     await expect.poll(() => sourceMs(page), { timeout: 5000 }).toBeGreaterThanOrEqual(2000);
     expect(await sourceMs(page)).toBeLessThan(6000);
+    // Until the browser's play() resolves the button still reads "Oynat";
+    // wait for playback to start before waiting for it to stop on its own.
+    await expect(page.getByTestId('play-toggle')).toHaveAttribute('aria-label', 'Duraklat', { timeout: 15_000 });
     await expect(page.getByTestId('play-toggle')).toHaveAttribute('aria-label', 'Oynat', { timeout: 15_000 });
     const stoppedAt = await sourceMs(page);
     expect(stoppedAt).toBeGreaterThanOrEqual(5900);
