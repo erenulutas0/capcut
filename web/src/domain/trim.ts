@@ -1,16 +1,16 @@
 /**
- * Edge trimming and split-point maths.
+ * Edge trimming maths.
  *
- * Pure functions over `Project`: the timeline drag handles, their keyboard
- * steps and the split action all ask these for a legal value instead of
- * computing one in a component. Nothing here changes the recipe; commands do.
+ * Pure functions over `Project`: the strip's kesit handles and their keyboard
+ * steps ask these for a legal value instead of computing one in a component.
+ * Nothing here changes the recipe; commands do.
  */
 
 import type { Project } from './edl';
 import { maxTimelineDurationUs, type ExportPolicy } from './policy';
 import { frameAtUs, frameToUs } from './renderPlan';
 import { MIN_CLIP_DURATION_US, type Micros } from './time';
-import { mapOutputToSource, totalOutputDurationUs } from './timeline';
+import { totalOutputDurationUs } from './timeline';
 
 export type TrimEdge = 'in' | 'out';
 
@@ -132,71 +132,4 @@ export function resolveTrimTarget(
       ? high
       : low;
   return Math.min(high, Math.max(low, wished));
-}
-
-/**
- * Where the preview's playhead is, on the clock the current preview mode
- * actually shows. Source mode shows the file; result mode shows the output
- * timeline, where the same source second may appear more than once.
- */
-export type Playhead =
-  | { mode: 'source'; sourceUs: Micros }
-  | { mode: 'output'; outputUs: Micros };
-
-export type SplitRejection =
-  | 'no_selection'
-  | 'playhead_outside_clip'
-  | 'split_too_close_to_edge'
-  | 'clip_limit_exceeded';
-
-export type SplitPoint = { ok: true; sourceUs: Micros } | { ok: false; reason: SplitRejection };
-
-/**
- * The source time at which the playhead would cut the given moment.
- *
- * - Source mode: the playhead IS a source time, so it cuts the moment when it
- *   lies inside that moment's source range.
- * - Result mode: the playhead is an output time. It is mapped through the
- *   timeline and must land in THIS moment's output slot. A different moment
- *   that reuses the same source range does not count — the user is looking at
- *   that other occurrence, not this one.
- *
- * Both halves must keep the minimum clip length. With a policy, the clip-count
- * limit is checked as well, so the UI can disable the action up front.
- */
-export function splitPointAt(
-  project: Project,
-  clipId: string | null,
-  playhead: Playhead,
-  policy?: Pick<ExportPolicy, 'maxClips'>,
-): SplitPoint {
-  const clip = clipId ? project.clips.find((item) => item.clipId === clipId) : undefined;
-  if (!clip) return { ok: false, reason: 'no_selection' };
-
-  let sourceUs: Micros;
-  if (playhead.mode === 'source') {
-    sourceUs = playhead.sourceUs;
-  } else {
-    const position = mapOutputToSource(project, playhead.outputUs);
-    if (!position || position.entry.clipId !== clip.clipId) {
-      return { ok: false, reason: 'playhead_outside_clip' };
-    }
-    sourceUs = position.sourceUs;
-  }
-
-  // Half-open: the in-point belongs to the moment, the out-point does not.
-  if (sourceUs < clip.sourceInUs || sourceUs >= clip.sourceOutUs) {
-    return { ok: false, reason: 'playhead_outside_clip' };
-  }
-  if (
-    sourceUs - clip.sourceInUs < MIN_CLIP_DURATION_US ||
-    clip.sourceOutUs - sourceUs < MIN_CLIP_DURATION_US
-  ) {
-    return { ok: false, reason: 'split_too_close_to_edge' };
-  }
-  // A split adds a moment, so it is bound by the clip-count limit too.
-  if (policy && project.clips.length >= policy.maxClips) {
-    return { ok: false, reason: 'clip_limit_exceeded' };
-  }
-  return { ok: true, sourceUs };
 }

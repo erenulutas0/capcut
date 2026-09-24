@@ -96,12 +96,13 @@ export function exceedsTotalSourceBytes(
 }
 
 /**
- * Why an export could not use the disk (OPFS) route, as the output sink saw it.
+ * Why an export could not use a disk route, as the output sink saw it. `opfs`
+ * and `file` (the file picked in the save dialog, ADR-026) are disk routes.
  * `no_disk_access`: no OPFS sync access in the worker (older browsers, some
  * private windows). `not_enough_space`: there is access, but the storage
  * estimate leaves no room for the file.
  */
-export type OutputRouteAvailability = 'opfs' | 'no_disk_access' | 'not_enough_space';
+export type OutputRouteAvailability = 'opfs' | 'file' | 'no_disk_access' | 'not_enough_space';
 
 export type OutputRouteRefusal = 'output_too_long_for_memory' | 'output_storage_insufficient';
 
@@ -115,7 +116,8 @@ export function outputRouteRefusal(
   availability: OutputRouteAvailability,
   outputDurationUs: Micros,
 ): OutputRouteRefusal | null {
-  if (availability === 'opfs') return null;
+  // `file`: the user's own file from the save dialog (ADR-026), a disk route too.
+  if (availability === 'opfs' || availability === 'file') return null;
   if (outputDurationUs <= policy.maxMemoryRouteOutputDurationUs) return null;
   return availability === 'not_enough_space' ? 'output_storage_insufficient' : 'output_too_long_for_memory';
 }

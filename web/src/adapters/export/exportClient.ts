@@ -105,7 +105,7 @@ export class ExportWorkerClient {
     plan: RenderPlan,
     videoFile: File,
     audioFile: File | null,
-    options: { memoryRouteLimitUs: number },
+    options: { memoryRouteLimitUs: number; destination?: FileSystemFileHandle | null },
   ): AsyncGenerator<ExportEvent, void, unknown> {
     const worker = this.ensureWorker();
     const requestId = this.nextId('exp');
@@ -149,6 +149,7 @@ export class ExportWorkerClient {
       forceMemoryRoute: (globalThis as { __clipForceMemoryRoute?: unknown }).__clipForceMemoryRoute === true,
       storageFreeBytes: testHookBytes('__clipStorageFreeBytes'),
       storageReserveBytes: testHookBytes('__clipStorageReserveBytes'),
+      destination: options.destination ?? null,
     };
     worker.postMessage(request);
 

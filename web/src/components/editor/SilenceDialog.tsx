@@ -12,6 +12,7 @@ import {
 } from '@/application/silenceReview';
 import { primaryCaptionTrack } from '@/domain/captions';
 import type { Project } from '@/domain/edl';
+import { WEB_LOCAL_POLICY, type ExportPolicy } from '@/domain/policy';
 import {
   DEFAULT_SILENCE_PARAMS,
   SILENCE_PARAM_LIMITS,
@@ -44,7 +45,17 @@ function rangeLabel(item: { startUs: Micros; endUs: Micros }): string {
 
 interface Props {
   t: T;
+  /** The kesitler to search, as a recipe (one kesit, all of them, or the whole video as one). */
   project: Project;
+  /**
+   * The kesit limit left for this search (ADR-026): searching one kesit of
+   * five may add at most 20 − 4 kesitler.
+   */
+  policy?: ExportPolicy;
+  /** Numbers the kesitler as the list shows them ("Kesit 3"), when only some are searched. */
+  numberOf?: (clipId: string, index: number) => number;
+  /** What is being searched, said under the title. */
+  scopeText?: string;
   /** Object URL of the linked video, used only to play the audio around a cut. */
   videoUrl: string;
   run: SilenceRun;
@@ -67,6 +78,9 @@ type Listening = { id: string; mode: 'plain' | 'cut' };
 export function SilenceDialog({
   t,
   project,
+  policy = WEB_LOCAL_POLICY,
+  numberOf = (_clipId, index) => index + 1,
+  scopeText,
   videoUrl,
   run,
   envelopeFor,
@@ -87,10 +101,13 @@ export function SilenceDialog({
   const frameRef = useRef<number | null>(null);
   const reportHeadingRef = useRef<HTMLHeadingElement | null>(null);
 
-  const review = useMemo(() => reviewSilences(project, envelopeFor, params), [project, envelopeFor, params]);
+  const review = useMemo(
+    () => reviewSilences(project, envelopeFor, params, policy),
+    [project, envelopeFor, params, policy],
+  );
   const isChecked = (item: ReviewedSuggestion) => overrides.get(item.id) ?? review.defaultIds.has(item.id);
   const chosen = review.suggestions.filter(isChecked);
-  const preview = previewSilenceCuts(project, chosen);
+  const preview = previewSilenceCuts(project, chosen, policy);
   const running = run.status === 'running';
   // The report describes the recipe it produced; an undo from inside the
   // dialog brings the list back instead of leaving a stale report.
@@ -200,6 +217,11 @@ export function SilenceDialog({
           <p className="dialog-eyebrow">{t('silence.eyebrow')}</p>
           <h2 id="silence-title">{t('silence.title')}</h2>
           <p className="dialog-sub">{t('silence.intro')}</p>
+          {scopeText ? (
+            <p className="dialog-sub" data-testid="silence-scope">
+              {scopeText}
+            </p>
+          ) : null}
         </div>
         <button type="button" className="icon-btn" onClick={onClose} aria-label={t('silence.close')}>
           <Icon name="close" />
@@ -408,7 +430,7 @@ export function SilenceDialog({
                 {review.clips.map((clip) => (
                   <li key={clip.clipId} className="silence-clip" data-testid="silence-clip" data-status={clip.status}>
                     <p className="silence-clip-head">
-                      <b>{fill(t('silence.moment'), { index: String(clip.index + 1).padStart(2, '0') })}</b>
+                      <b>{fill(t('silence.moment'), { index: String(numberOf(clip.clipId, clip.index)) })}</b>
                       <span className="silence-time">{rangeLabel({ startUs: clip.sourceInUs, endUs: clip.sourceOutUs })}</span>
                     </p>
                     {clip.status !== 'ok' ? (

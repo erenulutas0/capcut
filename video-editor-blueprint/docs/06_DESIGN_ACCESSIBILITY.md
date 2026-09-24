@@ -27,6 +27,8 @@ Sürükleme isteyen her işin düğme/klavye alternatifi olmalı. Timeline'ı g�
 
 Space oynat/duraklat; I başlangıç; O bitiş; Enter seçimi ekle; Delete seçili klibi kaldır; Ctrl/Cmd+Z geri al; platforma uygun redo. Metin alanı odaktayken bu kısayollar metin girişini çalmamalı. Kullanıcıya yardım paneli sunulur; standart tarayıcı kısayolları gereksiz ele geçirilmez.
 
+> Uygulandı (ADR-026, 2026-09-23): yukarıdakilere ek olarak F tam ekran, Escape seçili kesitten çık / tam ekrandan çık; şeritteki oynatma çizgisinde ←/→ 1 kare, Shift ile 1 sn, Home/End; kesit kartının tutamacında ↑/↓/Home/End sırayı değiştirir (sürüklemenin klavye karşılığı). Kart düğmeleri ekran okuyucuya kesitin numarası ve aralığıyla okunur ("Kesit 2'yi indir, 00:09–00:14"); kesitler gerçek bir liste (`ol`) olarak sunulur.
+
 ## Hareket ve ses
 
 Reduced-motion tercihine uy. Otomatik yüksek sesle oynatma yok; arka plan sesi düğmeye basılmadan başlamaz. Ses seviyesi sayısal ve görsel sunulur. Dalga biçimi, işin tek kontrol aracı değildir; oluşmasa da zamanla seçim yapılabilir.

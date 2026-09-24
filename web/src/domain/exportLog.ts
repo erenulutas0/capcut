@@ -39,7 +39,7 @@ export interface ExportLogEntry {
 }
 
 const OUTCOMES: ReadonlySet<string> = new Set(['succeeded', 'failed', 'canceled']);
-const ROUTES: ReadonlySet<string> = new Set(['opfs', 'memory']);
+const ROUTES: ReadonlySet<string> = new Set(['opfs', 'memory', 'file']);
 /** Codes are snake_case enums; anything else (a path, a name) is refused. */
 const CODE_PATTERN = /^[a-z][a-z0-9_]{0,63}$/;
 const PREFIX_PATTERN = /^fp_[0-9a-f]{1,8}$/;

@@ -16,7 +16,7 @@ test.describe('import: HEVC without a decoder', () => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto('/editor');
-    await expect(page.getByTestId('open-export')).toBeVisible();
+    await expect(page.getByTestId('download-all')).toBeVisible();
     test.skip(
       await browserDecodesHevc(page),
       'This browser decodes HEVC: the file opens and there is nothing to hint.',

@@ -1,43 +1,39 @@
-import { statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
-import { startWithEmptyTimeline } from './rangeFlow';
+import {
+  addKesit,
+  closeSheet,
+  kesitRanges,
+  noHorizontalOverflow,
+  noSavePicker,
+  openEditor,
+  openMore,
+  openSettings,
+  openVideo,
+  opfsFiles,
+  installSavePicker,
+} from './kesitFlow';
 
 const SAMPLE_VIDEO = join(process.cwd(), 'tests', 'media', 'sample-24s.mp4');
 const SAMPLE_AUDIO = join(process.cwd(), 'tests', 'media', 'tone-30s.m4a');
 
-async function openEditor(page: Page) {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/editor');
-  await expect(page.getByTestId('open-export')).toBeVisible();
-  return errors;
-}
-
 async function importSample(page: Page) {
-  await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
-  await expect(page.getByTestId('preview-video')).toBeVisible();
-  // These tests drive the range flow from an empty timeline (ADR-019).
-  await startWithEmptyTimeline(page);
+  await openVideo(page, SAMPLE_VIDEO);
 }
 
-async function addMoment(page: Page, start: string, end: string) {
-  await page.getByTestId('range-start').fill(start);
-  await page.getByTestId('range-end').fill(end);
-  await page.getByTestId('add-moment').click();
-}
+const exportFiles = async (page: Page) =>
+  Object.keys(await opfsFiles(page)).filter((name) => name.startsWith('clip-export-'));
 
 test.describe('editor', () => {
   test('reads real metadata from a locally chosen video', async ({ page }) => {
     const errors = await openEditor(page);
     await importSample(page);
-
     await expect(page.getByTestId('source-meta')).toContainText('sample-24s.mp4');
     await expect(page.getByTestId('total-time')).toHaveText('00:24.000');
-
-    await page.getByRole('tab', { name: 'Kaynaklar' }).click();
-    await expect(page.getByText('1280×720')).toBeVisible();
+    // The frame follows the landscape video.
+    await expect(page.getByTestId('preview-frame')).toHaveAttribute('data-aspect', '16:9');
     expect(errors).toEqual([]);
   });
 
@@ -50,64 +46,55 @@ test.describe('editor', () => {
     });
     await expect(page.getByTestId('media-error')).toBeVisible();
     await expect(page.getByTestId('preview-video')).toHaveCount(0);
+    await expect(page.getByTestId('download-all')).toBeDisabled();
   });
 
-  test('adds, orders, reuses and removes moments with real totals', async ({ page }) => {
+  test('adds, reuses and removes kesitler with real totals', async ({ page }) => {
     await openEditor(page);
     await importSample(page);
 
-    await addMoment(page, '00:00.000', '00:04.000');
-    await addMoment(page, '00:08.000', '00:14.000');
-    await expect(page.getByTestId('moment-count')).toHaveText('2 parça');
+    await addKesit(page, '00:00.000', '00:04.000');
+    await addKesit(page, '00:08.000', '00:14.000');
+    await expect(page.getByTestId('moment-count')).toHaveText('(2)');
     await expect(page.getByTestId('output-duration-us')).toHaveText('10000000');
-    await expect(page.getByTestId('output-summary')).toContainText('10.0 sn');
 
-    // The same source range twice is a valid edit.
-    await addMoment(page, '00:08.000', '00:14.000');
-    await expect(page.getByTestId('moment-count')).toHaveText('3 parça');
+    // The same range twice is a valid edit.
+    await addKesit(page, '00:08.000', '00:14.000');
+    await expect(page.getByTestId('moment-count')).toHaveText('(3)');
     await expect(page.getByTestId('output-duration-us')).toHaveText('16000000');
+    await expect(kesitRanges(page)).toHaveText(['00:00 → 00:04', '00:08 → 00:14', '00:08 → 00:14']);
 
-    // Reorder without dragging.
-    const firstRange = page.getByTestId('moment-card').first().locator('.moment-range');
-    await expect(firstRange).toHaveText('00:00.000 — 00:04.000');
-    await page.getByTestId('move-down').first().click();
-    await expect(firstRange).toHaveText('00:08.000 — 00:14.000');
-
+    await page.getByTestId('kesit-delete').first().click();
+    await expect(page.getByTestId('moment-count')).toHaveText('(2)');
     await page.getByTestId('undo').click();
-    await expect(firstRange).toHaveText('00:00.000 — 00:04.000');
+    await expect(page.getByTestId('moment-count')).toHaveText('(3)');
     await page.getByTestId('redo').click();
-    await expect(firstRange).toHaveText('00:08.000 — 00:14.000');
-
-    await page.getByTestId('remove-moment').first().click();
-    await expect(page.getByTestId('moment-count')).toHaveText('2 parça');
-    await page.getByTestId('undo').click();
-    await expect(page.getByTestId('moment-count')).toHaveText('3 parça');
+    await expect(page.getByTestId('moment-count')).toHaveText('(2)');
   });
 
-  test('rejects invalid ranges instead of creating bad clips', async ({ page }) => {
+  test('rejects invalid ranges instead of creating bad kesitler', async ({ page }) => {
     await openEditor(page);
     await importSample(page);
 
-    await addMoment(page, '00:06.000', '00:02.000');
+    await addKesit(page, '00:06.000', '00:02.000');
     await expect(page.getByTestId('range-error')).toContainText('Bitiş zamanı');
-    await expect(page.getByTestId('moment-count')).toHaveText('0 parça');
+    await expect(page.getByTestId('moment-count')).toHaveText('(0)');
 
-    await addMoment(page, '00:20.000', '00:30.000');
+    await addKesit(page, '00:20.000', '00:30.000');
     await expect(page.getByTestId('range-error')).toContainText('videonun dışında');
-    await expect(page.getByTestId('moment-count')).toHaveText('0 parça');
+    await expect(page.getByTestId('moment-count')).toHaveText('(0)');
 
-    await addMoment(page, 'saat on', '00:04.000');
+    await addKesit(page, 'saat on', '00:04.000');
+    await expect(page.getByTestId('range-start')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.getByTestId('range-error')).toContainText('00:15.000 gibi');
-    await expect(page.getByTestId('moment-count')).toHaveText('0 parça');
+    await expect(page.getByTestId('moment-count')).toHaveText('(0)');
   });
 
   test('accepts a time typed with an extra leading zero', async ({ page }) => {
     await openEditor(page);
     await importSample(page);
-
-    // Exactly what a user typed in the field: "00:015.000".
-    await addMoment(page, '00:05.000', '00:015.000');
-    await expect(page.getByTestId('moment-count')).toHaveText('1 parça');
+    await addKesit(page, '00:05.000', '00:015.000');
+    await expect(page.getByTestId('moment-count')).toHaveText('(1)');
     await expect(page.getByTestId('output-duration-us')).toHaveText('10000000');
 
     // Leaving the field shows the value as it was understood.
@@ -116,71 +103,27 @@ test.describe('editor', () => {
     await expect(page.getByTestId('range-end')).toHaveValue('00:20.000');
   });
 
-  test('result mode maps output time onto source time', async ({ page }) => {
-    await openEditor(page);
-    await importSample(page);
-    await addMoment(page, '00:00.000', '00:04.000');
-    await addMoment(page, '00:08.000', '00:14.000');
-
-    await page.getByRole('tab', { name: 'Sonuç' }).click();
-    await expect(page.getByTestId('output-note')).toBeVisible();
-    await expect(page.getByTestId('total-time')).toHaveText('00:10.000');
-
-    // Output 5 s sits inside the second moment, at source 9 s.
-    await page.getByLabel('Zamanda gezin').fill('5000');
-    await expect(page.getByTestId('current-time')).toHaveText('00:05.000');
-    await expect(page.getByTestId('source-time-us')).toHaveText('9000');
-  });
-
   test('playback actually advances the media clock', async ({ page }) => {
     await openEditor(page);
     await importSample(page);
-
     const before = await page.getByTestId('source-time-us').textContent();
     await page.getByTestId('play-toggle').click();
     await expect(page.getByTestId('play-toggle')).toHaveAttribute('aria-label', 'Duraklat');
     await expect
-      .poll(async () => Number(await page.getByTestId('source-time-us').textContent()), {
-        timeout: 5000,
-      })
+      .poll(async () => Number(await page.getByTestId('source-time-us').textContent()), { timeout: 5000 })
       .toBeGreaterThan(Number(before) + 200);
     await page.getByTestId('play-toggle').click();
     await expect(page.getByTestId('play-toggle')).toHaveAttribute('aria-label', 'Oynat');
   });
 
-  test('result playback crosses the clip boundary onto the next source range', async ({
-    page,
-  }) => {
+  test('music plays with a kesit’s ▶ from the start of that kesit', async ({ page }) => {
     await openEditor(page);
     await importSample(page);
-    await addMoment(page, '00:00.000', '00:03.000');
-    await addMoment(page, '00:12.000', '00:16.000');
-
-    await page.getByRole('tab', { name: 'Sonuç' }).click();
-    await page.getByTestId('play-toggle').click();
-
-    // Once output time passes 3 s the player must be inside the SECOND range,
-    // i.e. somewhere after source 12 s — not still running at source 3 s.
-    await expect
-      .poll(
-        async () => Number(await page.getByTestId('source-time-us').textContent()),
-        { timeout: 12_000 },
-      )
-      .toBeGreaterThan(12_000);
-    await page.getByTestId('play-toggle').click();
-  });
-
-  test('music follows the output clock during result playback', async ({ page }) => {
-    await openEditor(page);
-    await importSample(page);
-    await addMoment(page, '00:00.000', '00:06.000');
+    await addKesit(page, '00:08.000', '00:16.000');
     await page.getByTestId('audio-input').setInputFiles(SAMPLE_AUDIO);
-    await expect(page.getByTestId('output-summary')).toContainText('6.0 sn');
+    await expect(page.locator('audio.visually-hidden')).toHaveCount(1);
 
-    await page.getByRole('tab', { name: 'Sonuç' }).click();
-    await page.getByTestId('play-toggle').click();
-
-    // The hidden music element is actually playing and tracks the master clock.
+    await page.getByTestId('kesit-play').click();
     await expect
       .poll(
         async () =>
@@ -191,21 +134,19 @@ test.describe('editor', () => {
         { timeout: 8000 },
       )
       .toBeGreaterThan(0.2);
-
+    // Music starts with the downloaded kesit: music time = video time − 8 s.
     const drift = await page.evaluate(() => {
       const audio = document.querySelector<HTMLAudioElement>('audio.visually-hidden');
       const video = document.querySelector<HTMLVideoElement>('video');
       if (!audio || !video) return 999;
-      // Moment starts at source 0 and music starts at output 0, so the two
-      // clocks should read the same value here.
-      return Math.abs(audio.currentTime - video.currentTime);
+      return Math.abs(audio.currentTime - (video.currentTime - 8));
     });
     expect(drift).toBeLessThan(0.5);
-    await page.getByTestId('play-toggle').click();
+    await page.getByTestId('kesit-play').click();
   });
 
   test('nothing is sent off the machine', async ({ page, baseURL }) => {
-    // The app's own origin is whatever port this run's server uses (E2E_PORT).
+    test.setTimeout(120_000);
     const ownOrigin = new URL(baseURL ?? 'http://127.0.0.1:3100').origin;
     const external: string[] = [];
     page.on('request', (request) => {
@@ -214,239 +155,136 @@ test.describe('editor', () => {
         external.push(url);
       }
     });
-
+    await installSavePicker(page);
     await openEditor(page);
     await importSample(page);
-    await addMoment(page, '00:00.000', '00:04.000');
+    await addKesit(page, '00:00.000', '00:02.000');
     await page.getByTestId('audio-input').setInputFiles(SAMPLE_AUDIO);
-    await page.getByTestId('open-export').click();
-    await expect(page.getByTestId('export-create')).toBeDisabled();
-
-    // Named explicitly so a future failure says WHICH request escaped.
+    await page.getByTestId('kesit-download').click();
+    await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
     expect(external, `beklenmeyen dış istek: ${external.join(', ')}`).toEqual([]);
   });
 
   test('aspect presets change the preview frame geometry', async ({ page }) => {
     await openEditor(page);
     await importSample(page);
-    await addMoment(page, '00:00.000', '00:04.000');
+    await addKesit(page, '00:00.000', '00:04.000');
 
     const frame = page.getByTestId('preview-frame');
-    await page.getByTestId('aspect-16-9').click();
-    await expect(frame).toHaveAttribute('data-aspect', '16:9');
-    let box = await frame.boundingBox();
-    expect(box!.width / box!.height).toBeCloseTo(16 / 9, 1);
-
+    await openSettings(page, 'frame');
     await page.getByTestId('aspect-9-16').click();
+    await closeSheet(page);
     await expect(frame).toHaveAttribute('data-aspect', '9:16');
-    box = await frame.boundingBox();
+    let box = await frame.boundingBox();
     expect(box!.width / box!.height).toBeCloseTo(9 / 16, 1);
 
+    await openSettings(page, 'frame');
     await page.getByTestId('aspect-1-1').click();
+    await closeSheet(page);
     box = await frame.boundingBox();
     expect(box!.width / box!.height).toBeCloseTo(1, 1);
+  });
+
+  test('framing with no kesit is kept and goes to the first kesit', async ({ page }) => {
+    await openEditor(page);
+    await importSample(page);
+    await openSettings(page, 'frame');
+    await page.getByTestId('fit-contain').check();
+    await closeSheet(page);
+    await addKesit(page, '1', '3');
+    await openSettings(page, 'frame');
+    await expect(page.getByTestId('fit-contain')).toBeChecked();
+    await closeSheet(page);
   });
 
   test('reads real audio metadata and can remove the music again', async ({ page }) => {
     await openEditor(page);
     await importSample(page);
-    await addMoment(page, '00:00.000', '00:04.000');
+    await addKesit(page, '00:00.000', '00:04.000');
 
-    await page.getByRole('tab', { name: 'Ses' }).click();
-    await page.getByTestId('pick-music').click().catch(() => undefined);
+    await openSettings(page, 'audio');
     await page.getByTestId('audio-input').setInputFiles(SAMPLE_AUDIO);
-
     await expect(page.getByTestId('music-file-name')).toHaveText('tone-30s.m4a');
     await expect(page.getByTestId('music-in')).toHaveValue('00:00.000');
     await expect(page.getByTestId('music-out')).toHaveValue('00:04.000');
+
+    // The video's own sound applies to every kesit.
+    await page.getByTestId('clip-gain').fill('-12');
+    await expect(page.getByTestId('clip-gain')).toHaveValue('-12');
 
     await page.getByTestId('remove-music').click();
     await expect(page.getByTestId('pick-music')).toBeVisible();
   });
 
-  test('export dialog shows real numbers and runs the capability gate', async ({ page }) => {
+  test('without a save dialog: temporary storage while offered, removed afterwards', async ({ page }) => {
+    test.setTimeout(120_000);
+    await noSavePicker(page);
     await openEditor(page);
     await importSample(page);
-    await addMoment(page, '00:00.000', '00:04.000');
-    await addMoment(page, '00:08.000', '00:14.000');
+    await addKesit(page, '00:00.000', '00:03.000');
 
-    const trigger = page.getByTestId('open-export');
-    await trigger.click();
-
-    await expect(page.getByTestId('export-duration')).toHaveText('10.0 sn');
-    await expect(page.getByTestId('export-aspect')).toHaveText('16:9');
-
-    // Creation stays disabled until every stage of the gate has actually run.
-    await expect(page.getByTestId('capability-gate')).toBeVisible({ timeout: 60_000 });
-    for (const row of ['gate-environment', 'gate-encoder', 'gate-selftest', 'gate-source']) {
-      await expect(page.getByTestId(row)).not.toContainText('çalıştırılmadı');
-    }
-
-    await page.keyboard.press('Escape');
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(trigger).toBeFocused();
-  });
-
-  test('produces a real file and reports values read back from it', async ({ page }) => {
-    await openEditor(page);
-    await importSample(page);
-    await addMoment(page, '00:00.000', '00:02.000');
-
-    await page.getByTestId('open-export').click();
-    await page.getByTestId('export-quality').selectOption('720');
-    await page.getByTestId('export-ready').waitFor({ timeout: 60_000 });
-    await expect(page.getByTestId('export-create')).toBeEnabled();
-
-    await page.getByTestId('export-create').click();
-    await page.getByTestId('export-succeeded').waitFor({ timeout: 180_000 });
-
-    // 2 s at 30 fps, within one frame; measured from the produced file.
-    await expect(page.getByTestId('measured-duration')).toContainText(/^00:0[12]\./);
-    await expect(page.getByTestId('measured-resolution')).toHaveText('1280×720');
-    await expect(page.getByTestId('measured-codecs')).toContainText('avc');
-    await expect(page.getByTestId('measured-codecs')).toContainText('aac');
-
-    // The file is offered for saving; nothing is written without the user.
-    const download = page.waitForEvent('download');
-    await page.getByTestId('export-download').click();
-    const saved = await download;
-    expect(saved.suggestedFilename()).toMatch(/\.mp4$/);
-
-    // ADR-023: saving needs the file's size again on the downloads drive.
-    // The note names the real size of the saved file (rounded up), quietly:
-    // secondary text, not an alert.
-    const savedBytes = statSync(await saved.path()).size;
-    const note = page.getByTestId('export-save-space');
-    await expect(note).toHaveText(
-      `Kaydederken bilgisayarında yaklaşık ${Math.ceil(savedBytes / 1_048_576)} MiB daha boş yer gerekir.`,
-    );
-    await expect(note).toHaveClass(/hint-small/);
-    await expect(note).not.toHaveAttribute('role', 'alert');
-  });
-
-  test('writes the output to temporary storage and removes it afterwards', async ({ page }) => {
-    const listExportFiles = () =>
-      page.evaluate(async () => {
-        const root = await navigator.storage.getDirectory();
-        const names: string[] = [];
-        for await (const name of (root as unknown as { keys(): AsyncIterable<string> }).keys()) {
-          if (name.startsWith('clip-export-')) names.push(name);
-        }
-        return names;
-      });
-
-    await openEditor(page);
-    await importSample(page);
-    await addMoment(page, '00:00.000', '00:03.000');
-
-    await page.getByTestId('open-export').click();
-    await page.getByTestId('export-quality').selectOption('720');
-    await page.getByTestId('export-ready').waitFor({ timeout: 60_000 });
-    await page.getByTestId('export-create').click();
-    await page.getByTestId('export-succeeded').waitFor({ timeout: 180_000 });
-
-    // The file went to the browser's temporary storage, not into memory...
+    await page.getByTestId('kesit-download').click();
+    await expect(page.getByTestId('export-download')).toBeVisible({ timeout: 120_000 });
     await expect(page.getByTestId('measured-route')).toHaveText('tarayıcının geçici diski');
-    // ...and exists there while it is being offered for download.
-    expect(await listExportFiles()).toHaveLength(1);
+    await expect(page.getByTestId('measured-resolution')).toHaveText('1920×1080');
+    expect(await exportFiles(page)).toHaveLength(1);
 
     const download = page.waitForEvent('download');
     await page.getByTestId('export-download').click();
-    expect((await download).suggestedFilename()).toMatch(/\.mp4$/);
+    expect((await download).suggestedFilename()).toBe('sample-24s_00-00-00-03.mp4');
 
-    // Closing the dialog stops offering it and deletes the temporary file.
-    await page.keyboard.press('Escape');
-    await expect.poll(listExportFiles, { timeout: 5000 }).toEqual([]);
+    // Dismissing the result stops offering it; the next download deletes the file.
+    await page.getByTestId('download-dismiss').click();
+    await page.getByTestId('kesit-download').click();
+    await expect(page.getByTestId('export-download')).toBeVisible({ timeout: 120_000 });
+    expect(await exportFiles(page)).toHaveLength(1);
   });
 
-  test('a canceled export leaves no temporary file behind', async ({ page }) => {
+  test('a canceled download leaves no temporary file behind', async ({ page }) => {
+    test.setTimeout(120_000);
+    await noSavePicker(page);
     await openEditor(page);
     await importSample(page);
-    await addMoment(page, '00:00.000', '00:20.000');
-
-    await page.getByTestId('open-export').click();
-    await page.getByTestId('export-ready').waitFor({ timeout: 60_000 });
-    await page.getByTestId('export-create').click();
-    await page.getByTestId('export-running').waitFor({ timeout: 30_000 });
+    await addKesit(page, '00:00.000', '00:20.000');
+    await page.getByTestId('kesit-download').click();
+    await expect(page.getByTestId('download-running')).toBeVisible({ timeout: 30_000 });
     await page.getByTestId('export-cancel').click();
-    await expect(page.getByTestId('export-canceled')).toBeVisible({ timeout: 60_000 });
-
-    const leftovers = await page.evaluate(async () => {
-      const root = await navigator.storage.getDirectory();
-      const names: string[] = [];
-      for await (const name of (root as unknown as { keys(): AsyncIterable<string> }).keys()) {
-        if (name.startsWith('clip-export-')) names.push(name);
-      }
-      return names;
-    });
-    expect(leftovers).toEqual([]);
-  });
-
-  test('cancel stops the export and produces no file', async ({ page }) => {
-    await openEditor(page);
-    await importSample(page);
-    // Long enough that cancel lands while frames are still being encoded.
-    await addMoment(page, '00:00.000', '00:20.000');
-
-    await page.getByTestId('open-export').click();
-    await page.getByTestId('export-ready').waitFor({ timeout: 60_000 });
-    await page.getByTestId('export-create').click();
-
-    await page.getByTestId('export-running').waitFor({ timeout: 30_000 });
-    await page.getByTestId('export-cancel').click();
-
     await expect(page.getByTestId('export-canceled')).toBeVisible({ timeout: 60_000 });
     await expect(page.getByTestId('export-download')).toHaveCount(0);
-    await expect(page.getByTestId('export-succeeded')).toHaveCount(0);
-  });
-
-  test('refuses to export a recipe with no moments', async ({ page }) => {
-    await openEditor(page);
-    await importSample(page);
-
-    await page.getByTestId('open-export').click();
-    await expect(page.getByTestId('export-blocked')).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId('export-create')).toBeDisabled();
+    await expect.poll(() => exportFiles(page)).toEqual([]);
   });
 
   test('keyboard shortcuts work and stay out of text fields', async ({ page }) => {
     await openEditor(page);
     await importSample(page);
-    await addMoment(page, '00:00.000', '00:04.000');
+    await addKesit(page, '00:00.000', '00:04.000');
 
     await page.getByTestId('project-title').click();
-    await page.keyboard.type('Kahve molası');
-    await expect(page.getByTestId('project-title')).toHaveValue('Kahve molası');
-
-    // Space inside the title types a space instead of toggling playback.
+    await page.keyboard.type('Kahve molası io');
+    await expect(page.getByTestId('project-title')).toHaveValue('Kahve molası io');
+    // Space and I / O inside the title are just text.
     await page.keyboard.press('Space');
-    await expect(page.getByTestId('project-title')).toHaveValue('Kahve molası ');
+    await expect(page.getByTestId('project-title')).toHaveValue('Kahve molası io ');
     await expect(page.getByTestId('play-toggle')).toHaveAttribute('aria-label', 'Oynat');
+    await expect(page.getByTestId('range-start')).toHaveValue('');
 
     // Ctrl+Z outside a field undoes the domain edit.
-    await page.getByTestId('open-export').focus();
+    await page.getByTestId('timeline-playhead').focus();
     await page.keyboard.press('Control+z');
-    await expect(page.getByTestId('moment-count')).toHaveText('0 parça');
+    await expect(page.getByTestId('moment-count')).toHaveText('(0)');
   });
 
   test('long Turkish file names do not overflow the page', async ({ page }) => {
     await openEditor(page);
-    const longName =
-      'çok-uzun-türkçe-dosya-adı-ğüşiöç-İstanbul-Şişli-Ağustos-2026-kayıt-düzenlemesi-örnek.mp4';
+    const longName = 'çok-uzun-türkçe-dosya-adı-ğüşiöç-İstanbul-Şişli-Ağustos-2026-kayıt-düzenlemesi-örnek.mp4';
     await page.getByTestId('video-input').setInputFiles({
       name: longName,
       mimeType: 'video/mp4',
-      buffer: require('node:fs').readFileSync(SAMPLE_VIDEO),
+      buffer: readFileSync(SAMPLE_VIDEO),
     });
     await expect(page.getByTestId('preview-video')).toBeVisible();
-
-    await page.getByRole('tab', { name: 'Kaynaklar' }).click();
-    await expect(page.getByTestId('video-file-name')).toContainText('çok-uzun');
-
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow).toBeLessThanOrEqual(1);
+    await expect(page.getByTestId('source-meta')).toContainText('çok-uzun');
+    await noHorizontalOverflow(page);
   });
 });
 
@@ -455,6 +293,7 @@ test.describe('layout', () => {
     { width: 1440, height: 900 },
     { width: 1366, height: 768 },
     { width: 1024, height: 768 },
+    { width: 820, height: 1180 },
     { width: 390, height: 844 },
   ];
 
@@ -463,43 +302,41 @@ test.describe('layout', () => {
       await page.setViewportSize(size);
       const errors = await openEditor(page);
       await importSample(page);
-      await addMoment(page, '00:00.000', '00:04.000');
-
-      const overflow = await page.evaluate(
-        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      );
-      expect(overflow).toBeLessThanOrEqual(1);
+      await addKesit(page, '00:00.000', '00:04.000');
+      await noHorizontalOverflow(page);
       expect(errors).toEqual([]);
     });
   }
 
-  test('phone width uses a bottom sheet that Escape dismisses', async ({ page }) => {
+  test('phone width: Ayarlar and Diğer are bottom sheets that Escape dismisses', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openEditor(page);
     await importSample(page);
-    await addMoment(page, '00:00.000', '00:04.000');
+    await addKesit(page, '00:00.000', '00:04.000');
 
-    const trigger = page.getByTestId('tab-frame');
+    const trigger = page.getByTestId('open-settings');
     await trigger.click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await expect(page.getByTestId('aspect-9-16')).toBeVisible();
-
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(trigger).toBeFocused();
+
+    await openMore(page);
+    await expect(page.getByTestId('find-silences')).toBeVisible();
+    await expect(page.getByTestId('backup-download')).toBeVisible();
+    await closeSheet(page);
   });
 
-  test('narrow desktop exposes the inspector as a drawer', async ({ page }) => {
+  test('desktop: Ayarlar is a side drawer', async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 768 });
     await openEditor(page);
     await importSample(page);
-    await addMoment(page, '00:00.000', '00:04.000');
-
-    await page.getByTestId('open-inspector-drawer').click();
-    await expect(page.getByRole('dialog')).toBeVisible();
+    await openSettings(page, 'frame');
     await expect(page.getByTestId('zoom-slider')).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    const box = await page.getByRole('dialog').boundingBox();
+    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeGreaterThan(1000);
+    await closeSheet(page);
   });
 
   test('landing page has no overflow and links to the editor', async ({ page }) => {
@@ -509,12 +346,9 @@ test.describe('layout', () => {
     ]) {
       await page.setViewportSize(size);
       await page.goto('/');
-      const overflow = await page.evaluate(
-        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      );
-      expect(overflow).toBeLessThanOrEqual(1);
+      await noHorizontalOverflow(page);
     }
     await page.getByRole('link', { name: 'Editörü aç' }).first().click();
-    await expect(page.getByTestId('open-export')).toBeVisible();
+    await expect(page.getByTestId('download-all')).toBeVisible();
   });
 });

@@ -12,14 +12,13 @@ import {
 import {
   addCaptionCue,
   addClip,
-  addWholeSource,
   applySilenceCuts,
   convertCaptionTimeBase,
   createEmptyProject,
   importCaptionTrack,
   shiftCaptions,
   currentFraming,
-  moveClip,
+  moveClipTo,
   nextAssetId,
   primaryVideoAsset,
   removeCaptionCue,
@@ -27,16 +26,16 @@ import {
   removeMusic,
   setCaptionLanguage,
   setCaptionStyle,
-  setClipGain,
-  setClipMuted,
   setExportShortEdge,
   setFraming,
   setMusicAsset,
   setVideoAsset,
-  splitAtTimelinePlayhead,
+  setVideoGain,
+  setVideoMuted,
   updateCaptionCue,
   updateClipRange,
   updateMusic,
+  withWholeKesit,
   type AddClipRejection,
   type CaptionConversionResult,
   type CaptionCueInput,
@@ -46,7 +45,6 @@ import {
   type ShiftCaptionsResult,
   type SilenceCutResult,
   type MusicRejection,
-  type TimelineSplitResult,
 } from '@/application/commands';
 import {
   canRedo as historyCanRedo,
@@ -59,6 +57,7 @@ import {
   type History,
 } from '@/application/history';
 import type { AspectRatio, CaptionStyleV2, FitMode, MusicV1, Project } from '@/domain/edl';
+import { DEFAULT_KESIT_SETTINGS, type KesitSettings } from '@/domain/kesit';
 import { WEB_LOCAL_POLICY, exceedsTotalSourceBytes } from '@/domain/policy';
 import {
   bindingFor,
@@ -70,11 +69,8 @@ import {
 import { totalOutputDurationUs } from '@/domain/timeline';
 import type { ClipSilence } from '@/domain/silence';
 import type { Micros } from '@/domain/time';
-import type { SplitRejection } from '@/domain/trim';
-import { aspectForVideo, initialPlacement, type TimelineSplitRejection } from '@/domain/timelineEdit';
+import { aspectForVideo } from '@/domain/timelineEdit';
 import type { MessageKey } from '@/i18n/messages';
-
-export type PreviewMode = 'source' | 'output';
 
 export interface MediaError {
   scope: 'video' | 'audio';
@@ -87,15 +83,14 @@ export interface MediaError {
   hint?: ProbeHint;
 }
 
-/** What opening a video did, so the editor can say it and set up the preview. */
+/**
+ * What opening a video did, so the editor can say it. Since ADR-026 nothing
+ * is placed automatically: the kesit list starts empty and the user marks
+ * what to keep; "Videoyu indir" downloads the whole video meanwhile.
+ */
 export type VideoImportOutcome =
   | { kind: 'rejected' }
-  /**
-   * The whole video went onto the timeline as one piece — also when it is
-   * longer than the output limit (ADR-021): the user cuts it down there.
-   */
-  | { kind: 'whole'; lengthUs: Micros; aspect: AspectRatio | null }
-  | { kind: 'too_short'; aspect: AspectRatio | null };
+  | { kind: 'opened'; lengthUs: Micros; aspect: AspectRatio | null };
 
 const VIDEO_LIMITS = {
   maxBytes: WEB_LOCAL_POLICY.maxTotalSourceBytes,
@@ -115,10 +110,16 @@ function changedProject(result: CommandOutcome, base: Project): Project | null {
   return result.ok && result.project !== base ? result.project : null;
 }
 
-function rejectionKey(
-  reason: AddClipRejection | MusicRejection | SplitRejection | TimelineSplitRejection,
-): MessageKey {
+function rejectionKey(reason: AddClipRejection | MusicRejection): MessageKey {
   return `error.${reason}` as MessageKey;
+}
+
+/** The settings the first kesit carries: framing and the video's own sound. */
+function settingsOf(project: Project): KesitSettings | null {
+  const first = project.clips[0];
+  if (!first) return null;
+  const { fit, zoom } = currentFraming(project);
+  return { fit, zoom, sourceGainDb: first.sourceGainDb, muted: first.muted };
 }
 
 export function useEditorState() {
@@ -134,15 +135,17 @@ export function useEditorState() {
    */
   const [bindings, setBindings] = useState<AssetBinding[]>([]);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
-  const [previewMode, setPreviewMode] = useState<PreviewMode>('source');
   const [importing, setImporting] = useState<'video' | 'audio' | null>(null);
   const [mediaError, setMediaError] = useState<MediaError | null>(null);
+  /** Refusals of the kesit actions (add, fine-tune), shown under Başlangıç/Bitiş. */
   const [actionError, setActionError] = useState<MessageKey | null>(null);
   /**
-   * Errors from the output strip (split, trim). Kept apart from `actionError`
-   * because that one is shown by the range form, which result mode hides.
+   * Framing and video sound while there is no kesit (ADR-026): they are
+   * stored per clip in the recipe, so with an empty list the editor holds
+   * them, the whole-video download uses them and the first kesit takes them.
+   * Not part of undo; the frame's aspect is (it lives on the canvas).
    */
-  const [timelineError, setTimelineError] = useState<MessageKey | null>(null);
+  const [looseSettings, setLooseSettings] = useState<KesitSettings>(DEFAULT_KESIT_SETTINGS);
 
   const project = history.present;
   const liveHandles = useRef<{ video: MediaHandle | null; audio: MediaHandle | null }>({
@@ -168,7 +171,6 @@ export function useEditorState() {
     async (file: File): Promise<VideoImportOutcome> => {
       setMediaError(null);
       setActionError(null);
-      setTimelineError(null);
       const keptOpen = liveHandles.current.video !== null;
       const musicBytes = liveHandles.current.audio?.file.size ?? 0;
       if (
@@ -187,14 +189,10 @@ export function useEditorState() {
         return { kind: 'rejected' };
       }
 
-      // ADR-019/ADR-021: the video goes onto the timeline whole, as one
-      // piece, even when it is longer than the output limit (the probe has
-      // already held it to the input limit, which is the timeline's limit).
-      const placement = initialPlacement(outcome.handle.durationUs);
-      // Opening a video always starts an empty timeline (the new asset keeps
-      // no old pieces), so the frame follows the video's orientation. Part of
-      // the import step: undoing the import restores the previous frame too.
-      // Restoring a saved project does not come here and keeps its frame.
+      // Opening a video always starts an empty kesit list (the new asset keeps
+      // no old kesitler), so the frame follows the video's orientation. Part
+      // of the import step: undoing the import restores the previous frame
+      // too. Restoring a saved project does not come here and keeps its frame.
       const aspect = aspectForVideo(outcome.handle.displayWidth, outcome.handle.displayHeight);
 
       setVideo((previous) => {
@@ -202,7 +200,7 @@ export function useEditorState() {
         return outcome.handle;
       });
       setSelectedClipId(null);
-      setPreviewMode(placement.kind === 'whole' ? 'output' : 'source');
+      setLooseSettings(DEFAULT_KESIT_SETTINGS);
       setHistory((current) => {
         const assetId = nextAssetId(current.present, 'video');
         setBindings((previous) => [
@@ -231,17 +229,9 @@ export function useEditorState() {
           aspect && replaced.clips.length === 0 && replaced.canvas.aspect !== aspect
             ? setFraming(replaced, { aspect })
             : replaced;
-        const withVideo = commit(current, framed);
-        if (placement.kind !== 'whole') return withVideo;
-        // Its own undo step on top of the import: the first Ctrl+Z empties
-        // the timeline and keeps the video open (the secondary range flow).
-        const whole = addWholeSource(withVideo.present, WEB_LOCAL_POLICY);
-        return whole.ok ? commit(withVideo, whole.project) : withVideo;
+        return commit(current, framed);
       });
-      if (placement.kind === 'whole') {
-        return { kind: 'whole', lengthUs: placement.sourceOutUs - placement.sourceInUs, aspect };
-      }
-      return { kind: 'too_short', aspect };
+      return { kind: 'opened', lengthUs: outcome.handle.durationUs, aspect };
     },
     [],
   );
@@ -309,7 +299,7 @@ export function useEditorState() {
     setTitle(record.title);
     setBindings(record.bindings);
     setSelectedClipId(null);
-    setPreviewMode('source');
+    setLooseSettings(DEFAULT_KESIT_SETTINGS);
     setActionError(null);
     setMediaError(null);
   }, []);
@@ -406,70 +396,36 @@ export function useEditorState() {
     [bindings],
   );
 
-  const addMoment = useCallback(
-    (sourceInUs: Micros, sourceOutUs: Micros): boolean => {
-      let added = false;
+  const changeFraming = useCallback(
+    (framing: { aspect?: AspectRatio; fit?: FitMode; zoom?: number }) => {
+      setLooseSettings((current) => ({
+        ...current,
+        ...(framing.fit ? { fit: framing.fit } : {}),
+        ...(framing.zoom !== undefined ? { zoom: framing.zoom } : {}),
+      }));
       setHistory((current) => {
-        const result = addClip(current.present, { sourceInUs, sourceOutUs }, WEB_LOCAL_POLICY);
-        if (!result.ok) {
-          setActionError(rejectionKey(result.reason));
-          return current;
-        }
-        added = true;
-        setActionError(null);
-        const newest = result.project.clips[result.project.clips.length - 1];
-        if (newest) setSelectedClipId(newest.clipId);
-        return commit(current, result.project);
+        const next = setFraming(current.present, framing);
+        return next.revision === current.present.revision ? current : commit(current, next);
       });
-      return added;
     },
     [],
   );
 
-  const editMomentRange = useCallback(
-    (clipId: string, sourceInUs: Micros, sourceOutUs: Micros): boolean => {
-      let ok = false;
-      setHistory((current) => {
-        const result = updateClipRange(
-          current.present,
-          clipId,
-          { sourceInUs, sourceOutUs },
-          WEB_LOCAL_POLICY,
-        );
-        if (!result.ok) {
-          setActionError(rejectionKey(result.reason));
-          return current;
-        }
-        ok = true;
-        setActionError(null);
-        return commit(current, result.project);
-      });
-      return ok;
-    },
-    [],
-  );
-
-  const shiftMoment = useCallback((clipId: string, delta: -1 | 1) => {
-    setActionError(null);
+  /** The video's own sound, for every kesit (and for the whole-video download). */
+  const changeVideoGain = useCallback((gainDb: number) => {
+    setLooseSettings((current) => ({ ...current, sourceGainDb: Math.max(-60, Math.min(0, Math.round(gainDb))) }));
     setHistory((current) => {
-      const next = moveClip(current.present, clipId, delta);
+      const next = setVideoGain(current.present, gainDb);
       return next === current.present ? current : commit(current, next);
     });
   }, []);
 
-  const changeFraming = useCallback(
-    (framing: { aspect?: AspectRatio; fit?: FitMode; zoom?: number }) => {
-      setHistory((current) => commit(current, setFraming(current.present, framing)));
-    },
-    [],
-  );
-
-  const changeClipGain = useCallback((clipId: string, gainDb: number) => {
-    setHistory((current) => commit(current, setClipGain(current.present, clipId, gainDb)));
-  }, []);
-
-  const changeClipMuted = useCallback((clipId: string, muted: boolean) => {
-    setHistory((current) => commit(current, setClipMuted(current.present, clipId, muted)));
+  const changeVideoMuted = useCallback((muted: boolean) => {
+    setLooseSettings((current) => ({ ...current, muted }));
+    setHistory((current) => {
+      const next = setVideoMuted(current.present, muted);
+      return next === current.present ? current : commit(current, next);
+    });
   }, []);
 
   const changeMusic = useCallback((patch: Partial<Omit<MusicV1, 'assetId'>>): boolean => {
@@ -524,54 +480,30 @@ export function useEditorState() {
     [project],
   );
 
-  /** Deletes a piece; the pieces after it close up. One undo step. Returns the new recipe. */
-  const deletePiece = useCallback(
-    (clipId: string): Project | null => {
-      setActionError(null);
-      setTimelineError(null);
-      const result = runCommand((base): CommandOutcome => {
-        const next = removeClip(base, clipId);
-        return next === base ? { ok: false } : { ok: true, project: next };
-      });
-      if (!result.ok) return null;
-      setSelectedClipId((selected) => (selected === clipId ? null : selected));
-      return result.project;
-    },
-    [runCommand],
-  );
+  const settings: KesitSettings = useMemo(() => settingsOf(project) ?? looseSettings, [looseSettings, project]);
 
-  /**
-   * "Böl": cuts the piece under the playhead (ADR-019). The piece now under
-   * the playhead — the second half — becomes the selection, so "Sil" right
-   * after a split removes what follows the cut.
-   */
-  const splitPiece = useCallback(
-    (playhead: Parameters<typeof splitAtTimelinePlayhead>[1]): TimelineSplitResult => {
-      setActionError(null);
-      const result = runCommand((base) => splitAtTimelinePlayhead(base, playhead, WEB_LOCAL_POLICY));
+  /** "Kesit ekle": the marked range becomes the last kesit. One undo step. */
+  const addKesit = useCallback(
+    (range: { sourceInUs: Micros; sourceOutUs: Micros }): { ok: true; clipId: string } | { ok: false } => {
+      const result = runCommand((base) => addClip(base, range, WEB_LOCAL_POLICY, settingsOf(base) ?? looseSettings));
       if (!result.ok) {
-        setTimelineError(rejectionKey(result.reason));
-        return result;
+        setActionError(rejectionKey(result.reason));
+        return { ok: false };
       }
-      setTimelineError(null);
-      setSelectedClipId(result.newClipId);
-      return result;
+      setActionError(null);
+      const newest = result.project.clips[result.project.clips.length - 1];
+      return newest ? { ok: true, clipId: newest.clipId } : { ok: false };
     },
-    [runCommand],
+    [looseSettings, runCommand],
   );
 
   /**
-   * Stores a trimmed range from an edge of a piece. `coalesce` folds the
-   * change into the undo step on top (held arrow key). Returns the new
-   * recipe, or null when nothing changed.
+   * Fine-tunes a kesit's start or end (typed, I/O, a handle). `coalesce`
+   * folds it into the undo step on top (a held arrow key on a handle).
+   * Returns the new recipe, or null when it was refused or changed nothing.
    */
-  const trimPiece = useCallback(
-    (
-      clipId: string,
-      range: { sourceInUs: Micros; sourceOutUs: Micros },
-      coalesce = false,
-    ): Project | null => {
-      setActionError(null);
+  const editKesit = useCallback(
+    (clipId: string, range: { sourceInUs: Micros; sourceOutUs: Micros }, coalesce = false): Project | null => {
       const result = runCommand((base) => {
         const clip = base.clips.find((item) => item.clipId === clipId);
         if (clip && clip.sourceInUs === range.sourceInUs && clip.sourceOutUs === range.sourceOutUs) {
@@ -580,26 +512,44 @@ export function useEditorState() {
         return updateClipRange(base, clipId, range, WEB_LOCAL_POLICY);
       }, coalesce);
       if (result.ok) {
-        setTimelineError(null);
+        setActionError(null);
         return result.project;
       }
-      if (result.reason) setTimelineError(rejectionKey(result.reason));
+      if (result.reason) setActionError(rejectionKey(result.reason));
       return null;
     },
     [runCommand],
   );
 
-  /** "Tüm videoyu ekle" on an empty timeline. */
-  const addWholeVideo = useCallback((): Project | null => {
-    setActionError(null);
-    const result = runCommand((base) => addWholeSource(base, WEB_LOCAL_POLICY));
-    if (!result.ok) {
-      setTimelineError(rejectionKey(result.reason));
-      return null;
-    }
-    setTimelineError(null);
-    return result.project;
-  }, [runCommand]);
+  /** Deletes a kesit. One undo step. */
+  const deleteKesit = useCallback(
+    (clipId: string): Project | null => {
+      setActionError(null);
+      // The last kesit's framing and sound stay the editor's settings.
+      const kept = settingsOf(project);
+      const result = runCommand((base): CommandOutcome => {
+        const next = removeClip(base, clipId);
+        return next === base ? { ok: false } : { ok: true, project: next };
+      });
+      if (!result.ok) return null;
+      if (result.project.clips.length === 0 && kept) setLooseSettings(kept);
+      setSelectedClipId((selected) => (selected === clipId ? null : selected));
+      return result.project;
+    },
+    [project, runCommand],
+  );
+
+  /** Moves a kesit in the list (drag or keys). One undo step. */
+  const moveKesit = useCallback(
+    (clipId: string, toIndex: number) => {
+      setActionError(null);
+      runCommand((base): CommandOutcome => {
+        const next = moveClipTo(base, clipId, toIndex);
+        return next === base ? { ok: false } : { ok: true, project: next };
+      });
+    },
+    [runCommand],
+  );
 
   const addCaption = useCallback(
     (input: CaptionCueInput) => runCommand((base) => addCaptionCue(base, input)),
@@ -634,11 +584,18 @@ export function useEditorState() {
   /**
    * Removes the silences the user approved in the dialog (ADR-018). One undo
    * step; the dialog shows the report, so the result is returned directly.
+   * `whole`: there was no kesit, the dialog looked at the whole video as one
+   * (ADR-026), and the pieces that remain become the kesitler.
    */
   const cutSilences = useCallback(
-    (removals: readonly ClipSilence[]): SilenceCutResult =>
-      runCommand((base) => applySilenceCuts(base, removals, WEB_LOCAL_POLICY)),
-    [runCommand],
+    (removals: readonly ClipSilence[], whole: boolean): SilenceCutResult =>
+      runCommand((base): SilenceCutResult => {
+        if (!whole) return applySilenceCuts(base, removals, WEB_LOCAL_POLICY);
+        const withWhole = withWholeKesit(base, settingsOf(base) ?? looseSettings, WEB_LOCAL_POLICY);
+        if (!withWhole.ok) return { ok: false, reason: 'nothing_to_remove' };
+        return applySilenceCuts(withWhole.project, removals, WEB_LOCAL_POLICY);
+      }),
+    [looseSettings, runCommand],
   );
 
   const removeCaption = useCallback((cueId: string) => {
@@ -655,18 +612,16 @@ export function useEditorState() {
 
   const undo = useCallback(() => {
     setActionError(null);
-    setTimelineError(null);
     setHistory((current) => historyUndo(current));
   }, []);
 
   const redo = useCallback(() => {
     setActionError(null);
-    setTimelineError(null);
     setHistory((current) => historyRedo(current));
   }, []);
 
   const asset = primaryVideoAsset(project);
-  const framing = useMemo(() => currentFraming(project), [project]);
+  const framing = useMemo(() => ({ fit: settings.fit, zoom: settings.zoom }), [settings]);
   const outputDurationUs = useMemo(() => totalOutputDurationUs(project), [project]);
   const selectedClip = useMemo(
     () => project.clips.find((clip) => clip.clipId === selectedClipId) ?? null,
@@ -716,15 +671,12 @@ export function useEditorState() {
     selectedClipId,
     selectedClip,
     setSelectedClipId,
-    previewMode,
-    setPreviewMode,
+    settings,
     importing,
     mediaError,
     clearMediaError: () => setMediaError(null),
     actionError,
     setActionError,
-    timelineError,
-    setTimelineError,
     dirty,
     canUndo: historyCanUndo(history),
     canRedo: historyCanRedo(history),
@@ -733,16 +685,13 @@ export function useEditorState() {
     importVideo,
     importAudio,
     dropAudio,
-    addMoment,
-    editMomentRange,
-    deletePiece,
-    splitPiece,
-    trimPiece,
-    addWholeVideo,
-    shiftMoment,
+    addKesit,
+    editKesit,
+    deleteKesit,
+    moveKesit,
     changeFraming,
-    changeClipGain,
-    changeClipMuted,
+    changeVideoGain,
+    changeVideoMuted,
     changeMusic,
     changeShortEdge,
     addCaption,

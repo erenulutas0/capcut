@@ -71,7 +71,7 @@ import { pickFrames } from './framePicker';
 import { createHdrContext, softClippedImage } from './hdrCanvas';
 import { probeHdrToneMapping, type HdrProbeResult } from './hdrProbe';
 import { removeExportEntry, sweepExportEntries } from './opfsEntries';
-import { prepareOutput } from './outputSink';
+import { prepareOutput, sinkRefusal } from './outputSink';
 import type {
   CaptionFontStatus,
   CapabilityStageResult,
@@ -614,6 +614,7 @@ async function runExport(
   forceMemoryRoute: boolean,
   storageFreeBytes: number | null,
   storageReserveBytes: number | null,
+  destination: FileSystemFileHandle | null,
 ): Promise<void> {
   const startedAt = Date.now();
   emit(requestId, { type: 'preparing', attemptId: requestId });
@@ -660,23 +661,16 @@ async function runExport(
       audioBitrate: plan.audioBitrate,
       durationUs: plan.expectedDurationUs,
     }),
-    { forceMemory: forceMemoryRoute, storageFreeBytes, reserveBytes: storageReserveBytes },
+    { forceMemory: forceMemoryRoute, storageFreeBytes, reserveBytes: storageReserveBytes, destination },
   );
 
-  // Doc 15 v3: 60 minutes only on the disk route. Refused here, before the
-  // first frame, not after minutes of encoding into memory.
-  const refusal = outputRouteRefusal(
-    { maxMemoryRouteOutputDurationUs: memoryRouteLimitUs },
-    sink.availability,
-    plan.expectedDurationUs,
-  );
+  // Doc 15 v3: 60 minutes only on a disk route; ADR-026: the picked file
+  // must open and have room. Refused here, before the first frame, not after
+  // minutes of encoding.
+  const refusal = sinkRefusal(sink, memoryRouteLimitUs, plan.expectedDurationUs);
   if (refusal) {
     await sink.discard();
-    throw new ExportFailure(
-      refusal,
-      undefined,
-      refusal === 'output_storage_insufficient' ? (sink.storage ?? undefined) : undefined,
-    );
+    throw new ExportFailure(refusal.code, undefined, refusal.storage ?? undefined);
   }
 
   const output = new Output({ format: sink.format, target: sink.target });
@@ -833,7 +827,15 @@ async function runExport(
       framesMissing,
     };
 
-    if (collected.file && collected.entryName) {
+    if (collected.route === 'file' && collected.savedName !== null) {
+      succeeded = true;
+      emit(requestId, {
+        type: 'succeeded',
+        attemptId: requestId,
+        result,
+        output: { kind: 'file', fileName: collected.savedName },
+      });
+    } else if (collected.file && collected.entryName) {
       ownEntries.add(collected.entryName);
       succeeded = true;
       emit(requestId, {
@@ -939,6 +941,7 @@ scope.onmessage = async (message: MessageEvent<WorkerRequest>) => {
         request.forceMemoryRoute,
         request.storageFreeBytes,
         request.storageReserveBytes,
+        request.destination,
       );
     } catch (error) {
       if (error instanceof CanceledError) {

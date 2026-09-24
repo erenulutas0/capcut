@@ -41,6 +41,8 @@ export type ExportFailureCode =
   | 'output_too_long_for_memory'
   /** Refused up front: disk access exists but the browser could not give the file its space (ADR-023). */
   | 'output_storage_insufficient'
+  /** Refused up front: the file picked in the save dialog could not be opened for writing (ADR-026). */
+  | 'output_file_unavailable'
   | 'worker_unavailable'
   | 'internal_error';
 
@@ -58,7 +60,14 @@ export interface ExportProbe {
  * Where the finished file lived while it was written. Reported, not hidden:
  * the memory route costs about twice the file size in RAM (ADR-013).
  */
-export type ExportOutputRoute = 'opfs' | 'memory';
+export type ExportOutputRoute = 'opfs' | 'memory' | 'file';
+
+/**
+ * How the file was made, when the worker path says so: re-encoded frame by
+ * frame, or cut without re-encoding (a stream copy, or a copy with only the
+ * edges re-encoded). Filled by the fast-cut path; absent means `encode`.
+ */
+export type ExportMethod = 'copy' | 'smart' | 'encode';
 
 export interface ExportResult {
   attemptId: string;
@@ -76,6 +85,8 @@ export interface ExportResult {
    * frame was held there. Shown to the user when above zero.
    */
   framesMissing: number;
+  /** See `ExportMethod`; optional so a path that does not report it stays valid. */
+  method?: ExportMethod;
 }
 
 /**
@@ -107,10 +118,12 @@ export type ExportEvent =
        * `memory`: the bytes themselves, transferred (not copied) to the page.
        * `opfs`: a disk-backed File in the browser's private file system; the
        * page must remove `entryName` when it no longer offers the download.
+       * `file`: already saved where the user chose (ADR-026); nothing to offer.
        */
       output:
         | { kind: 'memory'; data: Uint8Array }
-        | { kind: 'opfs'; file: File; entryName: string };
+        | { kind: 'opfs'; file: File; entryName: string }
+        | { kind: 'file'; fileName: string };
     }
   | {
       type: 'failed';
@@ -137,9 +150,11 @@ export interface StorageShortfall {
   /**
    * `estimate`: the browser's own estimate was too small. `reservation`: the
    * estimate looked fine, but claiming the space on disk failed; the
-   * estimate does not see the real disk (ADR-023).
+   * estimate does not see the real disk (ADR-023). `file_reservation`: the
+   * disk of the file picked in the save dialog refused the space (ADR-026);
+   * no browser estimate is involved, `freeBytes` is 0.
    */
-  reason: 'estimate' | 'reservation';
+  reason: 'estimate' | 'reservation' | 'file_reservation';
 }
 
 export const TERMINAL_EXPORT_TYPES: ReadonlySet<ExportEvent['type']> = new Set([
