@@ -78,7 +78,14 @@ describe('caption commands', () => {
   it('adds a cue, creates the track with defaults and stays valid', () => {
     const project = add(projectOf(10), 1, 3, '  Merhaba   dünya ');
     const track = project.captionTracks[0];
-    expect(track).toMatchObject({ trackId: 't_001', origin: 'manual', timeBase: 'output', language: 'tr' });
+    // ADR-026: a new track is anchored to the video, the editor's one clock.
+    expect(track).toMatchObject({
+      trackId: 't_001',
+      origin: 'manual',
+      timeBase: 'source',
+      assetId: 'a_video_001',
+      language: 'tr',
+    });
     expect(track?.cues).toEqual([{ cueId: 'q_001', startUs: 1 * S, endUs: 3 * S, text: 'Merhaba dünya' }]);
     expect(validateProject(project).ok).toBe(true);
   });
@@ -114,7 +121,20 @@ describe('caption commands', () => {
   });
 
   it('refuses a start outside the output and cuts an end past it', () => {
-    const project = projectOf(4);
+    // An output track (older projects): its clock is the joined download.
+    const project: Project = {
+      ...projectOf(4),
+      captionTracks: [
+        {
+          trackId: 't_001',
+          origin: 'manual',
+          timeBase: 'output',
+          language: 'tr',
+          style: { preset: 'box', position: 'bottom', size: 'medium' },
+          cues: [],
+        },
+      ],
+    };
     expect(addCaptionCue(project, { startUs: 4 * S, endUs: 5 * S, text: 'dışarıda' })).toEqual({
       ok: false,
       reason: 'caption_outside_output',

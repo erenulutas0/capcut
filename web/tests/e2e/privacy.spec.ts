@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 
-import { startWithEmptyTimeline } from './rangeFlow';
+import { closeSheet, noSavePicker, openMore, openSettings } from './kesitFlow';
 
 /**
  * Privacy and support (roadmap P2-04, launch checklist B): the privacy page,
@@ -21,15 +21,13 @@ async function openEditor(page: Page) {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/editor');
-  await expect(page.getByTestId('open-export')).toBeVisible();
+  await expect(page.getByTestId('download-all')).toBeVisible();
   return errors;
 }
 
 async function importSample(page: Page) {
   await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
   await expect(page.getByTestId('preview-video')).toBeVisible();
-  // These tests build their pieces with the range flow (ADR-019).
-  await startWithEmptyTimeline(page);
 }
 
 async function addMoment(page: Page, start: string, end: string) {
@@ -39,26 +37,27 @@ async function addMoment(page: Page, start: string, end: string) {
 }
 
 async function addCaption(page: Page, text: string) {
-  await page.getByTestId('inspector-tab-captions').click();
-  await page.getByRole('tab', { name: 'Sonuç', exact: true }).click();
-  await expect(page.getByTestId('output-note')).toBeVisible();
+  await openSettings(page, 'captions');
   await page.getByTestId('captions-add').click();
   const field = page.getByTestId('cue-draft').getByTestId('cue-text');
   await expect(field).toBeFocused();
   await page.keyboard.type(text);
   await field.blur();
   await expect(page.getByTestId('cue-draft')).toHaveCount(0);
+  await closeSheet(page);
 }
 
+/** The top button, at 720p, until the file is ready (fallback route: call `noSavePicker` first). */
 async function runExport(page: Page) {
-  await page.getByTestId('open-export').click();
+  await openSettings(page, 'frame');
   await page.getByTestId('export-quality').selectOption('720');
-  await page.getByTestId('export-ready').waitFor({ timeout: 60_000 });
-  await page.getByTestId('export-create').click();
+  await closeSheet(page);
+  await page.getByTestId('download-all').click();
   await page.getByTestId('export-succeeded').waitFor({ timeout: 180_000 });
 }
 
 async function openReportFromHelp(page: Page) {
+  await openMore(page);
   await page.getByTestId('open-help').click();
   await page.getByTestId('open-report').click();
   const dialog = page.getByRole('dialog', { name: 'Sorun bildir' });
@@ -119,6 +118,7 @@ async function noHorizontalScroll(page: Page) {
 
 test.describe('privacy page', () => {
   test('says what the app does, marked as a draft, with undecided facts left visibly open', async ({ page }) => {
+    await noSavePicker(page);
     await page.goto('/');
     await page.getByTestId('footer-privacy').click();
     await expect(page).toHaveURL(/\/gizlilik$/);
@@ -168,6 +168,7 @@ test.describe('report a problem', () => {
     await addMoment(page, '00:00.000', '00:04.000');
     await addCaption(page, CAPTION);
 
+    await openMore(page);
     await page.getByTestId('open-help').click();
     const privacyLink = page.getByTestId('help-privacy-link');
     await expect(privacyLink).toHaveAttribute('href', '/gizlilik');
@@ -241,8 +242,8 @@ test.describe('report a problem', () => {
     await expect(page.getByTestId('save-state')).toContainText('Kaydedildi', { timeout: 15_000 });
     // After a reload the recipe is back but the file is not: export is blocked.
     await page.reload();
-    await expect(page.getByTestId('moment-count')).toHaveText('1 parça', { timeout: 20_000 });
-    await page.getByTestId('open-export').click();
+    await expect(page.getByTestId('moment-count')).toHaveText('(1)', { timeout: 20_000 });
+    await page.getByTestId('kesit-download').click();
     await expect(page.getByTestId('export-blocked')).toBeVisible();
 
     await page.getByTestId('export-report').click();
@@ -253,7 +254,7 @@ test.describe('report a problem', () => {
     expect(json.sessionErrors).toEqual(
       expect.arrayContaining([expect.objectContaining({ area: 'plan', code: expect.any(String) })]),
     );
-    // Its overlay is above the export dialog, so the report is what is on top.
+    // Its overlay is above the editor, so the report is what is on top.
     const onTop = await page.evaluate(() => {
       const panel = document.querySelector('[aria-labelledby="report-title"]')?.getBoundingClientRect();
       if (!panel) return false;
@@ -271,7 +272,7 @@ test.describe('report a problem', () => {
   test('fits a 390 px phone', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openEditor(page);
-    await page.getByTestId('tab-file').click();
+    await openMore(page);
     await page.getByRole('button', { name: 'Kısayollar ve sınırlar' }).click();
     await page.getByTestId('open-report').click();
     await expect(page.getByTestId('diag-preview')).toHaveAttribute('aria-busy', 'false');
@@ -291,6 +292,7 @@ test.describe('report a problem', () => {
 
 test.describe('local export log', () => {
   test('a real export adds one entry with numbers only; "Günlüğü temizle" empties it', async ({ page }) => {
+    await noSavePicker(page);
     await openEditor(page);
     await importSample(page);
     await addMoment(page, '00:00.000', '00:02.000');
@@ -329,6 +331,7 @@ test.describe('local export log', () => {
   });
 
   test('keeps only the last 20 attempts in the real database', async ({ page }) => {
+    await noSavePicker(page);
     await openEditor(page);
     await importSample(page);
     await addMoment(page, '00:00.000', '00:02.000');
@@ -429,7 +432,7 @@ test.describe('local export log', () => {
     expect(version).toBe(1);
 
     await page.goto('/editor');
-    await expect(page.getByTestId('moment-count')).toHaveText('2 parça', { timeout: 20_000 });
+    await expect(page.getByTestId('moment-count')).toHaveText('(2)', { timeout: 20_000 });
     await expect(page.getByTestId('relink-filename')).toHaveText(FILE_NAME);
 
     const after = await page.evaluate(
@@ -480,6 +483,7 @@ test.describe('nothing leaves the machine', () => {
     watch(context);
     page.on('websocket', (socket) => websockets.push(socket.url()));
 
+    await noSavePicker(page);
     await page.goto('/');
     await page.getByTestId('footer-privacy').click();
     await expect(page.getByTestId('privacy-draft')).toBeVisible();
@@ -490,32 +494,32 @@ test.describe('nothing leaves the machine', () => {
     await addCaption(page, CAPTION);
 
     // Silence analysis (decodes audio in a worker).
-    await page.getByTestId('open-silence').click();
+    await openMore(page);
+    await page.getByTestId('find-silences').click();
     await expect(page.getByRole('dialog', { name: 'Sessizlikleri bul' })).toBeVisible();
     await expect(page.getByTestId('silence-running')).toHaveCount(0, { timeout: 30_000 });
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
     // Subtitle download.
+    await openSettings(page, 'captions');
     let download = page.waitForEvent('download');
     await page.getByTestId('caption-export-srt').click();
     expect((await download).suggestedFilename()).toMatch(/\.srt$/);
+    await closeSheet(page);
 
     // Export with burned-in captions, and the MP4 download.
     await runExport(page);
     download = page.waitForEvent('download');
     await page.getByTestId('export-download').click();
     expect((await download).suggestedFilename()).toMatch(/\.mp4$/);
-    await page.keyboard.press('Escape');
 
-    // Project backup download (the backup panel lives in the phone file sheet).
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByTestId('tab-file').click();
+    // Project backup download (in Diğer).
+    await openMore(page);
     download = page.waitForEvent('download');
     await page.getByTestId('backup-download').click();
     expect((await download).suggestedFilename()).toMatch(/\.clip\.json$/);
-    await page.keyboard.press('Escape');
-    await page.setViewportSize({ width: 1440, height: 900 });
+    await closeSheet(page);
 
     // Diagnostics download.
     await openReportFromHelp(page);

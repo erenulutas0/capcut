@@ -46,6 +46,19 @@ function withMoments(ranges: Array<[number, number]>): Project {
   return project;
 }
 
+/**
+ * An empty track on the output clock (the joined download). Since ADR-026 a
+ * new track is anchored to the video; these tests are about output lines.
+ */
+function withOutputTrack(project: Project): Project {
+  return {
+    ...project,
+    captionTracks: [
+      { trackId: 't_001', origin: 'manual', timeBase: 'output', language: 'tr', style: { preset: 'box', position: 'bottom', size: 'medium' }, cues: [] },
+    ],
+  };
+}
+
 function importSource(project: Project, cues: Array<[number, number, string]>): Project {
   const result = importCaptionTrack(
     project,
@@ -139,7 +152,7 @@ describe('source-anchored captions follow their moments', () => {
 describe('converting between clocks keeps the current output identical', () => {
   it('output → source splits a line at a cut and joins contiguous moments', () => {
     // Output 0–4 is source 0–4, 4–8 is source 10–14, 8–12 is source 14–18.
-    let project = withMoments([[0, 4], [10, 14], [14, 18]]);
+    let project = withOutputTrack(withMoments([[0, 4], [10, 14], [14, 18]]));
     for (const [from, to, text] of [[3, 5, 'kesiği aşan'], [6, 10, 'bitişik anlar']] as const) {
       const result = addCaptionCue(project, { startUs: from * S, endUs: to * S, text });
       if (!result.ok) throw new Error(result.reason);
@@ -166,7 +179,7 @@ describe('converting between clocks keeps the current output identical', () => {
 
   it('output → source refuses when two different lines would share a source instant', () => {
     // The same source 0–4 is used twice with different captions over it.
-    let project = withMoments([[0, 4], [0, 4]]);
+    let project = withOutputTrack(withMoments([[0, 4], [0, 4]]));
     for (const [from, to, text] of [[1, 2, 'ilk kez'], [5, 6, 'ikinci kez']] as const) {
       const result = addCaptionCue(project, { startUs: from * S, endUs: to * S, text });
       if (!result.ok) throw new Error(result.reason);

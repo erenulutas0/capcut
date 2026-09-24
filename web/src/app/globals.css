@@ -31,10 +31,8 @@
   /* Touch target policy: 44px on web, 48px for touch tools (UI doc). */
   --tap: 44px;
 
-  --panel-left: 264px;
-  --panel-right: 284px;
+  --kesit-panel: 340px;
   --topbar-h: 64px;
-  --strip-h: 148px;
 }
 
 * {

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
-import { startWithEmptyTimeline } from './rangeFlow';
+import { openMore, openSettings } from './kesitFlow';
 
 const SAMPLE_VIDEO = join(process.cwd(), 'tests', 'media', 'sample-24s.mp4');
 const LEGACY_V1 = join(process.cwd(), 'fixtures', 'edl', 'legacy-v1', 'single-clip.json');
@@ -11,11 +11,9 @@ async function openWithSample(page: Page) {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/editor');
-  await expect(page.getByTestId('open-export')).toBeVisible();
+  await expect(page.getByTestId('download-all')).toBeVisible();
   await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
   await expect(page.getByTestId('preview-video')).toBeVisible();
-  // These tests build their pieces with the range flow (ADR-019).
-  await startWithEmptyTimeline(page);
   await expect(page.getByTestId('total-time')).toHaveText('00:24.000');
   return errors;
 }
@@ -26,26 +24,25 @@ async function addMoment(page: Page, start: string, end: string) {
   await page.getByTestId('add-moment').click();
 }
 
-/** Two moments, 4 s + 6 s: a 10 s output. */
+/** Two kesitler, 4 s + 6 s: a 10 s joined download. */
 async function buildTenSecondOutput(page: Page) {
   await addMoment(page, '00:00.000', '00:04.000');
   await addMoment(page, '00:08.000', '00:14.000');
   await expect(page.getByTestId('output-duration-us')).toHaveText('10000000');
 }
 
-async function showResult(page: Page) {
-  await page.getByRole('tab', { name: 'Sonuç', exact: true }).click();
-  await expect(page.getByTestId('output-note')).toBeVisible();
-}
-
+/** Moves the playhead on the video's own clock (the editor's one clock, ADR-026). */
 async function seek(page: Page, ms: number) {
-  await page.getByLabel('Zamanda gezin').fill(String(ms));
+  await page.evaluate((at) => {
+    const video = document.querySelector<HTMLVideoElement>('[data-testid="preview-video"]');
+    if (video) video.currentTime = at / 1000;
+  }, ms);
   await expect(page.getByTestId('current-time')).toHaveText(
     `00:${String(Math.floor(ms / 1000)).padStart(2, '0')}.${String(ms % 1000).padStart(3, '0')}`,
   );
 }
 
-/** Adds a line at the current output playhead and types its text. */
+/** Adds a line at the playhead and types its text. */
 async function addLine(page: Page, text: string) {
   await page.getByTestId('captions-add').click();
   const field = page.getByTestId('cue-draft').getByTestId('cue-text');
@@ -143,18 +140,13 @@ test.describe('captions', () => {
     );
   });
 
-  test('a line is added at the output playhead, keeps Turkish text and is drawn only in its range', async ({
+  test('a line is added at the playhead on the video clock, keeps Turkish text and is drawn only in its range', async ({
     page,
   }) => {
     const errors = await openWithSample(page);
     await buildTenSecondOutput(page);
-    await page.getByTestId('inspector-tab-captions').click();
+    await openSettings(page, 'captions');
     await expect(page.getByTestId('captions-empty')).toContainText('piksellerine');
-    // Source mode: the panel explains why no caption shows in this preview.
-    await expect(page.getByTestId('captions-source-hint')).toBeVisible();
-
-    await showResult(page);
-    await expect(page.getByTestId('captions-source-hint')).toHaveCount(0);
     await seek(page, 3000);
     await page.getByTestId('captions-add').click();
 
@@ -195,18 +187,15 @@ test.describe('captions', () => {
     await item.getByTestId('cue-goto').click();
     await expect(page.getByTestId('current-time')).toHaveText('00:03.000');
     await expect(overlay).toHaveAttribute('data-cue-id', 'q_001');
-
-    // The source preview never shows captions.
-    await page.getByRole('tab', { name: 'Kaynak', exact: true }).click();
-    await expect(overlay).toHaveCount(0);
+    // A new line is tied to the picture (ADR-026): the video's own clock.
+    await expect(page.getByTestId('caption-clock-now')).toContainText('Görüntüye bağlı');
     expect(errors).toEqual([]);
   });
 
   test('a refused edit is explained under the line and nothing typed is lost', async ({ page }) => {
     await openWithSample(page);
     await buildTenSecondOutput(page);
-    await page.getByTestId('inspector-tab-captions').click();
-    await showResult(page);
+    await openSettings(page, 'captions');
 
     await seek(page, 1000);
     await addLine(page, 'Birinci satır');
@@ -245,10 +234,10 @@ test.describe('captions', () => {
     await first.getByTestId('cue-end').blur();
     await expect(first.getByTestId('cue-error')).toContainText('0,2 saniye');
 
-    // Starting at or after the output end.
-    await first.getByTestId('cue-start').fill('00:12.000');
+    // Starting after the end of the video (the lines' clock).
+    await first.getByTestId('cue-start').fill('00:30.000');
     await first.getByTestId('cue-start').blur();
-    await expect(first.getByTestId('cue-error')).toContainText('video bitmeden');
+    await expect(first.getByTestId('cue-error')).toContainText('kaynak videonun süresi içinde');
 
     // Adding inside an existing line starts right after it instead of overlapping.
     await seek(page, 1500);
@@ -264,8 +253,7 @@ test.describe('captions', () => {
   test('style changes are one undo step each and move the drawn caption', async ({ page }) => {
     await openWithSample(page);
     await buildTenSecondOutput(page);
-    await page.getByTestId('inspector-tab-captions').click();
-    await showResult(page);
+    await openSettings(page, 'captions');
     await seek(page, 2000);
     await addLine(page, 'Stil denemesi');
     const overlay = page.getByTestId('caption-overlay');
@@ -275,36 +263,36 @@ test.describe('captions', () => {
     await page.getByTestId('caption-position-top').check();
     await expect(page.getByTestId('caption-position-top')).toBeChecked();
 
+    // Undo and redo work from inside the Ayarlar drawer, with the keyboard.
     // Drawn at the top now.
     await expect.poll(async () => (await overlayInk(page))?.top ?? 0).toBeGreaterThan(200);
     expect((await overlayInk(page))?.bottom).toBe(0);
 
-    await page.getByTestId('undo').click();
+    await page.keyboard.press('Control+z');
     await expect(page.getByTestId('caption-position-bottom')).toBeChecked();
     await expect(page.getByTestId('caption-preset-outline')).toBeChecked();
     await expect.poll(async () => (await overlayInk(page))?.bottom ?? 0).toBeGreaterThan(200);
 
-    await page.getByTestId('undo').click();
+    await page.keyboard.press('Control+z');
     await expect(page.getByTestId('caption-preset-box')).toBeChecked();
     // The line itself is still there: the style steps were separate.
     await expect(page.getByTestId('cue-item')).toHaveCount(1);
 
-    await page.getByTestId('redo').click();
+    await page.keyboard.press('Control+Shift+z');
     await expect(page.getByTestId('caption-preset-outline')).toBeChecked();
-    await page.getByTestId('redo').click();
+    await page.keyboard.press('Control+Shift+z');
     await expect(page.getByTestId('caption-position-top')).toBeChecked();
 
     // Language is a recipe field too, with its own undo step.
     await page.getByTestId('caption-language-en').check();
-    await page.getByTestId('undo').click();
+    await page.keyboard.press('Control+z');
     await expect(page.getByTestId('caption-language-tr')).toBeChecked();
   });
 
   test('lines survive a reload (IndexedDB autosave)', async ({ page }) => {
     await openWithSample(page);
     await buildTenSecondOutput(page);
-    await page.getByTestId('inspector-tab-captions').click();
-    await showResult(page);
+    await openSettings(page, 'captions');
     await seek(page, 1000);
     await addLine(page, 'Kalıcı satır İğşı');
     await page.getByTestId('caption-size-large').check();
@@ -322,7 +310,7 @@ test.describe('captions', () => {
 
     await page.reload();
     await expect(page.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
-    await page.getByTestId('inspector-tab-captions').click();
+    await openSettings(page, 'captions');
     const item = page.getByTestId('cue-item');
     await expect(item).toHaveCount(1);
     await expect(item.getByTestId('cue-text')).toHaveValue('Kalıcı satır İğşı');
@@ -334,7 +322,7 @@ test.describe('captions', () => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto('/editor');
-    await expect(page.getByTestId('open-export')).toBeVisible();
+    await expect(page.getByTestId('download-all')).toBeVisible();
 
     const edl = JSON.parse(readFileSync(LEGACY_V1, 'utf8')) as { schemaVersion: number };
     expect(edl.schemaVersion).toBe(1);
@@ -368,9 +356,9 @@ test.describe('captions', () => {
       buffer: Buffer.from(JSON.stringify(record)),
     });
 
-    await expect(page.getByTestId('moment-count')).toHaveText('1 parça', { timeout: 20_000 });
+    await expect(page.getByTestId('moment-count')).toHaveText('(1)', { timeout: 20_000 });
     await expect(page.getByTestId('relink-filename')).toHaveText('eski-kayit.mp4');
-    await page.getByTestId('inspector-tab-captions').click();
+    await openSettings(page, 'captions');
     await expect(page.getByTestId('captions-empty')).toBeVisible();
     await expect(page.getByTestId('cue-item')).toHaveCount(0);
     await expect(page.getByTestId('strip-captions')).toHaveCount(0);
@@ -392,10 +380,9 @@ test.describe('captions', () => {
     await page.route('**/fonts/caption/**', (route) => route.abort());
     await openWithSample(page);
     await buildTenSecondOutput(page);
-    await page.getByTestId('inspector-tab-captions').click();
+    await openSettings(page, 'captions');
     await expect(page.getByTestId('caption-font-failed')).toContainText('dışa aktarma da altyazısız');
 
-    await showResult(page);
     await seek(page, 1000);
     await addLine(page, 'Font yok');
     await expect(page.getByTestId('preview-caption-font-failed')).toBeVisible();
@@ -414,13 +401,10 @@ test.describe('captions on a phone', () => {
     const errors = await openWithSample(page);
     await buildTenSecondOutput(page);
 
-    await page.getByTestId('tab-captions').click();
-    const sheet = page.getByRole('dialog', { name: 'Altyazı' });
+    await openSettings(page, 'captions');
+    const sheet = page.getByRole('dialog', { name: 'Ayarlar · her indirmeye uygulanır' });
     await expect(sheet).toBeVisible();
-    // Adding from source mode switches the preview to the result.
-    await expect(sheet.getByTestId('captions-source-hint')).toBeVisible();
     await sheet.getByTestId('captions-add').click();
-    await expect(sheet.getByTestId('captions-source-hint')).toHaveCount(0);
     const draftText = sheet.getByTestId('cue-draft').getByTestId('cue-text');
     await expect(draftText).toBeFocused();
     await page.keyboard.type('Telefonda İlk satır');
@@ -447,7 +431,7 @@ test.describe('captions on a phone', () => {
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('caption-overlay')).toHaveAttribute('data-cue-id', 'q_001');
 
-    await page.getByTestId('tab-file').click();
+    await openMore(page);
     const download = page.waitForEvent('download');
     await page.getByTestId('backup-download').click();
     const saved = await download;
@@ -458,6 +442,7 @@ test.describe('captions on a phone', () => {
 
     expect(record.edl.schemaVersion).toBe(2);
     expect(record.edl.captionTracks).toHaveLength(1);
+    expect(record.edl.captionTracks[0].timeBase).toBe('source');
     expect(record.edl.captionTracks[0].style).toEqual({
       preset: 'outline',
       position: 'bottom',

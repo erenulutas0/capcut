@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Icon } from '@/components/Icon';
 import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
-import type { AspectRatio, ClipV1, FitMode, MusicV1, Project } from '@/domain/edl';
+import type { AspectRatio, FitMode, MusicV1, Project } from '@/domain/edl';
 import { formatTimecode, parseTimecode, US_PER_SECOND } from '@/domain/time';
 import { MAX_ZOOM, MIN_ZOOM } from '@/domain/transform';
 import type { MessageKey } from '@/i18n/messages';
@@ -19,10 +19,13 @@ interface Props {
   project: Project;
   audio: MediaHandle | null;
   framing: { fit: FitMode; zoom: number };
-  selectedClip: ClipV1 | null;
   onFraming: (framing: { aspect?: AspectRatio; fit?: FitMode; zoom?: number }) => void;
-  onClipGain: (clipId: string, gainDb: number) => void;
-  onClipMuted: (clipId: string, muted: boolean) => void;
+  /** Output resolution (short edge), for every download. */
+  onShortEdge: (shortEdge: number) => void;
+  /** The video's own sound, the same for every kesit (ADR-026). */
+  videoSound: { gainDb: number; muted: boolean };
+  onVideoGain: (gainDb: number) => void;
+  onVideoMuted: (muted: boolean) => void;
   onMusicChange: (patch: Partial<Omit<MusicV1, 'assetId'>>) => boolean;
   onPickAudio: () => void;
   onRemoveAudio: () => void;
@@ -43,7 +46,8 @@ export function FramePanel({
   project,
   framing,
   onFraming,
-}: Pick<Props, 't' | 'project' | 'framing' | 'onFraming'>) {
+  onShortEdge,
+}: Pick<Props, 't' | 'project' | 'framing' | 'onFraming' | 'onShortEdge'>) {
   return (
     <>
       <div className="section-head">
@@ -124,6 +128,22 @@ export function FramePanel({
         data-testid="zoom-slider"
       />
 
+      <hr className="divider" />
+
+      <label className="field-label" htmlFor="export-quality">
+        {t('export.quality')}
+      </label>
+      <select
+        id="export-quality"
+        className="select"
+        value={project.export.shortEdge}
+        onChange={(event) => onShortEdge(Number(event.target.value))}
+        data-testid="export-quality"
+      >
+        <option value={1080}>1080p · H.264 / AAC</option>
+        <option value={720}>720p · H.264 / AAC</option>
+      </select>
+
       <p className="hint-small">{t('frame.appliesToAll')}</p>
       <p className="hint">{t('frame.note')}</p>
     </>
@@ -182,9 +202,9 @@ export function AudioPanel({
   t,
   project,
   audio,
-  selectedClip,
-  onClipGain,
-  onClipMuted,
+  videoSound,
+  onVideoGain,
+  onVideoMuted,
   onMusicChange,
   onPickAudio,
   onRemoveAudio,
@@ -194,9 +214,9 @@ export function AudioPanel({
   | 't'
   | 'project'
   | 'audio'
-  | 'selectedClip'
-  | 'onClipGain'
-  | 'onClipMuted'
+  | 'videoSound'
+  | 'onVideoGain'
+  | 'onVideoMuted'
   | 'onMusicChange'
   | 'onPickAudio'
   | 'onRemoveAudio'
@@ -235,41 +255,35 @@ export function AudioPanel({
         <h2>{t('audio.sourceTitle')}</h2>
       </div>
 
-      {selectedClip ? (
-        <>
-          <div className="slider-head">
-            <label className="field-label" htmlFor="clip-gain" style={{ margin: 0 }}>
-              {t('audio.sourceLevel')}
-            </label>
-            <span className="slider-value">
-              {selectedClip.muted ? '—' : `${selectedClip.sourceGainDb} dB`}
-            </span>
-          </div>
-          <input
-            id="clip-gain"
-            type="range"
-            min={-60}
-            max={0}
-            step={1}
-            value={selectedClip.sourceGainDb}
-            disabled={selectedClip.muted}
-            onChange={(event) => onClipGain(selectedClip.clipId, Number(event.target.value))}
-            style={{ ['--range-pct' as string]: `${((selectedClip.sourceGainDb + 60) / 60) * 100}%` }}
-            data-testid="clip-gain"
-          />
-          <button
-            type="button"
-            className="btn btn-block"
-            style={{ marginTop: 10 }}
-            onClick={() => onClipMuted(selectedClip.clipId, !selectedClip.muted)}
-            data-testid="clip-mute"
-          >
-            {selectedClip.muted ? t('audio.unmute') : t('audio.mute')}
-          </button>
-        </>
-      ) : (
-        <p className="empty-state">{t('audio.selectMoment')}</p>
-      )}
+      <div className="slider-head">
+        <label className="field-label" htmlFor="clip-gain" style={{ margin: 0 }}>
+          {t('audio.sourceLevel')}
+        </label>
+        <span className="slider-value">{videoSound.muted ? '—' : `${videoSound.gainDb} dB`}</span>
+      </div>
+      <input
+        id="clip-gain"
+        type="range"
+        min={-60}
+        max={0}
+        step={1}
+        value={videoSound.gainDb}
+        disabled={videoSound.muted}
+        onChange={(event) => onVideoGain(Number(event.target.value))}
+        style={{ ['--range-pct' as string]: `${((videoSound.gainDb + 60) / 60) * 100}%` }}
+        data-testid="clip-gain"
+      />
+      <button
+        type="button"
+        className="btn btn-block"
+        style={{ marginTop: 10 }}
+        onClick={() => onVideoMuted(!videoSound.muted)}
+        aria-pressed={videoSound.muted}
+        data-testid="clip-mute"
+      >
+        {videoSound.muted ? t('audio.unmute') : t('audio.mute')}
+      </button>
+      <p className="hint-small">{t('audio.appliesToAll')}</p>
 
       <hr className="divider" />
 
@@ -418,10 +432,15 @@ function TimeFieldInline({
   );
 }
 
-export function Inspector(props: Props) {
+/**
+ * "Ayarlar" (ADR-026): what used to be the inspector, behind one button — a
+ * drawer on desktop, a sheet on a phone. Görüntü, Ses and Altyazı apply to
+ * every download.
+ */
+export function SettingsPanel(props: Props) {
   const { t, tab, onTabChange } = props;
   return (
-    <aside className="panel panel-right" aria-label={t('a11y.inspector')}>
+    <div className="settings">
       <div
         className="segmented"
         role="tablist"
@@ -436,6 +455,7 @@ export function Inspector(props: Props) {
           aria-controls="inspector-panel"
           tabIndex={tab === 'frame' ? 0 : -1}
           onClick={() => onTabChange('frame')}
+          data-testid="inspector-tab-frame"
         >
           <Icon name="frame" size={16} />
           {t('tabs.frame')}
@@ -448,6 +468,7 @@ export function Inspector(props: Props) {
           aria-controls="inspector-panel"
           tabIndex={tab === 'audio' ? 0 : -1}
           onClick={() => onTabChange('audio')}
+          data-testid="inspector-tab-audio"
         >
           <Icon name="music" size={16} />
           {t('tabs.audio')}
@@ -466,20 +487,9 @@ export function Inspector(props: Props) {
           {t('captions.tab')}
         </button>
       </div>
-      <div
-        className="panel-scroll"
-        role="tabpanel"
-        id="inspector-panel"
-        aria-labelledby={`inspector-tab-${tab}`}
-      >
-        {tab === 'frame' ? (
-          <FramePanel {...props} />
-        ) : tab === 'audio' ? (
-          <AudioPanel {...props} />
-        ) : (
-          props.captionsNode
-        )}
+      <div className="settings-panel" role="tabpanel" id="inspector-panel" aria-labelledby={`inspector-tab-${tab}`}>
+        {tab === 'frame' ? <FramePanel {...props} /> : tab === 'audio' ? <AudioPanel {...props} /> : props.captionsNode}
       </div>
-    </aside>
+    </div>
   );
 }

@@ -1,5 +1,8 @@
 # ADR-019 — Tek zaman çizgisi: kesme akışı CapCut'taki gibi
 
+> **Yerine geçen:** [ADR-026](ADR-026-kesit-list.md) (2026-09-23, kesit listesi).
+> Aşağıdaki tek zaman çizgisi, Böl/Sil ve Kaynak/Sonuç ayrımı artık uygulamada yok.
+>
 > Tarih: 2026-09-22 · Durum: KABUL EDİLDİ (kurucu: "CapCut gibi tek zaman çizgisi");
 > "5 dakikadan uzun video" satırı [ADR-021](ADR-021-input-limit-120min.md) ile
 > değişti: girdi sınırına sığan her video tek parça gelir, çıktı sınırı indirmenin kapısıdır.

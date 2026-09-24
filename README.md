@@ -4,15 +4,18 @@
 
 [![CI](https://github.com/erenulutas0/capcut/actions/workflows/ci.yml/badge.svg)](https://github.com/erenulutas0/capcut/actions/workflows/ci.yml)
 
-> Durum: editör, gerçek MP4 çıktısı, yerel kayıt, bölme ve sürükleyerek kırpma,
+> Durum: kesit listesi editörü (işaretle, ekle, kartından indir; ADR-026),
+> kaydetme penceresiyle doğrudan dosyaya indirme, gerçek MP4 çıktısı, yerel kayıt,
 > altyazı (elle, SRT/VTT, görüntüye bağlı, videoya işleme) ve yerel sessizlik
 > kesim önerisi çalışıyor. 15 gerçek kayıt ve 20 vakalık dosya matrisiyle ölçüldü:
 > [destek matrisi](docs/SUPPORT_MATRIX.md). Otomatik transkript bütçe kararına
 > kadar rafta (ADR-017). "Clip" geçici çalışma adıdır; marka/alan adı araştırması
 > yapılmadı.
 
-Kullanıcı kendi videosunda tutmak istediği bölümleri seçer, sıralar, görüntü
-çerçevesini ve sesi ayarlar, sonra videoyu indirir. Kodlama tamamen tarayıcıda
+Kullanıcı kendi videosunda tutmak istediği aralıkları işaretler; her aralık
+"Kesitler" listesine düşer. Her kesit kendi ⬇ düğmesiyle ayrı indirilir ya da
+hepsi sırayla birleştirilip tek video olarak indirilir; görüntü çerçevesi, ses ve
+altyazı "Ayarlar"dan her indirmeye uygulanır. Kodlama tamamen tarayıcıda
 yapılır: dosyalar bilgisayardan çıkmaz; bulut yükleme, hesap, abonelik ve dış yapay
 zekâ servisi yoktur.
 
@@ -110,10 +113,14 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 
 - Yerel video seçimi ve **gerçek** metadata okuma (süre, çözünürlük, boyut, tür).
 - Oynat/durdur/zamanda gezinme; bozuk veya desteklenmeyen dosya için açık durum.
-- Başlangıç/bitiş işaretleme, sayısal zaman alanları, geçersiz aralık reddi.
-- Birden fazla an ekleme, düzenleme, kaldırma, sürüklemeden sıralama.
-- Aynı kaynak aralığını birden çok kez kullanma.
-- "Kaynak" ve "Sonuç" önizleme ayrımı; sonuç modunda sıralı oynatma.
+- Başlangıç/bitiş işaretleme (I/O, düğmeler, sayısal alanlar, şeritteki
+  tutamaçlar), geçersiz aralık reddi; "Kesit ekle" (Enter).
+- **Kesit listesi:** küçük resim, aralık ve süreyle kartlar; ▶ yalnız o aralığı
+  oynatır, ⬇ yalnız o kesiti indirir, ✕ siler; seçip ince ayar; sürükleyerek ya
+  da klavyeyle sıralama (20 kesite kadar). Aynı aralık birden çok kez kullanılabilir.
+- Videonun tamamını gösteren şerit: numaralı kesit bölgeleri, bekleyen aralık,
+  yakınlaştırma (düğmeler, Ctrl/⌘ + tekerlek, iki parmak) ve kaydırma.
+- Tam ekran izleme (⛶ / F).
 - 9:16 / 16:9 / 1:1 oranları, doldur/sığdır ve merkezden yakınlaştırma.
 - Kendi ses dosyasını ekleme; bölüm, çıktı başlangıcı, seviye ve fade ayarları.
 - Domain değişikliklerinde undo/redo (son 100 adım).
@@ -125,22 +132,27 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
   dosya sessizce kabul edilmez; kullanıcı uyarılır.
 - **Proje yedeği:** tarif `.clip.json` olarak indirilip geri yüklenebilir
   (video içermez).
-- **Gerçek MP4 çıktısı:** seçilen anlar sırayla, seçilen çerçeveyle ve kaynak
-  sesi + müzik tek ses izinde birleştirilerek H.264/AAC olarak kodlanır.
+- **Gerçek MP4 çıktısı:** tek kesit, bütün kesitler sırayla birleştirilmiş ya
+  da kesit yoksa videonun tamamı; seçilen çerçeveyle ve kaynak sesi + müzik tek
+  ses izinde birleştirilerek H.264/AAC olarak kodlanır.
+- **Doğrudan dosyaya:** ⬇ kaydetme penceresini açar, video seçilen dosyaya
+  kodlanır ("Kaydedildi: ad.mp4"); iptal ve hatada yarım dosya kalmaz.
 - Beş aşamalı uygunluk kapısı (ortam → encoder ayarı → sentetik deneme
-  dosyası → kaynağın çözülebilirliği → rota). Geçmezse düğme açılmaz.
+  dosyası → kaynağın çözülebilirliği → rota), arka planda bir kez çalışır.
+  Geçmezse indirme kodlamadan önce engelleri söyler.
 - Gerçek ilerleme yüzdesi (kodlanan kare / toplam kare), iptal, hata durumları.
 - Üretilen dosya yeniden açılıp ölçülür; arayüzdeki süre/çözünürlük/codec
   değerleri o ölçümden gelir.
-- **Çıktı diske akar:** destekleyen tarayıcıda dosya belleğe değil tarayıcının
-  özel geçici diskine (OPFS) yazılır; bellek kullanımı çıktı uzunluğundan
-  bağımsız kalır. Olmazsa bellek yoluna döner ve bunu "Yazıldığı yer"
-  satırında söyler. Geçici dosya dialog kapanınca silinir.
+- **Çıktı diske akar:** kaydetme penceresi olmayan tarayıcıda dosya belleğe
+  değil tarayıcının özel geçici diskine (OPFS) yazılır, sonra "Bilgisayara
+  kaydet" ile alınır; bellek kullanımı çıktı uzunluğundan bağımsız kalır. Olmazsa
+  bellek yoluna döner ve bunu "Yazıldığı yer" satırında söyler. Geçici dosya
+  mesaj kapanınca silinir.
 
 ## Bu sürümde olmayanlar
 
-Bulut yedeği veya cihazlar arası senkron, çoklu proje listesi, thumbnail
-üretimi, serbest kırpma, çoklu video kaynağı, otomatik transkript ve çeviri,
+Bulut yedeği veya cihazlar arası senkron, çoklu proje listesi, serbest kırpma,
+çoklu video kaynağı, otomatik transkript ve çeviri,
 hesap, ödeme ve native uygulama.
 
 Yerel kayıt yalnızca **bu tarayıcıdadır**: tarayıcı verisi temizlenirse veya
@@ -151,10 +163,10 @@ hiçbir zaman saklanmaz; proje geri geldiğinde dosya yeniden seçilir.
 için çıktı kapalıdır** ve uygulama bunu açıkça söyler. Gerçek Safari, gerçek
 telefon ve gerçek kamera kayıtları hâlâ test edilmedi; ayrıntı ve ölçümler
 [destek matrisinde](docs/SUPPORT_MATRIX.md). Açılan video en fazla 120 dakika
-ve 4 GiB olabilir (müzikle birlikte); her zaman zaman çizgisine tek parça gelir. İndirilen video
-en fazla 60 dakikadır (videoyu diske yazamayan tarayıcıda 5 dakika): daha uzun
-bir sonucu böl ve sil, "Videoyu indir" ne kadar silmen gerektiğini söyler
-(politika `2026-09-23.v5`, [ADR-020](docs/adr/ADR-020-output-limit-60min.md),
+ve 4 GiB olabilir (müzikle birlikte). Her indirme (tek kesit, birleştirilmiş ya
+da tüm video) en fazla 60 dakikadır (videoyu diske yazamayan tarayıcıda 5
+dakika); daha uzununda ⬇ kodlamadan önce ne kadar kısaltman gerektiğini söyler
+(politika `2026-09-23.v5`, [ADR-026](docs/adr/ADR-026-kesit-list.md), [ADR-020](docs/adr/ADR-020-output-limit-60min.md),
 [ADR-021](docs/adr/ADR-021-input-limit-120min.md), [ADR-025](docs/adr/ADR-025-source-bytes-4gib.md)).
 
 Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
@@ -170,7 +182,8 @@ Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
 [ADR-018 (sessizlik kesim önerisi)](docs/adr/ADR-018-silence-cut-suggestions.md),
 [ADR-020 (60 dakika çıktı ve ölçümü)](docs/adr/ADR-020-output-limit-60min.md),
 [ADR-021 (120 dakika girdi, çıktı sınırı indirme kapısı)](docs/adr/ADR-021-input-limit-120min.md),
-[ADR-025 (4 GiB toplam kaynak boyutu ve ölçümü)](docs/adr/ADR-025-source-bytes-4gib.md).
+[ADR-025 (4 GiB toplam kaynak boyutu ve ölçümü)](docs/adr/ADR-025-source-bytes-4gib.md),
+[ADR-026 (kesit listesi, kaydetme penceresiyle doğrudan dosyaya indirme)](docs/adr/ADR-026-kesit-list.md).
 
 ## Sıradaki tek görev
 

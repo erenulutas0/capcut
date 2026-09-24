@@ -1,6 +1,8 @@
 /**
  * End-to-end W1 proof: drive the real editor, run a real export, save the file
- * the browser produced, and measure it with ffprobe.
+ * the browser produced, and measure it with ffprobe. Since ADR-026 the file
+ * is written straight into the one picked in the save dialog (a stand-in
+ * dialog that hands out an OPFS file, see lib/kesit-flow.mjs).
  *
  * Nothing here trusts the app's own report — every number printed at the end
  * comes from ffprobe reading the produced MP4.
@@ -15,7 +17,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
-import { emptyTimeline } from './lib/range-flow.mjs';
+import {
+  addKesit,
+  installSavePicker,
+  lastPickedName,
+  readPickedFile,
+  setAspect,
+  setQuality,
+} from './lib/kesit-flow.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const outDir = join(root, 'export-proof');
@@ -43,6 +52,7 @@ const context = await browser.newContext({
   acceptDownloads: true,
 });
 const page = await context.newPage();
+await installSavePicker(page);
 
 const consoleErrors = [];
 page.on('pageerror', (error) => consoleErrors.push(error.message));
@@ -59,33 +69,21 @@ page.on('request', (request) => {
 await page.goto(`${baseURL}/editor`);
 await page.getByTestId('video-input').setInputFiles(sample);
 await page.getByTestId('preview-video').waitFor();
-await emptyTimeline(page);
 
-// Two moments, deliberately not adjacent, so a naive "trim" cannot pass.
+// Two kesitler, deliberately not adjacent, so a naive "trim" cannot pass.
 for (const [start, end] of [['00:00.000', '00:03.000'], ['00:12.000', '00:16.000']]) {
-  await page.getByTestId('range-start').fill(start);
-  await page.getByTestId('range-end').fill(end);
-  await page.getByTestId('add-moment').click();
+  await addKesit(page, start, end);
 }
 await page.getByTestId('audio-input').setInputFiles(music);
-await page.getByTestId('aspect-9-16').click();
-await page.getByTestId('export-quality').waitFor({ state: 'attached' }).catch(() => {});
+await setAspect(page, '9-16');
+await setQuality(page, '720');
 
-await page.getByTestId('open-export').click();
-await page.getByTestId('export-quality').selectOption('720');
-
+// "Hepsini birleştirip indir": the capability gate runs (in the background
+// since the video opened), then the encode writes into the picked file.
 const startedAt = Date.now();
-await page.getByTestId('export-ready').waitFor({ timeout: 60_000 });
-
-const gate = {
-  environment: await page.getByTestId('gate-environment').textContent(),
-  encoder: await page.getByTestId('gate-encoder').textContent(),
-  selfTest: await page.getByTestId('gate-selftest').textContent(),
-  source: await page.getByTestId('gate-source').textContent(),
-};
-
-await page.getByTestId('export-create').click();
-await page.getByTestId('export-running').waitFor({ timeout: 20_000 });
+await page.getByTestId('download-all').click();
+await page.getByTestId('download-running').waitFor({ timeout: 60_000 });
+const gate = { passed: 'the encode started only after the gate passed (ADR-026: no per-stage rows)' };
 
 // Sample the progress readout until a measured percentage actually appears.
 let midProgress = null;
@@ -111,13 +109,13 @@ const reported = {
   codecs: await page.getByTestId('measured-codecs').textContent(),
   delta: await page.getByTestId('measured-delta').textContent(),
   route: await page.getByTestId('measured-route').textContent().catch(() => null),
+  saved: await page.getByTestId('download-saved').textContent().catch(() => null),
 };
 
-const downloadPromise = page.waitForEvent('download', { timeout: 60_000 });
-await page.getByTestId('export-download').click();
-const download = await downloadPromise;
 const savedAs = join(outDir, 'w1-export.mp4');
-await download.saveAs(savedAs);
+const picked = await lastPickedName(page);
+if (!picked) throw new Error('the picked file is not in OPFS');
+await readPickedFile(page, picked, savedAs);
 
 await context.close();
 await browser.close();

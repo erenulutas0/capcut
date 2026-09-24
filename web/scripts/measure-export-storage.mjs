@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 import { ffprobeJson } from './lib/media-measure.mjs';
-import { emptyTimeline } from './lib/range-flow.mjs';
+import { addKesit, removeSavePicker, setQuality } from './lib/kesit-flow.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const mediaDir = join(root, 'tests', 'media', 'matrix');
@@ -130,24 +130,24 @@ const opfsBytes = () => folderBytes(profileDir);
 const page = await context.newPage();
 const pageErrors = [];
 page.on('pageerror', (error) => pageErrors.push(error.message));
+// The OPFS route is what this script measures (ADR-013/023), so the save
+// dialog of ADR-026 is taken away, as in a browser that has none.
+await removeSavePicker(page);
 await page.goto(`${baseURL}/editor`);
 await page.getByTestId('video-input').setInputFiles(isAbsolute(fixture) ? fixture : join(mediaDir, fixture));
 await page.getByTestId('preview-video').waitFor({ timeout: 120_000 });
 
 let requestedSeconds;
 if (whole) {
-  await page.getByTestId('strip-clip').first().waitFor({ timeout: 60_000 });
-  const us = Number((await page.getByTestId('output-duration-us').textContent()) ?? '');
+  // The video's own length, in microseconds.
+  const us = await page.evaluate(() => Math.round((document.querySelector('video')?.duration ?? 0) * 1_000_000));
   requestedSeconds = Number.isFinite(us) && us > 0 ? us / 1_000_000 : null;
 } else {
-  await emptyTimeline(page);
   const perMoment = 15;
   const moments = Math.max(1, Math.round(seconds / perMoment));
   for (let i = 0; i < moments; i += 1) {
     const from = i % 2 === 0 ? 0 : 5;
-    await page.getByTestId('range-start').fill(from.toFixed(3));
-    await page.getByTestId('range-end').fill((from + perMoment).toFixed(3));
-    await page.getByTestId('add-moment').click();
+    await addKesit(page, from.toFixed(3), (from + perMoment).toFixed(3));
   }
   requestedSeconds = moments * perMoment;
 }
@@ -158,9 +158,13 @@ const estimate = () =>
     return { quota: value.quota ?? null, usage: value.usage ?? null };
   });
 
-await page.getByTestId('open-export').click();
-await page.getByTestId('export-quality').selectOption(quality);
-await page.getByTestId('export-ready').waitFor({ timeout: 90_000 });
+await setQuality(page, quality);
+
+// The capability gate runs in the background once the video is open;
+
+// give it time to finish, as the old dialog waited for it.
+
+await page.waitForTimeout(3000);
 
 const before = {
   estimate: await estimate(),
@@ -170,7 +174,7 @@ const before = {
 
 const trace = [];
 const startedAt = Date.now();
-await page.getByTestId('export-create').click();
+await page.getByTestId('download-all').click();
 let finished = false;
 let lastEstimateAt = 0;
 while (Date.now() - startedAt < timeoutMs) {

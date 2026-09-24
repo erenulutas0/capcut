@@ -27,7 +27,9 @@ gerektiğini listeler. Dart ve Python tarafı aynı dosyaları okuyup aynı sonu
 `npm run verify:export` gerçek bir export çalıştırır ve sonucu ffprobe ile
 ölçer. Ayrıca aynı kesimi ffmpeg ile bağımsız olarak kurup SSIM karşılaştırması
 yapar ve ses bantlarını ölçerek hem kaynak sesinin hem müziğin mikse girdiğini
-an başına doğrular. Ayrıntılar: `docs/adr/ADR-010-w1-web-export.md`.
+kesit başına doğrular. Video, kaydetme penceresinin yerine geçen bir test
+penceresinin verdiği dosyaya yazılır (ADR-026); gerçek pencerenin ölçümleri
+`scripts/measure-save-picker.mjs` ile yapılır. Ayrıntılar: `docs/adr/ADR-010-w1-web-export.md`.
 
 ## Test medyası
 

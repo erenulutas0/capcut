@@ -28,7 +28,7 @@ export interface TrimDragState {
 interface Props {
   t: (key: MessageKey) => string;
   edge: TrimEdge;
-  /** Accessible name, e.g. "Parça 02 başlangıcı". */
+  /** Accessible name, e.g. "Kesit 2 başlangıcı". */
   label: string;
   valueUs: Micros;
   /** The piece's other edge, for the live length readout. */

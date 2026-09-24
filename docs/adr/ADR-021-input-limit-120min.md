@@ -4,6 +4,11 @@
 > Edge; sentetik kaynak). [ADR-019](ADR-019-single-timeline-editing.md)'un "çıktı
 > sınırından uzun video" satırını değiştirir. [ADR-020](ADR-020-output-limit-60min.md)'nin
 > ölçüm yöntemini kullanır.
+>
+> *Güncelleme (ADR-026, 2026-09-23):* sınırlar ve kapı metinleri geçerli, ama
+> artık **her indirme için** (tek kesit, birleştirilmiş, tüm video) ayrı
+> uygulanır; zaman çizgisindeki sınır çizgisi ve taralı fazlalık, zaman
+> çizgisiyle birlikte kalktı. [ADR-026](ADR-026-kesit-list.md).
 
 ## Bağlam
 

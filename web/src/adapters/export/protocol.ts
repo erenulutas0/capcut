@@ -89,6 +89,12 @@ export type WorkerRequest =
        * override) can see the disk run out mid-file. `null` in the app.
        */
       storageReserveBytes: number | null;
+      /**
+       * ADR-026: the file the user picked in the save dialog. The worker
+       * writes straight into it (no OPFS copy, no second "save" step). Null:
+       * the OPFS or memory route, then "Bilgisayara kaydet".
+       */
+      destination: FileSystemFileHandle | null;
     }
   | { type: 'cancel'; requestId: string };
 
