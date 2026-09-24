@@ -31,7 +31,7 @@ async function seek(page, seconds) {
 
 /** Video open, three kesitler, the first one saved; the playhead in kesit 2. */
 async function prepare(page) {
-  await installSavePicker(page);
+  await installSavePicker(page, { plainNames: true });
   await page.goto(`${baseURL}/editor`);
   await page.getByTestId('video-input').setInputFiles(sample);
   await page.getByTestId('preview-video').waitFor();

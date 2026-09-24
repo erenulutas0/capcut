@@ -12,16 +12,22 @@
  */
 import { closeSync, openSync, writeSync } from 'node:fs';
 
-/** Must run before the page loads (it is an init script). */
-export async function installSavePicker(page) {
-  await page.addInitScript(() => {
+/**
+ * Must run before the page loads (it is an init script). Picked files get a
+ * unique `picked-<time>-` prefix so scripts can find and copy them; with
+ * `plainNames` (screenshots) the file keeps the suggested name, as a real
+ * save dialog would.
+ */
+export async function installSavePicker(page, { plainNames = false } = {}) {
+  await page.addInitScript((plain) => {
     window.__pickerCalls = [];
     window.showSaveFilePicker = async (options) => {
       window.__pickerCalls.push(options.suggestedName);
       const root = await navigator.storage.getDirectory();
-      return root.getFileHandle(`picked-${Date.now()}-${options.suggestedName}`, { create: true });
+      const name = plain ? options.suggestedName : `picked-${Date.now()}-${options.suggestedName}`;
+      return root.getFileHandle(name, { create: true });
     };
-  });
+  }, plainNames);
 }
 
 export async function removeSavePicker(page) {

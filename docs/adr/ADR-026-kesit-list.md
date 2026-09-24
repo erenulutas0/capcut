@@ -212,7 +212,45 @@ hata gelirse genel hata gösterilir, her iki durumda geçici dosya atılır.
 
 ## Test edilen
 
-⟨sayılar buraya⟩
+Hepsi 2026-09-24'te bu dalın kodunda, ölçüm kilidi altında koşuldu.
+
+- `npx tsc --noEmit -p .` temiz, `npx eslint .` temiz, `npm run build` başarılı.
+- `npx vitest run`: **30 dosya, 417 test geçti.** Yeni `tests/unit/kesit.test.ts`
+  (sağ üst düğme, indirme tarifleri, altyazı dilimi, önerilen dosya adları,
+  işaretleme, eski projenin tek kesit olarak açılması, sessizliğin tüm videoda
+  kesit üretmesi ve 20 sınırı); `timelineEdit.test.ts` şerit yakınlaştırma
+  hesabı için yeniden yazıldı; `outputSink.test.ts` dosya yolu için 7 yeni test
+  (yer ayırma, konumlu yazma, kesme, iptalde silme, doğrulanmayan dosyanın
+  kaldırılması).
+- `E2E_PORT=3151 npx playwright test`: **130 geçti, 2 atlandı** (atlananlar
+  isteğe bağlı sessizlik ekran görüntüleri), hata yok, 3,9 dk. Yeni
+  `kesit.spec.ts` 15 senaryo: I/O + Kesit ekle + ▶ yalnız aralığı oynatır + ⬇
+  pencereye doğru adı verir ve dosyayı ffprobe ile ölçer; iki kesit yeniden
+  sıralanıp birleştirilmiş indirilir (120 kare, 4 sn; iki noktadaki kare
+  kaynakla karşılaştırılarak sıra doğrulanır); kesit yokken
+  tüm video; pencerede Vazgeç; kodlarken iptal; sil/geri al/sürükle/ince ayar;
+  yakınlaştırma; tam ekran (⛶ ve F) ve desteklenmeyen tarayıcıda düğmenin
+  gizlenmesi; pencere olmayan tarayıcı yolu; indirme başına sınırlar; reddedilen
+  dosya (2); eski yedeğin tek kesit açılması; 390 px dokunma.
+- Erişilebilirlik (`a11y.spec.ts`, 28 test, hepsi geçti): axe **0 ihlal**
+  masaüstünde (boş editör, işaretleme, kesitler, seçili kesit, Ayarlar, Diğer,
+  indirme durumları, sınırlar, diyaloglar, yeniden bağlama), 390 px telefonda ve
+  820 px tablette; yalnızca klavyeyle çekirdek akış (görünür odakla); diyalog,
+  çekmece ve sayfalarda odak tuzağı ve geri dönüşü; 320 px yeniden akış; metin
+  aralığı (1440 ve 390 px); azaltılmış hareket; ekran okuyucu adları ("Kesit
+  1'i indir, 00:00–00:02", kesitler `ol` listesi).
+- GitHub Pages duman testi (`/capcut` alt yolu, CI ile aynı ortam
+  değişkenleriyle statik derleme): 1/1 geçti.
+- Dosya matrisi (`run-matrix.mjs`, sürücü kesit akışına göre güncellendi,
+  indirme sahte kaydetme penceresinin verdiği dosyaya yazılır): **Chromium 21/21,
+  Chrome 21/21, Edge 21/21 PASS.**
+- Kaydetme penceresi ölçümleri: yukarıda (Chrome 153, Edge 153).
+- Gerçek kayıt koşucusu (`matrix:real`) bu değişiklikte yeniden koşulmadı; kodlama
+  hattı değişmedi, yalnızca hedef dosya değişti.
+- Ekran görüntüleri (yeni dosyalar, eskiler değişmedi):
+  `web/screenshots/kesit-list-desktop.png`, `kesit-list-phone.png`,
+  `kesit-list-selected-{desktop,phone}.png`,
+  `kesit-list-settings-{desktop,phone}.png`, `kesit-list-zoomed-desktop.png`.
 
 ## Test edilmeyen
 
