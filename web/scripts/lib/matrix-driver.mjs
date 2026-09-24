@@ -345,6 +345,13 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       codecs: await succeeded.locator('[data-testid="measured-codecs"]').textContent(),
       delta: await succeeded.locator('[data-testid="measured-delta"]').textContent(),
     };
+    // ADR-027: how the video was produced (copy / smart / encode) and why not faster.
+    const method = succeeded.locator('[data-testid="measured-method"]');
+    if ((await method.count()) > 0) {
+      reported.method = await method.getAttribute('data-method');
+      reported.fallbackReason = (await method.getAttribute('data-fallback')) || null;
+      reported.framesEncoded = Number(await method.getAttribute('data-frames-encoded'));
+    }
     // Held frames are an honest partial result, and must show up in reports.
     const held = succeeded.locator('[data-testid="measured-frames-missing"]');
     if ((await held.count()) > 0) {
@@ -755,7 +762,18 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       audioCodec: audio?.codec_name ?? null,
       frameRate: video?.r_frame_rate ?? null,
       sizeBytes: Number(probe.format.size),
+      method: driveResult.reported?.method ?? null,
+      fallbackReason: driveResult.reported?.fallbackReason ?? null,
     };
+
+    if (want.method) {
+      add(
+        `yöntem ${want.method} (ADR-027)`,
+        measured.method === want.method,
+        `bildirilen ${measured.method}${measured.fallbackReason ? ` (${measured.fallbackReason})` : ''}, ` +
+          `kodlanan kare ${driveResult.reported?.framesEncoded ?? '—'}`,
+      );
+    }
 
     if (want.durationSeconds !== undefined) {
       const delta = Math.abs(duration - want.durationSeconds);

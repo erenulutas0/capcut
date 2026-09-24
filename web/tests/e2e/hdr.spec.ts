@@ -31,5 +31,8 @@ test('an HDR video exports as SDR after the tone-mapping check, with the HDR not
   await page.getByTestId('export-succeeded').waitFor({ timeout: 180_000 });
   await expect(page.getByTestId('measured-codecs')).toContainText('avc');
   await expect(page.getByTestId('measured-codecs')).toContainText('aac');
+  // ADR-027: HDR pictures are never copied; the dialog says the file was encoded and why.
+  await expect(page.getByTestId('measured-method')).toHaveAttribute('data-method', 'encode');
+  await expect(page.getByTestId('measured-method')).toHaveAttribute('data-fallback', 'hdr');
   expect(errors).toEqual([]);
 });

@@ -440,6 +440,31 @@ export const CASES = [
     setup: anchoredSetup({ variants: [{ label: 'cikti', track: 'output' }] }),
     expect: anchoredExpect({ sameAs: { caseId: 'M18', variant: 'kaynak' } }),
   },
+  {
+    id: 'M19',
+    title: 'Hızlı kesim: 1080p30 H.264, anahtar kare dışında iki kesim',
+    expectation:
+      'Görüntü yeniden kodlanmıyor (yalnızca kesimden sonraki ilk IDR\'ye kadar); kareler, süre ve ses tam (ADR-027)',
+    setup: {
+      video: 'm03-landscape-1080p.mp4',
+      moments: [['00:01.100', '00:05.000'], ['00:07.500', '00:12.000']],
+      aspect: '16-9',
+      quality: '1080',
+    },
+    expect: {
+      exports: true,
+      method: 'smart',
+      durationSeconds: 8.4,
+      frames: 252,
+      size: [1920, 1080],
+      constantFrameRate: 30,
+      videoCodec: 'h264',
+      audioCodec: 'aac',
+      reference: { filter: 'scale=1920:1080', trims: [[1.1, 5], [7.5, 12]] },
+      minSsim: 0.95,
+      tonePresent: [TONE.source],
+    },
+  },
 ];
 
 /**

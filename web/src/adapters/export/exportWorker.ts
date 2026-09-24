@@ -32,23 +32,19 @@ import {
   type InputVideoTrack,
 } from 'mediabunny';
 
-import {
-  clampBuffers,
-  interleave,
-  mixStreamInto,
-  musicEnvelope,
-} from '@/domain/audioMix';
 import { cueIndexAtFrame, preflightCaptions } from '@/domain/captionBurnIn';
 import type { CaptionLayout } from '@/domain/captionLayout';
-import type { ExportEvent, ExportFailureCode, ExportProbe, StorageShortfall } from '@/domain/exportEvents';
+import type {
+  ExportEvent,
+  ExportFailureCode,
+  ExportProbe,
+  ExportResult,
+  StorageShortfall,
+} from '@/domain/exportEvents';
 import { encoderVideoBitrate, type VideoEncoderKind } from '@/domain/encoderBitrate';
 import { durationWithinTolerance, missingFramesAllowed } from '@/domain/exportEvents';
-import {
-  frameToUs,
-  sourceTimeForFrame,
-  type RenderPlan,
-  type RenderSegment,
-} from '@/domain/renderPlan';
+import type { ExportMode, FastCutFallbackReason } from '@/domain/fastPath';
+import { sourceTimeForFrame, type RenderPlan, type RenderSegment } from '@/domain/renderPlan';
 import { requiredFreeBytes } from '@/domain/outputStorage';
 import { hdrTransferOf, type HdrTransfer } from '@/domain/hdr';
 import { outputRouteRefusal } from '@/domain/policy';
@@ -67,11 +63,13 @@ import {
   raiseAvcReorderDepth,
   reorderDepth,
 } from './avcReorder';
+import { FastCutFallback, prepareFastCut, type FastCutJob } from './fastCut';
 import { pickFrames } from './framePicker';
 import { createHdrContext, softClippedImage } from './hdrCanvas';
 import { probeHdrToneMapping, type HdrProbeResult } from './hdrProbe';
 import { removeExportEntry, sweepExportEntries } from './opfsEntries';
 import { prepareOutput } from './outputSink';
+import { SegmentAudioWriter, type AudioContextSources } from './segmentAudio';
 import type {
   CaptionFontStatus,
   CapabilityStageResult,
@@ -82,8 +80,6 @@ import type {
 
 const scope = self as unknown as DedicatedWorkerGlobalScope;
 
-/** Audio is mixed in chunks so memory stays flat regardless of duration. */
-const AUDIO_CHUNK_FRAMES = 4096;
 /** How often the encoding progress event is emitted, in output frames. */
 const PROGRESS_EVERY_FRAMES = 5;
 
@@ -406,10 +402,10 @@ function bytesOf(source: AllowSharedBufferSource): Uint8Array {
 async function correctAvcReorder(
   track: InputVideoTrack,
   segments: readonly RenderSegment[],
-): Promise<void> {
-  if ((await track.getCodec()) !== 'avc') return;
+): Promise<boolean> {
+  if ((await track.getCodec()) !== 'avc') return false;
   const config = await track.getDecoderConfig();
-  if (!config?.description) return;
+  if (!config?.description) return false;
   const description = bytesOf(config.description);
 
   const packets = new EncodedPacketSink(track);
@@ -431,7 +427,7 @@ async function correctAvcReorder(
   }
 
   const corrected = raiseAvcReorderDepth(description, depth);
-  if (!corrected) return;
+  if (!corrected) return false;
 
   // A parameter set repeated inside the packets overrides the corrected one
   // at every keyframe (measured), so the drops would come back. Such a file is
@@ -450,6 +446,7 @@ async function correctAvcReorder(
   // (its own browser workarounds still run on top of it).
   const correctedConfig: VideoDecoderConfig = { ...config, description: corrected };
   track.getDecoderConfig = () => Promise.resolve(correctedConfig);
+  return true;
 }
 
 /* ------------------------------------------------------------ encoder kind */
@@ -494,127 +491,42 @@ async function exportVideoBitrate(plan: RenderPlan): Promise<number> {
 
 /* ------------------------------------------------------------------- export */
 
-interface AudioContextSources {
-  clipReader: AudioStreamReader | null;
-  musicReader: AudioStreamReader | null;
+interface ExportRequestOptions {
+  requestId: string;
+  plan: RenderPlan;
+  videoFile: File;
+  audioFile: File | null;
+  origin: string;
+  memoryRouteLimitUs: number;
+  forceMemoryRoute: boolean;
+  storageFreeBytes: number | null;
+  storageReserveBytes: number | null;
+  mode: ExportMode;
 }
 
-async function writeSegmentAudio(
-  plan: RenderPlan,
-  segment: RenderSegment,
-  sources: AudioContextSources,
-  audioSource: AudioSampleSource,
-  requestId: string,
-): Promise<void> {
-  const outRate = plan.audio.sampleRate;
-  const channels = plan.audio.channelCount;
-  const segmentStartUs = frameToUs(segment.startFrame, plan.fpsNum, plan.fpsDen);
-  const segmentEndUs = frameToUs(segment.endFrame, plan.fpsNum, plan.fpsDen);
-
-  const firstAudioFrame = Math.round((segmentStartUs * outRate) / US_PER_SECOND);
-  const lastAudioFrame = Math.round((segmentEndUs * outRate) / US_PER_SECOND);
-
-  const { clipReader, musicReader } = sources;
-
-  if (clipReader && segment.gain > 0) {
-    await clipReader.open(
-      segment.sourceInUs / US_PER_SECOND,
-      segment.sourceOutUs / US_PER_SECOND,
-    );
-  }
-
-  for (let frame = firstAudioFrame; frame < lastAudioFrame; frame += AUDIO_CHUNK_FRAMES) {
-    checkCanceled(requestId);
-    const chunkFrames = Math.min(AUDIO_CHUNK_FRAMES, lastAudioFrame - frame);
-    const planar: Float32Array[] = [];
-    for (let channel = 0; channel < channels; channel += 1) {
-      planar.push(new Float32Array(chunkFrames));
-    }
-
-    // --- source clip audio -------------------------------------------------
-    if (clipReader && segment.gain > 0 && clipReader.sampleRate > 0) {
-      const srcRate = clipReader.sampleRate;
-      const chunkStartUs = (frame * US_PER_SECOND) / outRate;
-      const offsetUs = chunkStartUs - segmentStartUs;
-      const startSourceSeconds = (segment.sourceInUs + offsetUs) / US_PER_SECOND;
-      const positionStart = startSourceSeconds * srcRate;
-      const positionStep = srcRate / outRate;
-
-      // Buffer forward first, then mix: `pcm` only exists once something
-      // has been decoded, and a silent source legitimately never fills it.
-      await clipReader.ensure(Math.ceil(positionStart + chunkFrames * positionStep) + 2);
-      if (clipReader.pcm) {
-        mixStreamInto(
-          planar,
-          chunkFrames,
-          clipReader.pcm,
-          positionStart,
-          positionStep,
-          segment.gain,
-        );
-        clipReader.release(Math.floor(positionStart) - 1);
-      }
-    }
-
-    // --- external music ----------------------------------------------------
-    const music = plan.audio.music;
-    if (musicReader && music) {
-      const gains = musicEnvelope(music, frame, chunkFrames, outRate);
-      let anyGain = false;
-      for (let i = 0; i < chunkFrames; i += 1) {
-        if ((gains[i] ?? 0) > 0) {
-          anyGain = true;
-          break;
-        }
-      }
-      if (anyGain && musicReader.sampleRate > 0) {
-        const srcRate = musicReader.sampleRate;
-        const chunkStartUs = (frame * US_PER_SECOND) / outRate;
-        const musicSourceUs = music.sourceInUs + (chunkStartUs - music.timelineStartUs);
-        const positionStart = (musicSourceUs / US_PER_SECOND) * srcRate;
-        const positionStep = srcRate / outRate;
-
-        await musicReader.ensure(Math.ceil(positionStart + chunkFrames * positionStep) + 2);
-        if (musicReader.pcm) {
-          mixStreamInto(planar, chunkFrames, musicReader.pcm, positionStart, positionStep, gains);
-          musicReader.release(Math.floor(positionStart) - 1);
-        }
-      }
-    }
-
-    // --- headroom + limiter ------------------------------------------------
-    if (plan.audio.safetyGain !== 1) {
-      for (const channel of planar) {
-        for (let i = 0; i < chunkFrames; i += 1) {
-          channel[i] = (channel[i] ?? 0) * plan.audio.safetyGain;
-        }
-      }
-    }
-    clampBuffers(planar, chunkFrames);
-
-    await audioSource.add(
-      new AudioSample({
-        data: interleave(planar, chunkFrames),
-        format: 'f32',
-        numberOfChannels: channels,
-        sampleRate: outRate,
-        timestamp: frame / outRate,
-      }),
-    );
-  }
+/** Everything read from the sources once, shared by the fast cut and the full encode. */
+interface ExportSources {
+  videoTrack: InputVideoTrack;
+  hdrTransfer: HdrTransfer | null;
+  captionLayouts: CaptionLayout[] | null;
+  sourceAudioTrack: InputAudioTrack | null;
+  sourceAudioUsable: boolean;
+  musicTrack: InputAudioTrack | null;
+  wantsAudio: boolean;
 }
 
-async function runExport(
-  requestId: string,
-  plan: RenderPlan,
-  videoFile: File,
-  audioFile: File | null,
-  origin: string,
-  memoryRouteLimitUs: number,
-  forceMemoryRoute: boolean,
-  storageFreeBytes: number | null,
-  storageReserveBytes: number | null,
-): Promise<void> {
+/**
+ * Errors after which the full encode is not tried: the user canceled, or the
+ * reason (disk, memory, policy) would stop the full encode just the same.
+ */
+function endsTheExport(error: unknown): boolean {
+  if (error instanceof CanceledError || error instanceof ExportFailure) return true;
+  const name = error instanceof Error ? error.name : '';
+  return name === 'QuotaExceededError';
+}
+
+async function runExport(options: ExportRequestOptions): Promise<void> {
+  const { requestId, plan, videoFile, audioFile, origin, mode } = options;
   const startedAt = Date.now();
   emit(requestId, { type: 'preparing', attemptId: requestId });
 
@@ -627,21 +539,28 @@ async function runExport(
   if (!videoTrack) throw new ExportFailure('no_video_track');
   if (!(await videoTrack.canDecode())) throw new ExportFailure('source_undecodable');
   const hdrTransfer = await refuseUnverifiedHdr(videoTrack);
-  await correctAvcReorder(videoTrack, plan.segments);
+  const reorderFixed = await correctAvcReorder(videoTrack, plan.segments);
 
   const sourceAudioTrack = await videoInput.getPrimaryAudioTrack();
   const sourceAudioUsable =
     sourceAudioTrack !== null && plan.audio.wantsSourceAudio && (await sourceAudioTrack.canDecode());
 
-  let musicInput: Input | null = null;
   let musicTrack: InputAudioTrack | null = null;
   if (audioFile && plan.audio.music) {
-    musicInput = new Input({ formats: ALL_FORMATS, source: new BlobSource(audioFile) });
+    const musicInput = new Input({ formats: ALL_FORMATS, source: new BlobSource(audioFile) });
     musicTrack = await musicInput.getPrimaryAudioTrack();
     if (musicTrack && !(await musicTrack.canDecode())) throw new ExportFailure('audio_undecodable');
   }
 
-  const wantsAudio = sourceAudioUsable || musicTrack !== null;
+  const sources: ExportSources = {
+    videoTrack,
+    hdrTransfer,
+    captionLayouts,
+    sourceAudioTrack,
+    sourceAudioUsable,
+    musicTrack,
+    wantsAudio: sourceAudioUsable || musicTrack !== null,
+  };
 
   // Previous results from this worker are no longer offered once a new export
   // starts; stale files from closed tabs are swept too.
@@ -649,7 +568,68 @@ async function runExport(
   ownEntries.clear();
   await sweepExportEntries().catch(() => 0);
 
-  const videoBitrate = await exportVideoBitrate(plan);
+  // ADR-027: keep the source's pictures when the plan allows it. Everything
+  // that can refuse (eligibility, packet scan, seam encoder) is decided here,
+  // before an output file exists.
+  let fallbackReason: FastCutFallbackReason | null = null;
+  let prepared: Awaited<ReturnType<typeof prepareFastCut>>;
+  try {
+    prepared = await prepareFastCut({
+      plan,
+      input: videoInput,
+      track: videoTrack,
+      hdr: hdrTransfer !== null,
+      needsReorderFix: reorderFixed,
+      mode,
+      checkCanceled: () => checkCanceled(requestId),
+    });
+  } catch (error) {
+    if (endsTheExport(error)) throw error;
+    prepared = { ok: false, reason: 'error' };
+  }
+
+  if (prepared.ok) {
+    const job = prepared.job;
+    try {
+      await produceOutput(options, sources, job, null, startedAt);
+      return;
+    } catch (error) {
+      if (endsTheExport(error)) throw error;
+      // The fast cut failed its own checks (or broke): the file was discarded
+      // and the full encode runs instead, saying why.
+      fallbackReason = error instanceof FastCutFallback ? error.reason : 'error';
+    } finally {
+      job.close();
+    }
+  } else {
+    fallbackReason = prepared.reason;
+  }
+
+  await produceOutput(options, sources, null, fallbackReason, startedAt);
+}
+
+/**
+ * Writes one output file: the fast cut when `fastJob` is given, the full
+ * decode -> draw -> encode otherwise. Both write the same audio, through the
+ * same sink, and are verified the same way before `succeeded`.
+ */
+async function produceOutput(
+  options: ExportRequestOptions,
+  sources: ExportSources,
+  fastJob: FastCutJob | null,
+  fallbackReason: FastCutFallbackReason | null,
+  startedAt: number,
+): Promise<void> {
+  const { requestId, plan, memoryRouteLimitUs, forceMemoryRoute, storageFreeBytes, storageReserveBytes } = options;
+  const { videoTrack, hdrTransfer, captionLayouts, sourceAudioTrack, sourceAudioUsable, musicTrack, wantsAudio } =
+    sources;
+  const durationSeconds = plan.expectedDurationUs / US_PER_SECOND;
+
+  // The fast cut's video is the source's own bytes; the full encode's is the
+  // encoder's bitrate (ADR-024).
+  const videoBitrate = fastJob
+    ? Math.ceil((fastJob.videoBytes * 8) / Math.max(durationSeconds, 0.001))
+    : await exportVideoBitrate(plan);
 
   // Measured, not guessed (ADR-023): the file is written once, and its size
   // stays under this estimate.
@@ -681,21 +661,27 @@ async function runExport(
 
   const output = new Output({ format: sink.format, target: sink.target });
 
-  const canvas = new OffscreenCanvas(plan.width, plan.height);
-  const context = canvas.getContext('2d', { alpha: false });
-  if (!context) throw new ExportFailure('internal_error');
-  // HDR frames are drawn into a float16 canvas and soft clipped (ADR-022),
-  // the same path the runtime check verified; SDR frames draw directly.
-  const hdrContext = hdrTransfer ? createHdrContext(plan.width, plan.height) : null;
-  if (hdrTransfer && !hdrContext) throw new ExportFailure('hdr_source_unsupported');
-  const frameContext = hdrContext ?? context;
-
-  const videoSource = new CanvasSource(canvas, {
-    codec: 'avc',
-    bitrate: videoBitrate,
-    keyFrameInterval: 2,
-  });
-  output.addVideoTrack(videoSource, { frameRate: plan.fpsNum / plan.fpsDen });
+  let videoSource: CanvasSource | null = null;
+  let canvas: OffscreenCanvas | null = null;
+  let context: OffscreenCanvasRenderingContext2D | null = null;
+  let hdrContext: ReturnType<typeof createHdrContext> = null;
+  if (fastJob) {
+    fastJob.addTrack(output);
+  } else {
+    canvas = new OffscreenCanvas(plan.width, plan.height);
+    context = canvas.getContext('2d', { alpha: false });
+    if (!context) throw new ExportFailure('internal_error');
+    // HDR frames are drawn into a float16 canvas and soft clipped (ADR-022),
+    // the same path the runtime check verified; SDR frames draw directly.
+    hdrContext = hdrTransfer ? createHdrContext(plan.width, plan.height) : null;
+    if (hdrTransfer && !hdrContext) throw new ExportFailure('hdr_source_unsupported');
+    videoSource = new CanvasSource(canvas, {
+      codec: 'avc',
+      bitrate: videoBitrate,
+      keyFrameInterval: 2,
+    });
+    output.addVideoTrack(videoSource, { frameRate: plan.fpsNum / plan.fpsDen });
+  }
 
   let audioSource: AudioSampleSource | null = null;
   if (wantsAudio) {
@@ -703,47 +689,70 @@ async function runExport(
     output.addAudioTrack(audioSource);
   }
 
-  const videoSink = new VideoSampleSink(videoTrack);
-  const sources: AudioContextSources = {
-    clipReader: sourceAudioUsable && sourceAudioTrack ? new AudioStreamReader(new AudioSampleSink(sourceAudioTrack)) : null,
+  const audioSources: AudioContextSources = {
+    clipReader:
+      sourceAudioUsable && sourceAudioTrack ? new AudioStreamReader(new AudioSampleSink(sourceAudioTrack)) : null,
     musicReader: musicTrack ? new AudioStreamReader(new AudioSampleSink(musicTrack)) : null,
   };
 
+  const videoSink = fastJob ? null : new VideoSampleSink(videoTrack);
+  const totalFrames = fastJob ? fastJob.totalFrames : plan.totalFrames;
   const frameDuration = plan.fpsDen / plan.fpsNum;
   let framesDone = 0;
   let framesDrawn = 0;
   let framesMissing = 0;
   let succeeded = false;
 
+  const emitProgress = () =>
+    emit(requestId, {
+      type: 'encoding',
+      attemptId: requestId,
+      progress: totalFrames > 0 ? Math.min(1, framesDone / totalFrames) : null,
+      framesDone,
+      totalFrames,
+    });
+
   try {
     await output.start();
 
-    if (sources.musicReader && plan.audio.music) {
-      await sources.musicReader.open(
+    if (audioSources.musicReader && plan.audio.music) {
+      await audioSources.musicReader.open(
         plan.audio.music.sourceInUs / US_PER_SECOND,
         plan.audio.music.sourceOutUs / US_PER_SECOND,
       );
     }
 
-    emit(requestId, {
-      type: 'encoding',
-      attemptId: requestId,
-      progress: 0,
-      framesDone: 0,
-      totalFrames: plan.totalFrames,
-    });
+    emitProgress();
 
-    for (const segment of plan.segments) {
+    for (const [segmentIndex, segment] of plan.segments.entries()) {
       checkCanceled(requestId);
+      const audioWriter = audioSource
+        ? new SegmentAudioWriter(plan, segment, audioSources, audioSource, () => checkCanceled(requestId))
+        : null;
+
+      if (fastJob) {
+        // Audio follows the copied video closely, so the file is interleaved
+        // and the progress is the real share of the file written.
+        await fastJob.writeSegment(segmentIndex, async (outputUs, done) => {
+          await audioWriter?.advanceTo(outputUs);
+          framesDone = done;
+          emitProgress();
+        });
+        await audioWriter?.advanceTo();
+        continue;
+      }
 
       const timestamps: number[] = [];
       for (let frame = segment.startFrame; frame < segment.endFrame; frame += 1) {
         timestamps.push(sourceTimeForFrame(segment, frame, plan.fpsNum, plan.fpsDen));
       }
       if (timestamps.length === 0) continue;
+      if (!videoSource || !context || !canvas) throw new ExportFailure('internal_error');
+      const frameContext = hdrContext ?? context;
 
       // One continuous decode per moment (see framePicker): a flush at every
       // GOP boundary made Chromium drop whole GOPs of real camera footage.
+      if (!videoSink) throw new ExportFailure('internal_error');
       const firstTs = timestamps[0] ?? 0;
       const lastTs = timestamps[timestamps.length - 1] ?? firstTs;
       const decoded = videoSink.samples(firstTs, lastTs + 0.001);
@@ -784,30 +793,25 @@ async function runExport(
         framesDone += 1;
 
         if (framesDone % PROGRESS_EVERY_FRAMES === 0 || framesDone === plan.totalFrames) {
-          emit(requestId, {
-            type: 'encoding',
-            attemptId: requestId,
-            progress: plan.totalFrames > 0 ? framesDone / plan.totalFrames : null,
-            framesDone,
-            totalFrames: plan.totalFrames,
-          });
+          emitProgress();
         }
       }
 
-      if (audioSource) {
-        await writeSegmentAudio(plan, segment, sources, audioSource, requestId);
-      }
+      await audioWriter?.advanceTo();
     }
 
-    if (framesDrawn === 0) throw new ExportFailure('no_frames_decoded');
-    if (framesMissing > missingFramesAllowed(plan.totalFrames)) {
-      throw new ExportFailure('source_frames_missing');
+    if (!fastJob) {
+      if (framesDrawn === 0) throw new ExportFailure('no_frames_decoded');
+      if (framesMissing > missingFramesAllowed(plan.totalFrames)) {
+        throw new ExportFailure('source_frames_missing');
+      }
     }
 
     checkCanceled(requestId);
     emit(requestId, { type: 'finalizing', attemptId: requestId });
 
-    videoSource.close();
+    if (fastJob) fastJob.finishVideo();
+    else videoSource?.close();
     audioSource?.close();
     await output.finalize();
 
@@ -816,13 +820,16 @@ async function runExport(
     if (!produced || collected.sizeBytes === 0) throw new ExportFailure('output_probe_failed');
 
     emit(requestId, { type: 'verifying', attemptId: requestId });
+    // The fast cut's seams are decoded again in this browser before the file
+    // may be offered (ADR-027); a failure here falls back to the full encode.
+    if (fastJob) await fastJob.verify(produced);
     const probe = await probeProduced(produced);
 
     if (!durationWithinTolerance(plan.expectedDurationUs, probe.durationUs, plan.fpsNum, plan.fpsDen)) {
-      throw new ExportFailure('output_duration_mismatch');
+      throw fastJob ? new FastCutFallback('seam_check') : new ExportFailure('output_duration_mismatch');
     }
 
-    const result = {
+    const result: ExportResult = {
       attemptId: requestId,
       fingerprint: plan.fingerprint,
       sizeBytes: collected.sizeBytes,
@@ -831,6 +838,10 @@ async function runExport(
       durationDeltaUs: probe.durationUs - plan.expectedDurationUs,
       elapsedMs: Date.now() - startedAt,
       framesMissing,
+      method: fastJob ? fastJob.method : 'encode',
+      fallbackReason: fastJob ? null : fallbackReason,
+      framesCopied: fastJob ? fastJob.framesCopied : 0,
+      framesEncoded: fastJob ? fastJob.framesEncoded : framesDone,
     };
 
     if (collected.file && collected.entryName) {
@@ -858,8 +869,8 @@ async function runExport(
       throw new ExportFailure('output_probe_failed');
     }
   } finally {
-    await sources.clipReader?.close();
-    await sources.musicReader?.close();
+    await audioSources.clipReader?.close();
+    await audioSources.musicReader?.close();
     // `finalize()` already tore the output down on the success path; cancel()
     // is the cleanup path for every other exit.
     if (output.state !== 'finalized') {
@@ -929,17 +940,18 @@ scope.onmessage = async (message: MessageEvent<WorkerRequest>) => {
 
   if (request.type === 'export') {
     try {
-      await runExport(
-        request.requestId,
-        request.plan,
-        request.videoFile,
-        request.audioFile,
-        request.origin,
-        request.memoryRouteLimitUs,
-        request.forceMemoryRoute,
-        request.storageFreeBytes,
-        request.storageReserveBytes,
-      );
+      await runExport({
+        requestId: request.requestId,
+        plan: request.plan,
+        videoFile: request.videoFile,
+        audioFile: request.audioFile,
+        origin: request.origin,
+        memoryRouteLimitUs: request.memoryRouteLimitUs,
+        forceMemoryRoute: request.forceMemoryRoute,
+        storageFreeBytes: request.storageFreeBytes,
+        storageReserveBytes: request.storageReserveBytes,
+        mode: request.mode ?? 'auto',
+      });
     } catch (error) {
       if (error instanceof CanceledError) {
         emit(request.requestId, { type: 'canceled', attemptId: request.requestId });

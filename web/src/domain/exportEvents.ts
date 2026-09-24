@@ -9,6 +9,7 @@
  * - failures carry an enum, never a raw path, stack or secret.
  */
 
+import type { ExportMethod, FastCutFallbackReason } from './fastPath';
 import type { Micros } from './time';
 
 export type ExportPhase =
@@ -76,6 +77,18 @@ export interface ExportResult {
    * frame was held there. Shown to the user when above zero.
    */
   framesMissing: number;
+  /**
+   * How the video was produced (ADR-027): `copy` — the source's pictures
+   * unchanged; `smart` — unchanged except the frames next to the cuts, which
+   * were re-encoded; `encode` — every frame decoded, drawn and encoded.
+   */
+  method: ExportMethod;
+  /** With `encode`: why the fast cut was not used; null when it was never asked for. */
+  fallbackReason: FastCutFallbackReason | null;
+  /** Output frames copied from the source unchanged. */
+  framesCopied: number;
+  /** Output frames that went through the encoder. */
+  framesEncoded: number;
 }
 
 /**

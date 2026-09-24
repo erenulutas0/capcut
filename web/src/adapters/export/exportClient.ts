@@ -149,6 +149,9 @@ export class ExportWorkerClient {
       forceMemoryRoute: (globalThis as { __clipForceMemoryRoute?: unknown }).__clipForceMemoryRoute === true,
       storageFreeBytes: testHookBytes('__clipStorageFreeBytes'),
       storageReserveBytes: testHookBytes('__clipStorageReserveBytes'),
+      // Test hook only (`window.__clipExportMode = 'encode'`): force the full
+      // encode, e.g. to measure it against the fast cut. The app never sets it.
+      mode: (globalThis as { __clipExportMode?: unknown }).__clipExportMode === 'encode' ? 'encode' : 'auto',
     };
     worker.postMessage(request);
 

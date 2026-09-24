@@ -7,6 +7,7 @@
  */
 
 import type { ExportEvent, ExportFailureCode } from '@/domain/exportEvents';
+import type { ExportMode } from '@/domain/fastPath';
 import type { HdrTransfer } from '@/domain/hdr';
 import type { RenderPlan } from '@/domain/renderPlan';
 import type { HdrToneMapStatus } from './hdrProbe';
@@ -89,6 +90,12 @@ export type WorkerRequest =
        * override) can see the disk run out mid-file. `null` in the app.
        */
       storageReserveBytes: number | null;
+      /**
+       * `auto` (default): keep the source's pictures where the plan allows it
+       * and re-encode only around the cuts (ADR-027). `encode`: always the full
+       * encode. The result's `method` says which one ran.
+       */
+      mode?: ExportMode;
     }
   | { type: 'cancel'; requestId: string };
 

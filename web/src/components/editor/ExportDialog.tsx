@@ -443,6 +443,24 @@ export function ExportDialog({
                 {state.result.route === 'opfs' ? t('export.route.opfs') : t('export.route.memory')}
               </span>
             </li>
+            <li>
+              <span className="meta-key">{t('export.method')}</span>
+              <span
+                className="meta-value"
+                data-testid="measured-method"
+                data-method={state.result.method}
+                data-fallback={state.result.fallbackReason ?? ''}
+                data-frames-encoded={state.result.framesEncoded}
+              >
+                {state.result.method === 'copy'
+                  ? t('export.method.copy')
+                  : state.result.method === 'smart'
+                    ? t('export.method.smart').replace('{count}', String(state.result.framesEncoded))
+                    : state.result.fallbackReason && state.result.fallbackReason !== 'requested_encode'
+                      ? t('export.method.encodeWhy').replace('{reason}', t(`export.fallback.${state.result.fallbackReason}`))
+                      : t('export.method.encode')}
+              </span>
+            </li>
             {state.result.framesMissing > 0 ? (
               <li>
                 <span className="meta-key">{t('export.framesMissing')}</span>

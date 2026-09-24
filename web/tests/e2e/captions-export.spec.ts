@@ -114,6 +114,8 @@ test.describe('caption burn-in export', () => {
     await page.getByTestId('export-create').click();
     await page.getByTestId('export-succeeded').waitFor({ timeout: 180_000 });
     await expect(page.getByTestId('measured-resolution')).toContainText('×');
+    // ADR-027: burned-in captions change the pictures, so nothing is copied.
+    await expect(page.getByTestId('measured-method')).toHaveAttribute('data-fallback', 'captions');
     expect(errors).toEqual([]);
   });
 
