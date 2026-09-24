@@ -153,6 +153,20 @@ Gerçek kayıtlarda paket zamanları ölçüldü (`scripts/fast-cut-spike/frame-
   anında ekranda olan kaynak karesi (ör. 29,97 fps'de 10 s'lik an 299 kare, son kare
   10,000 s'ye kadar tutulur). Tam kodlama aynı anı 300 kareyle, bir kareyi çoğaltarak verir.
 
+### v6 ile yeniden ölçüm (özet)
+
+- Gerçek kayıtlar dosyanın kendi çerçevesinde (`--native`): R03, R06, R10 üç tarayıcıda
+  `smart`; kodlanmayan her kare bit bit aynı (bildirilen kodlanan kare sayısıyla birebir),
+  dikiş SSIM 0,939–0,996, kopya zaman kayması yayılımı ≤ 1,09 ms. Chrome 15/15, Edge 11 + 4
+  REFUSED (HEVC), Chromium 10 + 4 REFUSED + 1 FAIL (R08, tam kodlama yolunda 224×128'in
+  720p'ye büyütülmesi, SSIM 0,8497; hızlı kesimle ilgisiz).
+- R10 (29,97 VFR) 5 dk 40 sn tek an, üç tarayıcıda: 10 183/10 203 kare bit bit aynı, kopya
+  kareler tek ofsette, ses 34 pencerede 0 ms gecikme (negatif kontrol 10 ms'yi ölçüyor).
+- Matris üç tarayıcıda 22/22 (M07 29,97 fps artık `copy`, 299 kare, `30000/1001`); e2e
+  147 geçti, 2 atlandı.
+- M19'da görülen artık altyazı izi uygulamanın davranışı (yeni video açmak altyazı izini
+  silmiyor); ürün kararı gerektiriyor, düzeltilmedi (ölçüm belgesi bölüm G).
+
 ## Ölçülmeyenler
 
 Windows oynatıcı uygulamalarının ekranı (yalnızca aynı Media Foundation hattı), VLC,
