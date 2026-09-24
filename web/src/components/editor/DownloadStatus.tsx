@@ -41,19 +41,39 @@ function announcement(t: T, entry: DownloadEntry): string {
 }
 
 /**
- * How the file was made. A result without `method` comes from the encode
- * loop: it is the only path that does not report one (the fast copy / smart
- * cut path added next to it reports `copy` or `smart`).
+ * How the file was made (ADR-027): the source's pictures kept (`copy`), kept
+ * except the frames next to the cuts (`smart`), or every frame encoded — then
+ * with the reason the fast cut was not used, when there was one.
  */
 function methodText(t: T, entry: Extract<DownloadEntry, { phase: 'saved' | 'ready' }>): string {
-  switch (entry.result.method ?? 'encode') {
+  const { result } = entry;
+  switch (result.method) {
     case 'copy':
-      return t('download.method.copy');
+      return t('export.method.copy');
     case 'smart':
-      return t('download.method.smart');
+      return t('export.method.smart').replace('{count}', String(result.framesEncoded));
     case 'encode':
-      return t('download.method.encode');
+      return result.fallbackReason && result.fallbackReason !== 'requested_encode'
+        ? t('export.method.encodeWhy').replace('{reason}', t(`export.fallback.${result.fallbackReason}` as MessageKey))
+        : t('export.method.encode');
   }
+}
+
+/** The method line, with the numbers tests and the matrix read back. */
+function MethodLine({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase: 'saved' | 'ready' }> }) {
+  const { result } = entry;
+  return (
+    <span
+      className="dl-sub"
+      data-testid="export-method"
+      data-method={result.method}
+      data-fallback={result.fallbackReason ?? ''}
+      data-frames-encoded={result.framesEncoded}
+      data-frames-copied={result.framesCopied}
+    >
+      {methodText(t, entry)}
+    </span>
+  );
 }
 
 /** Measured from the produced file, never copied from the plan. */
@@ -188,7 +208,6 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
   }
 
   if (entry.phase === 'saved') {
-    const method = methodText(t, entry);
     return (
       <div className="dl-status" data-phase="saved" data-testid="export-succeeded">
         {status}
@@ -196,9 +215,7 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
           <Icon name="check" size={16} />
           <span className="dl-text">
             <span data-testid="download-saved">{t('download.saved').replace('{name}', entry.fileName)}</span>
-            <span className="dl-sub" data-testid="export-method">
-              {method}
-            </span>
+            <MethodLine t={t} entry={entry} />
             {entry.hdr ? (
               <span className="dl-sub" data-testid="export-hdr-note">
                 {t('export.hdrNote')}
@@ -213,7 +230,6 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
   }
 
   if (entry.phase === 'ready') {
-    const method = methodText(t, entry);
     return (
       <div className="dl-status" data-phase="ready" data-testid="export-succeeded">
         {status}
@@ -221,9 +237,7 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
           <Icon name="check" size={16} />
           <span className="dl-text">
             <span>{t('download.readyTitle')}</span>
-            <span className="dl-sub" data-testid="export-method">
-              {method}
-            </span>
+            <MethodLine t={t} entry={entry} />
             {entry.hdr ? (
               <span className="dl-sub" data-testid="export-hdr-note">
                 {t('export.hdrNote')}

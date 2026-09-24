@@ -353,6 +353,13 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       route: await succeeded.locator('[data-testid="measured-route"]').textContent(),
       saved: await succeeded.locator('[data-testid="download-saved"]').textContent().catch(() => null),
     };
+    // ADR-027: how the video was produced (copy / smart / encode) and why not faster.
+    const method = succeeded.locator('[data-testid="export-method"]');
+    if ((await method.count()) > 0) {
+      reported.method = await method.getAttribute('data-method');
+      reported.fallbackReason = (await method.getAttribute('data-fallback')) || null;
+      reported.framesEncoded = Number(await method.getAttribute('data-frames-encoded'));
+    }
     // Held frames are an honest partial result, and must show up in reports.
     const held = succeeded.locator('[data-testid="measured-frames-missing"]');
     if ((await held.count()) > 0) {
@@ -753,16 +760,38 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     const audio = probe.streams.find((s) => s.codec_type === 'audio');
     const duration = Number(probe.format.duration);
 
+    // ADR-027: a fast-cut file keeps the source's rotation as metadata (the
+    // stored picture is landscape, the display matrix turns it). What a player
+    // shows is the display size, so that is what is checked; the stored size
+    // and rotation are recorded next to it.
+    const rotation = Number(
+      video?.side_data_list?.find((d) => d.rotation !== undefined)?.rotation ?? video?.tags?.rotate ?? 0,
+    );
+    const quarterTurn = Math.abs(rotation) % 180 === 90;
     const measured = {
       durationSeconds: Number(duration.toFixed(6)),
       frames: video ? Number(video.nb_frames) : null,
-      width: video?.width ?? null,
-      height: video?.height ?? null,
+      width: (quarterTurn ? video?.height : video?.width) ?? null,
+      height: (quarterTurn ? video?.width : video?.height) ?? null,
+      storedSize: video ? [video.width, video.height] : null,
+      rotation,
       videoCodec: video?.codec_name ?? null,
       audioCodec: audio?.codec_name ?? null,
       frameRate: video?.r_frame_rate ?? null,
       sizeBytes: Number(probe.format.size),
+      method: driveResult.reported?.method ?? null,
+      fallbackReason: driveResult.reported?.fallbackReason ?? null,
     };
+
+    if (want.method) {
+      const methods = [want.method].flat();
+      add(
+        `yöntem ${methods.join(' / ')} (ADR-027)`,
+        methods.includes(measured.method),
+        `bildirilen ${measured.method}${measured.fallbackReason ? ` (${measured.fallbackReason})` : ''}, ` +
+          `kodlanan kare ${driveResult.reported?.framesEncoded ?? '—'}`,
+      );
+    }
 
     if (want.durationSeconds !== undefined) {
       const delta = Math.abs(duration - want.durationSeconds);
@@ -789,11 +818,9 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       add(`ses codec ${want.audioCodec}`, measured.audioCodec === want.audioCodec, `${measured.audioCodec}`);
     }
     if (want.constantFrameRate) {
-      add(
-        `sabit ${want.constantFrameRate} fps`,
-        measured.frameRate === `${want.constantFrameRate}/1`,
-        `${measured.frameRate}`,
-      );
+      // A number is an integer rate (`30/1`); a string is ffprobe's exact rational.
+      const rate = typeof want.constantFrameRate === 'string' ? want.constantFrameRate : `${want.constantFrameRate}/1`;
+      add(`sabit ${rate} fps`, measured.frameRate === rate, `${measured.frameRate}`);
     }
     if (want.relinked) {
       add(
@@ -822,7 +849,10 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
           measured.height,
           referencePath,
         );
-        const score = ssim(artefactPath, referencePath);
+        // A fast-cut file keeps the source's own frame times (doc 15 v6);
+        // the reference is on the 30 fps grid, so the file is put on it too.
+        const copied = measured.method === 'copy' || measured.method === 'smart';
+        const score = ssim(artefactPath, referencePath, copied ? { gridFps: 30 } : {});
         measured.ssim = Number.isFinite(score) ? Number(score.toFixed(4)) : null;
         add(
           `görüntü ffmpeg referansıyla eşleşiyor (SSIM ≥ ${want.minSsim})`,

@@ -168,8 +168,13 @@ export const CASES = [
     expect: {
       exports: true,
       durationSeconds: 10,
-      frames: 300,
-      constantFrameRate: 30,
+      // Doc 15 v6 / ADR-027: a 1280x720 29.97 fps source in a 720p 16:9 frame
+      // is copied at its own rate. The moment shows source frames 0..298: the
+      // last one is the frame on screen at the last 30 fps instant (9.967 s),
+      // the full encode's rule; it is held to 10.000 s.
+      method: ['copy', 'smart'],
+      frames: 299,
+      constantFrameRate: '30000/1001',
     },
   },
   {
@@ -362,6 +367,33 @@ export const CASES = [
       // Two full-gain sources must still not clip.
       maxPeakDb: -0.5,
       fadeCheck: { frequency: TONE.music, quietAt: 0.1, loudAt: 3, minMarginDb: 10 },
+    },
+  },
+  {
+    // Placed before the caption rows: cases share one browser context, and the
+    // caption rows leave an output-time caption track in the stored project.
+    id: 'M19',
+    title: 'Hızlı kesim: 1080p30 H.264, anahtar kare dışında iki kesim',
+    expectation:
+      'Görüntü yeniden kodlanmıyor (yalnızca kesimden sonraki ilk IDR\'ye kadar); kareler, süre ve ses tam (ADR-027)',
+    setup: {
+      video: 'm03-landscape-1080p.mp4',
+      moments: [['00:01.100', '00:05.000'], ['00:07.500', '00:12.000']],
+      aspect: '16-9',
+      quality: '1080',
+    },
+    expect: {
+      exports: true,
+      method: 'smart',
+      durationSeconds: 8.4,
+      frames: 252,
+      size: [1920, 1080],
+      constantFrameRate: 30,
+      videoCodec: 'h264',
+      audioCodec: 'aac',
+      reference: { filter: 'scale=1920:1080', trims: [[1.1, 5], [7.5, 12]] },
+      minSsim: 0.95,
+      tonePresent: [TONE.source],
     },
   },
   {

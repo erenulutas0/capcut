@@ -150,6 +150,9 @@ export class ExportWorkerClient {
       storageFreeBytes: testHookBytes('__clipStorageFreeBytes'),
       storageReserveBytes: testHookBytes('__clipStorageReserveBytes'),
       destination: options.destination ?? null,
+      // Test hook only (`window.__clipExportMode = 'encode'`): force the full
+      // encode, e.g. to measure it against the fast cut. The app never sets it.
+      mode: (globalThis as { __clipExportMode?: unknown }).__clipExportMode === 'encode' ? 'encode' : 'auto',
     };
     worker.postMessage(request);
 

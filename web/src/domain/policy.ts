@@ -1,6 +1,6 @@
 /**
  * Local web limits. The single source of truth is
- * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-09-23.v5)
+ * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-09-24.v6)
  * plus the web guard rails in doc 11. Plan names are deliberately NOT hardcoded
  * into the domain: this is one policy object the app passes in.
  *
@@ -33,7 +33,9 @@ export interface ExportPolicy {
 const MIB = 1_048_576;
 
 export const WEB_LOCAL_POLICY: ExportPolicy = {
-  policyId: '2026-09-23.v5/web-local',
+  // v6 (2026-09-24): the download is "at most 30 fps"; a fast-cut copy keeps the
+  // source's own rate and bitrate (ADR-027). No limit below changed.
+  policyId: '2026-09-24.v6/web-local',
   // Raised from 5 min by founder decision (doc 15 v3): on the disk (OPFS)
   // route export memory stays flat with output length (ADR-013, ADR-020).
   maxOutputDurationUs: 60 * 60 * US_PER_SECOND,
