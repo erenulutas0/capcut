@@ -842,7 +842,10 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
           measured.height,
           referencePath,
         );
-        const score = ssim(artefactPath, referencePath);
+        // A fast-cut file keeps the source's own frame times (doc 15 v6);
+        // the reference is on the 30 fps grid, so the file is put on it too.
+        const copied = measured.method === 'copy' || measured.method === 'smart';
+        const score = ssim(artefactPath, referencePath, copied ? { gridFps: 30 } : {});
         measured.ssim = Number.isFinite(score) ? Number(score.toFixed(4)) : null;
         add(
           `görüntü ffmpeg referansıyla eşleşiyor (SSIM ≥ ${want.minSsim})`,

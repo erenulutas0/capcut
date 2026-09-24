@@ -64,8 +64,18 @@ export function peakDb(file) {
   return values.length > 0 ? Math.max(...values) : NaN;
 }
 
-export function ssim(fileA, fileB) {
-  const output = runFfmpeg(['-i', fileA, '-i', fileB, '-lavfi', '[0:v][1:v]ssim', '-f', 'null', '-']);
+/**
+ * `gridFps`: put `fileA` on that constant frame grid first (each frame held
+ * until the next starts, like a player), for a fast-cut file that keeps the
+ * source's own 29.97 fps or variable rate (ADR-027). Without it ffmpeg's ssim
+ * pairs frames of two different rates wrongly (measured: 0.76 instead of 0.99
+ * on the same content).
+ */
+export function ssim(fileA, fileB, { gridFps = null } = {}) {
+  const graph = gridFps
+    ? `[0:v]fps=${gridFps}:round=up:start_time=0[a];[a][1:v]ssim`
+    : '[0:v][1:v]ssim';
+  const output = runFfmpeg(['-i', fileA, '-i', fileB, '-lavfi', graph, '-f', 'null', '-']);
   const match = /SSIM[^\n]*All:\s*([0-9.]+)/.exec(output);
   return match ? Number(match[1]) : NaN;
 }

@@ -26,7 +26,9 @@ function ff(args, { binary = false } = {}) {
 export function framesWithMd5(file, fromS = null, toS = null) {
   const args = ['-noautorotate'];
   if (fromS !== null) args.push('-ss', String(Math.max(0, fromS - 5)), '-copyts');
-  args.push('-i', file, '-map', '0:v:0', '-fps_mode', 'passthrough', '-f', 'framemd5', '-');
+  // The demuxer's own time base: framemd5 otherwise rescales pts to 1/frame-rate, which
+  // merges the timestamps of a variable-rate file (measured: two frames at pts 0).
+  args.push('-i', file, '-map', '0:v:0', '-fps_mode', 'passthrough', '-enc_time_base:v', 'demux', '-f', 'framemd5', '-');
   const text = ff(args);
   const tb = /#tb 0: (\d+)\/(\d+)/.exec(text);
   const unit = tb ? Number(tb[1]) / Number(tb[2]) : 1;

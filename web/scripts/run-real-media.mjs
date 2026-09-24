@@ -341,8 +341,9 @@ for (const [index, fileName] of files.entries()) {
         detail: `${identity.identical}/${identity.frames} aynı, farklı ${identity.differing}, bildirilen kodlanan ${encoded}`,
       });
       checks.push({
-        label: 'hızlı kesim: kopyalanan karelerin zamanı kaynakla aynı kaymada (≤ 1 ms)',
-        ok: identity.offsetSpreadMs !== null && identity.offsetSpreadMs <= 1,
+        // One tick of a phone's 1/600 s clock is 1.67 ms.
+        label: 'hızlı kesim: kopyalanan karelerin zamanı kaynakla aynı kaymada (≤ 1,7 ms)',
+        ok: identity.offsetSpreadMs !== null && identity.offsetSpreadMs <= 1.7,
         detail: `yayılım ${identity.offsetSpreadMs} ms`,
       });
       if (identity.ssimMin !== null) {

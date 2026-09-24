@@ -138,7 +138,7 @@ result.ok =
   identity.identical === identity.frames - identity.differing &&
   identity.differing <= result.framesEncoded &&
   identity.offsetSpreadMs !== null &&
-  identity.offsetSpreadMs <= 1 &&
+  identity.offsetSpreadMs <= 1.7 &&
   measured.length >= lags.length * 0.8 &&
   result.audio.worstLagMs <= 1024 / 48 &&
   errors.length === 0;
