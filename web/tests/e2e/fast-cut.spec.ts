@@ -95,7 +95,7 @@ test.describe('fast cut', () => {
   test('a zoomed picture is encoded and the dialog says why', async ({ page }) => {
     const errors = await openFixture(page);
     await addMoment(page, '00:01.000', '00:03.000');
-    await page.getByTestId('zoom-slider').fill('1.5');
+    await page.getByTestId('zoom-slider').fill('150');
     await exportAt720(page);
 
     const method = page.getByTestId('measured-method');

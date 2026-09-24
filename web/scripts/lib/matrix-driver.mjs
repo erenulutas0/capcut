@@ -753,11 +753,21 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     const audio = probe.streams.find((s) => s.codec_type === 'audio');
     const duration = Number(probe.format.duration);
 
+    // ADR-027: a fast-cut file keeps the source's rotation as metadata (the
+    // stored picture is landscape, the display matrix turns it). What a player
+    // shows is the display size, so that is what is checked; the stored size
+    // and rotation are recorded next to it.
+    const rotation = Number(
+      video?.side_data_list?.find((d) => d.rotation !== undefined)?.rotation ?? video?.tags?.rotate ?? 0,
+    );
+    const quarterTurn = Math.abs(rotation) % 180 === 90;
     const measured = {
       durationSeconds: Number(duration.toFixed(6)),
       frames: video ? Number(video.nb_frames) : null,
-      width: video?.width ?? null,
-      height: video?.height ?? null,
+      width: (quarterTurn ? video?.height : video?.width) ?? null,
+      height: (quarterTurn ? video?.width : video?.height) ?? null,
+      storedSize: video ? [video.width, video.height] : null,
+      rotation,
       videoCodec: video?.codec_name ?? null,
       audioCodec: audio?.codec_name ?? null,
       frameRate: video?.r_frame_rate ?? null,
