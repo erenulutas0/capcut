@@ -7,9 +7,10 @@ import type { MessageKey } from '@/i18n/messages';
 /**
  * Says what actually happened to the user's work.
  *
- * "Kaydedildi" is only shown after a transaction committed, and its tooltip
- * states plainly that this is browser storage rather than a backup. A refused
- * save is never rounded up to a success.
+ * "Düzenleme saklandı" is only shown after a transaction committed, and its
+ * tooltip states plainly that this is browser storage rather than a backup. A
+ * refused save is never rounded up to a success. Not "Kaydedildi": that word
+ * belongs to the downloaded file ("Kaydedildi: ad.mp4", UX audit 2026-09-30).
  */
 export function SaveStateBadge({
   t,

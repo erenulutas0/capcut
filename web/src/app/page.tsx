@@ -1,16 +1,17 @@
 import Link from 'next/link';
 
 import { Icon, Wordmark } from '@/components/Icon';
-import { translator } from '@/i18n/messages';
+import { translator, type MessageKey } from '@/i18n/messages';
 
 const t = translator('tr');
 
-const STEPS = [
-  ['Videonu seç', 'Dosya bilgisayarından çıkmaz. Tarayıcıda açılır.'],
-  ['Anları işaretle', 'Başlangıç ve bitiş ver; istediğin kadar an ekle.'],
-  ['Sırala', 'Kartları yukarı-aşağı taşı; çıktı sırası değişsin.'],
-  ['Görüntü ve sesi ayarla', 'Dikey, yatay veya kare; kendi müziğini ekle.'],
-] as const;
+/** The kesit flow (ADR-026) in four steps, as the editor names its buttons. */
+const STEPS: ReadonlyArray<readonly [MessageKey, MessageKey]> = [
+  ['landing.step1.title', 'landing.step1.body'],
+  ['landing.step2.title', 'landing.step2.body'],
+  ['landing.step3.title', 'landing.step3.body'],
+  ['landing.step4.title', 'landing.step4.body'],
+];
 
 export default function LandingPage() {
   return (
@@ -24,7 +25,7 @@ export default function LandingPage() {
       </header>
 
       <main className="landing-main">
-        <h1>Video düzenlemeyi öğrenmeden, tutmak istediğin anları seç.</h1>
+        <h1>{t('landing.title')}</h1>
         <p className="lede">{t('app.tagline')}</p>
         <Link className="btn-primary-light" href="/editor" prefetch={false}>
           {t('nav.openEditor')}
@@ -34,17 +35,15 @@ export default function LandingPage() {
           {STEPS.map(([title, body], index) => (
             <li className="landing-step" key={title}>
               <b>
-                {index + 1}. {title}
+                {index + 1}. {t(title)}
               </b>
-              <span>{body}</span>
+              <span>{t(body)}</span>
             </li>
           ))}
         </ol>
 
         <p className="landing-note">
-          Bu sürüm geliştirmenin W0 aşamasıdır: editör arayüzü ve düzenleme tarifi çalışır,
-          gerçek video çıktısı (encode) henüz yoktur. Hesap, abonelik, bulut yükleme ve yapay
-          zekâ özelliği yok. {t('app.workingName')}
+          {t('landing.note')} {t('app.workingName')}
         </p>
       </main>
 

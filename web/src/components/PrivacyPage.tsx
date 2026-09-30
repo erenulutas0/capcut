@@ -46,6 +46,13 @@ const STORED: Array<{ name: MessageKey; body: MessageKey; where: MessageKey; del
     where: 'privacy.stored.memory.where',
     delete: 'privacy.stored.memory.delete',
   },
+  {
+    id: 'hint',
+    name: 'privacy.stored.hint.name',
+    body: 'privacy.stored.hint.body',
+    where: 'privacy.stored.hint.where',
+    delete: 'privacy.stored.hint.delete',
+  },
 ];
 
 const DOWNLOADS: MessageKey[] = [

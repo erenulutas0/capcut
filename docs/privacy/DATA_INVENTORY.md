@@ -17,7 +17,7 @@ doğrulanır (`web/tests/e2e/privacy.spec.ts` → "nothing leaves the machine").
 | Kullanıcı medyası sunucuya gider mi? | Hayır. `File` nesneleri yalnızca sayfa ve worker'lar arasında structured clone ile taşınır. | `web/src/adapters/export/protocol.ts`, `web/src/adapters/silence/protocol.ts`, e2e testi |
 | Hesap / oturum? | Yok. | Kodda auth yok |
 | Analitik, hata raporlama servisi, reklam? | Yok. Üçüncü taraf script yok. | `web/next.config.ts`, `web/src/app/layout.tsx`, `package.json` bağımlılıkları |
-| Çerez, localStorage, sessionStorage? | Kullanılmıyor; e2e testi oturum sonunda üçünün de boş olduğunu doğrular. | `grep` + e2e testi |
+| Çerez, localStorage, sessionStorage? | Çerez ve sessionStorage kullanılmıyor. localStorage'da yalnızca ilk kullanım ipucunun kapatıldığı (`clip.firstRunHint.dismissed` = `1`) durur, o da yalnızca kullanıcı "Anladım"a basınca yazılır (§2.4). e2e testi ipucu kapatılmamış oturumun sonunda üçünün de boş olduğunu, kapatınca yalnızca o anahtarın yazıldığını doğrular. | `web/src/components/editor/FirstRunHint.tsx` + e2e testleri |
 | Cihaz parmak izi? | Yok. Tanı dosyasındaki tarayıcı bilgisi yalnızca kullanıcı indirirse oluşur ve kendiliğinden gönderilmez. | `web/src/adapters/diagnostics.ts` |
 | Model dosyası / AI? | Bu sürümde yok. | — |
 | Kendiliğinden gönderilen bir şey? | Yok. Uygulama kodunda `fetch`/XHR/WebSocket/beacon yok; tek `fetch` benzeri işlem tarayıcının yazı tipi yüklemesi (aynı origin). | `grep -rn "fetch(" web/src` boş; e2e testi |
@@ -99,10 +99,21 @@ yetenek engelleri, plan retleri ve yakalanmamış hatalar. Yakalanmamış hatala
 tutulmaz**, yalnızca sınıf adı (`TypeError` → `type_error`), çünkü mesaj dosya adı veya altyazı
 alıntılayabilir. Kod olmayan her değer (`^[a-z][a-z0-9_]{0,63}$` dışı) kayda girmeden atılır.
 
-### 2.4 Kullanılmayanlar
+### 2.4 localStorage — ilk kullanım ipucu (2026-09-30, UX denetimi)
 
-`localStorage`, `sessionStorage`, çerez, Cache API, service worker: kodda yok (`grep`);
-e2e oturum testi çerezlerin, `document.cookie`'nin ve iki web depolamanın boş olduğunu doğrular.
+Tek anahtar: `clip.firstRunHint.dismissed`, değeri `1`. Editördeki "Nasıl kesilir? Üç adım"
+ipucunda "Anladım"a basınca yazılır; ipucu bir daha gösterilmez. Kimlik, proje, dosya adı ya da
+zaman içermez; hiçbir yere gönderilmez. Tarayıcı depolamayı reddederse (gizli pencere, site verisi
+engelli) okuma ve yazma `try/catch` içindedir: ipucu yine görünür, "Anladım" onu o sayfa açık
+kaldıkça gizler. Silinmesi: tarayıcının site verisini temizlemek. Kaynak:
+`web/src/components/editor/FirstRunHint.tsx`; test: `web/tests/e2e/kesit.spec.ts` → "first-time
+user".
+
+### 2.5 Kullanılmayanlar
+
+`sessionStorage`, çerez, Cache API, service worker: kodda yok (`grep`); e2e oturum testi
+çerezlerin, `document.cookie`'nin ve iki web depolamanın (ipucu kapatılmadığı için localStorage da)
+boş olduğunu doğrular.
 
 ## 3. Kullanıcının tetiklediği indirmeler
 
@@ -132,7 +143,8 @@ MP4 indirme, proje yedeği indirme, "Sorun bildir" ve tanı dosyası indirme. İ
 - origin içi her istek `GET` ve gövdesiz (yükleme/form gönderimi yok);
 - origin içi her yol izin listesinde: `/`, `/editor`, `/gizlilik`, `/gizlilik/en`, `/_next/static/**`,
   `/fonts/caption/inter-latin(-ext)-700-normal.woff2`, (varsa) `/favicon.ico`;
-- oturum sonunda çerez yok, localStorage/sessionStorage boş.
+- oturum sonunda çerez yok, localStorage/sessionStorage boş (bu oturumda ilk kullanım ipucu
+  kapatılmaz; kapatılınca yazılan tek anahtar §2.4'te).
 
 Eski, daha dar test `web/tests/e2e/editor.spec.ts` → "nothing is sent off the machine" de duruyor.
 

@@ -133,7 +133,7 @@ test.describe("fast cut", () => {
     const method = page.getByTestId("export-method");
     await expect(method).toHaveAttribute("data-method", "encode");
     await expect(method).toHaveAttribute("data-fallback", "crop");
-    await expect(method).toHaveText("Kodlandı (kırpma veya yakınlaştırma var)");
+    await expect(method).toHaveText("Görüntü yeniden işlendi (kırpma veya yakınlaştırma var)");
     expect(errors).toEqual([]);
   });
 
@@ -187,7 +187,7 @@ test.describe("fast cut", () => {
     await expect(method).toHaveAttribute("data-method", "encode");
     await expect(method).toHaveAttribute("data-fallback", "fps");
     await expect(method).toHaveText(
-      "Kodlandı (kaynak 30 fps’den hızlı, 30 fps’ye çevrildi)",
+      "Görüntü yeniden işlendi (kaynak saniyede 30 kareden hızlı, 30 kareye indirildi)",
     );
     expect(probeFrames(await savedFile(page, testInfo)).frames).toBe(60);
     expect(errors).toEqual([]);
@@ -207,7 +207,7 @@ test.describe("fast cut", () => {
     const method = page.getByTestId("export-method");
     await expect(method).toHaveAttribute("data-method", "encode");
     await expect(method).toHaveAttribute("data-fallback", "requested_encode");
-    await expect(method).toHaveText("Kodlandı");
+    await expect(method).toHaveText("Görüntü yeniden işlendi");
     const file = await savedFile(page, testInfo);
     expect(barcodeFrames(file)).toEqual(range(60, 119));
     expect(errors).toEqual([]);

@@ -72,6 +72,16 @@ test.describe('kesit list: mark, add, play, download', () => {
     await expect(page.getByTestId('kesit-card')).toHaveCount(0);
     await expect(page.getByTestId('download-all')).toHaveText('Videoyu indir');
     await expect(page.getByTestId('timeline-notice')).toContainText('Video açıldı (24,0 sn)');
+    // The marks say in words what they do; the key is a hint beside the
+    // words, not the button's name (UX audit 2026-09-30).
+    await expect(page.getByRole('button', { name: 'Başlangıcı işaretle', exact: true })).toHaveAttribute(
+      'aria-keyshortcuts',
+      'I',
+    );
+    await expect(page.getByRole('button', { name: 'Bitişi işaretle', exact: true })).toHaveAttribute(
+      'aria-keyshortcuts',
+      'O',
+    );
     // The save dialog replaces a chosen file as soon as the user confirms;
     // the list says so before the first ⬇.
     await expect(page.getByTestId('save-overwrite-note')).toHaveText(
@@ -97,7 +107,10 @@ test.describe('kesit list: mark, add, play, download', () => {
     await expect(page.getByTestId('strip-kesit')).toHaveCount(1);
     await expect(page.getByTestId('strip-pending')).toHaveCount(0);
     await expect(page.getByTestId('range-start')).toHaveValue('');
-    await expect(page.getByTestId('timeline-notice')).toContainText('Kesit 1 eklendi: 00:02 → 00:06');
+    // The notice says where the kesit went: the list beside the marks.
+    await expect(page.getByTestId('timeline-notice')).toHaveText(
+      'Kesit 1 eklendi: 00:02 → 00:06 · sağdaki listede · Geri al: Ctrl+Z',
+    );
     await expect(page.getByTestId('download-all')).toHaveText('Kesiti indir');
     await expect(page.getByRole('button', { name: "Kesit 1'i indir, 00:02–00:06" })).toBeVisible();
 
@@ -121,12 +134,18 @@ test.describe('kesit list: mark, add, play, download', () => {
       'Kaydedildi: saved-sample-24s_00-02-00-06.mp4',
       { timeout: 120_000 },
     );
+    // The page cannot read the folder's path; it says which folder it is.
+    await expect(card(page, 0).getByTestId('download-saved-where')).toHaveText(
+      'Kaydetme penceresinde seçtiğin klasörde.',
+    );
     expect(await pickerCalls(page)).toEqual(['sample-24s_00-02-00-06.mp4']);
     // Only the encode path exists in this build (the fast path reports its own).
     // The sample is not a 720p/1080p frame, so the fast cut (ADR-027) does
     // not apply: encoded, and the line says why.
     await expect(card(page, 0).getByTestId('export-method')).toHaveAttribute('data-method', 'encode');
-    await expect(card(page, 0).getByTestId('export-method')).toHaveText('Kodlandı (çözünürlük kaynağınkinden farklı)');
+    await expect(card(page, 0).getByTestId('export-method')).toHaveText(
+      'Görüntü yeniden işlendi (çözünürlük kaynağınkinden farklı)',
+    );
     await expect(page.getByTestId('export-download')).toHaveCount(0);
     await expect(card(page, 0).getByTestId('measured-route')).toHaveText('seçtiğin dosya');
     // Only the picked file: no temporary copy is left in OPFS.
@@ -274,6 +293,10 @@ test.describe('kesit list: mark, add, play, download', () => {
     await playheadTo(page, 2);
     await page.keyboard.press('o');
     await expect(page.getByTestId('range-error')).toContainText('Bitiş zamanı başlangıçtan sonra olmalı');
+    // ...and what to do next.
+    await expect(page.getByTestId('range-error-next')).toHaveText(
+      'Bitişi düzelt ya da videoda daha ileri gidip “Bitişi işaretle”ye bas.',
+    );
     await expect(kesitRanges(page).nth(1)).toHaveText('00:04 → 00:09');
 
     // The strip handle drags the selected kesit's end, snapped to frames.
@@ -387,6 +410,10 @@ test.describe('browsers without the save dialog', () => {
     await link.click();
     const saved = await download;
     expect(saved.suggestedFilename()).toBe('sample-24s_00-03-00-05.mp4');
+    // Where that link saves: the browser's own downloads folder.
+    await expect(card(page, 0).getByTestId('export-save-where')).toHaveText(
+      'Tarayıcın dosyayı İndirilenler klasörüne kaydeder (ya da nereye kaydedeceğini sorar).',
+    );
     const bytes = statSync(await saved.path()).size;
     await expect(card(page, 0).getByTestId('export-save-space')).toHaveText(
       `Kaydederken bilgisayarında yaklaşık ${Math.ceil(bytes / 1_048_576)} MiB daha boş yer gerekir.`,
@@ -556,6 +583,86 @@ test.describe('old projects and backups open as kesitler', () => {
   });
 });
 
+test.describe('first-time user (UX audit 2026-09-30)', () => {
+  const HINT_KEY = 'clip.firstRunHint.dismissed';
+
+  test('the first-run hint says the steps in the buttons’ words, goes on "Anladım" and stays gone', async ({
+    page,
+  }) => {
+    const errors = await openEditor(page);
+    const hint = page.getByTestId('first-run-hint');
+    await expect(hint).toBeVisible();
+    await expect(hint.getByRole('heading', { level: 3 })).toHaveText('Nasıl kesilir? Üç adım');
+    await expect(hint.getByRole('listitem')).toHaveText([
+      '“Video seç” ile videonu aç; oynat ya da şeritte istediğin yere git.',
+      'Saklamak istediğin yerin başında “Başlangıcı işaretle”ye, sonunda “Bitişi işaretle”ye bas.',
+      '“Kesit ekle”ye bas: kesit bu listeye düşer. ▶ onu oynatır, “İndir” yalnızca onu kaydeder.',
+    ]);
+    // It stands in for the empty list: the two never say the same thing twice.
+    await expect(page.getByTestId('kesit-empty')).toHaveCount(0);
+
+    await openVideo(page, SAMPLE);
+    await expect(hint.getByRole('listitem').first()).toHaveText('Videoyu oynat ya da şeritte istediğin yere git.');
+    // Nothing is written until the user says so.
+    expect(await page.evaluate(() => window.localStorage.length)).toBe(0);
+
+    await page.getByTestId('first-run-dismiss').click();
+    await expect(hint).toHaveCount(0);
+    await expect(page.getByTestId('kesit-empty')).toContainText('Henüz kesit yok.');
+    // The keyboard continues from the list's heading, not from the page top.
+    await expect(page.locator('#kesits-title')).toBeFocused();
+    expect(await page.evaluate(() => ({ ...window.localStorage }))).toEqual({ [HINT_KEY]: '1' });
+
+    await page.reload();
+    await expect(page.getByTestId('download-all')).toBeVisible();
+    await expect(page.getByTestId('kesit-empty')).toBeVisible();
+    await expect(page.getByTestId('first-run-hint')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('a browser that refuses storage still shows the hint, and "Anladım" still hides it', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        get() {
+          throw new DOMException('The operation is insecure.', 'SecurityError');
+        },
+      });
+    });
+    const errors = await openEditor(page);
+    await expect(page.getByTestId('first-run-hint')).toBeVisible();
+    await page.getByTestId('first-run-dismiss').click();
+    await expect(page.getByTestId('first-run-hint')).toHaveCount(0);
+    await expect(page.getByTestId('kesit-empty')).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test('one primary button at a time: the next step', async ({ page }) => {
+    await openEditor(page);
+    const primary = (testId: string) =>
+      page.getByTestId(testId).evaluate((node) => node.classList.contains('btn-accent'));
+    const primaries = async () => ({
+      start: await primary('mark-start'),
+      end: await primary('mark-end'),
+      add: await primary('add-moment'),
+      download: await primary('download-all'),
+    });
+    await openVideo(page, SAMPLE);
+    // Nothing marked, nothing added: the first step is the start.
+    expect(await primaries()).toEqual({ start: true, end: false, add: false, download: false });
+    await playheadTo(page, 2);
+    await page.getByTestId('mark-start').click();
+    expect(await primaries()).toEqual({ start: false, end: true, add: false, download: false });
+    await playheadTo(page, 5);
+    await page.getByTestId('mark-end').click();
+    expect(await primaries()).toEqual({ start: false, end: false, add: true, download: false });
+    await page.getByTestId('add-moment').click();
+    await expect(page.getByTestId('kesit-card')).toHaveCount(1);
+    // With a kesit, downloading is the goal; marking another is the user's choice.
+    expect(await primaries()).toEqual({ start: false, end: false, add: false, download: true });
+  });
+});
+
 test.describe('phone width (390 px)', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
@@ -599,6 +706,13 @@ test.describe('phone width (390 px)', () => {
     await expect(page.getByTestId('range-end')).not.toHaveValue('');
     await page.getByTestId('add-moment').click();
     await expect(page.getByTestId('kesit-card')).toHaveCount(1);
+    // On a phone the list is below the marks, often off screen, and there is
+    // no Ctrl+Z: the notice says both.
+    await expect(page.getByTestId('timeline-notice')).toContainText(
+      '· aşağıdaki listede · Geri al: üstteki ↶ düğmesi',
+    );
+    // No keyboard, no key hint on the mark buttons.
+    await expect(page.getByTestId('mark-start').locator('kbd')).toBeHidden();
     await noHorizontalOverflow(page);
 
     // Ayarlar opens as a bottom sheet; Escape returns focus to its button.
