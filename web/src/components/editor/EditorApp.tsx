@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Icon, Wordmark } from '@/components/Icon';
+import { InstallEntry } from '@/components/pwa/InstallEntry';
 import { useHydrated } from '@/components/useHydrated';
 import { safeFileName } from '@/adapters/browserMedia';
 import { withWholeKesit } from '@/application/commands';
@@ -52,6 +53,7 @@ import { useCaptionFont } from './useCaptionFont';
 import { canPickSaveFile, entryIsCurrent, useDownloads } from './useDownloads';
 import { useEditorState } from './useEditorState';
 import { useLayoutMode } from './useLayoutMode';
+import { useTouchScreen } from './useTouchScreen';
 import { usePlayback } from './usePlayback';
 import { useProjectPersistence } from './useProjectPersistence';
 import { useSilenceAnalysis } from './useSilenceAnalysis';
@@ -125,6 +127,9 @@ export function EditorApp() {
   const hydrated = useHydrated();
   const layout = useLayoutMode();
   const phone = layout === 'phone';
+  // Wording for a phone or tablet ("Kaydet", not "Bilgisayara kaydet"), ADR-031.
+  const touchScreen = useTouchScreen();
+  const deviceWording = phone || touchScreen;
   const state = useEditorState();
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const musicElementRef = useRef<HTMLAudioElement | null>(null);
@@ -468,6 +473,8 @@ export function EditorApp() {
         onCancel={downloads.cancel}
         onDismiss={() => downloads.dismiss(key)}
         onReportProblem={() => setReportOpen(true)}
+        onShare={() => downloads.share(key)}
+        device={deviceWording}
       />
     );
   };
@@ -1113,6 +1120,7 @@ export function EditorApp() {
               </p>
             ) : null}
           </div>
+          <InstallEntry t={t} />
           <hr className="divider" />
           <button
             type="button"

@@ -7,9 +7,9 @@ export const tr = {
   'app.name': 'clip',
   'app.tagline': 'Videonu aç, saklamak istediğin yerleri işaretle, indir.',
   'app.workingName': 'Clip geçici çalışma adıdır.',
-  'landing.title': 'Videonun istediğin yerlerini kes, bilgisayarına kaydet.',
+  'landing.title': 'Videonun istediğin yerlerini kes, kaydet ya da paylaş.',
   'landing.step1.title': 'Videonu aç',
-  'landing.step1.body': 'Dosya bilgisayarından çıkmaz; tarayıcıda açılır.',
+  'landing.step1.body': 'Dosya cihazından çıkmaz; tarayıcıda açılır.',
   'landing.step2.title': 'Başını ve sonunu işaretle',
   'landing.step2.body': '“Başlangıcı işaretle”, sonra “Bitişi işaretle”: kesit hemen listeye eklenir.',
   'landing.step3.title': 'Kesitleri izle',
@@ -30,7 +30,7 @@ export const tr = {
   'nav.openEditor': 'Editörü aç',
   'nav.backToEditor': 'Düzenlemeye dön',
 
-  'banner.prototype': 'Deneme sürümü · videon bilgisayarından çıkmaz · bulut yok',
+  'banner.prototype': 'Deneme sürümü · videon cihazından çıkmaz · bulut yok',
 
   'topbar.untitled': 'Adsız proje',
   'topbar.renameLabel': 'Proje adı',
@@ -90,7 +90,7 @@ export const tr = {
   'privacy.draftBadge': 'Taslak — veri sorumlusu bilgisi ve hukuki inceleme eksik (belge 30 K02)',
   'privacy.draftBody':
     'Bu sayfa uygulamanın bugünkü davranışını anlatır; hukuki incelemeden geçmiş bir aydınlatma metni değildir. “belirlenmedi” yazan bilgiler henüz karara bağlanmadı.',
-  'privacy.updated': 'Son güncelleme: 22 Eylül 2026 · sürüm {version} · derleme {commit}',
+  'privacy.updated': 'Son güncelleme: 30 Eylül 2026 · sürüm {version} · derleme {commit}',
   'privacy.otherLanguage': 'English',
   'privacy.back': 'Ana sayfa',
   'privacy.undecided': 'belirlenmedi',
@@ -106,7 +106,7 @@ export const tr = {
 
   'privacy.network.title': 'Sayfayı açınca ağda ne olur',
   'privacy.network.body':
-    'Tarayıcın uygulamanın kendi dosyalarını (sayfalar, kod, stil dosyaları, altyazı yazı tipi) bu siteyi sunan sunucudan indirir. Her web sitesinde olduğu gibi sunucu bu sırada IP adresini, istek zamanını ve tarayıcı bilgisini (user agent) görebilir. Başka bir adrese istek yapılmaz; bunu her sürümde otomatik bir testle kontrol ediyoruz. Uygulama sunucuya dosya veya form göndermez.',
+    'Tarayıcın uygulamanın kendi dosyalarını (sayfalar, kod, stil dosyaları, altyazı yazı tipi) bu siteyi sunan sunucudan indirir. Her web sitesinde olduğu gibi sunucu bu sırada IP adresini, istek zamanını ve tarayıcı bilgisini (user agent) görebilir. Başka bir adrese istek yapılmaz; bunu her sürümde otomatik bir testle kontrol ediyoruz. Uygulama sunucuya dosya veya form göndermez. Siteyi bir kez açtıktan sonra bu dosyaların bir kopyası tarayıcında saklanır ve internet yokken oradan açılır (aşağıda “Çevrimdışı kopya”).',
   'privacy.network.host': 'Barındırma sağlayıcısı',
   'privacy.network.logs': 'Sunucu erişim kayıtları (kim tutar, ne kadar süre: sağlayıcının kendi bildirimi)',
 
@@ -141,16 +141,24 @@ export const tr = {
     'Editördeki “Nasıl kesilir?” ipucunu “Anladım” ile kapattığın bilgisi: tek bir değer (1). Kim olduğunu ya da ne düzenlediğini içermez; hiçbir yere gönderilmez.',
   'privacy.stored.hint.where': 'localStorage, “clip.firstRunHint.dismissed” anahtarı (yalnızca “Anladım”a basınca yazılır)',
   'privacy.stored.hint.delete': 'Tarayıcının bu siteye ait verisini temizleyince. Uygulama kendisi silmez.',
+  'privacy.stored.offline.name': 'Çevrimdışı kopya (uygulamanın dosyaları)',
+  'privacy.stored.offline.body':
+    'Siteyi internetsiz de açabilmen için uygulamanın kendi dosyaları: sayfalar, kod, stil dosyaları, altyazı yazı tipi, simgeler. Yalnızca bu sürümün dosya listesindekiler saklanır; videon, dışa aktarılan dosyalar, projen ya da başka bir sitenin dosyası asla. Sitenin hizmet çalışanı (service worker) da bu tarayıcıya kayıtlı kalır: yalnızca bu dosyaları sunar, kendiliğinden hiçbir yere bir şey göndermez.',
+  'privacy.stored.offline.where': 'Cache Storage, adı “clip-app-” ile başlayan önbellek; hizmet çalışanı kaydı (“sw.js”)',
+  'privacy.stored.offline.delete':
+    'Yeni sürüm gelince eski kopya silinir. Hepsini tarayıcının bu siteye ait verisini temizleyerek silebilirsin.',
   'privacy.stored.none': 'Çerez ve sessionStorage kullanılmaz; localStorage’da yalnızca yukarıdaki ipucu bilgisi durur.',
 
   'privacy.downloads.title': 'Senin indirdiğin dosyalar',
   'privacy.downloads.body':
-    'Bu dosyalar yalnızca bir düğmeye bastığında oluşur ve bilgisayarına kaydedilir. Kiminle paylaşacağına sen karar verirsin.',
+    'Bu dosyalar yalnızca bir düğmeye bastığında oluşur ve cihazına kaydedilir. Kiminle paylaşacağına sen karar verirsin.',
   'privacy.downloads.mp4':
     'İndirilen video (MP4): bir kesit, birleştirilmiş kesitler ya da videonun tamamı; müzik ve videoya yazılmış altyazılarla. Kaydetme penceresinde seçtiğin yere yazılır.',
   'privacy.downloads.backup':
     'Proje yedeği (.clip.json): proje tarifinin tamamı; proje adı, altyazı metinleri ve kaynak dosya adları dahil. Video içermez.',
   'privacy.downloads.subtitles': 'Altyazı dosyası (SRT veya VTT): altyazı satırların ve zamanları.',
+  'privacy.downloads.share':
+    '“Paylaş”: video, telefonunun (ya da bilgisayarının) paylaşma menüsüne verilir; nereye gideceğini orada sen seçersin. Uygulama bu sırada bir şey göndermez ya da saklamaz.',
   'privacy.downloads.diag':
     'Tanı dosyası (JSON): içeriği indirmeden önce gösterilir; dosya adı, proje adı ve altyazı metni içermez.',
 
@@ -221,7 +229,7 @@ export const tr = {
   'preview.seekLabel': 'Zamanda gezin',
   'preview.emptyTitle': 'Önce bir video seç.',
   'preview.emptyBody':
-    'Dosya bilgisayarından çıkmaz. Tarayıcıda açılır, bu oturum boyunca kullanılır.',
+    'Dosya cihazından çıkmaz. Tarayıcıda açılır, bu oturum boyunca kullanılır.',
   'preview.pickVideo': 'Video seç',
   'preview.importing': 'Video okunuyor…',
   'range.start': 'Başlangıç',
@@ -235,7 +243,7 @@ export const tr = {
   'silence.title': 'Sessizlikleri bul',
   'silence.intro':
     'Kesitlerdeki uzun duraklamaları bulur ve kesmeyi önerir. Hiçbir şey kendiliğinden kesilmez: listeyi dinle, istediklerini seç, sonra uygula. Uygulayınca her kesit, sessiz olmayan bölümlerinden oluşan kesitlere bölünür.',
-  'silence.local': 'Ses bu cihazda çözümlenir; dosya bilgisayardan çıkmaz.',
+  'silence.local': 'Ses bu cihazda çözümlenir; dosya cihazdan çıkmaz.',
   'silence.close': 'Kapat',
   'silence.running': 'Ses çözümleniyor…',
   'silence.progressValue': '%{percent} · {done} / {total} sn ses',
@@ -551,6 +559,10 @@ export const tr = {
   'export.save': 'Bilgisayara kaydet',
   'export.saveSpace': 'Kaydederken bilgisayarında yaklaşık {size} daha boş yer gerekir.',
   'export.saveSpaceUnknown': 'Kaydederken bilgisayarında dosyanın boyutu kadar daha boş yer gerekir.',
+  // Phones and tablets (touch screen): no "computer" (ADR-031).
+  'export.saveDevice': 'Kaydet',
+  'export.saveSpaceDevice': 'Kaydederken cihazında yaklaşık {size} daha boş yer gerekir.',
+  'export.saveSpaceUnknownDevice': 'Kaydederken cihazında dosyanın boyutu kadar daha boş yer gerekir.',
   'export.noAudioTrack': 'ses yok',
   'export.failedTitle': 'Çıktı alınamadı.',
   'export.fail.plan_invalid': 'Düzenleme tarifi çıktı için uygun değil.',
@@ -713,6 +725,17 @@ export const tr = {
   'download.savedWhere': 'Kaydetme penceresinde seçtiğin klasörde.',
   'download.readyWhere': 'Tarayıcın dosyayı İndirilenler klasörüne kaydeder (ya da nereye kaydedeceğini sorar).',
   'download.readyTitle': 'Video hazır. Bilgisayarına kaydetmek için aşağıdaki düğmeye bas.',
+  'download.readyTitleDevice': 'Video hazır. Kaydetmek için “Kaydet”e bas.',
+  'download.readyTitleShare': 'Video hazır. “Kaydet” cihazına kaydeder, “Paylaş” bir uygulamaya gönderir.',
+  'download.readyWhereDevice': 'Tarayıcın dosyayı İndirilenler klasörüne kaydeder; Dosyalar uygulamasında bulursun.',
+  'download.share': 'Paylaş',
+  'download.shareHint': 'Paylaşma menüsünü açar: videoyu bir uygulamaya ya da bir kişiye gönderebilirsin.',
+  'download.shareFailed': 'Paylaşılamadı. Videoyu kaydet, sonra Dosyalar ya da galeri uygulamasından paylaş.',
+  'download.shareFailedSaved': 'Paylaşılamadı. Kaydedilen dosyayı klasöründen paylaşabilirsin.',
+  'download.shareTooLarge':
+    'Bu video ({size}) buradan paylaşmak için büyük: tarayıcı en fazla {limit} paylaşabiliyor. Videoyu kaydet, sonra Dosyalar ya da galeri uygulamasından paylaş.',
+  'download.shareTooLargeSaved':
+    'Bu video ({size}) buradan paylaşmak için büyük: tarayıcı en fazla {limit} paylaşabiliyor. Kaydedilen dosyayı klasöründen paylaşabilirsin.',
   'download.canceled': 'İndirme durduruldu; yarım dosya bırakılmadı.',
   'download.route.file': 'seçtiğin dosya',
   'download.details': 'Ayrıntılar',
@@ -740,6 +763,15 @@ export const tr = {
   'more.silence.kesit': 'Sessizlikleri bul (Kesit {n})',
   'more.silence.hint':
     'Uzun duraklamaları bulur; uygularsan kesit, sessiz olmayan bölümlerinden oluşan kesitlere bölünür. Bir kesit seçiliyse yalnızca onda arar.',
+  // Install and offline (ADR-031).
+  'pwa.install': 'Uygulama olarak yükle',
+  'pwa.install.hint': 'Ana ekranında kendi simgesiyle açılır; bir kez açtıktan sonra internet olmadan da açılır.',
+  'pwa.install.iosTitle': 'Ana ekrana ekle',
+  'pwa.install.ios': 'Safari’de Paylaş düğmesine bas, sonra “Ana Ekrana Ekle”yi seç.',
+  'pwa.update.title': 'Yeni sürüm hazır.',
+  'pwa.update.reload': 'Yenile',
+  'pwa.update.later': 'Sonra',
+  'pwa.update.busy': 'İndirme bitince yenileyebilirsin.',
   'silence.scope.whole': 'Aranan: videonun tamamı. Kalan bölümler kesit olur.',
   'silence.scope.all': 'Aranan: bütün kesitler.',
   'silence.scope.kesit': 'Aranan: Kesit {n}.',
@@ -784,9 +816,9 @@ export const en: Record<MessageKey, string> = {
   'app.name': 'clip',
   'app.tagline': 'Open your video, mark the parts you want to keep, download them.',
   'app.workingName': 'Clip is a provisional working name.',
-  'landing.title': 'Cut the parts of your video you want and save them to your computer.',
+  'landing.title': 'Cut the parts of your video you want, then save or share them.',
   'landing.step1.title': 'Open your video',
-  'landing.step1.body': 'The file never leaves your computer; it opens in the browser.',
+  'landing.step1.body': 'The file never leaves your device; it opens in the browser.',
   'landing.step2.title': 'Mark its start and end',
   'landing.step2.body': '“Mark start”, then “Mark end”: the clip is added to the list right away.',
   'landing.step3.title': 'Watch your clips',
@@ -807,7 +839,7 @@ export const en: Record<MessageKey, string> = {
   'nav.openEditor': 'Open the editor',
   'nav.backToEditor': 'Back to editing',
 
-  'banner.prototype': 'Trial version · your video never leaves your computer · no cloud',
+  'banner.prototype': 'Trial version · your video never leaves your device · no cloud',
 
   'topbar.untitled': 'Untitled project',
   'topbar.renameLabel': 'Project name',
@@ -867,7 +899,7 @@ export const en: Record<MessageKey, string> = {
   'privacy.draftBadge': 'Draft — data controller details and legal review missing (doc 30 K02)',
   'privacy.draftBody':
     'This page describes what the app does today; it is not a legally reviewed privacy notice. Items marked “not decided” have not been settled yet.',
-  'privacy.updated': 'Last updated: 22 September 2026 · version {version} · build {commit}',
+  'privacy.updated': 'Last updated: 30 September 2026 · version {version} · build {commit}',
   'privacy.otherLanguage': 'Türkçe',
   'privacy.back': 'Home',
   'privacy.undecided': 'not decided',
@@ -883,7 +915,7 @@ export const en: Record<MessageKey, string> = {
 
   'privacy.network.title': 'What happens on the network when you open the page',
   'privacy.network.body':
-    'Your browser downloads the app’s own files (pages, code, stylesheets, the caption typeface) from the server that hosts this site. As with any website, that server can see your IP address, the time of the request and your browser identification (user agent). No other address is contacted; an automated test checks this for every version. The app does not send files or forms to the server.',
+    'Your browser downloads the app’s own files (pages, code, stylesheets, the caption typeface) from the server that hosts this site. As with any website, that server can see your IP address, the time of the request and your browser identification (user agent). No other address is contacted; an automated test checks this for every version. The app does not send files or forms to the server. After your first visit a copy of these files is kept in your browser and the site opens from it without internet (see “Offline copy” below).',
   'privacy.network.host': 'Hosting provider',
   'privacy.network.logs': 'Server access logs (who keeps them and for how long: the provider’s own statement)',
 
@@ -918,16 +950,24 @@ export const en: Record<MessageKey, string> = {
     'That you closed the editor’s “How to cut” hint with “Got it”: a single value (1). It says nothing about who you are or what you edit, and is never sent anywhere.',
   'privacy.stored.hint.where': 'localStorage, key “clip.firstRunHint.dismissed” (written only when you press “Got it”)',
   'privacy.stored.hint.delete': 'When you clear this site’s data in the browser. The app itself does not delete it.',
+  'privacy.stored.offline.name': 'Offline copy (the app’s files)',
+  'privacy.stored.offline.body':
+    'The app’s own files, so the site opens without internet: pages, code, style sheets, the caption typeface, icons. Only the files on this version’s list are kept; never your video, exported files, your project or another site’s files. The site’s service worker also stays registered in this browser: it only serves these files and never sends anything anywhere by itself.',
+  'privacy.stored.offline.where': 'Cache Storage, a cache whose name starts with “clip-app-”; the service worker registration (“sw.js”)',
+  'privacy.stored.offline.delete':
+    'The old copy is deleted when a new version arrives. Clearing this site’s data in the browser deletes all of it.',
   'privacy.stored.none': 'No cookies or sessionStorage are used; localStorage holds only the hint value above.',
 
   'privacy.downloads.title': 'Files you download',
   'privacy.downloads.body':
-    'These files are created only when you press a button, and are saved on your computer. You decide whom to share them with.',
+    'These files are created only when you press a button, and are saved on your device. You decide whom to share them with.',
   'privacy.downloads.mp4':
     'Downloaded video (MP4): one clip, the clips joined, or the whole video; with music and burned-in captions. Written where you choose in the save dialog.',
   'privacy.downloads.backup':
     'Project backup (.clip.json): the full project recipe, including the project name, caption text and source file names. It contains no video.',
   'privacy.downloads.subtitles': 'Subtitle file (SRT or VTT): your caption lines and their timing.',
+  'privacy.downloads.share':
+    '“Share”: the video is handed to your phone’s (or computer’s) share menu; you choose there where it goes. The app itself sends or keeps nothing while doing so.',
   'privacy.downloads.diag':
     'Diagnostics file (JSON): its content is shown before you download it; it contains no file names, project name or caption text.',
 
@@ -998,7 +1038,7 @@ export const en: Record<MessageKey, string> = {
   'preview.pause': 'Pause',
   'preview.seekLabel': 'Seek',
   'preview.emptyTitle': 'Pick a video first.',
-  'preview.emptyBody': 'The file never leaves your computer. It opens in the browser for this session.',
+  'preview.emptyBody': 'The file never leaves your device. It opens in the browser for this session.',
   'preview.pickVideo': 'Choose a video',
   'preview.importing': 'Reading the video…',
   'range.start': 'Start',
@@ -1012,7 +1052,7 @@ export const en: Record<MessageKey, string> = {
   'silence.title': 'Find silences',
   'silence.intro':
     'Finds long pauses in your clips and suggests cutting them. Nothing is cut on its own: listen, pick the ones you want, then apply. Applying replaces each clip with clips made of its non-silent parts.',
-  'silence.local': 'The audio is analysed on this device; the file never leaves your computer.',
+  'silence.local': 'The audio is analysed on this device; the file never leaves it.',
   'silence.close': 'Close',
   'silence.running': 'Analysing audio…',
   'silence.progressValue': '{percent}% · {done} / {total} s of audio',
@@ -1322,6 +1362,9 @@ export const en: Record<MessageKey, string> = {
   'export.save': 'Save to this computer',
   'export.saveSpace': 'Saving needs about {size} more free space on this computer.',
   'export.saveSpaceUnknown': 'Saving needs about the file’s size again in free space on this computer.',
+  'export.saveDevice': 'Save',
+  'export.saveSpaceDevice': 'Saving needs about {size} more free space on this device.',
+  'export.saveSpaceUnknownDevice': 'Saving needs about the file’s size again in free space on this device.',
   'export.noAudioTrack': 'no audio',
   'export.failedTitle': 'Export failed.',
   'export.fail.plan_invalid': 'The editing recipe cannot be exported.',
@@ -1485,6 +1528,17 @@ export const en: Record<MessageKey, string> = {
   'download.savedWhere': 'In the folder you chose in the save dialog.',
   'download.readyWhere': 'Your browser saves the file to its Downloads folder (or asks where to save it).',
   'download.readyTitle': 'The video is ready. Press the button below to save it to your computer.',
+  'download.readyTitleDevice': 'The video is ready. Press “Save” to save it.',
+  'download.readyTitleShare': 'The video is ready. “Save” keeps it on your device, “Share” sends it to an app.',
+  'download.readyWhereDevice': 'Your browser saves the file to its Downloads folder; you will find it in your Files app.',
+  'download.share': 'Share',
+  'download.shareHint': 'Opens the share menu: send the video to an app or to a person.',
+  'download.shareFailed': 'Could not share. Save the video, then share it from your Files or gallery app.',
+  'download.shareFailedSaved': 'Could not share. You can share the saved file from its folder.',
+  'download.shareTooLarge':
+    'This video ({size}) is too big to share from here: the browser shares at most {limit}. Save it, then share it from your Files or gallery app.',
+  'download.shareTooLargeSaved':
+    'This video ({size}) is too big to share from here: the browser shares at most {limit}. You can share the saved file from its folder.',
   'download.canceled': 'Download stopped; no partial file was left.',
   'download.route.file': 'the file you chose',
   'download.details': 'Details',
@@ -1513,6 +1567,14 @@ export const en: Record<MessageKey, string> = {
   'more.silence.kesit': 'Find silences (clip {n})',
   'more.silence.hint':
     'Finds long pauses; applying replaces the clip with clips made of its non-silent parts. With a clip selected, only that clip is searched.',
+  'pwa.install': 'Install as an app',
+  'pwa.install.hint': 'Opens from its own icon on your home screen; after the first visit it opens without internet too.',
+  'pwa.install.iosTitle': 'Add to Home Screen',
+  'pwa.install.ios': 'In Safari, press the Share button, then choose “Add to Home Screen”.',
+  'pwa.update.title': 'A new version is ready.',
+  'pwa.update.reload': 'Reload',
+  'pwa.update.later': 'Later',
+  'pwa.update.busy': 'You can reload when the download has finished.',
   'silence.scope.whole': 'Searching: the whole video. The parts that remain become clips.',
   'silence.scope.all': 'Searching: all clips.',
   'silence.scope.kesit': 'Searching: clip {n}.',

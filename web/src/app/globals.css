@@ -433,3 +433,69 @@ svg.icon {
   opacity: 0.55;
   cursor: not-allowed;
 }
+
+/* ------------------------------------------- new version notice (ADR-031) */
+
+.update-notice {
+  position: fixed;
+  z-index: 1000;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 8px 8px 16px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-card);
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.update-notice-text {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.update-notice-text span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.update-notice-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.update-notice-button {
+  min-height: var(--tap);
+  padding: 0 14px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--control-border);
+  background: transparent;
+  color: var(--text);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.update-notice-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 650;
+}
+
+.update-notice-primary:disabled {
+  background: var(--panel);
+  border-color: var(--border);
+  color: var(--muted);
+  cursor: not-allowed;
+}

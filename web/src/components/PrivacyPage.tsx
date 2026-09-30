@@ -53,12 +53,20 @@ const STORED: Array<{ name: MessageKey; body: MessageKey; where: MessageKey; del
     where: 'privacy.stored.hint.where',
     delete: 'privacy.stored.hint.delete',
   },
+  {
+    id: 'offline',
+    name: 'privacy.stored.offline.name',
+    body: 'privacy.stored.offline.body',
+    where: 'privacy.stored.offline.where',
+    delete: 'privacy.stored.offline.delete',
+  },
 ];
 
 const DOWNLOADS: MessageKey[] = [
   'privacy.downloads.mp4',
   'privacy.downloads.backup',
   'privacy.downloads.subtitles',
+  'privacy.downloads.share',
   'privacy.downloads.diag',
 ];
 

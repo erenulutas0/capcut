@@ -17,6 +17,7 @@ doğrulanır (`web/tests/e2e/privacy.spec.ts` → "nothing leaves the machine").
 | Kullanıcı medyası sunucuya gider mi? | Hayır. `File` nesneleri yalnızca sayfa ve worker'lar arasında structured clone ile taşınır. | `web/src/adapters/export/protocol.ts`, `web/src/adapters/silence/protocol.ts`, e2e testi |
 | Hesap / oturum? | Yok. | Kodda auth yok |
 | Analitik, hata raporlama servisi, reklam? | Yok. Üçüncü taraf script yok. | `web/next.config.ts`, `web/src/app/layout.tsx`, `package.json` bağımlılıkları |
+| Çevrimdışı kopya? | Evet, 30 Eylül 2026'dan beri (ADR-031): bir service worker uygulamanın **kendi dosyalarını** (sayfalar, derleme dosyaları, altyazı yazı tipi, simgeler, manifest) Cache Storage'da tutar ki site internetsiz açılsın. Medya, dışa aktarılan dosya, proje ya da başka bir origin'in dosyası bu önbelleğe girmez (§2.5). | `web/scripts/lib/service-worker.js`, `web/scripts/lib/precache.mjs`, e2e `pwa.spec.ts` |
 | Çerez, localStorage, sessionStorage? | Çerez ve sessionStorage kullanılmıyor. localStorage'da yalnızca ilk kullanım ipucunun kapatıldığı (`clip.firstRunHint.dismissed` = `1`) durur, o da yalnızca kullanıcı "Anladım"a basınca yazılır (§2.4). e2e testi ipucu kapatılmamış oturumun sonunda üçünün de boş olduğunu, kapatınca yalnızca o anahtarın yazıldığını doğrular. | `web/src/components/editor/FirstRunHint.tsx` + e2e testleri |
 | Cihaz parmak izi? | Yok. Tanı dosyasındaki tarayıcı bilgisi yalnızca kullanıcı indirirse oluşur ve kendiliğinden gönderilmez. | `web/src/adapters/diagnostics.ts` |
 | Model dosyası / AI? | Bu sürümde yok. | — |
@@ -110,15 +111,45 @@ kaldıkça gizler. Silinmesi: tarayıcının site verisini temizlemek. Kaynak:
 `web/src/components/editor/FirstRunHint.tsx`; test: `web/tests/e2e/kesit.spec.ts` → "first-time
 user".
 
-### 2.5 Kullanılmayanlar
+### 2.5 Cache Storage ve service worker — çevrimdışı kopya (2026-09-30, ADR-031)
 
-`sessionStorage`, çerez, Cache API, service worker: kodda yok (`grep`); e2e oturum testi
-çerezlerin, `document.cookie`'nin ve iki web depolamanın (ipucu kapatılmadığı için localStorage da)
-boş olduğunu doğrular.
+- **Ne:** tek önbellek, adı `clip-app-<sürüm>` (sürüm = saklanan dosyaların baytlarından ve
+  worker kodundan hesaplanan 16 hex karakter). İçinde yalnızca derleme anında çıkarılan liste var
+  (`web/scripts/lib/precache.mjs`, `web/scripts/build-sw.mjs`): dört sayfa (`/`, `/editor`,
+  `/gizlilik`, `/gizlilik/en`), `/_next/static/` altındaki bütün derleme dosyaları (kaynak
+  haritası ve TypeScript kaynağı hariç), `/fonts/caption/*.woff2`, `/icons/*.png`, `/icon.svg`,
+  `/apple-icon.png`, `/manifest.webmanifest`. Bu derlemede 4 sayfa + 37 dosya, ~1,9 MB.
+- **Ne değil:** kullanıcı medyası, `blob:` adresleri, OPFS dosyaları, dışa aktarılan MP4, proje
+  yedeği, altyazı ya da tanı dosyası, başka origin'in herhangi bir dosyası. Worker çalışırken ağdan
+  gelen hiçbir yanıtı önbelleğe **yazmaz**; önbellek yalnızca kurulumda listeyle dolar. POST ve
+  `Range` istekleri, başka origin'ler, liste dışı adresler worker'dan geçmez (tarayıcının kendi yolu).
+- **Service worker kaydı:** `<base>/sw.js`, kapsam `<base>/` (Pages'te `/capcut/`). Kendi isteği
+  yalnızca kurulumda listedeki dosyalardır, aynı origin'den. Yalnızca üretim derlemesinde
+  kaydedilir (`next dev`'de değil). Kaynak: `web/src/adapters/pwa/serviceWorker.ts`.
+- **Ne zaman silinir:** yeni sürümün worker'ı etkinleşince eski `clip-app-*` önbellekleri silinir
+  (başka adlı önbelleklere dokunulmaz: `github.io` origin'i başka projelerle paylaşılır). Hepsi:
+  tarayıcının bu siteye ait verisini temizlemek.
+- **Kanıt:** e2e `web/tests/e2e/pwa.spec.ts` — önbelleğin tam olarak sw.js'teki listeye eşit ve
+  izinli uygulama yollarından ibaret olduğu; çevrimdışı dışa aktarmadan sonra önbelleğin
+  değişmediği (medya yok); `privacy.spec.ts` "nothing leaves the machine" oturum sonunda her
+  önbellek girdisinin izinli uygulama yolu olduğu; Pages duman testi `/capcut/` altında aynısı.
+  Birim: `web/tests/unit/serviceWorker.test.ts` (liste, sürüm, worker davranışı).
+
+### 2.6 Kullanılmayanlar
+
+`sessionStorage`, çerez: kodda yok (`grep`); e2e oturum testi çerezlerin, `document.cookie`'nin ve
+iki web depolamanın (ipucu kapatılmadığı için localStorage da) boş olduğunu doğrular.
 
 ## 3. Kullanıcının tetiklediği indirmeler
 
-Hepsi yalnızca düğmeye basınca `blob:` URL ve `<a download>` ile oluşur; ağ isteği yoktur.
+Hepsi yalnızca düğmeye basınca `blob:` URL ve `<a download>` ile (ya da kaydetme penceresinde seçilen
+dosyaya) oluşur; ağ isteği yoktur.
+
+**Paylaş (2026-09-30, ADR-031):** biten video, kullanıcı "Paylaş"a basınca `navigator.share({ files })`
+ile işletim sisteminin paylaşma menüsüne verilir; nereye gideceğini (WhatsApp, Drive, kişi…) kullanıcı
+orada seçer. Uygulama bu sırada ağa bir şey göndermez ve dosyayı başka yere kopyalamaz; paylaşılan
+`File` indirilen dosyanın kendisidir (OPFS'teki dosya ya da seçilen dosya, yeniden adlandırılarak,
+kopyasız). Tarayıcı dosya paylaşamıyorsa düğme çizilmez (`web/src/adapters/share.ts`).
 
 | Dosya | İçerik | Kaynak |
 |---|---|---|
@@ -144,8 +175,12 @@ MP4 indirme, proje yedeği indirme, "Sorun bildir" ve tanı dosyası indirme. İ
 - origin içi her istek `GET` ve gövdesiz (yükleme/form gönderimi yok);
 - origin içi her yol izin listesinde: `/`, `/editor`, `/gizlilik`, `/gizlilik/en`, `/_next/static/**`,
   `/fonts/caption/inter-latin(-ext)-700-normal.woff2`, (varsa) `/favicon.ico` ve `/icon.svg` (site simgesi, 2026-09-30);
+  ADR-031 ile `/manifest.webmanifest`, `/icons/{icon-192,icon-512,maskable-512}.png`, `/apple-icon.png`
+  ve `/sw.js` (worker'ın kurulum istekleri de bu listenin içindedir);
 - oturum sonunda çerez yok, localStorage/sessionStorage boş (bu oturumda ilk kullanım ipucu
-  kapatılmaz; kapatılınca yazılan tek anahtar §2.4'te).
+  kapatılmaz; kapatılınca yazılan tek anahtar §2.4'te);
+- oturum sonunda Cache Storage'daki her girdi `clip-app-*` önbelleğinde ve izinli bir uygulama yolu;
+  `.mp4`, `.json`, `.srt`, `blob:` yok (§2.5).
 
 Eski, daha dar test `web/tests/e2e/editor.spec.ts` → "nothing is sent off the machine" de duruyor.
 
@@ -163,7 +198,11 @@ Eski, daha dar test `web/tests/e2e/editor.spec.ts` → "nothing is sent off the 
 
 Site simgesi `/icon.svg` (`web/src/app/icon.svg`, 2026-09-30): tarayıcı sekme simgesi için kendisi ister; içinde veri yok.
 
-`web/public/` altında başka dosya yok. Sunucunun kendisi (barındırma) IP adresi, zaman ve
+Uygulama olarak yükleme (ADR-031): `/manifest.webmanifest` (ad, renkler, başlangıç adresi; `web/src/app/manifest.ts`),
+simgeler `/icons/*.png` ve iOS için `/apple-icon.png` (logodan üretildi, `web/scripts/generate-app-icons.mjs`),
+service worker `/sw.js`. Hiçbirinde kullanıcı verisi yok.
+
+`web/public/` altında bunlardan başka dosya yok (yazı tipleri, lisansı, `icons/`). Sunucunun kendisi (barındırma) IP adresi, zaman ve
 user agent'ı her web sitesinde olduğu gibi görebilir; barındırma sağlayıcısı ve erişim
 kayıtlarının saklama süresi **belirlenmedi**.
 
@@ -197,7 +236,8 @@ girdilere bunları özellikle koyup çıktıda aramaz (`web/tests/unit/diagnosti
 Aşağıdakilerden biri eklenirse bu belge, `/gizlilik` metni ve e2e izin listesi aynı PR'da
 güncellenmeli: herhangi bir `fetch`/XHR/beacon/WebSocket; üçüncü taraf script, font veya CDN;
 analitik/hata raporlama SDK'sı; hesap/oturum; çerez veya web depolama; yeni IndexedDB store'u
-veya `ProjectRecord` alanı; OPFS'e yeni dosya türü; model dosyası indirme; service worker.
+veya `ProjectRecord` alanı; OPFS'e yeni dosya türü; model dosyası indirme; service worker'ın listesine
+uygulama dosyası dışında bir şey girmesi ya da çalışırken ağ yanıtlarını önbelleğe yazmaya başlaması.
 
 ## 7. Açık kurucu kararları (uygulama bunları uydurmaz)
 

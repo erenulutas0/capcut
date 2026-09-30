@@ -13,6 +13,8 @@ import { recordCapability, recordError } from '@/adapters/diagnostics';
 import { ExportWorkerClient } from '@/adapters/export/exportClient';
 import { exportLog } from '@/adapters/exportLogStore';
 import { removeExportEntry, sweepExportEntries } from '@/adapters/export/opfsEntries';
+import { setAppBusy } from '@/adapters/pwa/serviceWorker';
+import { shareVerdictFor, shareVideo } from '@/adapters/share';
 import type { Project } from '@/domain/edl';
 import type { ExportFailureCode, ExportResult, StorageShortfall } from '@/domain/exportEvents';
 import { exportLogEntry, type AttemptEnd } from '@/domain/exportLog';
@@ -27,7 +29,19 @@ import {
 } from '@/domain/kesit';
 import { WEB_LOCAL_POLICY, outputOverrun, type OutputOverrun } from '@/domain/policy';
 import { compileRenderPlan, type PlanRejection, type RenderPlan } from '@/domain/renderPlan';
+import type { ShareVerdict } from '@/domain/share';
 import { totalOutputDurationUs } from '@/domain/timeline';
+
+/**
+ * The finished video, ready for the system share sheet (ADR-031): the `File`
+ * is made when the result arrives, so "Paylaş" can call `navigator.share`
+ * straight from the click. `failed`: the last attempt was refused.
+ */
+export interface ShareOffer {
+  verdict: Exclude<ShareVerdict, 'unsupported'>;
+  file: File;
+  failed: boolean;
+}
 
 /**
  * One download button's state (ADR-026). Every state names the recipe
@@ -45,9 +59,9 @@ export type DownloadState =
       fileName: string | null;
     }
   /** Written straight into the file the user picked. Nothing else to do. */
-  | { phase: 'saved'; fileName: string; result: ExportResult; hdr: boolean }
-  /** Fallback route (no save dialog): the file waits for "Bilgisayara kaydet". */
-  | { phase: 'ready'; url: string; fileName: string; result: ExportResult; hdr: boolean }
+  | { phase: 'saved'; fileName: string; result: ExportResult; hdr: boolean; share: ShareOffer | null }
+  /** Fallback route (no save dialog): the file waits for "Bilgisayara kaydet" / "Kaydet". */
+  | { phase: 'ready'; url: string; fileName: string; result: ExportResult; hdr: boolean; share: ShareOffer | null }
   | {
       phase: 'blocked';
       /** `source_missing` and `capability` are UI states, not compiler verdicts. */
@@ -433,6 +447,13 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
                 route: event.result.route,
               });
               if (event.output.kind === 'file') {
+                // The picked file, read back once for "Paylaş" (disk-backed, no copy).
+                let saved: File | null = null;
+                try {
+                  saved = destination ? await destination.getFile() : null;
+                } catch {
+                  saved = null;
+                }
                 setEntry(key, {
                   key,
                   kind,
@@ -442,14 +463,17 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
                   fileName: event.output.fileName,
                   result: event.result,
                   hdr,
+                  share: saved ? shareOffer(new File([saved], event.output.fileName, { type: 'video/mp4' })) : null,
                 });
                 break;
               }
               // The disk route hands over a disk-backed File: no copy into memory.
-              const blob =
-                event.output.kind === 'opfs'
-                  ? event.output.file
-                  : new Blob([event.output.data as BlobPart], { type: 'video/mp4' });
+              // Wrapping it under the offered name (for "Paylaş") copies nothing either.
+              const blob = new File(
+                [event.output.kind === 'opfs' ? event.output.file : (event.output.data as BlobPart)],
+                fileName,
+                { type: 'video/mp4' },
+              );
               if (event.output.kind === 'opfs') entryNamesRef.current.set(key, event.output.entryName);
               const url = URL.createObjectURL(blob);
               urlsRef.current.set(key, url);
@@ -463,6 +487,7 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
                 fileName,
                 result: event.result,
                 hdr,
+                share: shareOffer(blob),
               });
               break;
             }
@@ -547,7 +572,38 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
     [setEntry],
   );
 
+  const entriesRef = useRef(entries);
+  useEffect(() => {
+    entriesRef.current = entries;
+  });
+
+  /**
+   * "Paylaş": the system share sheet with the finished video. Called straight
+   * from the click; `navigator.share` runs before anything is awaited.
+   * Closing the sheet is not an error; a refusal is said on the card.
+   */
+  const share = useCallback((key: string) => {
+    const entry = entriesRef.current[key];
+    if (!entry || (entry.phase !== 'saved' && entry.phase !== 'ready') || entry.share?.verdict !== 'share') return;
+    const offer = entry.share;
+    void shareVideo(offer.file).then((outcome) => {
+      if (outcome === 'failed') recordError('export', 'share_refused');
+      const failed = outcome === 'failed';
+      setEntries((current) => {
+        const now = current[key];
+        if (!now || (now.phase !== 'saved' && now.phase !== 'ready') || now.share?.file !== offer.file) return current;
+        if (now.share.failed === failed) return current;
+        return { ...current, [key]: { ...now, share: { ...now.share, failed } } };
+      });
+    });
+  }, []);
+
   const running = activeKey !== null;
+  // The "new version" notice must not reload the page under a running download.
+  useEffect(() => {
+    setAppBusy('download', running);
+    return () => setAppBusy('download', false);
+  }, [running]);
   // A half-finished encode is real work in progress; warn before losing it.
   useEffect(() => {
     if (!running) return undefined;
@@ -559,7 +615,12 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
     return () => window.removeEventListener('beforeunload', handler);
   }, [running]);
 
-  return { entries, activeKey, start, cancel, dismiss, capability: capability?.report ?? null };
+  return { entries, activeKey, start, cancel, dismiss, share, capability: capability?.report ?? null };
+}
+
+function shareOffer(file: File): ShareOffer | null {
+  const verdict = shareVerdictFor(file);
+  return verdict === 'unsupported' ? null : { verdict, file, failed: false };
 }
 
 /** The save dialog creates the chosen file; if it is still empty, remove it again. */
