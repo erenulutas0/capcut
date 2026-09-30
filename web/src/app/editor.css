@@ -448,8 +448,13 @@ input[type='range']:disabled::-webkit-slider-thumb {
   margin-bottom: 6px;
 }
 
-/* "Başlangıcı işaretle" and the time it set, side by side; on a narrow
-   column the button takes the first line and the time the second. */
+/* "Başlangıcı işaretle" and the time it set, side by side; in a narrow
+   field the button takes the first line and the time the second — both
+   fields the same way, whatever the length of their button's words. */
+.time-field {
+  container-type: inline-size;
+}
+
 .time-field-row {
   display: flex;
   flex-wrap: wrap;
@@ -509,6 +514,18 @@ input[type='range']:disabled::-webkit-slider-thumb {
 
 .editor-root[data-mode='phone'] .mark-key {
   display: none;
+}
+
+/* A narrow field (tablet, phone, 320 px): button above, time below. */
+@container (max-width: 340px) {
+  .time-field-row {
+    flex-direction: column;
+  }
+
+  .time-field-row .mark-btn,
+  .time-field-row .time-input {
+    flex: none;
+  }
 }
 
 .inline-error {
@@ -782,6 +799,15 @@ input[type='range']:disabled::-webkit-slider-thumb {
 
 .status-bar .shortcut-hints {
   font-family: var(--font-time);
+  text-align: right;
+}
+
+/* Too little room for the shortcuts beside the local note: they are in
+   Diğer → Kısayollar ve sınırlar too. */
+@media (max-width: 1100px) {
+  .status-bar .shortcut-hints {
+    display: none;
+  }
 }
 
 /* ------------------------------------------------------------ dialog/sheet */
