@@ -20,6 +20,27 @@
  *                    fast-cut (copied), which is not the path measured here
  *   --aspect=9-16    pick this output frame after import (e.g. a landscape
  *                    source into 9:16 is the crop case); default: automatic
+ *
+ * ADR-029 options (where the memory is held; need --persistent):
+ *   every sample also splits the process tree by Chromium process type
+ *   (browser, renderer, gpu-process, utility/<service>; `renderer-max` is
+ *   the renderer of the page and its workers)
+ *   --heap           read the JavaScript heaps of the page and of the export
+ *                    worker over CDP every --heap-interval seconds (default
+ *                    5): V8 heap used, ArrayBuffer backing stores, Blink
+ *   --heap-gc        force a full garbage collection before each reading, so
+ *                    it shows what is retained rather than not yet collected
+ *   --heap-snapshots=30,120,after
+ *                    write heap snapshots of the export worker at these
+ *                    seconds after the export started (`after`: once it has
+ *                    succeeded) into --heap-dir (default
+ *                    matrix-results/heap-<label>); `page:` before a value
+ *                    snapshots the page instead. Summarise and compare them
+ *                    with scripts/heap-snapshot-summary.mjs.
+ *   --heap-sampling  run the sampling heap profiler in the export worker for
+ *                    the whole export (collected objects included) and list
+ *                    the functions that allocate most; the profile is saved
+ *                    as worker-sampling.heapprofile in --heap-dir
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -28,6 +49,7 @@ import { dirname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
+import { connectToPage } from './lib/cdp-heap.mjs';
 import { ffprobeJson } from './lib/media-measure.mjs';
 import { addKesit, removeSavePicker, setAspect, setQuality } from './lib/kesit-flow.mjs';
 
@@ -65,6 +87,28 @@ const profile = args.includes('--profile');
 const browserArgs = argValue('browser-args', '').split(',').filter(Boolean);
 const aspect = argValue('aspect', '');
 const forceEncode = argValue('mode', 'auto') === 'encode';
+const heapSampling = args.includes('--heap-sampling');
+const heap = args.includes('--heap') || heapSampling || args.some((a) => a.startsWith('--heap-snapshots='));
+const heapGc = args.includes('--heap-gc');
+const heapIntervalMs = Number(argValue('heap-interval', '5')) * 1000;
+const heapSnapshots = argValue('heap-snapshots', '').split(',').filter(Boolean);
+const heapDir = argValue('heap-dir', '') || join(outDir, `heap-${argValue('label', 'current')}`);
+/** Only with --heap: the browser's DevTools port for the second CDP connection. */
+const debuggingPort = 9400 + Math.floor(Math.random() * 400);
+
+if (heap && typeof globalThis.WebSocket !== 'function') {
+  // Node 20 has a WebSocket client only behind a flag: run again with it.
+  const child = spawnSync(
+    process.execPath,
+    ['--experimental-websocket', ...process.execArgv, fileURLToPath(import.meta.url), ...args],
+    { stdio: 'inherit' },
+  );
+  process.exit(child.status ?? 1);
+}
+if (heap && !persistent) {
+  console.error('--heap kalıcı profil ister (--persistent).');
+  process.exit(2);
+}
 
 if (process.platform !== 'win32') {
   console.error('Bu ölçüm şimdilik yalnızca Windows süreç örnekleyicisiyle çalışıyor.');
@@ -88,8 +132,15 @@ function startSampler(rootPid) {
     const lines = buffer.split(/\r?\n/);
     buffer = lines.pop() ?? '';
     for (const line of lines) {
-      const [at, total, largest, count] = line.trim().split(/\s+/).map(Number);
-      if (Number.isFinite(total)) samples.push({ at, total, largest, count });
+      const fields = line.trim().split(/\s+/);
+      const [at, total, largest, count] = fields.slice(0, 4).map(Number);
+      // ADR-029: the fifth column splits the total by process type.
+      const byType = {};
+      for (const part of (fields[4] ?? '').split(',')) {
+        const cut = part.lastIndexOf(':');
+        if (cut > 0) byType[part.slice(0, cut)] = Number(part.slice(cut + 1));
+      }
+      if (Number.isFinite(total)) samples.push({ at, total, largest, count, byType });
     }
   });
   return {
@@ -119,7 +170,9 @@ if (persistent) {
   profileDir = mkdtempSync(join(tmpdir(), 'clip-profile-'));
   context = await chromium.launchPersistentContext(profileDir, {
     ...(channel ? { channel } : {}),
-    ...(browserArgs.length > 0 ? { args: browserArgs } : {}),
+    ...(browserArgs.length > 0 || heap
+      ? { args: [...browserArgs, ...(heap ? [`--remote-debugging-port=${debuggingPort}`] : [])] }
+      : {}),
     viewport: { width: 1440, height: 900 },
     acceptDownloads: true,
   });
@@ -168,6 +221,10 @@ for (const seconds of whole ? [0] : durations) {
     });
   }
   await page.goto(`${baseURL}/editor`);
+  // ADR-029: the second CDP connection must be there before the export
+  // worker starts (it is created when the video is opened).
+  const cdp = heap ? await connectToPage(debuggingPort, '/editor') : null;
+  if (heap) mkdirSync(heapDir, { recursive: true });
   await page.evaluate(async () => {
     const root = await navigator.storage.getDirectory();
     for await (const name of root.keys()) {
@@ -231,6 +288,52 @@ for (const seconds of whole ? [0] : durations) {
   const startedAt = Date.now();
   await page.getByTestId('download-all').click();
 
+  // ADR-029: heap readings of the page and the export worker, and snapshots.
+  const heapSamples = [];
+  const snapshotsTaken = [];
+  const pendingSnapshots = heapSnapshots
+    .map((value) => {
+      const onPage = value.startsWith('page:');
+      const at = onPage ? value.slice(5) : value;
+      return { onPage, at: at === 'after' ? 'after' : Number(at) * 1000 };
+    })
+    .filter((s) => s.at === 'after' || Number.isFinite(s.at));
+  const exportWorker = () => cdp?.worker('clip-export') ?? null;
+  const takeSnapshot = async (spec) => {
+    const session = spec.onPage ? cdp.pageSession : exportWorker();
+    if (!session) return;
+    const label = spec.at === 'after' ? 'after' : `${Math.round(spec.at / 1000)}s`;
+    const file = join(heapDir, `${spec.onPage ? 'page' : 'worker'}-${label}.heapsnapshot`);
+    const tookMs = await cdp.snapshot(session, file);
+    snapshotsTaken.push({ file, at: Date.now() - startedAt, tookMs, target: spec.onPage ? 'page' : 'worker' });
+    console.log(`  yığın görüntüsü: ${file} (${(tookMs / 1000).toFixed(1)} s)`);
+  };
+  const readHeaps = async () => {
+    const reading = { at: Date.now() - startedAt };
+    for (const [name, session] of [
+      ['page', cdp.pageSession],
+      ['worker', exportWorker()],
+    ]) {
+      if (!session) continue;
+      try {
+        const usage = await cdp.heapUsage(session, heapGc);
+        const mib = (value) => (value === undefined ? null : Number((value / MIB).toFixed(1)));
+        reading[name] = {
+          usedMib: mib(usage.usedSize),
+          totalMib: mib(usage.totalSize),
+          embedderMib: mib(usage.embedderHeapUsedSize),
+          backingMib: mib(usage.backingStorageSize),
+        };
+      } catch (error) {
+        reading[name] = { error: String(error?.message ?? error) };
+      }
+    }
+    heapSamples.push(reading);
+  };
+  let nextHeapAt = 0;
+  const samplingSession = heapSampling ? exportWorker() : null;
+  if (samplingSession) await cdp.startSampling(samplingSession);
+
   let finished = false;
   while (Date.now() - startedAt < timeoutMs) {
     if ((await page.getByTestId('export-succeeded').count()) > 0) {
@@ -238,9 +341,46 @@ for (const seconds of whole ? [0] : durations) {
       break;
     }
     if ((await page.getByTestId('export-failed').count()) > 0) break;
+    if (cdp) {
+      const now = Date.now() - startedAt;
+      if (now >= nextHeapAt) {
+        nextHeapAt = now + heapIntervalMs;
+        await readHeaps();
+      }
+      const due = pendingSnapshots.findIndex((s) => s.at !== 'after' && now >= s.at);
+      if (due >= 0) await takeSnapshot(pendingSnapshots.splice(due, 1)[0]);
+    }
     await page.waitForTimeout(300);
   }
   const elapsedMs = Date.now() - startedAt;
+  let allocationSites = null;
+  if (samplingSession) {
+    const profile = await cdp.stopSampling(samplingSession);
+    writeFileSync(join(heapDir, 'worker-sampling.heapprofile'), JSON.stringify(profile));
+    // Self size per function (where the allocation happened).
+    const bySite = new Map();
+    let sampled = 0;
+    const walk = (node) => {
+      const f = node.callFrame;
+      const key = `${f.functionName || '(anonymous)'} ${f.url.split('/').pop()}:${f.lineNumber + 1}:${f.columnNumber + 1}`;
+      bySite.set(key, (bySite.get(key) ?? 0) + node.selfSize);
+      sampled += node.selfSize;
+      for (const child of node.children ?? []) walk(child);
+    };
+    walk(profile.head);
+    allocationSites = {
+      sampledMib: Number((sampled / MIB).toFixed(1)),
+      top: [...bySite.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 30)
+        .map(([site, bytes]) => ({ site, mib: Number((bytes / MIB).toFixed(1)) })),
+    };
+  }
+  if (cdp && finished) {
+    // What the worker (and the page) still hold once the file is done.
+    await readHeaps();
+    for (const spec of pendingSnapshots.filter((s) => s.at === 'after')) await takeSnapshot(spec);
+  }
 
   // Keep sampling briefly: the finished file is handed to the page as a Blob,
   // which is part of what the user's machine has to hold.
@@ -264,6 +404,22 @@ for (const seconds of whole ? [0] : durations) {
     }
   }
 
+  // ADR-029: the same tenths per process type.
+  const types = [...new Set(during.flatMap((s) => Object.keys(s.byType ?? {})))];
+  const byTypeTenths = {};
+  const byTypeBaseline = {};
+  for (const type of types) {
+    const base = baseline?.byType?.[type];
+    byTypeBaseline[type] = base !== undefined ? Number((base / MIB).toFixed(0)) : null;
+    byTypeTenths[type] = [];
+    for (let i = 0; i < 10; i += 1) {
+      const from = startedAt + (Math.max(1, elapsedMs) * i) / 10;
+      const to = startedAt + (Math.max(1, elapsedMs) * (i + 1)) / 10;
+      const values = during.filter((s) => s.at >= from && s.at < to).map((s) => s.byType?.[type] ?? 0);
+      byTypeTenths[type].push(values.length ? Number((Math.max(...values) / MIB).toFixed(0)) : null);
+    }
+  }
+
   const row = {
     requestedSeconds,
     quality,
@@ -276,7 +432,10 @@ for (const seconds of whole ? [0] : durations) {
     peakLargestProcessMib: Number((peakLargest / MIB).toFixed(0)),
     growthMib: baseline ? Number(((peakTotal - baseline.total) / MIB).toFixed(0)) : null,
     peakMibPerTenth: tenths,
+    baselineMibByType: byTypeBaseline,
+    peakMibPerTenthByType: byTypeTenths,
     storageBefore,
+    ...(cdp ? { heapGc, heapSamples, heapSnapshots: snapshotsTaken, allocationSites } : {}),
   };
 
   if (finished) {
@@ -327,6 +486,7 @@ for (const seconds of whole ? [0] : durations) {
   });
 
   rows.push(row);
+  cdp?.close();
   await page.close();
 
   console.log(
@@ -338,6 +498,26 @@ for (const seconds of whole ? [0] : durations) {
       `kalan geçici dosya ${row.leftoverExportFiles}` +
       (row.failure ? ` — ${row.failure}` : ''),
   );
+  if (types.length > 0) {
+    const order = ['renderer-max', 'renderer', 'gpu-process', 'browser'];
+    const shown = [...order.filter((t) => types.includes(t)), ...types.filter((t) => !order.includes(t))];
+    for (const type of shown) {
+      console.log(`  ${type.padEnd(40)} taban ${byTypeBaseline[type]} MiB, onda birler: ${byTypeTenths[type].join(', ')}`);
+    }
+  }
+  if (cdp && heapSamples.length > 0) {
+    const fmt = (r) => (r && !r.error ? `${r.usedMib}+${r.backingMib ?? '?'}` : '—');
+    const step = Math.max(1, Math.floor(heapSamples.length / 10));
+    const picked = heapSamples.filter((_, i) => i % step === 0 || i === heapSamples.length - 1);
+    console.log(`  yığın (V8 kullanılan + ArrayBuffer, MiB${heapGc ? ', GC sonrası' : ''}):`);
+    for (const r of picked) {
+      console.log(`    ${(r.at / 1000).toFixed(0).padStart(5)} s  worker ${fmt(r.worker)}  sayfa ${fmt(r.page)}`);
+    }
+  }
+  if (allocationSites) {
+    console.log(`  ayırma örneklemesi (worker, toplanan dahil): ${allocationSites.sampledMib} MiB`);
+    for (const t of allocationSites.top.slice(0, 20)) console.log(`    ${String(t.mib).padStart(8)} MiB  ${t.site}`);
+  }
   if (row.profile) {
     const stages = Object.entries(row.profile.stages ?? {})
       .sort((a, b) => b[1].totalMs - a[1].totalMs)
