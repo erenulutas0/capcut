@@ -23,11 +23,17 @@ tıkanılan yerleri görmek. Memnuniyet sözü ödeme isteği değildir (araşt�
 1. **Klip:** "Videondan en sevdiğin iki bölümü seç, 30–45 saniyelik dikey bir video
    hazırla ve bilgisayarına indir."
    Arayüz 23 Eylül 2026'dan beri kesit listesidir (ADR-026): beklenen yol
-   "Başlangıcı işaretle" → "Bitişi işaretle" → "Kesit ekle" (iki kez; 2026-09-30 UX denetiminden beri düğmeler sözle, ilk açılışta "Nasıl kesilir?" ipucu), Ayarlar'da 9:16, sağ üstte
-   "Hepsini birleştirip indir", kaydetme penceresinde yer ve ad. Not al:
+   "Başlangıcı işaretle" → "Bitişi işaretle" (iki kez; 30 Eylül 2026'dan beri bitişi
+   işaretlemek kesiti hemen listeye ekler, ayrı "Kesit ekle" adımı yok — ADR-030;
+   düğmeler sözle, ilk açılışta "Nasıl kesilir?" ipucu), Ayarlar'da 9:16, sağ üstte
+   "Hepsini birleştirip indir" (telefonda liste aşağıdayken alttaki çubukta da),
+   kaydetme penceresinde yer ve ad. Not al:
    katılımcı kartın "İndir"inin (⬇) tek kesiti, sağ üst düğmenin hepsini indirdiğini fark etti mi;
-   "kesit" kelimesini anladı mı; kaydetme penceresi şaşırttı mı; tam ekranı
-   (⛶) buldu mu.
+   "kesit" kelimesini anladı mı; "Bitişi işaretle"ye basınca kesitin eklenmesini
+   bekledi mi ya da şaşırdı mı; "Kesit ekle"ye (yalnızca kutulara yazılan zamanlar
+   için) gerek duydu mu, basınca "Önce başlangıcı işaretle" yazısını anladı mı;
+   kaydetme penceresi şaşırttı mı; tam ekranı (⛶) buldu mu. Telefonda: alttaki
+   "Kesitler (N)" çubuğunu gördü mü, kullandı mı.
 1b. **Tek kesit:** "Şimdi yalnızca ikinci bölümü ayrı bir video olarak indir."
    (Beklenen: o kartın "İndir"i (⬇); tek tıklama + pencere.)
 2. **Altyazı ve ses:** "Videoya iki satır altyazı ekle; birinde bilerek bir yazım hatası

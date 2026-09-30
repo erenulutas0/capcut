@@ -23,11 +23,30 @@
 > "Buraya kadar al" = Bitiş, "Klip kaldırıldı — Geri al" = "Kesit N silindi ·
 > Geri al: Ctrl+Z", F04 çıktı özeti "Ayrıntılar" altında).
 
+> **Güncelleme 2026-09-30 — kesit akışı v2 ([ADR-030](../../docs/adr/ADR-030-kesit-flow-v2.md)):**
+> Kurucu kararıyla **"Bitişi işaretle" (O) kesiti hemen ekler**: başlangıç
+> işaretliyken bitişi işaretlemek aralığı listeye düşürür, bildirim "Kesit N eklendi:
+> 00:02 → 00:07 · sağdaki listede · Geri al: Ctrl+Z" der, tek geri alma kaldırır. Kesit
+> seçiliyken I/O yine o kesitin kenarlarını taşır. Başlangıç yokken bitiş: "Önce
+> başlangıcı işaretle." (0'dan başlatılmaz); bitiş başlangıcın önündeyse mevcut ret
+> ve sonraki adım, başlangıç işaretli kalır. **"Kesit ekle" (Enter)** yalnızca kutulara
+> yazılan (ya da şeritte sürüklenen) bitiş için kalır, birincil değildir; hiçbir şey
+> işaretli değilken "Önce başlangıcı işaretle" der, videonun tamamını kesit yapmaz
+> (tüm video: sağ üstteki "Videoyu indir"). **Zamanlar** ince ayar dışında
+> milisaniyesiz: konumlar aşağı yuvarlanmış saniye ("00:07", "1:02:07"), uzunluk
+> dakikanın altında onda bir, aşağı yuvarlanmış ("4,6 sn"); Başlangıç/Bitiş alanları
+> ve kaydırıcıların ekran okuyucu değerleri milisaniyeyi korur. **Boyutlar** ondalık
+> "GB/MB" ve Türkçede virgülle ("4,29 GB"); sınır aşağı, sınırı aşan boyut yukarı
+> yuvarlanır. **Telefonda** liste aşağıdayken alta yapışkan çubuk: "Kesitler (N)"
+> (listeye götürür) · "Kesiti indir" / "Hepsini birleştirip indir" (üstteki düğmeyle
+> aynı); 0 kesitte yok, liste görünürken çekilir, odaklı denetimi örtmez.
+> Tıklama: bir aralık 7 → 6, üç aralık birleştirilmiş 17 → 14, tüm video 2.
+
 ## Ekran sistemi
 
 Açılışta büyük “Video seç” eylemi, aşağıda mevcut yerel projeler. Kayıt ol modalı yok. “Örnekle dene” yalnızca bize ait kısa bir demo dosyası kullanır. İlk başarılı çıktıdan sonra Pro reklamı zorunlu gösterilmez; değer oluşturan davranış beklenir.
 
-Editör tek ekrandır: preview üstte, altında videonun tamamını gösteren şerit ve Başlangıç/Bitiş/"Kesit ekle" satırı; kesit kartları yanda (telefonda altta); görüntü ve ses ayarları "Ayarlar" çekmecesinde, indirme sağ üstte ve her kartta. Varsayılan ekran profesyonel çok katmanlı timeline değildir (ADR-026).
+Editör tek ekrandır: preview üstte, altında videonun tamamını gösteren şerit ve Başlangıç/Bitiş satırı ("Bitişi işaretle" kesiti ekler; "Kesit ekle" yazılan zamanlar için); kesit kartları yanda (telefonda altta, liste aşağıdayken alttaki "Kesitler (N)" çubuğuyla); görüntü ve ses ayarları "Ayarlar" çekmecesinde, indirme sağ üstte ve her kartta. Varsayılan ekran profesyonel çok katmanlı timeline değildir (ADR-026).
 
 ## F01 — İyi anları seç
 

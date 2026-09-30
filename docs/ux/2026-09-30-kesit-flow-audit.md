@@ -121,6 +121,11 @@ akışı değiştirmeyi gerektirir (Ö1: 7 → 6, 17 → 14).
 
 ## Kurucuya öneriler (yapısal; bu dalda yapılmadı)
 
+> **Sonrası (2026-09-30):** Kurucu Ö1, Ö3, Ö5, Ö6 ve Ö8'i kabul etti; ayrı dalda
+> [ADR-030](../adr/ADR-030-kesit-flow-v2.md) ile yapıldı. Ölçülen tıklama: 7 → **6**,
+> 17 → **14**, 2 → 2. Ekran görüntüleri aynı klasörde `v2-*.png` (bu belgedeki
+> `after-*.png` onların "önce"sidir), ölçümler `v2-measurements.json`.
+
 1. **Ö1 — "Bitişi işaretle" kesiti hemen eklesin.** "Kesit ekle" ayrı bir adım olmaktan çıkar
    (başlangıç işaretliyken bitiş = kesit). Tıklama: 7 → 6, 17 → 14. Klavyede O = ekle. Ters/boş
    aralık için bugünkü ret metinleri aynen. Ürün modeli değişikliği olduğu için sorulmadan yapılmadı.

@@ -33,6 +33,18 @@ de denenecek. Edge geçmezse politika değişmeyecekti.
    paneli, çıkan dosyanın boyutu) ikili değerleri "GB/MB/KB" diye yazıyordu; 4 GiB'lık
    bir dosya "4.00 GB" görünürdü, sınır ise "4 GiB (yaklaşık 4,29 GB)". Artık
    "GiB/MiB/KiB" yazıyor.
+
+   > **Not (2026-09-30, [ADR-030](ADR-030-kesit-flow-v2.md)):** Kurucu kararıyla
+   > arayüz artık **ondalık GB/MB** gösteriyor (Türkçede "4,29 GB", İngilizcede
+   > "4.29 GB"); "GiB/MiB" arayüzden kalktı. Politika sayıları ve kontrol
+   > **değişmedi**: sınır hâlâ 4 GiB = **4 294 967 296 bayt**, müzik 100 MiB =
+   > **104 857 600 bayt**, kontrol baytla yapılıyor. Birim kuralı şöyle korunuyor:
+   > sınır gösterilen birimde **aşağı** yuvarlanır (4 GiB → "4,29 GB", 100 MiB →
+   > "104,8 MB"); sınırın yanındaki bir boyut sığıyorsa sınırdan büyük görünmez,
+   > sığmıyorsa **yukarı** yuvarlanır. Böylece gösterilen iki sayıyı karşılaştıran
+   > kişi, bayt kontrolüyle aynı sonuca varır; sınırdaki baytlar birim testinde
+   > (`tests/unit/byteUnits.test.ts`) tek tek denetlenir. Ret metni artık dosyanın
+   > boyutunu da söyler: "dosya 4,3 GB; bu sürümün sınırı 4,29 GB."
 3. **Değişmeyenler:** 120 dakika girdi, 60 dakika çıktı (bellek yolunda 5), 5 video
    kaynağı, 20 parça, 1 müzik (10 dakika / 100 MiB), mobil satırlar (2 GiB / 5 GiB),
    cloud satırları, fiyatlar.

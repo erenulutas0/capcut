@@ -114,7 +114,9 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 - Yerel video seçimi ve **gerçek** metadata okuma (süre, çözünürlük, boyut, tür).
 - Oynat/durdur/zamanda gezinme; bozuk veya desteklenmeyen dosya için açık durum.
 - Başlangıç/bitiş işaretleme (I/O, düğmeler, sayısal alanlar, şeritteki
-  tutamaçlar), geçersiz aralık reddi; "Kesit ekle" (Enter).
+  tutamaçlar), geçersiz aralık reddi; "Bitişi işaretle" (O) kesiti hemen
+  ekler, "Kesit ekle" (Enter) kutulara yazılan zamanlar için
+  ([ADR-030](docs/adr/ADR-030-kesit-flow-v2.md)).
 - **Kesit listesi:** küçük resim, aralık ve süreyle kartlar; ▶ yalnız o aralığı
   oynatır, ⬇ yalnız o kesiti indirir, ✕ siler; seçip ince ayar; sürükleyerek ya
   da klavyeyle sıralama (20 kesite kadar). Aynı aralık birden çok kez kullanılabilir.
@@ -163,7 +165,7 @@ hiçbir zaman saklanmaz; proje geri geldiğinde dosya yeniden seçilir.
 için çıktı kapalıdır** ve uygulama bunu açıkça söyler. Gerçek Safari, gerçek
 telefon ve gerçek kamera kayıtları hâlâ test edilmedi; ayrıntı ve ölçümler
 [destek matrisinde](docs/SUPPORT_MATRIX.md). Açılan video en fazla 120 dakika
-ve 4 GiB olabilir (müzikle birlikte). Her indirme (tek kesit, birleştirilmiş ya
+ve 4 GiB olabilir (müzikle birlikte; arayüzde "4,29 GB", ADR-030). Her indirme (tek kesit, birleştirilmiş ya
 da tüm video) en fazla 60 dakikadır (videoyu diske yazamayan tarayıcıda 5
 dakika); daha uzununda ⬇ kodlamadan önce ne kadar kısaltman gerektiğini söyler
 (politika `2026-09-23.v5`, [ADR-026](docs/adr/ADR-026-kesit-list.md), [ADR-020](docs/adr/ADR-020-output-limit-60min.md),

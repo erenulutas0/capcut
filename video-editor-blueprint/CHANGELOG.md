@@ -3,6 +3,20 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Kesit akışı v2 — 30 Eylül 2026 (ADR-030; politika ve şema değişmedi)
+
+Kurucu kararları, ilk kullanıcı UX denetiminin yapısal önerilerinden (Ö1, Ö3, Ö5, Ö6, Ö8).
+
+**Değişen:** "Bitişi işaretle" (O) kesiti hemen ekler; ayrı "Kesit ekle" adımı yok. Tek geri alma kaldırır; bildirim ve kartın parlaması aynen. Kesit seçiliyken I/O yine o kesitin kenarlarını taşır. Başlangıç yokken bitiş "Önce başlangıcı işaretle." der (0'dan başlatılmaz); bitiş başlangıcın önündeyse eski ret ve sonraki adım, başlangıç işaretli kalır (eskiden başlangıç sessizce düşüyordu). "Kesit ekle" (Enter) yalnızca kutulara yazılan ya da şeritte sürüklenen bitiş için kaldı, birincil değil; hiçbir şey işaretli değilken artık videonun tamamını kesit yapmıyor, "Önce başlangıcı işaretle" diyor. Tıklama: bir aralığı kesip kaydet 7 → 6, üç aralık birleştirilmiş 17 → 14, tüm video 2.
+
+**Değişen:** Zamanlar ince ayar dışında milisaniyesiz: kartlar, şerit, oynatma saati, bildirimler "00:07" / "1:02:07" (konum, aşağı yuvarlanmış saniye); uzunluk dakikanın altında onda bir ve aşağı yuvarlanmış ("4,6 sn"), böylece 00:02.600 → 00:07.200 "5 saniyelik" okunmaz. Başlangıç/Bitiş alanları ve kaydırıcıların ekran okuyucu değerleri milisaniyeyi korur. Dosya satırındaki süre Türkçede artık ondalık virgülle.
+
+**Değişen:** Boyutlar "GiB/MiB" yerine ondalık "GB/MB", Türkçede virgülle ("2,4 GB"). Sınırlar ve kontrol baytla aynı (4 GiB = 4 294 967 296 bayt, müzik 100 MiB); arayüz sınırı aşağı yuvarlayarak "4,29 GB" / "104,8 MB" der, sınırı aşan boyutu yukarı yuvarlar: gösterilen sayılar bayt kontrolüyle aynı sonucu verir (sınırdaki baytlar birim testinde). Ret metni dosyanın boyutunu da söylüyor ("dosya 4,3 GB; bu sürümün sınırı 4,29 GB."). Destek dosyasındaki depolama alanı ondalık MB.
+
+**Eklenen:** Telefonda, kesit listesi ekranın altındayken alta yapışkan çubuk: "Kesitler (N)" listeye götürür, "Kesiti indir" / "Hepsini birleştirip indir" üstteki düğmeyle aynı işi yapar. 0 kesitte yok, liste görünürken çekilir; odaklı denetimi örtmez (WCAG 2.4.11), güvenli alan boşluklarına uyar, 320 px'te sarılır, hareket etmez.
+
+Mevcut kullanıcı haklarına etkisi: yok. Sınırlar, fiyatlar ve şema değişmedi; eski projeler aynen açılır.
+
 ## Teknik — 30 Eylül 2026: uzun dışa aktarmada bellek (ADR-029, politika değişmedi)
 
 **Ölçülen:** 60 dakikalık dışa aktarmada yükselen bellek tarayıcının sayfa ve worker'ı çalıştıran sürecinde; GPU ve tarayıcı süreçleri düz. Worker'da gerçekten tutulan tek büyüyen şey MP4 dosyasının sonundaki dizin (`moov`) için örnek başına tutulan kayıtlar: ~90 bayt/örnek, 30 fps + AAC'de **saatte ~24 MiB**; bu, sıkıştırılmamış MP4 yazmanın doğası (mediabunny 1.58.1). Geri kalan artış çöptü: ses karıştırıcısı her örnek için kısa ömürlü nesne ayırıyordu (20 dakikada 2,3 GiB, worker'ın ayırdığının %79'u) ve editör her ilerleme olayında (~50/sn) yeniden çiziliyordu (20 dakikada 0,77 GiB); tarayıcı bu hızda çöp üretilince yığını büyütüp geri vermiyordu.
