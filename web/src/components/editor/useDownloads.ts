@@ -148,7 +148,8 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
   const clientRef = useRef<ExportWorkerClient | null>(null);
   const checkRef = useRef<CapabilityCheck | null>(null);
   const urlsRef = useRef<Map<string, string>>(new Map());
-  const entryNamesRef = useRef<Set<string>>(new Set());
+  /** The OPFS file behind each offered (fallback-route) result, by entry key. */
+  const entryNamesRef = useRef<Map<string, string>>(new Map());
   const busyRef = useRef(false);
   /** "İptal et" pressed while the gate was still running: the encode must not start. */
   const cancelRequestedRef = useRef(false);
@@ -162,7 +163,7 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
   const releaseOffered = useCallback(() => {
     for (const url of urlsRef.current.values()) URL.revokeObjectURL(url);
     urlsRef.current.clear();
-    for (const name of entryNamesRef.current) void removeExportEntry(name);
+    for (const name of entryNamesRef.current.values()) void removeExportEntry(name);
     entryNamesRef.current.clear();
     setEntries((current) => {
       const next: Record<string, DownloadEntry> = {};
@@ -179,7 +180,7 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
     const names = entryNamesRef.current;
     return () => {
       for (const url of urls.values()) URL.revokeObjectURL(url);
-      for (const name of names) void removeExportEntry(name);
+      for (const name of names.values()) void removeExportEntry(name);
       clientRef.current?.dispose();
       clientRef.current = null;
     };
@@ -449,7 +450,7 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
                 event.output.kind === 'opfs'
                   ? event.output.file
                   : new Blob([event.output.data as BlobPart], { type: 'video/mp4' });
-              if (event.output.kind === 'opfs') entryNamesRef.current.add(event.output.entryName);
+              if (event.output.kind === 'opfs') entryNamesRef.current.set(key, event.output.entryName);
               const url = URL.createObjectURL(blob);
               urlsRef.current.set(key, url);
               setEntry(key, {
@@ -533,6 +534,13 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
       if (url) {
         URL.revokeObjectURL(url);
         urlsRef.current.delete(key);
+      }
+      // A closed result is no longer offered: its temporary file goes now,
+      // not at the next download or the next visit (ADR-013).
+      const name = entryNamesRef.current.get(key);
+      if (name) {
+        void removeExportEntry(name);
+        entryNamesRef.current.delete(key);
       }
       setEntry(key, null);
     },

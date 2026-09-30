@@ -392,6 +392,13 @@ test.describe('browsers without the save dialog', () => {
       `Kaydederken bilgisayarında yaklaşık ${Math.ceil(bytes / 1_048_576)} MiB daha boş yer gerekir.`,
     );
     expect(probeMp4(await saved.path()).frames).toBe(60);
+
+    // The offered file waits in the browser's private storage until the
+    // message is closed; closing it deletes the file at once (ADR-013).
+    expect(Object.keys(await opfsFiles(page))).toHaveLength(1);
+    await card(page, 0).getByTestId('download-dismiss').click();
+    await expect(card(page, 0).getByTestId('export-download')).toHaveCount(0);
+    await expect.poll(() => opfsFiles(page)).toEqual({});
   });
 });
 
