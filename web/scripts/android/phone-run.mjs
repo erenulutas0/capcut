@@ -85,6 +85,46 @@ function probe(file) {
   };
 }
 
+/** Mono 48 kHz PCM of `seconds` from `startS`, as a player decodes it (edit lists applied). */
+function pcm48(file, startS, seconds) {
+  const out = spawnSync(
+    'ffmpeg',
+    ['-v', 'error', '-ss', String(startS), '-t', String(seconds), '-i', file, '-vn', '-ac', '1', '-ar', '48000', '-f', 'f32le', '-'],
+    { maxBuffer: 64 * 1024 * 1024 },
+  );
+  const bytes = out.stdout ?? Buffer.alloc(0);
+  return new Float32Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.length / 4));
+}
+
+/**
+ * ADR-032: where the export's sound sits against its picture. A 0.25 s window
+ * of the source (0.2 s into the first kesit) is looked for in the export's
+ * first 1.5 s; positive = the sound is late. null for a silent source.
+ */
+function audioSync(source, startS, output) {
+  const ref = pcm48(source, startS, 1.5);
+  const out = pcm48(output, 0, 1.5);
+  const from = 9600;
+  const length = 12000;
+  const window = ref.subarray(from, from + length);
+  let energy = 0;
+  for (const v of window) energy += v * v;
+  if (window.length < length || Math.sqrt(energy / length) < 1e-4) return null;
+  let best = { lagFrames: 0, correlation: -1 };
+  for (let lag = -4096; lag <= 4096; lag += 1) {
+    let dot = 0;
+    let outEnergy = 0;
+    for (let i = 0; i < length; i += 1) {
+      const v = out[from + lag + i] ?? 0;
+      dot += window[i] * v;
+      outEnergy += v * v;
+    }
+    const correlation = outEnergy > 0 ? dot / Math.sqrt(energy * outEnergy) : 0;
+    if (correlation > best.correlation) best = { lagFrames: lag, correlation };
+  }
+  return { lagMs: Number(((best.lagFrames / 48000) * 1000).toFixed(2)), correlation: Number(best.correlation.toFixed(4)) };
+}
+
 /**
  * Sends a local video into the page in 4 MiB pieces and builds a File there.
  * One big protocol message (setInputFiles with a buffer) stalls over adb for
@@ -113,15 +153,123 @@ async function sendFile(page, file) {
   );
 }
 
-const browser = desktop
+/**
+ * The adb server can be restarted under us (another tool on this computer
+ * did, mid-run), which drops every forward. They are set again before each
+ * case; `adb` must be on PATH.
+ */
+function ensurePorts() {
+  if (desktop) return;
+  spawnSync('adb', ['forward', 'tcp:9222', 'localabstract:chrome_devtools_remote']);
+  const local = /^http:\/\/localhost:(\d+)/.exec(url);
+  if (local) spawnSync('adb', ['reverse', `tcp:${local[1]}`, `tcp:${local[1]}`]);
+}
+
+/**
+ * Android freezes a browser that is not on screen: a case started while the
+ * phone shows another app (or the home screen) hangs until its timeouts. The
+ * script waits (30 minutes at most) until the browser is in front again; it
+ * never brings it there itself.
+ */
+async function waitForBrowserInFront() {
+  if (desktop) return;
+  const version = await fetch('http://127.0.0.1:9222/json/version')
+    .then((response) => response.json())
+    .catch(() => null);
+  const packageName = version?.['Android-Package'];
+  if (!packageName) return;
+  for (let waited = 0; ; waited += 30) {
+    const top = spawnSync('adb', ['shell', 'dumpsys', 'activity', 'activities'], { encoding: 'utf8' }).stdout ?? '';
+    const line = top.split('\n').find((l) => l.includes('topResumedActivity')) ?? '';
+    if (line.includes(packageName)) return;
+    if (waited >= 30 * 60) throw new Error(`${packageName} not in front for 30 minutes`);
+    if (waited % 300 === 0) console.error(`${packageName} is not on screen; waiting`);
+    await new Promise((resolve) => setTimeout(resolve, 30_000));
+  }
+}
+
+/** Connects to the phone's Chrome, waiting (up to 10 minutes) while it is unreachable. */
+async function connectPhone() {
+  for (let attempt = 1; ; attempt += 1) {
+    ensurePorts();
+    try {
+      return await chromium.connectOverCDP('http://127.0.0.1:9222');
+    } catch (error) {
+      if (attempt >= 20) throw error;
+      console.error(`phone unreachable (${String(error.message).split('\n')[0]}), retrying in 30 s`);
+      await new Promise((resolve) => setTimeout(resolve, 30_000));
+    }
+  }
+}
+
+let browser = desktop
   ? await chromium.launch({ channel: desktop === 'chromium' ? undefined : desktop })
-  : await chromium.connectOverCDP('http://127.0.0.1:9222');
-const context = desktop ? await browser.newContext() : browser.contexts()[0];
+  : await connectPhone();
+let context = desktop ? await browser.newContext() : browser.contexts()[0];
 const results = [];
+
+async function clearSiteData(page) {
+  await page
+    .evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      for await (const [name] of root.entries()) await root.removeEntry(name, { recursive: true }).catch(() => undefined);
+      for (const db of (await indexedDB.databases?.()) ?? []) if (db.name) indexedDB.deleteDatabase(db.name);
+      try {
+        localStorage.clear();
+      } catch {
+        /* ignore */
+      }
+    })
+    .catch(() => undefined);
+}
+
+/** After a lost connection: reconnect, and close (and clean) the tab the case had opened. */
+async function recoverOrphan(targetId) {
+  browser = await connectPhone();
+  context = browser.contexts()[0];
+  for (const page of context.pages()) {
+    const session = await context.newCDPSession(page).catch(() => null);
+    if (!session) continue;
+    const info = await session.send('Target.getTargetInfo').catch(() => null);
+    await session.detach().catch(() => undefined);
+    if (info?.targetInfo.targetId !== targetId) continue;
+    await clearSiteData(page);
+    await page.close().catch(() => undefined);
+    return true;
+  }
+  return false;
+}
 
 for (const testCase of CASES) {
   if (only.length > 0 && !only.includes(testCase.id)) continue;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    ensurePorts();
+    await waitForBrowserInFront();
+    if (!desktop && !browser.isConnected()) {
+      browser = await connectPhone();
+      context = browser.contexts()[0];
+    }
+    const { row, targetId } = await runCase(testCase);
+    if (!desktop && !browser.isConnected() && String(row.outcome).startsWith('error')) {
+      // The phone's connection went away mid-case, not the app: clean up and retry once.
+      row.recovered = await recoverOrphan(targetId);
+      console.error(`case ${testCase.id}: connection lost (${row.outcome}); orphan tab closed: ${row.recovered}`);
+      if (attempt < 2) continue;
+    }
+    results.push(row);
+    console.log(JSON.stringify(row));
+    break;
+  }
+}
+
+async function runCase(testCase) {
   const page = await context.newPage();
+  let targetId = null;
+  if (!desktop) {
+    const session = await context.newCDPSession(page);
+    targetId = (await session.send('Target.getTargetInfo')).targetInfo.targetId;
+    await session.detach();
+  }
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   let crashed = false;
@@ -160,7 +308,7 @@ for (const testCase of CASES) {
       window.__clipExportMode = 'encode';
     });
   }
-  const row = { id: testCase.id, source: basename(testCase.file), expect: testCase.expect };
+  const row = { id: testCase.id, source: basename(testCase.file), kesits: testCase.kesits, expect: testCase.expect };
   try {
     await page.goto(url, { waitUntil: 'load' });
     await page.getByTestId('download-all').waitFor({ timeout: 60_000 });
@@ -205,6 +353,7 @@ for (const testCase of CASES) {
       const local = join(outDir, `${testCase.id}-${name.replace(/^picked-\d+-/, '')}`);
       row.sizeBytes = await readPickedFile(page, name, local);
       row.probe = probe(local);
+      if (row.probe.audio) row.audioSync = audioSync(testCase.file, testCase.kesits[0]?.[0] ?? 0, local);
     } else {
       row.message = ((await page.locator('[data-testid="export-failed"], [data-testid="export-blocked"]').first().textContent().catch(() => '')) ?? '')
         .replace(/\s+/g, ' ')
@@ -220,21 +369,9 @@ for (const testCase of CASES) {
     row.workerLog = workerLog;
   }
   // Clean up what this run left on the phone: saved files and site data.
-  await page
-    .evaluate(async () => {
-      const root = await navigator.storage.getDirectory();
-      for await (const [name] of root.entries()) await root.removeEntry(name, { recursive: true }).catch(() => undefined);
-      for (const db of (await indexedDB.databases?.()) ?? []) if (db.name) indexedDB.deleteDatabase(db.name);
-      try {
-        localStorage.clear();
-      } catch {
-        /* ignore */
-      }
-    })
-    .catch(() => undefined);
+  await clearSiteData(page);
   await page.close().catch(() => undefined);
-  results.push(row);
-  console.log(JSON.stringify(row));
+  return { row, targetId };
 }
 
 writeFileSync(join(outDir, `phone-run-${Date.now()}.json`), JSON.stringify({ url, desktop: desktop || null, at: new Date().toISOString(), results }, null, 2));

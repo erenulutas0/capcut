@@ -582,8 +582,9 @@ interface ExportSources {
   wantsAudio: boolean;
   /** ADR-032: frames the AAC encoder puts in front of the audio (0 when there is no audio). */
   audioDelayFrames: number;
-  /** Measurement only: how clearly the calibration marker came back. */
+  /** Measurement only: how clearly the calibration marker came back, and how long measuring took. */
   audioDelayCorrelation: number | null;
+  audioDelayMs: number | null;
 }
 
 /** The export's AAC settings (the plan's rate, channels and bitrate). */
@@ -640,8 +641,11 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
   // delay cannot be measured would give sound out of sync with the picture.
   let audioDelayFrames = 0;
   let audioDelayCorrelation: number | null = null;
+  let audioDelayMs: number | null = null;
   if (wantsAudio) {
+    const measuredAt = performance.now();
     const delay = await measureAacEncoderDelay(aacSettings(plan));
+    audioDelayMs = performance.now() - measuredAt;
     if (!delay.ok) throw new ExportFailure('audio_encoder_misaligned');
     audioDelayFrames = delay.delayFrames;
     audioDelayCorrelation = delay.correlation;
@@ -657,6 +661,7 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
     wantsAudio,
     audioDelayFrames,
     audioDelayCorrelation,
+    audioDelayMs,
   };
 
   // Previous results from this worker are no longer offered once a new export
@@ -1108,6 +1113,7 @@ async function produceOutput(
           framesMissing,
           audioDelayFrames: sources.audioDelayFrames,
           audioDelayCorrelation: sources.audioDelayCorrelation,
+          audioDelayMs: sources.audioDelayMs === null ? null : Math.round(sources.audioDelayMs),
           audioAlignment: audioSource?.stats ?? null,
           expectedDurationUs: plan.expectedDurationUs,
           probedDurationUs,
