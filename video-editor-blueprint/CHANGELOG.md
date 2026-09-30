@@ -3,6 +3,16 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Teknik — 30 Eylül 2026: uzun dışa aktarmada bellek (ADR-029, politika değişmedi)
+
+**Ölçülen:** 60 dakikalık dışa aktarmada yükselen bellek tarayıcının sayfa ve worker'ı çalıştıran sürecinde; GPU ve tarayıcı süreçleri düz. Worker'da gerçekten tutulan tek büyüyen şey MP4 dosyasının sonundaki dizin (`moov`) için örnek başına tutulan kayıtlar: ~90 bayt/örnek, 30 fps + AAC'de **saatte ~24 MiB**; bu, sıkıştırılmamış MP4 yazmanın doğası (mediabunny 1.58.1). Geri kalan artış çöptü: ses karıştırıcısı her örnek için kısa ömürlü nesne ayırıyordu (20 dakikada 2,3 GiB, worker'ın ayırdığının %79'u) ve editör her ilerleme olayında (~50/sn) yeniden çiziliyordu (20 dakikada 0,77 GiB); tarayıcı bu hızda çöp üretilince yığını büyütüp geri vermiyordu.
+
+**Değişen:** Karıştırıcı artık kare başına ayırmıyor (aynı aritmetik, çıktı paket paket aynı; birim testi eski biçimle bit bit karşılaştırıyor). İlerleme olayı ilk ve son dışında en çok 250 ms'de bir. Chrome 1080p: 20 dakikada tepe 987 → 701 MiB ve düz; 60 dakikada tepe 951 → 852 MiB, seviye 60–90 MiB aşağıda. 60 dakika hâlâ tam düz değil: dizin ve V8 payı yüzünden taban saatte ~40–50 MiB yükseliyor, kapanışta kısa bir tepe var; dışa aktarma bitince hepsi bırakılıyor. ADR-020/021'deki "bellek düz" cümlesi buna göre düzeltildi. Parçalı MP4 önerilmiyor: mediabunny'de o modda da örnek kayıtları tutuluyor (ölçüldü: 57 → 52 bayt/örnek).
+
+**Ölçüm araçları:** `measure-export-memory.mjs` süreç türüne göre dağılım, onda birlerin en düşüğü, `--heap`, `--heap-gc`, `--heap-snapshots`, `--heap-sampling[=page]`, `--memory-dumps`; `heap-snapshot-summary.mjs`.
+
+Mevcut kullanıcı haklarına etkisi: yok. Sınırlar ve fiyatlar değişmedi; indirilen dosyanın içeriği aynı.
+
 ## Teknik — 25 Eylül 2026: dışa aktarma hızı ve bellek (ADR-028, politika değişmedi)
 
 **Ölçülen:** Yeniden kodlayan dışa aktarmada Chrome ve Edge'de sürenin %74–85'i donanım H.264 kodlayıcısını beklemek (1080p'de ~4 ms/kare); çözme, çizim ve kare kopyası %10–13. Playwright'ın headless Chromium kabuğunda (GPU yok) süre tuvale çizmek (%85–95). Aşama profili bir test kancasıyla açılır (`window.__clipExportProfile`, `measure-export-memory.mjs --profile`); uygulama bunu açmaz.

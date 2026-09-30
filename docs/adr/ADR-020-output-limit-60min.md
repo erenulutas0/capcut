@@ -71,6 +71,9 @@ deseni + zamansal gürültü (`testsrc2 … noise=alls=12:allf=t+u`), 440 Hz AAC
 - **Bellek düz.** Kodlamanın ikinci diliminden son dilimine kadar tepe
   Chromium'da 476–506 MiB, Chrome'da 720–736 MiB aralığında kaldı; ADR-013'ün 5 dakikalık OPFS değerleriyle
   (574–607 MiB) aynı düzeyde. 60 dakikalık çıktı belleği büyütmüyor.
+  (**ADR-029 düzeltmesi:** tam düz değil. Çıktı *boyutuyla* büyümüyor, ama çıktı
+  *süresiyle* MP4 dizini için saatte ~24 MiB canlı bellek ve V8 payı kadar büyüyor; bu
+  koşuda ses işi sona toplandığı için artış son dilime düşmüştü.)
 - Son dilimdeki 664 MiB tepe kapanış, yeniden açıp ölçme (probe) ve dosyanın
   sayfaya verildiği ana ait; kısa ve geçici. İlk dilimdeki 577 MiB çözücü ve
   kodlayıcının açılışı.

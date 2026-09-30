@@ -290,6 +290,10 @@ hızlı kaynakta süre aynı, tepe +20…+30 MiB (4 çözücü aynı anda).
   kalanın nerede tutulduğu (tarayıcının AAC çözücü/kodlayıcısı, V8'in toplamadığı
   ArrayBuffer'lar) **ölçülmedi**. ADR-020'nin "düz" ölçümünde de son onda bir 774 (öncesi
   720–736) idi; o da aynı ses geçişiydi.
+  **ADR-029 (30 Eylül):** ölçüldü. Tutulan tek büyüyen şey muxer'ın `moov` dizini (~90
+  bayt/örnek, saatte ~24 MiB); ses süresiyle ölçeklenen asıl artış karıştırıcının kare
+  başına ayırdığı çöptü (20 dakikada 2,3 GiB) ve sayfanın ilerleme olayı başına yeniden
+  çizimi. İkisi düzeltildi: 60 dakikada tepe 951 → 852 MiB, 20 dakikada düz.
 
 ## 5. İşe yaramayanlar (ölçüldü, alınmadı)
 

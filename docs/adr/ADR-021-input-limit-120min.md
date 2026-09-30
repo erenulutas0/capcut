@@ -164,7 +164,8 @@ Edge 153.0.4234.48. Her sütun tek koşu (n=1). Bellek: süreç ağacı, MiB.
 | **6. Yeniden yükle → geri yükleme istemi → aynı dosyayı bağla** | 75 ms + 194 ms | 111 + 193 ms | 122 + 203 ms | 114 + 205 ms |
 | yedek dosyası (1,2 KB) → boş profile içe aktar → bağla | 32 ms + 83 ms | 18 + 192 ms | 22 + 100 ms | 14 + 191 ms |
 
-- **Bellek düz mü?** Çoğunlukla. Her koşuda tepe, sonucun ortasındaki **kesimde**
+- **Bellek düz mü?** Çoğunlukla (ADR-029: çıktı süresiyle saatte ~24 MiB MP4 dizini ve
+  V8 payı kadar büyür; kesimdeki basamak ses geçişiydi, ADR-028). Her koşuda tepe, sonucun ortasındaki **kesimde**
   (ikinci parçaya geçişte, 5.–6. dilim) bir kez +70…+170 MiB basamak yapıyor ve
   sonra orada kalıyor; kodlama boyunca büyümüyor. Basamağın parça sayısıyla
   birikip birikmediğini görmek için ayrıca **20 parçalı** bir 60 dakika indirildi
