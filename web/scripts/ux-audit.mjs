@@ -11,6 +11,12 @@
  * Usage: npm run build && npx next start -p 3207   (in another shell)
  *        node scripts/ux-audit.mjs --out=../docs/ux/2026-09-30 --prefix=before
  *        SHOT_URL=http://127.0.0.1:3207 by default.
+ *
+ * Works on builds before and after ADR-030 (where "Bitişi işaretle" adds the
+ * kesit): "Kesit ekle" is pressed only when marking the end added nothing.
+ * The report counts the mouse presses of the three core tasks (a press on
+ * the page, plus one for "Kaydet" in the operating system's save dialog,
+ * which the stand-in dialog here does not need).
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -84,7 +90,21 @@ async function walk(browser, size) {
   const page = await context.newPage();
   await installSavePicker(page, { plainNames: true });
   const steps = [];
-  const press = async (locator) => (size.touch ? locator.tap() : locator.click());
+  /** Presses on the page, per core task (ADR-026 counting: every press). */
+  let presses = 0;
+  const press = async (locator) => {
+    presses += 1;
+    return size.touch ? locator.tap() : locator.click();
+  };
+  const kesitCount = async () => Number(((await page.getByTestId('moment-count').textContent()) ?? '(0)').replace(/\D/g, ''));
+  /** Bitişi işaretle; then "Kesit ekle" only on a build where the end did not add the kesit. */
+  const markEndAndAdd = async () => {
+    const before = await kesitCount();
+    await press(page.getByTestId('mark-end'));
+    await page.waitForTimeout(150);
+    if ((await kesitCount()) === before) await press(page.getByTestId('add-moment'));
+  };
+  const clicks = {};
   const shot = async (step, { full = size.name === 'phone' } = {}) => {
     await page.waitForTimeout(250);
     const file = `${prefix}-${size.name}-${step}.png`;
@@ -97,6 +117,7 @@ async function walk(browser, size) {
     const box = await content.boundingBox();
     if (!box) throw new Error('strip not visible');
     const at = { x: box.x + box.width * fraction, y: box.y + box.height * 0.7 };
+    presses += 1;
     if (size.touch) await page.touchscreen.tap(at.x, at.y);
     else await page.mouse.click(at.x, at.y);
     await page.waitForTimeout(250);
@@ -119,16 +140,26 @@ async function walk(browser, size) {
   if (await dismiss.isVisible().catch(() => false)) await press(dismiss);
 
   // 3. Mark: move on the strip, press Başlangıç (I), move, press Bitiş (O).
+  presses = 0;
   await stripAt(0.1);
   await press(page.getByTestId('mark-start'));
   await shot('03-start-marked');
   await stripAt(0.3);
+  const beforeEnd = await kesitCount();
   await press(page.getByTestId('mark-end'));
+  await page.waitForTimeout(150);
   await shot('04-end-marked');
 
-  // 4. Kesit ekle.
-  await press(page.getByTestId('add-moment'));
+  // 4. Kesit ekle (before ADR-030; since then the end added it).
+  if ((await kesitCount()) === beforeEnd) await press(page.getByTestId('add-moment'));
   await shot('05-kesit-added');
+  if (size.name === 'phone') {
+    // What the screen shows right after adding (the phone bar, ADR-030).
+    await page.waitForTimeout(250);
+    const file = `${prefix}-${size.name}-05b-kesit-added-viewport.png`;
+    await page.screenshot({ path: join(outDir, file) });
+    steps.push({ step: '05b-kesit-added-viewport', file, ...(await measure(page)) });
+  }
 
   // 5. Download that one kesit from its card; progress, then the result.
   await press(page.getByTestId('kesit-download').first());
@@ -136,8 +167,12 @@ async function walk(browser, size) {
   await shot('06-downloading');
   await page.getByTestId('download-saved').waitFor({ timeout: 120_000 });
   await shot('07-saved');
+  clicks.oneRange = presses + 1;
 
   // 6. Two more kesitler: the top button becomes "Hepsini birleştirip indir".
+  // Counted as the second core task: three ranges (the first one above) and
+  // the joined download at step 10.
+  presses = clicks.oneRange - 2; // the first range's marking presses, without its card download and dialog
   for (const [a, b] of [
     [0.4, 0.55],
     [0.7, 0.85],
@@ -145,10 +180,17 @@ async function walk(browser, size) {
     await stripAt(a);
     await press(page.getByTestId('mark-start'));
     await stripAt(b);
-    await press(page.getByTestId('mark-end'));
-    await press(page.getByTestId('add-moment'));
+    await markEndAndAdd();
   }
+  const threeMarked = presses;
   await shot('08-three-kesits');
+  if (size.name === 'phone') {
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(250);
+    const file = `${prefix}-${size.name}-08b-three-kesits-viewport.png`;
+    await page.screenshot({ path: join(outDir, file) });
+    steps.push({ step: '08b-three-kesits-viewport', file, ...(await measure(page)) });
+  }
 
   // 7. Select a kesit (fine-tune mode).
   await press(page.getByTestId('kesit-select').nth(1));
@@ -167,6 +209,15 @@ async function walk(browser, size) {
   await page.keyboard.press('Escape');
   await page.getByRole('dialog').waitFor({ state: 'detached' });
 
+  // 9a. "Kesit ekle" with nothing marked (ADR-030: no whole-video kesit).
+  const beforeEmptyAdd = await kesitCount();
+  await press(page.getByTestId('add-moment'));
+  await shot('12a-add-nothing-marked');
+  if ((await kesitCount()) !== beforeEmptyAdd) {
+    // A build before ADR-030 added the whole video: take it back.
+    await page.getByTestId('undo').click();
+  }
+
   // 9. A refusal: a typed range that ends before it starts.
   await page.getByTestId('range-start').fill('00:10');
   await page.getByTestId('range-end').fill('00:05');
@@ -175,7 +226,9 @@ async function walk(browser, size) {
   await shot('12-refusal-reversed');
 
   // 10. The joined download.
+  presses = threeMarked;
   await press(page.getByTestId('download-all'));
+  clicks.threeJoined = presses + 1;
   // The joined download's status sits under the list heading, not on a card.
   await page.locator('.kesits > [data-testid="export-succeeded"]').waitFor({ timeout: 120_000 });
   await shot('13-joined-saved');
@@ -203,6 +256,9 @@ async function walk(browser, size) {
     await other.getByTestId('video-input').setInputFiles(sample);
     await other.getByTestId('preview-video').waitFor();
     await other.getByTestId('download-all').click();
+    // The whole video: this press, and "Bilgisayara kaydet" (the save dialog's
+    // "Kaydet" on the route with a dialog).
+    clicks.wholeVideo = 2;
     await other.getByTestId('export-download').waitFor({ timeout: 120_000 });
     await other.waitForTimeout(250);
     const file = `${prefix}-${size.name}-15-no-save-dialog.png`;
@@ -210,6 +266,7 @@ async function walk(browser, size) {
     steps.push({ step: '15-no-save-dialog', file, ...(await measure(other)) });
     await fallback.close();
   }
+  steps.push({ step: 'clicks', ...clicks });
   return steps;
 }
 

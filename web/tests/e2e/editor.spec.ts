@@ -31,7 +31,9 @@ test.describe('editor', () => {
     const errors = await openEditor(page);
     await importSample(page);
     await expect(page.getByTestId('source-meta')).toContainText('sample-24s.mp4');
-    await expect(page.getByTestId('total-time')).toHaveText('00:24.000');
+    // Whole seconds on the clock (ADR-030); the exact length is the strip's value.
+    await expect(page.getByTestId('total-time')).toHaveText('00:24');
+    await expect(page.getByTestId('timeline-playhead')).toHaveAttribute('aria-valuemax', '24');
     // The frame follows the landscape video.
     await expect(page.getByTestId('preview-frame')).toHaveAttribute('data-aspect', '16:9');
     expect(errors).toEqual([]);

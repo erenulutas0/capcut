@@ -116,7 +116,9 @@ test.describe('local persistence', () => {
     // Like any newly opened video (ADR-026), nothing is placed on its own.
     await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('moment-count')).toHaveText('(0)');
-    await expect(page.getByTestId('total-time')).toHaveText('00:08.000');
+    // Whole seconds on the clock (ADR-030); the exact length is the strip's value.
+    await expect(page.getByTestId('total-time')).toHaveText('00:08');
+    await expect(page.getByTestId('timeline-playhead')).toHaveAttribute('aria-valuemax', '8');
   });
 
   test('music is re-linked separately and keeps its settings', async ({ page }) => {

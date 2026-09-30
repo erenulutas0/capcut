@@ -14,7 +14,9 @@ async function openWithSample(page: Page) {
   await expect(page.getByTestId('download-all')).toBeVisible();
   await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
   await expect(page.getByTestId('preview-video')).toBeVisible();
-  await expect(page.getByTestId('total-time')).toHaveText('00:24.000');
+  // Whole seconds on the clock (ADR-030); the exact length is the strip's value.
+  await expect(page.getByTestId('total-time')).toHaveText('00:24');
+  await expect(page.getByTestId('timeline-playhead')).toHaveAttribute('aria-valuemax', '24');
   return errors;
 }
 
@@ -37,9 +39,13 @@ async function seek(page: Page, ms: number) {
     const video = document.querySelector<HTMLVideoElement>('[data-testid="preview-video"]');
     if (video) video.currentTime = at / 1000;
   }, ms);
-  await expect(page.getByTestId('current-time')).toHaveText(
-    `00:${String(Math.floor(ms / 1000)).padStart(2, '0')}.${String(ms % 1000).padStart(3, '0')}`,
-  );
+  await expectPlayheadAt(page, ms);
+}
+
+/** The playhead exactly there (to the millisecond), and the clock showing its second (ADR-030). */
+async function expectPlayheadAt(page: Page, ms: number) {
+  await expect(page.getByTestId('source-time-us')).toHaveText(String(ms));
+  await expect(page.getByTestId('current-time')).toHaveText(`00:${String(Math.floor(ms / 1000)).padStart(2, '0')}`);
 }
 
 /** Adds a line at the playhead and types its text. */
@@ -185,7 +191,7 @@ test.describe('captions', () => {
 
     // "Buraya git" brings the playhead back to the line and it is drawn again.
     await item.getByTestId('cue-goto').click();
-    await expect(page.getByTestId('current-time')).toHaveText('00:03.000');
+    await expectPlayheadAt(page, 3000);
     await expect(overlay).toHaveAttribute('data-cue-id', 'q_001');
     // A new line is tied to the picture (ADR-026): the video's own clock.
     await expect(page.getByTestId('caption-clock-now')).toContainText('Görüntüye bağlı');

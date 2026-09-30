@@ -381,6 +381,17 @@ test.describe('a11y: axe audit', () => {
       await closeSheet(page);
     });
 
+    test('the kesit bar while the list is below (ADR-030)', async ({ page }, testInfo) => {
+      await openEditor(page);
+      await page.getByTestId('video-input').setInputFiles(timelineFixture('portrait').file);
+      await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 60_000 });
+      await addMoment(page, '2', '5');
+      await addMoment(page, '8', '10');
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await expect(page.getByTestId('kesit-dock')).toBeVisible();
+      await audit(page, 'phone-kesit-dock', testInfo);
+    });
+
     test('a kesit over the download limit (ADR-021)', async ({ page }, testInfo) => {
       await openEditor(page);
       await page.getByTestId('video-input').setInputFiles(timelineFixture('ninety').file);
@@ -496,20 +507,22 @@ test.describe('a11y: keyboard only', () => {
     await expect(page.getByTestId('moment-count')).toHaveText('(0)');
     const ranges = page.getByTestId('kesit-range');
 
-    // 2. The playhead on the strip: Shift+Right is one second. I and O mark,
-    //    Enter adds the kesit. Twice.
+    // 2. The playhead on the strip: Shift+Right is one second. I marks the
+    //    start, O marks the end and adds the kesit (ADR-030). Twice.
     await tabTo(page, byTestId('timeline-playhead'), unmarked, 'the playhead');
     await page.keyboard.press('Home');
     for (let i = 0; i < 2; i += 1) await page.keyboard.press('Shift+ArrowRight');
     await page.keyboard.press('i');
     for (let i = 0; i < 4; i += 1) await page.keyboard.press('Shift+ArrowRight');
     await page.keyboard.press('o');
-    await page.keyboard.press('Enter');
+    await expect(ranges).toHaveText(['00:02 → 00:06']);
+    // The addition is announced where a screen reader is listening.
+    await expect(page.getByTestId('timeline-notice')).toHaveAttribute('role', 'status');
+    await expect(page.getByTestId('timeline-notice')).toContainText('Kesit 1 eklendi: 00:02 → 00:06');
     for (let i = 0; i < 4; i += 1) await page.keyboard.press('Shift+ArrowRight');
     await page.keyboard.press('i');
     for (let i = 0; i < 3; i += 1) await page.keyboard.press('Shift+ArrowRight');
     await page.keyboard.press('o');
-    await page.keyboard.press('Enter');
     await expect(ranges).toHaveText(['00:02 → 00:06', '00:10 → 00:13']);
     await expect(page.getByTestId('timeline-playhead')).toBeFocused();
 
@@ -736,7 +749,8 @@ test.describe('a11y: reflow at 320 CSS px (WCAG 1.4.10)', () => {
         // ADR-021 per download: the refusal sentence on a kesit card.
         page.once('dialog', (dialog) => void dialog.accept());
         await page.getByTestId('video-input').setInputFiles(timelineFixture('ninety').file);
-        await expect(page.getByTestId('total-time')).toHaveText('01:30:00.000', { timeout: 60_000 });
+        await expect(page.getByTestId('total-time')).toHaveText('1:30:00', { timeout: 60_000 });
+        await expect(page.getByTestId('timeline-playhead')).toHaveAttribute('aria-valuemax', '5400');
         await addMoment(page, '0', '1:10:00');
         await page.getByTestId('kesit-download').click();
         await expect(page.getByTestId('export-over-limit')).toBeVisible();

@@ -61,7 +61,9 @@ async function openWithSample(page: Page) {
   await expect(page.getByTestId('download-all')).toBeVisible();
   await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
   await expect(page.getByTestId('preview-video')).toBeVisible();
-  await expect(page.getByTestId('total-time')).toHaveText('00:24.000');
+  // Whole seconds on the clock (ADR-030); the exact length is the strip's value.
+  await expect(page.getByTestId('total-time')).toHaveText('00:24');
+  await expect(page.getByTestId('timeline-playhead')).toHaveAttribute('aria-valuemax', '24');
   return errors;
 }
 
@@ -78,8 +80,15 @@ async function buildReversedOutput(page: Page) {
   await expect(page.getByTestId('output-duration-us')).toHaveText('10000000');
 }
 
-function timecode(ms: number): string {
-  return `00:${String(Math.floor(ms / 1000)).padStart(2, '0')}.${String(ms % 1000).padStart(3, '0')}`;
+/** The clock reads whole seconds (ADR-030): "00:09". */
+function clock(ms: number): string {
+  return `00:${String(Math.floor(ms / 1000)).padStart(2, '0')}`;
+}
+
+/** The playhead exactly there (to the millisecond), and the clock showing its second. */
+async function expectPlayheadAt(page: Page, ms: number) {
+  await expect(page.getByTestId('source-time-us')).toHaveText(String(ms));
+  await expect(page.getByTestId('current-time')).toHaveText(clock(ms));
 }
 
 /** The playhead on the video's own clock (ADR-026). */
@@ -88,7 +97,7 @@ async function seek(page: Page, ms: number) {
     const video = document.querySelector<HTMLVideoElement>('[data-testid="preview-video"]');
     if (video) video.currentTime = at / 1000;
   }, ms);
-  await expect(page.getByTestId('current-time')).toHaveText(timecode(ms));
+  await expectPlayheadAt(page, ms);
 }
 
 async function pickSubtitleFile(scope: Page | Locator, name: string, buffer: Buffer) {
@@ -239,9 +248,9 @@ test.describe('captions: SRT/VTT and source-anchored lines', () => {
 
     // "Buraya git" goes to the line's own picture, used or not.
     await items.nth(1).getByTestId('cue-goto').click();
-    await expect(page.getByTestId('current-time')).toHaveText('00:09.000');
+    await expectPlayheadAt(page, 9000);
     await items.nth(2).getByTestId('cue-goto').click();
-    await expect(page.getByTestId('current-time')).toHaveText('00:15.000');
+    await expectPlayheadAt(page, 15000);
     expect(errors).toEqual([]);
   });
 
@@ -260,7 +269,7 @@ test.describe('captions: SRT/VTT and source-anchored lines', () => {
     const draft = page.getByTestId('cue-draft');
     await expect(draft.getByTestId('cue-range')).toHaveText('00:13.000 — 00:15.000');
     await expect(draft.getByTestId('cue-clock')).toHaveText('Videodaki zamanı');
-    await expect(page.getByTestId('current-time')).toHaveText('00:10.000');
+    await expectPlayheadAt(page, 10000);
     await page.keyboard.type('Köprünün sonu');
     await draft.getByTestId('cue-text').blur();
     await expect(page.getByTestId('cue-item')).toHaveCount(4);

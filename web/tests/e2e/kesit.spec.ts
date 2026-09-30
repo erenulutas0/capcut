@@ -24,8 +24,9 @@ import { timelineFixture } from './timeline-media';
 
 /**
  * The kesit editor (ADR-026), the founder's story: watch the video, mark
- * Başlangıç (I) and Bitiş (O), "Kesit ekle", and each kesit plays, downloads
- * straight into a file the user picks, or goes away with one press.
+ * Başlangıç (I) and Bitiş (O) — marking the end adds the kesit (ADR-030) —
+ * and each kesit plays, downloads straight into a file the user picks, or
+ * goes away with one press.
  *
  * Screenshots for the ADR are written only with KESIT_SHOTS=1, so a normal
  * run never writes tracked files.
@@ -60,7 +61,7 @@ test.describe('kesit list: mark, add, play, download', () => {
     await installSavePicker(page);
   });
 
-  test('I / O on the video, "Kesit ekle", ▶ plays exactly the range, ⬇ writes it into the picked file', async ({
+  test('I / O on the video adds the kesit, ▶ plays exactly the range, ⬇ writes it into the picked file', async ({
     page,
   }, testInfo) => {
     test.setTimeout(180_000);
@@ -93,16 +94,19 @@ test.describe('kesit list: mark, add, play, download', () => {
     await page.keyboard.press('i');
     await expect(page.getByTestId('range-start')).toHaveValue('00:02.000');
     await expect(page.getByTestId('strip-pending')).toBeVisible();
-    await playheadTo(page, 6);
-    await page.keyboard.press('o');
-    await expect(page.getByTestId('range-end')).toHaveValue('00:06.000');
+    // While the start is marked, "Bitişi işaretle" is the next step.
+    await expect(page.getByTestId('mark-end')).toHaveClass(/btn-accent/);
+    await expect(page.getByTestId('add-moment')).not.toHaveClass(/btn-accent/);
     await shot(page, 'kesit-list-marking-desktop.png');
-    // Enter adds it (focus is on the strip's playhead, not on a button).
-    await page.keyboard.press('Enter');
+    await playheadTo(page, 6);
+    // O adds the kesit in the same step (ADR-030): no Enter, no "Kesit ekle".
+    await page.keyboard.press('o');
 
     await expect(page.getByTestId('kesit-card')).toHaveCount(1);
     await expect(kesitRanges(page)).toHaveText(['00:02 → 00:06']);
-    await expect(page.getByTestId('kesit-length')).toHaveText(['Süre 0:04']);
+    // Lengths outside fine-tuning: tenths, no milliseconds (ADR-030).
+    await expect(page.getByTestId('kesit-length')).toHaveText(['Süre 4,0 sn']);
+    await expect(page.getByTestId('range-end')).toHaveValue('');
     await expect(page.getByTestId('moment-count')).toHaveText('(1)');
     await expect(page.getByTestId('strip-kesit')).toHaveCount(1);
     await expect(page.getByTestId('strip-pending')).toHaveCount(0);
@@ -286,6 +290,10 @@ test.describe('kesit list: mark, add, play, download', () => {
     await playheadTo(page, 9);
     await page.keyboard.press('o');
     await expect(kesitRanges(page).nth(1)).toHaveText('00:05 → 00:09');
+    // With a kesit selected, O moves its end: no new kesit (ADR-030).
+    await expect(page.getByTestId('kesit-card')).toHaveCount(3);
+    // …and the fields there keep the milliseconds (fine-tuning).
+    await expect(page.getByTestId('range-end')).toHaveValue('00:09.000');
     await page.getByTestId('range-start').fill('4');
     await page.getByTestId('range-start').press('Enter');
     await expect(kesitRanges(page).nth(1)).toHaveText('00:04 → 00:09');
@@ -365,7 +373,8 @@ test.describe('kesit list: mark, add, play, download', () => {
       .poll(() => page.evaluate(() => document.fullscreenElement?.getAttribute('data-testid') ?? null))
       .toBe('preview-wrap');
     await expect(page.getByTestId('fullscreen-controls')).toBeVisible();
-    await expect(page.getByTestId('fullscreen-time')).toContainText('/ 00:24.000');
+    // Whole seconds outside fine-tuning (ADR-030).
+    await expect(page.getByTestId('fullscreen-time')).toHaveText('00:00 / 00:24');
     await page.getByTestId('fullscreen-play').click();
     await expect.poll(() => sourceMs(page), { timeout: 5000 }).toBeGreaterThan(300);
     await page.getByTestId('fullscreen-play').click();
@@ -415,8 +424,13 @@ test.describe('browsers without the save dialog', () => {
       'Tarayıcın dosyayı İndirilenler klasörüne kaydeder (ya da nereye kaydedeceğini sorar).',
     );
     const bytes = statSync(await saved.path()).size;
+    // Decimal units, rounded up (ADR-030): "1,6 MB", or whole KB under 1 MB.
+    const size =
+      bytes >= 1_000_000
+        ? `${String(Math.ceil(bytes / 100_000) / 10).replace('.', ',')} MB`
+        : `${Math.ceil(bytes / 1000)} KB`;
     await expect(card(page, 0).getByTestId('export-save-space')).toHaveText(
-      `Kaydederken bilgisayarında yaklaşık ${Math.ceil(bytes / 1_048_576)} MiB daha boş yer gerekir.`,
+      `Kaydederken bilgisayarında yaklaşık ${size} daha boş yer gerekir.`,
     );
     expect(probeMp4(await saved.path()).frames).toBe(60);
 
@@ -602,8 +616,8 @@ test.describe('first-time user (UX audit 2026-09-30)', () => {
     await expect(hint.getByRole('heading', { level: 3 })).toHaveText('Nasıl kesilir? Üç adım');
     await expect(hint.getByRole('listitem')).toHaveText([
       '“Video seç” ile videonu aç; oynat ya da şeritte istediğin yere git.',
-      'Saklamak istediğin yerin başında “Başlangıcı işaretle”ye, sonunda “Bitişi işaretle”ye bas.',
-      '“Kesit ekle”ye bas: kesit bu listeye düşer. ▶ onu oynatır, “İndir” yalnızca onu kaydeder.',
+      'Saklamak istediğin yerin başında “Başlangıcı işaretle”ye bas.',
+      'Sonunda “Bitişi işaretle”ye bas: kesit hemen bu listeye düşer. ▶ onu oynatır, “İndir” yalnızca onu kaydeder.',
     ]);
     // It stands in for the empty list: the two never say the same thing twice.
     await expect(page.getByTestId('kesit-empty')).toHaveCount(0);
@@ -661,12 +675,18 @@ test.describe('first-time user (UX audit 2026-09-30)', () => {
     await page.getByTestId('mark-start').click();
     expect(await primaries()).toEqual({ start: false, end: true, add: false, download: false });
     await playheadTo(page, 5);
+    // The end adds the kesit (ADR-030): no separate "Kesit ekle" step.
     await page.getByTestId('mark-end').click();
-    expect(await primaries()).toEqual({ start: false, end: false, add: true, download: false });
-    await page.getByTestId('add-moment').click();
     await expect(page.getByTestId('kesit-card')).toHaveCount(1);
     // With a kesit, downloading is the goal; marking another is the user's choice.
     expect(await primaries()).toEqual({ start: false, end: false, add: false, download: true });
+    // "Kesit ekle" leads only for a range whose end was typed.
+    await page.getByTestId('range-start').fill('10');
+    await page.getByTestId('range-start').press('Enter');
+    expect(await primaries()).toEqual({ start: false, end: true, add: false, download: true });
+    await page.getByTestId('range-end').fill('12');
+    await page.getByTestId('range-end').press('Enter');
+    expect(await primaries()).toEqual({ start: false, end: false, add: true, download: true });
   });
 });
 
@@ -735,5 +755,364 @@ test.describe('phone width (390 px)', () => {
     await page.evaluate(() => window.scrollTo(0, 0));
     await shot(page, 'kesit-list-phone-390.png', true);
     expect(errors).toEqual([]);
+  });
+});
+
+// ----------------------------------------------------------------- ADR-030
+
+/** Clicks the strip at a second of the 24 s sample, like a user would. */
+async function clickStripAt(page: Page, seconds: number, durationS = 24) {
+  const box = await page.getByTestId('strip-content').boundingBox();
+  if (!box) throw new Error('strip not visible');
+  await page.mouse.click(box.x + (box.width * seconds) / durationS, box.y + box.height * 0.7);
+}
+
+test.describe('ADR-030: marking the end adds the kesit', () => {
+  test.beforeEach(async ({ page }) => {
+    await installSavePicker(page);
+  });
+
+  test('one press adds, one undo removes; the notice and the glow say where', async ({ page }) => {
+    const errors = await openEditor(page);
+    await openVideo(page, SAMPLE);
+    await playheadTo(page, 3);
+    await page.getByTestId('mark-start').click();
+    await playheadTo(page, 7);
+    await page.getByTestId('mark-end').click();
+
+    await expect(page.getByTestId('kesit-card')).toHaveCount(1);
+    await expect(kesitRanges(page)).toHaveText(['00:03 → 00:07']);
+    await expect(page.getByTestId('timeline-notice')).toHaveText(
+      'Kesit 1 eklendi: 00:03 → 00:07 · sağdaki listede · Geri al: Ctrl+Z',
+    );
+    // The new card glows once (not under reduced motion; a11y.spec checks that).
+    expect(await card(page, 0).evaluate((node) => getComputedStyle(node).animationName)).toBe('kesit-arrive');
+    // The marks are cleared for the next kesit; the strip shows no pending range.
+    await expect(page.getByTestId('range-start')).toHaveValue('');
+    await expect(page.getByTestId('strip-pending')).toHaveCount(0);
+
+    // One undo step removes exactly that kesit; redo brings it back.
+    await page.getByTestId('undo').click();
+    await expect(page.getByTestId('kesit-card')).toHaveCount(0);
+    await page.getByTestId('redo').click();
+    await expect(kesitRanges(page)).toHaveText(['00:03 → 00:07']);
+    await page.keyboard.press('Control+z');
+    await expect(page.getByTestId('kesit-card')).toHaveCount(0);
+    await expect(page.getByTestId('output-duration-us')).toHaveText('0');
+    // The step below it is opening the video, not a half of the kesit.
+    await expect(page.getByTestId('preview-video')).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test('the end without a start says "Önce başlangıcı işaretle"; it never starts at 0', async ({ page }) => {
+    await openEditor(page);
+    await openVideo(page, SAMPLE);
+    await playheadTo(page, 7);
+    await page.getByTestId('mark-end').click();
+    await expect(page.getByTestId('kesit-card')).toHaveCount(0);
+    await expect(page.getByTestId('range-error')).toHaveText(
+      'Önce başlangıcı işaretle. Videoda kesitin başlayacağı yere git ve “Başlangıcı işaretle”ye bas.',
+    );
+    await expect(page.getByTestId('range-error')).toHaveAttribute('role', 'alert');
+    // The key does the same.
+    await page.getByTestId('timeline-playhead').focus();
+    await page.keyboard.press('o');
+    await expect(page.getByTestId('kesit-card')).toHaveCount(0);
+    // Marking the start clears the refusal; the end then adds from there.
+    await playheadTo(page, 2);
+    await page.keyboard.press('i');
+    await expect(page.getByTestId('range-error')).toHaveCount(0);
+    await playheadTo(page, 7);
+    await page.keyboard.press('o');
+    await expect(kesitRanges(page)).toHaveText(['00:02 → 00:07']);
+  });
+
+  test('an end before the start is refused with the next step, and the start stays', async ({ page }) => {
+    await openEditor(page);
+    await openVideo(page, SAMPLE);
+    await playheadTo(page, 10);
+    await page.keyboard.press('i');
+    await playheadTo(page, 4);
+    await page.keyboard.press('o');
+    await expect(page.getByTestId('kesit-card')).toHaveCount(0);
+    await expect(page.getByTestId('range-error')).toContainText('Bitiş zamanı başlangıçtan sonra olmalı.');
+    await expect(page.getByTestId('range-error-next')).toHaveText(
+      'Bitişi düzelt ya da videoda daha ileri gidip “Bitişi işaretle”ye bas.',
+    );
+    // The start is still marked: going further and pressing O adds the kesit.
+    await expect(page.getByTestId('range-start')).toHaveValue('00:10.000');
+    await playheadTo(page, 13);
+    await page.keyboard.press('o');
+    await expect(kesitRanges(page)).toHaveText(['00:10 → 00:13']);
+  });
+
+  test('"Kesit ekle" with nothing marked adds nothing and says what to do; the whole video stays at the top', async ({
+    page,
+  }) => {
+    await openEditor(page);
+    await openVideo(page, SAMPLE);
+    await page.getByTestId('add-moment').click();
+    await expect(page.getByTestId('kesit-card')).toHaveCount(0);
+    await expect(page.getByTestId('range-error')).toHaveText(
+      'Önce başlangıcı işaretle. Videoda kesitin başlayacağı yere git ve “Başlangıcı işaretle”ye bas.',
+    );
+    // Enter (its key) too: no silent whole-video kesit.
+    await page.getByTestId('timeline-playhead').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('kesit-card')).toHaveCount(0);
+    await expect(page.getByTestId('output-duration-us')).toHaveText('0');
+    await expect(page.getByTestId('redo')).toBeDisabled();
+    // A typed end alone is not a start either.
+    await page.getByTestId('range-end').fill('9');
+    await page.getByTestId('range-end').press('Enter');
+    await page.getByTestId('add-moment').click();
+    await expect(page.getByTestId('kesit-card')).toHaveCount(0);
+    await expect(page.getByTestId('range-error')).toContainText('Önce başlangıcı işaretle.');
+    // The whole video is still one press away, at the top.
+    await expect(page.getByTestId('download-all')).toHaveText('Videoyu indir');
+    await expect(page.getByTestId('download-all')).toBeEnabled();
+    // Typed times are what "Kesit ekle" is for.
+    await page.getByTestId('range-start').fill('3');
+    await page.getByTestId('range-start').press('Enter');
+    await page.getByTestId('add-moment').click();
+    await expect(kesitRanges(page)).toHaveText(['00:03 → 00:09']);
+  });
+});
+
+test.describe('ADR-030: clicks for the three core tasks (mouse, video open)', () => {
+  // Counted as ADR-026 counts: every press, strip clicks included, plus one
+  // for "Kaydet" in the operating system's save dialog (the stand-in dialog
+  // here answers without it). Before ADR-030: 7, 17, 2.
+  test.beforeEach(async ({ page }) => {
+    await installSavePicker(page);
+  });
+
+  test('one range, saved: 6', async ({ page }) => {
+    test.setTimeout(120_000);
+    await openEditor(page);
+    await openVideo(page, SAMPLE);
+    let presses = 0;
+    await clickStripAt(page, 2);
+    presses += 1;
+    await page.getByTestId('mark-start').click();
+    presses += 1;
+    await clickStripAt(page, 6);
+    presses += 1;
+    await page.getByTestId('mark-end').click();
+    presses += 1;
+    await card(page, 0).getByTestId('kesit-download').click();
+    presses += 1;
+    await expect(card(page, 0).getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
+    expect(await pickerCalls(page)).toEqual(['sample-24s_00-02-00-06.mp4']);
+    const saveDialogKaydet = 1;
+    expect(presses + saveDialogKaydet).toBe(6);
+  });
+
+  test('three ranges, joined and saved: 14', async ({ page }) => {
+    test.setTimeout(120_000);
+    await openEditor(page);
+    await openVideo(page, SAMPLE);
+    let presses = 0;
+    for (const [from, to] of [
+      [1, 3],
+      [8, 10],
+      [15, 17],
+    ] as const) {
+      await clickStripAt(page, from);
+      await page.getByTestId('mark-start').click();
+      await clickStripAt(page, to);
+      await page.getByTestId('mark-end').click();
+      presses += 4;
+    }
+    await expect(kesitRanges(page)).toHaveText(['00:01 → 00:03', '00:08 → 00:10', '00:15 → 00:17']);
+    await page.getByTestId('download-all').click();
+    presses += 1;
+    await expect(page.getByTestId('download-saved')).toHaveText('Kaydedildi: saved-sample-24s_3-kesit.mp4', {
+      timeout: 120_000,
+    });
+    const saveDialogKaydet = 1;
+    expect(presses + saveDialogKaydet).toBe(14);
+  });
+
+  test('the whole video: 2 (the press starts the save; cancelled here to keep the run short)', async ({ page }) => {
+    await openEditor(page);
+    await openVideo(page, SAMPLE);
+    let presses = 0;
+    await page.getByTestId('download-all').click();
+    presses += 1;
+    await expect(page.getByTestId('download-running')).toBeVisible({ timeout: 30_000 });
+    expect(await pickerCalls(page)).toEqual(['sample-24s_tamami.mp4']);
+    const saveDialogKaydet = 1;
+    expect(presses + saveDialogKaydet).toBe(2);
+    await page.getByTestId('export-cancel').click();
+    await expect(page.getByTestId('export-canceled')).toBeVisible({ timeout: 60_000 });
+  });
+});
+
+test.describe('ADR-030: the phone bar (390 px, portrait video)', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+  /** The bar's and an element's rectangles overlap (the bar shown). */
+  function overlapsDock(page: Page, testId: string) {
+    return page.evaluate((id) => {
+      const dock = document.querySelector<HTMLElement>('[data-testid="kesit-dock"]');
+      const node = document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
+      if (!dock || dock.hidden || !node) return false;
+      const a = dock.getBoundingClientRect();
+      const b = node.getBoundingClientRect();
+      return b.bottom > a.top && b.top < a.bottom;
+    }, testId);
+  }
+
+  test('appears while the list is below, goes to the list, downloads like the top button', async ({ page }) => {
+    test.setTimeout(180_000);
+    await installSavePicker(page);
+    const errors = await openEditor(page);
+    await openVideo(page, timelineFixture('portrait').file);
+    const dock = page.getByTestId('kesit-dock');
+    // No kesit yet: no bar (the top "Videoyu indir" is the whole video).
+    await expect(dock).toHaveCount(0);
+
+    await playheadTo(page, 2);
+    await page.getByTestId('mark-start').click();
+    await playheadTo(page, 5);
+    await page.getByTestId('mark-end').click();
+    await expect(page.getByTestId('kesit-card')).toHaveCount(1);
+
+    // The list is below the fold: the bar says how many and offers the download.
+    await expect(dock).toBeVisible();
+    await expect(dock).toHaveAttribute('aria-label', 'Kesitler kısayolu');
+    await expect(page.getByTestId('kesit-dock-count')).toHaveText('Kesitler (1)');
+    await expect(page.getByTestId('kesit-dock-download')).toHaveText('Kesiti indir');
+    // It never covers the control that has focus (WCAG 2.4.11).
+    await expect(page.getByTestId('mark-end')).toBeFocused();
+    await expect.poll(() => overlapsDock(page, 'mark-end')).toBe(false);
+    // And it keeps its height free when the browser scrolls a control into view.
+    expect(await page.evaluate(() => document.documentElement.style.scrollPaddingBottom)).toMatch(/^\d+px$/);
+
+    // "Kesitler (1)": to the list; the bar steps aside; the keyboard is on the heading.
+    await page.getByTestId('kesit-dock-count').click();
+    await expect(dock).toBeHidden();
+    await expect(page.locator('#kesits-title')).toBeFocused();
+    await expect(page.locator('#kesits-title')).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.style.scrollPaddingBottom)).toBe('');
+
+    // Back up, a second kesit: "Hepsini birleştirip indir".
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(dock).toBeVisible();
+    await playheadTo(page, 8);
+    await page.getByTestId('mark-start').click();
+    await playheadTo(page, 10);
+    await page.getByTestId('mark-end').click();
+    await expect(page.getByTestId('kesit-dock-count')).toHaveText('Kesitler (2)');
+    await expect(page.getByTestId('kesit-dock-download')).toHaveText('Hepsini birleştirip indir');
+
+    // The download half does what the top button does: the joined file.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(dock).toBeVisible();
+    await page.getByTestId('kesit-dock-download').click();
+    await expect(page.getByTestId('download-saved')).toHaveText('Kaydedildi: saved-portrait-110s_2-kesit.mp4', {
+      timeout: 120_000,
+    });
+    expect(await pickerCalls(page)).toEqual(['portrait-110s_2-kesit.mp4']);
+    // …and brings the list with its progress and result into view.
+    await expect(dock).toBeHidden();
+    await expect(page.getByTestId('download-saved')).toBeInViewport();
+    expect(errors).toEqual([]);
+  });
+
+  test('no focus stop is hidden under it, tabbing down the page', async ({ page }) => {
+    test.setTimeout(120_000);
+    await openEditor(page);
+    await openVideo(page, timelineFixture('portrait').file);
+    await addKesit(page, '2', '5');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(page.getByTestId('kesit-dock')).toBeVisible();
+    await page.locator('body').focus();
+    const covered: string[] = [];
+    let sawDock = 0;
+    for (let press = 0; press < 40; press += 1) {
+      await page.keyboard.press('Tab');
+      const stop = await page.evaluate(() => {
+        const active = document.activeElement as HTMLElement | null;
+        const dock = document.querySelector<HTMLElement>('[data-testid="kesit-dock"]');
+        if (!active || active === document.body) return null;
+        const name = active.getAttribute('data-testid') ?? active.getAttribute('aria-label') ?? active.tagName;
+        if (!dock || dock.hidden || dock.contains(active)) return { name, covered: false, dockShown: Boolean(dock && !dock.hidden) };
+        const a = dock.getBoundingClientRect();
+        const b = active.getBoundingClientRect();
+        return { name, covered: b.bottom > a.top && b.top < a.bottom, dockShown: true };
+      });
+      if (!stop) continue;
+      if (stop.dockShown) sawDock += 1;
+      if (stop.covered) covered.push(stop.name);
+    }
+    // The walk really ran with the bar on screen for the controls above the list.
+    expect(sawDock).toBeGreaterThan(5);
+    expect(covered).toEqual([]);
+  });
+
+  test('320 px: it wraps instead of scrolling sideways; safe-area insets in its padding', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await openEditor(page);
+    await openVideo(page, timelineFixture('portrait').file);
+    await addKesit(page, '2', '5');
+    await addKesit(page, '8', '10');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const dock = page.getByTestId('kesit-dock');
+    await expect(dock).toBeVisible();
+    await noHorizontalOverflow(page);
+    for (const testId of ['kesit-dock-count', 'kesit-dock-download']) {
+      const box = await page.getByTestId(testId).boundingBox();
+      expect(box).not.toBeNull();
+      expect((box?.x ?? -1) >= 0 && (box?.x ?? 0) + (box?.width ?? 0) <= 320).toBe(true);
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    }
+    const padding = await page.evaluate(() => {
+      for (const sheet of Array.from(document.styleSheets)) {
+        let rules: CSSRuleList;
+        try {
+          rules = sheet.cssRules;
+        } catch {
+          continue;
+        }
+        for (const rule of Array.from(rules)) {
+          if (rule instanceof CSSStyleRule && rule.selectorText === '.kesit-dock') return rule.style.padding;
+        }
+      }
+      return '';
+    });
+    expect(padding).toContain('safe-area-inset-bottom');
+    expect(padding).toContain('safe-area-inset-left');
+    expect(padding).toContain('safe-area-inset-right');
+  });
+
+  test('with less motion the list is there at once, and nothing on the bar moves', async ({ browser }) => {
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      hasTouch: true,
+      reducedMotion: 'reduce',
+      baseURL: test.info().project.use.baseURL,
+    });
+    const page = await context.newPage();
+    await openEditor(page);
+    await openVideo(page, timelineFixture('portrait').file);
+    await addKesit(page, '2', '5');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(page.getByTestId('kesit-dock')).toBeVisible();
+    const motion = await page.getByTestId('kesit-dock').evaluate((node) => {
+      const style = getComputedStyle(node);
+      return { animation: style.animationName, transition: style.transitionDuration };
+    });
+    expect(motion).toEqual({ animation: 'none', transition: '0s' });
+    await page.getByTestId('kesit-dock-count').click();
+    // No smooth scroll: the heading is in view straight away.
+    const inView = await page.evaluate(() => {
+      const heading = document.getElementById('kesits-title');
+      const rect = heading?.getBoundingClientRect();
+      return rect ? rect.top >= 0 && rect.bottom <= window.innerHeight : false;
+    });
+    expect(inView).toBe(true);
+    await context.close();
   });
 });

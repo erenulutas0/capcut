@@ -126,9 +126,10 @@ test.describe('storage estimate: refused up front when the file will not fit', (
     expect(long.end).toBe('failed');
     expect(long.sawEncoding).toBe(false);
     await expect(page.getByTestId('export-failed')).toContainText('Bu uzunlukta bir video için boş disk alanı yetmiyor.');
-    // Both numbers, so the user knows how much to free (ADR-023).
+    // Both numbers, so the user knows how much to free (ADR-023), in decimal
+    // MB (ADR-030): 40 MiB free is 41 943 040 bytes, "41,9 MB" rounded down.
     await expect(page.getByTestId('export-failed-storage')).toHaveText(
-      /^Bu video için gereken boş alan: \d+ MiB\. Tarayıcının bildirdiği boş alan: 40 MiB\.$/,
+      /^Bu video için gereken boş alan: \d+(,\d)? MB\. Tarayıcının bildirdiği boş alan: 41,9 MB\.$/,
     );
     expect(await exportFiles(page)).toEqual([]);
 
@@ -167,7 +168,7 @@ test.describe('real quota: the space is claimed before encoding (ADR-023)', () =
     expect(run.end).toBe('failed');
     expect(run.sawEncoding).toBe(false);
     await expect(page.getByTestId('export-failed-storage')).toContainText(
-      /Bu video için gereken boş alan: \d+ MiB\. Tarayıcı bu kadar yeri diskte ayıramadı/,
+      /Bu video için gereken boş alan: \d+(,\d)? MB\. Tarayıcı bu kadar yeri diskte ayıramadı/,
     );
     await expect(page.getByTestId('export-download')).toHaveCount(0);
     expect(await exportFiles(page)).toEqual([]);
@@ -188,7 +189,7 @@ test.describe('real quota: the space is claimed before encoding (ADR-023)', () =
     expect(run.end).toBe('failed');
     expect(run.sawEncoding).toBe(false);
     await expect(page.getByTestId('export-failed-storage')).toHaveText(
-      /^Seçtiğin yerde bu video için yaklaşık \d+ MiB boş yer gerekiyor; o diskte bu kadar yer yok\./,
+      /^Seçtiğin yerde bu video için yaklaşık \d+(,\d)? MB boş yer gerekiyor; o diskte bu kadar yer yok\./,
     );
     // The empty file the dialog created is removed again.
     await expect.poll(() => opfsFiles(page)).toEqual({});
