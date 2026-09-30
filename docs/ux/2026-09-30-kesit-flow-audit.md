@@ -165,6 +165,16 @@ akışı değiştirmeyi gerektirir (Ö1: 7 → 6, 17 → 14).
   `privacy.spec.ts`, `a11y.spec.ts`, `captions.spec.ts`, `output-limits.spec.ts`.
 - Şema, dışa aktarma/worker, ürün modeli: değişmedi. Test kimlikleri (`data-testid`) değişmedi.
 
+## Test edilen (bu dalda, 2026-09-30, ölçüm kilidi altında)
+
+- `npx tsc --noEmit -p .` temiz, `npx eslint .` temiz, `npm run build` başarılı.
+- `npx vitest run`: 37 dosya, **477 test geçti**.
+- `E2E_PORT=3201 npx playwright test`: **140 geçti, 2 atlandı** (isteğe bağlı sessizlik ekran
+  görüntüleri), hata yok, 3,8 dk. a11y paketi içinde (28 test): axe 0 ihlal masaüstü/tablet/telefon,
+  yalnız klavyeyle akış, odak tuzağı ve dönüşü, 320 px yeniden akış, metin aralığı, azaltılmış hareket.
+- Destek matrisi (`node scripts/run-matrix.mjs --browser=chromium`, işaret satırının biçimi değiştiği
+  için): **Chromium 22 PASS**, 0 FAIL.
+
 ## Denenmeyenler
 
 Gerçek kullanıcı; gerçek dokunmatik cihaz (dokunma Chromium öykünmesiyle); gerçek ekran okuyucu;
