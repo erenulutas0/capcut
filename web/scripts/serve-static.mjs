@@ -4,11 +4,12 @@
  * Pages smoke test so a broken base path is caught before it is published.
  * No dependencies; not a production server.
  *
- *   node scripts/serve-static.mjs --dir=out --base=/capcut --port=3104
+ *   node scripts/serve-static.mjs --dir=out --base=/capcut --port=3104 [--gzip]
  */
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve } from 'node:path';
+import { createGzip } from 'node:zlib';
 
 const arg = (name, fallback) => {
   const found = process.argv.slice(2).find((a) => a.startsWith(`--${name}=`));
@@ -18,6 +19,7 @@ const arg = (name, fallback) => {
 const root = resolve(arg('dir', 'out'));
 const base = arg('base', '/capcut').replace(/\/+$/, '');
 const port = Number(arg('port', '3104'));
+const gzip = process.argv.includes('--gzip');
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -61,7 +63,15 @@ createServer((request, response) => {
     else response.end('not found');
     return;
   }
-  response.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' });
+  const type = TYPES[extname(file)] ?? 'application/octet-stream';
+  // --gzip: compress text like GitHub Pages does, for load measurements
+  // (scripts/measure-load.mjs, Lighthouse). Off by default.
+  if (gzip && /^(text\/|application\/json)/.test(type) && /\bgzip\b/.test(request.headers['accept-encoding'] ?? '')) {
+    response.writeHead(200, { 'Content-Type': type, 'Content-Encoding': 'gzip', Vary: 'Accept-Encoding' });
+    createReadStream(file).pipe(createGzip()).pipe(response);
+    return;
+  }
+  response.writeHead(200, { 'Content-Type': type });
   createReadStream(file).pipe(response);
 }).listen(port, '127.0.0.1', () => {
   console.log(`serving ${root} at http://127.0.0.1:${port}${base}/`);

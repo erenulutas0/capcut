@@ -178,6 +178,29 @@ barındırıcı değişikliği kurucu kararıdır.
 - CSP başlıkta verilirse worker'lara da kendi yanıtlarıyla uygulanır (URL worker boşluğu kapanır)
   ve hash'ler yine derleme sonrası hesaplanır (aynı `scripts/lib/csp.mjs`).
 
-## 6. Sonuçlar
+## 6. Sonuçlar (2026-09-30, Windows 11, bu makine)
 
-Bu bölüm çalıştırılan komutların çıktısıdır; sayılar görev raporunda da var.
+Çalıştırılan komutlar ve çıktıları (`web/` içinde):
+
+| Komut | Sonuç |
+|---|---|
+| `npx playwright test tests/e2e/csp.spec.ts` (Playwright Chromium 153.0.8010.12) | 3 passed |
+| aynı, `E2E_CHANNEL=chrome` (Chrome 154.0.8037.58) | 3 passed — tam oturumda 0 ihlal |
+| aynı, `E2E_CHANNEL=msedge` (Edge 154.0.4258.37) | 3 passed — tam oturumda 0 ihlal |
+| `npx playwright test` (tam e2e, `E2E_PORT=3221`) | 140 passed, 2 skipped (isteğe bağlı ekran görüntüsü testleri), 0 failed |
+| `npx playwright test -c playwright.pages.config.ts` (CI ortam değişkenleriyle statik çıktı) | 2 passed |
+| `node scripts/run-matrix.mjs --browser=chromium` | 22 PASS, 0 FAIL |
+| `node scripts/run-matrix.mjs --browser=chrome` | 22 PASS, 0 FAIL |
+| `npx vitest run` | 38 dosya, 484 test passed |
+| `npx tsc --noEmit -p .`, `npx eslint .` | hatasız |
+| `npm audit --omit=dev`, `npm audit` | 0 açık |
+
+Politikanın bulduğu tek sorun bir testteydi: erişilebilirlik testinin WCAG 1.4.12 metin aralığı
+denetimi sayfaya `<style>` enjekte ediyordu (`page.addStyleTag`) ve CSP bunu engelledi (ilk tam
+e2e: 6 başarısız). Test artık aynı kuralları, bir kullanıcı stili/eklentisi gibi, oluşturulmuş
+stil sayfasıyla (`adoptedStyleSheets`) uyguluyor; CSP bunu kapsamaz. Kullanıcının kendi
+eklentileri ve tarayıcı stil ayarları CSP'den etkilenmez; sayfaya `<style>` ekleyen bir yer imi
+betiği (bookmarklet) ise tarayıcıya göre engellenebilir (denenmedi).
+
+Firefox ve Safari'de politika bu çalışmada denenmedi (Firefox dışa aktarmayı zaten açıkça
+reddediyor; Safari için Mac yok, K04).
