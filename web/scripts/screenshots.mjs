@@ -45,12 +45,11 @@ async function prepare(page) {
   }
   await page.getByTestId('kesit-download').first().click();
   await page.getByTestId('download-saved').waitFor({ timeout: 120_000 });
-  // A range being marked: I at 15.5 s, O at 17 s.
+  // A range being marked: I at 15.5 s (since ADR-030 "Bitişi işaretle"
+  // would add it at once, so only the start is marked).
   await seek(page, 15.5);
   await page.getByTestId('mark-start').click();
   await seek(page, 17);
-  await page.getByTestId('mark-end').click();
-  await seek(page, 11);
   await page.waitForTimeout(1500);
 }
 

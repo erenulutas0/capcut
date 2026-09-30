@@ -29,7 +29,11 @@ export async function openVideo(page: Page, file: string | Parameters<Page['setI
   await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 60_000 });
 }
 
-/** Types Başlangıç and Bitiş and presses "Kesit ekle". */
+/**
+ * Types Başlangıç and Bitiş and presses "Kesit ekle". Typed times still take
+ * this step; "Bitişi işaretle" at the playhead adds the kesit by itself
+ * (ADR-030; kesit.spec.ts covers that flow).
+ */
 export async function addKesit(page: Page, start: string, end: string) {
   await page.getByTestId('range-start').fill(start);
   await page.getByTestId('range-end').fill(end);

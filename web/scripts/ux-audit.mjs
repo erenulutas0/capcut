@@ -18,7 +18,7 @@
  * the page, plus one for "Kaydet" in the operating system's save dialog,
  * which the stand-in dialog here does not need).
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
@@ -265,6 +265,36 @@ async function walk(browser, size) {
     await other.screenshot({ path: join(outDir, file), fullPage: size.name === 'phone' });
     steps.push({ step: '15-no-save-dialog', file, ...(await measure(other)) });
     await fallback.close();
+  }
+  // 13. Phone, portrait video (the usual phone case): the preview is tall and
+  // the list is below the fold, where the kesit bar (ADR-030) shows.
+  const portrait = join(root, 'tests', 'media', 'timeline', 'portrait-110s.mp4');
+  if (size.name === 'phone' && existsSync(portrait)) {
+    const tall = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      deviceScaleFactor: 1,
+      hasTouch: true,
+      isMobile: true,
+    });
+    const other = await tall.newPage();
+    await installSavePicker(other, { plainNames: true });
+    await other.goto(`${baseURL}/editor`);
+    await other.getByTestId('video-input').setInputFiles(portrait);
+    await other.getByTestId('preview-video').waitFor();
+    for (const [from, to] of [
+      ['00:05', '00:12'],
+      ['00:30', '00:41'],
+    ]) {
+      await other.getByTestId('range-start').fill(from);
+      await other.getByTestId('range-end').fill(to);
+      await other.getByTestId('add-moment').tap();
+    }
+    await other.evaluate(() => window.scrollTo(0, 0));
+    await other.waitForTimeout(400);
+    const file = `${prefix}-${size.name}-16-portrait-kesit-bar.png`;
+    await other.screenshot({ path: join(outDir, file) });
+    steps.push({ step: '16-portrait-kesit-bar', file, ...(await measure(other)) });
+    await tall.close();
   }
   steps.push({ step: 'clicks', ...clicks });
   return steps;

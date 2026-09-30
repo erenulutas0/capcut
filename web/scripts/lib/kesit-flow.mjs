@@ -37,7 +37,11 @@ export async function removeSavePicker(page) {
   });
 }
 
-/** Types Başlangıç and Bitiş and presses "Kesit ekle". */
+/**
+ * Types Başlangıç and Bitiş and presses "Kesit ekle". Typed times still take
+ * this step; "Bitişi işaretle" at the playhead adds the kesit by itself
+ * (ADR-030).
+ */
 export async function addKesit(page, start, end) {
   await page.getByTestId('range-start').fill(start);
   await page.getByTestId('range-end').fill(end);

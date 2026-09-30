@@ -76,7 +76,10 @@ export function KesitDock({ t, count, downloadLabel, downloadDisabled, onDownloa
     const uncover = (target: Element | null) => {
       if (!(target instanceof HTMLElement) || bar.contains(target) || target === document.body) return;
       const barTop = bar.getBoundingClientRect().top;
-      if (target.getBoundingClientRect().bottom > barTop) {
+      const rect = target.getBoundingClientRect();
+      // Only a control on screen and behind the bar: one below the screen is
+      // not hidden by it, and scrolling to it would take the page from the user.
+      if (rect.bottom > barTop && rect.top < window.innerHeight) {
         target.scrollIntoView({ block: 'nearest', behavior: prefersLessMotion() ? 'auto' : 'smooth' });
       }
     };
