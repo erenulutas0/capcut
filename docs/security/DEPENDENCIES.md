@@ -12,7 +12,7 @@ yazı tipi veya stil yüklenmez (CSP `default-src 'self'`, e2e "nothing leaves t
 
 | Paket | Sürüm | Lisans | Nerede çalışır | Not |
 |---|---|---|---|---|
-| `next` (istemci çalışma zamanı, yönlendirici) | 16.3.5 | MIT | Her sayfa | |
+| `next` (istemci çalışma zamanı, yönlendirici) | 16.3.8 | MIT | Her sayfa | |
 | `react` | 19.3.0 | MIT | Her sayfa | |
 | `react-dom` | 19.3.0 | MIT | Her sayfa | |
 | `scheduler` (react-dom bağımlılığı) | 0.28.0 | MIT | Her sayfa | |
@@ -29,8 +29,8 @@ Arayüz yazı tipi yok: arayüz sistem yazı tiplerini kullanır (`--font-ui`, `
 
 | Paket | Sürüm | Lisans |
 |---|---|---|
-| `@next/env` | 16.3.5 | MIT |
-| `@next/swc-win32-x64-msvc` (platforma göre) | 16.3.5 | MIT |
+| `@next/env` | 16.3.8 | MIT |
+| `@next/swc-win32-x64-msvc` (platforma göre) | 16.3.8 | MIT |
 | `postcss`, `nanoid`, `picocolors`, `source-map-js` | 8.5.23, 3.3.19, 1.1.1, 1.2.1 | MIT, MIT, ISC, BSD-3-Clause |
 | `styled-jsx`, `client-only` | 5.1.6, 0.0.1 | MIT |
 | `caniuse-lite`, `baseline-browser-mapping` | 1.0.30001810, 2.11.25 | CC-BY-4.0, Apache-2.0 |
@@ -40,7 +40,7 @@ Arayüz yazı tipi yok: arayüz sistem yazı tiplerini kullanır (`--font-ui`, `
 | `@types/dom-webcodecs`, `@types/dom-mediacapture-transform` (mediabunny tipleri) | 0.1.13, 0.1.12 | MIT |
 
 Geliştirme bağımlılıkları (test, lint, tip): `@playwright/test` 1.63.0 (Apache-2.0),
-`@axe-core/playwright` 4.13.0 (MPL-2.0), `eslint` 9.39.1 (MIT), `eslint-config-next` 16.3.5 (MIT),
+`@axe-core/playwright` 4.13.0 (MPL-2.0), `eslint` 9.39.1 (MIT), `eslint-config-next` 16.3.8 (MIT),
 `typescript` 5.9.3 (Apache-2.0), `vitest` 4.1.11 (MIT), `picomatch` 4.0.7 (MIT), `@types/*` (MIT).
 Hiçbiri yayınlanan siteye girmez.
 

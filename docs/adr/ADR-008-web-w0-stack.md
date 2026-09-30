@@ -112,3 +112,6 @@ Her karar tek bir modülle sınırlı: yığın `web/package.json`, katman sın�
 klasör yapısı, çerçeveleme `setFraming`, panel modu `useLayoutMode`. W1'de
 gerçek motor gelince `src/adapters/w0MediaEngine.ts` yerini alır; `domain`
 ve `application` değişmez.
+
+> Güncelleme 2026-09-30: `next` ve `eslint-config-next` 16.3.8'e yükseltildi (güvenlik uyarısı
+> GHSA-vcvr-r3jv-pc5j; ayrıntı `docs/security/2026-09-30-static-site-hardening.md`).

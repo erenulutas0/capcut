@@ -204,3 +204,15 @@ betiği (bookmarklet) ise tarayıcıya göre engellenebilir (denenmedi).
 
 Firefox ve Safari'de politika bu çalışmada denenmedi (Firefox dışa aktarmayı zaten açıkça
 reddediyor; Safari için Mac yok, K04).
+
+## Güncelleme 2026-09-30: Next.js 16.3.5 → 16.3.8
+
+CI'a eklenen `npm audit --omit=dev --audit-level=high` kapısı aynı gün yeni yayımlanan
+kritik bir uyarıyı yakaladı: GHSA-vcvr-r3jv-pc5j, "Next.js: Remote Code Execution in
+next/og ImageResponse" (16.2.0–16.3.5). Uygulama `next/og` kullanmıyor ve GitHub Pages'te
+sunucu kodu çalışmıyor (statik çıktı), yani yayındaki site bu yoldan etkilenmiyordu; yine
+de yayın kapı geçene kadar durdu. `next` ve `eslint-config-next` 16.3.8'e (yama sürümü,
+tam sabit) yükseltildi; `npm audit` 0 açık. Yükseltmeden sonra tam doğrulama: tsc, eslint,
+vitest 509/509, derleme (CSP hash'leri yeniden hesaplandı), e2e 155 geçti / 2 atlandı
+(CSP testi dahil), matris Chromium/Chrome/Edge 22/22, statik çıktı ve Pages duman testi 2/2.
+Satır içi betik sayısı (2) ve CSP biçimi değişmedi.
