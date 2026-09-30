@@ -122,6 +122,122 @@ test('landing → editor → kesitler, caption, silence, download, report, priva
   expect(csp.violations, csp.violations.join('\n')).toEqual([]);
 });
 
+/**
+ * ADR-031 under the sub-path: the manifest and its icons, the service worker
+ * scoped to /capcut/ with only /capcut/ app files in its cache, and the site
+ * opening again with the network off — landing, editor (with and without
+ * the trailing slash GitHub Pages redirects), privacy — and a kesit
+ * downloading offline through the worker scripts served from the cache.
+ */
+test('installable and offline under /capcut/: manifest, service worker, offline reload and download', async ({
+  page,
+  context,
+  request,
+}) => {
+  test.setTimeout(240_000);
+  const seen = watchRequests(page);
+  await installSavePicker(page);
+  await page.goto('./');
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/capcut/manifest.webmanifest');
+
+  const response = await request.get('/capcut/manifest.webmanifest');
+  expect(response.status()).toBe(200);
+  const manifest = (await response.json()) as {
+    id: string;
+    start_url: string;
+    scope: string;
+    display: string;
+    name: string;
+    icons: Array<{ src: string; purpose: string }>;
+  };
+  expect(manifest).toMatchObject({
+    id: '/capcut/',
+    start_url: '/capcut/editor/',
+    scope: '/capcut/',
+    display: 'standalone',
+    name: 'Clip',
+  });
+  expect(manifest.icons.map((icon) => icon.src).sort()).toEqual([
+    '/capcut/icons/icon-192.png',
+    '/capcut/icons/icon-512.png',
+    '/capcut/icons/maskable-512.png',
+  ]);
+  for (const icon of manifest.icons) expect((await request.get(icon.src)).status(), icon.src).toBe(200);
+
+  // The worker: registered for /capcut/ only, its cache all /capcut/ app files.
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  const registration = await page.evaluate(async () => {
+    const found = await navigator.serviceWorker.getRegistration();
+    return { scope: found?.scope ?? '', script: found?.active?.scriptURL ?? '' };
+  });
+  expect(new URL(registration.scope).pathname).toBe('/capcut/');
+  expect(new URL(registration.script).pathname).toBe('/capcut/sw.js');
+  // Chrome's own installability check (what Lighthouse's old PWA audit asked).
+  const cdp = await context.newCDPSession(page);
+  const installability = (await cdp.send('Page.getInstallabilityErrors')) as {
+    installabilityErrors: Array<{ errorId: string }>;
+  };
+  expect(installability.installabilityErrors.map((error) => error.errorId)).toEqual([]);
+  const manifestState = (await cdp.send('Page.getAppManifest')) as { errors: Array<{ message: string }> };
+  expect(manifestState.errors.map((error) => error.message)).toEqual([]);
+  await cdp.detach();
+  const cached = await page.evaluate(async () => {
+    const out: Record<string, string[]> = {};
+    for (const name of await caches.keys()) {
+      out[name] = (await (await caches.open(name)).keys()).map((entry) => new URL(entry.url).pathname);
+    }
+    return out;
+  });
+  const names = Object.keys(cached);
+  expect(names).toHaveLength(1);
+  expect(names[0]).toMatch(/^clip-app-[0-9a-f]{16}$/);
+  const paths = cached[names[0] ?? ''] ?? [];
+  for (const stored of ['/capcut/', '/capcut/editor/', '/capcut/gizlilik/', '/capcut/gizlilik/en/']) {
+    expect(paths).toContain(stored);
+  }
+  const allowed = [
+    /^\/capcut\/((editor|gizlilik|gizlilik\/en)\/)?$/,
+    /^\/capcut\/_next\/static\/.+\.(js|css|png|svg)$/,
+    /^\/capcut\/fonts\/caption\/inter-latin(-ext)?-700-normal\.woff2$/,
+    /^\/capcut\/icons\/(icon-192|icon-512|maskable-512)\.png$/,
+    /^\/capcut\/(icon\.svg|apple-icon\.png|manifest\.webmanifest)$/,
+  ];
+  expect(paths.filter((path) => !allowed.some((pattern) => pattern.test(path)))).toEqual([]);
+
+  // No network: the stored copy opens every page, even the slash-less address.
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await page.goto('./editor');
+  await expect(page.getByTestId('download-all')).toBeVisible();
+  await page.goto('./gizlilik/');
+  await expect(page.getByTestId('privacy-draft')).toBeVisible();
+  await page.goto('./editor/');
+  await expect(page.getByTestId('download-all')).toBeVisible();
+
+  // And the export worker comes from the cache: a kesit downloads offline.
+  await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
+  await expect(page.getByTestId('preview-video')).toBeVisible();
+  await addKesit(page, '2', '4');
+  await page.getByTestId('kesit-download').click();
+  await expect(page.getByTestId('download-saved')).toHaveText('Kaydedildi: saved-sample-24s_00-02-00-04.mp4', {
+    timeout: 120_000,
+  });
+  const after = await page.evaluate(async () => {
+    const out: string[] = [];
+    for (const name of await caches.keys()) {
+      for (const entry of await (await caches.open(name)).keys()) out.push(new URL(entry.url).pathname);
+    }
+    return out.sort();
+  });
+  expect(after).toEqual([...paths].sort());
+  await context.setOffline(false);
+  expect(seen.failures).toEqual([]);
+  expect(seen.outside).toEqual([]);
+});
+
 test('the export publishes compiled files only: no source maps, no TypeScript sources', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir).flatMap((name) => {

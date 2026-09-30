@@ -12,6 +12,17 @@
 **Ölçüm araçları:** `phone-run.mjs` (`--profile`, `--media`, `--desktop`, yerel derleme için `adb reverse`, Samsung kayıtlarının farklı aralıkları H–M, ses kayması ölçümü, adb yeniden başlarsa yeniden bağlanma, tarayıcı arka plandayken bekleme); `phone-cleanup.mjs`, `phone-peek.mjs`. Destek matrisine elle yazılmış "Gerçek telefon" bölümü.
 
 Mevcut kullanıcı haklarına etkisi: yok. Sınırlar, fiyatlar ve şema değişmedi.
+## Telefonda paylaş, uygulama olarak yükle, internetsiz aç — 30 Eylül 2026 (ADR-031; politika ve şema değişmedi)
+
+**Eklenen:** İndirme bitince "Kaydet"in (ya da "Kaydedildi"nin) yanında **"Paylaş"**: video sistemin paylaşma menüsüne verilir (WhatsApp, Instagram, Drive…). Yalnızca tarayıcı dosya paylaşabiliyorsa görünür; menüyü kapatmak sessiz, ret açık bir cümle. Chromium tek seferde en fazla 50 MiB paylaşır (ölçüldü: 50 MiB geçer, 1 bayt fazlası reddedilir); daha büyük videoda düğme yerine "önce kaydet, sonra Dosyalar ya da galeriden paylaş" yazar.
+
+**Değişen:** Telefon düzeninde ve dokunmatik ekranda "Bilgisayara kaydet" yerine "Kaydet"; hazır/boş yer cümleleri "cihazında" der. "Bilgisayarından çıkmaz" cümleleri her yerde "cihazından çıkmaz".
+
+**Eklenen:** Site uygulama olarak yüklenebilir: manifest (ad "Clip", koyu tema, editörden başlar), logodan simgeler (maskelenebilir dahil), ⋯ menüsünde "Uygulama olarak yükle" (tarayıcı sunduysa), iPhone/iPad Safari'de "Paylaş → Ana Ekrana Ekle" ipucu.
+
+**Eklenen:** İnternetsiz açılış: ilk ziyaretten sonra bir service worker uygulamanın kendi dosyalarını (~1,9 MB; sayfalar, kod, altyazı yazı tipi, simgeler) saklar; tanıtım, editör ve gizlilik sayfası internetsiz açılır, yerel videodan kesit indirilebilir. Medya ve dışa aktarılan dosya önbelleğe girmez. Yeni sürüm hazır olunca "Yeni sürüm hazır — Yenile" notu; sayfa kendiliğinden yenilenmez, indirme sürerken "Yenile" kapalı. Gizlilik sayfası ve veri envanteri "Çevrimdışı kopya"yı ve paylaşmayı anlatır; CSP değişmedi.
+
+Mevcut kullanıcı haklarına etkisi: yok. Sınırlar, fiyatlar ve şema değişmedi; eski projeler aynen açılır.
 
 ## Kesit akışı v2 — 30 Eylül 2026 (ADR-030; politika ve şema değişmedi)
 

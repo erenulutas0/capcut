@@ -145,9 +145,16 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 - Gerçek ilerleme yüzdesi (kodlanan kare / toplam kare), iptal, hata durumları.
 - Üretilen dosya yeniden açılıp ölçülür; arayüzdeki süre/çözünürlük/codec
   değerleri o ölçümden gelir.
+- **Paylaş:** biten video "Paylaş" ile sistemin paylaşma menüsüne verilir
+  (tarayıcı dosya paylaşabiliyorsa; Chromium en fazla 50 MiB). Telefonda
+  "Bilgisayara kaydet" yerine "Kaydet" ([ADR-031](docs/adr/ADR-031-phone-share-install-offline.md)).
+- **Uygulama olarak yükle ve internetsiz aç:** manifest, ⋯ menüsünde "Uygulama
+  olarak yükle" (iPhone Safari'de "Ana Ekrana Ekle" ipucu); ilk ziyaretten
+  sonra service worker uygulamanın kendi dosyalarını saklar, site internetsiz
+  açılır ve yerel videodan kesit indirilebilir (ADR-031).
 - **Çıktı diske akar:** kaydetme penceresi olmayan tarayıcıda dosya belleğe
   değil tarayıcının özel geçici diskine (OPFS) yazılır, sonra "Bilgisayara
-  kaydet" ile alınır; bellek kullanımı çıktı uzunluğundan bağımsız kalır. Olmazsa
+  kaydet" / "Kaydet" ile alınır; bellek kullanımı çıktı uzunluğundan bağımsız kalır. Olmazsa
   bellek yoluna döner ve bunu "Yazıldığı yer" satırında söyler. Geçici dosya
   mesaj kapanınca silinir.
 
@@ -185,7 +192,8 @@ Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
 [ADR-020 (60 dakika çıktı ve ölçümü)](docs/adr/ADR-020-output-limit-60min.md),
 [ADR-021 (120 dakika girdi, çıktı sınırı indirme kapısı)](docs/adr/ADR-021-input-limit-120min.md),
 [ADR-025 (4 GiB toplam kaynak boyutu ve ölçümü)](docs/adr/ADR-025-source-bytes-4gib.md),
-[ADR-026 (kesit listesi, kaydetme penceresiyle doğrudan dosyaya indirme)](docs/adr/ADR-026-kesit-list.md).
+[ADR-026 (kesit listesi, kaydetme penceresiyle doğrudan dosyaya indirme)](docs/adr/ADR-026-kesit-list.md),
+[ADR-031 (telefonda paylaş, uygulama olarak yükle, internetsiz aç)](docs/adr/ADR-031-phone-share-install-offline.md).
 
 ## Sıradaki tek görev
 

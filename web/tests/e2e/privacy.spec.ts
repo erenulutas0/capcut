@@ -138,6 +138,9 @@ test.describe('privacy page', () => {
     await expect(page.getByTestId('stored-temp')).toContainText('6 saatten eski');
     // The one localStorage value (the first-run hint) is named, with its key.
     await expect(page.getByTestId('stored-hint')).toContainText('“clip.firstRunHint.dismissed”');
+    // The offline copy (ADR-031): Cache Storage with app files only, and the service worker.
+    await expect(page.getByTestId('stored-offline')).toContainText('“clip-app-”');
+    await expect(page.getByTestId('stored-offline')).toContainText('service worker');
     await expect(
       page.getByText('Çerez ve sessionStorage kullanılmaz; localStorage’da yalnızca yukarıdaki ipucu bilgisi durur.'),
     ).toBeVisible();
@@ -545,6 +548,12 @@ test.describe('nothing leaves the machine', () => {
       /^\/fonts\/caption\/inter-latin(-ext)?-700-normal\.woff2$/,
       /^\/favicon\.ico$/,
       /^\/icon\.svg$/,
+      // Installable app and offline copy (ADR-031): the manifest, its icons,
+      // the service worker script (its own requests are the list above).
+      /^\/manifest\.webmanifest$/,
+      /^\/icons\/(icon-192|icon-512|maskable-512)\.png$/,
+      /^\/apple-icon\.png$/,
+      /^\/sw\.js$/,
     ];
     // PRIVACY_LIST_REQUESTS=1 prints what was fetched, to keep the inventory's list current.
     if (process.env.PRIVACY_LIST_REQUESTS) {
@@ -565,5 +574,23 @@ test.describe('nothing leaves the machine', () => {
       session: window.sessionStorage.length,
     }));
     expect(webStorage).toEqual({ cookie: '', local: 0, session: 0 });
+
+    // Cache Storage holds the offline copy of app files, never media or
+    // the exported file (ADR-031): every stored address is an allowed app path.
+    const cached = await page.evaluate(async () => {
+      const out: string[] = [];
+      for (const name of await caches.keys()) {
+        for (const request of await (await caches.open(name)).keys()) out.push(`${name} ${request.url}`);
+      }
+      return out;
+    });
+    const strayCache = cached.filter((entry) => {
+      const [name = '', url = ''] = entry.split(' ');
+      if (!name.startsWith('clip-app-') || !url.startsWith(`${ownOrigin}/`)) return true;
+      const path = new URL(url).pathname;
+      return !allowed.some((pattern) => pattern.test(path));
+    });
+    expect(strayCache).toEqual([]);
+    expect(cached.join('\n')).not.toMatch(/\.mp4|\.json|\.srt|blob:/);
   });
 });

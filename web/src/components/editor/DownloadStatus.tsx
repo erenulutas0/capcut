@@ -5,6 +5,7 @@ import { environmentPasses } from '@/adapters/exportCapability';
 import type { DownloadKind } from '@/domain/kesit';
 import { formatStorageBytes } from '@/domain/outputStorage';
 import { formatBytes } from '@/domain/policy';
+import { CHROMIUM_SHARE_MAX_BYTES } from '@/domain/share';
 import { formatTimecode } from '@/domain/time';
 import type { MessageKey } from '@/i18n/messages';
 import { overLimitText } from './outputLimitText';
@@ -20,17 +21,71 @@ interface Props {
   onCancel: () => void;
   onDismiss: () => void;
   onReportProblem: () => void;
+  /** "Paylaş": must open the share sheet synchronously (useDownloads.share). */
+  onShare: () => void;
+  /** A phone or tablet: "Kaydet", not "Bilgisayara kaydet" (ADR-031). */
+  device: boolean;
+}
+
+/**
+ * "Paylaş" (Web Share API, ADR-031), next to the save button or under
+ * "Kaydedildi". Not drawn where the browser cannot share files; a file the
+ * browser would refuse (Chromium, over 50 MiB) gets the reason instead of a
+ * button that cannot work; a refused attempt is said under it.
+ */
+function ShareButton({ t, entry, onShare }: { t: T; entry: Extract<DownloadEntry, { phase: 'saved' | 'ready' }>; onShare: () => void }) {
+  if (entry.share?.verdict !== 'share') return null;
+  return (
+    <button
+      type="button"
+      className="btn dl-share"
+      onClick={onShare}
+      aria-label={`${t('download.share')}: ${entry.fileName}`}
+      aria-describedby={`share-hint-${entry.key}`}
+      data-testid="download-share"
+    >
+      <Icon name="share" />
+      {t('download.share')}
+    </button>
+  );
+}
+
+function ShareNotes({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase: 'saved' | 'ready' }> }) {
+  const share = entry.share;
+  if (!share) return null;
+  const saved = entry.phase === 'saved';
+  if (share.verdict === 'too_large') {
+    return (
+      <p className="hint-small" data-testid="share-too-large">
+        {t(saved ? 'download.shareTooLargeSaved' : 'download.shareTooLarge')
+          .replace('{size}', formatStorageBytes(share.file.size, 'up', t('time.decimalMark')))
+          .replace('{limit}', formatStorageBytes(CHROMIUM_SHARE_MAX_BYTES, 'down', t('time.decimalMark')))}
+      </p>
+    );
+  }
+  return (
+    <>
+      <p className="hint-small" id={`share-hint-${entry.key}`}>
+        {t('download.shareHint')}
+      </p>
+      {share.failed ? (
+        <p className="hint-small dl-share-failed" role="status" data-testid="share-failed">
+          {t(saved ? 'download.shareFailedSaved' : 'download.shareFailed')}
+        </p>
+      ) : null}
+    </>
+  );
 }
 
 /** The one sentence a screen reader hears per phase (the percentage is left out). */
-function announcement(t: T, entry: DownloadEntry): string {
+function announcement(t: T, entry: DownloadEntry, device: boolean): string {
   switch (entry.phase) {
     case 'running':
       return entry.step === 'waiting' ? t('download.running.waiting') : t(`export.running.${entry.step}` as MessageKey);
     case 'saved':
       return `${t('download.saved').replace('{name}', entry.fileName)}. ${t('download.savedWhere')}`;
     case 'ready':
-      return t('download.readyTitle');
+      return readyTitle(t, entry, device);
     case 'blocked':
       return entry.overrun ? t('export.overLimitTitle') : t('export.blockedTitle');
     case 'failed':
@@ -38,6 +93,12 @@ function announcement(t: T, entry: DownloadEntry): string {
     case 'canceled':
       return t('download.canceled');
   }
+}
+
+/** The ready sentence: a computer saves; a phone saves, or saves or shares (ADR-031). */
+function readyTitle(t: T, entry: Extract<DownloadEntry, { phase: 'ready' }>, device: boolean): string {
+  if (!device) return t('download.readyTitle');
+  return entry.share?.verdict === 'share' ? t('download.readyTitleShare') : t('download.readyTitleDevice');
 }
 
 /**
@@ -161,10 +222,10 @@ function DismissButton({ t, onDismiss }: { t: T; onDismiss: () => void }) {
  * A download's progress and outcome, shown right where it was started — on
  * the kesit card, or under the list heading for the top button (ADR-026).
  */
-export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportProblem }: Props) {
+export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportProblem, onShare, device }: Props) {
   const status = (
     <p className="visually-hidden" role="status" data-testid="download-status">
-      {announcement(t, entry)}
+      {announcement(t, entry, device)}
     </p>
   );
 
@@ -228,19 +289,26 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
           </span>
           <DismissButton t={t} onDismiss={onDismiss} />
         </div>
+        {entry.share?.verdict === 'share' ? (
+          <div className="dl-actions">
+            <ShareButton t={t} entry={entry} onShare={onShare} />
+          </div>
+        ) : null}
+        <ShareNotes t={t} entry={entry} />
         <Details t={t} entry={entry} />
       </div>
     );
   }
 
   if (entry.phase === 'ready') {
+    const title = readyTitle(t, entry, device);
     return (
       <div className="dl-status" data-phase="ready" data-testid="export-succeeded">
         {status}
         <div className="dl-row">
           <Icon name="check" size={16} />
           <span className="dl-text">
-            <span>{t('download.readyTitle')}</span>
+            <span data-testid="download-ready-title">{title}</span>
             <MethodLine t={t} entry={entry} />
             {entry.hdr ? (
               <span className="dl-sub" data-testid="export-hdr-note">
@@ -251,24 +319,31 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
           <DismissButton t={t} onDismiss={onDismiss} />
         </div>
         {/* The browser saves the file only when the user asks for it. */}
-        <a
-          className="btn btn-accent btn-block"
-          href={entry.url}
-          download={entry.fileName}
-          data-testid="export-download"
-        >
-          <Icon name="download" />
-          {t('export.save')}
-        </a>
+        <div className="dl-actions">
+          <a
+            className="btn btn-accent btn-block"
+            href={entry.url}
+            download={entry.fileName}
+            data-testid="export-download"
+          >
+            <Icon name="download" />
+            {t(device ? 'export.saveDevice' : 'export.save')}
+          </a>
+          <ShareButton t={t} entry={entry} onShare={onShare} />
+        </div>
         <p className="hint-small" data-testid="export-save-where">
-          {t('download.readyWhere')}
+          {t(device ? 'download.readyWhereDevice' : 'download.readyWhere')}
         </p>
         {/* ADR-023: saving copies the finished file into the downloads folder. */}
         <p className="hint-small" data-testid="export-save-space">
           {entry.result.sizeBytes > 0
-            ? t('export.saveSpace').replace('{size}', formatStorageBytes(entry.result.sizeBytes, 'up', t('time.decimalMark')))
-            : t('export.saveSpaceUnknown')}
+            ? t(device ? 'export.saveSpaceDevice' : 'export.saveSpace').replace(
+                '{size}',
+                formatStorageBytes(entry.result.sizeBytes, 'up', t('time.decimalMark')),
+              )
+            : t(device ? 'export.saveSpaceUnknownDevice' : 'export.saveSpaceUnknown')}
         </p>
+        <ShareNotes t={t} entry={entry} />
         <Details t={t} entry={entry} />
       </div>
     );

@@ -2453,6 +2453,26 @@ input[type='range']:disabled::-webkit-slider-thumb {
   align-self: flex-start;
 }
 
+/* "Kaydet" and "Paylaş" side by side; they stack only when both do not fit (ADR-031). */
+.dl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dl-actions > .btn-block {
+  width: auto;
+  flex: 2 1 10em;
+}
+
+.dl-share {
+  flex: 1 1 7em;
+}
+
+.dl-share-failed {
+  color: var(--warning);
+}
+
 .dl-dismiss {
   margin: -6px -4px 0 auto;
   flex-shrink: 0;

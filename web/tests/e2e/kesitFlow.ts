@@ -117,6 +117,49 @@ export async function noSavePicker(page: Page) {
   });
 }
 
+// ------------------------------------------------------------ share sheet
+
+export interface SharedFile {
+  name: string;
+  type: string;
+  size: number;
+  /** navigator.userActivation.isActive when share() was called (the click's activation). */
+  activation: boolean;
+}
+
+/**
+ * Stands in for the Web Share API (ADR-031), before the page loads: the real
+ * one opens an operating-system sheet a test cannot drive, and Playwright's
+ * Chromium has none at all. `canShare` says yes for MP4 files, like Chrome;
+ * `share` records what it was given. `window.__shareMode`: 'abort' (the user
+ * closes the sheet) or 'refuse' (NotAllowedError) for the next call.
+ */
+export async function stubShare(page: Page) {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __shared: unknown[]; __shareMode?: 'abort' | 'refuse' };
+    w.__shared = [];
+    Object.defineProperty(Navigator.prototype, 'canShare', {
+      configurable: true,
+      value: (data?: { files?: File[] }) => Boolean(data?.files?.length && data.files.every((file) => file.type === 'video/mp4')),
+    });
+    Object.defineProperty(Navigator.prototype, 'share', {
+      configurable: true,
+      value: async (data?: { files?: File[] }) => {
+        const activation = (navigator as Navigator & { userActivation?: { isActive: boolean } }).userActivation?.isActive ?? false;
+        for (const file of data?.files ?? []) w.__shared.push({ name: file.name, type: file.type, size: file.size, activation });
+        const mode = w.__shareMode;
+        w.__shareMode = undefined;
+        if (mode === 'abort') throw new DOMException('Share canceled', 'AbortError');
+        if (mode === 'refuse') throw new DOMException('Permission denied', 'NotAllowedError');
+      },
+    });
+  });
+}
+
+export async function sharedFiles(page: Page): Promise<SharedFile[]> {
+  return page.evaluate(() => (window as unknown as { __shared?: SharedFile[] }).__shared ?? []);
+}
+
 export async function pickerCalls(page: Page): Promise<string[]> {
   return page.evaluate(() => (window as unknown as { __pickerCalls?: string[] }).__pickerCalls ?? []);
 }
