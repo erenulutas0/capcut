@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { isIosSafari } from '@/adapters/pwa/installPrompt';
+import { formatByteLimit } from '@/domain/policy';
 import { CHROMIUM_SHARE_MAX_BYTES, isChromiumUserAgent, shareOutcome, shareVerdict } from '@/domain/share';
 
 const UA = {
@@ -32,6 +33,8 @@ describe('share verdict (ADR-031)', () => {
     expect(shareVerdict({ canShareFile: true, chromium: true, sizeBytes: CHROMIUM_SHARE_MAX_BYTES })).toBe('share');
     expect(shareVerdict({ canShareFile: true, chromium: true, sizeBytes: CHROMIUM_SHARE_MAX_BYTES + 1 })).toBe('too_large');
     expect(shareVerdict({ canShareFile: true, chromium: true, sizeBytes: 1024 ** 3 })).toBe('too_large');
+    // The card says the limit in the units it uses everywhere (ADR-030), rounded down.
+    expect(formatByteLimit(CHROMIUM_SHARE_MAX_BYTES, ',')).toBe('52,4 MB');
   });
 
   it('Safari has no such limit here: its own answer decides', () => {

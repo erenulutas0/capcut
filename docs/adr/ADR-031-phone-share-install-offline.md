@@ -201,6 +201,29 @@ Hepsi 2026-09-30'da bu dalda, ölçüm kilidi altında (tam koşular) koşuldu. 
   kendi eski önbelleklerini silmesi, neyi sunup neyi bırakması, worker adresinin korunması,
   çevrimdışı sayfa eşlemesi, mesajlar).
 
+## Sonuçlar (2026-09-30/10-01, Windows 11, bu makine, `web/` içinde)
+
+| Komut | Sonuç |
+|---|---|
+| `npx tsc --noEmit -p .`, `npx eslint .` | hatasız |
+| `npx vitest run` | 42 dosya, **526 test geçti** (önce 509; +17: `share.test.ts` 7, `serviceWorker.test.ts` 10) |
+| `npm run build` (sunucu derlemesi) | başarılı; `build-sw: … clip-app-…: 4 pages, 37 files, 1.86 MB` |
+| `E2E_PORT=3241 npx playwright test` (tam e2e, ölçüm kilidiyle) | **170 geçti, 2 atlandı** (isteğe bağlı ekran görüntüsü testleri), 0 başarısız, 5,0 dk (önce 155 + 2; +15 `pwa.spec.ts`) |
+| Statik çıktı (CI ortam değişkenleri, PowerShell) + `npx playwright test -c playwright.pages.config.ts` | **3 geçti** (yeni: manifest, worker kapsamı `/capcut/`, kurulabilirlik 0 hata, çevrimdışı yenileme ve indirme) |
+| `node scripts/run-matrix.mjs --browser=chromium` (`next start -p 3100`) | **22 PASS**, 0 FAIL |
+| `node scripts/run-matrix.mjs --browser=chrome` | **22 PASS**, 0 FAIL |
+| `node scripts/measure-share.mjs --channel=chrome / msedge / chrome --mobile / chromium` | yukarıdaki tablo |
+
+Matris sürücüsü her koşuda yeni bir tarayıcı bağlamı açar (kalıcı profil yok); e2e de her testte
+yeni bağlam kullanır. Kayıtlı bir worker'ın başka bir derlemeyi sunması bu yüzden mümkün değil;
+matris içinde ilk vakadan sonra sayfalar ve worker betikleri bu derlemenin önbelleğinden gelir.
+
+İlk e2e koşuları iki gerçek hata buldu (ikisi de düzeltildi, yukarıda): worker adresinin `#params=`
+kısmının önbellekten dönen yanıtta kaybolması ve `next start`'ın rota kopyası yüzünden yeniden
+yazılan worker'ın sunulmaması. Bir test tasarım hatası da: Playwright `context.route` tarayıcının
+worker güncelleme denetimini göremiyor; "yeni yayın" bu yüzden testte yerel bir vekille
+(başka port, `/sw.js`'i yeniden yazar, gerisini e2e sunucusuna iletir) canlandırılıyor.
+
 ## Test edilmeyen (gerçek cihaz gerekiyor)
 
 Kurucunun Samsung'unda bakılacaklar, sırayla:
