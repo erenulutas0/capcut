@@ -219,6 +219,11 @@ async function clearSiteData(page) {
       } catch {
         /* ignore */
       }
+      // ADR-031: the site's service worker and its precache.
+      for (const registration of (await navigator.serviceWorker?.getRegistrations?.()) ?? []) {
+        await registration.unregister().catch(() => undefined);
+      }
+      for (const key of (await globalThis.caches?.keys?.()) ?? []) await caches.delete(key).catch(() => undefined);
     })
     .catch(() => undefined);
 }
@@ -311,7 +316,21 @@ async function runCase(testCase) {
   const row = { id: testCase.id, source: basename(testCase.file), kesits: testCase.kesits, expect: testCase.expect };
   try {
     await page.goto(url, { waitUntil: 'load' });
+    // ADR-031: a service worker left from an earlier visit could serve an
+    // older build. It is removed and the page loaded again from the network.
+    const hadWorker = await page.evaluate(async () => {
+      const registrations = (await navigator.serviceWorker?.getRegistrations?.()) ?? [];
+      for (const registration of registrations) await registration.unregister();
+      for (const key of (await globalThis.caches?.keys?.()) ?? []) await caches.delete(key);
+      return registrations.length > 0;
+    });
+    if (hadWorker) await page.reload({ waitUntil: 'load' });
     await page.getByTestId('download-all').waitFor({ timeout: 60_000 });
+    // Which build ran: the first app chunk's hashed name, and whether a worker served it.
+    row.build = await page.evaluate(() => ({
+      chunk: [...document.scripts].map((s) => s.src).find((src) => src.includes('/_next/static/chunks/'))?.split('/').pop() ?? null,
+      fromServiceWorker: Boolean(navigator.serviceWorker?.controller),
+    }));
     const sentAt = Date.now();
     await sendFile(page, testCase.file);
     row.transferS = Number(((Date.now() - sentAt) / 1000).toFixed(1));

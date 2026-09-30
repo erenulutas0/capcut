@@ -44,6 +44,11 @@ for (const page of context.pages()) {
         } catch {
           /* ignore */
         }
+        // ADR-031: the site's service worker and its precache.
+        for (const registration of (await navigator.serviceWorker?.getRegistrations?.()) ?? []) {
+          await registration.unregister().catch(() => undefined);
+        }
+        for (const key of (await globalThis.caches?.keys?.()) ?? []) await caches.delete(key).catch(() => undefined);
       })
       .then(() => {
         cleaned = true;
