@@ -110,6 +110,7 @@ function audioSync(source, startS, output) {
   let energy = 0;
   for (const v of window) energy += v * v;
   if (window.length < length || Math.sqrt(energy / length) < 1e-4) return null;
+  const correlations = [];
   let best = { lagFrames: 0, correlation: -1 };
   for (let lag = -4096; lag <= 4096; lag += 1) {
     let dot = 0;
@@ -120,8 +121,15 @@ function audioSync(source, startS, output) {
       outEnergy += v * v;
     }
     const correlation = outEnergy > 0 ? dot / Math.sqrt(energy * outEnergy) : 0;
+    correlations.push({ lag, correlation });
     if (correlation > best.correlation) best = { lagFrames: lag, correlation };
   }
+  // A steady tone (the synthetic 3-minute source is 440 Hz) matches at every
+  // period: no single lag can be read from it.
+  const runnerUp = Math.max(
+    ...correlations.filter((c) => Math.abs(c.lag - best.lagFrames) > 20).map((c) => c.correlation),
+  );
+  if (runnerUp >= best.correlation - 0.02) return { ambiguous: true, correlation: Number(best.correlation.toFixed(4)) };
   return { lagMs: Number(((best.lagFrames / 48000) * 1000).toFixed(2)), correlation: Number(best.correlation.toFixed(4)) };
 }
 
