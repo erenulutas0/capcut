@@ -29,6 +29,7 @@
 | Hesap varsa silme akışları | — | Hesap yok. Yerel projeyi silme var (`persistence.spec.ts`) |
 | Beta gözlemleri, destek yolu ve export metrikleri hazır | ⚠️ | Kullanıcı testi kiti: `docs/beta/USER_TEST_KIT.md`. "Sorun bildir": içeriği önceden gösterilen, dosya adı/altyazı metni içermeyen tanı dosyası (birim testli); yerel export günlüğü (son 20, yalnız bu tarayıcıda). **İletişim adresi belirlenmedi** (`NEXT_PUBLIC_SUPPORT_CONTACT`). Uzaktan metrik toplanmıyor, bilerek |
 | Landing page yalnızca mevcut özellikleri gösteriyor | ✅ | Tanıtım sayfası tek cümle ve "Editörü aç"; olmayan özellik vaadi yok |
+| Statik site sertleştirmesi (CSP, referrer, bağımlılık taraması, kaynak haritası) | ✅ (başlıksız barındırıcı sınırıyla) | Her sayfada meta CSP (`'unsafe-inline'`/`'unsafe-eval'` yok), `no-referrer`, `npm audit` 0 açık ve CI'da runtime kapısı, yayında `.map`/kaynak dosyası yok; tam oturumda Chromium/Chrome/Edge'de sıfır CSP ihlali (`docs/security/2026-09-30-static-site-hardening.md`, `docs/security/DEPENDENCIES.md`). **Kalan:** `frame-ancestors`, `nosniff`, COOP/COEP GitHub Pages'te verilemez; lisans bildirim sayfası (MPL-2.0 mediabunny) kurucu/hukuk kararı |
 | Analytics ve marketing tercihleri anlaşılır | ✅ (yok) | Analitik ve pazarlama izleme yok; gizlilik sayfası bunu söyleyecek. İleride eklenirse ayrı rıza (P2-05, kurucu kararı) |
 
 ## Kodla kapatılamayanlar — kurucu kararları

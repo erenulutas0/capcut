@@ -753,6 +753,19 @@ const TEXT_SPACING_CSS = `
 `;
 
 /**
+ * Applies the WCAG 1.4.12 spacing the way a user style or extension does,
+ * as a constructed stylesheet: the page's Content-Security-Policy
+ * (scripts/apply-csp.mjs) blocks an injected <style> element, not this.
+ */
+async function applyTextSpacing(page: Page) {
+  await page.evaluate((css) => {
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(css);
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+  }, TEXT_SPACING_CSS);
+}
+
+/**
  * Controls whose text is clipped: an element that hides overflow and whose
  * content no longer fits. Visible overflow is not clipping and is not counted.
  * File names are shortened on purpose (with the full name in the title), so
@@ -801,12 +814,12 @@ test.describe('a11y: text spacing (WCAG 1.4.12)', () => {
       await installSavePicker(page);
       await page.setViewportSize(viewport);
       await page.goto('/');
-      await page.addStyleTag({ content: TEXT_SPACING_CSS });
+      await applyTextSpacing(page);
       expect(await clippedControls(page), 'landing').toEqual([]);
 
       await clearStorage(page);
       await withMoments(page);
-      await page.addStyleTag({ content: TEXT_SPACING_CSS });
+      await applyTextSpacing(page);
       await page.getByTestId('kesit-select').first().click();
       expect(await clippedControls(page), 'editor').toEqual([]);
       expect(await horizontalOverflow(page), 'editor page width').toBe(0);
@@ -825,7 +838,7 @@ test.describe('a11y: text spacing (WCAG 1.4.12)', () => {
       await page.getByTestId('video-input').setInputFiles(timelineFixture('ninety').file);
       await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 60_000 });
       await addMoment(page, '0', '1:10:00');
-      await page.addStyleTag({ content: TEXT_SPACING_CSS });
+      await applyTextSpacing(page);
       await page.getByTestId('kesit-download').click();
       await expect(page.getByTestId('export-over-limit')).toBeVisible();
       expect(await clippedControls(page), 'kesit over the limit').toEqual([]);
@@ -871,7 +884,7 @@ test.describe('a11y: HEVC hint and the save-space note', () => {
       await clearStorage(page);
       if (await openHevcWithoutDecoder(page)) {
         await audit(page, `hevc-hint-${viewport.width}`, testInfo);
-        await page.addStyleTag({ content: TEXT_SPACING_CSS });
+        await applyTextSpacing(page);
         expect(await clippedControls(page), 'HEVC hint').toEqual([]);
         expect(await horizontalOverflow(page), 'HEVC hint page width').toBe(0);
       } else {
@@ -881,7 +894,7 @@ test.describe('a11y: HEVC hint and the save-space note', () => {
       await clearStorage(page);
       await exportSucceeded(page);
       await audit(page, `download-ready-${viewport.width}`, testInfo);
-      await page.addStyleTag({ content: TEXT_SPACING_CSS });
+      await applyTextSpacing(page);
       expect(await clippedControls(page), 'download ready').toEqual([]);
       expect(await horizontalOverflow(page), 'download ready page width').toBe(0);
     });

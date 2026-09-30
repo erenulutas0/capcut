@@ -544,6 +544,7 @@ test.describe('nothing leaves the machine', () => {
       /^\/_next\/static\//,
       /^\/fonts\/caption\/inter-latin(-ext)?-700-normal\.woff2$/,
       /^\/favicon\.ico$/,
+      /^\/icon\.svg$/,
     ];
     // PRIVACY_LIST_REQUESTS=1 prints what was fetched, to keep the inventory's list current.
     if (process.env.PRIVACY_LIST_REQUESTS) {

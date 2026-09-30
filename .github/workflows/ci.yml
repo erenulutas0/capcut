@@ -42,6 +42,10 @@ jobs:
       # reads it differently and refuses `npm ci`. Same npm as development.
       - run: npm install -g npm@11.6.2
       - run: npm ci
+      # Known vulnerabilities in what ships to the browser (or builds it) stop
+      # the deploy (docs/security/DEPENDENCIES.md). Dev tools are reported by
+      # a plain `npm audit` locally, not gated here.
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
@@ -75,6 +79,9 @@ jobs:
         run: |
           npm run build
           npx playwright test
+      # `npm run build` also writes the Content-Security-Policy <meta> into
+      # every page and drops source maps (scripts/apply-csp.mjs); the smoke
+      # test below fails if either is missing.
       - name: Build the GitHub Pages export
         env:
           GIT_COMMIT: ${{ github.sha }}

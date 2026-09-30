@@ -20,7 +20,8 @@ doğrulanır (`web/tests/e2e/privacy.spec.ts` → "nothing leaves the machine").
 | Çerez, localStorage, sessionStorage? | Çerez ve sessionStorage kullanılmıyor. localStorage'da yalnızca ilk kullanım ipucunun kapatıldığı (`clip.firstRunHint.dismissed` = `1`) durur, o da yalnızca kullanıcı "Anladım"a basınca yazılır (§2.4). e2e testi ipucu kapatılmamış oturumun sonunda üçünün de boş olduğunu, kapatınca yalnızca o anahtarın yazıldığını doğrular. | `web/src/components/editor/FirstRunHint.tsx` + e2e testleri |
 | Cihaz parmak izi? | Yok. Tanı dosyasındaki tarayıcı bilgisi yalnızca kullanıcı indirirse oluşur ve kendiliğinden gönderilmez. | `web/src/adapters/diagnostics.ts` |
 | Model dosyası / AI? | Bu sürümde yok. | — |
-| Kendiliğinden gönderilen bir şey? | Yok. Uygulama kodunda `fetch`/XHR/WebSocket/beacon yok; tek `fetch` benzeri işlem tarayıcının yazı tipi yüklemesi (aynı origin). | `grep -rn "fetch(" web/src` boş; e2e testi |
+| Kendiliğinden gönderilen bir şey? | Yok. Uygulama kodunda `fetch`/XHR/WebSocket/beacon yok; tek `fetch` benzeri işlem tarayıcının yazı tipi yüklemesi (aynı origin; editör yüklendikten sonra, tarayıcı boştayken — `useCaptionFont.ts`). | `grep -rn "fetch(" web/src` boş; e2e testi |
+| Sayfa başka bir adrese bağlanabilir mi? | Tarayıcı engeller: her sayfada Content-Security-Policy (`default-src 'self'`, `connect-src 'self'`, script yalnız aynı origin + derleme anındaki satır içi betik hash'leri). Dışarı giden bağlantılar Referer taşımaz (`no-referrer`). | `web/scripts/apply-csp.mjs`, `docs/security/2026-09-30-static-site-hardening.md`, e2e `csp.spec.ts` |
 
 ## 2. Bu tarayıcıda kalıcı saklananlar
 
@@ -142,7 +143,7 @@ MP4 indirme, proje yedeği indirme, "Sorun bildir" ve tanı dosyası indirme. İ
 - origin dışı istek sayısı 0, WebSocket 0;
 - origin içi her istek `GET` ve gövdesiz (yükleme/form gönderimi yok);
 - origin içi her yol izin listesinde: `/`, `/editor`, `/gizlilik`, `/gizlilik/en`, `/_next/static/**`,
-  `/fonts/caption/inter-latin(-ext)-700-normal.woff2`, (varsa) `/favicon.ico`;
+  `/fonts/caption/inter-latin(-ext)-700-normal.woff2`, (varsa) `/favicon.ico` ve `/icon.svg` (site simgesi, 2026-09-30);
 - oturum sonunda çerez yok, localStorage/sessionStorage boş (bu oturumda ilk kullanım ipucu
   kapatılmaz; kapatılınca yazılan tek anahtar §2.4'te).
 
@@ -159,6 +160,8 @@ Eski, daha dar test `web/tests/e2e/editor.spec.ts` → "nothing is sent off the 
 - `/fonts/caption/inter-latin-700-normal.woff2`, `/fonts/caption/inter-latin-ext-700-normal.woff2`
   (Inter Bold, SIL OFL 1.1, `web/public/fonts/caption/OFL.txt`). Hem sayfa (`useCaptionFont.ts`)
   hem export worker (`exportWorker.ts`, origin `isWebOrigin` ile doğrulanır) yükler.
+
+Site simgesi `/icon.svg` (`web/src/app/icon.svg`, 2026-09-30): tarayıcı sekme simgesi için kendisi ister; içinde veri yok.
 
 `web/public/` altında başka dosya yok. Sunucunun kendisi (barındırma) IP adresi, zaman ve
 user agent'ı her web sitesinde olduğu gibi görebilir; barındırma sağlayıcısı ve erişim
