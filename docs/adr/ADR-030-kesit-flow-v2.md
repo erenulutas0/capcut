@@ -171,9 +171,20 @@ indirme sonucunun "Ayrıntılar"ı (ölçülen süre bir ölçümdür).
 
 Bu dalda, 2026-09-30:
 
-- `npx tsc --noEmit -p .`, `npx eslint .`, `npx vitest run`, `npm run build`, tam
-  `npx playwright test` (E2E_PORT=3231), destek matrisi Chromium ve Chrome: sonuçlar
-  aşağıda ("Sonuçlar").
+- `npx tsc --noEmit -p .` temiz, `npx eslint .` temiz, `npm run build` başarılı
+  (CSP adımı dahil).
+- `npx vitest run`: **40 dosya, 509 test geçti** (yeni `byteUnits.test.ts`,
+  `timeDisplay.test.ts`; `kesit.test.ts`'te `markEnd` / `addFromPending`).
+- `E2E_PORT=3231 npx playwright test` (ölçüm kilidi altında): **155 geçti, 2 atlandı**
+  (isteğe bağlı sessizlik ekran görüntüleri), hata yok, 3,8 dk. İçinde: `kesit.spec.ts`
+  29 test (yeni: bitişte ekleme + tek geri alma + parlama, başlangıçsız bitiş, ters
+  bitiş, boş "Kesit ekle", üç görevin tıklama sayısı, telefon çubuğu ×4); `a11y.spec.ts`
+  29 test (yalnız klavyeyle akış I/O'ya göre güncellendi, yeni axe durumu "telefonda
+  kesit çubuğu"; axe 0 ihlal masaüstü/tablet/telefon, odak tuzağı ve dönüşü, 320 px,
+  metin aralığı, azaltılmış hareket); `csp.spec.ts` 3 test (tam oturumda CSP ihlali yok).
+- Destek matrisi (`next start -p 3100`, kilit altında): **Chromium 22 PASS, Chrome 22
+  PASS**, 0 FAIL. M13'ün ret metni: "“m13-oversize-4gib.mp4” açılamadı: dosya 4,32 GB;
+  bu sürümün sınırı 4,29 GB."
 - Ekran görüntüleri: `docs/ux/2026-09-30/v2-{desktop,phone}-NN-adım.png` (önce: aynı
   klasördeki `after-*.png`, UX denetimi dalının derlemesi), telefon portre çubuğu
   `v2-phone-16-portrait-kesit-bar.png`, işaretsiz "Kesit ekle" reddi
