@@ -1026,9 +1026,18 @@ test.describe('ADR-030: the phone bar (390 px, portrait video)', () => {
     await openEditor(page);
     await openVideo(page, timelineFixture('portrait').file);
     await addKesit(page, '2', '5');
-    await page.evaluate(() => window.scrollTo(0, 0));
+    // Start the walk at the first control of the page. `body` cannot take
+    // focus, so focusing it left the keyboard on "Kesit ekle" (the last click)
+    // and the walk began below the fold on CI.
+    await page.evaluate(() => {
+      const first = document.querySelector<HTMLElement>(
+        'header a[href], header button:not([disabled]), header [tabindex="0"]',
+      );
+      first?.focus();
+      window.scrollTo(0, 0);
+    });
     await expect(page.getByTestId('kesit-dock')).toBeVisible();
-    await page.locator('body').focus();
+    expect(await page.evaluate(() => document.activeElement?.closest('header') !== null)).toBe(true);
     const covered: string[] = [];
     let sawDock = 0;
     for (let press = 0; press < 40; press += 1) {
