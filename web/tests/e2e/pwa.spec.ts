@@ -279,6 +279,21 @@ test.describe('install as an app', () => {
     expect(pngSize(await apple.body())).toEqual({ width: 180, height: 180 });
   });
 
+  test('Chrome itself finds nothing that blocks installing', async ({ page }) => {
+    await page.goto('/editor');
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+    });
+    const cdp = await page.context().newCDPSession(page);
+    const { installabilityErrors } = (await cdp.send('Page.getInstallabilityErrors')) as {
+      installabilityErrors: Array<{ errorId: string }>;
+    };
+    expect(installabilityErrors.map((error) => error.errorId)).toEqual([]);
+    const manifest = (await cdp.send('Page.getAppManifest')) as { url: string; errors: Array<{ message: string }> };
+    expect(new URL(manifest.url).pathname).toBe('/manifest.webmanifest');
+    expect(manifest.errors.map((error) => error.message)).toEqual([]);
+  });
+
   test('"Uygulama olarak yükle" appears in ⋯ when the browser offers it, and asks once', async ({ page }) => {
     await page.addInitScript(() => {
       (window as unknown as { __prompted: number }).__prompted = 0;

@@ -216,3 +216,36 @@ tam sabit) yükseltildi; `npm audit` 0 açık. Yükseltmeden sonra tam doğrulam
 vitest 509/509, derleme (CSP hash'leri yeniden hesaplandı), e2e 155 geçti / 2 atlandı
 (CSP testi dahil), matris Chromium/Chrome/Edge 22/22, statik çıktı ve Pages duman testi 2/2.
 Satır içi betik sayısı (2) ve CSP biçimi değişmedi.
+
+## Güncelleme 2026-09-30: service worker, manifest, paylaşma (ADR-031)
+
+**CSP değişmedi.** Yeni parçaların hepsi mevcut politikanın içinde:
+
+| Parça | Hangi yönerge | Not |
+|---|---|---|
+| `<base>/sw.js` kaydı (`navigator.serviceWorker.register`) | `worker-src 'self' blob:` | Aynı origin; `blob:` gerekmez. |
+| `<base>/manifest.webmanifest` (`<link rel="manifest">`, Next yazar) | `manifest-src 'self'` | Önceden de politikadaydı. |
+| Simgeler (`/icons/*.png`, `/apple-icon.png`) | `img-src 'self'` | |
+| Worker'ın kurulum istekleri | Worker'ın kendi politikası yok (Pages başlık göndermez; URL worker'larıyla aynı boşluk, §2.2) | Kod bizim şablonumuz (`web/scripts/lib/service-worker.js`): `importScripts`, `eval`, başka origin'e istek yok; yalnızca derleme anındaki listeyi aynı origin'den ister. |
+| Önbellekten sunulan sayfalar | Aynı `<meta>` politika | Önbellekteki HTML, derlemenin CSP yazılmış HTML'inin aynısı (build-sw, apply-csp'den sonra çalışır). |
+
+`next dev` worker'ı kaydetmez (hot reload ile önbellek önce çalışan worker karışmasın); dev'deki
+`/sw.js` rotası boş bir yer tutucudur. `csp.spec.ts` tam oturumunda editörün ikinci yüklemesi artık
+worker'ın kontrolünde (`navigator.serviceWorker.controller` doğrulanıyor) ve HDR dışa aktarmasının
+worker betikleri önbellekten geliyor: 0 ihlal (sonuçlar ADR-031'de).
+
+**Worker neyi yapmaz (kodla ve testle):** çalışırken ağdan gelen hiçbir yanıtı önbelleğe yazmaz
+(önbellek yalnızca kurulumda listeyle `Cache.addAll` ile dolar, hep ya da hiç); POST'a, `Range`
+isteklerine, başka origin'e ve `<base>/` dışına dokunmaz; bilinmeyen sayfayı eski bir sayfayla
+karşılamaz (tarayıcının kendi hata sayfası). Bu yüzden "önbellek zehirlenmesi" için kullanıcının
+etkileyebileceği bir adres önbelleğe giremez. Birim testi (`tests/unit/serviceWorker.test.ts`)
+worker'ı sahte `caches`/`fetch` ile çalıştırıp bunları tek tek dener; e2e önbelleği listeyle
+karşılaştırır.
+
+**Kalan riskler:**
+
+| Risk | Etki | Not |
+|---|---|---|
+| Kalıcı worker: hatalı bir yayın kullanıcının tarayıcısında kalır | Orta: çevrimiçiyken sayfalar ağdan gelir (network-first), yani düzeltilmiş yayın bir sonraki çevrimiçi açılışta sayfaya ulaşır; worker betiği HTTP önbelleği atlanarak (`updateViaCache: 'none'`) her gezinmede denetlenir. Çevrimdışıyken eski kopya açılır. | **Acil durum yolu (uygulanmadı, gerekirse):** şablonu `install`'da `skipWaiting()`, `activate`'te `clip-app-*` önbelleklerini silip `self.registration.unregister()` çağıran bir worker'la değiştirip yayınlamak. Sayfa kodu değişmeden bütün kopyalar ilk çevrimiçi açılışta kalkar. |
+| `github.io` origin'i başka Pages projeleriyle paylaşılır | Düşük: aynı kullanıcının başka projeleri bu Cache Storage'ı okuyup silebilir; içinde yalnızca herkese açık uygulama dosyaları var. Worker yalnız `/capcut/` altını ele alır ve yalnız `clip-app-*` önbelleklerini siler. | Kendi domain'i (K01) ile kalkar. |
+| Paylaşma menüsü | Kullanıcının seçtiği uygulamaya dosya gider (kullanıcının kararı). Uygulama `navigator.share` dışında bir şey çağırmaz; menüyü tıklama açar. | Paylaşılan hedefin ne yaptığı uygulamanın dışında. |

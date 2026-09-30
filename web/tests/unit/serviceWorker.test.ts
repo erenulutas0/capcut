@@ -34,6 +34,7 @@ describe('precache list (ADR-031)', () => {
       'out/gizlilik/index.html': 'privacy',
       'out/gizlilik/en/index.html': 'privacy en',
       'out/404.html': 'not found',
+      'out/404/index.html': 'not found',
       'out/_not-found/index.html': 'internal',
       'out/_next/static/chunks/app.js': 'code',
       'out/_next/static/chunks/app.js.map': 'map',

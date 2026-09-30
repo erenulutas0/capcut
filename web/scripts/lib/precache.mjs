@@ -37,8 +37,8 @@ export function isOfflineAsset(rel) {
   return rel === 'icon.svg' || rel === 'apple-icon.png' || rel === 'manifest.webmanifest';
 }
 
-/** Internal Next pages (`_not-found`, `_global-error`) are not app pages. */
-const internal = (rel) => rel.split('/').some((part) => part.startsWith('_'));
+/** Internal Next pages (`_not-found`, `_global-error`, the export's `404/`) are not app pages. */
+const internal = (rel) => rel.startsWith('404/') || rel.split('/').some((part) => part.startsWith('_'));
 
 /**
  * Entries `{ url, file }` for one build. `mode` is 'export' (the static

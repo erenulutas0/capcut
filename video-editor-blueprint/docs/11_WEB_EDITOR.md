@@ -41,7 +41,10 @@ EDL ve küçük metadata IndexedDB'de; büyük geçici medya OPFS veya uygun sto
 
 Dosya handle'ına yeniden izin gerekebilir. Kaynak eksikse EDL kalır ve kullanıcıdan dosyayı yeniden seçmesi istenir. Boyut/süre/yerel fingerprint kontrolüyle yanlış eşleşme önlenir; farklı dosya yeni kaynak olarak eklenir. Private browsing ve düşük storage olumsuz testlerdir.
 
-## Gizlilik ve dağıtım
+## Telefonda: paylaşma, uygulama olarak yükleme, çevrimdışı açılış (ADR-031)
+
+PRD R10 ("kaydet/share sheet") ve R12'nin "web ilk yükleme/offline desteği ayrıca belirtilir" kısmı burada belirtilir. Biten video "Kaydet"in yanında "Paylaş" ile sistemin paylaşma menüsüne verilir (Web Share API, tarayıcı dosya paylaşabiliyorsa; Chromium tek seferde en fazla 50 MiB paylaşır, daha büyük dosya için düğme yerine nedeni ve "önce kaydet, sonra galeriden paylaş" yazar). Dokunmatik ekranda ve telefon düzeninde "Bilgisayara kaydet" yerine "Kaydet" denir. Site bir manifest ile ana ekrana uygulama olarak eklenebilir (Chromium'da ⋯ menüsünde "Uygulama olarak yükle", iPhone/iPad Safari'de "Paylaş → Ana Ekrana Ekle" ipucu). İlk açılıştan sonra bir service worker uygulamanın **kendi dosyalarını** (sayfalar, derleme dosyaları, altyazı yazı tipi, simgeler; ~1,9 MB) önbellekte tutar: site internetsiz açılır ve yerel bir videodan kesit indirilebilir (dışa aktarma zaten ağ istemez). Kullanıcı medyası, dışa aktarılan dosya ve başka origin'in dosyası önbelleğe girmez; önbellek yalnızca derleme anındaki listeyle dolar. Yeni sürüm hazır olunca sessiz bir "Yeni sürüm hazır — Yenile" notu çıkar; sayfa kendiliğinden yenilenmez, indirme sürerken "Yenile" kapalıdır.
+
 
 Editör route'unda session replay/ekran görüntüsü yakalayan analitik yok. CSP, dependency locking, private source map, veri maskeleme ve minimum üçüncü taraf script hedeflenir. Pazarlama cookie/analitik izni ayrı ele alınır. Videoyu “yükle” yerine “seç” demek, dosyanın yerelde kaldığı akışta daha doğru olabilir.
 
