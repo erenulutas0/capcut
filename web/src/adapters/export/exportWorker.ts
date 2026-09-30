@@ -20,6 +20,7 @@ import {
   BufferSource,
   BufferTarget,
   CanvasSource,
+  EncodedAudioPacketSource,
   EncodedPacketSink,
   Input,
   Mp4OutputFormat,
@@ -57,6 +58,7 @@ import {
   drawCaptionLayout,
   loadCaptionFont,
 } from '../captionRender';
+import { AacAlignmentError, AlignedAacEncoder, measureAacEncoderDelay, type AacSettings } from './alignedAac';
 import { AudioStreamReader } from './audioStream';
 import { MediaPacer } from './exportPacing';
 import {
@@ -78,7 +80,7 @@ import { HDR_CLIP_WORKER_NAME, HDR_PIPELINE_DEPTH, HdrClipper, serveHdrClips } f
 import { probeHdrToneMapping, type HdrProbeResult } from './hdrProbe';
 import { removeExportEntry, sweepExportEntries } from './opfsEntries';
 import { prepareOutput, sinkRefusal } from './outputSink';
-import { AUDIO_CHUNK_FRAMES, SegmentAudioWriter, type AudioContextSources } from './segmentAudio';
+import { AUDIO_CHUNK_FRAMES, SegmentAudioWriter, audioEndFrame, type AudioContextSources } from './segmentAudio';
 import type {
   CaptionFontStatus,
   CapabilityStageResult,
@@ -171,6 +173,40 @@ async function probeProduced(produced: Uint8Array | Blob): Promise<ExportProbe> 
     audioCodec: audioTrack ? await audioTrack.getCodec() : null,
     hasAudio: audioTrack !== null,
   };
+}
+
+/**
+ * Measurement only (ADR-028 profile): every track of the produced file,
+ * packet by packet, so a duration mismatch on a device can be read from the
+ * log instead of guessed. Never runs for a user.
+ */
+async function describeProduced(produced: Uint8Array | Blob): Promise<unknown[]> {
+  const input = new Input({
+    formats: ALL_FORMATS,
+    source: produced instanceof Blob ? new BlobSource(produced) : new BufferSource(produced),
+  });
+  const tracks = [];
+  for (const track of await input.getTracks()) {
+    const packets = new EncodedPacketSink(track);
+    const times: number[] = [];
+    let endS = 0;
+    let count = 0;
+    for await (const packet of packets.packets(undefined, undefined, { metadataOnly: true })) {
+      count += 1;
+      endS = Math.max(endS, packet.timestamp + packet.duration);
+      if (times.length < 400) times.push(Math.round(packet.timestamp * 1e6));
+    }
+    tracks.push({
+      type: track.type,
+      codec: await track.getCodec(),
+      packets: count,
+      firstS: await track.getFirstTimestamp(),
+      endS,
+      durationS: await track.computeDuration(),
+      timesUs: track.type === 'video' ? times : times.slice(0, 8),
+    });
+  }
+  return tracks;
 }
 
 /* ------------------------------------------------------------ caption font */
@@ -544,6 +580,19 @@ interface ExportSources {
   sourceAudioUsable: boolean;
   musicTrack: InputAudioTrack | null;
   wantsAudio: boolean;
+  /** ADR-032: frames the AAC encoder puts in front of the audio (0 when there is no audio). */
+  audioDelayFrames: number;
+  /** Measurement only: how clearly the calibration marker came back. */
+  audioDelayCorrelation: number | null;
+}
+
+/** The export's AAC settings (the plan's rate, channels and bitrate). */
+function aacSettings(plan: RenderPlan): AacSettings {
+  return {
+    sampleRate: plan.audio.sampleRate,
+    numberOfChannels: plan.audio.channelCount,
+    bitrate: plan.audioBitrate,
+  };
 }
 
 /**
@@ -584,6 +633,20 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
     if (musicTrack && !(await musicTrack.canDecode())) throw new ExportFailure('audio_undecodable');
   }
 
+  const wantsAudio = sourceAudioUsable || musicTrack !== null;
+
+  // ADR-032: how many priming frames this browser's AAC encoder puts in
+  // front of the audio, measured before any output exists. An encoder whose
+  // delay cannot be measured would give sound out of sync with the picture.
+  let audioDelayFrames = 0;
+  let audioDelayCorrelation: number | null = null;
+  if (wantsAudio) {
+    const delay = await measureAacEncoderDelay(aacSettings(plan));
+    if (!delay.ok) throw new ExportFailure('audio_encoder_misaligned');
+    audioDelayFrames = delay.delayFrames;
+    audioDelayCorrelation = delay.correlation;
+  }
+
   const sources: ExportSources = {
     videoTrack,
     hdrTransfer,
@@ -591,7 +654,9 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
     sourceAudioTrack,
     sourceAudioUsable,
     musicTrack,
-    wantsAudio: sourceAudioUsable || musicTrack !== null,
+    wantsAudio,
+    audioDelayFrames,
+    audioDelayCorrelation,
   };
 
   // Previous results from this worker are no longer offered once a new export
@@ -713,10 +778,15 @@ async function produceOutput(
     output.addVideoTrack(videoSource, { frameRate: plan.fpsNum / plan.fpsDen });
   }
 
-  let audioSource: AudioSampleSource | null = null;
+  // ADR-032: the AAC encoder runs here rather than inside mediabunny, so its
+  // priming can be moved in front of 0 (the muxer writes the edit list that
+  // players skip) and the flush padding dropped again.
+  let audioPackets: EncodedAudioPacketSource | null = null;
+  let audioSource: AlignedAacEncoder | null = null;
   if (wantsAudio) {
-    audioSource = new AudioSampleSource({ codec: 'aac', bitrate: plan.audioBitrate });
-    output.addAudioTrack(audioSource);
+    audioPackets = new EncodedAudioPacketSource('aac');
+    output.addAudioTrack(audioPackets);
+    audioSource = new AlignedAacEncoder(audioPackets, aacSettings(plan), sources.audioDelayFrames, audioEndFrame(plan));
   }
 
   const audioSources: AudioContextSources = {
@@ -736,6 +806,11 @@ async function produceOutput(
   let framesDrawn = 0;
   let framesMissing = 0;
   let succeeded = false;
+  // Measurement only (ADR-028 profile): what the decoder delivered and what
+  // the produced file holds.
+  const decodedTimesUs: number[][] = [];
+  let producedForProfile: Uint8Array | Blob | null = null;
+  let probedDurationUs: number | null = null;
 
   // The first and the last report always go out; in between at most one per
   // PROGRESS_INTERVAL_MS (ADR-029).
@@ -865,7 +940,10 @@ async function produceOutput(
         if (!videoSink) throw new ExportFailure('internal_error');
         const firstTs = timestamps[0] ?? 0;
         const lastTs = timestamps[timestamps.length - 1] ?? firstTs;
-        const decoded = videoSink.samples(firstTs, lastTs + 0.001);
+        const samples = videoSink.samples(firstTs, lastTs + 0.001);
+        const seen: number[] = [];
+        if (clock.enabled) decodedTimesUs.push(seen);
+        const decoded = clock.enabled ? recordTimes(samples, seen) : samples;
         let frame = segment.startFrame;
         clock.mark();
         for await (const { frame: sample, missing } of pickFrames(decoded, timestamps, frameDuration)) {
@@ -931,12 +1009,21 @@ async function produceOutput(
     clock.mark();
     if (fastJob) fastJob.finishVideo();
     else videoSource?.close();
-    audioSource?.close();
+    if (audioSource) {
+      try {
+        await audioSource.finish();
+      } catch (error) {
+        // Audio that stops short of the end is refused, on either path.
+        throw error instanceof AacAlignmentError ? new ExportFailure('audio_encoder_misaligned') : error;
+      }
+    }
+    audioPackets?.close();
     await output.finalize();
 
     const collected = await sink.collect(output.target);
     const produced = collected.file ?? collected.bytes;
     if (!produced || collected.sizeBytes === 0) throw new ExportFailure('output_probe_failed');
+    if (clock.enabled) producedForProfile = produced;
     clock.lap('finalize');
 
     emit(requestId, { type: 'verifying', attemptId: requestId });
@@ -944,6 +1031,7 @@ async function produceOutput(
     // may be offered (ADR-027); a failure here falls back to the full encode.
     if (fastJob) await fastJob.verify(produced);
     const probe = await probeProduced(produced);
+    probedDurationUs = probe.durationUs;
     clock.lap('probe');
 
     if (!durationWithinTolerance(plan.expectedDurationUs, probe.durationUs, plan.fpsNum, plan.fpsDen)) {
@@ -1000,6 +1088,9 @@ async function produceOutput(
   } finally {
     if (clock.enabled) {
       // Measurement only (ADR-028): read by the scripts from the console.
+      const producedTracks = producedForProfile
+        ? await describeProduced(producedForProfile).catch((error: unknown) => String(error))
+        : null;
       console.info(
         `${EXPORT_PROFILE_LOG_PREFIX} ${JSON.stringify({
           succeeded,
@@ -1014,11 +1105,20 @@ async function produceOutput(
           audio: wantsAudio,
           route: sink.route,
           videoBitrate,
+          framesMissing,
+          audioDelayFrames: sources.audioDelayFrames,
+          audioDelayCorrelation: sources.audioDelayCorrelation,
+          audioAlignment: audioSource?.stats ?? null,
+          expectedDurationUs: plan.expectedDurationUs,
+          probedDurationUs,
+          decodedTimesUs: decodedTimesUs.map((times) => times.slice(0, 400)),
+          producedTracks,
           ...clock.summary(framesDone),
         })}`,
       );
     }
     hdrClipper?.close();
+    audioSource?.close();
     hdrQueue.length = 0;
     await audioSources.clipReader?.close();
     await audioSources.musicReader?.close();
@@ -1054,6 +1154,17 @@ async function paceSegmentAudio(
     if (turn) await turn;
     if (pacer.isStopped) return;
     await writer.advanceTo(((chunk + AUDIO_CHUNK_FRAMES) * US_PER_SECOND) / rate);
+  }
+}
+
+/** Measurement only: passes the decoded frames through, noting each timestamp. */
+async function* recordTimes<T extends { timestamp: number }>(
+  frames: AsyncIterable<T>,
+  into: number[],
+): AsyncGenerator<T> {
+  for await (const frame of frames) {
+    into.push(Math.round(frame.timestamp * 1e6));
+    yield frame;
   }
 }
 

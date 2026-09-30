@@ -4,6 +4,20 @@
  *
  *   adb forward tcp:9222 localabstract:chrome_devtools_remote
  *   node scripts/android/phone-run.mjs [--url=https://erenulutas0.github.io/capcut/editor/] [--only=A,B]
+ *     [--media=<dir holding real/ and android/>] [--profile]
+ *
+ * A local build instead of the live site (e.g. to try a fix on the phone):
+ *   npm run build && npx next start -p 3100
+ *   adb reverse tcp:3100 tcp:3100
+ *   node scripts/android/phone-run.mjs --url=http://localhost:3100/editor/
+ * `localhost` is a secure context on the phone too, so WebCodecs and OPFS
+ * work; remove the mapping afterwards with `adb reverse --remove tcp:3100`.
+ *
+ * `--desktop=chrome|msedge|chromium` runs the same cases in a desktop browser
+ * launched here instead of the phone, for a side-by-side comparison.
+ *
+ * `--profile` switches on the export stage clock (ADR-028) and records the
+ * worker's console and its phase events (never the file bytes) in the row.
  *
  * The phone's own browser is only driven in one new tab: the script never
  * closes the browser, never touches other tabs, and at the end deletes the
@@ -28,9 +42,13 @@ const only = arg('only', '')
   .split(',')
   .filter(Boolean);
 const web = resolve(import.meta.dirname, '..', '..');
-const real = join(web, 'tests', 'media', 'real');
-const android = join(web, 'tests', 'media', 'android');
-const outDir = join(web, 'matrix-results', 'android');
+// The media are gitignored; a worktree can point at the main checkout's copy.
+const media = resolve(arg('media', join(web, 'tests', 'media')));
+const real = join(media, 'real');
+const android = join(media, 'android');
+const profile = process.argv.includes('--profile');
+const desktop = arg('desktop', '');
+const outDir = join(web, 'matrix-results', desktop ? `android-compare-${desktop}` : 'android');
 mkdirSync(outDir, { recursive: true });
 
 /** id, file, kesitler (seconds), options, what we expect. */
@@ -42,6 +60,13 @@ const CASES = [
   { id: 'E', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [], expect: 'whole 3 min, fast path' },
   { id: 'F', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [], mode: 'encode', expect: 'whole 3 min, forced full encode' },
   { id: 'G', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [[10, 40], [100, 130]], expect: 'two kesitler joined' },
+  // ADR-032: the Samsung recordings over more ranges (whole file, short, joined).
+  { id: 'H', file: join(real, 'web-samsung-s21-h264-60fps-rot90.mp4'), kesits: [], expect: 'encode: 60 fps, whole file' },
+  { id: 'I', file: join(real, 'web-samsung-s21-h264-60fps-rot90.mp4'), kesits: [[1.2, 2.9]], expect: 'encode: 60 fps, 1.7 s' },
+  { id: 'J', file: join(real, 'web-samsung-s21-h264-60fps-rot90.mp4'), kesits: [[0.2, 1.5], [2, 4.3]], expect: 'encode: 60 fps, two kesitler' },
+  { id: 'K', file: join(real, 'web-samsung-hevc-slowmo-sef-rot90.mp4'), kesits: [], expect: 'encode: HEVC slow motion, whole file' },
+  { id: 'L', file: join(real, 'web-samsung-hevc-slowmo-sef-rot90.mp4'), kesits: [[2.5, 5.1]], expect: 'encode: HEVC slow motion, 2.6 s' },
+  { id: 'M', file: join(real, 'web-samsung-hevc-slowmo-sef-rot90.mp4'), kesits: [[0, 3], [8, 11.5]], expect: 'encode: HEVC slow motion, two kesitler' },
 ];
 
 function probe(file) {
@@ -88,8 +113,10 @@ async function sendFile(page, file) {
   );
 }
 
-const browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
-const context = browser.contexts()[0];
+const browser = desktop
+  ? await chromium.launch({ channel: desktop === 'chromium' ? undefined : desktop })
+  : await chromium.connectOverCDP('http://127.0.0.1:9222');
+const context = desktop ? await browser.newContext() : browser.contexts()[0];
 const results = [];
 
 for (const testCase of CASES) {
@@ -102,6 +129,32 @@ for (const testCase of CASES) {
     crashed = true;
   });
   await installSavePicker(page);
+  const workerLog = [];
+  if (profile) {
+    await page.addInitScript(() => {
+      window.__clipExportProfile = true;
+      // Phase events of the export worker, without any file bytes.
+      window.__workerEvents = [];
+      const Original = window.Worker;
+      window.Worker = class extends Original {
+        constructor(...args) {
+          super(...args);
+          this.addEventListener('message', (message) => {
+            const data = message.data;
+            if (data?.type !== 'event' || data.event?.type === 'encoding') return;
+            window.__workerEvents.push(
+              JSON.parse(
+                JSON.stringify(data.event, (_key, value) =>
+                  value instanceof Blob || ArrayBuffer.isView(value) ? '[bytes]' : value,
+                ),
+              ),
+            );
+          });
+        }
+      };
+    });
+    page.on('worker', (worker) => worker.on('console', (message) => workerLog.push(message.text())));
+  }
   if (testCase.mode === 'encode') {
     await page.addInitScript(() => {
       window.__clipExportMode = 'encode';
@@ -162,6 +215,10 @@ for (const testCase of CASES) {
   }
   row.crashed = crashed;
   row.pageErrors = errors;
+  if (profile) {
+    row.workerEvents = await page.evaluate(() => window.__workerEvents ?? []).catch(() => []);
+    row.workerLog = workerLog;
+  }
   // Clean up what this run left on the phone: saved files and site data.
   await page
     .evaluate(async () => {
@@ -180,6 +237,7 @@ for (const testCase of CASES) {
   console.log(JSON.stringify(row));
 }
 
-writeFileSync(join(outDir, `phone-run-${Date.now()}.json`), JSON.stringify({ url, at: new Date().toISOString(), results }, null, 2));
+writeFileSync(join(outDir, `phone-run-${Date.now()}.json`), JSON.stringify({ url, desktop: desktop || null, at: new Date().toISOString(), results }, null, 2));
+if (desktop) await browser.close();
 // Only disconnect: never close the phone's own browser.
 process.exit(0);

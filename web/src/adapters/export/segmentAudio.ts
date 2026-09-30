@@ -9,7 +9,7 @@
  * before.
  */
 
-import { AudioSample, type AudioSampleSource } from 'mediabunny';
+import { AudioSample } from 'mediabunny';
 
 import { clampBuffers, interleave, mixStreamInto, musicEnvelope } from '@/domain/audioMix';
 import { frameToUs, type RenderPlan, type RenderSegment } from '@/domain/renderPlan';
@@ -22,6 +22,21 @@ export const AUDIO_CHUNK_FRAMES = 4096;
 
 /** No stage timing unless a measurement asked for it (ADR-028). */
 const NO_CLOCK: StageLane = { mark() {}, lap() {} };
+
+/** Where the mixed chunks go: the export's AAC encoder (alignedAac). */
+export interface AudioSampleTarget {
+  add(sample: AudioSample): Promise<void>;
+}
+
+/**
+ * One past the last audio frame any moment writes, at the output rate: the
+ * end the whole audio track must reach.
+ */
+export function audioEndFrame(plan: RenderPlan): number {
+  let endFrame = 0;
+  for (const segment of plan.segments) endFrame = Math.max(endFrame, segment.endFrame);
+  return Math.round((frameToUs(endFrame, plan.fpsNum, plan.fpsDen) * plan.audio.sampleRate) / US_PER_SECOND);
+}
 
 export interface AudioContextSources {
   clipReader: AudioStreamReader | null;
@@ -38,7 +53,7 @@ export class SegmentAudioWriter {
     private readonly plan: RenderPlan,
     private readonly segment: RenderSegment,
     private readonly sources: AudioContextSources,
-    private readonly audioSource: AudioSampleSource,
+    private readonly audioSource: AudioSampleTarget,
     private readonly checkCanceled: () => void,
     /** Stage timing (ADR-028): decode, mix and encode of the audio. */
     private readonly clock: StageLane = NO_CLOCK,
@@ -149,7 +164,7 @@ export class SegmentAudioWriter {
       try {
         await audioSource.add(sample);
       } finally {
-        // `add` has encoded it by the time it resolves; mediabunny leaves closing to us.
+        // `add` has copied it to the encoder by the time it resolves; closing is ours.
         sample.close();
       }
       clock.lap('audioEncode');

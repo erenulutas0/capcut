@@ -561,6 +561,8 @@ export const tr = {
   'export.fail.audio_undecodable': 'Bu tarayıcı seçilen ses dosyasını çözemiyor.',
   'export.fail.video_encoder_unsupported': 'Bu tarayıcıda H.264 kodlama bu ayarla desteklenmiyor.',
   'export.fail.audio_encoder_unsupported': 'Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor.',
+  'export.fail.audio_encoder_misaligned':
+    'Bu tarayıcının ses kodlayıcısı sesi görüntüyle hizalı yazamadı; sesi kayık bir dosya kaydedilmedi.',
   'export.fail.no_frames_decoded': 'Kaynaktan hiç kare çözülemedi.',
   'export.fail.source_frames_missing':
     'Bu tarayıcı videonun bazı karelerini çözemedi. Eksik karelerle bozuk bir dosya üretmek yerine durduruldu. Chrome veya Edge ile dene.',
@@ -1334,6 +1336,8 @@ export const en: Record<MessageKey, string> = {
     'H.264 encoding is unsupported here with this configuration.',
   'export.fail.audio_encoder_unsupported':
     'AAC encoding is unsupported here with this configuration.',
+  'export.fail.audio_encoder_misaligned':
+    "This browser's audio encoder could not write the sound in sync with the picture; a file with shifted sound was not saved.",
   'export.fail.no_frames_decoded': 'No frames could be decoded from the source.',
   'export.fail.source_frames_missing':
     'This browser could not decode some frames of the video. It stopped instead of producing a broken file. Try Chrome or Edge.',

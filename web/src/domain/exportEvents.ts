@@ -29,6 +29,8 @@ export type ExportFailureCode =
   | 'audio_undecodable'
   | 'video_encoder_unsupported'
   | 'audio_encoder_unsupported'
+  /** ADR-032: the AAC encoder's delay could not be measured, or its audio stopped short of the end. */
+  | 'audio_encoder_misaligned'
   | 'no_frames_decoded'
   | 'source_frames_missing'
   | 'source_reorder_unfixable'
