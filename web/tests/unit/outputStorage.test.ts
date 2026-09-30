@@ -81,15 +81,18 @@ describe('room check', () => {
 });
 
 describe('storage numbers in the message', () => {
-  it('uses binary units; a need rounds up, the free space rounds down', () => {
-    expect(formatStorageBytes(2.5 * GIB, 'up')).toBe('2.50 GiB');
-    expect(formatStorageBytes(GIB, 'down')).toBe('1.00 GiB');
-    expect(formatStorageBytes(2.501 * GIB, 'up')).toBe('2.51 GiB');
-    expect(formatStorageBytes(2.509 * GIB, 'down')).toBe('2.50 GiB');
-    expect(formatStorageBytes(40 * MIB, 'up')).toBe('40 MiB');
-    expect(formatStorageBytes(40 * MIB + 1, 'up')).toBe('41 MiB');
-    expect(formatStorageBytes(40 * MIB + 1, 'down')).toBe('40 MiB');
-    expect(formatStorageBytes(0, 'down')).toBe('0 MiB');
-    expect(formatStorageBytes(-1, 'up')).toBe('—');
+  it('uses decimal units (ADR-030); a need rounds up, the free space rounds down', () => {
+    expect(formatStorageBytes(2.5 * GIB, 'up', ',')).toBe('2,69 GB');
+    expect(formatStorageBytes(2.5 * GIB, 'down', ',')).toBe('2,68 GB');
+    expect(formatStorageBytes(GIB, 'down', '.')).toBe('1.07 GB');
+    expect(formatStorageBytes(2_500_000_000, 'up', ',')).toBe('2,5 GB');
+    expect(formatStorageBytes(2_500_000_001, 'up', ',')).toBe('2,51 GB');
+    expect(formatStorageBytes(2_509_999_999, 'down', ',')).toBe('2,5 GB');
+    expect(formatStorageBytes(40 * MIB, 'up', ',')).toBe('42 MB');
+    expect(formatStorageBytes(40_000_000, 'up', ',')).toBe('40 MB');
+    expect(formatStorageBytes(40_000_001, 'up', ',')).toBe('40,1 MB');
+    expect(formatStorageBytes(40_099_999, 'down', ',')).toBe('40 MB');
+    expect(formatStorageBytes(0, 'down', ',')).toBe('0 B');
+    expect(formatStorageBytes(-1, 'up', ',')).toBe('—');
   });
 });

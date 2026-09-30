@@ -11,7 +11,7 @@ export const tr = {
   'landing.step1.title': 'Videonu aç',
   'landing.step1.body': 'Dosya bilgisayarından çıkmaz; tarayıcıda açılır.',
   'landing.step2.title': 'Başını ve sonunu işaretle',
-  'landing.step2.body': '“Başlangıcı işaretle”, “Bitişi işaretle”, sonra “Kesit ekle”.',
+  'landing.step2.body': '“Başlangıcı işaretle”, sonra “Bitişi işaretle”: kesit hemen listeye eklenir.',
   'landing.step3.title': 'Kesitleri izle',
   'landing.step3.body': 'Her kesit listeye düşer; ▶ ile yalnızca onu izlersin.',
   'landing.step4.title': 'İndir',
@@ -229,7 +229,8 @@ export const tr = {
   'range.setStart': 'Başlangıcı işaretle',
   'range.setEnd': 'Bitişi işaretle',
   'range.setStartTitle': 'Videonun şu anki yerini başlangıç yap (klavyede I)',
-  'range.setEndTitle': 'Videonun şu anki yerini bitiş yap (klavyede O)',
+  'range.setEndTitle': 'Videonun şu anki yerini bitiş yap ve kesiti ekle (klavyede O)',
+  'mark.addTitle': 'Kutulara yazdığın başlangıç ve bitişle kesit ekle (Enter)',
   'silence.eyebrow': 'KESİM ÖNERİSİ',
   'silence.title': 'Sessizlikleri bul',
   'silence.intro':
@@ -606,11 +607,9 @@ export const tr = {
     'Bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.',
   'error.unknown_duration': 'Dosyanın süresi okunamadı; bu haliyle düzenlenemez.',
   'error.timeout': 'Dosya okunurken zaman aşımı oldu.',
-  'error.file_too_large':
-    'Dosya bu sürümdeki 4 GiB (yaklaşık 4,29 GB) sınırının üzerinde.',
-  'error.total_too_large':
-    'Video ve müzik birlikte bu sürümdeki 4 GiB (yaklaşık 4,29 GB) sınırını aşıyor.',
-  'error.music_too_large': 'Müzik dosyası bu sürümdeki 100 MiB (yaklaşık 105 MB) sınırının üzerinde.',
+  'error.file_too_large': 'Dosya {size}; bu sürümün sınırı {limit}.',
+  'error.total_too_large': 'Video ve müzik birlikte {size}; bu sürümde ikisinin toplam sınırı {limit}.',
+  'error.music_too_large': 'Müzik dosyası {size}; bu sürümün müzik sınırı {limit}.',
   'error.music_too_long': 'Müzik bu sürümdeki 10 dakika sınırının üzerinde.',
   'error.source_too_long': 'Video bu sürümdeki 120 dakika sınırının üzerinde.',
   'error.range_reversed': 'Bitiş zamanı başlangıçtan sonra olmalı.',
@@ -619,6 +618,7 @@ export const tr = {
   'error.clip_limit_exceeded': 'Bir projede en çok 20 kesit olabilir. Yeni kesit için önce birini sil.',
   'error.timeline_duration_exceeds_policy': 'Kesitlerin toplamı en fazla 120 dakika olabilir.',
   'error.no_source': 'Önce bir video seç.',
+  'error.start_first': 'Önce başlangıcı işaretle.',
   'error.invalid_time': 'Zamanı 00:15.000 gibi dakika:saniye ya da yalnızca saniye (15) olarak yaz.',
   'error.fade_exceeds_selection': 'Açılış ve kapanış toplamı müzik bölümünden uzun olamaz.',
   'error.music_start_after_output': 'Müzik, çıktı süresi dolmadan başlamalı.',
@@ -635,7 +635,7 @@ export const tr = {
   'help.limits': 'Bu sürümde olmayanlar',
   'help.close': 'Kapat',
   'help.shortcut.space': 'Oynat / duraklat',
-  'help.shortcut.io': 'Oynatma çizgisinde başlangıç / bitiş işaretle',
+  'help.shortcut.io': 'Oynatma çizgisinde başlangıcı işaretle / bitişi işaretle ve kesiti ekle',
   'help.shortcut.playhead':
     'Şerit odaklıyken oynatma çizgisini 1 kare / Shift ile 1 saniye taşı; Home / End baş / son',
   'help.shortcut.delete': 'Seçili kesiti sil',
@@ -644,7 +644,7 @@ export const tr = {
   'help.shortcut.trim': 'Odaklı tutamacı 1 kare / Shift ile 1 saniye kaydır',
   'help.shortcutNote': 'Bir metin veya zaman alanına yazarken kısayollar devre dışıdır.',
   'help.limit.length':
-    'Açılan video en fazla 120 dakika ve 4 GiB. İndirilen video (bir kesit ya da birleştirilmiş kesitler) en fazla 60 dakika; tarayıcı videoyu diske yazamıyorsa en fazla 5 dakika. Daha uzun videodan kesit ekle ve kesitleri indir.',
+    'Açılan video en fazla 120 dakika ve 4,29 GB. İndirilen video (bir kesit ya da birleştirilmiş kesitler) en fazla 60 dakika; tarayıcı videoyu diske yazamıyorsa en fazla 5 dakika. Daha uzun videodan kesit ekle ve kesitleri indir.',
   'help.limit.export': 'Çıktı yalnızca uygunluk kontrolünü geçen tarayıcıda alınabilir.',
   'help.limit.mix': 'Önizlemede iki oynatıcı birlikte çalışır; gerçek miks yalnızca çıktıda yapılır.',
   'help.limit.save':
@@ -655,7 +655,7 @@ export const tr = {
   'kesit.emptyNoVideo':
     'Önce bir video aç. Sonra saklamak istediğin yerleri işaretle; kesitlerin burada listelenir.',
   'kesit.emptyWithVideo':
-    'Henüz kesit yok. Saklamak istediğin yerin başında “Başlangıcı işaretle”ye, sonunda “Bitişi işaretle”ye bas, sonra “Kesit ekle”: kesit burada görünür. Kesit eklemezsen “Videoyu indir” videonun tamamını indirir.',
+    'Henüz kesit yok. Saklamak istediğin yerin başında “Başlangıcı işaretle”ye, sonunda “Bitişi işaretle”ye bas: kesit burada görünür. Kesit eklemezsen “Videoyu indir” videonun tamamını indirir.',
   'kesit.selectLabel': 'Kesit {n}{acc} seç, {range}',
   'kesit.playLabel': 'Kesit {n}{acc} oynat, {range}',
   'kesit.downloadLabel': 'Kesit {n}{acc} indir, {range}',
@@ -669,10 +669,9 @@ export const tr = {
   'hint.title': 'Nasıl kesilir? Üç adım',
   'hint.step1': 'Videoyu oynat ya da şeritte istediğin yere git.',
   'hint.step1NoVideo': '“Video seç” ile videonu aç; oynat ya da şeritte istediğin yere git.',
-  'hint.step2':
-    'Saklamak istediğin yerin başında “Başlangıcı işaretle”ye, sonunda “Bitişi işaretle”ye bas.',
+  'hint.step2': 'Saklamak istediğin yerin başında “Başlangıcı işaretle”ye bas.',
   'hint.step3':
-    '“Kesit ekle”ye bas: kesit bu listeye düşer. ▶ onu oynatır, “İndir” yalnızca onu kaydeder.',
+    'Sonunda “Bitişi işaretle”ye bas: kesit hemen bu listeye düşer. ▶ onu oynatır, “İndir” yalnızca onu kaydeder.',
   'hint.more':
     'Birden çok kesit eklersen üstteki düğme hepsini tek videoda birleştirip kaydeder; hiç eklemezsen videonun tamamını.',
   'hint.dismiss': 'Anladım',
@@ -688,6 +687,7 @@ export const tr = {
     'Bitişi düzelt ya da videoda daha ileri gidip “Bitişi işaretle”ye bas.',
   'mark.next.range_out_of_source': 'Zamanları videonun süresi içinde yaz.',
   'mark.next.clip_too_short': 'Bitişi biraz daha ileri al.',
+  'mark.next.start_first': 'Videoda kesitin başlayacağı yere git ve “Başlangıcı işaretle”ye bas.',
   'strip.title': 'Video şeridi',
   'strip.zoomGroup': 'Şeridi yakınlaştır',
   'strip.zoomIn': 'Yakınlaştır',
@@ -744,7 +744,7 @@ export const tr = {
   'silence.scope.all': 'Aranan: bütün kesitler.',
   'silence.scope.kesit': 'Aranan: Kesit {n}.',
   'notice.opened':
-    'Video açıldı ({length}). Saklamak istediğin yerin başında “Başlangıcı işaretle”ye, sonunda “Bitişi işaretle”ye bas, sonra “Kesit ekle”.',
+    'Video açıldı ({length}). Saklamak istediğin yerin başında “Başlangıcı işaretle”ye, sonunda “Bitişi işaretle”ye bas: kesit listeye eklenir.',
   'notice.aspectPortrait': 'Dikey video: 9:16 çerçeve seçildi',
   'notice.aspectLandscape': 'Yatay video: 16:9 çerçeve seçildi',
   'notice.aspectSquare': 'Kare video: 1:1 çerçeve seçildi',
@@ -763,15 +763,18 @@ export const tr = {
   'help.step.watch': 'Videoyu izle (tam ekran için F).',
   'help.step.mark':
     'Saklamak istediğin yerin başında “Başlangıcı işaretle”ye (klavyede I), sonunda “Bitişi işaretle”ye (O) bas.',
-  'help.step.add': '“Kesit ekle”ye bas (Enter); kesit listeye düşer. ▶ ile yalnızca onu izlersin.',
+  'help.step.add':
+    '“Bitişi işaretle”ye basınca kesit listeye düşer; ▶ ile yalnızca onu izlersin. Zamanları kutulara yazdıysan “Kesit ekle”ye bas (Enter).',
   'help.step.download':
     'Kesitin “İndir” düğmesiyle yalnızca onu indir ya da üstteki “Hepsini birleştirip indir”. Dosyayı nereye kaydedeceğini sorar ve oraya yazar.',
-  'help.shortcut.add': 'Kesit ekle',
+  'help.shortcut.add': 'Kutulara yazılan zamanlarla kesit ekle',
   'help.shortcut.zoom': 'Şeridi yakınlaştır / uzaklaştır',
   'help.shortcut.fullscreen': 'Tam ekran izle',
   'footer.local': 'Yerel düzenleme · kaynak dosya değişmez · bulut yüklemesi yok',
   'footer.shortcuts':
-    'Kısayollar: Boşluk oynat · I başlangıç · O bitiş · Enter kesit ekle · F tam ekran · Ctrl+Z geri al',
+    'Kısayollar: Boşluk oynat · I başlangıç · O bitiş ve ekle · F tam ekran · Ctrl+Z geri al',
+  'dock.label': 'Kesitler kısayolu',
+  'dock.count': 'Kesitler ({n})',
   'unsaved.prompt': 'Bu oturumdaki düzenlemen kaydedilmedi.',
 } as const;
 
@@ -785,7 +788,7 @@ export const en: Record<MessageKey, string> = {
   'landing.step1.title': 'Open your video',
   'landing.step1.body': 'The file never leaves your computer; it opens in the browser.',
   'landing.step2.title': 'Mark its start and end',
-  'landing.step2.body': '“Mark start”, “Mark end”, then “Add clip”.',
+  'landing.step2.body': '“Mark start”, then “Mark end”: the clip is added to the list right away.',
   'landing.step3.title': 'Watch your clips',
   'landing.step3.body': 'Every clip drops into a list; ▶ plays just that one.',
   'landing.step4.title': 'Download',
@@ -1003,7 +1006,8 @@ export const en: Record<MessageKey, string> = {
   'range.setStart': 'Mark start',
   'range.setEnd': 'Mark end',
   'range.setStartTitle': 'Make the current point of the video the start (I on a keyboard)',
-  'range.setEndTitle': 'Make the current point of the video the end (O on a keyboard)',
+  'range.setEndTitle': 'Make the current point of the video the end and add the clip (O on a keyboard)',
+  'mark.addTitle': 'Add a clip with the start and end you typed into the fields (Enter)',
   'silence.eyebrow': 'CUT SUGGESTION',
   'silence.title': 'Find silences',
   'silence.intro':
@@ -1377,9 +1381,9 @@ export const en: Record<MessageKey, string> = {
     'The browser could not open a preview for this file. It may be corrupt or in an unsupported format. Try another video; MP4 or MOV files from a phone usually open.',
   'error.unknown_duration': 'The duration could not be read, so the file cannot be edited.',
   'error.timeout': 'Reading the file timed out.',
-  'error.file_too_large': 'The file is above the 4 GiB (about 4.29 GB) limit of this version.',
-  'error.total_too_large': 'Video and music together exceed the 4 GiB (about 4.29 GB) limit of this version.',
-  'error.music_too_large': 'The music file is above the 100 MiB (about 105 MB) limit of this version.',
+  'error.file_too_large': 'The file is {size}; the limit of this version is {limit}.',
+  'error.total_too_large': 'Video and music together are {size}; the combined limit of this version is {limit}.',
+  'error.music_too_large': 'The music file is {size}; the music limit of this version is {limit}.',
   'error.music_too_long': 'The music is above the 10 minute limit of this version.',
   'error.source_too_long': 'The video is above the 120 minute limit of this version.',
   'error.range_reversed': 'The end must come after the start.',
@@ -1388,6 +1392,7 @@ export const en: Record<MessageKey, string> = {
   'error.clip_limit_exceeded': 'A project can hold at most 20 clips. Delete one before adding another.',
   'error.timeline_duration_exceeds_policy': 'All clips together can be at most 120 minutes.',
   'error.no_source': 'Choose a video first.',
+  'error.start_first': 'Mark the start first.',
   'error.invalid_time': 'Write the time as minutes:seconds like 00:15.000, or just seconds (15).',
   'error.fade_exceeds_selection': 'Fade in plus fade out cannot exceed the music segment.',
   'error.music_start_after_output': 'Music must start before the output ends.',
@@ -1404,7 +1409,7 @@ export const en: Record<MessageKey, string> = {
   'help.limits': 'Not in this version',
   'help.close': 'Close',
   'help.shortcut.space': 'Play / pause',
-  'help.shortcut.io': 'Mark start / end at the playhead',
+  'help.shortcut.io': 'Mark start / mark end and add the clip, at the playhead',
   'help.shortcut.playhead':
     'With the strip focused, move the playhead by 1 frame / 1 second with Shift; Home / End for start / end',
   'help.shortcut.delete': 'Delete the selected clip',
@@ -1413,7 +1418,7 @@ export const en: Record<MessageKey, string> = {
   'help.shortcut.trim': 'Move the focused handle by 1 frame / 1 second with Shift',
   'help.shortcutNote': 'Shortcuts are disabled while you type in a text or time field.',
   'help.limit.length':
-    'An opened video can be up to 120 minutes and 4 GiB. A downloaded video (one clip or the clips joined) can be up to 60 minutes; at most 5 minutes if the browser cannot write the video to disk. Add clips from a longer video and download those.',
+    'An opened video can be up to 120 minutes and 4.29 GB. A downloaded video (one clip or the clips joined) can be up to 60 minutes; at most 5 minutes if the browser cannot write the video to disk. Add clips from a longer video and download those.',
   'help.limit.export': 'Export is only possible in a browser that passes the capability check.',
   'help.limit.mix': 'The preview runs two players together; the real mix happens only in the export.',
   'help.limit.save':
@@ -1424,7 +1429,7 @@ export const en: Record<MessageKey, string> = {
   'kesit.emptyNoVideo':
     'Open a video first. Then mark the parts you want to keep; your clips are listed here.',
   'kesit.emptyWithVideo':
-    'No clips yet. Press “Mark start” where the part you want starts and “Mark end” where it ends, then “Add clip”: the clip shows up here. With no clips, “Download video” downloads the whole video.',
+    'No clips yet. Press “Mark start” where the part you want starts and “Mark end” where it ends: the clip shows up here. With no clips, “Download video” downloads the whole video.',
   'kesit.selectLabel': 'Select clip {n}, {range}',
   'kesit.playLabel': 'Play clip {n}, {range}',
   'kesit.downloadLabel': 'Download clip {n}, {range}',
@@ -1438,9 +1443,9 @@ export const en: Record<MessageKey, string> = {
   'hint.title': 'How to cut: three steps',
   'hint.step1': 'Play the video, or go to a point on the strip.',
   'hint.step1NoVideo': 'Open your video with “Choose a video”; play it, or go to a point on the strip.',
-  'hint.step2': 'Press “Mark start” where the part you want starts and “Mark end” where it ends.',
+  'hint.step2': 'Press “Mark start” where the part you want starts.',
   'hint.step3':
-    'Press “Add clip”: the clip drops into this list. ▶ plays it, “Download” saves just that clip.',
+    'Press “Mark end” where it ends: the clip drops into this list right away. ▶ plays it, “Download” saves just that clip.',
   'hint.more': 'Add several clips and the button at the top joins them into one video; add none and it saves the whole video.',
   'hint.dismiss': 'Got it',
   'kesit.moveHint':
@@ -1454,6 +1459,7 @@ export const en: Record<MessageKey, string> = {
   'mark.next.range_reversed': 'Fix the end, or move further into the video and press “Mark end”.',
   'mark.next.range_out_of_source': 'Type times within the length of the video.',
   'mark.next.clip_too_short': 'Move the end a little later.',
+  'mark.next.start_first': 'Go to where the clip should start in the video and press “Mark start”.',
   'strip.title': 'Video strip',
   'strip.zoomGroup': 'Strip zoom',
   'strip.zoomIn': 'Zoom in',
@@ -1511,7 +1517,7 @@ export const en: Record<MessageKey, string> = {
   'silence.scope.all': 'Searching: all clips.',
   'silence.scope.kesit': 'Searching: clip {n}.',
   'notice.opened':
-    'Video opened ({length}). Press “Mark start” where the part you want starts and “Mark end” where it ends, then “Add clip”.',
+    'Video opened ({length}). Press “Mark start” where the part you want starts and “Mark end” where it ends: the clip is added to the list.',
   'notice.aspectPortrait': 'Portrait video: the 9:16 frame was chosen',
   'notice.aspectLandscape': 'Landscape video: the 16:9 frame was chosen',
   'notice.aspectSquare': 'Square video: the 1:1 frame was chosen',
@@ -1530,15 +1536,18 @@ export const en: Record<MessageKey, string> = {
   'help.step.watch': 'Watch the video (F for full screen).',
   'help.step.mark':
     'Press “Mark start” (I on a keyboard) where the part you want starts and “Mark end” (O) where it ends.',
-  'help.step.add': 'Press “Add clip” (Enter); the clip drops into the list. ▶ plays just that clip.',
+  'help.step.add':
+    'Pressing “Mark end” drops the clip into the list; ▶ plays just that clip. If you typed the times into the fields, press “Add clip” (Enter).',
   'help.step.download':
     'Download one clip with its “Download” button, or “Join all and download” at the top. It asks where to save and writes the file there.',
-  'help.shortcut.add': 'Add clip',
+  'help.shortcut.add': 'Add a clip with the times typed into the fields',
   'help.shortcut.zoom': 'Zoom the strip in / out',
   'help.shortcut.fullscreen': 'Watch full screen',
   'footer.local': 'Local editing · your source file is unchanged · no cloud upload',
   'footer.shortcuts':
-    'Shortcuts: Space play · I start · O end · Enter add clip · F full screen · Ctrl+Z undo',
+    'Shortcuts: Space play · I start · O end and add · F full screen · Ctrl+Z undo',
+  'dock.label': 'Clips shortcut',
+  'dock.count': 'Clips ({n})',
   'unsaved.prompt': 'Your edits in this session are not saved.',
 };
 

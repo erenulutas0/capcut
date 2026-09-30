@@ -201,7 +201,8 @@ function capabilityCopy(summary: CapabilitySummary): CapabilitySummary {
   };
 }
 
-const MB = 1024 * 1024;
+// Decimal megabytes, as the privacy page and the rest of the UI say "MB" (ADR-030).
+const MB = 1_000_000;
 
 export function buildDiagnostics(input: DiagnosticsInput): DiagnosticsReport {
   const { browser, screen, features } = input;

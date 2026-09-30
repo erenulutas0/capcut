@@ -19,10 +19,10 @@
  * here; the file stays offered until the dialog closes if that save fails.
  */
 
+import { formatBytes } from './policy';
 import { US_PER_SECOND, type Micros } from './time';
 
 const MIB = 1_048_576;
-const GIB = 1_073_741_824;
 
 /**
  * Real/nominal size ratio of long outputs measured 0.98-1.00 (88 s to 60 min,
@@ -68,14 +68,11 @@ export function hasRoomForOutput(freeBytes: number, requiredBytes: number): bool
 }
 
 /**
- * Binary units, spelled as such: the check is made in bytes and the message
- * must not round a GiB into a "GB" (ADR-013). A need is rounded up and a
- * reported free space down, so the message never makes a shortfall look
- * smaller than it is.
+ * Storage numbers in the messages, in decimal units ("2,58 GB", "41,9 MB";
+ * ADR-030, `formatBytes`). The check is made in bytes. A need is rounded up
+ * and a reported free space down, so the message never makes a shortfall
+ * look smaller than it is.
  */
-export function formatStorageBytes(bytes: number, round: 'up' | 'down'): string {
-  if (!Number.isFinite(bytes) || bytes < 0) return '—';
-  const step = round === 'up' ? Math.ceil : Math.floor;
-  if (bytes >= GIB) return `${(step((bytes / GIB) * 100) / 100).toFixed(2)} GiB`;
-  return `${step(bytes / MIB)} MiB`;
+export function formatStorageBytes(bytes: number, round: 'up' | 'down', decimalMark: string): string {
+  return formatBytes(bytes, decimalMark, round);
 }

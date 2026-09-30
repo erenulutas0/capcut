@@ -17,7 +17,7 @@ interface Props {
   t: T;
   disabled: boolean;
   target: MarkTarget;
-  /** I / O buttons: mark the edge at the playhead. */
+  /** I / O buttons: the start at the playhead; the end adds the kesit (ADR-030). */
   onMark: (edge: 'in' | 'out') => void;
   /** A typed time, already understood. */
   onType: (edge: 'in' | 'out', us: Micros) => void;
@@ -28,7 +28,8 @@ interface Props {
   onDone: () => void;
   /**
    * The one control that is the next step, drawn as the primary button: the
-   * start while nothing is marked yet, then the end, then "Kesit ekle".
+   * start while nothing is marked yet, then the end (which adds the kesit);
+   * "Kesit ekle" only when an end was typed or dragged.
    */
   emphasis: 'start' | 'end' | 'add' | null;
 }
@@ -141,9 +142,10 @@ function TimeField({
 }
 
 /**
- * Başlangıç (I) and Bitiş (O) on the video's own time, and "Kesit ekle"
- * (ADR-026). With a kesit selected the same two fields fine-tune its edges,
- * and the button leaves it ("Bitti").
+ * Başlangıç (I) and Bitiş (O) on the video's own time (ADR-026). "Bitişi
+ * işaretle" adds the kesit in the same step; "Kesit ekle" adds the times
+ * typed into the fields (ADR-030). With a kesit selected the same two fields
+ * fine-tune its edges, to the millisecond, and the button leaves it ("Bitti").
  */
 export function MarkBar({ t, disabled, target, onMark, onType, onAdd, onInvalid, onDone, emphasis }: Props) {
   const editing = target.kind === 'kesit';
@@ -222,6 +224,7 @@ export function MarkBar({ t, disabled, target, onMark, onType, onAdd, onInvalid,
               className={emphasis === 'add' ? 'btn btn-accent btn-block' : 'btn btn-block'}
               onClick={add}
               disabled={disabled}
+              title={t('mark.addTitle')}
               aria-keyshortcuts="Enter"
               data-testid="add-moment"
             >

@@ -110,7 +110,7 @@ function Details({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase: 's
         <li>
           <span className="meta-key">{t('export.measuredSize')}</span>
           <span className="meta-value" data-testid="measured-size">
-            {formatBytes(result.sizeBytes)}
+            {formatBytes(result.sizeBytes, t('time.decimalMark'))}
           </span>
         </li>
         <li>
@@ -266,7 +266,7 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
         {/* ADR-023: saving copies the finished file into the downloads folder. */}
         <p className="hint-small" data-testid="export-save-space">
           {entry.result.sizeBytes > 0
-            ? t('export.saveSpace').replace('{size}', formatStorageBytes(entry.result.sizeBytes, 'up'))
+            ? t('export.saveSpace').replace('{size}', formatStorageBytes(entry.result.sizeBytes, 'up', t('time.decimalMark')))
             : t('export.saveSpaceUnknown')}
         </p>
         <Details t={t} entry={entry} />
@@ -365,8 +365,8 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
                     ? 'export.fail.storageReservation'
                     : 'export.fail.storageNumbers',
               )
-                .replace('{required}', formatStorageBytes(entry.storage.requiredBytes, 'up'))
-                .replace('{free}', formatStorageBytes(entry.storage.freeBytes, 'down'))}
+                .replace('{required}', formatStorageBytes(entry.storage.requiredBytes, 'up', t('time.decimalMark')))
+                .replace('{free}', formatStorageBytes(entry.storage.freeBytes, 'down', t('time.decimalMark')))}
             </span>
           ) : null}
         </span>

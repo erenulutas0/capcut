@@ -107,6 +107,7 @@ export function KesitList({
   const [moveNote, setMoveNote] = useState('');
   const count = project.clips.length;
   const limitUs = WEB_LOCAL_POLICY.maxOutputDurationUs;
+  const lengthWords = { second: t('time.secondShort'), decimalMark: t('time.decimalMark') };
 
   const announceMove = (clipId: string, toIndex: number) => {
     const from = project.clips.findIndex((clip) => clip.clipId === clipId);
@@ -248,7 +249,7 @@ export function KesitList({
                   <div className="kesit-tools">
                     <span className="kesit-length" data-testid="kesit-length">
                       <span className="visually-hidden">{t('kesit.lengthLabel')} </span>
-                      {formatKesitLength(lengthUs)}
+                      {formatKesitLength(lengthUs, lengthWords)}
                     </span>
                   <div className="kesit-actions">
                     <button

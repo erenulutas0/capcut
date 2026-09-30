@@ -21,7 +21,7 @@
 
 import { primaryCaptionTrack } from './captions';
 import type { CaptionTrackV2, ClipV1, FitMode, Project } from './edl';
-import { MIN_CLIP_DURATION_US, US_PER_SECOND, type Micros } from './time';
+import { MIN_CLIP_DURATION_US, formatLengthShort, formatPosition, type Micros } from './time';
 import { buildTimeline } from './timeline';
 import { computeSourceView } from './transform';
 
@@ -167,25 +167,17 @@ export function targetKey(target: DownloadTarget): string {
 /**
  * A position in the video as a clock to whole seconds, rounded DOWN: a kesit
  * starting at 12.9 s starts in second 12. `00:12`, `12:30`, `1:02:03`.
+ * (The rule lives in `time.ts`, ADR-030.)
  */
-export function formatPosition(us: Micros): string {
-  const total = Math.floor(Math.max(0, us) / US_PER_SECOND + 1e-9);
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  const seconds = String(total % 60).padStart(2, '0');
-  return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${seconds}` : `${String(minutes).padStart(2, '0')}:${seconds}`;
-}
+export { formatPosition };
 
 /**
- * A kesit's length as a clock: `0:07`, `1:28`, `1:02:03`. Rounded to the
- * nearest second, but never shown as `0:00` for a real kesit.
+ * A kesit's length on its card (ADR-030): `4,6 sn` under a minute, `1:28`,
+ * `1:02:03` from a minute on; rounded down, so it is never longer than the
+ * kesit. Words and decimal mark come from the caller.
  */
-export function formatKesitLength(us: Micros): string {
-  const total = Math.max(us > 0 ? 1 : 0, Math.round(Math.max(0, us) / US_PER_SECOND));
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  const seconds = String(total % 60).padStart(2, '0');
-  return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${seconds}` : `${minutes}:${seconds}`;
+export function formatKesitLength(us: Micros, words: { second: string; decimalMark: string }): string {
+  return formatLengthShort(us, words);
 }
 
 /** The file-name part of the video's name: no extension, only safe characters. */
@@ -221,9 +213,11 @@ export function suggestedFileName(
 // ---------------------------------------------------------- pending range
 
 /**
- * The range the user is marking with Başlangıç (I) and Bitiş (O) before
- * "Kesit ekle". An unmarked edge means the start or the end of the video, so
- * pressing only I and then "Kesit ekle" keeps everything from I to the end.
+ * The range the user is marking. Since ADR-030 "Bitişi işaretle" (O) adds
+ * the kesit in the same step, so a pending END exists only when it was typed
+ * into the Bitiş field or dragged on the strip; "Kesit ekle" (Enter) adds
+ * such a prepared range. A start is always needed: nothing is silently taken
+ * from 0 (the whole video is "Videoyu indir", not a kesit).
  */
 export interface PendingRange {
   inUs: Micros | null;
@@ -232,15 +226,54 @@ export interface PendingRange {
 
 export const EMPTY_PENDING: PendingRange = { inUs: null, outUs: null };
 
-/** The range "Kesit ekle" would add, with unmarked edges filled in. */
-export function resolvePending(pending: PendingRange, durationUs: Micros): { sourceInUs: Micros; sourceOutUs: Micros } {
+type SourceRange = { sourceInUs: Micros; sourceOutUs: Micros };
+
+/**
+ * The range the strip highlights while marking, with unmarked edges drawn
+ * at the start or the end of the video. For drawing only: what is added is
+ * decided by `addFromPending` / `markEnd`.
+ */
+export function resolvePending(pending: PendingRange, durationUs: Micros): SourceRange {
   return { sourceInUs: pending.inUs ?? 0, sourceOutUs: pending.outUs ?? durationUs };
 }
 
+/** Why marking or adding did not make a kesit before any recipe rule ran. */
+export type PendingRefusal = 'start_first' | 'range_reversed';
+
+export type PendingOutcome = { kind: 'add'; range: SourceRange } | { kind: 'refuse'; reason: PendingRefusal };
+
 /**
- * Marks one edge at the playhead. Marking a start after the marked end (or
- * an end before the marked start) drops the other mark instead of producing a
- * reversed range: the latest mark is what the user means.
+ * "Bitişi işaretle" / O at the playhead with no kesit selected (ADR-030): the
+ * marked start and this end become a kesit at once. Without a start it says
+ * so ("Önce başlangıcı işaretle") instead of starting at 0; at or before the
+ * start it refuses (the start stays marked, so a later O can still add).
+ * The recipe's own rules (too short, over the kesit limit) still apply when
+ * the range is added.
+ */
+export function markEnd(pending: PendingRange, atUs: Micros, durationUs: Micros): PendingOutcome {
+  if (pending.inUs === null) return { kind: 'refuse', reason: 'start_first' };
+  const outUs = Math.max(0, Math.min(Math.round(atUs), durationUs));
+  if (outUs <= pending.inUs) return { kind: 'refuse', reason: 'range_reversed' };
+  return { kind: 'add', range: { sourceInUs: pending.inUs, sourceOutUs: outUs } };
+}
+
+/**
+ * "Kesit ekle" / Enter (ADR-030): adds the prepared range — a start with a
+ * typed or dragged end, or a start alone, which keeps everything from it to
+ * the end of the video. With no start it says "Önce başlangıcı işaretle";
+ * it never turns "nothing marked" into the whole video. A typed reversed or
+ * out-of-video range is left to the recipe's rules, which say why.
+ */
+export function addFromPending(pending: PendingRange, durationUs: Micros): PendingOutcome {
+  if (pending.inUs === null) return { kind: 'refuse', reason: 'start_first' };
+  return { kind: 'add', range: { sourceInUs: pending.inUs, sourceOutUs: pending.outUs ?? durationUs } };
+}
+
+/**
+ * Moves one edge of the pending range to the playhead without adding (the
+ * start with I; the end is `markEnd` since ADR-030). Marking a start after a
+ * prepared end (or an end before the start) drops the other mark instead of
+ * producing a reversed range: the latest mark is what the user means.
  */
 export function markPending(pending: PendingRange, edge: 'in' | 'out', atUs: Micros): PendingRange {
   const us = Math.max(0, Math.round(atUs));

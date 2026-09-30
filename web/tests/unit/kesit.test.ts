@@ -19,12 +19,14 @@ import type { AssetV1, Project } from '@/domain/edl';
 import {
   DEFAULT_KESIT_SETTINGS,
   EMPTY_PENDING,
+  addFromPending,
   downloadKind,
   downloadRecipe,
   fileBaseName,
   formatKesitLength,
   formatPosition,
   kesitRecipe,
+  markEnd,
   markPending,
   resolvePending,
   suggestedFileName,
@@ -312,13 +314,29 @@ describe('names and labels', () => {
     expect(fileBaseName('çalışma ğüşiöç.webm')).toBe('çalışma-ğüşiöç');
   });
 
-  it('positions round down, lengths never read 0:00', () => {
+  it('positions round down; lengths round down to a tenth under a minute (ADR-030)', () => {
+    const trWords = { second: 'sn', decimalMark: ',' };
+    const enWords = { second: 's', decimalMark: '.' };
     expect(formatPosition(12.9 * S)).toBe('00:12');
     expect(formatPosition(100 * S)).toBe('01:40');
     expect(formatPosition(3723 * S)).toBe('1:02:03');
-    expect(formatKesitLength(88 * S)).toBe('1:28');
-    expect(formatKesitLength(0.2 * S)).toBe('0:01');
-    expect(formatKesitLength(3723.4 * S)).toBe('1:02:03');
+    expect(formatKesitLength(88 * S, trWords)).toBe('1:28');
+    expect(formatKesitLength(0.2 * S, trWords)).toBe('0,2 sn');
+    expect(formatKesitLength(3723.4 * S, trWords)).toBe('1:02:03');
+    // The founder's example: 00:02.600 → 00:07.200 is 4,6 s, never "5".
+    expect([formatPosition(2_600_000), formatPosition(7_200_000)]).toEqual(['00:02', '00:07']);
+    expect(formatKesitLength(7_200_000 - 2_600_000, trWords)).toBe('4,6 sn');
+    expect(formatKesitLength(7_200_000 - 2_600_000, enWords)).toBe('4.6 s');
+    // Down, not to the nearest: 4.69 s is not "4,7".
+    expect(formatKesitLength(4_690_000, trWords)).toBe('4,6 sn');
+    // The shortest kesit (0.1 s, doc 09) and anything shorter never read "0,0".
+    expect(formatKesitLength(100_000, trWords)).toBe('0,1 sn');
+    expect(formatKesitLength(1, trWords)).toBe('0,1 sn');
+    expect(formatKesitLength(0, trWords)).toBe('0,0 sn');
+    // Under a minute stays in tenths up to the last one; a minute is a clock.
+    expect(formatKesitLength(59_999_999, trWords)).toBe('59,9 sn');
+    expect(formatKesitLength(60 * S, trWords)).toBe('1:00');
+    expect(formatKesitLength(119.9 * S, trWords)).toBe('1:59');
   });
 
   it('Turkish accusative after the kesit number, as read aloud', () => {
@@ -329,7 +347,7 @@ describe('names and labels', () => {
 });
 
 describe('marking Başlangıç (I) and Bitiş (O)', () => {
-  it('unmarked edges are the start and the end of the video', () => {
+  it('the strip draws unmarked edges at the start and the end of the video', () => {
     expect(resolvePending(EMPTY_PENDING, 90 * S)).toEqual({ sourceInUs: 0, sourceOutUs: 90 * S });
     expect(resolvePending({ inUs: 12 * S, outUs: null }, 90 * S)).toEqual({ sourceInUs: 12 * S, sourceOutUs: 90 * S });
   });
@@ -341,5 +359,52 @@ describe('marking Başlangıç (I) and Bitiş (O)', () => {
     expect(markPending(pending, 'in', 25 * S)).toEqual({ inUs: 25 * S, outUs: null });
     expect(markPending(pending, 'out', 5 * S)).toEqual({ inUs: null, outUs: 5 * S });
     expect(markPending(pending, 'in', 12.4 * S + 0.4)).toEqual({ inUs: 12_400_000, outUs: 20 * S });
+  });
+
+  it('ADR-030: marking the end adds the kesit — after a start, never from 0', () => {
+    const started = markPending(EMPTY_PENDING, 'in', 2.6 * S);
+    expect(markEnd(started, 7.2 * S, 24 * S)).toEqual({
+      kind: 'add',
+      range: { sourceInUs: 2.6 * S, sourceOutUs: 7.2 * S },
+    });
+    // No start: say so; do not start at 0.
+    expect(markEnd(EMPTY_PENDING, 7.2 * S, 24 * S)).toEqual({ kind: 'refuse', reason: 'start_first' });
+    // A typed end alone is not a start either.
+    expect(markEnd({ inUs: null, outUs: 9 * S }, 7.2 * S, 24 * S)).toEqual({ kind: 'refuse', reason: 'start_first' });
+    // At or before the start: refused; the start stays marked.
+    expect(markEnd(started, 2.6 * S, 24 * S)).toEqual({ kind: 'refuse', reason: 'range_reversed' });
+    expect(markEnd(started, 1 * S, 24 * S)).toEqual({ kind: 'refuse', reason: 'range_reversed' });
+    // Past the end of the video (a stale playhead): the end of the video.
+    expect(markEnd(started, 30 * S, 24 * S)).toEqual({
+      kind: 'add',
+      range: { sourceInUs: 2.6 * S, sourceOutUs: 24 * S },
+    });
+    // A prepared (typed) end is replaced by the playhead's.
+    expect(markEnd({ inUs: 2 * S, outUs: 9 * S }, 5 * S, 24 * S)).toEqual({
+      kind: 'add',
+      range: { sourceInUs: 2 * S, sourceOutUs: 5 * S },
+    });
+  });
+
+  it('ADR-030: "Kesit ekle" adds a prepared range; nothing marked is not the whole video', () => {
+    expect(addFromPending(EMPTY_PENDING, 24 * S)).toEqual({ kind: 'refuse', reason: 'start_first' });
+    expect(addFromPending({ inUs: null, outUs: 9 * S }, 24 * S)).toEqual({ kind: 'refuse', reason: 'start_first' });
+    expect(addFromPending({ inUs: 3 * S, outUs: 9 * S }, 24 * S)).toEqual({
+      kind: 'add',
+      range: { sourceInUs: 3 * S, sourceOutUs: 9 * S },
+    });
+    // A start alone keeps everything from it to the end of the video.
+    expect(addFromPending({ inUs: 3 * S, outUs: null }, 24 * S)).toEqual({
+      kind: 'add',
+      range: { sourceInUs: 3 * S, sourceOutUs: 24 * S },
+    });
+    // A typed reversed range is passed on: the recipe refuses it with its reason.
+    const reversed = addFromPending({ inUs: 10 * S, outUs: 5 * S }, 24 * S);
+    expect(reversed.kind).toBe('add');
+    const project = setVideoAsset(createEmptyProject(), { assetId: 'a_video_001', kind: 'video', durationUs: 24 * S });
+    if (reversed.kind === 'add') {
+      const result = addClip(project, reversed.range, WEB_LOCAL_POLICY);
+      expect(result.ok ? null : result.reason).toBe('range_reversed');
+    }
   });
 });

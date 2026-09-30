@@ -5,7 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExter
 import { Icon } from '@/components/Icon';
 import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
 import { aspectRatioValue, type CaptionStyleV2, type Project, type ViewRectV1 } from '@/domain/edl';
-import { formatDurationShort, formatTimecode, US_PER_SECOND, type Micros } from '@/domain/time';
+import { formatLengthShort, formatPosition, formatTimecode, US_PER_SECOND, type Micros } from '@/domain/time';
 import { placeView } from '@/domain/transform';
 import type { MessageKey } from '@/i18n/messages';
 import { CaptionOverlay } from './CaptionOverlay';
@@ -145,6 +145,7 @@ export function PreviewStage({
       value={Math.round(currentUs / 1000)}
       disabled={!video || durationUs === 0}
       aria-label={t('preview.seekLabel')}
+      // A slider's value keeps the milliseconds (ADR-030): it is a precise control.
       aria-valuetext={`${formatTimecode(currentUs)} / ${formatTimecode(durationUs)}`}
       style={{ ['--range-pct' as string]: `${percent}%` }}
       onChange={(event) => onSeek(Number(event.target.value) * 1000)}
@@ -225,7 +226,7 @@ export function PreviewStage({
               <Icon name={playing ? 'pause' : 'play'} size={22} />
             </button>
             <span className="fs-time" data-testid="fullscreen-time">
-              {formatTimecode(currentUs)} / {formatTimecode(durationUs)}
+              {formatPosition(currentUs)} / {formatPosition(durationUs)}
             </span>
             <div className="fs-seek">{seekBar('fs-seek')}</div>
             <button
@@ -257,13 +258,15 @@ export function PreviewStage({
             during playback they change every frame. */}
         <span className="time-readout" data-testid="time-now">
           <span className="visually-hidden">{`${t('a11y.timeNow')} `}</span>
-          <strong data-testid="current-time">{formatTimecode(currentUs)}</strong>
+          <strong data-testid="current-time">{formatPosition(currentUs)}</strong>
           <span aria-hidden="true"> / </span>
           <span className="visually-hidden">{` ${t('a11y.timeTotal')} `}</span>
-          <span data-testid="total-time">{formatTimecode(durationUs)}</span>
+          <span data-testid="total-time">{formatPosition(durationUs)}</span>
         </span>
         <span className="stage-meta" data-testid="source-meta">
-          {video ? `${safeFileName(video.fileName, 40)} · ${formatDurationShort(video.durationUs)}` : t('sources.none')}
+          {video
+            ? `${safeFileName(video.fileName, 40)} · ${formatLengthShort(video.durationUs, { second: t('time.secondShort'), decimalMark: t('time.decimalMark') })}`
+            : t('sources.none')}
         </span>
       </div>
 

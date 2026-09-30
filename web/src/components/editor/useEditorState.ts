@@ -79,6 +79,8 @@ export interface MediaError {
   fileName: string;
   /** True when another file of the same kind was open and stays open. */
   keptOpen: boolean;
+  /** For the size refusals: the bytes checked (the file, or video and music together). */
+  bytes?: number;
   /** Extra context the probe found (HEVC without a decoder); shown after the reason. */
   hint?: ProbeHint;
 }
@@ -177,7 +179,7 @@ export function useEditorState() {
         file.size <= VIDEO_LIMITS.maxBytes &&
         exceedsTotalSourceBytes(WEB_LOCAL_POLICY, file.size, musicBytes)
       ) {
-        setMediaError({ scope: 'video', reason: 'total_too_large', fileName: file.name, keptOpen });
+        setMediaError({ scope: 'video', reason: 'total_too_large', fileName: file.name, keptOpen, bytes: file.size + musicBytes });
         return { kind: 'rejected' };
       }
       setImporting('video');
@@ -185,7 +187,7 @@ export function useEditorState() {
       setImporting(null);
 
       if (!outcome.ok) {
-        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen, hint: outcome.hint });
+        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen, hint: outcome.hint, bytes: file.size });
         return { kind: 'rejected' };
       }
 
@@ -245,7 +247,7 @@ export function useEditorState() {
       file.size <= AUDIO_LIMITS.maxBytes &&
       exceedsTotalSourceBytes(WEB_LOCAL_POLICY, file.size, videoBytes)
     ) {
-      setMediaError({ scope: 'audio', reason: 'total_too_large', fileName: file.name, keptOpen });
+      setMediaError({ scope: 'audio', reason: 'total_too_large', fileName: file.name, keptOpen, bytes: file.size + videoBytes });
       return;
     }
     setImporting('audio');
@@ -253,7 +255,7 @@ export function useEditorState() {
     setImporting(null);
 
     if (!outcome.ok) {
-      setMediaError({ scope: 'audio', reason: outcome.reason, fileName: file.name, keptOpen });
+      setMediaError({ scope: 'audio', reason: outcome.reason, fileName: file.name, keptOpen, bytes: file.size });
       return;
     }
 
@@ -321,7 +323,7 @@ export function useEditorState() {
       const outcome = await probeVideoFile(file, VIDEO_LIMITS);
       setImporting(null);
       if (!outcome.ok) {
-        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen: false, hint: outcome.hint });
+        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen: false, hint: outcome.hint, bytes: file.size });
         return { ok: false, reason: outcome.reason };
       }
 
@@ -366,7 +368,7 @@ export function useEditorState() {
       const outcome = await probeAudioFile(file, AUDIO_LIMITS);
       setImporting(null);
       if (!outcome.ok) {
-        setMediaError({ scope: 'audio', reason: outcome.reason, fileName: file.name, keptOpen: false });
+        setMediaError({ scope: 'audio', reason: outcome.reason, fileName: file.name, keptOpen: false, bytes: file.size });
         return { ok: false, reason: outcome.reason };
       }
 

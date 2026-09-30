@@ -13,7 +13,7 @@ import {
 import { Icon } from '@/components/Icon';
 import type { VideoCue } from '@/domain/captions';
 import { formatPosition } from '@/domain/kesit';
-import { formatSpokenTime, formatTimecode, US_PER_SECOND, type Micros } from '@/domain/time';
+import { formatSpokenTime, US_PER_SECOND, type Micros } from '@/domain/time';
 import {
   ZOOM_STEP,
   clampScroll,
@@ -399,7 +399,7 @@ export function SourceStrip({
       <div className="vstrip-head">
         <h2 className="vstrip-title">{t('strip.title')}</h2>
         <span className="vstrip-now" aria-hidden="true">
-          {formatTimecode(playheadUs)}
+          {formatPosition(playheadUs)}
         </span>
         <div className="vstrip-zoom" role="group" aria-label={t('strip.zoomGroup')}>
           <button
@@ -503,7 +503,7 @@ export function SourceStrip({
                   key={`${mark.cueId}-${mark.startUs}`}
                   className="vstrip-caption-mark"
                   style={{ left: pct(mark.startUs), width: pct(mark.endUs - mark.startUs) }}
-                  title={`${formatTimecode(mark.startUs)} → ${formatTimecode(mark.endUs)} · ${mark.text}`}
+                  title={`${formatPosition(mark.startUs)} → ${formatPosition(mark.endUs)} · ${mark.text}`}
                   data-testid="strip-caption-mark"
                 />
               ))}

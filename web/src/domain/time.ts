@@ -56,7 +56,49 @@ export function formatTimecode(us: Micros): string {
   return hours > 0 ? `${pad(hours)}:${tail}` : tail;
 }
 
-/** Short, human label used on cards and totals: `4.0 sn` / `1:06 dk`. */
+/**
+ * How times read OUTSIDE fine-tuning (ADR-030): no milliseconds.
+ *
+ * A POSITION in the video (a kesit's start or end, the playhead, the video's
+ * total length on the clock) is the second it falls in, rounded DOWN:
+ * 00:02.600 is "00:02", 00:07.999 is "00:07". `MM:SS` under an hour,
+ * `H:MM:SS` from one hour: "00:07", "12:30", "1:02:07". Rounding down means a
+ * shown position is never later than the real one, and the playhead at the
+ * very end reads the same as the total.
+ */
+export function formatPosition(us: Micros): string {
+  const total = Math.floor(Math.max(0, us) / US_PER_SECOND + 1e-9);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = String(total % 60).padStart(2, '0');
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${seconds}`
+    : `${String(minutes).padStart(2, '0')}:${seconds}`;
+}
+
+/**
+ * A LENGTH outside fine-tuning (ADR-030), never overstated: under a minute
+ * to a tenth of a second, rounded down ("4,6 sn"); from a minute on as a
+ * clock to whole seconds, rounded down ("1:04", "1:02:07"). Two positions
+ * rounded down can differ by up to a second more or less than the length, so
+ * the length is the one number that says how long a range really is:
+ * 00:02.600 → 00:07.200 reads "00:02 → 00:07", "4,6 sn" — never "5".
+ * A range of at least 0.1 s (every kesit, doc 09) never reads "0,0".
+ */
+export function formatLengthShort(us: Micros, words: { second: string; decimalMark: string }): string {
+  const clamped = Math.max(0, Math.round(us));
+  if (clamped < 60 * US_PER_SECOND) {
+    const tenths = Math.max(clamped > 0 ? 1 : 0, Math.floor(clamped / (US_PER_SECOND / 10) + 1e-9));
+    return `${Math.floor(tenths / 10)}${words.decimalMark}${tenths % 10} ${words.second}`;
+  }
+  const total = Math.floor(clamped / US_PER_SECOND + 1e-9);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = String(total % 60).padStart(2, '0');
+  return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${seconds}` : `${minutes}:${seconds}`;
+}
+
+/** Short, human label (silence dialog): `4.0 sn` / `1:06 dk`. */
 export function formatDurationShort(us: Micros): string {
   const seconds = Math.max(0, us) / US_PER_SECOND;
   if (seconds < 60) {

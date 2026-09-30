@@ -8,6 +8,7 @@ import { formatStorageBytes } from '@/domain/outputStorage';
 import {
   WEB_LOCAL_POLICY,
   exceedsTotalSourceBytes,
+  formatByteLimit,
   formatBytes,
   maxTimelineDurationUs,
   outputOverrun,
@@ -115,20 +116,24 @@ describe('web local policy', () => {
   });
 
   it('tells the user the same numbers it enforces', () => {
-    // Doc 15: the unit shown is the unit checked. The check is in GiB; the
-    // decimal GB figure is only the "about" in brackets, and it is right.
-    const gib = WEB_LOCAL_POLICY.maxTotalSourceBytes / GIB;
-    const gb = (WEB_LOCAL_POLICY.maxTotalSourceBytes / 1e9).toFixed(2);
-    expect(gb).toBe('4.29');
-    for (const [locale, about] of [
-      [tr, `yaklaşık ${gb.replace('.', ',')} GB`],
-      [en, `about ${gb} GB`],
+    // Doc 15: the unit shown is the unit checked. Since ADR-030 the UI shows
+    // decimal GB/MB; the limit is written rounded DOWN in that unit, from the
+    // same bytes the check uses (byteUnits.test.ts proves the boundary).
+    expect(WEB_LOCAL_POLICY.maxTotalSourceBytes).toBe(4 * GIB);
+    for (const [locale, mark] of [
+      [tr, ','],
+      [en, '.'],
     ] as const) {
-      for (const key of ['error.file_too_large', 'error.total_too_large'] as const) {
-        expect(locale[key]).toContain(`${gib} GiB (${about})`);
+      const limit = formatByteLimit(WEB_LOCAL_POLICY.maxTotalSourceBytes, mark);
+      expect(limit).toBe(`4${mark}29 GB`);
+      // The size refusals are filled with the size and the limit in code.
+      for (const key of ['error.file_too_large', 'error.total_too_large', 'error.music_too_large'] as const) {
+        expect(locale[key]).toContain('{size}');
+        expect(locale[key]).toContain('{limit}');
       }
-      expect(locale['help.limit.length']).toContain(`${gib} GiB`);
-      expect(locale['help.limit.length']).not.toContain('2 GiB');
+      expect(locale['help.limit.length']).toContain(limit);
+      // No binary unit is shown anywhere any more.
+      for (const text of Object.values(locale)) expect(text).not.toMatch(/\b[KMG]iB\b/);
     }
     for (const locale of [tr, en]) {
       expect(locale['error.source_too_long']).toContain(
@@ -137,7 +142,6 @@ describe('web local policy', () => {
       expect(locale['error.timeline_duration_exceeds_policy']).toContain(
         String(maxTimelineDurationUs(WEB_LOCAL_POLICY) / (60 * US_PER_SECOND)),
       );
-      expect(locale['error.music_too_large']).toContain(`${WEB_LOCAL_POLICY.maxMusicBytes / MIB} MiB`);
       expect(locale['error.music_too_long']).toContain(
         String(WEB_LOCAL_POLICY.maxMusicDurationUs / (60 * US_PER_SECOND)),
       );
@@ -191,28 +195,29 @@ describe('web local policy', () => {
     expect(exceedsTotalSourceBytes(WEB_LOCAL_POLICY, 60 * MIB, video)).toBe(true);
   });
 
-  it('shows file sizes in the binary units the limit is checked in', () => {
-    expect(formatBytes(512)).toBe('512 B');
-    expect(formatBytes(20 * 1024)).toBe('20 KiB');
-    expect(formatBytes(245 * MIB)).toBe('245.0 MiB');
-    expect(formatBytes(WEB_LOCAL_POLICY.maxTotalSourceBytes)).toBe('4.00 GiB');
-    expect(formatBytes(4_247_142_000)).toBe('3.96 GiB');
-    expect(formatBytes(Number.NaN)).toBe('—');
-    // Never a decimal "GB" label for a binary value.
-    expect(formatBytes(3 * GIB)).not.toMatch(/\bGB\b/);
+  it('shows file sizes in decimal units with the language\'s decimal mark (ADR-030)', () => {
+    expect(formatBytes(512, ',')).toBe('512 B');
+    expect(formatBytes(20 * 1024, ',')).toBe('20 KB');
+    expect(formatBytes(245 * MIB, ',')).toBe('256,9 MB');
+    expect(formatBytes(245 * MIB, '.')).toBe('256.9 MB');
+    expect(formatBytes(WEB_LOCAL_POLICY.maxTotalSourceBytes, ',')).toBe('4,29 GB');
+    expect(formatBytes(4_247_142_000, ',')).toBe('4,25 GB');
+    expect(formatBytes(2_400_000_000, ',')).toBe('2,4 GB');
+    expect(formatBytes(2_400_000_000, '.')).toBe('2.4 GB');
+    expect(formatBytes(Number.NaN, ',')).toBe('—');
+    // Never a binary unit.
+    expect(formatBytes(3 * GIB, ',')).not.toMatch(/iB\b/);
   });
 });
 
 describe('export: the note under "Bilgisayara kaydet" (ADR-023)', () => {
   it('names the space saving needs, rounded up, in both languages', () => {
     for (const locale of [tr, en]) expect(locale['export.saveSpace']).toContain('{size}');
-    const size = formatStorageBytes(2_577_000_000, 'up');
-    expect(size).toBe('2.41 GiB');
-    expect(tr['export.saveSpace'].replace('{size}', size)).toBe(
-      'Kaydederken bilgisayarında yaklaşık 2.41 GiB daha boş yer gerekir.',
+    expect(tr['export.saveSpace'].replace('{size}', formatStorageBytes(2_577_000_000, 'up', ','))).toBe(
+      'Kaydederken bilgisayarında yaklaşık 2,58 GB daha boş yer gerekir.',
     );
-    expect(en['export.saveSpace'].replace('{size}', size)).toBe(
-      'Saving needs about 2.41 GiB more free space on this computer.',
+    expect(en['export.saveSpace'].replace('{size}', formatStorageBytes(2_577_000_000, 'up', '.'))).toBe(
+      'Saving needs about 2.58 GB more free space on this computer.',
     );
   });
 });

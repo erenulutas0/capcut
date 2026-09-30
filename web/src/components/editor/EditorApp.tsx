@@ -11,18 +11,21 @@ import { DEFAULT_CAPTION_STYLE, captionAtVideoTime, primaryCaptionTrack, videoCu
 import type { AspectRatio, Project } from '@/domain/edl';
 import {
   EMPTY_PENDING,
+  addFromPending,
   formatPosition,
+  markEnd,
   markPending,
   resolvePending,
   targetKey,
   topDownload,
   downloadRecipe,
   type DownloadTarget,
+  type PendingOutcome,
   type PendingRange,
 } from '@/domain/kesit';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import { compileRenderPlan } from '@/domain/renderPlan';
-import { formatLength, MIN_CLIP_DURATION_US, type Micros } from '@/domain/time';
+import { formatLengthShort, MIN_CLIP_DURATION_US, type Micros } from '@/domain/time';
 import { totalOutputDurationUs } from '@/domain/timeline';
 import { resolveEdgeTrim, resolvePendingEdge } from '@/domain/timelineEdit';
 import { computeSourceView } from '@/domain/transform';
@@ -34,8 +37,10 @@ import { DownloadStatus } from './DownloadStatus';
 import { HelpDialog } from './HelpDialog';
 import { SettingsPanel, type InspectorTab } from './Inspector';
 import { CaptionsPanel } from './CaptionsPanel';
+import { KesitDock } from './KesitDock';
 import { KesitList } from './KesitList';
 import { MarkBar, type MarkTarget } from './MarkBar';
+import { refusedFileText } from './mediaErrorText';
 import { PreviewStage } from './PreviewStage';
 import { RelinkPanel } from './RelinkPanel';
 import { ReportDialog } from './ReportDialog';
@@ -99,6 +104,7 @@ const MARK_OUT_KEYS = new Set(['o', 'O']);
  * ranges in Ayarlar, where this advice would be wrong.
  */
 const MARK_NEXT_STEP: Partial<Record<MessageKey, MessageKey>> = {
+  'error.start_first': 'mark.next.start_first',
   'error.range_reversed': 'mark.next.range_reversed',
   'error.range_out_of_source': 'mark.next.range_out_of_source',
   'error.clip_too_short': 'mark.next.clip_too_short',
@@ -111,8 +117,9 @@ type SilenceScope =
 
 /**
  * The editor (ADR-026): watch the video, mark Başlangıç (I) and Bitiş (O) on
- * its own time, press "Kesit ekle"; the kesit drops into the list, where each
- * one plays, downloads or goes away with one press. One clock — the video's.
+ * its own time; marking the end adds the kesit (ADR-030), which drops into
+ * the list, where each one plays, downloads or goes away with one press.
+ * "Kesit ekle" adds a range whose times were typed. One clock — the video's.
  */
 export function EditorApp() {
   const hydrated = useHydrated();
@@ -191,12 +198,9 @@ export function EditorApp() {
     if (silenceFailure) recordError('silence', silenceFailure);
   }, [silenceFailure]);
 
+  // Lengths outside fine-tuning: tenths under a minute, rounded down (ADR-030).
   const lengthText = (us: Micros) =>
-    formatLength(us, {
-      minute: t('time.minuteShort'),
-      second: t('time.secondShort'),
-      decimalMark: t('time.decimalMark'),
-    });
+    formatLengthShort(us, { second: t('time.secondShort'), decimalMark: t('time.decimalMark') });
   const rangeText = (inUs: Micros, outUs: Micros) => `${formatPosition(inUs)} → ${formatPosition(outUs)}`;
 
   // ------------------------------------------------------------ files
@@ -242,12 +246,23 @@ export function EditorApp() {
     state.setActionError(null);
   };
 
-  const addKesit = () => {
-    if (!video) {
-      state.setActionError('error.no_source');
+  /** Refuses a mark or "Kesit ekle" with a reason and, below it, the next step. */
+  const refuseMark = (reason: MessageKey) => {
+    state.setActionError(reason);
+    setMarkRefusal(reason);
+  };
+
+  /**
+   * Adds what the marks decided (ADR-030): one undo step, the pending marks
+   * cleared, and the notice saying where the kesit went. The recipe's own
+   * rules (too short, the 20-kesit limit) still refuse with their reason.
+   */
+  const addPending = (outcome: PendingOutcome) => {
+    if (outcome.kind === 'refuse') {
+      refuseMark(`error.${outcome.reason}`);
       return;
     }
-    const range = resolvePending(pending, durationUs);
+    const { range } = outcome;
     const result = state.addKesit(range);
     if (!result.ok) {
       setMarkRefusal(result.reason);
@@ -263,6 +278,19 @@ export function EditorApp() {
         range: rangeText(range.sourceInUs, range.sourceOutUs),
       }),
     );
+  };
+
+  /**
+   * "Kesit ekle" / Enter: the prepared range (a start, with an end typed or
+   * dragged, or to the end of the video). Nothing marked is not the whole
+   * video: it says "Önce başlangıcı işaretle" (ADR-030).
+   */
+  const addKesit = () => {
+    if (!video) {
+      state.setActionError('error.no_source');
+      return;
+    }
+    addPending(addFromPending(pending, durationUs));
   };
 
   const refocusAfterDelete = useRef<number | null>(null);
@@ -299,7 +327,10 @@ export function EditorApp() {
     playback.playRange({ clipId, inUs: clip.sourceInUs, outUs: clip.sourceOutUs });
   };
 
-  /** I / O (keys and buttons): the pending range, or the selected kesit's edge. */
+  /**
+   * I / O (keys and buttons). With a kesit selected they move its edges (no
+   * new kesit); otherwise I marks the start and O adds the kesit.
+   */
   const markAt = (edge: 'in' | 'out', atUs: Micros) => {
     if (!video) return;
     if (selected) {
@@ -314,6 +345,11 @@ export function EditorApp() {
         return;
       }
       state.editKesit(selected.clipId, range);
+      return;
+    }
+    if (edge === 'out') {
+      // "Bitişi işaretle" adds the kesit in the same step (ADR-030).
+      addPending(markEnd(pending, atUs, durationUs));
       return;
     }
     state.setActionError(null);
@@ -578,9 +614,11 @@ export function EditorApp() {
   const mediaErrorText = state.mediaError
     ? (() => {
         const error = state.mediaError;
-        const reason = t(`error.${error.reason}` as MessageKey);
-        const lowered = `${reason.charAt(0).toLocaleLowerCase('tr-TR')}${reason.slice(1)}`;
-        const main = fill(t('error.rejectedFile'), { name: safeFileName(error.fileName, 60), reason: lowered });
+        const main = refusedFileText(t, {
+          reason: error.reason,
+          name: safeFileName(error.fileName, 60),
+          ...(error.bytes === undefined ? {} : { bytes: error.bytes }),
+        });
         if (!error.keptOpen) return main;
         return `${main} ${t(error.scope === 'video' ? 'error.keptVideo' : 'error.keptAudio')}`;
       })()
@@ -638,15 +676,16 @@ export function EditorApp() {
   // One primary button at a time: the next step (UX audit 2026-09-30). While
   // the first kesit is being made the marks lead (start, end, "Kesit ekle");
   // once there is a kesit, the download at the top is the goal.
-  const hasMark = pending.inUs !== null || pending.outUs !== null;
+  // Since ADR-030 "Bitişi işaretle" adds the kesit, so after a start the end
+  // is the next step; "Kesit ekle" leads only when an end was typed or dragged.
   const markEmphasis: 'start' | 'end' | 'add' | null =
     !video || selected
       ? null
-      : hasMark
-        ? pending.inUs !== null && pending.outUs === null
+      : pending.inUs !== null
+        ? pending.outUs === null
           ? 'end'
           : 'add'
-        : project.clips.length === 0
+        : pending.outUs !== null || project.clips.length === 0
           ? 'start'
           : null;
   const markNextStep =
@@ -959,6 +998,16 @@ export function EditorApp() {
           saveNote={hydrated && state.video !== null && canPickSaveFile() ? t('download.overwriteNote') : null}
         />
       </main>
+
+      {phone && video && project.clips.length > 0 ? (
+        <KesitDock
+          t={t}
+          count={project.clips.length}
+          downloadLabel={t(top.kind === 'merged' ? 'download.all' : 'download.one')}
+          downloadDisabled={downloads.activeKey !== null}
+          onDownload={downloadTop}
+        />
+      ) : null}
 
       {phone ? null : (
         <footer className="status-bar">

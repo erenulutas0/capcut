@@ -2680,3 +2680,45 @@ input[type='range']:disabled::-webkit-slider-thumb {
     animation: none;
   }
 }
+
+/* ------------------------------------------------ phone kesit bar (ADR-030) */
+
+/* "Kesitler (3) · Hepsini birleştirip indir" at the bottom of a phone while
+   the list is below the fold. Above the page, below the sheets (35/36). The
+   home indicator and rounded corners keep their room (safe-area insets); at
+   320 px the two buttons wrap onto two rows instead of scrolling sideways.
+   No transition: it appears and goes, nothing slides. */
+.kesit-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px max(12px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom))
+    max(12px, env(safe-area-inset-left));
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.kesit-dock[hidden] {
+  display: none;
+}
+
+.kesit-dock .btn {
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+  padding: 6px 14px;
+}
+
+.kesit-dock-count {
+  flex: 0 1 auto;
+}
+
+.kesit-dock-download {
+  flex: 1 1 12em;
+}

@@ -156,7 +156,7 @@ describe('buildDiagnostics', () => {
       shortEdge: 1080,
       outputDurationMs: 10_000,
     });
-    expect(report.storage).toEqual({ quotaMb: 10_240, usageMb: 5 });
+    expect(report.storage).toEqual({ quotaMb: 10_737, usageMb: 5 });
     expect(report.capabilityGate?.blockers).toEqual(['caption_does_not_fit']);
     expect(report.exportLog).toHaveLength(1);
     expect(Object.keys(report.exportLog[0] ?? {}).sort()).toEqual(

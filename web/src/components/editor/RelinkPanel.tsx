@@ -5,8 +5,8 @@ import { useRef, useState } from 'react';
 import { Icon } from '@/components/Icon';
 import { safeFileName } from '@/adapters/browserMedia';
 import type { AssetBinding, BindingMatch } from '@/domain/projectRecord';
-import { formatBytes } from '@/domain/policy';
-import { formatTimecode } from '@/domain/time';
+import { WEB_LOCAL_POLICY, formatBytesAgainstLimit } from '@/domain/policy';
+import { formatLengthShort } from '@/domain/time';
 import type { MessageKey } from '@/i18n/messages';
 
 interface Props {
@@ -68,11 +68,21 @@ export function RelinkPanel({ t, binding, onPick, onUseAsNew, onDiscardProject }
         </li>
         <li>
           <span className="meta-key">{t('sources.duration')}</span>
-          <span className="meta-value">{formatTimecode(binding.durationUs)}</span>
+          <span className="meta-value">
+            {formatLengthShort(binding.durationUs, { second: t('time.secondShort'), decimalMark: t('time.decimalMark') })}
+          </span>
         </li>
         <li>
           <span className="meta-key">{t('sources.size')}</span>
-          <span className="meta-value">{formatBytes(binding.sizeBytes)}</span>
+          <span className="meta-value">
+            {/* Next to the limit it was checked against (ADR-030): an opened
+                file never reads above the limit the refusals name. */}
+            {formatBytesAgainstLimit(
+              binding.sizeBytes,
+              isVideo ? WEB_LOCAL_POLICY.maxTotalSourceBytes : WEB_LOCAL_POLICY.maxMusicBytes,
+              t('time.decimalMark'),
+            )}
+          </span>
         </li>
       </ul>
 
