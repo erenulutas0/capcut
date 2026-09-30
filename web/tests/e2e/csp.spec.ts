@@ -155,6 +155,14 @@ test('a full editor session raises no CSP violation', async ({ page, context }, 
   // tone-mapping check and the HDR encode path.
   await page.goto('/editor');
   await expectPolicy(page);
+  // By now the service worker (ADR-031) is active: this load, and the HDR
+  // export's worker below, come from its stored copy, under the same policy.
+  expect(
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+      return Boolean(navigator.serviceWorker.controller);
+    }),
+  ).toBe(true);
   await openVideo(page, hdrFixture());
   await setQuality720(page);
   await page.getByTestId('download-all').click();

@@ -5,7 +5,7 @@ import { expect, test, type Locator, type Page, type TestInfo } from '@playwrigh
 
 import { tr } from '../../src/i18n/messages';
 import { browserDecodesHevc, hevcFixture } from './hevc-media';
-import { closeSheet, noSavePicker, openMore, openSettings, installSavePicker } from './kesitFlow';
+import { closeSheet, noSavePicker, openMore, openSettings, installSavePicker, stubShare } from './kesitFlow';
 import { timelineFixture } from './timeline-media';
 
 /**
@@ -872,13 +872,18 @@ async function openHevcWithoutDecoder(page: Page): Promise<boolean> {
   return true;
 }
 
-/** A finished one-second download without a save dialog, so the note under "Bilgisayara kaydet" shows. */
+/**
+ * A finished one-second download without a save dialog, so the note under
+ * "Bilgisayara kaydet" / "Kaydet" shows, with "Paylaş" next to it (ADR-031;
+ * the share sheet is the stand-in from `stubShare`).
+ */
 async function exportSucceeded(page: Page) {
   await openEditor(page);
   await importSample(page);
   await addMoment(page, '00:00.000', '00:01.000');
   await page.getByTestId('kesit-download').click();
   await expect(page.getByTestId('export-save-space')).toBeVisible({ timeout: 180_000 });
+  await expect(page.getByTestId('download-share')).toBeVisible();
 }
 
 test.describe('a11y: HEVC hint and the save-space note', () => {
@@ -887,6 +892,7 @@ test.describe('a11y: HEVC hint and the save-space note', () => {
 
   test.beforeEach(async ({ page }) => {
     await noSavePicker(page);
+    await stubShare(page);
   });
 
   for (const viewport of [

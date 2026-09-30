@@ -90,7 +90,7 @@ export const tr = {
   'privacy.draftBadge': 'Taslak — veri sorumlusu bilgisi ve hukuki inceleme eksik (belge 30 K02)',
   'privacy.draftBody':
     'Bu sayfa uygulamanın bugünkü davranışını anlatır; hukuki incelemeden geçmiş bir aydınlatma metni değildir. “belirlenmedi” yazan bilgiler henüz karara bağlanmadı.',
-  'privacy.updated': 'Son güncelleme: 22 Eylül 2026 · sürüm {version} · derleme {commit}',
+  'privacy.updated': 'Son güncelleme: 30 Eylül 2026 · sürüm {version} · derleme {commit}',
   'privacy.otherLanguage': 'English',
   'privacy.back': 'Ana sayfa',
   'privacy.undecided': 'belirlenmedi',
@@ -106,7 +106,7 @@ export const tr = {
 
   'privacy.network.title': 'Sayfayı açınca ağda ne olur',
   'privacy.network.body':
-    'Tarayıcın uygulamanın kendi dosyalarını (sayfalar, kod, stil dosyaları, altyazı yazı tipi) bu siteyi sunan sunucudan indirir. Her web sitesinde olduğu gibi sunucu bu sırada IP adresini, istek zamanını ve tarayıcı bilgisini (user agent) görebilir. Başka bir adrese istek yapılmaz; bunu her sürümde otomatik bir testle kontrol ediyoruz. Uygulama sunucuya dosya veya form göndermez.',
+    'Tarayıcın uygulamanın kendi dosyalarını (sayfalar, kod, stil dosyaları, altyazı yazı tipi) bu siteyi sunan sunucudan indirir. Her web sitesinde olduğu gibi sunucu bu sırada IP adresini, istek zamanını ve tarayıcı bilgisini (user agent) görebilir. Başka bir adrese istek yapılmaz; bunu her sürümde otomatik bir testle kontrol ediyoruz. Uygulama sunucuya dosya veya form göndermez. Siteyi bir kez açtıktan sonra bu dosyaların bir kopyası tarayıcında saklanır ve internet yokken oradan açılır (aşağıda “Çevrimdışı kopya”).',
   'privacy.network.host': 'Barındırma sağlayıcısı',
   'privacy.network.logs': 'Sunucu erişim kayıtları (kim tutar, ne kadar süre: sağlayıcının kendi bildirimi)',
 
@@ -141,6 +141,12 @@ export const tr = {
     'Editördeki “Nasıl kesilir?” ipucunu “Anladım” ile kapattığın bilgisi: tek bir değer (1). Kim olduğunu ya da ne düzenlediğini içermez; hiçbir yere gönderilmez.',
   'privacy.stored.hint.where': 'localStorage, “clip.firstRunHint.dismissed” anahtarı (yalnızca “Anladım”a basınca yazılır)',
   'privacy.stored.hint.delete': 'Tarayıcının bu siteye ait verisini temizleyince. Uygulama kendisi silmez.',
+  'privacy.stored.offline.name': 'Çevrimdışı kopya (uygulamanın dosyaları)',
+  'privacy.stored.offline.body':
+    'Siteyi internetsiz de açabilmen için uygulamanın kendi dosyaları: sayfalar, kod, stil dosyaları, altyazı yazı tipi, simgeler. Yalnızca bu sürümün dosya listesindekiler saklanır; videon, dışa aktarılan dosyalar, projen ya da başka bir sitenin dosyası asla. Sitenin hizmet çalışanı (service worker) da bu tarayıcıya kayıtlı kalır: yalnızca bu dosyaları sunar, kendiliğinden hiçbir yere bir şey göndermez.',
+  'privacy.stored.offline.where': 'Cache Storage, adı “clip-app-” ile başlayan önbellek; hizmet çalışanı kaydı (“sw.js”)',
+  'privacy.stored.offline.delete':
+    'Yeni sürüm gelince eski kopya silinir. Hepsini tarayıcının bu siteye ait verisini temizleyerek silebilirsin.',
   'privacy.stored.none': 'Çerez ve sessionStorage kullanılmaz; localStorage’da yalnızca yukarıdaki ipucu bilgisi durur.',
 
   'privacy.downloads.title': 'Senin indirdiğin dosyalar',
@@ -151,6 +157,8 @@ export const tr = {
   'privacy.downloads.backup':
     'Proje yedeği (.clip.json): proje tarifinin tamamı; proje adı, altyazı metinleri ve kaynak dosya adları dahil. Video içermez.',
   'privacy.downloads.subtitles': 'Altyazı dosyası (SRT veya VTT): altyazı satırların ve zamanları.',
+  'privacy.downloads.share':
+    '“Paylaş”: video, telefonunun (ya da bilgisayarının) paylaşma menüsüne verilir; nereye gideceğini orada sen seçersin. Uygulama bu sırada bir şey göndermez ya da saklamaz.',
   'privacy.downloads.diag':
     'Tanı dosyası (JSON): içeriği indirmeden önce gösterilir; dosya adı, proje adı ve altyazı metni içermez.',
 
@@ -891,7 +899,7 @@ export const en: Record<MessageKey, string> = {
   'privacy.draftBadge': 'Draft — data controller details and legal review missing (doc 30 K02)',
   'privacy.draftBody':
     'This page describes what the app does today; it is not a legally reviewed privacy notice. Items marked “not decided” have not been settled yet.',
-  'privacy.updated': 'Last updated: 22 September 2026 · version {version} · build {commit}',
+  'privacy.updated': 'Last updated: 30 September 2026 · version {version} · build {commit}',
   'privacy.otherLanguage': 'Türkçe',
   'privacy.back': 'Home',
   'privacy.undecided': 'not decided',
@@ -907,7 +915,7 @@ export const en: Record<MessageKey, string> = {
 
   'privacy.network.title': 'What happens on the network when you open the page',
   'privacy.network.body':
-    'Your browser downloads the app’s own files (pages, code, stylesheets, the caption typeface) from the server that hosts this site. As with any website, that server can see your IP address, the time of the request and your browser identification (user agent). No other address is contacted; an automated test checks this for every version. The app does not send files or forms to the server.',
+    'Your browser downloads the app’s own files (pages, code, stylesheets, the caption typeface) from the server that hosts this site. As with any website, that server can see your IP address, the time of the request and your browser identification (user agent). No other address is contacted; an automated test checks this for every version. The app does not send files or forms to the server. After your first visit a copy of these files is kept in your browser and the site opens from it without internet (see “Offline copy” below).',
   'privacy.network.host': 'Hosting provider',
   'privacy.network.logs': 'Server access logs (who keeps them and for how long: the provider’s own statement)',
 
@@ -942,6 +950,12 @@ export const en: Record<MessageKey, string> = {
     'That you closed the editor’s “How to cut” hint with “Got it”: a single value (1). It says nothing about who you are or what you edit, and is never sent anywhere.',
   'privacy.stored.hint.where': 'localStorage, key “clip.firstRunHint.dismissed” (written only when you press “Got it”)',
   'privacy.stored.hint.delete': 'When you clear this site’s data in the browser. The app itself does not delete it.',
+  'privacy.stored.offline.name': 'Offline copy (the app’s files)',
+  'privacy.stored.offline.body':
+    'The app’s own files, so the site opens without internet: pages, code, style sheets, the caption typeface, icons. Only the files on this version’s list are kept; never your video, exported files, your project or another site’s files. The site’s service worker also stays registered in this browser: it only serves these files and never sends anything anywhere by itself.',
+  'privacy.stored.offline.where': 'Cache Storage, a cache whose name starts with “clip-app-”; the service worker registration (“sw.js”)',
+  'privacy.stored.offline.delete':
+    'The old copy is deleted when a new version arrives. Clearing this site’s data in the browser deletes all of it.',
   'privacy.stored.none': 'No cookies or sessionStorage are used; localStorage holds only the hint value above.',
 
   'privacy.downloads.title': 'Files you download',
@@ -952,6 +966,8 @@ export const en: Record<MessageKey, string> = {
   'privacy.downloads.backup':
     'Project backup (.clip.json): the full project recipe, including the project name, caption text and source file names. It contains no video.',
   'privacy.downloads.subtitles': 'Subtitle file (SRT or VTT): your caption lines and their timing.',
+  'privacy.downloads.share':
+    '“Share”: the video is handed to your phone’s (or computer’s) share menu; you choose there where it goes. The app itself sends or keeps nothing while doing so.',
   'privacy.downloads.diag':
     'Diagnostics file (JSON): its content is shown before you download it; it contains no file names, project name or caption text.',
 

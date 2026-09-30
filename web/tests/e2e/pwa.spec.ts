@@ -1,4 +1,6 @@
 import { readFileSync, statSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
@@ -423,10 +425,6 @@ test.describe('open without internet', () => {
       await page.goto(path);
       await expect(page.getByTestId('privacy-draft')).toBeVisible();
     }
-    // A page the app does not have: the browser's own offline error, not an old page.
-    const missing = await page.goto('/nerede').catch((error: Error) => error);
-    expect(missing).toBeInstanceOf(Error);
-
     // The editor, offline, from the stored copy: open a video, add a
     // caption (the typeface comes from the cache, in the worker too), download.
     await page.goto('/editor');
@@ -455,79 +453,150 @@ test.describe('open without internet', () => {
     expect(after).toEqual(before);
     expect(JSON.stringify(after)).not.toMatch(/\.mp4|blob:|\.m4a/);
     expect(errors).toEqual([]);
+
+    // A page the app does not have: the browser's own offline error, not a stored page.
+    const other = await context.newPage();
+    const missing = await other.goto('/nerede').catch((error: Error) => error);
+    expect(missing).toBeInstanceOf(Error);
+    await other.close();
     await context.setOffline(false);
   });
 
-  test('a newer build waits for "Yenile", never while a download runs', async ({ page, context }) => {
-    test.setTimeout(240_000);
-    await noSavePicker(page);
-    await openEditor(page);
-    await waitForWorker(page);
-    await page.reload();
-    await expect(page.getByTestId('download-all')).toBeVisible();
-    expect(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
-    const config = await workerConfig(page);
+  test('a newer build waits for "Yenile", never while a download runs', async ({ page, baseURL }) => {
+    test.setTimeout(300_000);
+    const deploy = await swProxy(baseURL ?? '');
+    try {
+      await noSavePicker(page);
+      await page.goto(`${deploy.origin}/editor`);
+      await expect(page.getByTestId('download-all')).toBeVisible();
+      await waitForWorker(page);
+      await page.reload();
+      await expect(page.getByTestId('download-all')).toBeVisible();
+      expect(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+      const config = await workerConfig(page);
 
-    // A "new deploy": the same worker code with another version and list.
-    await context.route('**/sw.js', async (route) => {
-      const response = await route.fetch();
-      const body = (await response.text())
-        .replace(/"version":"[0-9a-f]+"/, '"version":"0000000000000000"')
-        .replace(/"assets":\[[^\]]*\]/, '"assets":["/icon.svg"]');
-      await route.fulfill({ response, body });
-    });
-    await page.evaluate(async () => {
-      await (await navigator.serviceWorker.getRegistration())?.update();
-    });
-    const notice = page.getByTestId('update-notice');
-    await expect(notice).toBeVisible({ timeout: 20_000 });
-    await expect(notice).toContainText('Yeni sürüm hazır.');
-    expect(await axe(page)).toEqual([]);
+      // A new deploy: the same worker code with another version and list.
+      deploy.rewrite((body) =>
+        body
+          .replace(/"version":"[0-9a-f]+"/, '"version":"0000000000000000"')
+          .replace(/"assets":\[[^\]]*\]/, '"assets":["/icon.svg"]'),
+      );
+      await page.evaluate(async () => {
+        await (await navigator.serviceWorker.getRegistration())?.update();
+      });
+      const notice = page.getByTestId('update-notice');
+      await expect(notice).toBeVisible({ timeout: 20_000 });
+      await expect(notice).toContainText('Yeni sürüm hazır.');
+      expect(await axe(page)).toEqual([]);
 
-    // "Sonra" hides it; nothing reloads by itself.
-    await page.getByTestId('update-later').click();
-    await expect(notice).toHaveCount(0);
-    await page.reload();
-    await expect(page.getByTestId('download-all')).toBeVisible();
-    // Still the old worker (the page keeps it): the notice is back.
-    await expect(notice).toBeVisible({ timeout: 20_000 });
+      // "Sonra" hides it; nothing reloads by itself.
+      await page.getByTestId('update-later').click();
+      await expect(notice).toHaveCount(0);
+      await page.reload();
+      await expect(page.getByTestId('download-all')).toBeVisible();
+      // The old worker still serves this tab: the notice is back after a reload.
+      await expect(notice).toBeVisible({ timeout: 20_000 });
 
-    // A download is running: "Yenile" cannot reload now.
-    await openVideo(page, SAMPLE);
-    await page.getByTestId('download-all').click();
-    await expect(page.getByTestId('download-running')).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId('update-reload')).toBeDisabled();
-    await expect(page.getByTestId('update-busy')).toHaveText('İndirme bitince yenileyebilirsin.');
-    await expect(page.getByTestId('export-download')).toBeVisible({ timeout: 180_000 });
-    await expect(page.getByTestId('update-reload')).toBeEnabled();
+      // A download is running (a caption makes it a full encode): "Yenile" is off.
+      await openVideo(page, SAMPLE);
+      await page.getByTestId('open-settings').click();
+      await page.getByTestId('inspector-tab-captions').click();
+      await page.getByTestId('captions-add').click();
+      await expect(page.getByTestId('cue-draft').getByTestId('cue-text')).toBeFocused();
+      await page.keyboard.type('Yeni sürüm');
+      await page.getByTestId('cue-draft').getByTestId('cue-text').blur();
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await page.getByTestId('download-all').click();
+      // Checked in the page on every frame, so a short run cannot slip by.
+      await page.waitForFunction(
+        () =>
+          document.querySelector('[data-testid="download-running"]') !== null &&
+          (document.querySelector('[data-testid="update-reload"]') as HTMLButtonElement | null)?.disabled === true &&
+          document.querySelector('[data-testid="update-busy"]')?.textContent === 'İndirme bitince yenileyebilirsin.',
+        undefined,
+        { polling: 'raf', timeout: 60_000 },
+      );
+      await expect(page.getByTestId('export-download')).toBeVisible({ timeout: 180_000 });
+      await expect(page.getByTestId('update-reload')).toBeEnabled();
+      await expect(page.getByTestId('update-busy')).toHaveCount(0);
 
-    // "Yenile": the new worker takes over, the page reloads, old cache gone.
-    const reloaded = page.waitForEvent('load');
-    await page.getByTestId('update-reload').click();
-    await reloaded;
-    await expect(page.getByTestId('download-all')).toBeVisible();
-    await expect.poll(async () => Object.keys(await cacheContents(page))).toEqual(['clip-app-0000000000000000']);
-    expect(config.version).not.toBe('0000000000000000');
+      // "Yenile": the new worker takes over, the page reloads, the old cache goes.
+      const reloaded = page.waitForEvent('load');
+      await page.getByTestId('update-reload').click();
+      await reloaded;
+      await expect(page.getByTestId('download-all')).toBeVisible();
+      await expect.poll(async () => Object.keys(await cacheContents(page))).toEqual(['clip-app-0000000000000000']);
+      expect(config.version).not.toBe('0000000000000000');
+      await expect(notice).toHaveCount(0);
+    } finally {
+      await deploy.close();
+    }
   });
 
-  test('a page already from the newer build switches workers without asking', async ({ page, context }) => {
-    await openEditor(page);
-    await waitForWorker(page);
-    await page.reload();
-    await expect(page.getByTestId('download-all')).toBeVisible();
-    // Same list, another version: the page's files are all in the new worker's list.
-    await context.route('**/sw.js', async (route) => {
-      const response = await route.fetch();
-      const body = (await response.text()).replace(/"version":"[0-9a-f]+"/, '"version":"1111111111111111"');
-      await route.fulfill({ response, body });
-    });
-    await page.evaluate(async () => {
-      await (await navigator.serviceWorker.getRegistration())?.update();
-    });
-    await expect.poll(async () => Object.keys(await cacheContents(page)), { timeout: 20_000 }).toEqual([
-      'clip-app-1111111111111111',
-    ]);
-    await expect(page.getByTestId('update-notice')).toHaveCount(0);
-    await expect(page.getByTestId('download-all')).toBeVisible();
+  test('a page already from the newer build switches workers without asking', async ({ page, baseURL }) => {
+    const deploy = await swProxy(baseURL ?? '');
+    try {
+      await page.goto(`${deploy.origin}/editor`);
+      await waitForWorker(page);
+      await page.reload();
+      await expect(page.getByTestId('download-all')).toBeVisible();
+      expect(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+      // Same list, another version: every file of this page is in the new list.
+      deploy.rewrite((body) => body.replace(/"version":"[0-9a-f]+"/, '"version":"1111111111111111"'));
+      await page.evaluate(async () => {
+        await (await navigator.serviceWorker.getRegistration())?.update();
+      });
+      await expect
+        .poll(async () => Object.keys(await cacheContents(page)), { timeout: 20_000 })
+        .toEqual(['clip-app-1111111111111111']);
+      await expect(page.getByTestId('update-notice')).toHaveCount(0);
+      await expect(page.getByTestId('download-all')).toBeVisible();
+    } finally {
+      await deploy.close();
+    }
   });
 });
+
+/**
+ * A stand-in for a new deploy: another origin (so a fresh registration) that
+ * forwards every request to the e2e server and can rewrite `/sw.js`. The
+ * browser's update check for a worker script cannot be routed by Playwright.
+ * Local only: it forwards to the test server on 127.0.0.1.
+ */
+async function swProxy(target: string) {
+  let transform: ((body: string) => string) | null = null;
+  const server = createServer((request, response) => {
+    const url = new URL(request.url ?? '/', target);
+    fetch(url, { method: request.method, headers: { accept: request.headers.accept ?? '*/*' }, redirect: 'manual' })
+      .then(async (upstream) => {
+        const headers: Record<string, string> = {};
+        upstream.headers.forEach((value, key) => {
+          if (!['content-length', 'content-encoding', 'transfer-encoding', 'connection', 'keep-alive'].includes(key)) {
+            headers[key] = value;
+          }
+        });
+        let body = Buffer.from(await upstream.arrayBuffer());
+        if (transform && url.pathname === '/sw.js') body = Buffer.from(transform(body.toString('utf8')));
+        response.writeHead(upstream.status, headers);
+        response.end(body);
+      })
+      .catch(() => {
+        response.writeHead(502);
+        response.end();
+      });
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  return {
+    origin: `http://127.0.0.1:${port}`,
+    rewrite(next: (body: string) => string) {
+      transform = next;
+    },
+    close: () =>
+      new Promise<void>((resolve) => {
+        server.closeAllConnections();
+        server.close(() => resolve());
+      }),
+  };
+}

@@ -10,7 +10,7 @@
  * The page registers the worker only in production builds, never in
  * `next dev` (src/adapters/pwa/serviceWorker.ts).
  */
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 import { collectPrecache, precacheVersion, renderServiceWorker } from './lib/precache.mjs';
@@ -48,6 +48,24 @@ const source = renderServiceWorker(template, {
   assets: list.assets.map((entry) => entry.url),
 });
 writeFileSync(target, source);
+
+// `next start` copies a prerendered route's body into .next/server/route-cache/
+// on its first request and serves that copy from then on, across restarts.
+// A fresh `next build` has none; when this step runs again on an already
+// served build, the stale copy must go or the old worker keeps being served.
+if (mode === 'server') {
+  const metaFile = join(webDir, '.next', 'server', 'app', 'sw.js.meta');
+  const key = existsSync(metaFile) ? JSON.parse(readFileSync(metaFile, 'utf8'))?.routeCache?.key : null;
+  if (typeof key === 'string' && key.startsWith('/route-cache/')) {
+    for (const suffix of ['.body', '.meta']) {
+      const stale = join(webDir, '.next', 'server', ...key.split('/').filter(Boolean)) + suffix;
+      if (existsSync(stale)) {
+        rmSync(stale);
+        console.log(`build-sw: removed the served copy ${relative(webDir, stale)}`);
+      }
+    }
+  }
+}
 
 const bytes = [...list.pages, ...list.assets].reduce((sum, entry) => sum + statSync(entry.file).size, 0);
 console.log(
