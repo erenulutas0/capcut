@@ -25,6 +25,17 @@ const BROWSERS = [
   { key: 'webkit', label: 'WebKit (Playwright)', short: 'WebKit' },
 ];
 
+/**
+ * Hand-written section (see where it is pushed): results of
+ * `scripts/android/phone-run.mjs` on the founder's phone. Not generated.
+ */
+const PHONE_SECTION = [
+  '## Gerçek telefon',
+  '',
+  '{{PHONE}}',
+  '',
+];
+
 const SYMBOL = {
   PASS: '✅',
   UNSUPPORTED: '⛔',
@@ -113,7 +124,8 @@ for (const browser of loaded) {
 lines.push('');
 lines.push(
   `Hepsi ${available[0].data.platform} üzerinde, headless olarak çalıştırıldı. ` +
-    '**Gerçek Safari, gerçek telefon ve fiziksel cihaz testi yapılmadı.** ' +
+    '**Bu matris Gerçek Safari’de ve fiziksel cihazda çalıştırılmadı;** tek bir gerçek telefonda ' +
+    'elle yapılan denemeler aşağıda ayrı bölümde (“Gerçek telefon”). ' +
     'Playwright’ın WebKit derlemesi Safari değildir ve Safari sonucu yerine geçmez.',
 );
 lines.push('');
@@ -246,6 +258,11 @@ if (realFiles.length === 0) {
   }
 }
 
+// Hand-written, not generated: the phone runs are not in matrix-results/*.json
+// of every checkout (the phone is driven by hand over adb). Kept here so that
+// regenerating the document does not drop it; update it with each phone run.
+lines.push(...PHONE_SECTION);
+
 const notRunCases = CASES.filter((c) => c.notRun);
 if (notRunCases.length > 0) {
   lines.push('## Çalıştırılamayanlar');
@@ -258,7 +275,10 @@ if (notRunCases.length > 0) {
 
 lines.push('## Bu matrisin kapsamadıkları');
 lines.push('');
-lines.push('- Gerçek Safari (macOS/iOS) ve gerçek fiziksel telefon/tablet.');
+lines.push(
+  '- Gerçek Safari (macOS/iOS), tablet ve “Gerçek telefon” bölümündeki tek cihaz dışında fiziksel telefon; ' +
+    'Samsung Internet (ölçülmedi).',
+);
 lines.push('- Gerçek kamera/telefon kayıtları, “Gerçek kayıtlar” bölümünde çalıştırılmadıysa.');
 lines.push(
   '- Bilinen sınır: yeniden sıralamayı SPS’te az bildiren H.264 akışları (R07) yazılım çözücüsünde ' +

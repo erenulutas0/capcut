@@ -3,6 +3,16 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Teknik — 1 Ekim 2026: Android'de ses kayması ve "süre uyuşmadı" (ADR-032; politika ve şema değişmedi)
+
+**Ölçülen (gerçek telefon: Galaxy S23, Android 16, Chrome 154):** Telefondaki Chrome'un AAC kodlayıcısı sesin önüne 2048 hazırlık karesi koyuyor ve bunu bildirmiyor. Sonuç: telefonda dışa aktarılan her videonun sesi görüntüden 42,7 ms geride kalıyordu, son 10–20 ms'si eksikti; uzunluğu 1024 ses karesinin katını az geçen kesitler (30 fps'lik uzunlukların %37,5'i; ör. 3,5 sn, 7 sn) bir kareden uzun çıkıp "Oluşan dosyanın süresi beklenen süreyle uyuşmadı" ile reddediliyordu. Samsung'un 60 fps ve ağır çekim kayıtlarında görülmesi tesadüftü; görüntü, döndürme ve kare sayıları doğruydu. Masaüstü Chrome/Edge'in kodlayıcısında gecikme yok.
+
+**Değişen:** Dışa aktarma, ses kodlayıcısının gecikmesini her tarayıcıda bilinen bir sinyalle ölçüyor ve dosyada geri alıyor (MP4 düzenleme listesi; oynatıcılar hazırlık karelerini çalmaz); kodlayıcı sonda sessizlikle boşaltılıyor, fazlası atılıyor. Gecikme ölçülemezse ya da ses kesitin sonuna kadar gelmezse dosya kaydedilmiyor: "Bu tarayıcının ses kodlayıcısı sesi görüntüyle hizalı yazamadı; sesi kayık bir dosya kaydedilmedi." Süre toleransı (bir kare) değişmedi. Masaüstünde ölçülen gecikme 0; çıktılar aynı süre ve senkronda.
+
+**Ölçüm araçları:** `phone-run.mjs` (`--profile`, `--media`, `--desktop`, yerel derleme için `adb reverse`, Samsung kayıtlarının farklı aralıkları H–M, ses kayması ölçümü, adb yeniden başlarsa yeniden bağlanma, tarayıcı arka plandayken bekleme); `phone-cleanup.mjs`, `phone-peek.mjs`. Destek matrisine elle yazılmış "Gerçek telefon" bölümü.
+
+Mevcut kullanıcı haklarına etkisi: yok. Sınırlar, fiyatlar ve şema değişmedi.
+
 ## Kesit akışı v2 — 30 Eylül 2026 (ADR-030; politika ve şema değişmedi)
 
 Kurucu kararları, ilk kullanıcı UX denetiminin yapısal önerilerinden (Ö1, Ö3, Ö5, Ö6, Ö8).
