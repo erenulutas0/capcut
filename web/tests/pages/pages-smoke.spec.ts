@@ -1,13 +1,16 @@
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
+import { expectPolicy, watchCsp } from '../e2e/cspWatch';
 import { addKesit, closeSheet, openMore, openSettings, installSavePicker } from '../e2e/kesitFlow';
 
 /**
  * The published build, under /capcut/, end to end: every thing that resolves
  * a URL at runtime (Next chunks, the export and silence workers, the caption
  * font, plain links, the report dialog's contact) is exercised once, and no
- * request may 404 or leave the origin.
+ * request may 404 or leave the origin. The Content-Security-Policy written
+ * after the build (scripts/apply-csp.mjs) is on the pages and nothing in the
+ * session violates it.
  */
 
 const SAMPLE_VIDEO = join(__dirname, '..', 'media', 'sample-24s.mp4');
@@ -39,10 +42,13 @@ async function playheadTo(page: Page, seconds: number) {
 
 test('landing → editor → kesitler, caption, silence, download, report, privacy', async ({ page, context }) => {
   const seen = watchRequests(page);
+  const csp = await watchCsp(context);
+  await csp.attach(page);
   await installSavePicker(page);
 
   await page.goto('./');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expectPolicy(page);
   await page.getByRole('link', { name: /Editörü aç/ }).first().click();
   await expect(page).toHaveURL(/\/capcut\/editor\/?$/);
 
@@ -106,9 +112,11 @@ test('landing → editor → kesitler, caption, silence, download, report, priva
   await expect(privacy).toHaveURL(/\/capcut\/gizlilik\/?$/);
   await expect(privacy.getByTestId('privacy-draft')).toBeVisible();
   await expect(privacy.getByText('GitHub Pages (GitHub, Inc.)')).toBeVisible();
+  await expectPolicy(privacy);
 
   expect(seen.failures).toEqual([]);
   expect(seen.outside).toEqual([]);
   expect(privacySeen.failures).toEqual([]);
   expect(privacySeen.outside).toEqual([]);
+  expect(csp.violations, csp.violations.join('\n')).toEqual([]);
 });

@@ -43,6 +43,13 @@ const basePath = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/+$/, '');
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Doc 11 "private source map": no browser source maps are built or
+  // published (the default, stated so it is not turned on by accident).
+  // scripts/apply-csp.mjs also removes any stray *.map from the export.
+  productionBrowserSourceMaps: false,
+  // `next start` (e2e, local checks) does not announce itself; GitHub Pages
+  // serves files and sends no such header anyway.
+  poweredByHeader: false,
   // No remote media, no analytics, no third-party scripts.
   // The editor is a client-only module; nothing here enables uploads.
   ...(staticExport ? { output: 'export' as const, trailingSlash: true } : {}),
