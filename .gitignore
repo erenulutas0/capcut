@@ -41,4 +41,7 @@ web/tests/media/long/
 
 # Fast-cut spike: synthetic sources and results (ffmpeg, ADR-027)
 web/tests/media/fastcut/
+# Real-phone runs over adb (scripts/android): generated, not committed.
+web/tests/media/android/
+web/matrix-results/android/
 web/fastcut-spike-results/

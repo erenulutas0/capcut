@@ -1,0 +1,185 @@
+/**
+ * Runs the kesit flow on a REAL Android phone's Chrome over adb + CDP and
+ * verifies every saved file on this computer with ffprobe.
+ *
+ *   adb forward tcp:9222 localabstract:chrome_devtools_remote
+ *   node scripts/android/phone-run.mjs [--url=https://erenulutas0.github.io/capcut/editor/] [--only=A,B]
+ *
+ * The phone's own browser is only driven in one new tab: the script never
+ * closes the browser, never touches other tabs, and at the end deletes the
+ * files it saved and the site's storage it created. The OS save dialog cannot
+ * be driven over CDP, so a stand-in picker (same as the matrix) hands out an
+ * OPFS file; the app's code path is the real one. Videos are sent as bytes
+ * (Playwright's limit is 50 MB per file), never read from the phone.
+ */
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
+import { chromium } from '@playwright/test';
+
+import { installSavePicker, lastPickedName, readPickedFile, setQuality } from '../lib/kesit-flow.mjs';
+
+const arg = (name, fallback) => {
+  const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
+  return hit ? hit.slice(name.length + 3) : fallback;
+};
+const url = arg('url', 'https://erenulutas0.github.io/capcut/editor/');
+const only = arg('only', '')
+  .split(',')
+  .filter(Boolean);
+const web = resolve(import.meta.dirname, '..', '..');
+const real = join(web, 'tests', 'media', 'real');
+const android = join(web, 'tests', 'media', 'android');
+const outDir = join(web, 'matrix-results', 'android');
+mkdirSync(outDir, { recursive: true });
+
+/** id, file, kesitler (seconds), options, what we expect. */
+const CASES = [
+  { id: 'A', file: join(real, 'add1.mp4'), kesits: [[2, 10]], expect: 'fast cut (1080x1920 30 fps H.264)' },
+  { id: 'B', file: join(real, 'web-samsung-s21-h264-60fps-rot90.mp4'), kesits: [[0.5, 4]], expect: 'encode: 60 fps' },
+  { id: 'C', file: join(real, 'web-samsung-hevc-slowmo-sef-rot90.mp4'), kesits: [[1, 8]], expect: 'encode: HEVC source' },
+  { id: 'D', file: join(real, 'web-iphone12pro-hevc-hlg-dv-rot90.mov'), kesits: [[2, 10]], expect: 'encode: HDR HLG → SDR' },
+  { id: 'E', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [], expect: 'whole 3 min, fast path' },
+  { id: 'F', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [], mode: 'encode', expect: 'whole 3 min, forced full encode' },
+  { id: 'G', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [[10, 40], [100, 130]], expect: 'two kesitler joined' },
+];
+
+function probe(file) {
+  const out = spawnSync(
+    'ffprobe',
+    ['-v', 'error', '-count_packets', '-show_entries', 'stream=codec_type,codec_name,width,height,avg_frame_rate,nb_read_packets:format=duration', '-of', 'json', file],
+    { encoding: 'utf8' },
+  );
+  const json = JSON.parse(out.stdout || '{}');
+  const video = json.streams?.find((s) => s.codec_type === 'video');
+  const audio = json.streams?.find((s) => s.codec_type === 'audio');
+  return {
+    durationS: Number(json.format?.duration ?? NaN),
+    video: video ? `${video.codec_name} ${video.width}x${video.height} ${video.avg_frame_rate} (${video.nb_read_packets} frames)` : null,
+    audio: audio ? audio.codec_name : null,
+  };
+}
+
+/**
+ * Sends a local video into the page in 4 MiB pieces and builds a File there.
+ * One big protocol message (setInputFiles with a buffer) stalls over adb for
+ * files above ~30 MB. The File lives in memory, not on disk like a picked one.
+ */
+async function sendFile(page, file) {
+  const bytes = readFileSync(file);
+  const chunk = 4 * 1024 * 1024;
+  await page.evaluate(() => {
+    window.__phoneParts = [];
+  });
+  for (let offset = 0; offset < bytes.length; offset += chunk) {
+    await page.evaluate((base64) => {
+      const text = atob(base64);
+      const part = new Uint8Array(text.length);
+      for (let i = 0; i < text.length; i += 1) part[i] = text.charCodeAt(i);
+      window.__phoneParts.push(part);
+    }, bytes.subarray(offset, offset + chunk).toString('base64'));
+  }
+  await page.evaluate(
+    ({ name }) => {
+      window.__phoneFile = new File(window.__phoneParts, name, { type: 'video/mp4' });
+      window.__phoneParts = [];
+    },
+    { name: basename(file) },
+  );
+}
+
+const browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
+const context = browser.contexts()[0];
+const results = [];
+
+for (const testCase of CASES) {
+  if (only.length > 0 && !only.includes(testCase.id)) continue;
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  let crashed = false;
+  page.on('crash', () => {
+    crashed = true;
+  });
+  await installSavePicker(page);
+  if (testCase.mode === 'encode') {
+    await page.addInitScript(() => {
+      window.__clipExportMode = 'encode';
+    });
+  }
+  const row = { id: testCase.id, source: basename(testCase.file), expect: testCase.expect };
+  try {
+    await page.goto(url, { waitUntil: 'load' });
+    await page.getByTestId('download-all').waitFor({ timeout: 60_000 });
+    const sentAt = Date.now();
+    await sendFile(page, testCase.file);
+    row.transferS = Number(((Date.now() - sentAt) / 1000).toFixed(1));
+    const openedAt = Date.now();
+    await page.evaluate(() => {
+      const input = document.querySelector('[data-testid="video-input"]');
+      const transfer = new DataTransfer();
+      transfer.items.add(window.__phoneFile);
+      input.files = transfer.files;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await page.getByTestId('preview-video').waitFor({ timeout: 120_000 });
+    row.openMs = Date.now() - openedAt;
+    for (const [a, b] of testCase.kesits) {
+      await page.getByTestId('range-start').fill(a.toFixed(3));
+      await page.getByTestId('range-end').fill(b.toFixed(3));
+      // Typing opened the phone's keyboard over the buttons; close it first.
+      await page.evaluate(() => document.activeElement?.blur());
+      await page.waitForTimeout(400);
+      await page.getByTestId('add-moment').click();
+    }
+    await setQuality(page, 1080);
+
+    const startedAt = Date.now();
+    await page.getByTestId('download-all').click();
+    const outcome = await Promise.race([
+      page.getByTestId('download-saved').first().waitFor({ timeout: 20 * 60_000 }).then(() => 'saved'),
+      page.getByTestId('export-failed').first().waitFor({ timeout: 20 * 60_000 }).then(() => 'failed'),
+      page.getByTestId('export-blocked').first().waitFor({ timeout: 20 * 60_000 }).then(() => 'blocked'),
+    ]).catch((e) => `timeout: ${e.message.split('\n')[0]}`);
+    row.outcome = outcome;
+    row.elapsedS = Number(((Date.now() - startedAt) / 1000).toFixed(1));
+    if (outcome === 'saved') {
+      const method = page.getByTestId('export-method').first();
+      row.method = await method.getAttribute('data-method');
+      row.fallback = (await method.getAttribute('data-fallback')) || null;
+      row.methodText = (await method.textContent())?.trim();
+      const name = await lastPickedName(page);
+      const local = join(outDir, `${testCase.id}-${name.replace(/^picked-\d+-/, '')}`);
+      row.sizeBytes = await readPickedFile(page, name, local);
+      row.probe = probe(local);
+    } else {
+      row.message = ((await page.locator('[data-testid="export-failed"], [data-testid="export-blocked"]').first().textContent().catch(() => '')) ?? '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+  } catch (error) {
+    row.outcome = `error: ${String(error.message ?? error).split('\n')[0]}`;
+  }
+  row.crashed = crashed;
+  row.pageErrors = errors;
+  // Clean up what this run left on the phone: saved files and site data.
+  await page
+    .evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      for await (const [name] of root.entries()) await root.removeEntry(name, { recursive: true }).catch(() => undefined);
+      for (const db of (await indexedDB.databases?.()) ?? []) if (db.name) indexedDB.deleteDatabase(db.name);
+      try {
+        localStorage.clear();
+      } catch {
+        /* ignore */
+      }
+    })
+    .catch(() => undefined);
+  await page.close().catch(() => undefined);
+  results.push(row);
+  console.log(JSON.stringify(row));
+}
+
+writeFileSync(join(outDir, `phone-run-${Date.now()}.json`), JSON.stringify({ url, at: new Date().toISOString(), results }, null, 2));
+// Only disconnect: never close the phone's own browser.
+process.exit(0);
