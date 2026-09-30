@@ -37,10 +37,18 @@
  *                    matrix-results/heap-<label>); `page:` before a value
  *                    snapshots the page instead. Summarise and compare them
  *                    with scripts/heap-snapshot-summary.mjs.
+ *   --memory-dumps=60,240,after
+ *                    Chrome's memory-infra dumps (per process and allocator:
+ *                    PartitionAlloc, malloc, V8, Oilpan, GPU, shared memory)
+ *                    at these seconds; the renderer's allocators are listed
+ *                    with the change from the first dump to the last
  *   --heap-sampling  run the sampling heap profiler in the export worker for
  *                    the whole export (collected objects included) and list
  *                    the functions that allocate most; the profile is saved
  *                    as worker-sampling.heapprofile in --heap-dir
+ *                    (`--heap-sampling=page`: the page's main thread instead)
+ *   every row also has the lowest reading of each tenth (`lowMibPerTenth`,
+ *   per type too): what stays between garbage collections
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -87,12 +95,18 @@ const profile = args.includes('--profile');
 const browserArgs = argValue('browser-args', '').split(',').filter(Boolean);
 const aspect = argValue('aspect', '');
 const forceEncode = argValue('mode', 'auto') === 'encode';
-const heapSampling = args.includes('--heap-sampling');
-const heap = args.includes('--heap') || heapSampling || args.some((a) => a.startsWith('--heap-snapshots='));
+const heapSamplingTarget = args.includes('--heap-sampling') ? 'worker' : argValue('heap-sampling', '');
+const heapSampling = heapSamplingTarget === 'worker' || heapSamplingTarget === 'page';
+const heap =
+  args.includes('--heap') ||
+  heapSampling ||
+  args.some((a) => a.startsWith('--heap-snapshots=') || a.startsWith('--memory-dumps='));
 const heapGc = args.includes('--heap-gc');
 const heapIntervalMs = Number(argValue('heap-interval', '5')) * 1000;
 const heapSnapshots = argValue('heap-snapshots', '').split(',').filter(Boolean);
 const heapDir = argValue('heap-dir', '') || join(outDir, `heap-${argValue('label', 'current')}`);
+/** ADR-029: Chrome memory-infra dumps at these seconds (and `after`), per allocator. */
+const memoryDumps = argValue('memory-dumps', '').split(',').filter(Boolean);
 /** Only with --heap: the browser's DevTools port for the second CDP connection. */
 const debuggingPort = 9400 + Math.floor(Math.random() * 400);
 
@@ -147,6 +161,53 @@ function startSampler(rootPid) {
     samples,
     stop: () => child.kill(),
   };
+}
+
+/**
+ * ADR-029: memory-infra dumps → per allocator of the renderer that runs the
+ * editor (the process with the largest Oilpan heap), sizes in MiB per dump.
+ * Allocators up to three levels deep (e.g. partition_alloc/partitions/buffer,
+ * v8/workers, malloc), sorted by the change from the first dump to the last.
+ */
+function summariseMemoryDumps(events, dumpTimes) {
+  const sizeOf = (entry) => (entry?.attrs?.size ? parseInt(entry.attrs.size.value, 16) : 0);
+  // The trace numbers the dumps itself (0x0, 0x1, …) in the order they were
+  // requested; one event per process and dump.
+  const ids = [...new Set(events.map((e) => e.id))];
+  if (ids.length !== dumpTimes.length) return null;
+  const byDump = ids.map((id) => events.filter((e) => e.id === id));
+  // The editor's renderer: largest blink_gc in the first dump.
+  const first = byDump[0];
+  let pid = null;
+  let best = -1;
+  for (const e of first) {
+    const blink = sizeOf(e.args.dumps.allocators.blink_gc);
+    if (blink > best) {
+      best = blink;
+      pid = e.pid;
+    }
+  }
+  const names = new Set();
+  const tables = byDump.map((list) => {
+    const event = list.find((e) => e.pid === pid);
+    const table = {};
+    for (const [name, entry] of Object.entries(event?.args.dumps.allocators ?? {})) {
+      const depth = name.split('/').length;
+      // Per-object detail (e.g. one entry per worker heap id) is summed into its parent level.
+      if (depth > 3 || /0x[0-9a-f]+/i.test(name)) continue;
+      table[name] = sizeOf(entry);
+      names.add(name);
+    }
+    const totals = event?.args.dumps.process_totals ?? {};
+    table['(process) private_footprint'] = totals.private_footprint_bytes ? parseInt(totals.private_footprint_bytes, 16) : 0;
+    names.add('(process) private_footprint');
+    return table;
+  });
+  const allocators = [...names]
+    .map((name) => ({ name, values: tables.map((t) => Number(((t[name] ?? 0) / MIB).toFixed(1))) }))
+    .filter((a) => a.values.some((v) => v >= 1))
+    .sort((a, b) => Math.abs(b.values.at(-1) - b.values[0]) - Math.abs(a.values.at(-1) - a.values[0]));
+  return { pid, labels: dumpTimes.map((d) => `${d.label}`), allocators };
 }
 
 /** Finds the root browser process of a persistent profile by its data dir. */
@@ -331,7 +392,14 @@ for (const seconds of whole ? [0] : durations) {
     heapSamples.push(reading);
   };
   let nextHeapAt = 0;
-  const samplingSession = heapSampling ? exportWorker() : null;
+  const pendingDumps = memoryDumps.map((v) => (v === 'after' ? 'after' : Number(v) * 1000));
+  const dumpTimes = [];
+  if (cdp && pendingDumps.length > 0) await cdp.startMemoryTracing();
+  const takeDump = async (label) => {
+    const result = await cdp.requestMemoryDump();
+    if (result.success) dumpTimes.push({ guid: result.dumpGuid, label, at: Date.now() - startedAt });
+  };
+  const samplingSession = heapSampling ? (heapSamplingTarget === 'page' ? cdp.pageSession : exportWorker()) : null;
   if (samplingSession) await cdp.startSampling(samplingSession);
 
   let finished = false;
@@ -349,6 +417,8 @@ for (const seconds of whole ? [0] : durations) {
       }
       const due = pendingSnapshots.findIndex((s) => s.at !== 'after' && now >= s.at);
       if (due >= 0) await takeSnapshot(pendingSnapshots.splice(due, 1)[0]);
+      const dumpDue = pendingDumps.findIndex((at) => at !== 'after' && now >= at);
+      if (dumpDue >= 0) await takeDump(`${Math.round(pendingDumps.splice(dumpDue, 1)[0] / 1000)}s`);
     }
     await page.waitForTimeout(300);
   }
@@ -356,7 +426,7 @@ for (const seconds of whole ? [0] : durations) {
   let allocationSites = null;
   if (samplingSession) {
     const profile = await cdp.stopSampling(samplingSession);
-    writeFileSync(join(heapDir, 'worker-sampling.heapprofile'), JSON.stringify(profile));
+    writeFileSync(join(heapDir, `${heapSamplingTarget}-sampling.heapprofile`), JSON.stringify(profile));
     // Self size per function (where the allocation happened).
     const bySite = new Map();
     let sampled = 0;
@@ -380,6 +450,13 @@ for (const seconds of whole ? [0] : durations) {
     // What the worker (and the page) still hold once the file is done.
     await readHeaps();
     for (const spec of pendingSnapshots.filter((s) => s.at === 'after')) await takeSnapshot(spec);
+    if (pendingDumps.includes('after')) await takeDump('after');
+  }
+  let memoryDumpRows = null;
+  if (cdp && memoryDumps.length > 0) {
+    const events = await cdp.endMemoryTracing();
+    writeFileSync(join(heapDir, 'memory-dumps.json'), JSON.stringify({ dumpTimes, events }));
+    memoryDumpRows = summariseMemoryDumps(events, dumpTimes);
   }
 
   // Keep sampling briefly: the finished file is handed to the page as a Blob,
@@ -407,17 +484,29 @@ for (const seconds of whole ? [0] : durations) {
   // ADR-029: the same tenths per process type.
   const types = [...new Set(during.flatMap((s) => Object.keys(s.byType ?? {})))];
   const byTypeTenths = {};
+  // The lowest reading of each tenth: what stays between collections, where
+  // the peak also counts garbage not yet collected.
+  const byTypeFloors = {};
   const byTypeBaseline = {};
   for (const type of types) {
     const base = baseline?.byType?.[type];
     byTypeBaseline[type] = base !== undefined ? Number((base / MIB).toFixed(0)) : null;
     byTypeTenths[type] = [];
+    byTypeFloors[type] = [];
     for (let i = 0; i < 10; i += 1) {
       const from = startedAt + (Math.max(1, elapsedMs) * i) / 10;
       const to = startedAt + (Math.max(1, elapsedMs) * (i + 1)) / 10;
       const values = during.filter((s) => s.at >= from && s.at < to).map((s) => s.byType?.[type] ?? 0);
       byTypeTenths[type].push(values.length ? Number((Math.max(...values) / MIB).toFixed(0)) : null);
+      byTypeFloors[type].push(values.length ? Number((Math.min(...values) / MIB).toFixed(0)) : null);
     }
+  }
+  const floors = [];
+  for (let i = 0; i < 10; i += 1) {
+    const from = startedAt + (Math.max(1, elapsedMs) * i) / 10;
+    const to = startedAt + (Math.max(1, elapsedMs) * (i + 1)) / 10;
+    const values = during.filter((s) => s.at >= from && s.at < to).map((s) => s.total);
+    floors.push(values.length ? Number((Math.min(...values) / MIB).toFixed(0)) : null);
   }
 
   const row = {
@@ -432,10 +521,12 @@ for (const seconds of whole ? [0] : durations) {
     peakLargestProcessMib: Number((peakLargest / MIB).toFixed(0)),
     growthMib: baseline ? Number(((peakTotal - baseline.total) / MIB).toFixed(0)) : null,
     peakMibPerTenth: tenths,
+    lowMibPerTenth: floors,
     baselineMibByType: byTypeBaseline,
     peakMibPerTenthByType: byTypeTenths,
+    lowMibPerTenthByType: byTypeFloors,
     storageBefore,
-    ...(cdp ? { heapGc, heapSamples, heapSnapshots: snapshotsTaken, allocationSites } : {}),
+    ...(cdp ? { heapGc, heapSamples, heapSnapshots: snapshotsTaken, allocationSites, memoryDumps: memoryDumpRows } : {}),
   };
 
   if (finished) {
@@ -502,7 +593,10 @@ for (const seconds of whole ? [0] : durations) {
     const order = ['renderer-max', 'renderer', 'gpu-process', 'browser'];
     const shown = [...order.filter((t) => types.includes(t)), ...types.filter((t) => !order.includes(t))];
     for (const type of shown) {
-      console.log(`  ${type.padEnd(40)} taban ${byTypeBaseline[type]} MiB, onda birler: ${byTypeTenths[type].join(', ')}`);
+      console.log(
+        `  ${type.padEnd(40)} taban ${byTypeBaseline[type]} MiB, onda birler (tepe): ${byTypeTenths[type].join(', ')}` +
+          ` | (en düşük): ${byTypeFloors[type].join(', ')}`,
+      );
     }
   }
   if (cdp && heapSamples.length > 0) {
@@ -514,8 +608,14 @@ for (const seconds of whole ? [0] : durations) {
       console.log(`    ${(r.at / 1000).toFixed(0).padStart(5)} s  worker ${fmt(r.worker)}  sayfa ${fmt(r.page)}`);
     }
   }
+  if (memoryDumpRows) {
+    console.log(`  memory-infra (renderer, MiB): ${memoryDumpRows.labels.join(' → ')}`);
+    for (const a of memoryDumpRows.allocators.slice(0, 18)) {
+      console.log(`    ${a.values.map((v) => String(v).padStart(7)).join(' ')}  ${a.name}`);
+    }
+  }
   if (allocationSites) {
-    console.log(`  ayırma örneklemesi (worker, toplanan dahil): ${allocationSites.sampledMib} MiB`);
+    console.log(`  ayırma örneklemesi (${heapSamplingTarget}, toplanan dahil): ${allocationSites.sampledMib} MiB`);
     for (const t of allocationSites.top.slice(0, 20)) console.log(`    ${String(t.mib).padStart(8)} MiB  ${t.site}`);
   }
   if (row.profile) {

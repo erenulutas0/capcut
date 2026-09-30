@@ -99,8 +99,18 @@ const profiling = typeof scope.name === 'string' && scope.name.endsWith(EXPORT_P
  */
 const AUDIO_LEAD_SECONDS = 1;
 
-/** How often the encoding progress event is emitted, in output frames. */
+/** How often the encoding progress is looked at, in output frames. */
 const PROGRESS_EVERY_FRAMES = 5;
+
+/**
+ * The shortest time between two progress events (ADR-029). Every event makes
+ * the editor render again; at a 1080p encode's ~245 frames per second, one
+ * event per 5 frames was ~50 renders a second, ~0.77 GiB of short-lived
+ * objects on the page per 20 minutes of output (sampling heap profiler), and
+ * the page's JavaScript heap grew from 12 to 62 MiB over a 60-minute export.
+ * Four updates a second are as smooth for a person watching a progress bar.
+ */
+const PROGRESS_INTERVAL_MS = 250;
 
 class CanceledError extends Error {
   constructor() {
@@ -727,7 +737,13 @@ async function produceOutput(
   let framesMissing = 0;
   let succeeded = false;
 
-  const emitProgress = () =>
+  // The first and the last report always go out; in between at most one per
+  // PROGRESS_INTERVAL_MS (ADR-029).
+  let lastProgressAt = Number.NEGATIVE_INFINITY;
+  const emitProgress = () => {
+    const now = performance.now();
+    if (framesDone < totalFrames && now - lastProgressAt < PROGRESS_INTERVAL_MS) return;
+    lastProgressAt = now;
     emit(requestId, {
       type: 'encoding',
       attemptId: requestId,
@@ -735,6 +751,7 @@ async function produceOutput(
       framesDone,
       totalFrames,
     });
+  };
 
   /**
    * Captions, snapshot and encoder hand-off of the picture now on `canvas`,

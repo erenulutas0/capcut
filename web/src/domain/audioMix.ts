@@ -83,6 +83,111 @@ export class PcmRingBuffer {
     const b = this.frameAt(base + 1, channel);
     return a + (b - a) * fraction;
   }
+
+  /**
+   * `destination[i] += sampleAt(positionStart + i·step, channel) · gain[i]`
+   * for every output frame whose gain is not 0 — the same arithmetic, in the
+   * same order, as calling `sampleAt` and `frameAt` for each frame, so the
+   * result is bit for bit the same (tests/unit/audioMix.test.ts compares them).
+   *
+   * `constantGain` wins over `gainCurve`; past the end of the curve the gain
+   * is 0, i.e. the frame is left as it is.
+   */
+  mixChannelInto(
+    destination: Float32Array,
+    outFrames: number,
+    channel: number,
+    positionStart: number,
+    positionStep: number,
+    constantGain: number | null,
+    gainCurve: Float32Array | null,
+  ): void {
+    if (constantGain !== null) {
+      mixFrames(this.blocks, destination, outFrames, channel, positionStart, positionStep, constantGain, null);
+    } else if (gainCurve !== null) {
+      const frames = Math.min(outFrames, gainCurve.length);
+      mixFrames(this.blocks, destination, frames, channel, positionStart, positionStep, 0, gainCurve);
+    }
+  }
+}
+
+/**
+ * The loop of `mixChannelInto`, kept free of anything that makes V8 allocate
+ * per frame (ADR-029). Before, every output sample went through `sampleAt` →
+ * `frameAt` (and a `for…of` over the blocks): measured in the export worker,
+ * ~2.3 GiB of short-lived heap objects per 20 minutes of output, about 80 % of
+ * everything the worker allocated. That churn is what made the worker's heap,
+ * and the browser's memory, grow with the length of the audio.
+ *
+ * Measured in Chrome (sampling heap profiler, the real `SegmentAudioWriter`
+ * in a worker): the per-frame calls 2.3 GiB; one loop that still merged the
+ * constant gain and the curve into one value, and read the frames through
+ * `0`-initialised values chosen in branches, 0.34 GiB; this form ~1 MiB. So:
+ * one gain source per call (`gainCurve` null means `constantGain`), numbers
+ * only (`+`), the frame lookup written out twice rather than called.
+ */
+function mixFrames(
+  blocks: readonly PcmBlock[],
+  destination: Float32Array,
+  frames: number,
+  channel: number,
+  positionStart: number,
+  positionStep: number,
+  constantGain: number,
+  gainCurve: Float32Array | null,
+): void {
+  const blockCount = blocks.length;
+  const destinationLength = destination.length;
+  const fixedGain = +constantGain;
+  const step = +positionStep;
+  let position = +positionStart;
+  for (let i = 0; i < frames; i += 1) {
+    const gain = gainCurve === null ? fixedGain : gainCurve[i]!;
+    if (gain !== 0) {
+      const base = Math.floor(position);
+      const fraction = position - base;
+
+      // frameAt(base, channel): the block holding the frame, else silence.
+      let a = 0;
+      if (base >= 0) {
+        for (let k = 0; k < blockCount; k += 1) {
+          const block = blocks[k]!;
+          if (base < block.startFrame) break;
+          if (base < block.startFrame + block.frameCount) {
+            const count = block.channels.length;
+            const source = count > 0 ? block.channels[channel % count] : undefined;
+            const index = base - block.startFrame;
+            if (source !== undefined && index < source.length) a = source[index]!;
+            break;
+          }
+        }
+      }
+
+      // frameAt(base + 1, channel), only when between two frames.
+      let b = 0;
+      if (fraction !== 0) {
+        const next = base + 1;
+        if (next >= 0) {
+          for (let k = 0; k < blockCount; k += 1) {
+            const block = blocks[k]!;
+            if (next < block.startFrame) break;
+            if (next < block.startFrame + block.frameCount) {
+              const count = block.channels.length;
+              const source = count > 0 ? block.channels[channel % count] : undefined;
+              const index = next - block.startFrame;
+              if (source !== undefined && index < source.length) b = source[index]!;
+              break;
+            }
+          }
+        }
+      }
+
+      const value = fraction !== 0 ? a + (b - a) * fraction : a;
+      const current = i < destinationLength ? destination[i]! : 0;
+      destination[i] = current + value * gain;
+    }
+    position += step;
+  }
 }
 
 /**
@@ -106,14 +211,7 @@ export function mixStreamInto(
   for (let channel = 0; channel < out.length; channel += 1) {
     const destination = out[channel];
     if (!destination) continue;
-    let position = positionStart;
-    for (let i = 0; i < outFrames; i += 1) {
-      const gain = constantGain ?? gainCurve?.[i] ?? 0;
-      if (gain !== 0) {
-        destination[i] = (destination[i] ?? 0) + buffer.sampleAt(position, channel) * gain;
-      }
-      position += positionStep;
-    }
+    buffer.mixChannelInto(destination, outFrames, channel, positionStart, positionStep, constantGain, gainCurve);
   }
 }
 

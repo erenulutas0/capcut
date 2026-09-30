@@ -168,3 +168,141 @@ describe('output shaping', () => {
     expect(Array.from(interleave(planar, 2))).toEqual([1, 2, 3, 4]);
   });
 });
+
+/**
+ * ADR-029: `mixStreamInto` no longer calls `sampleAt` per frame (that
+ * allocated for every sample). The mix must stay bit for bit what the
+ * per-frame form gave, so it is compared with it here, value by value
+ * (`Object.is`: also -0 and NaN), over the shapes the export produces.
+ */
+describe('mixStreamInto is the per-frame sampleAt mix, bit for bit', () => {
+  /** The mix as it was written before ADR-029. */
+  function referenceMix(
+    out: Float32Array[],
+    outFrames: number,
+    buffer: PcmRingBuffer,
+    positionStart: number,
+    positionStep: number,
+    gains: Float32Array | number,
+  ): void {
+    const constantGain = typeof gains === 'number' ? gains : null;
+    if (constantGain === 0) return;
+    const gainCurve = constantGain === null ? (gains as Float32Array) : null;
+    for (let channel = 0; channel < out.length; channel += 1) {
+      const destination = out[channel];
+      if (!destination) continue;
+      let position = positionStart;
+      for (let i = 0; i < outFrames; i += 1) {
+        const gain = constantGain ?? gainCurve?.[i] ?? 0;
+        if (gain !== 0) {
+          destination[i] = (destination[i] ?? 0) + buffer.sampleAt(position, channel) * gain;
+        }
+        position += positionStep;
+      }
+    }
+  }
+
+  /** Deterministic pseudo-random numbers (mulberry32). */
+  function random(seed: number): () => number {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function expectSame(actual: Float32Array[], expected: Float32Array[]): void {
+    for (let channel = 0; channel < expected.length; channel += 1) {
+      const a = actual[channel]!;
+      const e = expected[channel]!;
+      for (let i = 0; i < e.length; i += 1) {
+        if (!Object.is(a[i], e[i])) {
+          throw new Error(`channel ${channel} frame ${i}: ${a[i]} vs ${e[i]}`);
+        }
+      }
+    }
+  }
+
+  it('matches over random decoded streams, rates, gaps, gains and positions', () => {
+    const next = random(29);
+    // A 48 kHz output fed from 48, 44.1, 32, 22.05 and 96 kHz and odd ratios.
+    const steps = [1, 44_100 / 48_000, 32_000 / 48_000, 22_050 / 48_000, 2, 0.5, 1.37];
+    let compared = 0;
+    for (let trial = 0; trial < 400; trial += 1) {
+      const sourceChannels = 1 + Math.floor(next() * 2);
+      const outChannels = 1 + Math.floor(next() * 2);
+      const buffer = new PcmRingBuffer(sourceChannels);
+      // Blocks of 1024 frames like AAC, sometimes of other lengths, with
+      // gaps, and now and then shorter in storage than they say.
+      let frame = Math.floor(next() * 5000) - 1000;
+      const blocks = 1 + Math.floor(next() * 6);
+      for (let b = 0; b < blocks; b += 1) {
+        const count = next() < 0.2 ? 1 + Math.floor(next() * 1500) : 1024;
+        const stored = next() < 0.05 ? Math.max(0, count - 7) : count;
+        const channels: Float32Array[] = [];
+        for (let c = 0; c < sourceChannels; c += 1) {
+          const data = new Float32Array(stored);
+          for (let i = 0; i < stored; i += 1) {
+            const r = next();
+            // Mostly speech-level values; some full scale, exact 0 and -0.
+            data[i] = r < 0.02 ? 0 : r < 0.03 ? -0 : r < 0.04 ? 1 : r < 0.05 ? -1 : (next() * 2 - 1) * 0.4;
+          }
+          channels.push(data);
+        }
+        buffer.append(channels, frame, count);
+        frame += count + (next() < 0.15 ? Math.floor(next() * 300) : 0);
+      }
+      if (next() < 0.2) buffer.trimBefore(buffer.firstFrame + Math.floor(next() * 1024));
+
+      const outFrames = next() < 0.1 ? Math.floor(next() * 50) : 4096;
+      const step = steps[Math.floor(next() * steps.length)]!;
+      const start = buffer.firstFrame - 50 + (next() < 0.5 ? next() * 3000 : 0) + (next() < 0.3 ? 0.5 : 0);
+      let gains: Float32Array | number;
+      if (next() < 0.5) {
+        gains = next() < 0.1 ? 0 : next() * 1.5;
+      } else {
+        // A music envelope: zeros, a ramp, full gain; sometimes shorter than the chunk.
+        const length = next() < 0.1 ? Math.floor(outFrames / 2) : outFrames;
+        gains = new Float32Array(length);
+        for (let i = 0; i < length; i += 1) gains[i] = i < length / 4 ? 0 : Math.min(1, i / length);
+      }
+
+      const expected = Array.from({ length: outChannels }, () => {
+        const channel = new Float32Array(outFrames);
+        for (let i = 0; i < outFrames; i += 1) channel[i] = next() < 0.5 ? 0 : (next() * 2 - 1) * 0.3;
+        return channel;
+      });
+      const actual = expected.map((channel) => channel.slice());
+      referenceMix(expected, outFrames, buffer, start, step, gains);
+      mixStreamInto(actual, outFrames, buffer, start, step, gains);
+      expectSame(actual, expected);
+      compared += outFrames * outChannels;
+    }
+    expect(compared).toBeGreaterThan(1_000_000);
+  });
+
+  it('matches at the edges: empty buffer, negative and non-finite positions, no channels', () => {
+    const one = new PcmRingBuffer(1);
+    one.append([new Float32Array([0.25, -0.5, 0.75])], 0, 3);
+    const none = new PcmRingBuffer(0);
+    none.append([], 0, 4);
+    const cases: { buffer: PcmRingBuffer; start: number; step: number }[] = [
+      { buffer: new PcmRingBuffer(2), start: 0, step: 1 },
+      { buffer: one, start: -2.5, step: 0.5 },
+      { buffer: one, start: Number.NaN, step: 1 },
+      { buffer: one, start: Number.POSITIVE_INFINITY, step: 1 },
+      { buffer: one, start: Number.NEGATIVE_INFINITY, step: 1 },
+      { buffer: none, start: 0, step: 1 },
+    ];
+    for (const { buffer, start, step } of cases) {
+      const expected = [new Float32Array(8), new Float32Array(8)];
+      const actual = [new Float32Array(8), new Float32Array(8)];
+      referenceMix(expected, 8, buffer, start, step, 0.9);
+      mixStreamInto(actual, 8, buffer, start, step, 0.9);
+      expectSame(actual, expected);
+    }
+  });
+});

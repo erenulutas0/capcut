@@ -114,8 +114,44 @@ export async function connectToPage(port, urlPart) {
   };
   const stopSampling = async (sessionId) => (await send('HeapProfiler.stopSampling', {}, sessionId)).profile;
 
+  /**
+   * Chrome's own memory accounting (memory-infra): per process, how much each
+   * allocator holds (PartitionAlloc partitions, malloc, V8, Oilpan, GPU,
+   * shared memory, …) — the native memory a JavaScript heap snapshot does
+   * not see. Tracing runs on the browser connection for the whole export;
+   * each dump is requested at a moment and read back when tracing ends.
+   */
+  const traceEvents = [];
+  listeners.push((message) => {
+    if (message.method === 'Tracing.dataCollected') traceEvents.push(...message.params.value);
+  });
+  const startMemoryTracing = () =>
+    send('Tracing.start', {
+      transferMode: 'ReportEvents',
+      traceConfig: {
+        recordMode: 'recordAsMuchAsPossible',
+        includedCategories: ['disabled-by-default-memory-infra'],
+        excludedCategories: ['*'],
+        memoryDumpConfig: { triggers: [] },
+      },
+    });
+  const requestMemoryDump = () => send('Tracing.requestMemoryDump', { deterministic: false, levelOfDetail: 'detailed' });
+  const endMemoryTracing = async () => {
+    const done = new Promise((resolve) => {
+      listeners.push((message) => {
+        if (message.method === 'Tracing.tracingComplete') resolve();
+      });
+    });
+    await send('Tracing.end');
+    await done;
+    return traceEvents.filter((e) => e.ph === 'v' && e.args?.dumps?.allocators);
+  };
+
   return {
     pageSession,
+    startMemoryTracing,
+    requestMemoryDump,
+    endMemoryTracing,
     startSampling,
     stopSampling,
     workers,
