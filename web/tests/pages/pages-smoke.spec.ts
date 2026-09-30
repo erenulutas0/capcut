@@ -1,4 +1,5 @@
-import { join } from 'node:path';
+import { readdirSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 import { expectPolicy, watchCsp } from '../e2e/cspWatch';
@@ -119,4 +120,15 @@ test('landing → editor → kesitler, caption, silence, download, report, priva
   expect(privacySeen.failures).toEqual([]);
   expect(privacySeen.outside).toEqual([]);
   expect(csp.violations, csp.violations.join('\n')).toEqual([]);
+});
+
+test('the export publishes compiled files only: no source maps, no TypeScript sources', () => {
+  const walk = (dir: string): string[] =>
+    readdirSync(dir).flatMap((name) => {
+      const path = join(dir, name);
+      return statSync(path).isDirectory() ? walk(path) : [path];
+    });
+  const files = walk(join(process.cwd(), 'out')).map((f) => relative(process.cwd(), f));
+  expect(files.length).toBeGreaterThan(10);
+  expect(files.filter((f) => /\.(map|tsx?)$/.test(f))).toEqual([]);
 });
