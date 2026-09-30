@@ -225,7 +225,15 @@ yolunda bellek çıktı boyutuyla büyümez; çıktı süresiyle saatte ~24 MiB 
 - `npx vitest run` → 37 dosya, **479 test geçti** (yeni: karıştırıcının bit bit
   eşdeğerliği, 2 test).
 - `npm run build` → başarılı.
-- Diğerleri aşağıda (e2e, matris, gerçek kayıtlar).
+- `E2E_PORT=3211 npx playwright test` (tam) → **137 geçti, 2 atlandı** (sessizlik ekran
+  görüntüsü testleri, yalnızca istenince), 3,6 dk.
+- `node scripts/run-matrix.mjs` Chromium / Chrome / Edge (`next start -p 3100`) → **22 / 22 / 22
+  PASS**; 66 satırın hepsinde durum, SSIM, süre, kare sayısı, yöntem ve ton seviyesi 24 Eylül
+  koşusuyla (ADR-028 birleşimi) **aynı**.
+- `node scripts/run-real-media.mjs --browser=chrome` → **15 PASS**; 15 satırın hepsi 24 Eylül
+  koşusuyla aynı.
+- Ölçüm dosyaları git dışında: `web/matrix-results/export-memory-1080-{before,after,final,diag,…}*.json`.
+  Kaynaklar, çıktılar ve yığın görüntüleri ölçümden sonra silindi.
 
 ## Ölçülmeyenler
 
