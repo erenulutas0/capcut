@@ -140,8 +140,8 @@ export function FramePanel({
         onChange={(event) => onShortEdge(Number(event.target.value))}
         data-testid="export-quality"
       >
-        <option value={1080}>1080p · H.264 / AAC</option>
-        <option value={720}>720p · H.264 / AAC</option>
+        <option value={1080}>{t('export.quality.1080')}</option>
+        <option value={720}>{t('export.quality.720')}</option>
       </select>
 
       <p className="hint-small">{t('frame.appliesToAll')}</p>

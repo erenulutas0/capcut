@@ -297,7 +297,7 @@ test.describe('captions', () => {
     await addLine(page, 'Kalıcı satır İğşı');
     await page.getByTestId('caption-size-large').check();
 
-    await expect(page.getByTestId('save-state')).toContainText('Kaydedildi', { timeout: 15_000 });
+    await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
     await expect
       .poll(
         async () => {

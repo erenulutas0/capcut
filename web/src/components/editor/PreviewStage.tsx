@@ -205,6 +205,7 @@ export function PreviewStage({
             className="icon-btn frame-fullscreen"
             onClick={toggleFullscreen}
             aria-label={t('preview.fullscreen')}
+            title={t('preview.fullscreen')}
             aria-keyshortcuts="F"
             data-testid="fullscreen-toggle"
           >

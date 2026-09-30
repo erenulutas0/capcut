@@ -344,7 +344,7 @@ test.describe('a11y: axe audit', () => {
 
   test('relink panel: missing file, a download refused, mismatch', async ({ page }, testInfo) => {
     await withMoments(page);
-    await expect(page.getByTestId('save-state')).toContainText('Kaydedildi', { timeout: 15_000 });
+    await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
     await page.reload();
     await expect(page.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
     await audit(page, 'relink-missing', testInfo);

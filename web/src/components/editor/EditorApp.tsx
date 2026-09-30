@@ -93,6 +93,17 @@ function isActivatable(target: EventTarget | null): boolean {
 const MARK_IN_KEYS = new Set(['i', 'I', 'İ']);
 const MARK_OUT_KEYS = new Set(['o', 'O']);
 
+/**
+ * What to do next after a refused mark or "Kesit ekle" (UX audit 2026-09-30).
+ * Only for refusals of the marks: the same error keys also come from music
+ * ranges in Ayarlar, where this advice would be wrong.
+ */
+const MARK_NEXT_STEP: Partial<Record<MessageKey, MessageKey>> = {
+  'error.range_reversed': 'mark.next.range_reversed',
+  'error.range_out_of_source': 'mark.next.range_out_of_source',
+  'error.clip_too_short': 'mark.next.clip_too_short',
+};
+
 type SilenceScope =
   | { kind: 'whole'; working: Project }
   | { kind: 'kesit'; clipId: string; working: Project; maxClips: number }
@@ -143,6 +154,8 @@ export function EditorApp() {
   const [silenceScope, setSilenceScope] = useState<SilenceScope | null>(null);
   const [backupMessage, setBackupMessage] = useState<MessageKey | null>(null);
   const [fullscreenRequest, setFullscreenRequest] = useState(0);
+  /** The refusal the marks themselves caused, so only that one gets a next step. */
+  const [markRefusal, setMarkRefusal] = useState<MessageKey | null>(null);
   const silence = useSilenceAnalysis();
   const captionFont = useCaptionFont();
   /** Where the playhead was when an edge drag started, so Esc can put it back. */
@@ -236,11 +249,16 @@ export function EditorApp() {
     }
     const range = resolvePending(pending, durationUs);
     const result = state.addKesit(range);
-    if (!result.ok) return;
+    if (!result.ok) {
+      setMarkRefusal(result.reason);
+      return;
+    }
+    setMarkRefusal(null);
     setPending(EMPTY_PENDING);
     const number = project.clips.length + 1;
+    // Where it went: beside the marks on a wide screen, below them on a phone.
     setNotice(
-      fill(t('notice.added'), {
+      fill(t(phone ? 'notice.addedBelow' : 'notice.added'), {
         n: String(number),
         range: rangeText(range.sourceInUs, range.sourceOutUs),
       }),
@@ -264,7 +282,7 @@ export function EditorApp() {
     if (playback.range?.clipId === clipId) playback.stop();
     const after = state.deleteKesit(clipId);
     if (!after) return;
-    setNotice(fill(t('notice.deleted'), { n: String(index + 1) }));
+    setNotice(fill(t(phone ? 'notice.deletedTouch' : 'notice.deleted'), { n: String(index + 1) }));
     // The deleted card's button had focus; the effect below continues from
     // the list once the card is really gone (a frame callback could run
     // before React removed it, and focus then fell to the page).
@@ -290,13 +308,16 @@ export function EditorApp() {
           ? { sourceInUs: Math.round(atUs), sourceOutUs: selected.sourceOutUs }
           : { sourceInUs: selected.sourceInUs, sourceOutUs: Math.round(atUs) };
       if (range.sourceOutUs - range.sourceInUs < MIN_CLIP_DURATION_US) {
-        state.setActionError(range.sourceOutUs <= range.sourceInUs ? 'error.range_reversed' : 'error.clip_too_short');
+        const refusal: MessageKey = range.sourceOutUs <= range.sourceInUs ? 'error.range_reversed' : 'error.clip_too_short';
+        state.setActionError(refusal);
+        setMarkRefusal(refusal);
         return;
       }
       state.editKesit(selected.clipId, range);
       return;
     }
     state.setActionError(null);
+    setMarkRefusal(null);
     setPending((current) => markPending(current, edge, Math.min(atUs, durationUs)));
   };
 
@@ -614,6 +635,23 @@ export function EditorApp() {
     project.clips.map((clip) => clip.sourceInUs),
   );
 
+  // One primary button at a time: the next step (UX audit 2026-09-30). While
+  // the first kesit is being made the marks lead (start, end, "Kesit ekle");
+  // once there is a kesit, the download at the top is the goal.
+  const hasMark = pending.inUs !== null || pending.outUs !== null;
+  const markEmphasis: 'start' | 'end' | 'add' | null =
+    !video || selected
+      ? null
+      : hasMark
+        ? pending.inUs !== null && pending.outUs === null
+          ? 'end'
+          : 'add'
+        : project.clips.length === 0
+          ? 'start'
+          : null;
+  const markNextStep =
+    markRefusal !== null && markRefusal === state.actionError ? (MARK_NEXT_STEP[markRefusal] ?? null) : null;
+
   const markTarget: MarkTarget = selected
     ? { kind: 'kesit', number: selectedIndex + 1, inUs: selected.sourceInUs, outUs: selected.sourceOutUs }
     : { kind: 'pending', inUs: pending.inUs, outUs: pending.outUs, durationUs };
@@ -713,6 +751,7 @@ export function EditorApp() {
             onClick={undo}
             disabled={!state.canUndo}
             aria-label={t('topbar.undo')}
+            title={`${t('topbar.undo')} (Ctrl+Z)`}
             data-testid="undo"
           >
             <Icon name="undo" />
@@ -723,6 +762,7 @@ export function EditorApp() {
             onClick={redo}
             disabled={!state.canRedo}
             aria-label={t('topbar.redo')}
+            title={`${t('topbar.redo')} (Ctrl+Y)`}
             data-testid="redo"
           >
             <Icon name="redo" />
@@ -732,6 +772,7 @@ export function EditorApp() {
             className="icon-btn"
             onClick={() => setMoreOpen(true)}
             aria-label={t('more.open')}
+            title={`${t('more.open')}: ${t('more.hint')}`}
             aria-haspopup="dialog"
             data-testid="open-more"
           >
@@ -740,8 +781,12 @@ export function EditorApp() {
           <button
             type="button"
             className={phone ? 'icon-btn' : 'btn topbar-settings'}
-            onClick={() => setSettingsOpen(true)}
+            onClick={() => {
+              setMarkRefusal(null);
+              setSettingsOpen(true);
+            }}
             aria-label={phone ? t('settings.open') : undefined}
+            title={`${t('settings.open')}: ${t('settings.hint')}`}
             aria-haspopup="dialog"
             data-testid="open-settings"
           >
@@ -750,7 +795,7 @@ export function EditorApp() {
           </button>
           <button
             type="button"
-            className="btn btn-accent topbar-download"
+            className={project.clips.length > 0 ? 'btn btn-accent topbar-download' : 'btn topbar-download'}
             onClick={downloadTop}
             disabled={!video || downloads.activeKey !== null}
             aria-label={top.kind === 'merged' ? t('download.all') : undefined}
@@ -851,6 +896,7 @@ export function EditorApp() {
             onAdd={addKesit}
             onInvalid={() => state.setActionError('error.invalid_time')}
             onDone={leaveKesit}
+            emphasis={markEmphasis}
           />
 
           {/* One line under the marks, always in the page: a screen reader is
@@ -861,7 +907,15 @@ export function EditorApp() {
             {state.actionError ? (
               <p className="inline-error notice-error" role="alert" data-testid="range-error">
                 <Icon name="alert" />
-                {t(state.actionError)}
+                <span>
+                  {t(state.actionError)}
+                  {markNextStep ? (
+                    <>
+                      {' '}
+                      <span data-testid="range-error-next">{t(markNextStep)}</span>
+                    </>
+                  ) : null}
+                </span>
               </p>
             ) : null}
             <p
@@ -901,6 +955,7 @@ export function EditorApp() {
           onDelete={deleteKesit}
           onMove={state.moveKesit}
           emptyText={emptyText}
+          hasVideo={video !== null}
           saveNote={hydrated && state.video !== null && canPickSaveFile() ? t('download.overwriteNote') : null}
         />
       </main>
@@ -908,7 +963,7 @@ export function EditorApp() {
       {phone ? null : (
         <footer className="status-bar">
           <span>{t('footer.local')}</span>
-          <span className="shortcut-hints">Space · I / O · Enter · F · Ctrl/Cmd+Z</span>
+          <span className="shortcut-hints">{t('footer.shortcuts')}</span>
         </footer>
       )}
 

@@ -294,7 +294,7 @@ test.describe('the frame follows the opened video', () => {
     await openSettings(page, 'frame');
     await page.getByTestId('aspect-1-1').click();
     await closeSheet(page);
-    await expect(page.getByTestId('save-state')).toContainText('Kaydedildi', { timeout: 15_000 });
+    await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
 
     await page.reload();
     await expect(page.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });

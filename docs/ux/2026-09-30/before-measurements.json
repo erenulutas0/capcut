@@ -1,0 +1,7908 @@
+{
+  "prefix": "before",
+  "baseURL": "http://127.0.0.1:3207",
+  "sizes": {
+    "desktop": [
+      {
+        "step": "00-landing",
+        "file": "before-desktop-00-landing.png",
+        "small": [
+          {
+            "name": "footer-privacy",
+            "w": 81,
+            "h": 17,
+            "under24": true
+          }
+        ],
+        "words": [
+          "encode"
+        ]
+      },
+      {
+        "step": "01-editor-empty",
+        "file": "before-desktop-01-editor-empty.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "02-video-open",
+        "file": "before-desktop-02-video-open.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "03-start-marked",
+        "file": "before-desktop-03-start-marked.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "04-end-marked",
+        "file": "before-desktop-04-end-marked.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "05-kesit-added",
+        "file": "before-desktop-05-kesit-added.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "06-downloading",
+        "file": "before-desktop-06-downloading.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "export-cancel",
+            "w": 68,
+            "h": 36,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "kodlanıyor",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "07-saved",
+        "file": "before-desktop-07-saved.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "08-three-kesits",
+        "file": "before-desktop-08-three-kesits.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "09-kesit-selected",
+        "file": "before-desktop-09-kesit-selected.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Kesit 2 başlangıcı",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2 bitişi",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "10-settings",
+        "file": "before-desktop-10-settings.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "inspector-tab-frame",
+            "w": 91,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "inspector-tab-audio",
+            "w": 91,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "inspector-tab-captions",
+            "w": 91,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "fit-cover",
+            "w": 17,
+            "h": 17,
+            "under24": true
+          },
+          {
+            "name": "fit-contain",
+            "w": 17,
+            "h": 17,
+            "under24": true
+          },
+          {
+            "name": "zoom-slider",
+            "w": 306,
+            "h": 24,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z",
+          "H.264",
+          "AAC"
+        ]
+      },
+      {
+        "step": "11-more",
+        "file": "before-desktop-11-more.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "12-refusal-reversed",
+        "file": "before-desktop-12-refusal-reversed.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "13-joined-saved",
+        "file": "before-desktop-13-joined-saved.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 285,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "14-not-a-video",
+        "file": "before-desktop-14-not-a-video.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 285,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "15-no-save-dialog",
+        "file": "before-desktop-15-no-save-dialog.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 285,
+            "h": 24,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Kodlandı",
+          "MiB",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      }
+    ],
+    "laptop": [
+      {
+        "step": "00-landing",
+        "file": "before-laptop-00-landing.png",
+        "small": [
+          {
+            "name": "footer-privacy",
+            "w": 81,
+            "h": 17,
+            "under24": true
+          }
+        ],
+        "words": [
+          "encode"
+        ]
+      },
+      {
+        "step": "01-editor-empty",
+        "file": "before-laptop-01-editor-empty.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "02-video-open",
+        "file": "before-laptop-02-video-open.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "03-start-marked",
+        "file": "before-laptop-03-start-marked.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "04-end-marked",
+        "file": "before-laptop-04-end-marked.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "05-kesit-added",
+        "file": "before-laptop-05-kesit-added.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "06-downloading",
+        "file": "before-laptop-06-downloading.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "export-cancel",
+            "w": 68,
+            "h": 36,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "kodlanıyor",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "07-saved",
+        "file": "before-laptop-07-saved.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "08-three-kesits",
+        "file": "before-laptop-08-three-kesits.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "09-kesit-selected",
+        "file": "before-laptop-09-kesit-selected.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Kesit 2 başlangıcı",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2 bitişi",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "10-settings",
+        "file": "before-laptop-10-settings.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "inspector-tab-frame",
+            "w": 91,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "inspector-tab-audio",
+            "w": 91,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "inspector-tab-captions",
+            "w": 91,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "fit-cover",
+            "w": 17,
+            "h": 17,
+            "under24": true
+          },
+          {
+            "name": "fit-contain",
+            "w": 17,
+            "h": 17,
+            "under24": true
+          },
+          {
+            "name": "zoom-slider",
+            "w": 306,
+            "h": 24,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z",
+          "H.264",
+          "AAC"
+        ]
+      },
+      {
+        "step": "11-more",
+        "file": "before-laptop-11-more.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "12-refusal-reversed",
+        "file": "before-laptop-12-refusal-reversed.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "13-joined-saved",
+        "file": "before-laptop-13-joined-saved.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 285,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "14-not-a-video",
+        "file": "before-laptop-14-not-a-video.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 320,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 285,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 289,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      }
+    ],
+    "tablet": [
+      {
+        "step": "00-landing",
+        "file": "before-tablet-00-landing.png",
+        "small": [
+          {
+            "name": "footer-privacy",
+            "w": 81,
+            "h": 17,
+            "under24": true
+          }
+        ],
+        "words": [
+          "encode"
+        ]
+      },
+      {
+        "step": "01-editor-empty",
+        "file": "before-tablet-01-editor-empty.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 135,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "02-video-open",
+        "file": "before-tablet-02-video-open.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 151,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 28,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "03-start-marked",
+        "file": "before-tablet-03-start-marked.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 151,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 28,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "04-end-marked",
+        "file": "before-tablet-04-end-marked.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 151,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 28,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "05-kesit-added",
+        "file": "before-tablet-05-kesit-added.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 169,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "06-downloading",
+        "file": "before-tablet-06-downloading.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 169,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "export-cancel",
+            "w": 68,
+            "h": 36,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "kodlanıyor",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "07-saved",
+        "file": "before-tablet-07-saved.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 169,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 249,
+            "h": 24,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "08-three-kesits",
+        "file": "before-tablet-08-three-kesits.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 88,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 249,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "09-kesit-selected",
+        "file": "before-tablet-09-kesit-selected.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 88,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Kesit 2 başlangıcı",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2 bitişi",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 249,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "10-settings",
+        "file": "before-tablet-10-settings.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 88,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 249,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "inspector-tab-frame",
+            "w": 91,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "inspector-tab-audio",
+            "w": 91,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "inspector-tab-captions",
+            "w": 91,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "fit-cover",
+            "w": 17,
+            "h": 17,
+            "under24": true
+          },
+          {
+            "name": "fit-contain",
+            "w": 17,
+            "h": 17,
+            "under24": true
+          },
+          {
+            "name": "zoom-slider",
+            "w": 306,
+            "h": 24,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z",
+          "H.264",
+          "AAC"
+        ]
+      },
+      {
+        "step": "11-more",
+        "file": "before-tablet-11-more.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 88,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 249,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "12-refusal-reversed",
+        "file": "before-tablet-12-refusal-reversed.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 88,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 249,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "13-joined-saved",
+        "file": "before-tablet-13-joined-saved.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 88,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 245,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 249,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      },
+      {
+        "step": "14-not-a-video",
+        "file": "before-tablet-14-not-a-video.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "project-title",
+            "w": 88,
+            "h": 38,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 245,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 249,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 92,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "Space",
+          "Ctrl/Cmd+Z"
+        ]
+      }
+    ],
+    "phone": [
+      {
+        "step": "00-landing",
+        "file": "before-phone-00-landing.png",
+        "small": [
+          {
+            "name": "footer-privacy",
+            "w": 81,
+            "h": 17,
+            "under24": true
+          }
+        ],
+        "words": [
+          "encode"
+        ]
+      },
+      {
+        "step": "01-editor-empty",
+        "file": "before-phone-01-editor-empty.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "Geri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İleri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Diğer",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Ayarlar",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl"
+        ]
+      },
+      {
+        "step": "02-video-open",
+        "file": "before-phone-02-video-open.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "Geri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İleri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Diğer",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Ayarlar",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 28,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl"
+        ]
+      },
+      {
+        "step": "03-start-marked",
+        "file": "before-phone-03-start-marked.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "Geri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İleri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Diğer",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Ayarlar",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 28,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl"
+        ]
+      },
+      {
+        "step": "04-end-marked",
+        "file": "before-phone-04-end-marked.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "Geri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İleri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Diğer",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Ayarlar",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 28,
+            "h": 32,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl"
+        ]
+      },
+      {
+        "step": "05-kesit-added",
+        "file": "before-phone-05-kesit-added.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "Geri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İleri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Diğer",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Ayarlar",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z"
+        ]
+      },
+      {
+        "step": "06-downloading",
+        "file": "before-phone-06-downloading.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "Geri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İleri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Diğer",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Ayarlar",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "export-cancel",
+            "w": 68,
+            "h": 36,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "kodlanıyor"
+        ]
+      },
+      {
+        "step": "07-saved",
+        "file": "before-phone-07-saved.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "Geri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İleri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Diğer",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Ayarlar",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 340,
+            "h": 24,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı"
+        ]
+      },
+      {
+        "step": "08-three-kesits",
+        "file": "before-phone-08-three-kesits.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "Geri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İleri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Diğer",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Ayarlar",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 340,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı"
+        ]
+      },
+      {
+        "step": "09-kesit-selected",
+        "file": "before-phone-09-kesit-selected.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "Geri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İleri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Diğer",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Ayarlar",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Kesit 2 başlangıcı",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2 bitişi",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 340,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı"
+        ]
+      },
+      {
+        "step": "10-settings",
+        "file": "before-phone-10-settings.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "Geri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İleri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Diğer",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Ayarlar",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 340,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "inspector-tab-frame",
+            "w": 108,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "inspector-tab-audio",
+            "w": 108,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "inspector-tab-captions",
+            "w": 108,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "fit-cover",
+            "w": 17,
+            "h": 17,
+            "under24": true
+          },
+          {
+            "name": "fit-contain",
+            "w": 17,
+            "h": 17,
+            "under24": true
+          },
+          {
+            "name": "zoom-slider",
+            "w": 356,
+            "h": 24,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı",
+          "H.264",
+          "AAC"
+        ]
+      },
+      {
+        "step": "11-more",
+        "file": "before-phone-11-more.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "Geri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İleri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Diğer",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Ayarlar",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 340,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı"
+        ]
+      },
+      {
+        "step": "12-refusal-reversed",
+        "file": "before-phone-12-refusal-reversed.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "Geri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İleri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Diğer",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Ayarlar",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 340,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Kodlandı"
+        ]
+      },
+      {
+        "step": "13-joined-saved",
+        "file": "before-phone-13-joined-saved.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "Geri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İleri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Diğer",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Ayarlar",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 336,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 340,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Kodlandı"
+        ]
+      },
+      {
+        "step": "14-not-a-video",
+        "file": "before-phone-14-not-a-video.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "Geri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İleri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Diğer",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Ayarlar",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "1",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "2",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "3",
+            "w": 22,
+            "h": 22,
+            "under24": true
+          },
+          {
+            "name": "İşaretlenen başlangıç",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İşaretlenen bitiş",
+            "w": 28,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 336,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i taşı, 00:02–00:07",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i oynat, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i indir, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 1'i sil, 00:02–00:07",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 340,
+            "h": 24,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi taşı, 00:09–00:13",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi oynat, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi indir, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 2'yi sil, 00:09–00:13",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü taşı, 00:16–00:20",
+            "w": 28,
+            "h": 86,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü oynat, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü indir, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          },
+          {
+            "name": "Kesit 3'ü sil, 00:16–00:20",
+            "w": 40,
+            "h": 40,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Ctrl+Z",
+          "Kodlandı"
+        ]
+      },
+      {
+        "step": "15-no-save-dialog",
+        "file": "before-phone-15-no-save-dialog.png",
+        "small": [
+          {
+            "name": "clip",
+            "w": 25,
+            "h": 16,
+            "under24": true
+          },
+          {
+            "name": "Geri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "İleri al",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Diğer",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Ayarlar",
+            "w": 40,
+            "h": 44,
+            "under24": false
+          },
+          {
+            "name": "Uzaklaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Yakınlaştır",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "strip-zoom-fit",
+            "w": 59,
+            "h": 36,
+            "under24": false
+          },
+          {
+            "name": "Oynatma çizgisi",
+            "w": 24,
+            "h": 96,
+            "under24": false
+          },
+          {
+            "name": "mark-start",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "mark-end",
+            "w": 40,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 28,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Mesajı kapat",
+            "w": 32,
+            "h": 32,
+            "under24": false
+          },
+          {
+            "name": "Ayrıntılar",
+            "w": 336,
+            "h": 24,
+            "under24": false
+          }
+        ],
+        "words": [
+          "Ctrl",
+          "Kodlandı",
+          "MiB"
+        ]
+      }
+    ]
+  }
+}

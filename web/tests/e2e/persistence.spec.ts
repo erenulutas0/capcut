@@ -13,7 +13,7 @@ async function buildAndSave(page: Page) {
   await expect(page.getByTestId('preview-video')).toBeVisible();
   await addMoment(page, '00:00.000', '00:04.000');
   await addMoment(page, '00:08.000', '00:14.000');
-  await expect(page.getByTestId('save-state')).toContainText('Kaydedildi', { timeout: 15_000 });
+  await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
 }
 
 test.describe('local persistence', () => {
@@ -35,12 +35,12 @@ test.describe('local persistence', () => {
 
   test('says "saved" only after the write, and explains it is browser storage', async ({ page }) => {
     await openEditor(page);
-    await expect(page.getByTestId('save-state')).toContainText('Henüz kaydedilmedi');
+    await expect(page.getByTestId('save-state')).toContainText('Düzenleme henüz saklanmadı');
 
     await buildAndSave(page);
 
     const badge = page.getByTestId('save-state');
-    await expect(badge).toContainText('Kaydedildi');
+    await expect(badge).toContainText('Düzenleme saklandı');
     // The tooltip must not let anyone believe this is a cloud backup.
     const hint = await badge.getAttribute('title');
     expect(hint).toContain('bulut yedeği değildir');
@@ -129,7 +129,7 @@ test.describe('local persistence', () => {
     await expect(page.getByTestId('music-in')).toBeVisible();
     await page.getByTestId('music-out').fill('00:05.000');
     await page.getByTestId('music-out').blur();
-    await expect(page.getByTestId('save-state')).toContainText('Kaydedildi', { timeout: 15_000 });
+    await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
 
     await page.reload();
     await page.getByTestId('relink-video-input').setInputFiles(SAMPLE_VIDEO);
@@ -197,8 +197,8 @@ test.describe('storage failures are shown, not hidden', () => {
     // The editor keeps working...
     await expect(page.getByTestId('moment-count')).toHaveText('(1)');
     // ...and it does not claim the work is saved.
-    await expect(page.getByTestId('save-state')).toContainText('Kaydedilemedi', { timeout: 15_000 });
-    await expect(page.getByTestId('save-state')).not.toContainText('Kaydedildi ·');
+    await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklanamadı', { timeout: 15_000 });
+    await expect(page.getByTestId('save-state')).not.toContainText('Düzenleme saklandı ·');
     // A recovery route is offered.
     await expect(page.getByTestId('save-recover')).toBeVisible();
     expect(errors).toEqual([]);

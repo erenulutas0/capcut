@@ -5,8 +5,19 @@
 
 export const tr = {
   'app.name': 'clip',
-  'app.tagline': 'Videonu aç, istemediğin yerleri kes, hazırla.',
+  'app.tagline': 'Videonu aç, saklamak istediğin yerleri işaretle, indir.',
   'app.workingName': 'Clip geçici çalışma adıdır.',
+  'landing.title': 'Videonun istediğin yerlerini kes, bilgisayarına kaydet.',
+  'landing.step1.title': 'Videonu aç',
+  'landing.step1.body': 'Dosya bilgisayarından çıkmaz; tarayıcıda açılır.',
+  'landing.step2.title': 'Başını ve sonunu işaretle',
+  'landing.step2.body': '“Başlangıcı işaretle”, “Bitişi işaretle”, sonra “Kesit ekle”.',
+  'landing.step3.title': 'Kesitleri izle',
+  'landing.step3.body': 'Her kesit listeye düşer; ▶ ile yalnızca onu izlersin.',
+  'landing.step4.title': 'İndir',
+  'landing.step4.body': 'Bir kesiti ya da hepsini tek videoda birleştirip kaydet.',
+  'landing.note':
+    'Bu bir deneme sürümüdür. İndirme en iyi Chrome ve Edge’de çalışır. Hesap, abonelik, bulut yükleme ve yapay zekâ yok.',
 
   // Names only assistive technology hears (landmarks, hidden labels).
   'a11y.editorHeading': 'Clip editörü',
@@ -19,17 +30,17 @@ export const tr = {
   'nav.openEditor': 'Editörü aç',
   'nav.backToEditor': 'Düzenlemeye dön',
 
-  'banner.prototype': 'Yerel düzenleme · MP4 çıktısı desteklenen tarayıcıda · bulut yok',
+  'banner.prototype': 'Deneme sürümü · videon bilgisayarından çıkmaz · bulut yok',
 
   'topbar.untitled': 'Adsız proje',
   'topbar.renameLabel': 'Proje adı',
   'topbar.undo': 'Geri al',
   'topbar.redo': 'İleri al',
   'topbar.help': 'Kısayollar ve sınırlar',
-  'topbar.saveState.idle': 'Henüz kaydedilmedi',
-  'topbar.saveState.saving': 'Kaydediliyor…',
-  'topbar.saveState.saved': 'Kaydedildi',
-  'topbar.saveState.failed': 'Kaydedilemedi',
+  'topbar.saveState.idle': 'Düzenleme henüz saklanmadı',
+  'topbar.saveState.saving': 'Düzenleme saklanıyor…',
+  'topbar.saveState.saved': 'Düzenleme saklandı',
+  'topbar.saveState.failed': 'Düzenleme saklanamadı',
   'topbar.saveState.hint':
     'Düzenleme tarifin bu tarayıcıya kaydedilir. Bu bir bulut yedeği değildir: tarayıcı verisini temizlersen veya başka bir cihaz/tarayıcı kullanırsan proje orada olmaz. Video dosyaların hiçbir zaman kaydedilmez.',
   'topbar.saveState.failedHint':
@@ -125,7 +136,12 @@ export const tr = {
     'Açtığın dosyalar için geçici adresler, sessizlik bulucunun ses yüksekliği özetleri, son dışa aktarma kontrolünün sonucu ve bu oturumda görülen hata kodları.',
   'privacy.stored.memory.where': 'Yalnızca açık sekmenin belleği',
   'privacy.stored.memory.delete': 'Sekmeyi kapatınca.',
-  'privacy.stored.none': 'Çerez, localStorage ve sessionStorage kullanılmaz.',
+  'privacy.stored.hint.name': 'İlk kullanım ipucu',
+  'privacy.stored.hint.body':
+    'Editördeki “Nasıl kesilir?” ipucunu “Anladım” ile kapattığın bilgisi: tek bir değer (1). Kim olduğunu ya da ne düzenlediğini içermez; hiçbir yere gönderilmez.',
+  'privacy.stored.hint.where': 'localStorage, “clip.firstRunHint.dismissed” anahtarı (yalnızca “Anladım”a basınca yazılır)',
+  'privacy.stored.hint.delete': 'Tarayıcının bu siteye ait verisini temizleyince. Uygulama kendisi silmez.',
+  'privacy.stored.none': 'Çerez ve sessionStorage kullanılmaz; localStorage’da yalnızca yukarıdaki ipucu bilgisi durur.',
 
   'privacy.downloads.title': 'Senin indirdiğin dosyalar',
   'privacy.downloads.body':
@@ -210,8 +226,10 @@ export const tr = {
   'preview.importing': 'Video okunuyor…',
   'range.start': 'Başlangıç',
   'range.end': 'Bitiş',
-  'range.setStart': 'Şu anı başlangıç yap',
-  'range.setEnd': 'Şu anı bitiş yap',
+  'range.setStart': 'Başlangıcı işaretle',
+  'range.setEnd': 'Bitişi işaretle',
+  'range.setStartTitle': 'Videonun şu anki yerini başlangıç yap (klavyede I)',
+  'range.setEndTitle': 'Videonun şu anki yerini bitiş yap (klavyede O)',
   'silence.eyebrow': 'KESİM ÖNERİSİ',
   'silence.title': 'Sessizlikleri bul',
   'silence.intro':
@@ -293,8 +311,7 @@ export const tr = {
   'frame.containHint': 'Gerekirse boş alan bırakır.',
   'frame.zoom': 'Merkezden yakınlaştır',
   'frame.zoomReset': 'Yakınlaştırmayı sıfırla',
-  'frame.note':
-    'Bu çerçeveleme tarifi önizleme ve çıktıda aynı hesaptan gelir; çıktıdaki kırpma alanı buradan üretilir.',
+  'frame.note': 'Önizlemede gördüğün çerçeve, indirilen videoda da aynen olur.',
   'frame.appliesToAll': 'Çerçeve ve kalite her indirmeye uygulanır.',
   'audio.sourceTitle': 'Kaynak videonun sesi',
   'audio.sourceLevel': 'Videonun ses seviyesi',
@@ -481,16 +498,18 @@ export const tr = {
   'time.minuteShort': 'dk',
   'time.secondShort': 'sn',
 
-  'export.quality': 'Hedef kalite',
+  'export.quality': 'İndirme kalitesi',
+  'export.quality.1080': '1080p (Full HD)',
+  'export.quality.720': '720p (HD)',
   'export.hdrNote':
     'Bu video HDR. İndirilen dosya SDR olacak; renkler telefondaki görüntüden biraz farklı görünebilir.',
   'export.blockedTitle': 'Bu tarayıcıda çıktı alınamıyor.',
   'export.overLimitTitle': 'İndirmek için çok uzun.',
   'export.blockedBody':
     'Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz.',
-  'export.running.preparing': 'Kaynak hazırlanıyor…',
-  'export.running.encoding': 'Kareler kodlanıyor',
-  'export.running.finalizing': 'Dosya kapatılıyor…',
+  'export.running.preparing': 'Hazırlanıyor…',
+  'export.running.encoding': 'Video oluşturuluyor',
+  'export.running.finalizing': 'Dosya tamamlanıyor…',
   'export.running.verifying': 'Oluşan dosya kontrol ediliyor…',
   'export.running.frames': 'kare',
   'export.cancel': 'İptal et',
@@ -509,8 +528,8 @@ export const tr = {
   'export.method.copy': 'Hızlı kesim — görüntü yeniden kodlanmadı, orijinal kalite',
   'export.method.smart':
     'Hızlı kesim — görüntü yeniden kodlanmadı, orijinal kalite; yalnızca kesim noktalarındaki {count} kare kodlandı',
-  'export.method.encode': 'Kodlandı',
-  'export.method.encodeWhy': 'Kodlandı ({reason})',
+  'export.method.encode': 'Görüntü yeniden işlendi',
+  'export.method.encodeWhy': 'Görüntü yeniden işlendi ({reason})',
   'export.fallback.captions': 'altyazı görüntüye yazılıyor',
   'export.fallback.hdr': 'HDR video SDR’ye çevriliyor',
   'export.fallback.codec': 'kaynak H.264 MP4/MOV değil',
@@ -520,7 +539,7 @@ export const tr = {
   'export.fallback.aspect': 'çerçeve kaynağın biçiminden farklı',
   'export.fallback.resolution': 'çözünürlük kaynağınkinden farklı',
   'export.fallback.pixel_aspect': 'kaynağın pikselleri kare değil',
-  'export.fallback.fps': 'kaynak 30 fps’den hızlı, 30 fps’ye çevrildi',
+  'export.fallback.fps': 'kaynak saniyede 30 kareden hızlı, 30 kareye indirildi',
   'export.fallback.reorder': 'kaynağın kare sırası düzeltiliyor',
   'export.fallback.no_keyframe': 'aralıkta anahtar kare yok',
   'export.fallback.timing': 'kaynağın zaman damgaları uygun değil',
@@ -584,7 +603,7 @@ export const tr = {
 
   'error.unreadable': 'Bu dosya okunamadı. Başka bir dosya dene.',
   'error.unsupported_preview':
-    'Bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu formatı oynatmıyor.',
+    'Bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.',
   'error.unknown_duration': 'Dosyanın süresi okunamadı; bu haliyle düzenlenemez.',
   'error.timeout': 'Dosya okunurken zaman aşımı oldu.',
   'error.file_too_large':
@@ -636,13 +655,27 @@ export const tr = {
   'kesit.emptyNoVideo':
     'Önce bir video aç. Sonra saklamak istediğin yerleri işaretle; kesitlerin burada listelenir.',
   'kesit.emptyWithVideo':
-    'Henüz kesit yok. Videoyu izle; saklamak istediğin yerin başında I’ya, sonunda O’ya bas, sonra “Kesit ekle”. Kesit yokken “Videoyu indir” videonun tamamını indirir.',
+    'Henüz kesit yok. Saklamak istediğin yerin başında “Başlangıcı işaretle”ye, sonunda “Bitişi işaretle”ye bas, sonra “Kesit ekle”: kesit burada görünür. Kesit eklemezsen “Videoyu indir” videonun tamamını indirir.',
   'kesit.selectLabel': 'Kesit {n}{acc} seç, {range}',
   'kesit.playLabel': 'Kesit {n}{acc} oynat, {range}',
   'kesit.downloadLabel': 'Kesit {n}{acc} indir, {range}',
   'kesit.deleteLabel': 'Kesit {n}{acc} sil, {range}',
   'kesit.moveLabel': 'Kesit {n}{acc} taşı, {range}',
   'kesit.lengthLabel': 'Süre',
+  'kesit.download': 'İndir',
+  'kesit.playTitle': 'Bu kesiti oynat',
+  'kesit.downloadTitle': 'Yalnızca bu kesiti indir',
+  'kesit.deleteTitle': 'Bu kesiti sil',
+  'hint.title': 'Nasıl kesilir? Üç adım',
+  'hint.step1': 'Videoyu oynat ya da şeritte istediğin yere git.',
+  'hint.step1NoVideo': '“Video seç” ile videonu aç; oynat ya da şeritte istediğin yere git.',
+  'hint.step2':
+    'Saklamak istediğin yerin başında “Başlangıcı işaretle”ye, sonunda “Bitişi işaretle”ye bas.',
+  'hint.step3':
+    '“Kesit ekle”ye bas: kesit bu listeye düşer. ▶ onu oynatır, “İndir” yalnızca onu kaydeder.',
+  'hint.more':
+    'Birden çok kesit eklersen üstteki düğme hepsini tek videoda birleştirip kaydeder; hiç eklemezsen videonun tamamını.',
+  'hint.dismiss': 'Anladım',
   'kesit.moveHint':
     'Sırasını yukarı ve aşağı ok tuşlarıyla değiştir. Sıra yalnızca birleştirilmiş indirmeyi etkiler.',
   'kesit.moved': 'Kesit {n} artık {place}. sırada.',
@@ -651,6 +684,10 @@ export const tr = {
   'mark.add': 'Kesit ekle',
   'mark.done': 'Bitti',
   'mark.editing': 'Kesit {n} seçili: başlangıcını ve bitişini buradan ya da şeritteki tutamaçlardan ayarla.',
+  'mark.next.range_reversed':
+    'Bitişi düzelt ya da videoda daha ileri gidip “Bitişi işaretle”ye bas.',
+  'mark.next.range_out_of_source': 'Zamanları videonun süresi içinde yaz.',
+  'mark.next.clip_too_short': 'Bitişi biraz daha ileri al.',
   'strip.title': 'Video şeridi',
   'strip.zoomGroup': 'Şeridi yakınlaştır',
   'strip.zoomIn': 'Yakınlaştır',
@@ -673,6 +710,8 @@ export const tr = {
   'download.allShort': 'Hepsini indir',
   'download.running.waiting': 'Hazırlanıyor…',
   'download.saved': 'Kaydedildi: {name}',
+  'download.savedWhere': 'Kaydetme penceresinde seçtiğin klasörde.',
+  'download.readyWhere': 'Tarayıcın dosyayı İndirilenler klasörüne kaydeder (ya da nereye kaydedeceğini sorar).',
   'download.readyTitle': 'Video hazır. Bilgisayarına kaydetmek için aşağıdaki düğmeye bas.',
   'download.canceled': 'İndirme durduruldu; yarım dosya bırakılmadı.',
   'download.route.file': 'seçtiğin dosya',
@@ -691,8 +730,10 @@ export const tr = {
     'Seçtiğin yerde bu video için yaklaşık {required} boş yer gerekiyor; o diskte bu kadar yer yok. Başka bir disk seç ya da yer aç; hiçbir kare kodlanmadı.',
   'settings.open': 'Ayarlar',
   'settings.title': 'Ayarlar · her indirmeye uygulanır',
+  'settings.hint': 'Çerçeve (dikey, yatay, kare), kalite, ses, müzik ve altyazı',
   'more.open': 'Diğer',
   'more.title': 'Diğer',
+  'more.hint': 'Başka video aç, sessizlikleri bul, yedek, yardım',
   'more.otherVideo': 'Başka video aç',
   'more.silence.whole': 'Sessizlikleri bul (tüm video)',
   'more.silence.all': 'Sessizlikleri bul (tüm kesitler)',
@@ -703,12 +744,15 @@ export const tr = {
   'silence.scope.all': 'Aranan: bütün kesitler.',
   'silence.scope.kesit': 'Aranan: Kesit {n}.',
   'notice.opened':
-    'Video açıldı ({length}). İzle; saklamak istediğin yerin başında I’ya, sonunda O’ya bas, sonra “Kesit ekle”.',
+    'Video açıldı ({length}). Saklamak istediğin yerin başında “Başlangıcı işaretle”ye, sonunda “Bitişi işaretle”ye bas, sonra “Kesit ekle”.',
   'notice.aspectPortrait': 'Dikey video: 9:16 çerçeve seçildi',
   'notice.aspectLandscape': 'Yatay video: 16:9 çerçeve seçildi',
   'notice.aspectSquare': 'Kare video: 1:1 çerçeve seçildi',
-  'notice.added': 'Kesit {n} eklendi: {range} · Geri al: Ctrl+Z',
+  'notice.added': 'Kesit {n} eklendi: {range} · sağdaki listede · Geri al: Ctrl+Z',
+  'notice.addedBelow':
+    'Kesit {n} eklendi: {range} · aşağıdaki listede · Geri al: üstteki ↶ düğmesi',
   'notice.deleted': 'Kesit {n} silindi · Geri al: Ctrl+Z',
+  'notice.deletedTouch': 'Kesit {n} silindi · Geri al: üstteki ↶ düğmesi',
   'notice.heldAtMin': 'Kesit {n} sürüklenerek {min} sürenin altına inemez; orada durdu · Geri al: Ctrl+Z',
   'notice.dismiss': 'Mesajı kapat',
   'preview.fullscreen': 'Tam ekran izle (F)',
@@ -717,14 +761,17 @@ export const tr = {
   'audio.appliesToAll': 'Videonun sesi bütün kesitlere ve her indirmeye uygulanır.',
   'help.howTo': 'Nasıl kullanılır',
   'help.step.watch': 'Videoyu izle (tam ekran için F).',
-  'help.step.mark': 'Saklamak istediğin yerin başında I’ya (Başlangıç), sonunda O’ya (Bitiş) bas.',
+  'help.step.mark':
+    'Saklamak istediğin yerin başında “Başlangıcı işaretle”ye (klavyede I), sonunda “Bitişi işaretle”ye (O) bas.',
   'help.step.add': '“Kesit ekle”ye bas (Enter); kesit listeye düşer. ▶ ile yalnızca onu izlersin.',
   'help.step.download':
-    'Kesitin ⬇ düğmesiyle yalnızca onu indir ya da “Hepsini birleştirip indir”. Dosyayı nereye kaydedeceğini sorar ve oraya yazar.',
+    'Kesitin “İndir” düğmesiyle yalnızca onu indir ya da üstteki “Hepsini birleştirip indir”. Dosyayı nereye kaydedeceğini sorar ve oraya yazar.',
   'help.shortcut.add': 'Kesit ekle',
   'help.shortcut.zoom': 'Şeridi yakınlaştır / uzaklaştır',
   'help.shortcut.fullscreen': 'Tam ekran izle',
   'footer.local': 'Yerel düzenleme · kaynak dosya değişmez · bulut yüklemesi yok',
+  'footer.shortcuts':
+    'Kısayollar: Boşluk oynat · I başlangıç · O bitiş · Enter kesit ekle · F tam ekran · Ctrl+Z geri al',
   'unsaved.prompt': 'Bu oturumdaki düzenlemen kaydedilmedi.',
 } as const;
 
@@ -732,8 +779,19 @@ export type MessageKey = keyof typeof tr;
 
 export const en: Record<MessageKey, string> = {
   'app.name': 'clip',
-  'app.tagline': 'Open your video, cut what you do not want, prepare it.',
+  'app.tagline': 'Open your video, mark the parts you want to keep, download them.',
   'app.workingName': 'Clip is a provisional working name.',
+  'landing.title': 'Cut the parts of your video you want and save them to your computer.',
+  'landing.step1.title': 'Open your video',
+  'landing.step1.body': 'The file never leaves your computer; it opens in the browser.',
+  'landing.step2.title': 'Mark its start and end',
+  'landing.step2.body': '“Mark start”, “Mark end”, then “Add clip”.',
+  'landing.step3.title': 'Watch your clips',
+  'landing.step3.body': 'Every clip drops into a list; ▶ plays just that one.',
+  'landing.step4.title': 'Download',
+  'landing.step4.body': 'Save one clip, or join them all into one video.',
+  'landing.note':
+    'This is a trial version. Downloading works best in Chrome and Edge. No account, subscription, cloud upload or AI.',
 
   // Names only assistive technology hears (landmarks, hidden labels).
   'a11y.editorHeading': 'Clip editor',
@@ -746,17 +804,17 @@ export const en: Record<MessageKey, string> = {
   'nav.openEditor': 'Open the editor',
   'nav.backToEditor': 'Back to editing',
 
-  'banner.prototype': 'Local editing · MP4 export in a supported browser · no cloud',
+  'banner.prototype': 'Trial version · your video never leaves your computer · no cloud',
 
   'topbar.untitled': 'Untitled project',
   'topbar.renameLabel': 'Project name',
   'topbar.undo': 'Undo',
   'topbar.redo': 'Redo',
   'topbar.help': 'Shortcuts and limits',
-  'topbar.saveState.idle': 'Not saved yet',
-  'topbar.saveState.saving': 'Saving…',
-  'topbar.saveState.saved': 'Saved',
-  'topbar.saveState.failed': 'Could not save',
+  'topbar.saveState.idle': 'Edits not kept yet',
+  'topbar.saveState.saving': 'Keeping edits…',
+  'topbar.saveState.saved': 'Edits kept',
+  'topbar.saveState.failed': 'Could not keep edits',
   'topbar.saveState.hint':
     'Your editing recipe is saved to this browser. This is not a cloud backup: clearing browser data, or using another device or browser, means the project will not be there. Your video files are never stored.',
   'topbar.saveState.failedHint':
@@ -852,7 +910,12 @@ export const en: Record<MessageKey, string> = {
     'Temporary addresses for the files you opened, the loudness summaries of the silence finder, the result of the last export check and the error codes seen in this session.',
   'privacy.stored.memory.where': 'Only the memory of the open tab',
   'privacy.stored.memory.delete': 'When you close the tab.',
-  'privacy.stored.none': 'No cookies, localStorage or sessionStorage are used.',
+  'privacy.stored.hint.name': 'First-use hint',
+  'privacy.stored.hint.body':
+    'That you closed the editor’s “How to cut” hint with “Got it”: a single value (1). It says nothing about who you are or what you edit, and is never sent anywhere.',
+  'privacy.stored.hint.where': 'localStorage, key “clip.firstRunHint.dismissed” (written only when you press “Got it”)',
+  'privacy.stored.hint.delete': 'When you clear this site’s data in the browser. The app itself does not delete it.',
+  'privacy.stored.none': 'No cookies or sessionStorage are used; localStorage holds only the hint value above.',
 
   'privacy.downloads.title': 'Files you download',
   'privacy.downloads.body':
@@ -937,8 +1000,10 @@ export const en: Record<MessageKey, string> = {
   'preview.importing': 'Reading the video…',
   'range.start': 'Start',
   'range.end': 'End',
-  'range.setStart': 'Set start to current time',
-  'range.setEnd': 'Set end to current time',
+  'range.setStart': 'Mark start',
+  'range.setEnd': 'Mark end',
+  'range.setStartTitle': 'Make the current point of the video the start (I on a keyboard)',
+  'range.setEndTitle': 'Make the current point of the video the end (O on a keyboard)',
   'silence.eyebrow': 'CUT SUGGESTION',
   'silence.title': 'Find silences',
   'silence.intro':
@@ -1019,8 +1084,7 @@ export const en: Record<MessageKey, string> = {
   'frame.containHint': 'Leaves empty space when needed.',
   'frame.zoom': 'Zoom from centre',
   'frame.zoomReset': 'Reset zoom',
-  'frame.note':
-    'Preview and export read this framing recipe from the same calculation; the exported crop comes from here.',
+  'frame.note': 'The frame you see in the preview is exactly the frame of the downloaded video.',
   'frame.appliesToAll': 'Framing and quality apply to every download.',
   'audio.sourceTitle': 'Source video audio',
   'audio.sourceLevel': 'Video sound level',
@@ -1202,16 +1266,18 @@ export const en: Record<MessageKey, string> = {
   'time.minuteShort': 'min',
   'time.secondShort': 's',
 
-  'export.quality': 'Target quality',
+  'export.quality': 'Download quality',
+  'export.quality.1080': '1080p (Full HD)',
+  'export.quality.720': '720p (HD)',
   'export.hdrNote':
     'This video is HDR. The downloaded file will be SDR; colours may look slightly different from what you see on your phone.',
   'export.blockedTitle': 'Export is not possible in this browser.',
   'export.overLimitTitle': 'Too long to download.',
   'export.blockedBody':
     'A check did not pass, so no file is produced. We do not silently fall back to another codec or drop audio to look successful.',
-  'export.running.preparing': 'Preparing the source…',
-  'export.running.encoding': 'Encoding frames',
-  'export.running.finalizing': 'Closing the file…',
+  'export.running.preparing': 'Getting ready…',
+  'export.running.encoding': 'Making the video',
+  'export.running.finalizing': 'Finishing the file…',
   'export.running.verifying': 'Checking the produced file…',
   'export.running.frames': 'frames',
   'export.cancel': 'Cancel',
@@ -1230,8 +1296,8 @@ export const en: Record<MessageKey, string> = {
   'export.method.copy': 'Fast cut — the picture was not re-encoded, original quality',
   'export.method.smart':
     'Fast cut — the picture was not re-encoded, original quality; only the {count} frames at the cut points were encoded',
-  'export.method.encode': 'Encoded',
-  'export.method.encodeWhy': 'Encoded ({reason})',
+  'export.method.encode': 'Picture re-processed',
+  'export.method.encodeWhy': 'Picture re-processed ({reason})',
   'export.fallback.captions': 'captions are burned into the picture',
   'export.fallback.hdr': 'HDR video is converted to SDR',
   'export.fallback.codec': 'the source is not H.264 in MP4/MOV',
@@ -1241,7 +1307,7 @@ export const en: Record<MessageKey, string> = {
   'export.fallback.aspect': 'the frame differs from the source’s shape',
   'export.fallback.resolution': 'the resolution differs from the source’s',
   'export.fallback.pixel_aspect': 'the source’s pixels are not square',
-  'export.fallback.fps': 'the source is faster than 30 fps, converted to 30 fps',
+  'export.fallback.fps': 'the source has more than 30 frames a second, brought down to 30',
   'export.fallback.reorder': 'the source’s frame order is being corrected',
   'export.fallback.no_keyframe': 'no keyframe inside the range',
   'export.fallback.timing': 'the source’s timestamps are not usable',
@@ -1308,7 +1374,7 @@ export const en: Record<MessageKey, string> = {
 
   'error.unreadable': 'This file could not be read. Try another one.',
   'error.unsupported_preview':
-    'The browser could not open a preview for this file. It may be corrupt or in an unsupported format.',
+    'The browser could not open a preview for this file. It may be corrupt or in an unsupported format. Try another video; MP4 or MOV files from a phone usually open.',
   'error.unknown_duration': 'The duration could not be read, so the file cannot be edited.',
   'error.timeout': 'Reading the file timed out.',
   'error.file_too_large': 'The file is above the 4 GiB (about 4.29 GB) limit of this version.',
@@ -1358,13 +1424,25 @@ export const en: Record<MessageKey, string> = {
   'kesit.emptyNoVideo':
     'Open a video first. Then mark the parts you want to keep; your clips are listed here.',
   'kesit.emptyWithVideo':
-    'No clips yet. Watch the video; press I where the part you want starts and O where it ends, then “Add clip”. With no clips, “Download video” downloads the whole video.',
+    'No clips yet. Press “Mark start” where the part you want starts and “Mark end” where it ends, then “Add clip”: the clip shows up here. With no clips, “Download video” downloads the whole video.',
   'kesit.selectLabel': 'Select clip {n}, {range}',
   'kesit.playLabel': 'Play clip {n}, {range}',
   'kesit.downloadLabel': 'Download clip {n}, {range}',
   'kesit.deleteLabel': 'Delete clip {n}, {range}',
   'kesit.moveLabel': 'Move clip {n}, {range}',
   'kesit.lengthLabel': 'Length',
+  'kesit.download': 'Download',
+  'kesit.playTitle': 'Play this clip',
+  'kesit.downloadTitle': 'Download just this clip',
+  'kesit.deleteTitle': 'Delete this clip',
+  'hint.title': 'How to cut: three steps',
+  'hint.step1': 'Play the video, or go to a point on the strip.',
+  'hint.step1NoVideo': 'Open your video with “Choose a video”; play it, or go to a point on the strip.',
+  'hint.step2': 'Press “Mark start” where the part you want starts and “Mark end” where it ends.',
+  'hint.step3':
+    'Press “Add clip”: the clip drops into this list. ▶ plays it, “Download” saves just that clip.',
+  'hint.more': 'Add several clips and the button at the top joins them into one video; add none and it saves the whole video.',
+  'hint.dismiss': 'Got it',
   'kesit.moveHint':
     'Change its place with the up and down arrow keys. The order only affects the joined download.',
   'kesit.moved': 'Clip {n} is now in place {place}.',
@@ -1373,6 +1451,9 @@ export const en: Record<MessageKey, string> = {
   'mark.add': 'Add clip',
   'mark.done': 'Done',
   'mark.editing': 'Clip {n} is selected: adjust its start and end here or with the handles on the strip.',
+  'mark.next.range_reversed': 'Fix the end, or move further into the video and press “Mark end”.',
+  'mark.next.range_out_of_source': 'Type times within the length of the video.',
+  'mark.next.clip_too_short': 'Move the end a little later.',
   'strip.title': 'Video strip',
   'strip.zoomGroup': 'Strip zoom',
   'strip.zoomIn': 'Zoom in',
@@ -1395,6 +1476,8 @@ export const en: Record<MessageKey, string> = {
   'download.allShort': 'Download all',
   'download.running.waiting': 'Getting ready…',
   'download.saved': 'Saved: {name}',
+  'download.savedWhere': 'In the folder you chose in the save dialog.',
+  'download.readyWhere': 'Your browser saves the file to its Downloads folder (or asks where to save it).',
   'download.readyTitle': 'The video is ready. Press the button below to save it to your computer.',
   'download.canceled': 'Download stopped; no partial file was left.',
   'download.route.file': 'the file you chose',
@@ -1414,8 +1497,10 @@ export const en: Record<MessageKey, string> = {
     'About {required} of free space is needed where you chose to save; that disk does not have it. Pick another disk or free some space; no frame was encoded.',
   'settings.open': 'Settings',
   'settings.title': 'Settings · apply to every download',
+  'settings.hint': 'Frame (portrait, landscape, square), quality, sound, music and captions',
   'more.open': 'More',
   'more.title': 'More',
+  'more.hint': 'Open another video, find silences, backup, help',
   'more.otherVideo': 'Open another video',
   'more.silence.whole': 'Find silences (whole video)',
   'more.silence.all': 'Find silences (all clips)',
@@ -1426,12 +1511,15 @@ export const en: Record<MessageKey, string> = {
   'silence.scope.all': 'Searching: all clips.',
   'silence.scope.kesit': 'Searching: clip {n}.',
   'notice.opened':
-    'Video opened ({length}). Watch it; press I where the part you want starts and O where it ends, then “Add clip”.',
+    'Video opened ({length}). Press “Mark start” where the part you want starts and “Mark end” where it ends, then “Add clip”.',
   'notice.aspectPortrait': 'Portrait video: the 9:16 frame was chosen',
   'notice.aspectLandscape': 'Landscape video: the 16:9 frame was chosen',
   'notice.aspectSquare': 'Square video: the 1:1 frame was chosen',
-  'notice.added': 'Clip {n} added: {range} · Undo: Ctrl+Z',
+  'notice.added': 'Clip {n} added: {range} · in the list on the right · Undo: Ctrl+Z',
+  'notice.addedBelow':
+    'Clip {n} added: {range} · in the list below · Undo: the ↶ button at the top',
   'notice.deleted': 'Clip {n} deleted · Undo: Ctrl+Z',
+  'notice.deletedTouch': 'Clip {n} deleted · Undo: the ↶ button at the top',
   'notice.heldAtMin': 'A drag cannot make clip {n} shorter than {min}; it stopped there · Undo: Ctrl+Z',
   'notice.dismiss': 'Dismiss the message',
   'preview.fullscreen': 'Watch full screen (F)',
@@ -1440,14 +1528,17 @@ export const en: Record<MessageKey, string> = {
   'audio.appliesToAll': 'The video’s sound applies to every clip and every download.',
   'help.howTo': 'How it works',
   'help.step.watch': 'Watch the video (F for full screen).',
-  'help.step.mark': 'Press I (Start) where the part you want starts and O (End) where it ends.',
+  'help.step.mark':
+    'Press “Mark start” (I on a keyboard) where the part you want starts and “Mark end” (O) where it ends.',
   'help.step.add': 'Press “Add clip” (Enter); the clip drops into the list. ▶ plays just that clip.',
   'help.step.download':
-    'Download one clip with its ⬇ button, or “Join all and download”. It asks where to save and writes the file there.',
+    'Download one clip with its “Download” button, or “Join all and download” at the top. It asks where to save and writes the file there.',
   'help.shortcut.add': 'Add clip',
   'help.shortcut.zoom': 'Zoom the strip in / out',
   'help.shortcut.fullscreen': 'Watch full screen',
   'footer.local': 'Local editing · your source file is unchanged · no cloud upload',
+  'footer.shortcuts':
+    'Shortcuts: Space play · I start · O end · Enter add clip · F full screen · Ctrl+Z undo',
   'unsaved.prompt': 'Your edits in this session are not saved.',
 };
 

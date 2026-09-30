@@ -28,7 +28,7 @@ function announcement(t: T, entry: DownloadEntry): string {
     case 'running':
       return entry.step === 'waiting' ? t('download.running.waiting') : t(`export.running.${entry.step}` as MessageKey);
     case 'saved':
-      return t('download.saved').replace('{name}', entry.fileName);
+      return `${t('download.saved').replace('{name}', entry.fileName)}. ${t('download.savedWhere')}`;
     case 'ready':
       return t('download.readyTitle');
     case 'blocked':
@@ -215,6 +215,10 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
           <Icon name="check" size={16} />
           <span className="dl-text">
             <span data-testid="download-saved">{t('download.saved').replace('{name}', entry.fileName)}</span>
+            {/* The page cannot know the folder's path; it can say which one. */}
+            <span className="dl-where" data-testid="download-saved-where">
+              {t('download.savedWhere')}
+            </span>
             <MethodLine t={t} entry={entry} />
             {entry.hdr ? (
               <span className="dl-sub" data-testid="export-hdr-note">
@@ -256,6 +260,9 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
           <Icon name="download" />
           {t('export.save')}
         </a>
+        <p className="hint-small" data-testid="export-save-where">
+          {t('download.readyWhere')}
+        </p>
         {/* ADR-023: saving copies the finished file into the downloads folder. */}
         <p className="hint-small" data-testid="export-save-space">
           {entry.result.sizeBytes > 0

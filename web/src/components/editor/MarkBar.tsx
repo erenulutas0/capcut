@@ -26,6 +26,11 @@ interface Props {
   onInvalid: () => void;
   /** Leaves the selected kesit, back to marking a new one. */
   onDone: () => void;
+  /**
+   * The one control that is the next step, drawn as the primary button: the
+   * start while nothing is marked yet, then the end, then "Kesit ekle".
+   */
+  emphasis: 'start' | 'end' | 'add' | null;
 }
 
 function TimeField({
@@ -34,7 +39,9 @@ function TimeField({
   edge,
   label,
   markLabel,
+  markTitle,
   markKey,
+  primary,
   valueUs,
   placeholderUs,
   disabled,
@@ -47,7 +54,9 @@ function TimeField({
   edge: 'in' | 'out';
   label: string;
   markLabel: string;
+  markTitle: string;
   markKey: string;
+  primary: boolean;
   valueUs: Micros | null;
   placeholderUs: Micros;
   disabled: boolean;
@@ -81,41 +90,47 @@ function TimeField({
 
   return (
     <div className="time-field">
-      {/* The button sits beside the label, not inside it: inside, its text
-          became part of the field's name ("Başlangıç I ..."). */}
-      <div className="time-field-head">
-        <label htmlFor={id}>{label}</label>
+      {/* The label names the field only: the button sits outside it (inside,
+          its text became part of the field's name). The button says what it
+          does in words; the key is a hint beside it, not its name. */}
+      <label className="time-field-label" htmlFor={id}>
+        {label}
+      </label>
+      <div className="time-field-row">
         <button
           type="button"
-          className="mark-btn"
+          className={primary ? 'btn btn-accent mark-btn' : 'btn mark-btn'}
           disabled={disabled}
           onClick={() => onMark(edge)}
-          title={markLabel}
+          title={markTitle}
+          aria-keyshortcuts={markKey}
           data-testid={edge === 'in' ? 'mark-start' : 'mark-end'}
         >
-          {markKey}
-          <span className="visually-hidden">{markLabel}</span>
+          {markLabel}
+          <kbd className="mark-key" aria-hidden="true">
+            {markKey}
+          </kbd>
         </button>
+        <input
+          id={id}
+          className="time-input"
+          value={text}
+          placeholder={formatTimecode(placeholderUs)}
+          inputMode="decimal"
+          aria-invalid={invalid}
+          aria-describedby={invalid ? `${id}-invalid` : undefined}
+          disabled={disabled}
+          onChange={(event) => setText(event.target.value)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              commit();
+            }
+          }}
+          data-testid={edge === 'in' ? 'range-start' : 'range-end'}
+        />
       </div>
-      <input
-        id={id}
-        className="time-input"
-        value={text}
-        placeholder={formatTimecode(placeholderUs)}
-        inputMode="decimal"
-        aria-invalid={invalid}
-        aria-describedby={invalid ? `${id}-invalid` : undefined}
-        disabled={disabled}
-        onChange={(event) => setText(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            commit();
-          }
-        }}
-        data-testid={edge === 'in' ? 'range-start' : 'range-end'}
-      />
       {invalid ? (
         <span id={`${id}-invalid`} className="visually-hidden">
           {t('error.invalid_time')}
@@ -130,7 +145,7 @@ function TimeField({
  * (ADR-026). With a kesit selected the same two fields fine-tune its edges,
  * and the button leaves it ("Bitti").
  */
-export function MarkBar({ t, disabled, target, onMark, onType, onAdd, onInvalid, onDone }: Props) {
+export function MarkBar({ t, disabled, target, onMark, onType, onAdd, onInvalid, onDone, emphasis }: Props) {
   const editing = target.kind === 'kesit';
   // A field holding text that is not a time blocks "Kesit ekle": adding the
   // last understood value instead would add a range the user did not type.
@@ -168,7 +183,9 @@ export function MarkBar({ t, disabled, target, onMark, onType, onAdd, onInvalid,
           edge="in"
           label={t('range.start')}
           markLabel={t('range.setStart')}
+          markTitle={t('range.setStartTitle')}
           markKey="I"
+          primary={emphasis === 'start'}
           valueUs={target.inUs}
           placeholderUs={inPlaceholder}
           disabled={disabled}
@@ -183,7 +200,9 @@ export function MarkBar({ t, disabled, target, onMark, onType, onAdd, onInvalid,
           edge="out"
           label={t('range.end')}
           markLabel={t('range.setEnd')}
+          markTitle={t('range.setEndTitle')}
           markKey="O"
+          primary={emphasis === 'end'}
           valueUs={target.outUs}
           placeholderUs={outPlaceholder}
           disabled={disabled}
@@ -200,7 +219,7 @@ export function MarkBar({ t, disabled, target, onMark, onType, onAdd, onInvalid,
           ) : (
             <button
               type="button"
-              className="btn btn-accent btn-block"
+              className={emphasis === 'add' ? 'btn btn-accent btn-block' : 'btn btn-block'}
               onClick={add}
               disabled={disabled}
               aria-keyshortcuts="Enter"

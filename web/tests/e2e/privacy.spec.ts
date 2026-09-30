@@ -136,7 +136,11 @@ test.describe('privacy page', () => {
     await expect(page.getByTestId('stored-project')).toContainText('“projects”');
     await expect(page.getByTestId('stored-log')).toContainText('Son 20 dışa aktarma denemesi');
     await expect(page.getByTestId('stored-temp')).toContainText('6 saatten eski');
-    await expect(page.getByText('Çerez, localStorage ve sessionStorage kullanılmaz.')).toBeVisible();
+    // The one localStorage value (the first-run hint) is named, with its key.
+    await expect(page.getByTestId('stored-hint')).toContainText('“clip.firstRunHint.dismissed”');
+    await expect(
+      page.getByText('Çerez ve sessionStorage kullanılmaz; localStorage’da yalnızca yukarıdaki ipucu bilgisi durur.'),
+    ).toBeVisible();
     await expect(page.getByTestId('export-log-count')).toHaveText('Bu tarayıcıda kayıtlı dışa aktarma denemesi yok.');
     await expect(page.getByTestId('privacy-updated')).toContainText('sürüm 0.1.0');
 
@@ -239,7 +243,7 @@ test.describe('report a problem', () => {
     await openEditor(page);
     await importSample(page);
     await addMoment(page, '00:00.000', '00:04.000');
-    await expect(page.getByTestId('save-state')).toContainText('Kaydedildi', { timeout: 15_000 });
+    await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
     // After a reload the recipe is back but the file is not: export is blocked.
     await page.reload();
     await expect(page.getByTestId('moment-count')).toHaveText('(1)', { timeout: 20_000 });
@@ -380,7 +384,7 @@ test.describe('local export log', () => {
     await importSample(page);
     await addMoment(page, '00:00.000', '00:04.000');
     await addMoment(page, '00:08.000', '00:14.000');
-    await expect(page.getByTestId('save-state')).toContainText('Kaydedildi', { timeout: 15_000 });
+    await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
 
     const record = await page.evaluate(
       () =>

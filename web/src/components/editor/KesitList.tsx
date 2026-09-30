@@ -7,6 +7,7 @@ import type { Project } from '@/domain/edl';
 import { formatKesitLength, formatPosition } from '@/domain/kesit';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import type { MessageKey } from '@/i18n/messages';
+import { FirstRunHint, useFirstRunHintDismissed } from './FirstRunHint';
 
 type T = (key: MessageKey) => string;
 
@@ -54,6 +55,8 @@ interface Props {
   onMove: (clipId: string, toIndex: number) => void;
   /** What to say when there is no kesit (depends on whether a video is open). */
   emptyText: string;
+  /** A video is open (the first-run hint's first step depends on it). */
+  hasVideo: boolean;
   /**
    * Shown under the list where ⬇ opens the save dialog: the browser empties a
    * file the user chooses to replace as soon as they confirm (ADR-026).
@@ -94,9 +97,12 @@ export function KesitList({
   onDelete,
   onMove,
   emptyText,
+  hasVideo,
   saveNote,
 }: Props) {
   const listRef = useRef<HTMLOListElement | null>(null);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const hintDismissed = useFirstRunHintDismissed();
   const [drag, setDrag] = useState<DragState | null>(null);
   const [moveNote, setMoveNote] = useState('');
   const count = project.clips.length;
@@ -160,7 +166,8 @@ export function KesitList({
   return (
     <section className="kesits" aria-labelledby="kesits-title" data-testid="kesit-panel">
       <div className="kesits-head">
-        <h2 id="kesits-title">
+        {/* Focus lands here when the first-run hint goes away. */}
+        <h2 id="kesits-title" ref={headingRef} tabIndex={-1}>
           {t('kesit.title')} <span className="kesits-count" data-testid="moment-count">({count})</span>
         </h2>
       </div>
@@ -168,9 +175,17 @@ export function KesitList({
       {topStatus}
 
       {count === 0 ? (
-        <p className="kesits-empty" data-testid="kesit-empty">
-          {emptyText}
-        </p>
+        hintDismissed ? (
+          <p className="kesits-empty" data-testid="kesit-empty">
+            {emptyText}
+          </p>
+        ) : (
+          <FirstRunHint
+            t={t}
+            hasVideo={hasVideo}
+            onDismissed={() => window.requestAnimationFrame(() => headingRef.current?.focus())}
+          />
+        )
       ) : (
         <ol className="kesit-list" ref={listRef} aria-labelledby="kesits-title">
           {project.clips.map((clip, index) => {
@@ -241,25 +256,31 @@ export function KesitList({
                       className="icon-btn"
                       onClick={() => onPlay(clip.clipId)}
                       aria-label={kesitActionLabel(t, 'kesit.playLabel', number, range)}
+                      title={t('kesit.playTitle')}
                       data-testid="kesit-play"
                     >
                       <Icon name={clip.clipId === playingClipId ? 'pause' : 'play'} size={18} />
                     </button>
+                    {/* The one card action with a word: which button saves what
+                        is what a first-time user asks (UX audit 2026-09-30). */}
                     <button
                       type="button"
-                      className="icon-btn kesit-download"
+                      className="btn btn-compact kesit-download"
                       onClick={() => onDownload(clip.clipId)}
                       disabled={downloading}
                       aria-label={kesitActionLabel(t, 'kesit.downloadLabel', number, range)}
+                      title={t('kesit.downloadTitle')}
                       data-testid="kesit-download"
                     >
                       <Icon name="download" size={18} />
+                      <span aria-hidden="true">{t('kesit.download')}</span>
                     </button>
                     <button
                       type="button"
                       className="icon-btn"
                       onClick={() => onDelete(clip.clipId)}
                       aria-label={kesitActionLabel(t, 'kesit.deleteLabel', number, range)}
+                      title={t('kesit.deleteTitle')}
                       data-testid="kesit-delete"
                     >
                       <Icon name="close" size={18} />

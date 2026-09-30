@@ -484,15 +484,16 @@ export function useEditorState() {
 
   /** "Kesit ekle": the marked range becomes the last kesit. One undo step. */
   const addKesit = useCallback(
-    (range: { sourceInUs: Micros; sourceOutUs: Micros }): { ok: true; clipId: string } | { ok: false } => {
+    (range: { sourceInUs: Micros; sourceOutUs: Micros }): { ok: true; clipId: string } | { ok: false; reason: MessageKey | null } => {
       const result = runCommand((base) => addClip(base, range, WEB_LOCAL_POLICY, settingsOf(base) ?? looseSettings));
       if (!result.ok) {
-        setActionError(rejectionKey(result.reason));
-        return { ok: false };
+        const reason = rejectionKey(result.reason);
+        setActionError(reason);
+        return { ok: false, reason };
       }
       setActionError(null);
       const newest = result.project.clips[result.project.clips.length - 1];
-      return newest ? { ok: true, clipId: newest.clipId } : { ok: false };
+      return newest ? { ok: true, clipId: newest.clipId } : { ok: false, reason: null };
     },
     [looseSettings, runCommand],
   );
