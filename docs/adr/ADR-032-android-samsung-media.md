@@ -4,6 +4,12 @@
 > (EDL v2, belge 10) **değişmedi**. [ADR-014](ADR-014-w5-real-media-decoding.md)'ün kare
 > politikası, [ADR-027](ADR-027-fast-cut.md)'nin hızlı kesimi ve bir karelik süre toleransı
 > (belge 22) aynen geçerli; hiçbir kontrol gevşetilmedi.
+>
+> **Düzeltme, 2 Ekim 2026:** canlı derleme (aa5c9ea) telefonda koşturulunca `phone-run.mjs`
+> sesi **−42,67 ms (erken)** okudu. Dosyalar sağlam çıktı; yanlış olan **ölçümdü** (ffmpeg'in
+> `-ss 0` girdi aramasının düzenleme listesindeki hazırlık karelerini ikinci kez atması).
+> Uygulama kodu değişmedi; ölçüm düzeltildi, oynatıcılarda doğrulandı. Ayrıntı:
+> [Düzeltme: canlı derlemede telefonda −42,67 ms](#düzeltme-canlı-derlemede-telefonda-4267-ms).
 
 ## Bağlam
 
@@ -137,6 +143,96 @@ kaynağın aynı anına karşı (+ = ses geç).
 Masaüstü Chrome'da (aynı derleme, `phone-run.mjs --desktop=chrome`) B, C, D ve H–M hepsi ✅,
 ölçülen gecikme 0, ses kayması 0 ms (tüm dosyada +1,9–2 ms: kaynağın sesi görüntüden 2 ms
 sonra başlıyor, çıktı bunu koruyor).
+
+## Düzeltme: canlı derlemede telefonda −42,67 ms
+
+> 2 Ekim 2026. Yukarıdaki "Sonra" sütunu ve masaüstü notu aşağıdaki ölçümle yeniden okunmalı.
+
+**Ne görüldü.** ADR-032 canlıya çıktıktan sonra ana oturum `phone-run.mjs`'i (A–M) canlı siteye
+karşı telefonda koşturdu (sekme ağdan yüklenen derlemeyi çalıştırdı, `2mmpezlrfmbu5.js`). Her
+durum kaydedildi, kare sayıları tam; ama `audioSync` B, D, I, J'de **−42,67 ms**, H'de −40,67 ms
+okudu (ses erken). Aynı B ve D masaüstü Chrome'da 0 ms. İlk akla gelen: telefonda hazırlık iki kez
+atılıyor (paket kaydırma + düzenleme listesi).
+
+**Kök neden: ölçüm.** Dosyalar doğru; `audioSync` çıktıyı `ffmpeg -ss 0 -i <dosya>` ile okuyordu.
+ffmpeg 9.0.1'in `-i`'den önceki `-ss`'i, sesinin düzenleme listesi hazırlık karelerini gizleyen bir
+dosyada, arama noktası hazırlığın içine düşünce (`-ss 0` … hazırlık süresi) o kareleri **ikinci
+kez** atıyor. Kanıt (telefonun B çıktısı, canlı derleme):
+
+| Okuma | Çözülen kare | Baştan çözüme göre kayma |
+|---|---|---|
+| `ffmpeg -i` (arama yok) | 168 960 (= 3,52 sn) | — |
+| `-ss 0` | 166 912 | **2048 kare erken** |
+| `-ss 0.01` | 166 912 | 1568 kare erken |
+| `-ss 0.05`, `0.5`, `1` | beklenen | 0 |
+
+ffmpeg'in kendi AAC kodlayıcısıyla yazdığı bir dosya da aynı (1024 kare hazırlık; `-ss 0` ile 96 000
+yerine 94 976 kare): tuzak ffmpeg'in arama yolunda, bizim dosyada değil. Telefonun çıktısının yapısı
+(ffprobe ve `elst` kutusu): ses paketleri −2048, −1024, 0, … (ilk pakette `skip_samples=2048`),
+düzenleme listesi `media_time = 2048`, segment 3,52 sn; görüntü izi düzenleme listesiz 0'dan.
+ffmpeg'in kendi AAC dosyalarıyla aynı biçim. Ölçülen gecikme her dışa aktarmada 2048 kare (ilinti
+0,99991, ölçme 121–158 ms).
+
+**Ölçüm düzeltildi** (`web/scripts/lib/av-sync.mjs`): 1 sn'den önceki her okuma baştan çözülüp
+burada kesiliyor; kaynağın sesi 0'dan sonra başlıyorsa (Samsung kayıtları 2 ms) başlangıç zamanına
+yerleştiriliyor (eski okuma bunu atıyordu, tüm dosyada +2 ms görünüyordu); pencere 0,25 → 1 sn.
+Canlı koşunun dosyaları (ana oturumun kaydettikleri) yeni ölçümle yeniden okundu: B, D, H, I, J
+**0 ms**; C, E–G, K–M kaynakları sürekli ton (ölçülemez). Masaüstü çıktılarında eski ve yeni okuma
+aynı (düzenleme listesi yok).
+
+**Oynatıcılar ne yapıyor.** Kullanıcı oynatıcının çaldığını duyar; ffmpeg yetmez. Yeni senkron
+klibi (`av-sync.mjs`: 1080×1920 30 fps, düzensiz aralıklarla tek karelik beyaz flaş ve aynı anda
+başlayan 30 ms'lik cıvıltı, kare numarası barkodu) canlı derlemeyle telefonda ve masaüstünde dışa
+aktarıldı (N hızlı kesim, O zorla tam kodlama, P iki kesit, Q tüm klip). `player-sync.mjs` her
+dosyayı tarayıcının kendi `<video>`'sunda oynatıp her flaşın ekrana geliş anını
+(`requestVideoFrameCallback`) ve cıvıltının çalınış anını (Web Audio, `getOutputTimestamp`) aynı
+saatte karşılaştırıyor; her oynatmada cihazın sabit bir gecikmesi de var, bu yüzden her
+düzenleme listeli dosyanın bir de `media_time = 0` ikizi (aynı baytlar; düzenleme listesini yok
+sayan bir oynatıcının göreceği dosya) çalınıyor. Üç tur, turların ortancası (ms, ses − görüntü):
+
+| Oynatıcı | Masaüstü çıktısı N/O/P/Q | Telefon çıktısı N/O/P/Q | Aynı dosya, `media_time = 0` | ffmpeg AAC kaynağı / ikizi |
+|---|---|---|---|---|
+| Chrome 154 masaüstü | 23 / 21 / 20 / 25 | 24 / 25 / 21 / 17 | 65 / 61 / 65 / 57 | 14 / 45 |
+| Edge masaüstü | 21 / 16 / 22 / 24 | 17 / 25 / 22 / 20 | 61 / 66 / 63 / 66 | 21 / 44 |
+| Firefox (Playwright) | −17 / −18 / −14 / −17 | −20 / −12 / −20 / −19 | 23 / 26 / 26 / 32 | −18 / 1 |
+| Telefonda Chrome 154 | {{PLAYER_PHONE}} | | | |
+
+Üç masaüstü oynatıcıda telefonun çıktısı masaüstününkiyle aynı yerde, ikizi ~40 ms (hazırlık
+42,67 ms) geç: **düzenleme listesine uyuyorlar.** Mutlak değerler oynatıcının kendi
+gecikmesidir (tur içinde ±0,2 ms, turlar arası 2–17 ms oynuyor), ikisi arasındaki fark ölçülendir.
+ffmpeg (baştan okuyarak) iki çıktıda da flaş ile cıvıltı arası **0,08–0,10 ms** (kaynağın kendisi
+0,08 ms: eşik cıvıltının 4. örneğinde aşılıyor).
+
+**Karar: dosya biçimi değişmedi.** Hazırlık paketleri negatif zamanda, düzenleme listesi onları
+gizliyor; ffmpeg'in kendi AAC dosyalarında (1024 kare) ve iPhone kaydında (R11, 2112 kare) de
+aynı biçim var. Hazırlığı paket olarak
+atmak (düzenleme listesiz) düzenleme listesini yok sayan oynatıcıda da senkron verirdi, ama ilk
+paketi örtüşmesiz çözdürür (ilk 21 ms bozuk) ve denenen oynatıcıların hepsi zaten uyuyor.
+Senkron eşiği: |kayma| ≤ bir AAC çerçevesi (1024 / 48 000 = 21,3 ms) — kodlayıcının paket adımı;
+her ölçüm bunun çok altında (ffmpeg ≤ 0,1 ms, oynatıcı karşılaştırmasında masaüstü/telefon farkı
+turların oynamasının içinde).
+
+**Neden önceki "0 ms" farklıydı.** Bu ADR'deki B ve C "Sonra 0 ms" satırları (30 Eylül gecesi,
+yerel derleme) `phone-run.mjs`'teki `audioSync`'ten gelmedi: o fonksiyon sonraki işlemde eklendi
+(25b1b88, 23:59), sürekli tonu "ölçülemez" sayan kontrol daha sonra (c2f7eff); C'nin kaynağı
+sürekli ton olduğu için bugünkü ölçüm onu ölçemez. O koşunun dosyaları ve ölçüm komutu silinen
+çalışma ağacında kaldı, yeniden üretilemiyor; büyük olasılıkla çıktı baştan (aramasız) okundu ve
+doğru sonucu verdi. Canlı koşudaki −42,67 ms, `audioSync`'in `-ss 0` okumasının ilk kez düzenleme
+listeli (telefon) bir dosyaya uygulanmasıydı. **Uygulama kodu aa5c9ea'dan bu yana değişmedi**; aynı
+dosyalar iki farklı okumayla iki farklı sayı verdi.
+
+### Yan bulgu: telefonda kesit sonlarında donmuş kareler (bu ADR'nin konusu değil, düzeltilmedi)
+
+Canlı koşunun telefon çıktıları aynı derlemenin masaüstü Chrome çıktılarıyla kare kare
+karşılaştırıldı (36×64 gri, ortalama mutlak fark): masaüstünde görüntü değişirken telefonda bir
+önceki karenin aynısı kalan kareler var, hep **bir kesitin sonunda**: D son 1 kare (239), I son
+kareler (48, 50), J birinci kesitin sonu (36–38) ve ikincinin sonu (104–107), L son 2 kare, M
+birinci kesitin son 10 karesi (80–89). Senkron klibinde O'nun 151. karesindeki (sondan 8.) ve Q'nun
+347. karesindeki flaş telefon çıktısında yok (siyah), masaüstünde var. Kare sayıları ve
+`framesMissing` 0; çözücünün verdiği zaman damgaları tam. Yani kareler zamanında geliyor ama
+içerikleri bayat: büyük olasılıkla Android'in donanım çözücüsünün son kareleri boşaltırken
+(flush) verdiği `VideoFrame`'ler çizilmeden önce tamponları geri alınıyor. {{FROZEN_PHONE}}
+Ayrı bir iş olarak ele alınmalı; ADR-014'ün kare politikası bunu "eksik" saymıyor.
 
 ## Test edilen
 
