@@ -127,12 +127,12 @@ kaynağın aynı anına karşı (+ = ses geç).
 
 | # | Kaynak, kesit | Önce | Sonra |
 |---|---|---|---|
-| A | add1.mp4 (1080×1920 30 fps H.264), 2–10 sn | ✅ tam kodlama (aralıkta anahtar kare yok), 8,021 sn, 240 kare; kaynak sessiz | {{A_AFTER}} |
+| A | add1.mp4 (1080×1920 30 fps H.264), 2–10 sn | ✅ tam kodlama (aralıkta anahtar kare yok), 8,021 sn, 240 kare; kaynak sessiz | — telefon bağlı değildi, **ölçülmedi** |
 | B | R15 Samsung S21 H.264 60 fps −90°, 0,5–4 sn | ❌ "süre uyuşmadı" (1,5 sn) — ses izi 3,541 sn, görüntü 3,5 sn | ✅ 3,520 sn, 105 kare, eksik 0, ses kayması **0 ms** (2,0 sn) |
 | C | R14 Samsung HEVC ağır çekim SEF −90°, 1–8 sn | ❌ "süre uyuşmadı" (2,0 sn) | ✅ 7,019 sn, 210 kare, eksik 0, ses kayması **0 ms** (2,5 sn) |
-| D | R11 iPhone 12 Pro HEVC HLG −90°, 2–10 sn | ✅ 8,021 sn, 240 kare, ses **+42,67 ms**, son 1024 kare eksik | {{D_AFTER}} |
-| E–G | 3 dk 1080×1920 (tam video hızlı kesim / zorla tam kodlama / iki kesit) | ✅ (ana oturumun koşusu) 180,032 / 180,032 / 60,032 sn; ses paketleri `ceil((n+1024)/1024)` | {{EFG_AFTER}} |
-| H–M | R15 ve R14, başka aralıklar (tüm dosya, kısa, iki kesit) | çalıştırılmadı (telefon arka planda kaldı) | {{HM_AFTER}} |
+| D | R11 iPhone 12 Pro HEVC HLG −90°, 2–10 sn | ✅ 8,021 sn, 240 kare, ses **+42,67 ms**, son 1024 kare eksik | — telefon bağlı değildi, **ölçülmedi** |
+| E–G | 3 dk 1080×1920 (tam video hızlı kesim / zorla tam kodlama / iki kesit) | ✅ (ana oturumun koşusu) 180,032 / 180,032 / 60,032 sn; ses paketleri `ceil((n+1024)/1024)` | — telefon bağlı değildi, **ölçülmedi** |
+| H–M | R15 ve R14, başka aralıklar (tüm dosya, kısa, iki kesit) | çalıştırılmadı (telefon arka plana geçti, sonra bağlantı kesildi) | — telefon bağlı değildi, **ölçülmedi** |
 
 Masaüstü Chrome'da (aynı derleme, `phone-run.mjs --desktop=chrome`) B, C, D ve H–M hepsi ✅,
 ölçülen gecikme 0, ses kayması 0 ms (tüm dosyada +1,9–2 ms: kaynağın sesi görüntüden 2 ms
@@ -153,6 +153,12 @@ sonra başlıyor, çıktı bunu koruyor).
 - `tsc --noEmit`, `eslint .`, `npm run build` temiz.
 
 ## Ölçülmeyenler
+
+- **Telefonda düzeltmeden sonra A, D, E–G ve H–M çalıştırılmadı.** B ve C'den sonra telefonda
+  Chrome arka plana geçti (önde başka bir uygulama vardı; Android arka plandaki tarayıcıyı
+  donduruyor, CDP yanıt vermedi), ardından USB bağlantısı kesildi (`adb devices` boş,
+  1 Ekim 01:00–08:20 arası). Masaüstünde aynı derleme bu durumların hepsini geçti; telefon
+  bağlanınca `phone-run.mjs --url=http://localhost:<port>/editor` ile tamamlanmalı.
 
 - **Samsung Internet** (v30.0.0.67): telefonda çalışmıyordu, DevTools soketi
   (`/proc/net/unix`'te tarayıcı olarak yalnızca Chrome'un `chrome_devtools_remote` soketi vardı)

@@ -18,13 +18,13 @@ Her satır `video-editor-blueprint/docs/22_QA_TEST_MATRIX.md` içindeki bir fixt
 
 | Tarayıcı | Sürüm | Encoder kabiliyeti | Çalıştırma |
 |---|---|---|---|
-| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-09-30 16:34 UTC |
-| Google Chrome | 154.0.0.0 | H.264 var · AAC var | 2026-09-30 16:37 UTC |
-| Microsoft Edge | 154.0.0.0 | H.264 var · AAC var | 2026-09-30 16:39 UTC |
+| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-09-30 21:50 UTC |
+| Google Chrome | 154.0.0.0 | H.264 var · AAC var | 2026-09-30 21:52 UTC |
+| Microsoft Edge | 154.0.0.0 | H.264 var · AAC var | 2026-09-30 21:55 UTC |
 | Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-21 18:36 UTC |
 | WebKit (Playwright) | 26.6 | WebCodecs yok | 2026-09-21 18:36 UTC |
 
-Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari, gerçek telefon ve fiziksel cihaz testi yapılmadı.** Playwright’ın WebKit derlemesi Safari değildir ve Safari sonucu yerine geçmez.
+Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Bu matris gerçek Safari’de ve fiziksel cihazda çalıştırılmadı;** tek bir gerçek telefonda elle yapılan denemeler aşağıda ayrı bölümde (“Gerçek telefon”). Playwright’ın WebKit derlemesi Safari değildir ve Safari sonucu yerine geçmez.
 
 ## Sonuçlar
 
@@ -69,8 +69,8 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Gerçek Safari,
 | M08 | 10.005333 s | 300 | 720x1280 | — | müzik önce -69.5 → sonra -36.1 dB |
 | M09 | 6.016 s | 180 | 1280x720 | — | sınır -24.4 / genel -24.1 dB |
 | M10-hevc | — | — | — | — | sonuç: import_rejected |
-| M10-hdr | 3.008 s | 90 | 1280x720 | 0.9699 | HDR→SDR: en yakın ref-hable, ΔE00 3.075, kayma 3.62, doygunluk 1.004..1.005, ton 1.958°, kırpma -0.047 |
-| M10-hdr-hlg | 3.008 s | 90 | 720x1280 | 0.9729 | HDR→SDR: en yakın placebo-spline, ΔE00 3.256, kayma 2.24, doygunluk 1.038..1.038, ton 2.348°, kırpma -0.001 |
+| M10-hdr | 3.008 s | 90 | 1280x720 | 0.9698 | HDR→SDR: en yakın ref-hable, ΔE00 3.077, kayma 3.622, doygunluk 1.004..1.005, ton 1.956°, kırpma -0.047 |
+| M10-hdr-hlg | 3.008 s | 90 | 720x1280 | 0.9728 | HDR→SDR: en yakın placebo-spline, ΔE00 3.258, kayma 2.249, doygunluk 1.038..1.038, ton 2.347°, kırpma -0.001 |
 | M12 | 4.010667 s | 120 | 1280x720 | — | — |
 | M14 | 10.005333 s | 300 | 720x1280 | — | — |
 | M15 | 6.016 s | 180 | 1280x720 | — | — |
@@ -120,7 +120,7 @@ Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer�
 | R14 | REFUSED | hevc | 1920x1080 | -90° | 30.017 | 11.8 s | 14.4 MiB | bt709 | aac | — |
 | R15 | PASS | h264 | 1920x1080 | -90° | 60.042 | 4.4 s | 14.8 MiB | bt709 | aac | 0.8704 |
 
-### Google Chrome — 15 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-24 23:23 UTC)
+### Google Chrome — 15 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-30 22:00 UTC)
 
 | # | Durum | Codec | Boyut | Rotasyon | fps | Süre | Dosya | Renk | Ses | SSIM |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -163,9 +163,31 @@ Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer�
 | R14 | REFUSED | hevc | 1920x1080 | -90° | 30.017 | 11.8 s | 14.4 MiB | bt709 | aac | — |
 | R15 | PASS | h264 | 1920x1080 | -90° | 60.042 | 4.4 s | 14.8 MiB | bt709 | aac | 0.8607 |
 
+## Gerçek telefon
+
+> Elle yazıldı (üretilmedi): `web/scripts/android/phone-run.mjs` ile adb + CDP üzerinden, kurucunun telefonunda. Tek cihaz, tek tarayıcı; ayrıntı ve kanıt [ADR-032](adr/ADR-032-android-samsung-media.md).
+
+| Cihaz | Android | Tarayıcı | Tarih |
+|---|---|---|---|
+| Samsung Galaxy S23 (SM-S911B) | 16 | Chrome 154.0.8037.57 | 2026-09-30 / 2026-10-01 |
+| aynı cihaz | 16 | Samsung Internet 30.0.0.67 | **ölçülmedi** (DevTools soketi kapalı; telefonun ayarı değiştirilmedi) |
+
+Kaydetme penceresi betikte bir yer tutucuyla (OPFS dosyası) geçildi; uygulamanın yazma yolu gerçek. Kalite 1080p. “Önce”: canlı site, düzeltmeden önceki derleme. “Sonra”: ADR-032 derlemesi (`next start` + `adb reverse`). Ses kayması ffmpeg ile kaynağın aynı anına karşı ölçüldü (+ = ses geç).
+
+| # | Kaynak, kesit | Önce | Sonra |
+|---|---|---|---|
+| A | add1.mp4 (1080×1920 30 fps H.264), 2–10 sn | ✅ 8,021 sn, 240 kare (kaynak sessiz) | — telefon bağlı değildi, **ölçülmedi** |
+| B | R15 Samsung H.264 60 fps −90°, 0,5–4 sn | ❌ “süre uyuşmadı” | ✅ 3,520 sn, 105 kare, ses 0 ms |
+| C | R14 Samsung HEVC ağır çekim −90°, 1–8 sn | ❌ “süre uyuşmadı” | ✅ 7,019 sn, 210 kare, ses 0 ms |
+| D | R11 iPhone 12 Pro HEVC HLG −90°, 2–10 sn | ✅ 8,021 sn, 240 kare, **ses +42,67 ms** | — telefon bağlı değildi, **ölçülmedi** |
+| E–G | 3 dk 1080×1920: hızlı kesim / tam kodlama / iki kesit | ✅ 180,032 / 180,032 / 60,032 sn | — telefon bağlı değildi, **ölçülmedi** |
+| H–M | R15 ve R14, başka aralıklar | çalıştırılmadı | — telefon bağlı değildi, **ölçülmedi** |
+
+Düzeltmeden önce telefondaki Chrome’un AAC kodlayıcısı sesin önüne 2048 hazırlık karesi koyuyordu: her çıktının sesi 42,7 ms geç, sonu eksikti; uzunluğu 1024 ses karesinin katını az geçen kesitler (30 fps uzunluklarının %37,5’i) “süre uyuşmadı” ile reddediliyordu. Artık gecikme her tarayıcıda ölçülüp dosyada geri alınıyor (ADR-032).
+
 ## Bu matrisin kapsamadıkları
 
-- Gerçek Safari (macOS/iOS) ve gerçek fiziksel telefon/tablet.
+- Gerçek Safari (macOS/iOS), tablet ve “Gerçek telefon” bölümündeki tek cihaz dışında fiziksel telefon; Samsung Internet (ölçülmedi).
 - Gerçek kamera/telefon kayıtları, “Gerçek kayıtlar” bölümünde çalıştırılmadıysa.
 - Bilinen sınır: yeniden sıralamayı SPS’te az bildiren H.264 akışları (R07) yazılım çözücüsünde kare atıyordu. Artık SPS düzeltilerek çözülüyor. Düzeltilemeyen durumda (paket içi SPS) dışa aktarma açıkça duruyor. Başka bir sebeple kare atan bir çözücü damgalardan hâlâ tespit edilemiyor. Ayrıntı ADR-014 §3.
 - HDR (PQ/HLG) kaynaklar ADR-022 ile SDR’ye çevriliyor: tarayıcının dönüşümü + parlak renk yumuşak kırpma, çalışma anında sentetik bir kareyle doğrulanarak. Renkler standart ton eşleme operatörlerinden en yakınına karşı eşiklerle ölçülür (docs/spikes/2026-09-23-hdr-tonemap.md). HDR ekranda önizleme, Safari/Firefox’ta HDR ve AV1 HDR ölçülmedi. Edge ve Playwright Chromium’da bu makinede HEVC çözücüsü yok.

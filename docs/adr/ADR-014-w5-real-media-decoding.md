@@ -169,3 +169,5 @@ başlatıyor ve sonucu `real-media-<tarayıcı>-swdecode.json` olarak yazıyor.
 HDR kaydın Edge ve Chromium'da çıktısı (HEVC çözücüsü yok; aşağıdaki güncelleme), 618 MiB'tan büyük ya da 32 dakikadan uzun gerçek kaynak, Safari, fiziksel telefon tarayıcısı. R15'in Chromium'daki düşük skoru ADR-024 ile kapandı.
 
 > Güncelleme 2026-09-23: HDR kayıtların SDR'ye tonlanarak dışa aktarılması ölçüldü ve açıldı (ADR-022). R09 ve R11 Chrome'da artık PASS; Edge ve Chromium'da HEVC çözücüsü olmadığı için içe aktarma reddi sürüyor.
+
+> Güncelleme 2026-10-01: Fiziksel telefonda (Galaxy S23, Chrome 154) R14 ve R15 "süre uyuşmadı" ile reddediliyordu; sebep kare çözme değil, telefonun AAC kodlayıcısının bildirmediği 2048 karelik gecikmesiydi (her telefon çıktısında ses 42,7 ms geç). Gecikme artık ölçülüp geri alınıyor; kare sayıları ve bu ADR'nin eksik kare politikası değişmedi. Ayrıntı [ADR-032](ADR-032-android-samsung-media.md).

@@ -27,12 +27,12 @@ const BROWSERS = [
 
 /** Rows of the hand-written phone table (ADR-032); update after each phone run. */
 const PHONE_ROWS = [
-  '| A | add1.mp4 (1080×1920 30 fps H.264), 2–10 sn | ✅ 8,021 sn, 240 kare (kaynak sessiz) | {{A}} |',
+  '| A | add1.mp4 (1080×1920 30 fps H.264), 2–10 sn | ✅ 8,021 sn, 240 kare (kaynak sessiz) | — telefon bağlı değildi, **ölçülmedi** |',
   '| B | R15 Samsung H.264 60 fps −90°, 0,5–4 sn | ❌ “süre uyuşmadı” | ✅ 3,520 sn, 105 kare, ses 0 ms |',
   '| C | R14 Samsung HEVC ağır çekim −90°, 1–8 sn | ❌ “süre uyuşmadı” | ✅ 7,019 sn, 210 kare, ses 0 ms |',
-  '| D | R11 iPhone 12 Pro HEVC HLG −90°, 2–10 sn | ✅ 8,021 sn, 240 kare, **ses +42,67 ms** | {{D}} |',
-  '| E–G | 3 dk 1080×1920: hızlı kesim / tam kodlama / iki kesit | ✅ 180,032 / 180,032 / 60,032 sn | {{EFG}} |',
-  '| H–M | R15 ve R14, başka aralıklar | çalıştırılmadı | {{HM}} |',
+  '| D | R11 iPhone 12 Pro HEVC HLG −90°, 2–10 sn | ✅ 8,021 sn, 240 kare, **ses +42,67 ms** | — telefon bağlı değildi, **ölçülmedi** |',
+  '| E–G | 3 dk 1080×1920: hızlı kesim / tam kodlama / iki kesit | ✅ 180,032 / 180,032 / 60,032 sn | — telefon bağlı değildi, **ölçülmedi** |',
+  '| H–M | R15 ve R14, başka aralıklar | çalıştırılmadı | — telefon bağlı değildi, **ölçülmedi** |',
 ];
 
 /**
