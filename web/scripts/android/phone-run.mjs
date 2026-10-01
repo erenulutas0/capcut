@@ -27,11 +27,14 @@
  * (Playwright's limit is 50 MB per file), never read from the phone.
  */
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { chromium } from '@playwright/test';
 
 import { installSavePicker, lastPickedName, readPickedFile, setQuality } from '../lib/kesit-flow.mjs';
+import { audioLayout, audioSync, avSync, writeSyncClip } from '../lib/av-sync.mjs';
+
+const SYNC_CLIP = 'sync-clicks-1080x1920.mp4';
 
 const arg = (name, fallback) => {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -50,6 +53,8 @@ const profile = process.argv.includes('--profile');
 const desktop = arg('desktop', '');
 const outDir = join(web, 'matrix-results', desktop ? `android-compare-${desktop}` : 'android');
 mkdirSync(outDir, { recursive: true });
+// Generated, not a recording: made here the first time it is needed.
+if (!existsSync(join(android, SYNC_CLIP))) writeSyncClip(join(android, SYNC_CLIP));
 
 /** id, file, kesitler (seconds), options, what we expect. */
 const CASES = [
@@ -67,6 +72,12 @@ const CASES = [
   { id: 'K', file: join(real, 'web-samsung-hevc-slowmo-sef-rot90.mp4'), kesits: [], expect: 'encode: HEVC slow motion, whole file' },
   { id: 'L', file: join(real, 'web-samsung-hevc-slowmo-sef-rot90.mp4'), kesits: [[2.5, 5.1]], expect: 'encode: HEVC slow motion, 2.6 s' },
   { id: 'M', file: join(real, 'web-samsung-hevc-slowmo-sef-rot90.mp4'), kesits: [[0, 3], [8, 11.5]], expect: 'encode: HEVC slow motion, two kesitler' },
+  // ADR-032: a white frame and a chirp at the same instants (scripts/lib/av-sync.mjs),
+  // so the saved file's sound can be lined up with its own picture, not only with the source.
+  { id: 'N', file: join(android, SYNC_CLIP), kesits: [[1.2, 6.5]], sync: true, expect: 'fast cut 1080x1920 30 fps, clicks' },
+  { id: 'O', file: join(android, SYNC_CLIP), kesits: [[1.2, 6.5]], mode: 'encode', sync: true, expect: 'forced full encode, clicks' },
+  { id: 'P', file: join(android, SYNC_CLIP), kesits: [[0.4, 2], [5, 8.3]], sync: true, expect: 'two kesitler, clicks' },
+  { id: 'Q', file: join(android, SYNC_CLIP), kesits: [], mode: 'encode', sync: true, expect: 'whole clip, forced full encode, clicks' },
 ];
 
 function probe(file) {
@@ -83,54 +94,6 @@ function probe(file) {
     video: video ? `${video.codec_name} ${video.width}x${video.height} ${video.avg_frame_rate} (${video.nb_read_packets} frames)` : null,
     audio: audio ? audio.codec_name : null,
   };
-}
-
-/** Mono 48 kHz PCM of `seconds` from `startS`, as a player decodes it (edit lists applied). */
-function pcm48(file, startS, seconds) {
-  const out = spawnSync(
-    'ffmpeg',
-    ['-v', 'error', '-ss', String(startS), '-t', String(seconds), '-i', file, '-vn', '-ac', '1', '-ar', '48000', '-f', 'f32le', '-'],
-    { maxBuffer: 64 * 1024 * 1024 },
-  );
-  const bytes = out.stdout ?? Buffer.alloc(0);
-  return new Float32Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.length / 4));
-}
-
-/**
- * ADR-032: where the export's sound sits against its picture. A 0.25 s window
- * of the source (0.2 s into the first kesit) is looked for in the export's
- * first 1.5 s; positive = the sound is late. null for a silent source.
- */
-function audioSync(source, startS, output) {
-  const ref = pcm48(source, startS, 1.5);
-  const out = pcm48(output, 0, 1.5);
-  const from = 9600;
-  const length = 12000;
-  const window = ref.subarray(from, from + length);
-  let energy = 0;
-  for (const v of window) energy += v * v;
-  if (window.length < length || Math.sqrt(energy / length) < 1e-4) return null;
-  const correlations = [];
-  let best = { lagFrames: 0, correlation: -1 };
-  for (let lag = -4096; lag <= 4096; lag += 1) {
-    let dot = 0;
-    let outEnergy = 0;
-    for (let i = 0; i < length; i += 1) {
-      const v = out[from + lag + i] ?? 0;
-      dot += window[i] * v;
-      outEnergy += v * v;
-    }
-    const correlation = outEnergy > 0 ? dot / Math.sqrt(energy * outEnergy) : 0;
-    correlations.push({ lag, correlation });
-    if (correlation > best.correlation) best = { lagFrames: lag, correlation };
-  }
-  // A steady tone (the synthetic 3-minute source is 440 Hz) matches at every
-  // period: no single lag can be read from it.
-  const runnerUp = Math.max(
-    ...correlations.filter((c) => Math.abs(c.lag - best.lagFrames) > 20).map((c) => c.correlation),
-  );
-  if (runnerUp >= best.correlation - 0.02) return { ambiguous: true, correlation: Number(best.correlation.toFixed(4)) };
-  return { lagMs: Number(((best.lagFrames / 48000) * 1000).toFixed(2)), correlation: Number(best.correlation.toFixed(4)) };
 }
 
 /**
@@ -380,7 +343,11 @@ async function runCase(testCase) {
       const local = join(outDir, `${testCase.id}-${name.replace(/^picked-\d+-/, '')}`);
       row.sizeBytes = await readPickedFile(page, name, local);
       row.probe = probe(local);
-      if (row.probe.audio) row.audioSync = audioSync(testCase.file, testCase.kesits[0]?.[0] ?? 0, local);
+      if (row.probe.audio) {
+        row.audioLayout = audioLayout(local);
+        row.audioSync = audioSync(testCase.file, testCase.kesits[0]?.[0] ?? 0, local);
+      }
+      if (testCase.sync) row.avSync = avSync(local);
     } else {
       row.message = ((await page.locator('[data-testid="export-failed"], [data-testid="export-blocked"]').first().textContent().catch(() => '')) ?? '')
         .replace(/\s+/g, ' ')
