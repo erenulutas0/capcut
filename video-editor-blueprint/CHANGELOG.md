@@ -3,6 +3,16 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Teknik — 2 Ekim 2026: ADR-032 düzeltmesi — telefondaki "−42,67 ms" bir ölçüm hatasıydı (uygulama değişmedi)
+
+**Ölçülen:** Canlı ADR-032 derlemesi telefonda koşturulunca ölçüm betiği sesi 42,67 ms erken okudu. Dosyalar doğruydu: betik çıktıyı `ffmpeg -ss 0` ile okuyordu ve ffmpeg bu aramada, düzenleme listesinin gizlediği hazırlık karelerini ikinci kez atıyor (ffmpeg'in kendi AAC dosyalarında da). Baştan okununca telefon çıktılarının sesi kaynağa göre 0 ms; flaş+cıvıltı senkron klibinde görüntüyle arası ≤ 0,1 ms. Chrome, Edge ve Firefox'un kendi `<video>` oynatıcısı telefon çıktısını masaüstü çıktısıyla aynı senkronda çalıyor, düzenleme listesi silinmiş ikizini ~40 ms geç: düzenleme listesine uyuyorlar.
+
+**Değişen (yalnızca ölçüm araçları):** `phone-run.mjs` sesi baştan okuyor, kaynağın ses başlangıcını hesaba katıyor, 1 sn'lik pencere; yeni durumlar N–Q (senkron klibi: hızlı kesim, tam kodlama, iki kesit, tüm klip) ve ses izi düzeni (ilk paketler, `skip_samples`). Yeni: `scripts/lib/av-sync.mjs` (senkron klibi üretimi, flaş/cıvıltı eşleştirme, kare barkodu), `scripts/android/player-sync.mjs` (tarayıcının kendi oynatıcısında senkron, masaüstünde ve telefonda).
+
+**Yan bulgu (düzeltilmedi, ayrı iş):** Telefonda tam kodlanan kesitlerin son 1–10 karesi bayat (bir önceki kare tekrar ediyor); kare sayısı ve "eksik kare" sayacı bunu görmüyor. Ayrıntı ADR-032.
+
+Mevcut kullanıcı haklarına etkisi: yok. Uygulama kodu, sınırlar, fiyatlar ve şema değişmedi.
+
 ## Teknik — 1 Ekim 2026: Android'de ses kayması ve "süre uyuşmadı" (ADR-032; politika ve şema değişmedi)
 
 **Ölçülen (gerçek telefon: Galaxy S23, Android 16, Chrome 154):** Telefondaki Chrome'un AAC kodlayıcısı sesin önüne 2048 hazırlık karesi koyuyor ve bunu bildirmiyor. Sonuç: telefonda dışa aktarılan her videonun sesi görüntüden 42,7 ms geride kalıyordu, son 10–20 ms'si eksikti; uzunluğu 1024 ses karesinin katını az geçen kesitler (30 fps'lik uzunlukların %37,5'i; ör. 3,5 sn, 7 sn) bir kareden uzun çıkıp "Oluşan dosyanın süresi beklenen süreyle uyuşmadı" ile reddediliyordu. Samsung'un 60 fps ve ağır çekim kayıtlarında görülmesi tesadüftü; görüntü, döndürme ve kare sayıları doğruydu. Masaüstü Chrome/Edge'in kodlayıcısında gecikme yok.

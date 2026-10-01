@@ -19,6 +19,15 @@
  * `--profile` switches on the export stage clock (ADR-028) and records the
  * worker's console and its phase events (never the file bytes) in the row.
  *
+ * Sound (ADR-032): every row with audio records the audio track's layout
+ * (first packet times, the edit list's skip) and `audioSync` against the
+ * source; cases N–Q export a generated flash + chirp clip
+ * (`scripts/lib/av-sync.mjs`, made in <media>/android/ on first use) and
+ * also record `avSync` (sound against the file's own picture) and
+ * `frameIdentity` (which source frame each output frame shows). All reads
+ * decode from the start: ffmpeg's `-ss 0` drops edit-list priming twice.
+ * What the browser's own player does: `player-sync.mjs`.
+ *
  * The phone's own browser is only driven in one new tab: the script never
  * closes the browser, never touches other tabs, and at the end deletes the
  * files it saved and the site's storage it created. The OS save dialog cannot
