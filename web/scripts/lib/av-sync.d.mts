@@ -1,8 +1,8 @@
 /** Types for av-sync.mjs (used by the unit tests). */
-export const SYNC_FPS: number;
-export const SYNC_RATE: number;
-export const SYNC_SECONDS: number;
-export const SEEK_SAFE_S: number;
+export declare const SYNC_FPS: number;
+export declare const SYNC_RATE: number;
+export declare const SYNC_SECONDS: number;
+export declare const SEEK_SAFE_S: number;
 export function syncEventFrames(): number[];
 export function onsets(pcm: Float32Array, rate?: number): number[];
 export function onFileTimeline(
