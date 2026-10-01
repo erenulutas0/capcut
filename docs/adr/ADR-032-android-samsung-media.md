@@ -56,9 +56,12 @@ list) olmadığı için oynatıcı hazırlık karelerini de çalıyor.
 
 **Sonuçları (ffmpeg ile, kaynağa karşı çapraz ilinti):**
 
-- Telefondaki **her** sesli çıktı görüntüden **42,67 ms geride** ve sonundaki 512–1024 ses
-  karesi eksikti — "geçen" durumlar dahil (iPhone HLG 2–10 sn, 3 dk tam video hızlı kesim
-  ve tam kodlama). Masaüstü çıktılarında kayma 0.
+- Telefonda "geçen" iPhone HLG kesiti (2–10 sn, gerçek ses) görüntüden **42,67 ms
+  geride** ve son 1024 ses karesi eksik; masaüstü Chrome'da aynı kesit kayma 0, eksiksiz.
+  Kodlayıcı her dışa aktarmada aynı olduğu için telefondaki her sesli çıktı böyleydi: 3 dk
+  tam video (hızlı kesim ve tam kodlama) ve iki kesit de `ceil((n + 1024) / 1024)` paket
+  taşıyor (8439 / 2814); o kaynağın sesi sürekli 440 Hz ton olduğundan kayması ilintiyle
+  tek bir değere okunamıyor.
 - Ses izi = `ceil((n + 1024) / 1024) × 1024` kare. `n mod 1024` 1…447 arasındaysa fazlalık
   1600 kareyi (30 fps'te bir çıktı karesi, 34,3 ms) aşıyor ve dosya reddediliyor: 30 fps'lik
   kesit uzunluklarının **%37,5'i** (3,5 sn ve 7 sn bunlardan). 8 sn, 60 sn, 180 sn
@@ -111,21 +114,48 @@ dolduruyordu). Masaüstü çıktılarının süreleri aynı (ör. 3,5 sn kesit 3
 
 ### Maliyet
 
-Ölçme telefonda {{CAL_MS}}, masaüstünde {{CAL_DESKTOP_MS}} (işçi başına bir kez; her dışa
-aktarma yeni işçi açtığı için dışa aktarma başına bir kez). Sessiz dolgu en çok 4096 kare.
+Ölçme masaüstü Chrome'da 79–143 ms (9 dışa aktarma); telefonda ayrı ölçülmedi, R15 kesitinin
+toplam süresi 1,35 → 1,55 sn (tek koşu, önce/sonra). İşçi başına bir kez; her dışa aktarma
+yeni işçi açtığı için dışa aktarma başına bir kez. Sessiz dolgu en çok `gecikme + 2048` kare.
 
 ## Telefonda sonuç
 
-{{PHONE_TABLE}}
+Galaxy S23 (SM-S911B), Android 16, Chrome 154.0.8037.57; 30 Eylül 2026. "Önce": canlı site
+(düzeltmesiz derleme). "Sonra": bu dalın derlemesi, `next start` + `adb reverse`
+(`phone-run.mjs --url=http://localhost:<port>/editor`). Kalite 1080p. Ses kayması ffmpeg ile,
+kaynağın aynı anına karşı (+ = ses geç).
+
+| # | Kaynak, kesit | Önce | Sonra |
+|---|---|---|---|
+| A | add1.mp4 (1080×1920 30 fps H.264), 2–10 sn | ✅ tam kodlama (aralıkta anahtar kare yok), 8,021 sn, 240 kare; kaynak sessiz | {{A_AFTER}} |
+| B | R15 Samsung S21 H.264 60 fps −90°, 0,5–4 sn | ❌ "süre uyuşmadı" (1,5 sn) — ses izi 3,541 sn, görüntü 3,5 sn | ✅ 3,520 sn, 105 kare, eksik 0, ses kayması **0 ms** (2,0 sn) |
+| C | R14 Samsung HEVC ağır çekim SEF −90°, 1–8 sn | ❌ "süre uyuşmadı" (2,0 sn) | ✅ 7,019 sn, 210 kare, eksik 0, ses kayması **0 ms** (2,5 sn) |
+| D | R11 iPhone 12 Pro HEVC HLG −90°, 2–10 sn | ✅ 8,021 sn, 240 kare, ses **+42,67 ms**, son 1024 kare eksik | {{D_AFTER}} |
+| E–G | 3 dk 1080×1920 (tam video hızlı kesim / zorla tam kodlama / iki kesit) | ✅ (ana oturumun koşusu) 180,032 / 180,032 / 60,032 sn; ses paketleri `ceil((n+1024)/1024)` | {{EFG_AFTER}} |
+| H–M | R15 ve R14, başka aralıklar (tüm dosya, kısa, iki kesit) | çalıştırılmadı (telefon arka planda kaldı) | {{HM_AFTER}} |
+
+Masaüstü Chrome'da (aynı derleme, `phone-run.mjs --desktop=chrome`) B, C, D ve H–M hepsi ✅,
+ölçülen gecikme 0, ses kayması 0 ms (tüm dosyada +1,9–2 ms: kaynağın sesi görüntüden 2 ms
+sonra başlıyor, çıktı bunu koruyor).
 
 ## Test edilen
 
-{{TESTS}}
+- Birim: `tests/unit/audioEncoderDelay.test.ts` (22 test): işaretin bulunması, 0/64/1024/2048/2112/−64
+  karelik gecikmeler, sessizlik/gürültü/aralık dışı/kayan gecikmede ret, Android ve masaüstü
+  paket zamanlaması (telefonda ölçülen 170 paket → 167 tutulan, 3 atılan), 1–300 karelik her
+  uzunlukta toleransın içinde kalma ve düzeltmesiz hâlin 3,5 sn / 7 sn'de reddi, AAC
+  açıklaması, `audioEndFrame`. Tümü: vitest 548/548 (main birleşiminden sonra).
+- Masaüstü (main birleşiminden önce ve sonra ayrı ayrı): matris Chromium 22/22, Chrome 22/22,
+  Edge 22/22 — 66 durumun hepsinde süre ve kare sayısı önceki koşuyla aynı; gerçek kayıtlar
+  Chrome 15/15. e2e: birleşimden sonra 170 geçti, 2 atlandı; birleşimden önceki koşuda
+  154 geçti, 1 kaldı (`kesit.spec.ts:1024` telefon çubuğu odak testi, ses koduyla ilgisiz;
+  tek başına 4/4 geçti, sonraki tam koşuda da geçti — kararsız test), 2 atlandı.
+- `tsc --noEmit`, `eslint .`, `npm run build` temiz.
 
 ## Ölçülmeyenler
 
 - **Samsung Internet** (v30.0.0.67): telefonda çalışmıyordu, DevTools soketi
-  (`/proc/net/unix`'te yalnızca `chrome_devtools_remote` ve iki uygulama soketi vardı)
+  (`/proc/net/unix`'te tarayıcı olarak yalnızca Chrome'un `chrome_devtools_remote` soketi vardı)
   açık değildi. Soketi açmak Samsung Internet'in ayarlarında "USB ile web sayfası hata
   ayıklama"yı açmayı gerektirir; kurucunun telefonunda ayar değiştirilmedi. Samsung
   Internet Chromium tabanlı, aynı `AudioEncoder`'ı kullanması beklenir; ölçüm her

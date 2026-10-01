@@ -25,6 +25,16 @@ const BROWSERS = [
   { key: 'webkit', label: 'WebKit (Playwright)', short: 'WebKit' },
 ];
 
+/** Rows of the hand-written phone table (ADR-032); update after each phone run. */
+const PHONE_ROWS = [
+  '| A | add1.mp4 (1080×1920 30 fps H.264), 2–10 sn | ✅ 8,021 sn, 240 kare (kaynak sessiz) | {{A}} |',
+  '| B | R15 Samsung H.264 60 fps −90°, 0,5–4 sn | ❌ “süre uyuşmadı” | ✅ 3,520 sn, 105 kare, ses 0 ms |',
+  '| C | R14 Samsung HEVC ağır çekim −90°, 1–8 sn | ❌ “süre uyuşmadı” | ✅ 7,019 sn, 210 kare, ses 0 ms |',
+  '| D | R11 iPhone 12 Pro HEVC HLG −90°, 2–10 sn | ✅ 8,021 sn, 240 kare, **ses +42,67 ms** | {{D}} |',
+  '| E–G | 3 dk 1080×1920: hızlı kesim / tam kodlama / iki kesit | ✅ 180,032 / 180,032 / 60,032 sn | {{EFG}} |',
+  '| H–M | R15 ve R14, başka aralıklar | çalıştırılmadı | {{HM}} |',
+];
+
 /**
  * Hand-written section (see where it is pushed): results of
  * `scripts/android/phone-run.mjs` on the founder's phone. Not generated.
@@ -32,7 +42,25 @@ const BROWSERS = [
 const PHONE_SECTION = [
   '## Gerçek telefon',
   '',
-  '{{PHONE}}',
+  '> Elle yazıldı (üretilmedi): `web/scripts/android/phone-run.mjs` ile adb + CDP üzerinden, kurucunun telefonunda. ' +
+    'Tek cihaz, tek tarayıcı; ayrıntı ve kanıt [ADR-032](adr/ADR-032-android-samsung-media.md).',
+  '',
+  '| Cihaz | Android | Tarayıcı | Tarih |',
+  '|---|---|---|---|',
+  '| Samsung Galaxy S23 (SM-S911B) | 16 | Chrome 154.0.8037.57 | 2026-09-30 / 2026-10-01 |',
+  '| aynı cihaz | 16 | Samsung Internet 30.0.0.67 | **ölçülmedi** (DevTools soketi kapalı; telefonun ayarı değiştirilmedi) |',
+  '',
+  'Kaydetme penceresi betikte bir yer tutucuyla (OPFS dosyası) geçildi; uygulamanın yazma yolu gerçek. Kalite 1080p. ' +
+    '“Önce”: canlı site, düzeltmeden önceki derleme. “Sonra”: ADR-032 derlemesi (`next start` + `adb reverse`). ' +
+    'Ses kayması ffmpeg ile kaynağın aynı anına karşı ölçüldü (+ = ses geç).',
+  '',
+  '| # | Kaynak, kesit | Önce | Sonra |',
+  '|---|---|---|---|',
+  ...PHONE_ROWS,
+  '',
+  'Düzeltmeden önce telefondaki Chrome’un AAC kodlayıcısı sesin önüne 2048 hazırlık karesi koyuyordu: her çıktının sesi ' +
+    '42,7 ms geç, sonu eksikti; uzunluğu 1024 ses karesinin katını az geçen kesitler (30 fps uzunluklarının %37,5’i) ' +
+    '“süre uyuşmadı” ile reddediliyordu. Artık gecikme her tarayıcıda ölçülüp dosyada geri alınıyor (ADR-032).',
   '',
 ];
 
@@ -124,7 +152,7 @@ for (const browser of loaded) {
 lines.push('');
 lines.push(
   `Hepsi ${available[0].data.platform} üzerinde, headless olarak çalıştırıldı. ` +
-    '**Bu matris Gerçek Safari’de ve fiziksel cihazda çalıştırılmadı;** tek bir gerçek telefonda ' +
+    '**Bu matris gerçek Safari’de ve fiziksel cihazda çalıştırılmadı;** tek bir gerçek telefonda ' +
     'elle yapılan denemeler aşağıda ayrı bölümde (“Gerçek telefon”). ' +
     'Playwright’ın WebKit derlemesi Safari değildir ve Safari sonucu yerine geçmez.',
 );
