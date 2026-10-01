@@ -76,7 +76,17 @@ function wav(samples, rate, channels) {
   return Buffer.concat([header, data]);
 }
 
-/** Writes the source clip (H.264 High, keyframe every second, AAC 192 kbit/s). */
+/** Frame-number barcode: bit k is a white 64×48 block at x = 64·k on the top edge. */
+const BARCODE_BITS = 12;
+const BLOCK_W = 64;
+const BLOCK_H = 48;
+/** The flash fills the picture below this line, clear of the barcode. */
+const FLASH_TOP = 192;
+
+/**
+ * Writes the source clip (H.264 High, keyframe every second, AAC 192 kbit/s):
+ * black, the frame's own number as a barcode, a white flash at each event.
+ */
 export function writeSyncClip(path) {
   const pcm = new Float32Array(SYNC_SECONDS * SYNC_RATE);
   const burst = chirp(SYNC_RATE);
@@ -88,6 +98,11 @@ export function writeSyncClip(path) {
   const enable = syncEventFrames()
     .map((frame) => `eq(n\\,${frame})`)
     .join('+');
+  const bits = Array.from(
+    { length: BARCODE_BITS },
+    (_, k) => `drawbox=x=${k * BLOCK_W}:y=0:w=${BLOCK_W}:h=${BLOCK_H}:color=white:t=fill:enable='mod(floor(n/${2 ** k})\\,2)'`,
+  );
+  const filter = [...bits, `drawbox=x=0:y=${FLASH_TOP}:w=iw:h=ih-${FLASH_TOP}:color=white:t=fill:enable='${enable}'`].join(',');
   mkdirSync(dirname(path), { recursive: true });
   const result = spawnSync(
     'ffmpeg',
@@ -95,7 +110,7 @@ export function writeSyncClip(path) {
       '-v', 'error', '-y',
       '-f', 'lavfi', '-i', `color=c=black:s=1080x1920:r=${SYNC_FPS}:d=${SYNC_SECONDS}`,
       '-i', audio,
-      '-vf', `drawbox=x=0:y=0:w=iw:h=ih:color=white:t=fill:enable='${enable}'`,
+      '-vf', filter,
       '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-g', String(SYNC_FPS), '-keyint_min', String(SYNC_FPS),
       '-sc_threshold', '0', '-crf', '23',
       '-c:a', 'aac', '-b:a', '192k',
@@ -109,26 +124,63 @@ export function writeSyncClip(path) {
   return path;
 }
 
-/** Mean luma of every frame (16×16 grey), in decode order with pts. */
-function frameLumas(file) {
+/**
+ * Every frame of an export of the sync clip, in order: its time, the flash
+ * area's mean luma and the source frame number its barcode shows. The
+ * picture is brought back to 1080×1920 first.
+ */
+export function frameReadings(file) {
   const probe = spawnSync(
     'ffprobe',
     ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'frame=pts_time', '-of', 'csv=p=0', file],
     { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
   );
   const times = probe.stdout.trim().split(/\r?\n/).map(Number);
+  const stripW = BARCODE_BITS * BLOCK_W;
+  const filter =
+    `[0:v:0]scale=1080:1920,format=gray,split[a][b];[a]crop=${stripW}:${BLOCK_H}:0:0[code];` +
+    `[b]crop=iw:ih-${FLASH_TOP}:0:${FLASH_TOP},scale=${stripW}:16[flash];[code][flash]vstack`;
   const raw = spawnSync(
     'ffmpeg',
-    ['-v', 'error', '-i', file, '-map', '0:v:0', '-fps_mode', 'passthrough', '-vf', 'scale=16:16,format=gray', '-f', 'rawvideo', '-'],
-    { maxBuffer: 256 * 1024 * 1024 },
+    ['-v', 'error', '-i', file, '-fps_mode', 'passthrough', '-filter_complex', filter, '-f', 'rawvideo', '-pix_fmt', 'gray', '-'],
+    { maxBuffer: 1024 * 1024 * 1024 },
   ).stdout;
-  const lumas = [];
-  for (let i = 0; i * 256 < raw.length; i += 1) {
-    let sum = 0;
-    for (let j = 0; j < 256; j += 1) sum += raw[i * 256 + j];
-    lumas.push({ timeS: times[i], luma: sum / 256 });
+  const size = stripW * (BLOCK_H + 16);
+  const frames = [];
+  for (let i = 0; (i + 1) * size <= raw.length; i += 1) {
+    const at = i * size;
+    let number = 0;
+    for (let bit = 0; bit < BARCODE_BITS; bit += 1) {
+      let sum = 0;
+      for (let dy = -4; dy <= 4; dy += 1) {
+        for (let dx = -8; dx <= 8; dx += 1) sum += raw[at + (BLOCK_H / 2 + dy) * stripW + bit * BLOCK_W + BLOCK_W / 2 + dx];
+      }
+      if (sum / (9 * 17) > 128) number += 2 ** bit;
+    }
+    let flash = 0;
+    for (let j = stripW * BLOCK_H; j < size; j += 1) flash += raw[at + j];
+    frames.push({ timeS: times[i], luma: flash / (stripW * 16), number });
   }
-  return lumas;
+  return frames;
+}
+
+/**
+ * Whether the export shows the source frames it should, in order: the
+ * kesitler's frames back to back (the whole clip when none). Lists the
+ * first output frames that show another source frame.
+ */
+export function frameIdentity(file, kesits) {
+  const ranges = kesits.length > 0 ? kesits : [[0, SYNC_SECONDS]];
+  const expected = ranges.flatMap(([a, b]) => {
+    const first = Math.round(a * SYNC_FPS);
+    return Array.from({ length: Math.round(b * SYNC_FPS) - first }, (_, i) => first + i);
+  });
+  const shown = frameReadings(file).map((frame) => frame.number);
+  const wrong = [];
+  shown.forEach((number, i) => {
+    if (number !== expected[i]) wrong.push({ outputFrame: i, shows: number, expected: expected[i] ?? null });
+  });
+  return { frames: shown.length, expectedFrames: expected.length, wrong: wrong.length, firstWrong: wrong.slice(0, 8) };
 }
 
 /** The audio stream's start (s) after its edit list: where its first decoded sample plays. */
@@ -148,7 +200,7 @@ function audioStartS(file) {
  * audio can start 2 ms in) is placed at its start time, as `-ss` does.
  */
 export function pcm48(file, startS = 0, seconds = null) {
-  const fromStart = startS < 1;
+  const fromStart = startS < SEEK_SAFE_S;
   const seek = fromStart ? [] : ['-ss', String(startS)];
   const length = seconds === null ? [] : ['-t', String(seconds + (fromStart ? startS : 0))];
   const out =
@@ -156,15 +208,28 @@ export function pcm48(file, startS = 0, seconds = null) {
       maxBuffer: 1024 * 1024 * 1024,
     }).stdout ?? Buffer.alloc(0);
   const decoded = new Float32Array(out.buffer, out.byteOffset, Math.floor(out.length / 4));
-  if (!fromStart) return decoded;
-  // Index 0 = file time 0, then cut at startS.
-  const lead = Math.round(audioStartS(file) * SYNC_RATE) - Math.round(startS * SYNC_RATE);
+  return fromStart ? onFileTimeline(decoded, audioStartS(file), startS, seconds) : decoded;
+}
+
+/**
+ * Below this start a read decodes from the beginning instead of seeking:
+ * far past any AAC priming (Apple's 2112 frames are 48 ms at 44.1 kHz).
+ */
+export const SEEK_SAFE_S = 1;
+
+/**
+ * Pure part of `pcm48`: `decoded` (all of a stream that plays from
+ * `streamStartS`) put on the file's timeline, then cut to [startS, startS +
+ * seconds). Silence before the stream's first sample.
+ */
+export function onFileTimeline(decoded, streamStartS, startS, seconds = null, rate = SYNC_RATE) {
+  const lead = Math.round(streamStartS * rate) - Math.round(startS * rate);
+  let placed;
   if (lead >= 0) {
-    const padded = new Float32Array(lead + decoded.length);
-    padded.set(decoded, lead);
-    return seconds === null ? padded : padded.subarray(0, Math.round(seconds * SYNC_RATE));
-  }
-  return decoded.subarray(-lead);
+    placed = new Float32Array(lead + decoded.length);
+    placed.set(decoded, lead);
+  } else placed = decoded.subarray(Math.min(decoded.length, -lead));
+  return seconds === null ? placed : placed.subarray(0, Math.round(seconds * rate));
 }
 
 /** Mono PCM at 48 kHz, decoded from the start like a player (no input seek). */
@@ -253,9 +318,16 @@ export function onsets(pcm, rate = SYNC_RATE) {
  * offsets in ms (sound minus picture; + = sound late) and their summary.
  */
 export function avSync(file) {
-  const lumas = frameLumas(file);
+  const lumas = frameReadings(file);
   const flashes = lumas.filter((frame, i) => frame.luma > 128 && !(lumas[i - 1]?.luma > 128)).map((frame) => frame.timeS);
-  const heard = onsets(decodeFromStart(file));
+  return pairFlashes(flashes, onsets(decodeFromStart(file)));
+}
+
+/**
+ * Each flash (s) against the nearest onset (s) within 150 ms: sound minus
+ * picture in ms (+ = sound late), summarised.
+ */
+export function pairFlashes(flashes, heard) {
   const offsets = [];
   for (const at of flashes) {
     let nearest = null;
@@ -272,6 +344,53 @@ export function avSync(file) {
     minMs: round(sorted[0]),
     maxMs: round(sorted[sorted.length - 1]),
   };
+}
+
+/**
+ * The sound track's first edit-list entry in an MP4 (moov/trak/edts/elst):
+ * byte offset of its media_time field, its width, and its value. null when
+ * the sound track has no edit list.
+ */
+export function soundEditList(bytes) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const type = (at) => String.fromCharCode(bytes[at + 4], bytes[at + 5], bytes[at + 6], bytes[at + 7]);
+  let found = null;
+  const walk = (start, end, track) => {
+    for (let p = start; p + 8 <= end && found === null; ) {
+      const size = view.getUint32(p);
+      if (size < 8 || p + size > end) return;
+      const box = type(p);
+      if (box === 'moov' || box === 'mdia' || box === 'edts') walk(p + 8, p + size, track);
+      else if (box === 'trak') {
+        const sound = { isSound: false, elst: null };
+        walk(p + 8, p + size, sound);
+        if (sound.isSound && sound.elst) found = sound.elst;
+      } else if (box === 'hdlr' && track) track.isSound = type(p + 12) === 'soun';
+      else if (box === 'elst' && track && view.getUint32(p + 12) > 0) {
+        const wide = bytes[p + 8] === 1;
+        const at = p + 16 + (wide ? 8 : 4);
+        track.elst = { at, bytes: wide ? 8 : 4, mediaTime: wide ? Number(view.getBigInt64(at)) : view.getInt32(at) };
+      }
+      p += size;
+    }
+  };
+  walk(0, bytes.length, null);
+  return found;
+}
+
+/**
+ * A copy of `bytes` whose sound edit list starts at `mediaTime` instead:
+ * with 0, the file a player that ignores edit lists would play (the encoder
+ * priming heard first, the sound late by its length).
+ */
+export function withSoundMediaTime(bytes, mediaTime) {
+  const edit = soundEditList(bytes);
+  if (!edit) return null;
+  const copy = new Uint8Array(bytes);
+  const view = new DataView(copy.buffer);
+  if (edit.bytes === 8) view.setBigInt64(edit.at, BigInt(mediaTime));
+  else view.setInt32(edit.at, mediaTime);
+  return copy;
 }
 
 if (process.argv[1]?.replace(/\\/g, '/').endsWith('scripts/lib/av-sync.mjs')) {

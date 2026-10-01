@@ -32,7 +32,7 @@ import { basename, join, resolve } from 'node:path';
 import { chromium } from '@playwright/test';
 
 import { installSavePicker, lastPickedName, readPickedFile, setQuality } from '../lib/kesit-flow.mjs';
-import { audioLayout, audioSync, avSync, writeSyncClip } from '../lib/av-sync.mjs';
+import { audioLayout, audioSync, avSync, frameIdentity, writeSyncClip } from '../lib/av-sync.mjs';
 
 const SYNC_CLIP = 'sync-clicks-1080x1920.mp4';
 
@@ -347,7 +347,10 @@ async function runCase(testCase) {
         row.audioLayout = audioLayout(local);
         row.audioSync = audioSync(testCase.file, testCase.kesits[0]?.[0] ?? 0, local);
       }
-      if (testCase.sync) row.avSync = avSync(local);
+      if (testCase.sync) {
+        row.avSync = avSync(local);
+        row.frameIdentity = frameIdentity(local, testCase.kesits);
+      }
     } else {
       row.message = ((await page.locator('[data-testid="export-failed"], [data-testid="export-blocked"]').first().textContent().catch(() => '')) ?? '')
         .replace(/\s+/g, ' ')
