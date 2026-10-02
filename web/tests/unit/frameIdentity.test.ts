@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { compareFrameIdentity, expectedSourceFrames } from '../../scripts/lib/av-sync.mjs';
-import { distance, kesitFrameCounts, matchFrames, normalise } from '../../scripts/lib/frame-identity.mjs';
+import {
+  contrast,
+  distance,
+  expectedFromSource,
+  matchFrames,
+  normalise,
+  type ExpectedFrame,
+  type SourceFrame,
+} from '../../scripts/lib/frame-identity.mjs';
 
 /** ADR-033: which source frame each output frame shows (the pure parts of the tooling). */
 
@@ -69,69 +77,137 @@ describe('compareFrameIdentity', () => {
   });
 });
 
-/** A synthetic "video": frame k is a bright bar at row k (distinct frames), or one still picture. */
-function movingFrames(count: number, { still = false } = {}): Float32Array[] {
+
+/** A synthetic source: frame k is a bright bar at row k (distinct frames), or one still picture. */
+function sourceFrames(count: number, fps: number, { still = false, flat = false } = {}): SourceFrame[] {
   return Array.from({ length: count }, (_, k) => {
     const pixels = new Uint8Array(36 * 64);
-    const row = still ? 10 : k % 64;
-    for (let x = 0; x < 36; x += 1) pixels[row * 36 + x] = 255;
-    // A little fixed texture so normalisation has something to work with.
-    for (let i = 0; i < pixels.length; i += 7) pixels[i] = Math.max(pixels[i] ?? 0, 40);
-    return normalise(pixels);
+    if (flat) {
+      // A dark shot: one gray level with a little sensor noise.
+      for (let i = 0; i < pixels.length; i += 1) pixels[i] = 12 + ((i * 7 + k) % 3);
+    } else {
+      const row = still ? 10 : k % 64;
+      for (let x = 0; x < 36; x += 1) pixels[row * 36 + x] = 255;
+      // A little fixed texture so normalisation has something to work with.
+      for (let i = 0; i < pixels.length; i += 7) pixels[i] = Math.max(pixels[i] ?? 0, 40);
+    }
+    return { time: k / fps, frame: normalise(pixels), contrast: contrast(pixels) };
   });
 }
 
-/** The output: the reference plus a little encode noise. */
-function noisy(frames: Float32Array[], seed = 1): Float32Array[] {
+/** Encode noise on top of a picture. */
+function noisy(frame: Float32Array, seed: number): Float32Array {
   let state = seed;
-  const random = () => {
+  return frame.map((v) => {
     state = (state * 1103515245 + 12345) % 2 ** 31;
-    return state / 2 ** 31 - 0.5;
-  };
-  return frames.map((frame) => frame.map((v) => v + random() * 0.05));
+    return v + (state / 2 ** 31 - 0.5) * 0.05;
+  });
 }
 
-describe('matchFrames (reference identity)', () => {
+/** A faithful export: each output frame shows its expected source frame. */
+function faithful(source: SourceFrame[], expected: ExpectedFrame[]): Float32Array[] {
+  return expected.map((e, i) => noisy((source[e.index] as SourceFrame).frame, i + 1));
+}
+
+describe('expectedFromSource', () => {
+  it('maps the 30 fps output grid onto the source frames, kesit by kesit', () => {
+    const times = sourceFrames(360, 30).map((s) => s.time);
+    const expected = expectedFromSource(times, [[1.2, 6.5]]);
+    expect(expected.length).toBe(159);
+    expect(expected[0]?.index).toBe(36);
+    expect(expected.at(-1)?.index).toBe(194);
+    expect(expectedFromSource(times, [[0.2, 1.5], [2, 4.3]]).map((e) => e.count)).toEqual([
+      ...Array(39).fill(39),
+      ...Array(69).fill(69),
+    ]);
+  });
+
+  it('keeps the frame on screen when the next one starts just after the instant (VFR, R06)', () => {
+    // A source frame starting 1.3 ms after an output instant is not shown yet; within 1 ms it is.
+    const times = [0, 0.0347, 0.0675];
+    const [first, second, third] = expectedFromSource(times, [[0, 0.1]]);
+    expect(first?.index).toBe(0);
+    expect(second?.index).toBe(0); // t = 33.3 ms, the next frame starts 1.4 ms later
+    expect(third?.index).toBe(2); // t = 66.7 ms, the frame at 67.5 ms is within the 1 ms slack
+  });
+});
+
+describe('matchFrames (against the source frames)', () => {
   it('finds no wrong frame in a faithful export', () => {
-    const ref = movingFrames(60);
-    const result = matchFrames(noisy(ref), ref, [60]);
+    const source = sourceFrames(120, 30);
+    const expected = expectedFromSource(source.map((s) => s.time), [[0.5, 3.5]]);
+    const result = matchFrames(faithful(source, expected), source, expected);
     expect(result.wrong).toBe(0);
     expect(result.undecidable).toBe(0);
   });
 
   it('finds a frozen kesit end and says how far back it looks', () => {
-    const ref = movingFrames(90);
-    const out = noisy(ref);
-    // Frames 83..89 show frame 82 (the phone's stale end).
-    for (let i = 83; i < 90; i += 1) out[i] = noisy([ref[82] as Float32Array], i)[0] as Float32Array;
-    const result = matchFrames(out, ref, [90]);
+    const source = sourceFrames(120, 30);
+    const expected = expectedFromSource(source.map((s) => s.time), [[0, 3]]);
+    const out = faithful(source, expected);
+    // Output frames 83..89 show source frame 82 (the phone's stale end).
+    for (let i = 83; i < 90; i += 1) out[i] = noisy((source[82] as SourceFrame).frame, 100 + i);
+    const result = matchFrames(out, source, expected);
     expect(result.wrong).toBe(7);
     expect(result.byKesit[0]).toMatchObject({ wrongAtStart: 0, wrongInMiddle: 0, wrongAtEnd: 7 });
-    expect(result.firstWrong.map((w) => w.looksLike)).toEqual([-1, -2, -3, -4, -5, -6, -7]);
+    expect(result.firstWrong.map((w) => w.sourceOffset)).toEqual([-1, -2, -3, -4, -5, -6, -7]);
+    expect(result.firstWrong[0]?.looksLikeMs).toBe(-33);
+  });
+
+  it('reads a 60 fps source on the 30 fps grid (every second frame) without false alarms', () => {
+    const source = sourceFrames(240, 60);
+    const expected = expectedFromSource(source.map((s) => s.time), [[0.5, 3.5]]);
+    expect(expected[1]?.index).toBe(32);
+    const result = matchFrames(faithful(source, expected), source, expected);
+    expect(result.wrong).toBe(0);
   });
 
   it('calls a still scene undecidable instead of right', () => {
-    const ref = movingFrames(30, { still: true });
-    const result = matchFrames(noisy(ref), ref, [30]);
+    const source = sourceFrames(60, 30, { still: true });
+    const expected = expectedFromSource(source.map((s) => s.time), [[0, 1]]);
+    const result = matchFrames(faithful(source, expected), source, expected);
+    expect(result.wrong).toBe(0);
+    expect(result.undecidable).toBe(30);
+  });
+
+  it('calls a flat (dark) shot undecidable, even when its noise looks like another frame (R07)', () => {
+    const source = sourceFrames(60, 30, { flat: true });
+    const expected = expectedFromSource(source.map((s) => s.time), [[0, 1]]);
+    // The export shows frame k+1's noise pattern: on a flat shot that proves nothing.
+    const out = expected.map((e, i) => noisy((source[e.index + 1] as SourceFrame).frame, i + 1));
+    const result = matchFrames(out, source, expected);
     expect(result.wrong).toBe(0);
     expect(result.undecidable).toBe(30);
   });
 
   it('locates wrong frames per kesit', () => {
-    const ref = movingFrames(60);
-    const out = noisy(ref);
-    out[29] = noisy([ref[27] as Float32Array], 3)[0] as Float32Array;
-    out[30] = noisy([ref[29] as Float32Array], 4)[0] as Float32Array;
-    const result = matchFrames(out, ref, [30, 30]);
+    const source = sourceFrames(120, 30);
+    const expected = expectedFromSource(source.map((s) => s.time), [[0, 1], [2, 3]]);
+    const out = faithful(source, expected);
+    out[29] = noisy((source[27] as SourceFrame).frame, 7); // first kesit's last frame
+    out[30] = noisy((source[62] as SourceFrame).frame, 8); // second kesit's first frame shows a later one
+    const result = matchFrames(out, source, expected);
     expect(result.byKesit.map((k) => [k.wrongAtStart, k.wrongInMiddle, k.wrongAtEnd])).toEqual([
       [0, 0, 1],
       [1, 0, 0],
     ]);
   });
 
-  it('counts output frames the reference does not have as unmatched', () => {
-    const ref = movingFrames(20);
-    const result = matchFrames(noisy(movingFrames(22)), ref, [22]);
+  it('counts a frame that looks like nothing near its instant as unmatched, not right', () => {
+    const source = sourceFrames(120, 30);
+    const expected = expectedFromSource(source.map((s) => s.time), [[0, 1], [2, 3]]);
+    const out = faithful(source, expected);
+    // The second kesit's first frame shows the first kesit's end, 1 s away.
+    out[30] = noisy((source[29] as SourceFrame).frame, 9);
+    const result = matchFrames(out, source, expected);
+    expect(result.unmatched).toBe(1);
+    expect(result.byKesit[1]?.unmatched).toBe(1);
+  });
+
+  it('counts output frames that are not there as unmatched', () => {
+    const source = sourceFrames(60, 30);
+    const expected = expectedFromSource(source.map((s) => s.time), [[0, 1]]);
+    const result = matchFrames(faithful(source, expected).slice(0, 28), source, expected);
     expect(result.byKesit[0]?.unmatched).toBe(2);
   });
 
@@ -139,11 +215,5 @@ describe('matchFrames (reference identity)', () => {
     const a = new Uint8Array([10, 20, 30, 40, 50, 60, 70, 80]);
     const b = a.map((v) => v * 2 + 30);
     expect(distance(normalise(a), normalise(b))).toBeLessThan(1e-6);
-  });
-
-  it('counts kesit frames the way the render plan rounds them', () => {
-    expect(kesitFrameCounts([[1.2, 6.5]])).toEqual([159]);
-    expect(kesitFrameCounts([[0.2, 1.5], [2, 4.3]])).toEqual([39, 69]);
-    expect(kesitFrameCounts([[0, 3], [8, 11.5]])).toEqual([90, 105]);
   });
 });

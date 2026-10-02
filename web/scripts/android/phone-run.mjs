@@ -4,7 +4,7 @@
  *
  *   adb forward tcp:9222 localabstract:chrome_devtools_remote
  *   node scripts/android/phone-run.mjs [--url=https://erenulutas0.github.io/capcut/editor/] [--only=A,B]
- *     [--media=<dir holding real/ and android/>] [--profile]
+ *     [--media=<dir holding real/ and android/>] [--profile] [--label=<folder suffix>]
  *
  * A local build instead of the live site (e.g. to try a fix on the phone):
  *   npm run build && npx next start -p 3100
@@ -29,10 +29,10 @@
  * Frames (ADR-033): every saved file records `frameIdentity`, which source
  * frame each output frame shows, located per kesit (start / middle / end):
  * from the burned-in barcode for the sync clips (N–R; R is a 24 fps twin),
- * against an ffmpeg reference of the same edit for the recordings
- * (`scripts/lib/frame-identity.mjs`; still scenes are "undecidable"). Frame
- * counts alone missed the phone's stale kesit ends. The last line printed
- * lists the cases with wrong frames.
+ * against the source's own frames for the recordings
+ * (`scripts/lib/frame-identity.mjs`; still or flat scenes are
+ * "undecidable"). Frame counts alone missed the phone's stale kesit ends.
+ * The last line printed gives every case's wrong / expected frames.
  * What the browser's own player does: `player-sync.mjs`.
  *
  * The phone's own browser is only driven in one new tab: the script never
@@ -70,7 +70,9 @@ const real = join(media, 'real');
 const android = join(media, 'android');
 const profile = process.argv.includes('--profile');
 const desktop = arg('desktop', '');
-const outDir = join(web, 'matrix-results', desktop ? `android-compare-${desktop}` : 'android');
+// `--label=live`: a separate folder, so a second run (e.g. a local build) does not overwrite the files.
+const label = arg('label', '');
+const outDir = join(web, 'matrix-results', `${desktop ? `android-compare-${desktop}` : 'android'}${label ? `-${label}` : ''}`);
 mkdirSync(outDir, { recursive: true });
 // Generated, not a recording: made here the first time it is needed.
 if (!existsSync(join(android, SYNC_CLIP))) writeSyncClip(join(android, SYNC_CLIP));
@@ -410,7 +412,7 @@ writeFileSync(join(outDir, `phone-run-${Date.now()}.json`), JSON.stringify({ url
 // ADR-033: the frame check in one line — a case is only clean when it was saved and every frame was right.
 const identity = results.map((row) =>
   row.frameIdentity
-    ? `${row.id}:${row.frameIdentity.wrong}/${row.frameIdentity.expectedFrames}`
+    ? `${row.id}:${row.frameIdentity.wrong}${row.frameIdentity.unmatched ? `+${row.frameIdentity.unmatched} unmatched` : ''}/${row.frameIdentity.expectedFrames}`
     : `${row.id}:${row.frameIdentityError ? 'not measured' : row.outcome}`,
 );
 console.log(`frame identity (wrong/expected): ${identity.join(' ')}`);

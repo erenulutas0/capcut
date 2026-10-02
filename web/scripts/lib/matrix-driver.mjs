@@ -873,19 +873,20 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
         });
         measured.frameIdentity = {
           wrong: identity.wrong,
+          unmatched: identity.unmatched,
           undecidable: identity.undecidable,
           frames: identity.frames,
           byKesit: identity.byKesit,
           firstWrong: identity.firstWrong,
         };
         add(
-          'her çıktı karesi referansın aynı karesini gösteriyor (kesit başı, ortası, sonu)',
-          identity.wrong === 0,
+          'her çıktı karesi kaynağın doğru karesini gösteriyor (kesit başı, ortası, sonu)',
+          identity.wrong === 0 && identity.unmatched === 0,
           `yanlış ${identity.wrong}/${identity.expectedFrames}` +
             (identity.wrong > 0
               ? ` (baş/orta/son: ${identity.byKesit.map((k) => `${k.wrongAtStart}/${k.wrongInMiddle}/${k.wrongAtEnd}`).join(', ')})`
               : '') +
-            `, karar verilemeyen (durağan) ${identity.undecidable}`,
+            `, eşleşmeyen ${identity.unmatched}, karar verilemeyen (durağan/düz) ${identity.undecidable}`,
         );
       } catch (error) {
         add('referans karşılaştırması', false, String(error).slice(0, 160));
