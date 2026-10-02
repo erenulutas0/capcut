@@ -49,6 +49,7 @@ import {
 import { sourceTimeForFrame, type RenderPlan, type RenderSegment } from '@/domain/renderPlan';
 import { US_PER_SECOND } from '@/domain/time';
 import { isIdrPacket, parseAvcC, readSps, withParameterSets, type AvcConfigRecord } from './avcBitstream';
+import { holdDecoder, type DecoderHold } from './decoderHold';
 
 /** A fast cut that cannot (or may not) run; the caller encodes instead. */
 export class FastCutFallback extends Error {
@@ -515,7 +516,6 @@ export async function prepareFastCut(options: {
     ...(colorSpace ? { colorSpace } : {}),
   };
   const videoSource = new EncodedVideoPacketSource('avc');
-  const sampleSink = new VideoSampleSink(track);
   const seams: Seam[] = [];
   let firstPacket = true;
   let framesDone = 0;
@@ -545,34 +545,52 @@ export async function prepareFastCut(options: {
     const wanted = new Set(ticks);
     const byUs = new Map<number, number>();
     let fed = 0;
-    for await (const sample of sampleSink.samples(firstTick / srcRes, (lastTick + 0.5) / srcRes)) {
-      try {
-        checkCanceled();
-        const tick = Math.round(sample.timestamp * srcRes);
-        if (!wanted.has(tick)) continue;
-        const i = s.index.get(tick);
-        if (i === undefined) continue;
-        const outTicks = s.outTicks[i] ?? 0;
-        const timestampUs = Math.round(outS(outTicks) * US_PER_SECOND);
-        byUs.set(timestampUs, i);
-        const decoded = sample.toVideoFrame();
-        const frame = new VideoFrame(decoded, {
-          timestamp: timestampUs,
-          duration: Math.max(1, Math.round(durationOf(s, i) * US_PER_SECOND)),
-        });
-        decoded.close();
-        try {
-          await encoder.add(frame, fed === 0);
-        } finally {
-          frame.close();
-        }
-        fed += 1;
-      } finally {
-        sample.close();
-      }
+    // ADR-033: the decoder stays open until the encoder has read every frame
+    // of the run; Android's hardware decoder takes undrawn pictures with it.
+    const sampleSink = new VideoSampleSink(track);
+    let hold: DecoderHold;
+    try {
+      hold = holdDecoder(sampleSink);
+    } catch {
+      throw new FastCutFallback('error');
     }
-    if (fed !== ticks.length) throw new FastCutFallback('timing');
-    const { packets, params } = await encoder.finishRun();
+    let run: Awaited<ReturnType<SeamEncoder['finishRun']>>;
+    try {
+      for await (const sample of sampleSink.samples(firstTick / srcRes, (lastTick + 0.5) / srcRes)) {
+        try {
+          checkCanceled();
+          const tick = Math.round(sample.timestamp * srcRes);
+          if (!wanted.has(tick)) continue;
+          const i = s.index.get(tick);
+          if (i === undefined) continue;
+          const outTicks = s.outTicks[i] ?? 0;
+          const timestampUs = Math.round(outS(outTicks) * US_PER_SECOND);
+          byUs.set(timestampUs, i);
+          // A frame whose decoder already closed would carry a stale picture.
+          if (hold.decoderClosed()) throw new FastCutFallback('error');
+          const decoded = sample.toVideoFrame();
+          const frame = new VideoFrame(decoded, {
+            timestamp: timestampUs,
+            duration: Math.max(1, Math.round(durationOf(s, i) * US_PER_SECOND)),
+          });
+          decoded.close();
+          try {
+            await encoder.add(frame, fed === 0);
+          } finally {
+            frame.close();
+          }
+          fed += 1;
+        } finally {
+          sample.close();
+        }
+      }
+      if (fed !== ticks.length) throw new FastCutFallback('timing');
+      run = await encoder.finishRun();
+      if (hold.decoderClosed()) throw new FastCutFallback('error');
+    } finally {
+      hold.release();
+    }
+    const { packets, params } = run;
     if (packets.length !== ticks.length) throw new FastCutFallback('encoder');
     const encodedSps = params.sps[0] ? readSps(params.sps[0]) : null;
     if (

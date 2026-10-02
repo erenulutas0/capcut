@@ -17,8 +17,9 @@
  * of an export with the nearest sound onset: in sync, the offset is a
  * fraction of a millisecond; sound late is positive.
  *
- *   node scripts/lib/av-sync.mjs <out.mp4>              # writes the sync clip
+ *   node scripts/lib/av-sync.mjs <out.mp4> [fps]        # writes the sync clip (30 fps; 24 for the twin)
  *   node scripts/lib/av-sync.mjs --measure <export.mp4> # avSync + audioLayout
+ *   node scripts/lib/av-sync.mjs --identity <export.mp4> '[[1.2,6.5]]' [source fps]  # frameIdentity
  */
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -31,10 +32,10 @@ export const SYNC_SECONDS = 12;
 
 const GAPS = [7, 11, 8, 13, 9, 6, 12, 10];
 
-/** Event frame indices (at 30 fps) of the source clip. */
-export function syncEventFrames() {
+/** Event frame indices of the source clip (at `fps`, 30 unless a 24 fps twin is made). */
+export function syncEventFrames(fps = SYNC_FPS) {
   const frames = [];
-  for (let frame = 9, i = 0; frame < SYNC_SECONDS * SYNC_FPS - 6; frame += GAPS[i % GAPS.length], i += 1) frames.push(frame);
+  for (let frame = 9, i = 0; frame < SYNC_SECONDS * fps - 6; frame += GAPS[i % GAPS.length], i += 1) frames.push(frame);
   return frames;
 }
 
@@ -86,16 +87,18 @@ const FLASH_TOP = 192;
 /**
  * Writes the source clip (H.264 High, keyframe every second, AAC 192 kbit/s):
  * black, the frame's own number as a barcode, a white flash at each event.
+ * `fps` 24 makes a twin whose frames last longer than the export's 30 fps
+ * grid, so some source frames are drawn twice (ADR-033).
  */
-export function writeSyncClip(path) {
+export function writeSyncClip(path, { fps = SYNC_FPS } = {}) {
   const pcm = new Float32Array(SYNC_SECONDS * SYNC_RATE);
   const burst = chirp(SYNC_RATE);
-  for (const frame of syncEventFrames()) pcm.set(burst, Math.round((frame * SYNC_RATE) / SYNC_FPS));
+  for (const frame of syncEventFrames(fps)) pcm.set(burst, Math.round((frame * SYNC_RATE) / fps));
   const dir = join(tmpdir(), `sync-clicks-${process.pid}`);
   mkdirSync(dir, { recursive: true });
   const audio = join(dir, 'clicks.wav');
   writeFileSync(audio, wav(pcm, SYNC_RATE, 2));
-  const enable = syncEventFrames()
+  const enable = syncEventFrames(fps)
     .map((frame) => `eq(n\\,${frame})`)
     .join('+');
   const bits = Array.from(
@@ -108,10 +111,10 @@ export function writeSyncClip(path) {
     'ffmpeg',
     [
       '-v', 'error', '-y',
-      '-f', 'lavfi', '-i', `color=c=black:s=1080x1920:r=${SYNC_FPS}:d=${SYNC_SECONDS}`,
+      '-f', 'lavfi', '-i', `color=c=black:s=1080x1920:r=${fps}:d=${SYNC_SECONDS}`,
       '-i', audio,
       '-vf', filter,
-      '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-g', String(SYNC_FPS), '-keyint_min', String(SYNC_FPS),
+      '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-g', String(fps), '-keyint_min', String(fps),
       '-sc_threshold', '0', '-crf', '23',
       '-c:a', 'aac', '-b:a', '192k',
       '-movflags', '+faststart', '-shortest',
@@ -164,23 +167,77 @@ export function frameReadings(file) {
   return frames;
 }
 
+/** Output frames counted as a kesit's start or end when wrong frames are located. */
+export const EDGE_FRAMES = 15;
+
 /**
- * Whether the export shows the source frames it should, in order: the
- * kesitler's frames back to back (the whole clip when none). Lists the
- * first output frames that show another source frame.
+ * The source frame every output frame should show, kesit by kesit, on the
+ * export's 30 fps grid: the kesitler back to back (the whole clip when
+ * none), each output frame showing the newest source frame that started by
+ * its instant (the export's frame picker, ADR-014; 1 ms float slack). For a
+ * 30 fps source that is simply the kesit's frames in order.
  */
-export function frameIdentity(file, kesits) {
-  const ranges = kesits.length > 0 ? kesits : [[0, SYNC_SECONDS]];
-  const expected = ranges.flatMap(([a, b]) => {
-    const first = Math.round(a * SYNC_FPS);
-    return Array.from({ length: Math.round(b * SYNC_FPS) - first }, (_, i) => first + i);
-  });
-  const shown = frameReadings(file).map((frame) => frame.number);
+export function expectedSourceFrames(kesits, { sourceFps = SYNC_FPS, outputFps = SYNC_FPS, seconds = SYNC_SECONDS } = {}) {
+  const ranges = kesits.length > 0 ? kesits : [[0, seconds]];
+  const last = Math.round(seconds * sourceFps) - 1;
+  const out = [];
+  let cursorUs = 0;
+  for (const [index, [a, b]] of ranges.entries()) {
+    const durationUs = Math.round((b - a) * 1e6);
+    const startFrame = Math.round((cursorUs * outputFps) / 1e6);
+    const endFrame = Math.round(((cursorUs + durationUs) * outputFps) / 1e6);
+    const frames = [];
+    for (let f = startFrame; f < endFrame; f += 1) {
+      const t = a + Math.round(((f - startFrame) * 1e6) / outputFps) / 1e6;
+      frames.push(Math.min(last, Math.floor((t + 0.001) * sourceFps + 1e-9)));
+    }
+    out.push({ kesit: index, frames });
+    cursorUs += durationUs;
+  }
+  return out;
+}
+
+/**
+ * Pure part of `frameIdentity`: the barcode numbers read from an export
+ * (`shown`) against `expectedSourceFrames`. Every wrong output frame is
+ * located in its kesit — the first or last EDGE_FRAMES, or the middle —
+ * so a stale end (ADR-033) is told apart from a wrong start or middle.
+ */
+export function compareFrameIdentity(shown, expectedByKesit) {
   const wrong = [];
-  shown.forEach((number, i) => {
-    if (number !== expected[i]) wrong.push({ outputFrame: i, shows: number, expected: expected[i] ?? null });
-  });
-  return { frames: shown.length, expectedFrames: expected.length, wrong: wrong.length, firstWrong: wrong.slice(0, 8) };
+  const byKesit = [];
+  let offset = 0;
+  for (const { kesit, frames } of expectedByKesit) {
+    const row = { kesit, frames: frames.length, wrong: 0, wrongAtStart: 0, wrongInMiddle: 0, wrongAtEnd: 0 };
+    frames.forEach((expected, i) => {
+      const number = shown[offset + i];
+      if (number === expected) return;
+      row.wrong += 1;
+      if (i >= frames.length - EDGE_FRAMES) row.wrongAtEnd += 1;
+      else if (i < EDGE_FRAMES) row.wrongAtStart += 1;
+      else row.wrongInMiddle += 1;
+      wrong.push({ outputFrame: offset + i, kesit, shows: number ?? null, expected });
+    });
+    byKesit.push(row);
+    offset += frames.length;
+  }
+  return {
+    frames: shown.length,
+    expectedFrames: offset,
+    wrong: wrong.length,
+    byKesit,
+    firstWrong: wrong.slice(0, 8),
+    lastWrong: wrong.length > 8 ? wrong.slice(-4) : [],
+  };
+}
+
+/**
+ * Whether the export shows the source frames it should, in order (see
+ * `expectedSourceFrames`), read from every output frame's barcode.
+ */
+export function frameIdentity(file, kesits, { sourceFps = SYNC_FPS } = {}) {
+  const shown = frameReadings(file).map((frame) => frame.number);
+  return compareFrameIdentity(shown, expectedSourceFrames(kesits, { sourceFps }));
 }
 
 /** The audio stream's start (s) after its edit list: where its first decoded sample plays. */
@@ -396,6 +453,10 @@ export function withSoundMediaTime(bytes, mediaTime) {
 if (process.argv[1]?.replace(/\\/g, '/').endsWith('scripts/lib/av-sync.mjs')) {
   const target = process.argv[2];
   if (target === '--measure') console.log(JSON.stringify({ avSync: avSync(process.argv[3]), audioLayout: audioLayout(process.argv[3]) }));
-  else if (target) console.log(writeSyncClip(target), syncEventFrames().length, 'events');
-  else console.error('usage: node scripts/lib/av-sync.mjs <out.mp4> | --measure <file>');
+  else if (target === '--identity') console.log(JSON.stringify(frameIdentity(process.argv[3], JSON.parse(process.argv[4] ?? '[]'), { sourceFps: Number(process.argv[5] ?? SYNC_FPS) })));
+  else if (target) {
+    const fps = Number(process.argv[3] ?? SYNC_FPS);
+    console.log(writeSyncClip(target, { fps }), syncEventFrames(fps).length, 'events');
+  }
+  else console.error('usage: node scripts/lib/av-sync.mjs <out.mp4> [fps] | --measure <file> | --identity <file> <kesits json> [source fps]');
 }

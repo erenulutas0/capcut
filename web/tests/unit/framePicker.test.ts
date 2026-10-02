@@ -106,6 +106,32 @@ describe('pickFrames', () => {
     expect(frames.every((f) => f.closed)).toBe(true);
   });
 
+  it('counts frames handed out after their decoder closed as missing, not as real (ADR-033)', async () => {
+    // 30 fps, every frame delivered on time; the decoder closes after the
+    // consumer has taken frame 5. On Android those frames draw an older picture.
+    const frames = makeFrames(range(0, 1 / 30, 10), 1 / 30);
+    let decoderOpen = true;
+    const out: { id: number | null; missing: boolean }[] = [];
+    for await (const picked of pickFrames(stream(frames), range(0, 1 / 30, 10), OUTPUT_FRAME, () => decoderOpen)) {
+      out.push({ id: picked.frame?.id ?? null, missing: picked.missing });
+      if (picked.frame?.id === 5) decoderOpen = false;
+    }
+    expect(out.map((o) => o.id)).toEqual(range(0, 1, 10));
+    expect(out.map((o, i) => (o.missing ? i : -1)).filter((i) => i >= 0)).toEqual([6, 7, 8, 9]);
+  });
+
+  it('marks a held tail missing when the decoder closed, even within the tolerance', async () => {
+    const frames = makeFrames(range(0, 1 / 30, 5), 1 / 30);
+    const out: boolean[] = [];
+    let open = true;
+    for await (const picked of pickFrames(stream(frames), range(0, 1 / 30, 6), OUTPUT_FRAME, () => open)) {
+      out.push(picked.missing);
+      if (out.length === 5) open = false;
+    }
+    // Target 5 would be frame 4 held one output frame (tolerated), but frame 4's picture is gone.
+    expect(out).toEqual([false, false, false, false, false, true]);
+  });
+
   it('trusts a frame with unknown duration until the next one arrives', async () => {
     const frames = makeFrames([0, 0.5], 0);
     const out = await pick(frames, [0, 0.2, 0.4, 0.5]);

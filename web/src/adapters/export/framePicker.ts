@@ -12,6 +12,12 @@
  * Ownership: every yielded frame still belongs to the picker. The consumer
  * draws it and must not close it; the picker closes each frame once a later
  * one replaces it, and the last one when the pass ends.
+ *
+ * A delivered frame is not always a usable one: on Chrome for Android a frame
+ * whose decoder was closed before it was drawn shows an older picture under
+ * its own, perfect timestamp (ADR-033). `usable` lets the caller say so at
+ * the moment the frame is handed out; such a frame counts as missing like a
+ * frame that never came, so a stale picture is never reported as a real one.
  */
 
 export interface TimedFrame {
@@ -58,11 +64,17 @@ export async function* pickFrames<T extends TimedFrame>(
   targets: readonly number[],
   /** How stale a held frame may be before it counts as missing; one output frame. */
   toleranceS: number,
+  /** Asked each time a frame is handed out: false when its picture can no longer be trusted. */
+  usable: () => boolean = () => true,
 ): AsyncGenerator<PickedFrame<T>> {
   let current: T | null = null;
   let index = 0;
   // Past the end reads as +Infinity, which ends every "before this frame" loop.
   const target = (): number => targets[index] ?? Number.POSITIVE_INFINITY;
+  const held = (frame: T): PickedFrame<T> => ({
+    frame,
+    missing: !covers(frame, target(), toleranceS) || !usable(),
+  });
 
   try {
     for await (const frame of frames) {
@@ -75,13 +87,13 @@ export async function* pickFrames<T extends TimedFrame>(
           index += 1;
         }
         while (index < targets.length && target() < frame.timestamp - EPSILON_S) {
-          yield { frame, missing: false };
+          yield { frame, missing: !usable() };
           index += 1;
         }
       } else {
         // Every target before this frame starts is served by the current one.
         while (index < targets.length && target() < frame.timestamp - EPSILON_S) {
-          yield { frame: current, missing: !covers(current, target(), toleranceS) };
+          yield held(current);
           index += 1;
         }
         current.close();
@@ -91,7 +103,7 @@ export async function* pickFrames<T extends TimedFrame>(
     }
 
     while (index < targets.length) {
-      yield { frame: current, missing: current === null || !covers(current, target(), toleranceS) };
+      yield current === null ? { frame: null, missing: true } : held(current);
       index += 1;
     }
   } finally {

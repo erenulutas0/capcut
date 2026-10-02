@@ -73,6 +73,7 @@ import {
   raiseAvcReorderDepth,
   reorderDepth,
 } from './avcReorder';
+import { holdDecoder, type DecoderHold } from './decoderHold';
 import { FastCutFallback, prepareFastCut, type FastCutJob } from './fastCut';
 import { pickFrames } from './framePicker';
 import { createHdrContext, readHdrPixels } from './hdrCanvas';
@@ -800,7 +801,6 @@ async function produceOutput(
     musicReader: musicTrack ? new AudioStreamReader(new AudioSampleSink(musicTrack)) : null,
   };
 
-  const videoSink = fastJob ? null : new VideoSampleSink(videoTrack);
   const audioLane = clock.lane();
   // HDR: the soft clip runs on a helper thread when one starts (ADR-028).
   const hdrClipper = hdrContext ? new HdrClipper(plan.width * plan.height * 4) : null;
@@ -814,6 +814,9 @@ async function produceOutput(
   // Measurement only (ADR-028 profile): what the decoder delivered and what
   // the produced file holds.
   const decodedTimesUs: number[][] = [];
+  // Measurement only (ADR-033): per moment, the frames drawn after the decode
+  // pass ended — the ones a closed decoder would have left stale on Android.
+  const drawnAfterDecodePass: number[] = [];
   let producedForProfile: Uint8Array | Blob | null = null;
   let probedDurationUs: number | null = null;
 
@@ -939,19 +942,32 @@ async function produceOutput(
           })
         : null;
 
+      // ADR-033: the decoder stays open until this moment's last frame is
+      // drawn. Android's hardware decoder takes the pictures of undrawn frames
+      // with it when it closes; a decoder that closes anyway marks the frames
+      // after it as missing instead of drawing them as real ones.
+      const videoSink = new VideoSampleSink(videoTrack);
+      let hold: DecoderHold;
+      try {
+        hold = holdDecoder(videoSink);
+      } catch {
+        throw new ExportFailure('internal_error');
+      }
+      let drawnAfterPass = 0;
       try {
         // One continuous decode per moment (see framePicker): a flush at every
         // GOP boundary made Chromium drop whole GOPs of real camera footage.
-        if (!videoSink) throw new ExportFailure('internal_error');
         const firstTs = timestamps[0] ?? 0;
         const lastTs = timestamps[timestamps.length - 1] ?? firstTs;
         const samples = videoSink.samples(firstTs, lastTs + 0.001);
         const seen: number[] = [];
         if (clock.enabled) decodedTimesUs.push(seen);
         const decoded = clock.enabled ? recordTimes(samples, seen) : samples;
+        const usable = () => !hold.decoderClosed();
         let frame = segment.startFrame;
         clock.mark();
-        for await (const { frame: sample, missing } of pickFrames(decoded, timestamps, frameDuration)) {
+        for await (const { frame: sample, missing } of pickFrames(decoded, timestamps, frameDuration, usable)) {
+          if (hold.closeRequested) drawnAfterPass += 1;
           clock.lap('decodeWait');
           checkCanceled(requestId);
           if (audioFailure) throw (audioFailure as { error: unknown }).error;
@@ -994,6 +1010,9 @@ async function produceOutput(
         await audioTask;
         if (audioFailure) throw (audioFailure as { error: unknown }).error;
       } finally {
+        // Every frame of the moment is drawn (or the export is stopping).
+        hold.release();
+        if (clock.enabled) drawnAfterDecodePass.push(drawnAfterPass);
         // On any early exit the audio stops at its next chunk and is awaited,
         // so nothing still writes into the output while it is torn down.
         pacer.stop();
@@ -1118,6 +1137,7 @@ async function produceOutput(
           expectedDurationUs: plan.expectedDurationUs,
           probedDurationUs,
           decodedTimesUs: decodedTimesUs.map((times) => times.slice(0, 400)),
+          drawnAfterDecodePass,
           producedTracks,
           ...clock.summary(framesDone),
         })}`,
