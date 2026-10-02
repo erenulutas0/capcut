@@ -25,16 +25,21 @@ const BROWSERS = [
   { key: 'webkit', label: 'WebKit (Playwright)', short: 'WebKit' },
 ];
 
-/** Rows of the hand-written phone table (ADR-032); update after each phone run. */
+/**
+ * Rows of the hand-written phone table (ADR-032, ADR-033); update after each
+ * phone run. Frames: wrong / expected output frames from `phone-run.mjs`'s
+ * `frameIdentity` (barcode N–R, the source's own frames A–M).
+ */
 const PHONE_ROWS = [
-  '| A | add1.mp4 (1080×1920 30 fps H.264), 2–10 sn | ✅ 8,021 sn, 240 kare (kaynak sessiz) | ✅ 8,000 sn, 240 kare (kaynak sessiz) |',
-  '| B | R15 Samsung H.264 60 fps −90°, 0,5–4 sn | ❌ “süre uyuşmadı” | ✅ 3,520 sn, 105 kare, ses 0 ms |',
-  '| C | R14 Samsung HEVC ağır çekim −90°, 1–8 sn | ❌ “süre uyuşmadı” | ✅ 7,019 sn, 210 kare (ses sürekli ton: kayma ölçülemez) |',
-  '| D | R11 iPhone 12 Pro HEVC HLG −90°, 2–10 sn | ✅ 8,021 sn, 240 kare, **ses +42,67 ms** | ✅ 8,000 sn, 240 kare, ses 0 ms |',
-  '| E–G | 3 dk 1080×1920: hızlı kesim / tam kodlama / iki kesit | ✅ 180,032 / 180,032 / 60,032 sn | ✅ 180,011 / 180,011 / 60,011 sn, 5400 / 5400 / 1800 kare (ton) |',
-  '| H–J | R15: tüm dosya / 1,2–2,9 sn / iki kesit | çalıştırılmadı | ✅ 4,416 / 1,707 / 3,605 sn, 132 / 51 / 108 kare, ses 0 ms |',
-  '| K–M | R14: tüm dosya / 2,5–5,1 sn / iki kesit | çalıştırılmadı | ✅ 11,819 / 2,603 / 6,507 sn, 354 / 78 / 195 kare (ton) |',
-  '| N–Q | Senkron klibi (flaş + cıvıltı): hızlı kesim / tam kodlama / iki kesit / tümü | — | ✅ ses 0 ms, flaş–cıvıltı 0,08–0,10 ms; tam kodlamada son 2 / 9 kare bayat (bkz. not) |',
+  '| A | add1.mp4 (1080×1920 30 fps H.264), 2–10 sn | ✅ 8,021 sn, 240 kare (kaynak sessiz) | ✅ 8,000 sn, 240 kare; kare 0/240 | ✅ aynı; kare 0/240 |',
+  '| B | R15 Samsung H.264 60 fps −90°, 0,5–4 sn | ❌ “süre uyuşmadı” | ✅ 3,520 sn, 105 kare, ses 0 ms; kare 0/105 (ilk koşuda **5 bayat**) | ✅ aynı; kare 0/105 |',
+  '| C | R14 Samsung HEVC ağır çekim −90°, 1–8 sn | ❌ “süre uyuşmadı” | ✅ 7,019 sn, 210 kare (ton); kare 0/210 (ilk koşuda **10 bayat**) | ✅ aynı; kare 0/210 |',
+  '| D | R11 iPhone 12 Pro HEVC HLG −90°, 2–10 sn | ✅ 8,021 sn, 240 kare, **ses +42,67 ms** | ✅ 8,000 sn, 240 kare, ses 0 ms; kare **1/240 bayat** (son) | ✅ aynı; kare 0/240 |',
+  '| E–G | 3 dk 1080×1920: hızlı kesim / tam kodlama / iki kesit | ✅ 180,032 / 180,032 / 60,032 sn | ✅ 180,011 / 180,011 / 60,011 sn, 5400 / 5400 / 1800 kare; kare 0 / **12 bayat** (F sonu) / 0 | ✅ aynı; kare 0 / 0 / 0 |',
+  '| H–J | R15: tüm dosya / 1,2–2,9 sn / iki kesit | çalıştırılmadı | ✅ 4,416 / 1,707 / 3,605 sn, 132 / 51 / 108 kare, ses 0 ms; kare **6** / 0 / **3 bayat** (kesit sonları; ilk koşuda I **3**) | ✅ aynı; kare 0 / 0 / 0 |',
+  '| K–M | R14: tüm dosya / 2,5–5,1 sn / iki kesit | çalıştırılmadı | ✅ 11,819 / 2,603 / 6,507 sn, 354 / 78 / 195 kare (ton); kare **5** / 0 / **3 bayat** (ilk koşuda L **11**) | ✅ aynı; kare 0 / 0 / 0 |',
+  '| N–Q | Senkron klibi (flaş + cıvıltı): hızlı kesim / tam kodlama / iki kesit / tümü | — | ✅ ses 0 ms, flaş–cıvıltı 0,08–0,10 ms; barkod 0 / 0 / 0 / **6 bayat** (Q: 354–359 → 353) | ✅ aynı; barkod 0 / 0 / 0 / 0 |',
+  '| R | 24 fps senkron klibi, iki kesit (ikincisi klibin sonuna), tam kodlama | — | ✅ 5,419 sn, 162 kare, ses 0 ms; barkod **21/162 bayat** (2. kesitin son 21 karesi → 270) | ✅ aynı; barkod 0/162 |',
 ];
 
 /**
@@ -45,7 +50,8 @@ const PHONE_SECTION = [
   '## Gerçek telefon',
   '',
   '> Elle yazıldı (üretilmedi): `web/scripts/android/phone-run.mjs` ile adb + CDP üzerinden, kurucunun telefonunda. ' +
-    'Tek cihaz, tek tarayıcı; ayrıntı ve kanıt [ADR-032](adr/ADR-032-android-samsung-media.md).',
+    'Tek cihaz, tek tarayıcı; ayrıntı ve kanıt [ADR-032](adr/ADR-032-android-samsung-media.md) (ses) ve ' +
+    '[ADR-033](adr/ADR-033-android-stale-kesit-ends.md) (kare kimliği).',
   '',
   '| Cihaz | Android | Tarayıcı | Tarih |',
   '|---|---|---|---|',
@@ -53,21 +59,26 @@ const PHONE_SECTION = [
   '| aynı cihaz | 16 | Samsung Internet 30.0.0.67 | **ölçülmedi** (DevTools soketi kapalı; telefonun ayarı değiştirilmedi) |',
   '',
   'Kaydetme penceresi betikte bir yer tutucuyla (OPFS dosyası) geçildi; uygulamanın yazma yolu gerçek. Kalite 1080p. ' +
-    '“Önce”: canlı site, ADR-032’den önceki derleme. “Sonra”: ADR-032 derlemesi, canlı (aa5c9ea) ve aynı kodun yerel derlemesi ' +
-    '(`next start` + `adb reverse`), 2 Ekim. Ses kayması ffmpeg ile, dosya baştan okunarak, kaynağın aynı anına karşı (+ = ses geç); ' +
-    'tarayıcıların kendi oynatıcısında (telefonda Chrome dahil) de senkron (`player-sync.mjs`).',
+    '“ADR-032’den önce”: canlı site, eylül sonu. “Canlı, ADR-032”: canlı site 2 Ekim (bu tablonun ADR-033’ten önceki hâli). ' +
+    '“Bu dal, ADR-033”: kesit sonu düzeltmesinin yerel derlemesi (`next start` + `adb reverse`), 2 Ekim. ' +
+    'Ses kayması ffmpeg ile, dosya baştan okunarak, kaynağın aynı anına karşı (+ = ses geç); tarayıcıların kendi oynatıcısında ' +
+    '(telefonda Chrome dahil) de senkron (`player-sync.mjs`). “Kare”: her çıktı karesinin kaynağın doğru karesini gösterip ' +
+    'göstermediği (yanlış / beklenen), N–R’de kare numarası barkodundan, A–M’de kaynağın kendi karelerine karşı.',
   '',
-  '| # | Kaynak, kesit | Önce | Sonra |',
-  '|---|---|---|---|',
+  '| # | Kaynak, kesit | ADR-032’den önce | Canlı, ADR-032 | Bu dal, ADR-033 |',
+  '|---|---|---|---|---|',
   ...PHONE_ROWS,
   '',
-  'Düzeltmeden önce telefondaki Chrome’un AAC kodlayıcısı sesin önüne 2048 hazırlık karesi koyuyordu: her çıktının sesi ' +
+  'ADR-032’den önce telefondaki Chrome’un AAC kodlayıcısı sesin önüne 2048 hazırlık karesi koyuyordu: her çıktının sesi ' +
     '42,7 ms geç, sonu eksikti; uzunluğu 1024 ses karesinin katını az geçen kesitler (30 fps uzunluklarının %37,5’i) ' +
     '“süre uyuşmadı” ile reddediliyordu. Artık gecikme her tarayıcıda ölçülüp dosyada geri alınıyor (ADR-032). ' +
     'Canlı derlemenin ilk telefon koşusunda görülen “−42,67 ms” ölçüm betiğinin hatasıydı (ffmpeg’in `-ss 0` okuması), dosyalar doğruydu.',
   '',
-  'Not (açık sorun): telefonda tam kodlanan kesitlerin son 1–11 karesi bayat kalıyor (bir önceki kare tekrar ediyor); ' +
-    'kare sayısı doğru, “eksik kare” sayacı bunu görmüyor. Ayrıntı ADR-032.',
+  'ADR-033’ten önce telefonda tam kodlanan kesitlerin son 1–21 karesi bayattı (daha önceki bir karenin resmi; kare sayısı ve ' +
+    '“eksik kare” sayacı doğru göründüğü için görülmüyordu; sayı koşudan koşuya değişiyordu, “ilk koşu” aynı günün başka bir canlı koşusu). ' +
+    'Sebep: çözücü, önceden çözdüğü kareler çizilmeden kapanıyordu; telefondaki Chrome’da karenin resmi o ana kadar çözücünün tamponunda. ' +
+    'Çözücü artık kesitin son karesi çizilene kadar açık; kapanmış bir çözücünün karesi eksik sayılıyor. Bu dalda telefonda üç koşuda ' +
+    '18/18 durumun hepsi 0 yanlış kare; masaüstü Chrome ve Edge (açılan durumlarda) önce de sonra da 0.',
   '',
 ];
 
