@@ -27,12 +27,14 @@ const BROWSERS = [
 
 /** Rows of the hand-written phone table (ADR-032); update after each phone run. */
 const PHONE_ROWS = [
-  '| A | add1.mp4 (1080×1920 30 fps H.264), 2–10 sn | ✅ 8,021 sn, 240 kare (kaynak sessiz) | — telefon bağlı değildi, **ölçülmedi** |',
+  '| A | add1.mp4 (1080×1920 30 fps H.264), 2–10 sn | ✅ 8,021 sn, 240 kare (kaynak sessiz) | ✅ 8,000 sn, 240 kare (kaynak sessiz) |',
   '| B | R15 Samsung H.264 60 fps −90°, 0,5–4 sn | ❌ “süre uyuşmadı” | ✅ 3,520 sn, 105 kare, ses 0 ms |',
-  '| C | R14 Samsung HEVC ağır çekim −90°, 1–8 sn | ❌ “süre uyuşmadı” | ✅ 7,019 sn, 210 kare, ses 0 ms |',
-  '| D | R11 iPhone 12 Pro HEVC HLG −90°, 2–10 sn | ✅ 8,021 sn, 240 kare, **ses +42,67 ms** | — telefon bağlı değildi, **ölçülmedi** |',
-  '| E–G | 3 dk 1080×1920: hızlı kesim / tam kodlama / iki kesit | ✅ 180,032 / 180,032 / 60,032 sn | — telefon bağlı değildi, **ölçülmedi** |',
-  '| H–M | R15 ve R14, başka aralıklar | çalıştırılmadı | — telefon bağlı değildi, **ölçülmedi** |',
+  '| C | R14 Samsung HEVC ağır çekim −90°, 1–8 sn | ❌ “süre uyuşmadı” | ✅ 7,019 sn, 210 kare (ses sürekli ton: kayma ölçülemez) |',
+  '| D | R11 iPhone 12 Pro HEVC HLG −90°, 2–10 sn | ✅ 8,021 sn, 240 kare, **ses +42,67 ms** | ✅ 8,000 sn, 240 kare, ses 0 ms |',
+  '| E–G | 3 dk 1080×1920: hızlı kesim / tam kodlama / iki kesit | ✅ 180,032 / 180,032 / 60,032 sn | ✅ 180,011 / 180,011 / 60,011 sn, 5400 / 5400 / 1800 kare (ton) |',
+  '| H–J | R15: tüm dosya / 1,2–2,9 sn / iki kesit | çalıştırılmadı | ✅ 4,416 / 1,707 / 3,605 sn, 132 / 51 / 108 kare, ses 0 ms |',
+  '| K–M | R14: tüm dosya / 2,5–5,1 sn / iki kesit | çalıştırılmadı | ✅ 11,819 / 2,603 / 6,507 sn, 354 / 78 / 195 kare (ton) |',
+  '| N–Q | Senkron klibi (flaş + cıvıltı): hızlı kesim / tam kodlama / iki kesit / tümü | — | ✅ ses 0 ms, flaş–cıvıltı 0,08–0,10 ms; tam kodlamada son 2 / 9 kare bayat (bkz. not) |',
 ];
 
 /**
@@ -47,12 +49,13 @@ const PHONE_SECTION = [
   '',
   '| Cihaz | Android | Tarayıcı | Tarih |',
   '|---|---|---|---|',
-  '| Samsung Galaxy S23 (SM-S911B) | 16 | Chrome 154.0.8037.57 | 2026-09-30 / 2026-10-01 |',
+  '| Samsung Galaxy S23 (SM-S911B) | 16 | Chrome 154.0.8037.57 | 2026-09-30 / 2026-10-02 |',
   '| aynı cihaz | 16 | Samsung Internet 30.0.0.67 | **ölçülmedi** (DevTools soketi kapalı; telefonun ayarı değiştirilmedi) |',
   '',
   'Kaydetme penceresi betikte bir yer tutucuyla (OPFS dosyası) geçildi; uygulamanın yazma yolu gerçek. Kalite 1080p. ' +
-    '“Önce”: canlı site, düzeltmeden önceki derleme. “Sonra”: ADR-032 derlemesi (`next start` + `adb reverse`). ' +
-    'Ses kayması ffmpeg ile kaynağın aynı anına karşı ölçüldü (+ = ses geç).',
+    '“Önce”: canlı site, ADR-032’den önceki derleme. “Sonra”: ADR-032 derlemesi, canlı (aa5c9ea) ve aynı kodun yerel derlemesi ' +
+    '(`next start` + `adb reverse`), 2 Ekim. Ses kayması ffmpeg ile, dosya baştan okunarak, kaynağın aynı anına karşı (+ = ses geç); ' +
+    'tarayıcıların kendi oynatıcısında (telefonda Chrome dahil) de senkron (`player-sync.mjs`).',
   '',
   '| # | Kaynak, kesit | Önce | Sonra |',
   '|---|---|---|---|',
@@ -60,7 +63,11 @@ const PHONE_SECTION = [
   '',
   'Düzeltmeden önce telefondaki Chrome’un AAC kodlayıcısı sesin önüne 2048 hazırlık karesi koyuyordu: her çıktının sesi ' +
     '42,7 ms geç, sonu eksikti; uzunluğu 1024 ses karesinin katını az geçen kesitler (30 fps uzunluklarının %37,5’i) ' +
-    '“süre uyuşmadı” ile reddediliyordu. Artık gecikme her tarayıcıda ölçülüp dosyada geri alınıyor (ADR-032).',
+    '“süre uyuşmadı” ile reddediliyordu. Artık gecikme her tarayıcıda ölçülüp dosyada geri alınıyor (ADR-032). ' +
+    'Canlı derlemenin ilk telefon koşusunda görülen “−42,67 ms” ölçüm betiğinin hatasıydı (ffmpeg’in `-ss 0` okuması), dosyalar doğruydu.',
+  '',
+  'Not (açık sorun): telefonda tam kodlanan kesitlerin son 1–11 karesi bayat kalıyor (bir önceki kare tekrar ediyor); ' +
+    'kare sayısı doğru, “eksik kare” sayacı bunu görmüyor. Ayrıntı ADR-032.',
   '',
 ];
 

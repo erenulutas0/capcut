@@ -18,9 +18,9 @@ Her satır `video-editor-blueprint/docs/22_QA_TEST_MATRIX.md` içindeki bir fixt
 
 | Tarayıcı | Sürüm | Encoder kabiliyeti | Çalıştırma |
 |---|---|---|---|
-| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-09-30 21:50 UTC |
-| Google Chrome | 154.0.0.0 | H.264 var · AAC var | 2026-09-30 21:52 UTC |
-| Microsoft Edge | 154.0.0.0 | H.264 var · AAC var | 2026-09-30 21:55 UTC |
+| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-10-01 20:59 UTC |
+| Google Chrome | 154.0.0.0 | H.264 var · AAC var | 2026-10-01 21:01 UTC |
+| Microsoft Edge | 154.0.0.0 | H.264 var · AAC var | 2026-10-01 21:06 UTC |
 | Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-21 18:36 UTC |
 | WebKit (Playwright) | 26.6 | WebCodecs yok | 2026-09-21 18:36 UTC |
 
@@ -61,7 +61,7 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Bu matris gerç
 |---|---|---|---|---|---|
 | M01 | 10.005333 s | 300 | 720x1280 | 0.9991 | an sesleri -22.1 / -22.1 dB |
 | M02 | 5.013333 s | 150 | 720x1280 | 0.9993 | — |
-| M03 | 5.013333 s | 150 | 720x1280 | 0.9219 | — |
+| M03 | 5.013333 s | 150 | 720x1280 | 0.922 | — |
 | M04 | 6.016 s | 180 | 1280x720 | — | 440 Hz -56.3 / 330 Hz -36.1 dB |
 | M05 | 5.013333 s | 150 | 720x1280 | — | perde -36.1 / -55.4 dB |
 | M06 | 6.016 s | 180 | 1280x720 | — | — |
@@ -69,8 +69,8 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Bu matris gerç
 | M08 | 10.005333 s | 300 | 720x1280 | — | müzik önce -69.5 → sonra -36.1 dB |
 | M09 | 6.016 s | 180 | 1280x720 | — | sınır -24.4 / genel -24.1 dB |
 | M10-hevc | — | — | — | — | sonuç: import_rejected |
-| M10-hdr | 3.008 s | 90 | 1280x720 | 0.9698 | HDR→SDR: en yakın ref-hable, ΔE00 3.077, kayma 3.622, doygunluk 1.004..1.005, ton 1.956°, kırpma -0.047 |
-| M10-hdr-hlg | 3.008 s | 90 | 720x1280 | 0.9728 | HDR→SDR: en yakın placebo-spline, ΔE00 3.258, kayma 2.249, doygunluk 1.038..1.038, ton 2.347°, kırpma -0.001 |
+| M10-hdr | 3.008 s | 90 | 1280x720 | 0.9698 | HDR→SDR: en yakın ref-hable, ΔE00 3.075, kayma 3.621, doygunluk 1.004..1.005, ton 1.953°, kırpma -0.047 |
+| M10-hdr-hlg | 3.008 s | 90 | 720x1280 | 0.9729 | HDR→SDR: en yakın placebo-spline, ΔE00 3.258, kayma 2.247, doygunluk 1.038..1.038, ton 2.346°, kırpma -0.001 |
 | M12 | 4.010667 s | 120 | 1280x720 | — | — |
 | M14 | 10.005333 s | 300 | 720x1280 | — | — |
 | M15 | 6.016 s | 180 | 1280x720 | — | — |
@@ -120,7 +120,7 @@ Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer�
 | R14 | REFUSED | hevc | 1920x1080 | -90° | 30.017 | 11.8 s | 14.4 MiB | bt709 | aac | — |
 | R15 | PASS | h264 | 1920x1080 | -90° | 60.042 | 4.4 s | 14.8 MiB | bt709 | aac | 0.8704 |
 
-### Google Chrome — 15 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-09-30 22:00 UTC)
+### Google Chrome — 15 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-10-01 21:14 UTC)
 
 | # | Durum | Codec | Boyut | Rotasyon | fps | Süre | Dosya | Renk | Ses | SSIM |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -141,7 +141,7 @@ Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer�
 | R15 | PASS | h264 | 1920x1080 | -90° | 60.042 | 4.4 s | 14.8 MiB | bt709 | aac | 0.8607 |
 
 - R09 HDR→SDR: en yakın ref-hable, ΔE00 5.316, kayma 1.049, doygunluk 1.082..1.092, ton 1.356°, kırpma 0.016
-- R11 HDR→SDR: en yakın placebo-spline, ΔE00 5.278, kayma 1.123, doygunluk 1.017..1.154, ton 8.552°, kırpma 0
+- R11 HDR→SDR: en yakın placebo-spline, ΔE00 5.272, kayma 1.126, doygunluk 1.019..1.154, ton 8.552°, kırpma 0
 
 ### Microsoft Edge — 11 PASS, 4 REFUSED, 0 FAIL, 0 ERROR (2026-09-24 23:27 UTC)
 
@@ -169,21 +169,25 @@ Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer�
 
 | Cihaz | Android | Tarayıcı | Tarih |
 |---|---|---|---|
-| Samsung Galaxy S23 (SM-S911B) | 16 | Chrome 154.0.8037.57 | 2026-09-30 / 2026-10-01 |
+| Samsung Galaxy S23 (SM-S911B) | 16 | Chrome 154.0.8037.57 | 2026-09-30 / 2026-10-02 |
 | aynı cihaz | 16 | Samsung Internet 30.0.0.67 | **ölçülmedi** (DevTools soketi kapalı; telefonun ayarı değiştirilmedi) |
 
-Kaydetme penceresi betikte bir yer tutucuyla (OPFS dosyası) geçildi; uygulamanın yazma yolu gerçek. Kalite 1080p. “Önce”: canlı site, düzeltmeden önceki derleme. “Sonra”: ADR-032 derlemesi (`next start` + `adb reverse`). Ses kayması ffmpeg ile kaynağın aynı anına karşı ölçüldü (+ = ses geç).
+Kaydetme penceresi betikte bir yer tutucuyla (OPFS dosyası) geçildi; uygulamanın yazma yolu gerçek. Kalite 1080p. “Önce”: canlı site, ADR-032’den önceki derleme. “Sonra”: ADR-032 derlemesi, canlı (aa5c9ea) ve aynı kodun yerel derlemesi (`next start` + `adb reverse`), 2 Ekim. Ses kayması ffmpeg ile, dosya baştan okunarak, kaynağın aynı anına karşı (+ = ses geç); tarayıcıların kendi oynatıcısında (telefonda Chrome dahil) de senkron (`player-sync.mjs`).
 
 | # | Kaynak, kesit | Önce | Sonra |
 |---|---|---|---|
-| A | add1.mp4 (1080×1920 30 fps H.264), 2–10 sn | ✅ 8,021 sn, 240 kare (kaynak sessiz) | — telefon bağlı değildi, **ölçülmedi** |
+| A | add1.mp4 (1080×1920 30 fps H.264), 2–10 sn | ✅ 8,021 sn, 240 kare (kaynak sessiz) | ✅ 8,000 sn, 240 kare (kaynak sessiz) |
 | B | R15 Samsung H.264 60 fps −90°, 0,5–4 sn | ❌ “süre uyuşmadı” | ✅ 3,520 sn, 105 kare, ses 0 ms |
-| C | R14 Samsung HEVC ağır çekim −90°, 1–8 sn | ❌ “süre uyuşmadı” | ✅ 7,019 sn, 210 kare, ses 0 ms |
-| D | R11 iPhone 12 Pro HEVC HLG −90°, 2–10 sn | ✅ 8,021 sn, 240 kare, **ses +42,67 ms** | — telefon bağlı değildi, **ölçülmedi** |
-| E–G | 3 dk 1080×1920: hızlı kesim / tam kodlama / iki kesit | ✅ 180,032 / 180,032 / 60,032 sn | — telefon bağlı değildi, **ölçülmedi** |
-| H–M | R15 ve R14, başka aralıklar | çalıştırılmadı | — telefon bağlı değildi, **ölçülmedi** |
+| C | R14 Samsung HEVC ağır çekim −90°, 1–8 sn | ❌ “süre uyuşmadı” | ✅ 7,019 sn, 210 kare (ses sürekli ton: kayma ölçülemez) |
+| D | R11 iPhone 12 Pro HEVC HLG −90°, 2–10 sn | ✅ 8,021 sn, 240 kare, **ses +42,67 ms** | ✅ 8,000 sn, 240 kare, ses 0 ms |
+| E–G | 3 dk 1080×1920: hızlı kesim / tam kodlama / iki kesit | ✅ 180,032 / 180,032 / 60,032 sn | ✅ 180,011 / 180,011 / 60,011 sn, 5400 / 5400 / 1800 kare (ton) |
+| H–J | R15: tüm dosya / 1,2–2,9 sn / iki kesit | çalıştırılmadı | ✅ 4,416 / 1,707 / 3,605 sn, 132 / 51 / 108 kare, ses 0 ms |
+| K–M | R14: tüm dosya / 2,5–5,1 sn / iki kesit | çalıştırılmadı | ✅ 11,819 / 2,603 / 6,507 sn, 354 / 78 / 195 kare (ton) |
+| N–Q | Senkron klibi (flaş + cıvıltı): hızlı kesim / tam kodlama / iki kesit / tümü | — | ✅ ses 0 ms, flaş–cıvıltı 0,08–0,10 ms; tam kodlamada son 2 / 9 kare bayat (bkz. not) |
 
-Düzeltmeden önce telefondaki Chrome’un AAC kodlayıcısı sesin önüne 2048 hazırlık karesi koyuyordu: her çıktının sesi 42,7 ms geç, sonu eksikti; uzunluğu 1024 ses karesinin katını az geçen kesitler (30 fps uzunluklarının %37,5’i) “süre uyuşmadı” ile reddediliyordu. Artık gecikme her tarayıcıda ölçülüp dosyada geri alınıyor (ADR-032).
+Düzeltmeden önce telefondaki Chrome’un AAC kodlayıcısı sesin önüne 2048 hazırlık karesi koyuyordu: her çıktının sesi 42,7 ms geç, sonu eksikti; uzunluğu 1024 ses karesinin katını az geçen kesitler (30 fps uzunluklarının %37,5’i) “süre uyuşmadı” ile reddediliyordu. Artık gecikme her tarayıcıda ölçülüp dosyada geri alınıyor (ADR-032). Canlı derlemenin ilk telefon koşusunda görülen “−42,67 ms” ölçüm betiğinin hatasıydı (ffmpeg’in `-ss 0` okuması), dosyalar doğruydu.
+
+Not (açık sorun): telefonda tam kodlanan kesitlerin son 1–11 karesi bayat kalıyor (bir önceki kare tekrar ediyor); kare sayısı doğru, “eksik kare” sayacı bunu görmüyor. Ayrıntı ADR-032.
 
 ## Bu matrisin kapsamadıkları
 

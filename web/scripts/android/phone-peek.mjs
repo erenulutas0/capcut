@@ -15,7 +15,7 @@ if (!/^[0-9A-F]{32}$/.test(target)) {
   console.error('--target=<32-hex CDP target id> required');
   process.exit(2);
 }
-const browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
+const browser = await chromium.connectOverCDP('http://127.0.0.1:9222', { timeout: 180_000 });
 const context = browser.contexts()[0];
 for (const page of context.pages()) {
   const session = await context.newCDPSession(page).catch(() => null);

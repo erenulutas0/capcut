@@ -126,6 +126,9 @@ yeni işçi açtığı için dışa aktarma başına bir kez. Sessiz dolgu en ç
 
 ## Telefonda sonuç
 
+> Bu tablo 30 Eylül/1 Ekim koşusunun; tüm durumlar ve düzeltilmiş ses ölçümü için
+> [Düzeltme](#düzeltme-canlı-derlemede-telefonda-4267-ms) bölümündeki tabloya bakın.
+
 Galaxy S23 (SM-S911B), Android 16, Chrome 154.0.8037.57; 30 Eylül 2026. "Önce": canlı site
 (düzeltmesiz derleme). "Sonra": bu dalın derlemesi, `next start` + `adb reverse`
 (`phone-run.mjs --url=http://localhost:<port>/editor`). Kalite 1080p. Ses kayması ffmpeg ile,
@@ -177,8 +180,8 @@ ffmpeg'in kendi AAC dosyalarıyla aynı biçim. Ölçülen gecikme her dışa ak
 burada kesiliyor; kaynağın sesi 0'dan sonra başlıyorsa (Samsung kayıtları 2 ms) başlangıç zamanına
 yerleştiriliyor (eski okuma bunu atıyordu, tüm dosyada +2 ms görünüyordu); pencere 0,25 → 1 sn.
 Canlı koşunun dosyaları (ana oturumun kaydettikleri) yeni ölçümle yeniden okundu: B, D, H, I, J
-**0 ms**; C, E–G, K–M kaynakları sürekli ton (ölçülemez). Masaüstü çıktılarında eski ve yeni okuma
-aynı (düzenleme listesi yok).
+**0 ms**; C, E–G, K–M kaynakları sürekli ton (ölçülemez). Masaüstü çıktılarında (düzenleme listesi
+yok) eski ve yeni okuma B ve D'de aynı (0 ms); tüm dosyada eski okumanın +2 ms'si artık 0.
 
 **Oynatıcılar ne yapıyor.** Kullanıcı oynatıcının çaldığını duyar; ffmpeg yetmez. Yeni senkron
 klibi (`av-sync.mjs`: 1080×1920 30 fps, düzensiz aralıklarla tek karelik beyaz flaş ve aynı anda
@@ -195,11 +198,16 @@ sayan bir oynatıcının göreceği dosya) çalınıyor. Üç tur, turların ort
 | Chrome 154 masaüstü | 23 / 21 / 20 / 25 | 24 / 25 / 21 / 17 | 65 / 61 / 65 / 57 | 14 / 45 |
 | Edge masaüstü | 21 / 16 / 22 / 24 | 17 / 25 / 22 / 20 | 61 / 66 / 63 / 66 | 21 / 44 |
 | Firefox (Playwright) | −17 / −18 / −14 / −17 | −20 / −12 / −20 / −19 | 23 / 26 / 26 / 32 | −18 / 1 |
-| Telefonda Chrome 154 | {{PLAYER_PHONE}} | | | |
+| Telefonda Chrome 154 (2 Ekim) | 8 / 0 / −9 / 0 | canlı 22 / 13 / 14 / 1; yerel derleme 1 / −14 / −5 / 4 | canlı 33 / 59 / 46 / 44; yerel 53 / 61 / 39 / 31 | −8 / 37 |
 
-Üç masaüstü oynatıcıda telefonun çıktısı masaüstününkiyle aynı yerde, ikizi ~40 ms (hazırlık
-42,67 ms) geç: **düzenleme listesine uyuyorlar.** Mutlak değerler oynatıcının kendi
-gecikmesidir (tur içinde ±0,2 ms, turlar arası 2–17 ms oynuyor), ikisi arasındaki fark ölçülendir.
+Tüm turlar birlikte (ortalama ± standart hata, ms): masaüstü Chrome'da masaüstü çıktısı
+23,5 ± 1,2, telefon çıktısı 21,1 ± 1,8, ikizi 61,3 ± 1,5; Edge 22,2 ± 1,5 / 21,1 ± 1,1 / 62,6 ± 1,3;
+Firefox −17,4 ± 0,9 / −19,4 ± 1,9 / 27,6 ± 1,5; **telefonun kendi Chrome'unda** −1,0 ± 3,4 (12
+oynatma) / 5,1 ± 2,9 (24) / 44,8 ± 2,8 (24). Telefonun oynatıcısı daha gürültülü (kare atlıyor,
+oynatma başına sabit ±20 ms oynuyor), ama aynı tablo: dört oynatıcının dördünde de telefon çıktısı
+masaüstü çıktısıyla aynı yerde (fark ≤ 6 ms, gürültünün içinde), `media_time = 0` ikizi 40–46 ms
+geç (hazırlık 42,67 ms): **düzenleme listesine uyuyorlar.** Mutlak değerler oynatıcının kendi
+gecikmesidir, karşılaştırılan farktır.
 ffmpeg (baştan okuyarak) iki çıktıda da flaş ile cıvıltı arası **0,08–0,10 ms** (kaynağın kendisi
 0,08 ms: eşik cıvıltının 4. örneğinde aşılıyor).
 
@@ -221,6 +229,45 @@ doğru sonucu verdi. Canlı koşudaki −42,67 ms, `audioSync`'in `-ss 0` okumas
 listeli (telefon) bir dosyaya uygulanmasıydı. **Uygulama kodu aa5c9ea'dan bu yana değişmedi**; aynı
 dosyalar iki farklı okumayla iki farklı sayı verdi.
 
+**Uygulamada değişiklik gerekiyor mu: hayır** (ses için). Telefon da masaüstü de senkron, süreler
+tam; bu düzeltmede yalnızca ölçüm betikleri değişti. (Aşağıdaki donmuş kareler ayrı bir sorun.)
+
+### Telefonda tüm durumlar, düzeltilmiş ölçümle (2 Ekim 2026)
+
+Galaxy S23, Android 16, Chrome 154.0.8037.57. "Canlı": ana oturumun 1 Ekim koşusu (canlı site,
+aa5c9ea) — süre ve kare sayısı o koşudan, ses kayması aynı dosyaların yeniden okunması; N–Q
+canlıya karşı 1 Ekim'de bu oturumda. "Yerel": aynı uygulama kodunun yerel derlemesi (`next start`
++ `adb reverse`, sekme ağdan yüklenen `2mmpezlrfmbu5.js`'i çalıştırdı — canlıyla aynı parça adı),
+`phone-run.mjs --profile`, 2 Ekim. Her durumda ölçülen gecikme 2048 kare (ölçme 112–165 ms), ses
+izi −2048, −1024, 0 … ve `skip_samples = 2048`, `framesMissing` 0. Ses: kaynağa karşı (+ = geç);
+N–Q ayrıca flaş ile cıvıltı arası (ffmpeg, dosyanın kendi görüntüsüne karşı).
+
+| # | Kaynak, kesit | Canlı (aa5c9ea) | Yerel derleme |
+|---|---|---|---|
+| A | add1.mp4 2–10 sn | ✅ 8,000 sn, 240 kare; kaynak sessiz | ✅ 8,000 sn, 240 kare; kaynak sessiz |
+| B | R15 Samsung H.264 60 fps, 0,5–4 sn | ✅ 3,520 sn, 105 kare; eski okuma −42,67, düzeltilmiş **0 ms** | ✅ 3,520 sn, 105 kare, **0 ms** |
+| C | R14 Samsung HEVC ağır çekim, 1–8 sn | ✅ 7,019 sn, 210 kare; ton, ölçülemez | ✅ 7,019 sn, 210 kare; ton |
+| D | R11 iPhone HEVC HLG, 2–10 sn | ✅ 8,000 sn, 240 kare; −42,67 → **0 ms** | ✅ 8,000 sn, 240 kare, **0 ms** |
+| E | 3 dk, hızlı kesim | ✅ 180,011 sn, 5400 kare; ton | ✅ 180,011 sn, 5400 kare; ton |
+| F | 3 dk, zorla tam kodlama | ✅ 180,011 sn, 5400 kare; ton | ✅ 180,011 sn, 5400 kare; ton |
+| G | 3 dk, iki kesit | ✅ 60,011 sn, 1800 kare; ton | ✅ 60,011 sn, 1800 kare; ton |
+| H | R15 tüm dosya | ✅ 4,416 sn, 132 kare; −40,67 → **0 ms** | ✅ 4,416 sn, 132 kare, **0 ms** |
+| I | R15 1,2–2,9 sn | ✅ 1,707 sn, 51 kare; −42,67 → **0 ms** | ✅ 1,707 sn, 51 kare, **0 ms** |
+| J | R15 iki kesit | ✅ 3,605 sn, 108 kare; −42,67 → **0 ms** | ✅ 3,605 sn, 108 kare, **0 ms** |
+| K | R14 tüm dosya | ✅ 11,819 sn, 354 kare; ton | ✅ 11,819 sn, 354 kare; ton |
+| L | R14 2,5–5,1 sn | ✅ 2,603 sn, 78 kare; ton | ✅ 2,603 sn, 78 kare; ton |
+| M | R14 iki kesit | ✅ 6,507 sn, 195 kare; ton | ✅ 6,507 sn, 195 kare; ton |
+| N | Senkron klibi 1,2–6,5 sn, hızlı kesim | ✅ 5,312 sn, 159 kare; 0 ms; flaş–cıvıltı 0,08–0,10 ms (16/16) | ✅ aynı; 0 ms; 0,08–0,10 ms (16/16); barkod 159/159 doğru |
+| O | aynı, zorla tam kodlama | ✅ 5,312 sn; 0 ms; 0,08–0,10 ms (15/15) | ✅ 0 ms; 0,08–0,10 ms (16/16); barkod: **son 2 kare bayat** |
+| P | iki kesit, hızlı kesim | ✅ 4,907 sn, 147 kare; 0 ms; 0,08–0,10 ms (16/16) | ✅ aynı; barkod 147/147 doğru |
+| Q | tüm klip, zorla tam kodlama | ✅ 12,011 sn, 360 kare; 0 ms; 0,08–0,10 ms (36/36) | ✅ 0 ms; 0,08–0,10 ms (36/36); barkod: **son 9 kare bayat** |
+
+Masaüstünde aynı yerel derleme (`--desktop=chrome` / `--desktop=msedge`, 1 Ekim gecesi): Chrome
+A–Q hepsi ✅, süreler telefondakiyle aynı, ses 0 ms, N–Q flaş–cıvıltı 0,08–0,10 ms, barkod
+hatasız; ses izi 0, 1024, … (gecikme 0, düzenleme listesi yok). Edge A, B, E–J, N–Q ✅ aynı
+değerlerle; C, D, K, L, M (HEVC kaynaklar) açılmadı: bu bilgisayardaki Edge'de HEVC çözücüsü yok
+(`VideoDecoder.isConfigSupported` hev1 → false), uygulama "HEVC Video Uzantıları" ipucunu gösterdi.
+
 ### Yan bulgu: telefonda kesit sonlarında donmuş kareler (bu ADR'nin konusu değil, düzeltilmedi)
 
 Canlı koşunun telefon çıktıları aynı derlemenin masaüstü Chrome çıktılarıyla kare kare
@@ -231,8 +278,13 @@ birinci kesitin son 10 karesi (80–89). Senkron klibinde O'nun 151. karesindeki
 347. karesindeki flaş telefon çıktısında yok (siyah), masaüstünde var. Kare sayıları ve
 `framesMissing` 0; çözücünün verdiği zaman damgaları tam. Yani kareler zamanında geliyor ama
 içerikleri bayat: büyük olasılıkla Android'in donanım çözücüsünün son kareleri boşaltırken
-(flush) verdiği `VideoFrame`'ler çizilmeden önce tamponları geri alınıyor. {{FROZEN_PHONE}}
-Ayrı bir iş olarak ele alınmalı; ADR-014'ün kare politikası bunu "eksik" saymıyor.
+(flush) verdiği `VideoFrame`'ler çizilmeden önce tamponları geri alınıyor (varsayım, ölçülmedi).
+2 Ekim'de yerel derlemeyle tekrarlandı ve barkodla doğrulandı: O'nun son 2 karesi kaynağın 193 ve
+194. kareleri yerine 192'yi, Q'nun son 9 karesi (351–359) 350'yi gösteriyor; N ve P (hızlı kesim)
+hatasız. Masaüstüyle karşılaştırmada D son 2, F son ~11, H son 5, I son 4, J ikinci kesitin son 4,
+L son 1, M birinci kesitin son 8 karesi; sayı koşudan koşuya değişiyor (O canlıda sondan 8.
+kareden, yerelde son 2). Ayrı bir iş olarak ele alınmalı; ADR-014'ün kare politikası bunu "eksik"
+saymıyor, `framesMissing` 0.
 
 ## Test edilen
 
@@ -247,14 +299,24 @@ Ayrı bir iş olarak ele alınmalı; ADR-014'ün kare politikası bunu "eksik" s
   154 geçti, 1 kaldı (`kesit.spec.ts:1024` telefon çubuğu odak testi, ses koduyla ilgisiz;
   tek başına 4/4 geçti, sonraki tam koşuda da geçti — kararsız test), 2 atlandı.
 - `tsc --noEmit`, `eslint .`, `npm run build` temiz.
+- Düzeltme (1–2 Ekim): birim `tests/unit/avSync.test.ts` (12 test: senkron klibinin olayları,
+  başlangıç bulma, baştan okumanın dosya zamanına yerleştirilmesi — Samsung'un 2 ms'lik ses
+  başlangıcı dahil —, flaş/cıvıltı eşleştirme, ses izinin düzenleme listesini okuma ve ikizini
+  yazma); vitest 560/560. Masaüstü: matris Chromium 22/22, Chrome 22/22, Edge 22/22; gerçek
+  kayıtlar Chrome 15/15; e2e 170 geçti, 2 atlandı (`E2E_PORT=3261`). Telefon: yukarıdaki tablo.
+- Telefon betikleri artık `cdp-own-tabs.mjs` üzerinden bağlanıyor: 2 Ekim'de Chrome yeni
+  açılmışken Playwright'ın `connectOverCDP`'si, hiç yüklenmemiş (tembel geri yüklenen) bir
+  sekmeyi beklediği için zaman aşımına düştü. Ara katman betiğe yalnızca kendi açtığı sekmeleri
+  gösteriyor; kurucunun sekmelerine bağlanılmıyor, listelenmiyor.
 
 ## Ölçülmeyenler
 
-- **Telefonda düzeltmeden sonra A, D, E–G ve H–M çalıştırılmadı.** B ve C'den sonra telefonda
-  Chrome arka plana geçti (önde başka bir uygulama vardı; Android arka plandaki tarayıcıyı
-  donduruyor, CDP yanıt vermedi), ardından USB bağlantısı kesildi (`adb devices` boş,
-  1 Ekim 01:00–08:20 arası). Masaüstünde aynı derleme bu durumların hepsini geçti; telefon
-  bağlanınca `phone-run.mjs --url=http://localhost:<port>/editor` ile tamamlanmalı.
+- ~~Telefonda düzeltmeden sonra A, D, E–G ve H–M çalıştırılmadı.~~ 2 Ekim'de A–Q hepsi
+  telefonda yerel derlemeyle ve (1 Ekim) canlı siteyle koşturuldu; bkz. "Düzeltme" bölümü.
+- Telefonun **kendi galeri/video oynatıcısı** (Samsung Galeri, Android `MediaPlayer`/ExoPlayer)
+  ve Windows'un Filmler ve TV / Media Foundation, VLC, QuickTime denenmedi: telefona dosya
+  koymak ya da uygulama açmak kurucunun telefonunda yapılmadı. Denenen dört oynatıcı (Chrome,
+  Edge, Firefox masaüstü, telefonda Chrome) ve ffmpeg düzenleme listesine uyuyor.
 
 - **Samsung Internet** (v30.0.0.67): telefonda çalışmıyordu, DevTools soketi
   (`/proc/net/unix`'te tarayıcı olarak yalnızca Chrome'un `chrome_devtools_remote` soketi vardı)

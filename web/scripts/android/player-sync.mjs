@@ -28,6 +28,7 @@ import { basename, join, resolve } from 'node:path';
 import { chromium, firefox } from '@playwright/test';
 
 import { soundEditList, withSoundMediaTime } from '../lib/av-sync.mjs';
+import { ownTabsEndpoint } from './cdp-own-tabs.mjs';
 
 const arg = (name, fallback) => {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -112,7 +113,7 @@ if (desktop) {
     await new Promise((done) => setTimeout(done, 30_000));
   }
   adb('reverse', `tcp:${port}`, `tcp:${port}`);
-  browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
+  browser = await chromium.connectOverCDP(await ownTabsEndpoint('http://127.0.0.1:9222'), { timeout: 180_000 });
   context = browser.contexts()[0];
   page = await context.newPage();
 }

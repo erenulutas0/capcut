@@ -23,7 +23,7 @@ const ours = new Set(
 console.log(`tabs opened over CDP on ${site}: ${ours.size}`);
 if (ours.size === 0) process.exit(0);
 
-const browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
+const browser = await chromium.connectOverCDP('http://127.0.0.1:9222', { timeout: 180_000 });
 const context = browser.contexts()[0];
 let cleaned = false;
 for (const page of context.pages()) {

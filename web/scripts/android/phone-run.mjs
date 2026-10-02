@@ -40,6 +40,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'no
 import { basename, join, resolve } from 'node:path';
 import { chromium } from '@playwright/test';
 
+import { ownTabsEndpoint } from './cdp-own-tabs.mjs';
 import { installSavePicker, lastPickedName, readPickedFile, setQuality } from '../lib/kesit-flow.mjs';
 import { audioLayout, audioSync, avSync, frameIdentity, writeSyncClip } from '../lib/av-sync.mjs';
 
@@ -168,12 +169,16 @@ async function waitForBrowserInFront() {
   }
 }
 
-/** Connects to the phone's Chrome, waiting (up to 10 minutes) while it is unreachable. */
-async function connectPhone() {
+/**
+ * Connects to the phone's Chrome, waiting (up to 10 minutes) while it is
+ * unreachable. Through `cdp-own-tabs.mjs`: the script sees only the tabs it
+ * opens (plus `show`, a tab of its own left by a dropped connection).
+ */
+async function connectPhone(show = []) {
   for (let attempt = 1; ; attempt += 1) {
     ensurePorts();
     try {
-      return await chromium.connectOverCDP('http://127.0.0.1:9222');
+      return await chromium.connectOverCDP(await ownTabsEndpoint('http://127.0.0.1:9222', { show }), { timeout: 180_000 });
     } catch (error) {
       if (attempt >= 20) throw error;
       console.error(`phone unreachable (${String(error.message).split('\n')[0]}), retrying in 30 s`);
@@ -210,7 +215,7 @@ async function clearSiteData(page) {
 
 /** After a lost connection: reconnect, and close (and clean) the tab the case had opened. */
 async function recoverOrphan(targetId) {
-  browser = await connectPhone();
+  browser = await connectPhone([targetId]);
   context = browser.contexts()[0];
   for (const page of context.pages()) {
     const session = await context.newCDPSession(page).catch(() => null);
