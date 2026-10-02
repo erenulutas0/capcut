@@ -3,6 +3,16 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Teknik — 2 Ekim 2026: Telefonda kesit sonlarındaki bayat kareler düzeltildi (ADR-033; politika ve şema değişmedi)
+
+**Ölçülen (Galaxy S23, Android 16, Chrome 154):** Telefonda tam kodlanan kesitlerin son 1–20 karesi, kaynağın doğru karesi yerine daha önceki bir karenin resmini gösteriyordu; kare sayısı ve "eksik kare" sayacı doğru göründüğü için hiçbir kontrol görmüyordu. Sebep: çözme kitaplığı (mediabunny) aralığın paketleri bitince çözücüyü kapatıyor, oysa önceden çözdüğü birkaç kare henüz çizilmemiş oluyor. Masaüstünde kare resmini kendisi taşıyor; telefondaki Chrome'da resim, kare çizilene kadar donanım çözücüsünün tamponunda duruyor ve çözücü kapanınca gidiyor (`decode-probe.mjs` ile telefonda ölçüldü: kapanmadan önce çizilen kareler doğru, sonra çizilenler son çizilen resmi gösteriyor; boşaltma tek başına resmi götürmüyor).
+
+**Değişen:** Dışa aktarma çözücüyü kesitin son karesi çizilene kadar açık tutuyor (hızlı kesimin dikiş kodlamasında da). Çözücü yine de kendiliğinden kapanırsa, ondan sonraki kareler "eksik" sayılıyor (ADR-014: %2'yi aşarsa dışa aktarma reddedilir); bayat bir resim asla gerçek kare diye yazılmıyor. Masaüstünde davranış ve hız aynı.
+
+**Ölçüm araçları:** `scripts/lib/frame-identity.mjs` (barkodsuz kayıtlarda her çıktı karesi bağımsız ffmpeg referansının aynı karesiyle karşılaştırılıyor; durağan sahneler "karar verilemez"); matris ve gerçek kayıt koşucusunda yeni kontrol "her çıktı karesi referansın aynı karesini gösteriyor (kesit başı, ortası, sonu)"; `phone-run.mjs` her durumda kare kimliği, yeni R durumu (24 fps barkodlu klip, iki kesit); `scripts/android/decode-probe.mjs` (telefonda çözücü ve kare resmi deneyleri).
+
+Mevcut kullanıcı haklarına etkisi: yok. Sınırlar, fiyatlar ve şema değişmedi.
+
 ## Teknik — 2 Ekim 2026: ADR-032 düzeltmesi — telefondaki "−42,67 ms" bir ölçüm hatasıydı (uygulama değişmedi)
 
 **Ölçülen:** Canlı ADR-032 derlemesi telefonda koşturulunca ölçüm betiği sesi 42,67 ms erken okudu. Dosyalar doğruydu: betik çıktıyı `ffmpeg -ss 0` ile okuyordu ve ffmpeg bu aramada, düzenleme listesinin gizlediği hazırlık karelerini ikinci kez atıyor (ffmpeg'in kendi AAC dosyalarında da). Baştan okununca telefon çıktılarının sesi kaynağa göre 0 ms; flaş+cıvıltı senkron klibinde görüntüyle arası ≤ 0,1 ms. Masaüstü Chrome, Edge, Firefox ve **telefondaki Chrome**'un kendi `<video>` oynatıcısı telefon çıktısını masaüstü çıktısıyla aynı senkronda çalıyor, düzenleme listesi 0'a çekilmiş ikizini 40–46 ms geç: düzenleme listesine uyuyorlar. Telefonda A–Q'nun hepsi (canlı site ve aynı kodun yerel derlemesi) kaydedildi; süreler ve kare sayıları masaüstüyle aynı, ses 0 ms. Uygulamada ses için değişiklik gerekmedi.

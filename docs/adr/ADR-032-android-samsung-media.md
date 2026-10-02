@@ -270,6 +270,11 @@ değerlerle; C, D, K, L, M (HEVC kaynaklar) açılmadı: bu bilgisayardaki Edge'
 
 ### Yan bulgu: telefonda kesit sonlarında donmuş kareler (bu ADR'nin konusu değil, düzeltilmedi)
 
+> **Güncelleme 2 Ekim 2026: kök neden ölçüldü ve düzeltildi, [ADR-033](ADR-033-android-stale-kesit-ends.md).**
+> Aşağıdaki varsayım doğru çıktı: kareler zamanında geliyor, ama çözücü (mediabunny'nin
+> `samples()` döngüsü, aralığın sonunda) kareler çizilmeden kapanınca telefondaki Chrome
+> resimlerini bırakıyor. Boşaltma (flush) değil, kapanma.
+
 Canlı koşunun telefon çıktıları aynı derlemenin masaüstü Chrome çıktılarıyla kare kare
 karşılaştırıldı (36×64 gri, ortalama mutlak fark): masaüstünde görüntü değişirken telefonda bir
 önceki karenin aynısı kalan kareler var, hep **bir kesitin sonunda**: D son 1 kare (239), I son
