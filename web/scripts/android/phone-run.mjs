@@ -23,9 +23,16 @@
  * (first packet times, the edit list's skip) and `audioSync` against the
  * source; cases N–Q export a generated flash + chirp clip
  * (`scripts/lib/av-sync.mjs`, made in <media>/android/ on first use) and
- * also record `avSync` (sound against the file's own picture) and
- * `frameIdentity` (which source frame each output frame shows). All reads
+ * also record `avSync` (sound against the file's own picture). All reads
  * decode from the start: ffmpeg's `-ss 0` drops edit-list priming twice.
+ *
+ * Frames (ADR-033): every saved file records `frameIdentity`, which source
+ * frame each output frame shows, located per kesit (start / middle / end):
+ * from the burned-in barcode for the sync clips (N–R; R is a 24 fps twin),
+ * against an ffmpeg reference of the same edit for the recordings
+ * (`scripts/lib/frame-identity.mjs`; still scenes are "undecidable"). Frame
+ * counts alone missed the phone's stale kesit ends. The last line printed
+ * lists the cases with wrong frames.
  * What the browser's own player does: `player-sync.mjs`.
  *
  * The phone's own browser is only driven in one new tab: the script never
@@ -43,8 +50,10 @@ import { chromium } from '@playwright/test';
 import { ownTabsEndpoint } from './cdp-own-tabs.mjs';
 import { installSavePicker, lastPickedName, readPickedFile, setQuality } from '../lib/kesit-flow.mjs';
 import { audioLayout, audioSync, avSync, frameIdentity, writeSyncClip } from '../lib/av-sync.mjs';
+import { referenceIdentity } from '../lib/frame-identity.mjs';
 
 const SYNC_CLIP = 'sync-clicks-1080x1920.mp4';
+const SYNC_CLIP_24 = 'sync-clicks-24fps-1080x1920.mp4';
 
 const arg = (name, fallback) => {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -65,6 +74,7 @@ const outDir = join(web, 'matrix-results', desktop ? `android-compare-${desktop}
 mkdirSync(outDir, { recursive: true });
 // Generated, not a recording: made here the first time it is needed.
 if (!existsSync(join(android, SYNC_CLIP))) writeSyncClip(join(android, SYNC_CLIP));
+if (!existsSync(join(android, SYNC_CLIP_24))) writeSyncClip(join(android, SYNC_CLIP_24), { fps: 24 });
 
 /** id, file, kesitler (seconds), options, what we expect. */
 const CASES = [
@@ -88,6 +98,8 @@ const CASES = [
   { id: 'O', file: join(android, SYNC_CLIP), kesits: [[1.2, 6.5]], mode: 'encode', sync: true, expect: 'forced full encode, clicks' },
   { id: 'P', file: join(android, SYNC_CLIP), kesits: [[0.4, 2], [5, 8.3]], sync: true, expect: 'two kesitler, clicks' },
   { id: 'Q', file: join(android, SYNC_CLIP), kesits: [], mode: 'encode', sync: true, expect: 'whole clip, forced full encode, clicks' },
+  // ADR-033: a 24 fps twin on the 30 fps grid (some frames drawn twice), the second kesit to the clip's end.
+  { id: 'R', file: join(android, SYNC_CLIP_24), kesits: [[0.4, 3.3], [9.5, 12]], mode: 'encode', sync: true, sourceFps: 24, expect: '24 fps clip, two kesitler to the end, forced full encode' },
 ];
 
 function probe(file) {
@@ -361,9 +373,18 @@ async function runCase(testCase) {
         row.audioLayout = audioLayout(local);
         row.audioSync = audioSync(testCase.file, testCase.kesits[0]?.[0] ?? 0, local);
       }
+      // ADR-033: which source frame every output frame shows, read from the
+      // barcode (sync clips) or against an ffmpeg reference (recordings).
       if (testCase.sync) {
         row.avSync = avSync(local);
-        row.frameIdentity = frameIdentity(local, testCase.kesits);
+        row.frameIdentity = frameIdentity(local, testCase.kesits, { sourceFps: testCase.sourceFps ?? 30 });
+      } else {
+        const copied = row.method === 'copy' || row.method === 'smart';
+        try {
+          row.frameIdentity = referenceIdentity({ output: local, source: testCase.file, trims: testCase.kesits, gridFps: copied ? 30 : null });
+        } catch (error) {
+          row.frameIdentityError = String(error.message ?? error).split('\n')[0];
+        }
       }
     } else {
       row.message = ((await page.locator('[data-testid="export-failed"], [data-testid="export-blocked"]').first().textContent().catch(() => '')) ?? '')
@@ -386,6 +407,13 @@ async function runCase(testCase) {
 }
 
 writeFileSync(join(outDir, `phone-run-${Date.now()}.json`), JSON.stringify({ url, desktop: desktop || null, at: new Date().toISOString(), results }, null, 2));
+// ADR-033: the frame check in one line — a case is only clean when it was saved and every frame was right.
+const identity = results.map((row) =>
+  row.frameIdentity
+    ? `${row.id}:${row.frameIdentity.wrong}/${row.frameIdentity.expectedFrames}`
+    : `${row.id}:${row.frameIdentityError ? 'not measured' : row.outcome}`,
+);
+console.log(`frame identity (wrong/expected): ${identity.join(' ')}`);
 if (desktop) await browser.close();
 // Only disconnect: never close the phone's own browser.
 process.exit(0);

@@ -37,6 +37,7 @@ import {
   perFrameSsim,
   ssim,
 } from './media-measure.mjs';
+import { referenceIdentity } from './frame-identity.mjs';
 
 /** 'mm:ss.mmm' (the moment fields' format) to microseconds. */
 function clockToUs(text) {
@@ -858,6 +859,33 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
           `görüntü ffmpeg referansıyla eşleşiyor (SSIM ≥ ${want.minSsim})`,
           Number.isFinite(score) && score >= want.minSsim,
           `SSIM ${Number.isFinite(score) ? score.toFixed(4) : 'ölçülemedi'}`,
+        );
+        // ADR-033: frame by frame, not only on average — a stale kesit end
+        // keeps SSIM high and the frame count right.
+        const identity = referenceIdentity({
+          output: artefactPath,
+          source: join(mediaDir, testCase.setup.video),
+          trims: want.reference.trims,
+          width: measured.width,
+          height: measured.height,
+          filter: want.reference.filter,
+          gridFps: copied ? 30 : null,
+        });
+        measured.frameIdentity = {
+          wrong: identity.wrong,
+          undecidable: identity.undecidable,
+          frames: identity.frames,
+          byKesit: identity.byKesit,
+          firstWrong: identity.firstWrong,
+        };
+        add(
+          'her çıktı karesi referansın aynı karesini gösteriyor (kesit başı, ortası, sonu)',
+          identity.wrong === 0,
+          `yanlış ${identity.wrong}/${identity.expectedFrames}` +
+            (identity.wrong > 0
+              ? ` (baş/orta/son: ${identity.byKesit.map((k) => `${k.wrongAtStart}/${k.wrongInMiddle}/${k.wrongAtEnd}`).join(', ')})`
+              : '') +
+            `, karar verilemeyen (durağan) ${identity.undecidable}`,
         );
       } catch (error) {
         add('referans karşılaştırması', false, String(error).slice(0, 160));

@@ -3,7 +3,24 @@ export declare const SYNC_FPS: number;
 export declare const SYNC_RATE: number;
 export declare const SYNC_SECONDS: number;
 export declare const SEEK_SAFE_S: number;
-export function syncEventFrames(): number[];
+export function syncEventFrames(fps?: number): number[];
+export declare const EDGE_FRAMES: number;
+export function expectedSourceFrames(
+  kesits: [number, number][],
+  options?: { sourceFps?: number; outputFps?: number; seconds?: number },
+): { kesit: number; frames: number[] }[];
+export interface FrameIdentity {
+  frames: number;
+  expectedFrames: number;
+  wrong: number;
+  byKesit: { kesit: number; frames: number; wrong: number; wrongAtStart: number; wrongInMiddle: number; wrongAtEnd: number }[];
+  firstWrong: { outputFrame: number; kesit: number; shows: number | null; expected: number }[];
+  lastWrong: { outputFrame: number; kesit: number; shows: number | null; expected: number }[];
+}
+export function compareFrameIdentity(
+  shown: number[],
+  expectedByKesit: { kesit: number; frames: number[] }[],
+): FrameIdentity;
 export function onsets(pcm: Float32Array, rate?: number): number[];
 export function onFileTimeline(
   decoded: Float32Array,
