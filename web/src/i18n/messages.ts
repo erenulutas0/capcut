@@ -549,6 +549,7 @@ export const tr = {
   'export.fallback.requested_encode': 'tam kodlama istendi',
   // ADR-035: "Küçült" (hedef boyut) ve "Sesini al" (yalnızca ses).
   'export.fallback.target_size': 'orijinal görüntü hedef boyuta sığmıyor',
+  'export.refusedTitle': 'Bu indirme yapılamıyor.',
   'export.running.pass': 'Dosya hedeften büyük çıktı; daha küçük olacak şekilde yeniden kodlanıyor ({pass}. deneme)',
   'export.running.audio': 'Ses dosyası oluşturuluyor',
   'export.method.audio': 'Yalnızca ses: AAC, M4A dosyası. Görüntü yok.',
@@ -1487,6 +1488,7 @@ export const en: Record<MessageKey, string> = {
   'export.fallback.requested_encode': 'a full encode was requested',
   // ADR-035: target-size and sound-only downloads.
   'export.fallback.target_size': 'the original picture does not fit the target size',
+  'export.refusedTitle': 'This download cannot be made.',
   'export.running.pass': 'The file came out over the target; encoding it again to be smaller (attempt {pass})',
   'export.running.audio': 'Making the audio file',
   'export.method.audio': 'Sound only: AAC in an M4A file. No picture.',

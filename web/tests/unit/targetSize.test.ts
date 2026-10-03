@@ -165,8 +165,8 @@ describe('planTargetSize', () => {
   });
 
   it('uses each encoder class’s own measured floors and overshoot', () => {
-    expect(STEP_DOWN_BITS_PER_PIXEL).toEqual({ hardware: 0.04, software: 0.055 });
-    expect(REFUSE_BITS_PER_PIXEL).toEqual({ hardware: 0.025, software: 0.03 });
+    expect(STEP_DOWN_BITS_PER_PIXEL).toEqual({ hardware: 0.04, software: 0.07 });
+    expect(REFUSE_BITS_PER_PIXEL).toEqual({ hardware: 0.025, software: 0.07 });
     expect(VIDEO_OVERSHOOT).toEqual({ hardware: 1.1, software: 1.02 });
     for (const kind of ['hardware', 'software'] as const) {
       const f = facts({ durationUs: 100 * SECOND, kind });
@@ -366,6 +366,10 @@ describe('the plan for a decision', () => {
     expect(slow).toBeGreaterThan(fast);
     expect(estimateEncodeSeconds({ width: 640, height: 360, encoderKind: 'hardware' }, 1800)).toBeLessThanOrEqual(fast);
     expect(estimateEncodeSeconds({ ...hd, encoderKind: 'hardware' }, 0)).toBe(1);
+    // Measured: 60 s of 1080p took 10.9 s (hardware) and 27.8 s (software); 5 min 41 s at 360p took 24.5 s (hardware).
+    expect(fast).toBe(12);
+    expect(slow).toBe(28);
+    expect(estimateEncodeSeconds({ width: 640, height: 360, encoderKind: 'hardware' }, 10_230)).toBe(26);
   });
 });
 

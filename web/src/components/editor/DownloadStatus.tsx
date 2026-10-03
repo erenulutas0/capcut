@@ -151,6 +151,18 @@ function runningStep(t: T, entry: Extract<DownloadEntry, { phase: 'running' }>):
   return t(`export.running.${entry.step}` as MessageKey);
 }
 
+/**
+ * ADR-035: a target that is too small, or a video without sound, is not the
+ * browser's fault — "Bu tarayıcıda çıktı alınamıyor" would be untrue there.
+ */
+function isRequestRefusal(entry: Extract<DownloadEntry, { phase: 'blocked' }>): boolean {
+  return entry.reason === 'target_size_too_small' || entry.reason === 'no_audio_track';
+}
+
+function blockedTitleKey(entry: Extract<DownloadEntry, { phase: 'blocked' }>): MessageKey {
+  return isRequestRefusal(entry) ? 'export.refusedTitle' : 'export.blockedTitle';
+}
+
 /** The one sentence a screen reader hears per phase (the percentage is left out). */
 function announcement(t: T, entry: DownloadEntry, device: boolean): string {
   switch (entry.phase) {
@@ -163,7 +175,7 @@ function announcement(t: T, entry: DownloadEntry, device: boolean): string {
     case 'ready':
       return readyTitle(t, entry, device);
     case 'blocked':
-      return entry.overrun ? t('export.overLimitTitle') : t('export.blockedTitle');
+      return entry.overrun ? t('export.overLimitTitle') : t(blockedTitleKey(entry));
     case 'failed':
       return t('export.failedTitle');
     case 'canceled':
@@ -465,7 +477,7 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
               </>
             ) : (
               <>
-                <b>{t('export.blockedTitle')}</b>
+                <b>{t(blockedTitleKey(entry))}</b>
                 <span>
                   {entry.reason === 'capability'
                     ? t('export.blockedBody')
@@ -491,8 +503,8 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
           </span>
           <DismissButton t={t} onDismiss={onDismiss} />
         </div>
-        {/* Too long is not a fault to report: the user shortens the kesit. */}
-        {entry.overrun ? null : (
+        {/* Too long, too small a target or no sound is not a fault to report. */}
+        {entry.overrun || isRequestRefusal(entry) ? null : (
           <button type="button" className="link-button" onClick={onReportProblem} data-testid="export-report">
             {t('support.open')}
           </button>

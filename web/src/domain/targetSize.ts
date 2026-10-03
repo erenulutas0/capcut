@@ -86,13 +86,15 @@ export const DEFAULT_MIN_SHORT_EDGE = 360;
  *   720p crossovers is 0.04.
  * - software (OpenH264: Playwright's Chromium, browsers without a hardware
  *   encoder): this encoder cannot go under a rate that depends on the
- *   footage (0.027 / 0.052 / 0.14 bit/pixel on the three 1080p recordings
- *   measured) — asked for less, it writes the same bytes. 0.055 is the middle
- *   one: under it a typical phone recording does not fit at this size at all.
+ *   footage — asked for less, it writes the same bytes. Measured lowest
+ *   rates: 0.023–0.028 and 0.052 bit/pixel on 10 s pieces of ordinary phone
+ *   recordings, 0.062 on a whole 5 min 41 s one, 0.14 on a very detailed
+ *   clip. 0.07 is just above what whole ordinary recordings needed: under it
+ *   such a recording does not fit at this size at all.
  */
 export const STEP_DOWN_BITS_PER_PIXEL: Record<VideoEncoderKind, number> = {
   hardware: 0.04,
-  software: 0.055,
+  software: 0.07,
 };
 
 /**
@@ -102,12 +104,14 @@ export const STEP_DOWN_BITS_PER_PIXEL: Record<VideoEncoderKind, number> = {
  * - hardware: the knee of the measured quality curve — from 0.025 down to
  *   0.015 bit/pixel SSIM falls two to three times as fast as from 0.035 to
  *   0.025, and the encoder starts to miss its bitrate (up to 1.47x).
- * - software: 0.03, just above the lowest rate the encoder reached on the
- *   easiest recording measured (0.027); under it no measured footage fits.
+ * - software: 0.07, the same floor as above. With a lower one (0.03 was
+ *   tried) a whole 5 min 41 s recording was accepted for 16 MB, encoded for
+ *   two minutes and came out at 23.7 MB: the encoder was at its lowest rate.
+ *   Very detailed footage can still miss its target; the result then says so.
  */
 export const REFUSE_BITS_PER_PIXEL: Record<VideoEncoderKind, number> = {
   hardware: 0.025,
-  software: 0.03,
+  software: 0.07,
 };
 
 /**
@@ -507,23 +511,27 @@ export function correctTargetSize(
 /* ---------------------------------------------------------------- estimate */
 
 /**
- * Output pixels a full encode gets through per second of wall clock, by
- * encoder class (ADR-035: measured on one desktop; a phone is slower). Only
- * for the rough "about a minute" shown before a download starts — never for
- * progress, which is counted in real frames.
+ * Wall-clock milliseconds one output frame costs in a full encode: a fixed
+ * part (decoding and drawing the source) plus a part per output megapixel.
+ * Measured on one desktop with 1080p sources (ADR-035): hardware 2.4 ms at
+ * 360p and 6.1 ms at 1080p; software 13.3 ms and 15.4 ms. A phone, a 4K
+ * source or a second attempt take longer. Only for the rough "about a
+ * minute" shown before a download starts — never for progress, which is
+ * counted in real frames.
  */
-export const ENCODE_PIXELS_PER_SECOND: Record<VideoEncoderKind, number> = {
-  hardware: 300_000_000,
-  software: 120_000_000,
+export const ENCODE_MS_PER_FRAME: Record<VideoEncoderKind, { base: number; perMegapixel: number }> = {
+  hardware: { base: 2, perMegapixel: 2 },
+  software: { base: 13, perMegapixel: 1 },
 };
 
-/** A rough wall-clock estimate for encoding `totalFrames` at the decided size, in seconds. */
+/** A rough wall-clock estimate for one encode of `totalFrames` at the decided size, in seconds. */
 export function estimateEncodeSeconds(
   decision: Pick<TargetSizeDecision, 'width' | 'height' | 'encoderKind'>,
   totalFrames: number,
 ): number {
-  const pixels = decision.width * decision.height * Math.max(0, totalFrames);
-  return Math.max(1, Math.ceil(pixels / ENCODE_PIXELS_PER_SECOND[decision.encoderKind]));
+  const cost = ENCODE_MS_PER_FRAME[decision.encoderKind];
+  const perFrame = cost.base + (cost.perMegapixel * decision.width * decision.height) / 1_000_000;
+  return Math.max(1, Math.ceil((Math.max(0, totalFrames) * perFrame) / 1000));
 }
 
 /* ------------------------------------------------------------- plan helpers */

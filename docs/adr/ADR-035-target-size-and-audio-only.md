@@ -249,11 +249,47 @@ kbit/s ile sığan çok dar bir hedefte ön izleme "sığar" der, işçi "sığm
 
 ## Yalnızca ses: ne oynatıyor
 
-<!-- AUDIO -->
+`measure-target-size.mjs --mode=audio` (gerçek kayıtlar, uygulamanın kendisinden) ve
+`check-audio-playback.mjs` (oynatma). Dosyalar: 60 sn (IP11), 20,5 sn (IP13), 3,5 sn (S21), 8,2 sn
+(GOPRO) — Chrome 154, Edge 154 ve Chromium 153'te üretildi; ayrıca telefonda üretilen iki dosya.
+
+| Denetim | Sonuç |
+|---|---|
+| ffprobe | Kap `mov,mp4,m4a,…`, marka `isom`; tek iz `aac` (LC), 48 kHz stereo, ~128 kbit/s; video izi yok. İz ve dosya süresi **tam** 60 / 20,5 / 3,5 / 8,2 sn (0 örnek sapma). |
+| ffmpeg çözme | 2 880 000 / 984 000 / 168 000 örnek: sürenin tam karşılığı. Kaynağın aynı aralığındaki sese göre kayma 0 ms (8 kHz çapraz ilinti, ±200 ms). |
+| Chrome 154 `<audio>` | `canPlayType('audio/mp4; codecs="mp4a.40.2"')` = `probably`; `duration` tam; çalıyor, `ended` yazılan sürede; hata yok. `decodeAudioData`: örnek sayısı ffmpeg ile aynı, kayma 0 örnek. |
+| Edge 154 `<audio>` | Aynı. |
+| Windows Media Foundation (başsız, `mf-audio.ps1`: WAV'a çevirme) | Açıyor ve çözüyor; ses ffmpeg çözümüne göre 0 örnek kaymış. Sonda 64–608 örnek (1–13 ms) fazlası var: MF son AAC paketinin kısaltılmış süresini uygulamıyor. |
+| Telefonda üretilen dosyalar (V, W) | ffprobe/ffmpeg/Chrome/Edge: süre tam (5,3 ve 3,5 sn), kayma 0 (düzenleme listesi 2048 hazırlık karesini atlatıyor). **Media Foundation düzenleme listesini uygulamıyor:** ses 2048 örnek (42,7 ms) geç başlıyor, sonda da fazlalık var. Yalnızca ses dosyasında eşlenecek görüntü olmadığı için duyulur bir kusur değil, ama kayıt altında. |
+| Süre | 60 sn'lik ses dosyası masaüstünde 1,9 sn'de, telefonda 3,5–5,3 sn'lik dosyalar 0,5 sn'de üretildi (düğmeden "Kaydedildi"ye). |
+
+**Denenmedi:** Windows Media Player / Groove'un kendisi (yalnızca aynı Media Foundation hattı,
+başsız), VLC, iOS/macOS, Android'in müzik uygulamaları, WhatsApp'ın M4A'yı nasıl gösterdiği, telefonun
+kendi `<audio>` oynatıcısı. Dosyanın `ftyp` markası `isom` (mediabunny `M4A ` yazmıyor); denenen hiçbir
+oynatıcı buna takılmadı.
 
 ## Telefon (Galaxy S23, Android 16, Chrome 154; `phone-run.mjs` S–Z2, yerel derleme, adb reverse)
 
-<!-- PHONE -->
+Kaydetme penceresi yer tutucuyla (OPFS) geçildi; kalite 1080p; dosyalar bilgisayarda ffprobe/ffmpeg
+ile ölçüldü. Telefon ikinci oturumda bağlı değildi: aşağıdakiler ilk oturumun (birleştirme öncesi,
+aynı motor kodu) sonuçlarıdır ve birleştirmeden sonra telefonda **yeniden koşulmadı**.
+
+| # | Kaynak, kesit | İstek | Sonuç |
+|---|---|---|---|
+| S | S21 1080p60, 0,5–4 sn | hedef 1 000 000 bayt | 911 760 bayt (plan 905 337), 720×1280, 1 deneme, video gerçek/istenen 1,0009; 105/105 kare doğru; ses kayması 0 ms |
+| T | 3 dk 1080×1920, tamamı | hedef 16 000 000 (WhatsApp) | 14 667 113 bayt (plan 14 667 464), 360×640, 1 deneme, oran 1,0000; 5400/5400 kare doğru; 26,6 sn. Kopya sığmadığı için tam kodlama ("orijinal görüntü hedef boyuta sığmıyor"). |
+| U | 3 dk 1080×1920, 10–40 sn | hedef 4 000 000 | 3 646 053 bayt (plan 3 644 693), 540×960, 1 deneme, oran 0,9998; 900/900 kare doğru; 6,1 sn |
+| X | S21, 0,5–4 sn | zorla 720p 1,5 Mbit/s **sabit** | video gerçek/istenen **1,0034** |
+| Y | S21, 0,5–4 sn | zorla 720p 1,5 Mbit/s **değişken** | video gerçek/istenen **1,9735** |
+| Z | 3 dk klip, 10–40 sn | zorla 720p 1,5 Mbit/s sabit | 0,9986 |
+| Z2 | 3 dk klip, 10–40 sn | zorla 1080p 3 Mbit/s, ses 96 kbit/s | **Reddedildi:** "Bu tarayıcının ses kodlayıcısı sesi görüntüyle hizalı yazamadı…" (96 kbit/s'te gecikme ölçümü tutmuyor; dosya yazılmadı). Bunun üzerine işçi 96'yı yalnızca gecikmesi ölçülebiliyorsa planlıyor. |
+| V | senkron klibi, 1,2–6,5 sn | yalnızca ses | M4A, 254 400 örnek = tam 5,3 sn; ilk paketler −2048, −1024, 0 (`skip_samples` 2048); kaynağa göre kayma 0 ms (ilinti 0,9999); 0,5 sn |
+| W | S21, 0,5–4 sn | yalnızca ses | M4A, 168 000 örnek = tam 3,5 sn; kayma 0 ms; 0,5 sn |
+
+Telefonun AAC kodlayıcısı 32–192 kbit/s'in hepsine "destekliyorum" diyor (`aac-bitrate-probe.mjs`);
+H.264 kodlayıcısı 360p–1080p'de donanım, sabit ve değişken mod destekli görünüyor. Koşulardan sonra
+betiğin açtığı sekmeler kapatıldı, site verisi (OPFS, IndexedDB, localStorage, servis çalışanı,
+önbellekler) silindi, `adb reverse` ve `adb forward` eşlemeleri kaldırıldı.
 
 ## Testler
 
