@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon, Wordmark } from '@/components/Icon';
 import { InstallEntry } from '@/components/pwa/InstallEntry';
 import { useHydrated } from '@/components/useHydrated';
-import { safeFileName } from '@/adapters/browserMedia';
 import { withWholeKesit } from '@/application/commands';
 import { DEFAULT_CAPTION_STYLE, captionAtVideoTime, primaryCaptionTrack, videoCues } from '@/domain/captions';
 import type { AspectRatio, Project } from '@/domain/edl';
@@ -41,7 +40,7 @@ import { CaptionsPanel } from './CaptionsPanel';
 import { KesitDock } from './KesitDock';
 import { KesitList } from './KesitList';
 import { MarkBar, type MarkTarget } from './MarkBar';
-import { refusedFileText } from './mediaErrorText';
+import { MediaErrorNotice } from './MediaErrorNotice';
 import { PreviewStage } from './PreviewStage';
 import { RelinkPanel } from './RelinkPanel';
 import { ReportDialog } from './ReportDialog';
@@ -51,7 +50,7 @@ import { SourceStrip, type EditableRange } from './SourceStrip';
 import type { TrimCommitInfo } from './TrimHandle';
 import { useCaptionFont } from './useCaptionFont';
 import { canPickSaveFile, entryIsCurrent, useDownloads } from './useDownloads';
-import { useEditorState } from './useEditorState';
+import { useEditorState, type EditorState } from './useEditorState';
 import { useLayoutMode } from './useLayoutMode';
 import { useTouchScreen } from './useTouchScreen';
 import { usePlayback } from './usePlayback';
@@ -124,13 +123,25 @@ type SilenceScope =
  * "Kesit ekle" adds a range whose times were typed. One clock — the video's.
  */
 export function EditorApp() {
+  const state = useEditorState();
+  return <EditorView state={state} stored />;
+}
+
+/**
+ * The editor over a recipe it is given. `/editor` gives it its own
+ * (`EditorApp`, restored from and saved to this browser: `stored`). A task
+ * wizard (ADR-034: "Kes", "Daha fazla ayar → editörde aç") hands over the
+ * recipe it already holds — the same open video, the same settings, no second
+ * file dialog — and that work is not stored (`stored` false): a wizard never
+ * saves a project, and the one kept from `/editor` is not replaced.
+ */
+export function EditorView({ state, stored }: { state: EditorState; stored: boolean }) {
   const hydrated = useHydrated();
   const layout = useLayoutMode();
   const phone = layout === 'phone';
   // Wording for a phone or tablet ("Kaydet", not "Bilgisayara kaydet"), ADR-031.
   const touchScreen = useTouchScreen();
   const deviceWording = phone || touchScreen;
-  const state = useEditorState();
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const musicElementRef = useRef<HTMLAudioElement | null>(null);
   const playback = usePlayback({
@@ -146,6 +157,7 @@ export function EditorApp() {
     title: state.title,
     bindings: state.bindings,
     onRestore: state.restoreFromRecord,
+    enabled: stored,
   });
 
   const downloads = useDownloads({
@@ -618,44 +630,7 @@ export function EditorApp() {
 
   // ------------------------------------------------------------ views
 
-  const mediaErrorText = state.mediaError
-    ? (() => {
-        const error = state.mediaError;
-        const main = refusedFileText(t, {
-          reason: error.reason,
-          name: safeFileName(error.fileName, 60),
-          ...(error.bytes === undefined ? {} : { bytes: error.bytes }),
-        });
-        if (!error.keptOpen) return main;
-        return `${main} ${t(error.scope === 'video' ? 'error.keptVideo' : 'error.keptAudio')}`;
-      })()
-    : null;
-
-  const mediaErrorNode = mediaErrorText ? (
-    <div className="inline-error media-error" role="alert" data-testid="media-error">
-      <Icon name="alert" />
-      <span>
-        {mediaErrorText}
-        {state.mediaError?.hint === 'hevc_decoder_missing' ? (
-          <>
-            {' '}
-            <span className="media-error-hint" data-testid="media-error-hint">
-              {t('error.hint.hevc_decoder_missing')}
-            </span>
-          </>
-        ) : null}
-      </span>
-      <button
-        type="button"
-        className="icon-btn media-error-close"
-        onClick={state.clearMediaError}
-        aria-label={t('error.dismiss')}
-        data-testid="media-error-dismiss"
-      >
-        <Icon name="close" size={16} />
-      </button>
-    </div>
-  ) : null;
+  const mediaErrorNode = <MediaErrorNotice t={t} error={state.mediaError} onDismiss={state.clearMediaError} />;
 
   const view =
     project.clips[0]?.view ??
@@ -770,7 +745,21 @@ export function EditorApp() {
       </aside>
 
       <header className="topbar">
-        <Wordmark />
+        {/* The way back to the opening screen (ADR-034). prefetch={false}: see app/page.tsx. */}
+        <Link
+          href="/"
+          prefetch={false}
+          className="wordmark-link"
+          aria-label={t('wizard.backHome')}
+          title={t('wizard.backHome')}
+          onClick={(event) => {
+            // A running download is real work: leaving the page would stop it.
+            if (downloads.activeKey !== null && !window.confirm(t('wizard.leaveWarning'))) event.preventDefault();
+          }}
+          data-testid="home-link"
+        >
+          <Wordmark />
+        </Link>
         <div className="topbar-title">
           {phone ? null : (
             <>
@@ -785,7 +774,14 @@ export function EditorApp() {
                 onChange={(event) => state.setTitle(event.target.value)}
                 data-testid="project-title"
               />
-              <SaveStateBadge t={t} state={persistence.saveState} onDownloadBackup={persistence.downloadBackup} />
+              {stored ? (
+                <SaveStateBadge t={t} state={persistence.saveState} onDownloadBackup={persistence.downloadBackup} />
+              ) : (
+                <span className="save-state" title={t('wizard.editor.unsavedHint')} data-testid="save-state-off">
+                  <span className="save-dot" data-kind="idle" aria-hidden="true" />
+                  {t('wizard.editor.unsaved')}
+                </span>
+              )}
             </>
           )}
         </div>
@@ -1074,7 +1070,7 @@ export function EditorApp() {
               data-testid="project-title"
             />
             <p className="hint-small" style={{ marginBottom: 14 }}>
-              {t('topbar.saveState.hint')}
+              {t(stored ? 'topbar.saveState.hint' : 'wizard.editor.unsavedHint')}
             </p>
           </>
         ) : null}

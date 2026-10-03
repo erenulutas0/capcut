@@ -133,12 +133,24 @@ function capabilityKey(plan: RenderPlan, withFont: boolean, videoFile: File, aud
   ].join('|');
 }
 
+/**
+ * What a caller may add to the export request beyond what every download
+ * sets (ADR-034: the task wizards). The type follows the export client's own
+ * options, so an option added there (a size target, audio-only output) can be
+ * passed from a wizard without touching this hook.
+ */
+export type ExportExtras = Omit<Parameters<ExportWorkerClient['export']>[3], 'memoryRouteLimitUs' | 'destination'>;
+
 interface Args {
   project: Project;
   settings: KesitSettings;
   videoFile: File | null;
   audioFile: File | null;
   videoName: string | null;
+  /** The name the save dialog suggests, instead of the kesit-based one (the task wizards). */
+  fileName?: string | null;
+  /** Extra options for the export request (the task wizards); none in the editor. */
+  exportExtras?: ExportExtras;
 }
 
 /**
@@ -155,7 +167,15 @@ interface Args {
  * video is open and its answer is kept per encoder configuration. A press
  * only waits for it if it has not finished yet.
  */
-export function useDownloads({ project, settings, videoFile, audioFile, videoName }: Args) {
+export function useDownloads({
+  project,
+  settings,
+  videoFile,
+  audioFile,
+  videoName,
+  fileName: fileNameOverride = null,
+  exportExtras,
+}: Args) {
   const [entries, setEntries] = useState<Record<string, DownloadEntry>>({});
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [capability, setCapability] = useState<{ key: string; report: CapabilityReportV1 } | null>(null);
@@ -331,16 +351,18 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
       }
 
       const clip = target.kind === 'kesit' ? project.clips.find((item) => item.clipId === target.clipId) : undefined;
-      const fileName = suggestedFileName(
-        videoName ?? videoFile.name,
-        clip
-          ? { kind: 'kesit', sourceInUs: clip.sourceInUs, sourceOutUs: clip.sourceOutUs }
-          : kind === 'kesit' && project.clips[0]
-            ? { kind: 'kesit', sourceInUs: project.clips[0].sourceInUs, sourceOutUs: project.clips[0].sourceOutUs }
-            : kind === 'merged'
-              ? { kind: 'merged', count: project.clips.length }
-              : { kind: 'whole' },
-      );
+      const fileName =
+        fileNameOverride ??
+        suggestedFileName(
+          videoName ?? videoFile.name,
+          clip
+            ? { kind: 'kesit', sourceInUs: clip.sourceInUs, sourceOutUs: clip.sourceOutUs }
+            : kind === 'kesit' && project.clips[0]
+              ? { kind: 'kesit', sourceInUs: project.clips[0].sourceInUs, sourceOutUs: project.clips[0].sourceOutUs }
+              : kind === 'merged'
+                ? { kind: 'merged', count: project.clips.length }
+                : { kind: 'whole' },
+        );
 
       // Inside the click, before any await (user activation).
       const picker = savePicker();
@@ -423,6 +445,7 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
           });
 
         for await (const event of client().export(plan, videoFile, audioFile, {
+          ...exportExtras,
           memoryRouteLimitUs: WEB_LOCAL_POLICY.maxMemoryRouteOutputDurationUs,
           destination,
         })) {
@@ -536,6 +559,8 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
       capability,
       client,
       ensureCapability,
+      exportExtras,
+      fileNameOverride,
       project,
       releaseOffered,
       setEntry,

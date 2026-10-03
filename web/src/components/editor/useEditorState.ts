@@ -104,6 +104,9 @@ const AUDIO_LIMITS = {
   maxDurationUs: WEB_LOCAL_POLICY.maxMusicDurationUs,
 };
 
+/** A pure change to the recipe, applied in the same step as opening a file. */
+export type RecipePreparation = (project: Project) => Project;
+
 /** The shape every caption or timeline command returns: a new recipe, or a refusal. */
 type CommandOutcome = { ok: true; project: Project } | { ok: false };
 
@@ -169,8 +172,13 @@ export function useEditorState() {
     [],
   );
 
+  /**
+   * `prepare` (the task wizards, ADR-034): a pure change to the recipe that
+   * belongs to opening the video — e.g. the whole video as one kesit — and is
+   * committed with it, as the same undo step.
+   */
   const importVideo = useCallback(
-    async (file: File): Promise<VideoImportOutcome> => {
+    async (file: File, prepare?: RecipePreparation): Promise<VideoImportOutcome> => {
       setMediaError(null);
       setActionError(null);
       const keptOpen = liveHandles.current.video !== null;
@@ -231,14 +239,14 @@ export function useEditorState() {
           aspect && replaced.clips.length === 0 && replaced.canvas.aspect !== aspect
             ? setFraming(replaced, { aspect })
             : replaced;
-        return commit(current, framed);
+        return commit(current, prepare ? prepare(framed) : framed);
       });
       return { kind: 'opened', lengthUs: outcome.handle.durationUs, aspect };
     },
     [],
   );
 
-  const importAudio = useCallback(async (file: File) => {
+  const importAudio = useCallback(async (file: File, prepare?: RecipePreparation) => {
     setMediaError(null);
     setActionError(null);
     const keptOpen = liveHandles.current.audio !== null;
@@ -269,14 +277,12 @@ export function useEditorState() {
         ...previous.filter((binding) => binding.kind !== 'audio'),
         bindingFor(assetId, 'audio', file, { durationUs: outcome.handle.durationUs }),
       ]);
-      return commit(
-        current,
-        setMusicAsset(current.present, {
-          assetId,
-          kind: 'audio',
-          durationUs: outcome.handle.durationUs,
-        }),
-      );
+      const withMusic = setMusicAsset(current.present, {
+        assetId,
+        kind: 'audio',
+        durationUs: outcome.handle.durationUs,
+      });
+      return commit(current, prepare ? prepare(withMusic) : withMusic);
     });
   }, []);
 

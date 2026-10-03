@@ -27,6 +27,13 @@ interface Args {
   title: string;
   bindings: AssetBinding[];
   onRestore: (record: ProjectRecord) => void;
+  /**
+   * False for work that came from a task wizard (ADR-034: a wizard never
+   * stores a project): nothing is read from or written to the browser's
+   * store, so the project kept from the editor stays as it was. The backup
+   * file still works. Fixed for the component's life.
+   */
+  enabled?: boolean;
 }
 
 /**
@@ -38,7 +45,7 @@ interface Args {
  * - "saved" means a transaction committed in THIS browser, which can still be
  *   cleared or evicted. The UI copy says exactly that.
  */
-export function useProjectPersistence({ project, title, bindings, onRestore }: Args) {
+export function useProjectPersistence({ project, title, bindings, onRestore, enabled = true }: Args) {
   const storeRef = useRef(createIndexedDbStore());
   const [saveState, setSaveState] = useState<SaveState>({ kind: 'idle' });
   const [restored, setRestored] = useState(false);
@@ -55,6 +62,7 @@ export function useProjectPersistence({ project, title, bindings, onRestore }: A
   const restoredRef = useRef(false);
 
   const persist = useCallback(async (): Promise<void> => {
+    if (!enabled) return;
     const { project: current, title: currentTitle, bindings: currentBindings } = latest.current;
     if (current.clips.length === 0 && currentBindings.length === 0 && currentTitle === '') {
       return;
@@ -67,10 +75,11 @@ export function useProjectPersistence({ project, title, bindings, onRestore }: A
 
     const result = await storeRef.current.save(record);
     setSaveState(result.ok ? { kind: 'saved', at: Date.now() } : { kind: 'failed', reason: result.reason });
-  }, []);
+  }, [enabled]);
 
   // --- restore, once ------------------------------------------------------
   useEffect(() => {
+    if (!enabled) return undefined;
     let cancelled = false;
     void (async () => {
       const result = await storeRef.current.load(project.projectId);
@@ -173,9 +182,10 @@ export function useProjectPersistence({ project, title, bindings, onRestore }: A
   );
 
   const forget = useCallback(async () => {
+    if (!enabled) return;
     await storeRef.current.remove(latest.current.project.projectId);
     setSaveState({ kind: 'idle' });
-  }, []);
+  }, [enabled]);
 
   return { saveState, restored, loadFailure, downloadBackup, importBackup, forget, persist };
 }

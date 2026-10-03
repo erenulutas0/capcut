@@ -13,15 +13,15 @@ export const dynamic = 'force-static';
  * exact page the service worker keeps for offline use.
  */
 export default function manifest(): MetadataRoute.Manifest {
-  const slash = process.env.STATIC_EXPORT === '1' ? '/' : '';
   return {
     id: withBasePath('/'),
     name: APP_NAME,
     short_name: APP_NAME,
-    description: 'Videonun istediğin yerlerini kes, kaydet ya da paylaş. Video cihazından çıkmaz.',
+    description: 'Videonla ne yapmak istediğini seç: kes, boşlukları at, dikey yap, müzik ekle. Video cihazından çıkmaz.',
     lang: 'tr',
     dir: 'ltr',
-    start_url: withBasePath(`/editor${slash}`),
+    // The opening screen (ADR-034): the installed app starts where the site does.
+    start_url: withBasePath('/'),
     scope: withBasePath('/'),
     display: 'standalone',
     background_color: APP_BACKGROUND,
