@@ -42,6 +42,27 @@
 > aynı); 0 kesitte yok, liste görünürken çekilir, odaklı denetimi örtmez.
 > Tıklama: bir aralık 7 → 6, üç aralık birleştirilmiş 17 → 14, tüm video 2.
 
+> **Güncelleme 2026-10-03 — görev öncelikli açılış ekranı ([ADR-034](../../docs/adr/ADR-034-task-first-home.md)):**
+> Kurucu kararıyla (taslak A + C) site editörle değil **"Ne yapmak istiyorsun?"** ekranıyla
+> açılır. **F00 — İş seç:** üstte yazma kutusu ("Yaz: sessiz yerleri sil"; eşleştirme
+> cihazda, kelime listesiyle, yapay zekâ ve ağ yok), örnek cümleler, altında bugün çalışan her
+> iş için büyük bir kart (Kes, Boşlukları at, Dikey yap, Müzik ekle, Her yerde açılsın), sağ
+> üstte "Kendim düzenleyeceğim" (editör), altta "Videon cihazından çıkmaz. Hesap gerekmez."
+> Yazınca kartların yerini "Bunu mu demek istedin?" alır (satırda "Başla"; Enter ilkini
+> başlatır); henüz yapılmamış iş "Bu henüz yok, üzerinde çalışıyoruz." der ve düğmesi yoktur;
+> hiçbir şey bulunmazsa "Bunu bulamadım" + "Tüm işleri gör". **Sihirbaz (her iş, `/yap/<id>/`):**
+> (1) "Videonu seç" — büyük düğme, masaüstünde sürükle-bırak, editörün ret cümleleri;
+> (2) en fazla **bir** karar, varsayılanı seçili, videonun küçük önizlemesi, "İndir";
+> (3) ilerleme → "Kaydedildi" + "Paylaş" (F04'ün aynı indirme yolu), "Başka bir video",
+> "Ana ekrana dön". Her adımda "Geri" ve "Daha fazla ayar → editörde aç" (aynı video ve
+> ayarlarla, dosya yeniden seçilmeden; bu çalışma saklanmaz). Kararlar: Boşlukları at —
+> "Uzun boşluklar / Kısa duraksamalar da"; Dikey yap — "Doldur / Sığdır" (1080 × 1920);
+> Müzik ekle — videonun sesi "Kalsın / Kapansın"; Her yerde açılsın — karar yok; Kes —
+> video seçilince kesit editörü (F01). Açılış ekranından kaydedilen dosyaya dokunuş: 3
+> (Boşlukları at, Dikey yap, Her yerde açılsın), 4 (Müzik ekle), 5 (Kes, bir kesit).
+> Aşağıdaki "Ekran sistemi"nin ilk paragrafı ("Açılışta büyük Video seç eylemi…") bu
+> güncellemeyle okunmalıdır: önce iş seçilir, "Video seç" sihirbazın ilk adımıdır.
+
 ## Ekran sistemi
 
 Açılışta büyük “Video seç” eylemi, aşağıda mevcut yerel projeler. Kayıt ol modalı yok. “Örnekle dene” yalnızca bize ait kısa bir demo dosyası kullanır. İlk başarılı çıktıdan sonra Pro reklamı zorunlu gösterilmez; değer oluşturan davranış beklenir.

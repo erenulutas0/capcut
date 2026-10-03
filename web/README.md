@@ -12,8 +12,20 @@ Kurulum ve komutlar için depo kökündeki [README](../README.md) dosyasına bak
   proje deposu (yalnızca EDL + küçük metadata; medya asla yazılmaz).
 - `src/adapters/export/` — encode worker'ı: demux → decode → canvas dönüşümü →
   encode → mux → üretilen dosyanın yeniden açılıp ölçülmesi.
-- `src/components/` — React arayüzü.
+- `src/components/` — React arayüzü: `home/` açılış ekranı (iş kartları + yazarak
+  bulma), `wizard/` görev sihirbazları (`/yap/<id>/`), `editor/` kesit editörü.
 - `src/i18n/` — Türkçe varsayılan, İngilizce anahtarlı sözlükler.
+
+## Açılış ekranı ve sihirbazlar (ADR-034)
+
+- İş kaydı: `src/domain/tasks.ts` (kimlik, etiket, simge, `available`, adımlar, arama
+  kelimeleri). Arama: `src/domain/taskSearch.ts` (cihazda, kelime listesiyle; ağ yok).
+- Sihirbaz çatısı: `src/components/wizard/` — `TaskWizard` (sayfa; editörün durum kancası,
+  proje saklamadan), `WizardFlow` (video seç → karar → indir), `useWizardExport`
+  (dışa aktarmaya giden tek yol; ek seçenekler `extras`), `wizards.tsx` (beş sihirbaz).
+- **Yeni bir işi açmak:** `tasks.ts`'te `available: true` + `wizards.tsx`'te bileşeni ve
+  `WIZARDS` tablosundaki satırı. Bileşen eksikse `npm run typecheck` derlemez.
+- Ekran görüntüleri: `node scripts/home-shots.mjs` → `docs/ux/2026-10-03-home/shots/`.
 
 ## Fixture'lar
 

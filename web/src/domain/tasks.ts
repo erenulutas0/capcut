@@ -86,8 +86,7 @@ const REGISTRY = [
       ],
       weak: [
         'sil', 'cikar', 'at', 'bas', 'basi', 'basini', 'son', 'sonu', 'sonunu', 'orta', 'ortasini', 'bolum', 'kisim',
-        'kismi', 'kismini', 'yer', 'yeri', 'yerini', 'yerleri', 'remove', 'delete', 'part', 'start', 'end', 'beginning',
-        'middle',
+        'kismi', 'kismini', 'remove', 'delete', 'part', 'start', 'end', 'beginning', 'middle',
       ],
       phrases: ['basini kes', 'sonunu kes', 'bir kismini', 'istedigim yer', 'istedigim kismi'],
     },
@@ -107,7 +106,7 @@ const REGISTRY = [
       weak: ['konusma', 'konusmadigim', 'hizli', 'sikici', 'dead', 'air', 'boring'],
       phrases: [
         'sessiz yer', 'bos yer', 'konusmadigim yer', 'konusmayan yer', 'dead air', 'remove silence', 'cut silence',
-        'bosluklari at',
+        'bosluklari at', 'jump cut',
       ],
     },
   },
@@ -170,7 +169,10 @@ const REGISTRY = [
     words: {
       strong: ['muzik', 'sarki', 'fon', 'melodi', 'music', 'song', 'soundtrack', 'track'],
       weak: ['ekle', 'koy', 'arka', 'plan', 'mp3', 'add', 'put', 'background'],
-      phrases: ['muzik ekle', 'muzik koy', 'sarki ekle', 'sarki koy', 'arka plan', 'fon muzigi', 'add music', 'background music'],
+      phrases: [
+        'muzik ekle', 'muzik koy', 'sarki ekle', 'sarki koy', 'ses ekle', 'arka plan', 'fon muzigi', 'add music',
+        'background music',
+      ],
     },
   },
   {
@@ -183,8 +185,11 @@ const REGISTRY = [
     words: {
       // No "sesi": "sesiz" must stay a typo of "sessiz", not "sesi" + "z".
       strong: ['mp3', 'sesini', 'ses', 'dinle', 'dinlemek', 'podcast', 'audio', 'wav', 'm4a'],
-      weak: ['al', 'ayir', 'cikar', 'sadece', 'extract', 'only', 'sound'],
-      phrases: ['ses dosyasi', 'sesini al', 'sesini cikar', 'sesini ayir', 'sadece ses', 'audio only', 'extract audio'],
+      weak: ['al', 'ayir', 'cikar', 'extract', 'only', 'sound'],
+      phrases: [
+        'ses dosyasi', 'sesini al', 'sesini cikar', 'sesini ayir', 'sadece ses', 'audio only', 'extract audio',
+        'muzik cikar', 'muzigi cikar', 'muzigini cikar', 'muzigi al', 'muzigini al', 'sarkiyi al', 'sarkiyi cikar',
+      ],
     },
   },
   {
@@ -196,7 +201,7 @@ const REGISTRY = [
     steps: ['pick', 'download'],
     words: {
       strong: [
-        'acilmiyor', 'acilmadi', 'acmiyor', 'acamiyorum', 'oynatmiyor', 'oynamiyor', 'oynatilamiyor', 'calismiyor',
+        'acilmiyor', 'acilmadi', 'acmiyor', 'acamiyorum', 'oynat', 'oynamiyor', 'calismiyor', 'supported',
         'gorunmuyor', 'mp4', 'cevir', 'donustur', 'format', 'formati', 'iphone', 'mov', 'hevc', 'h265', 'h264', 'hdr',
         'uyumlu', 'uyumsuz', 'desteklenmiyor', 'convert', 'converter', 'compatible', 'compatibility', 'unsupported',
       ],

@@ -3,6 +3,22 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Görev öncelikli açılış ekranı — 3 Ekim 2026 (ADR-034; politika ve şema değişmedi)
+
+Kurucu kararı (taslak A + C): editörle açılan ekran "bir çocuğun bile istediğini yapabileceği" kadar kolay değildi.
+
+**Değişen:** Site artık **"Ne yapmak istiyorsun?"** ekranıyla açılır (eski tanıtım sayfasının yerine; yüklenen uygulama da buradan başlar): üstte yazma kutusu, örnek cümleler, altında bugün çalışan her iş için büyük bir kart, sağ üstte "Kendim düzenleyeceğim" (editör), altta "Videon cihazından çıkmaz. Hesap gerekmez." Telefonda iki sütun, masaüstünde üç–dört; hiçbir kart gizlenmez.
+
+**Eklenen — yazarak bulma:** Kutuya yazılan cümle cihazda, uygulamanın içindeki Türkçe/İngilizce kelime listesiyle eşleştirilir (yapay zekâ yok, ağ isteği yok, yazılan saklanmaz): harf katlama, anlamsız sözcükleri atma, kök/ön ek, uzun kelimelerde tek yazım hatası, deyimler. Kartların yerini "Bunu mu demek istedin?" alır; Enter ilk sonucu başlatır. Listeler 74 cümlelik bir tabloyla yazıldı (74/74); sonradan yazılan 56 cümlede ilk ölçüm 48/56 (%86).
+
+**Eklenen — sihirbazlar** (`/yap/<id>/`; video seç → en fazla bir karar → İndir → "Kaydedildi" + "Paylaş"; hepsi mevcut dışa aktarma motoruyla): **Kes** (kesit editörünü seçilen videoyla açar), **Boşlukları at** ("N sessiz yer bulundu, videon kısalacak: X → Y"; "Uzun boşluklar / Kısa duraksamalar da"; 20 parça sınırını söyler), **Dikey yap** (1080 × 1920; "Doldur / Sığdır", canlı önizleme), **Müzik ekle** (videonun sesi "Kalsın / Kapansın"; seviye ve bitişteki kısılma hazır gelir), **Her yerde açılsın** (H.264/AAC MP4; zaten uygunsa söyler). Açılış ekranından kaydedilen dosyaya 3–5 dokunuş. Her sihirbazda "Daha fazla ayar → editörde aç": aynı video ve ayarlarla, dosya yeniden seçilmeden.
+
+**Henüz olmayanlar dürüstçe:** Küçült, Sesini al ve Yazıya dök'ün kartı ve sayfası yok; arama onları kastederse "Bu henüz yok, üzerinde çalışıyoruz." yazar, düğme çizmez.
+
+**Değişmeyen:** Editör `/editor`'de aynı (logosu artık açılış ekranına götürür). Sihirbazdan başlayan çalışma tarayıcıya kaydedilmez; editörde kayıtlı proje yerinde durur. CSP aynı; çevrimdışı kopya sihirbaz sayfalarını da içerir; gizlilik sayfası arama kutusunu ve sihirbazların proje saklamadığını söyler. Kullanıcı testi kiti görevleri açılış ekranından başlatır.
+
+Mevcut kullanıcı haklarına etkisi: yok. Sınırlar, fiyatlar ve şema değişmedi; eski projeler editörde aynen açılır.
+
 ## Teknik — 2 Ekim 2026: Telefonda kesit sonlarındaki bayat kareler düzeltildi (ADR-033; politika ve şema değişmedi)
 
 **Ölçülen (Galaxy S23, Android 16, Chrome 154):** Telefonda tam kodlanan kesitlerin son 1–21 karesi, kaynağın doğru karesi yerine daha önceki bir karenin resmini gösteriyordu; kare sayısı ve "eksik kare" sayacı doğru göründüğü için hiçbir kontrol görmüyordu. Sebep: çözme kitaplığı (mediabunny) aralığın paketleri bitince çözücüyü kapatıyor, oysa önceden çözdüğü birkaç kare henüz çizilmemiş oluyor. Masaüstünde kare resmini kendisi taşıyor; telefondaki Chrome'da resim, kare çizilene kadar donanım çözücüsünün tamponunda duruyor ve çözücü kapanınca gidiyor (`decode-probe.mjs` ile telefonda ölçüldü: kapanmadan önce çizilen kareler doğru, sonra çizilenler son çizilen resmi gösteriyor; boşaltma tek başına resmi götürmüyor).

@@ -161,12 +161,29 @@ kopyasız). Tarayıcı dosya paylaşamıyorsa düğme çizilmez (`web/src/adapte
 Not: yedek panelindeki açıklama önceden "yalnızca hangi anları seçtiğini ve ayarlarını taşır"
 diyordu; bu gerçek içerikle eşleşmediği için `backup.body` (tr/en) düzeltildi.
 
+### 2.7 Açılış ekranı ve görev sihirbazları (2026-10-03, ADR-034)
+
+Yeni saklanan veri **yok**.
+
+- **Arama kutusu** ("Ne yapmak istediğini yaz"): yazılan metin yalnızca bileşenin belleğinde
+  durur (`components/home/TaskFinder.tsx`, React durumu), sayfanın içindeki kelime listesiyle
+  eşleştirilir (`domain/taskSearch.ts`, saf fonksiyon) ve hiçbir yere yazılmaz: localStorage,
+  IndexedDB, adres çubuğu (sorgu parametresi yok), ağ isteği yok. e2e: yazarken sayfa hiç
+  istek yapmaz (`home.spec.ts`).
+- **Sihirbazlar** (`/yap/<id>/`): seçilen video ve müzik editördeki gibi yalnızca bellekte
+  (§2.3). **Proje tarifi saklanmaz**: sihirbazdan (ya da "Kes" / "Daha fazla ayar → editörde
+  aç" ile açılan editörden) IndexedDB `projects` deposuna yazılmaz ve oradan okunmaz; `/editor`'de
+  kayıtlı proje yerinde durur (e2e: `wizards.spec.ts`). Dışa aktarma günlüğü (§2.1) ve geçici
+  dışa aktarma dosyası (§2.2) editördeki indirmeyle aynı yoldan yazılır.
+- Çevrimdışı kopya (§2.5) artık `/yap/kes`, `/yap/bosluk`, `/yap/dikey`, `/yap/muzik`,
+  `/yap/cevir` sayfalarını da içerir (yalnızca uygulamanın kendi dosyaları).
+
 ## 4. Ağ
 
 ### 4.1 Uygulamanın kendi origin'i dışında istek: yok
 
 `web/tests/e2e/privacy.spec.ts` → "a full session contacts only the app origin, and only for app
-files" şu oturumu çalıştırır: landing → `/gizlilik` → editör, video içe aktarma, iki an, altyazı
+files" şu oturumu çalıştırır: açılış ekranı (2026-10-03'e kadar tanıtım sayfası) → `/gizlilik` → editör, video içe aktarma, iki an, altyazı
 satırı, sessizlik analizi (worker'da ses çözme), SRT indirme, altyazılı gerçek dışa aktarma ve
 MP4 indirme, proje yedeği indirme, "Sorun bildir" ve tanı dosyası indirme. İstekler
 **context** düzeyinde dinlenir (worker istekleri dahil) ve şunlar doğrulanır:

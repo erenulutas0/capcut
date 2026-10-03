@@ -135,6 +135,7 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
           <ul className="legal-list">
             <li>{t('privacy.summary.local')}</li>
             <li>{t('privacy.summary.nothingCollected')}</li>
+            <li data-testid="privacy-search">{t('privacy.summary.search')}</li>
             <li>{t('privacy.summary.stored')}</li>
             <li>{t('privacy.summary.report')}</li>
           </ul>

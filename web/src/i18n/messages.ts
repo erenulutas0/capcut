@@ -89,6 +89,8 @@ export const tr = {
     'Seçtiğin video, ses ve altyazı dosyaları bu tarayıcıda, kendi cihazında işlenir. Düzenleme, sessizlik bulma ve dışa aktarma için hiçbir sunucuya gönderilmez.',
   'privacy.summary.nothingCollected':
     'Hesap yok. Analitik, reklam, çerez, cihaz parmak izi ve otomatik hata raporlama yok.',
+  'privacy.summary.search':
+    'Ana ekrandaki kutuya yazdıkların, sayfanın içindeki bir kelime listesiyle cihazında eşleştirilir; hiçbir yere gönderilmez, saklanmaz. Yapay zekâ yok.',
   'privacy.summary.stored': 'Bazı bilgiler yalnızca bu tarayıcıda saklanır; aşağıda tek tek listelendi ve silebilirsin.',
   'privacy.summary.report':
     'Uygulama senin adına hiçbir şey göndermez. Sorun bildirmek istersen tanı dosyasını sen indirir, sen gönderirsin.',
@@ -105,7 +107,7 @@ export const tr = {
   'privacy.stored.howLong': 'Ne zaman silinir',
   'privacy.stored.project.name': 'Proje tarifi',
   'privacy.stored.project.body':
-    'Proje adı, kesitlerin ve sırası, görüntü/oran ayarları, müzik ayarları, altyazı satırlarının metni ve biçimi. Kaynak dosyayı yeniden tanımak için dosyanın adı, boyutu, değiştirilme tarihi, süresi, çözünürlüğü ve türü. Video ve ses dosyasının kendisi saklanmaz.',
+    'Proje adı, kesitlerin ve sırası, görüntü/oran ayarları, müzik ayarları, altyazı satırlarının metni ve biçimi. Kaynak dosyayı yeniden tanımak için dosyanın adı, boyutu, değiştirilme tarihi, süresi, çözünürlüğü ve türü. Video ve ses dosyasının kendisi saklanmaz. Yalnızca editörde (“Kendim düzenleyeceğim”) yaptığın düzenleme saklanır; ana ekrandaki bir işten (Kes, Dikey yap…) başlattığın çalışma saklanmaz.',
   'privacy.stored.project.where': 'IndexedDB “clip-editor”, “projects” deposu',
   'privacy.stored.project.delete':
     'Sen silene kadar. Tarayıcı ayarlarından bu sitenin verilerini temizleyebilirsin; editör dosyayı yeniden istediğinde “Kayıtlı projeyi sil” de kullanılabilir. Tarayıcı yer açmak için kendisi de silebilir.',
@@ -1006,6 +1008,8 @@ export const en: Record<MessageKey, string> = {
     'The video, audio and subtitle files you choose are processed in this browser, on your own device. They are not sent to any server for editing, silence detection or export.',
   'privacy.summary.nothingCollected':
     'No account. No analytics, advertising, cookies, device fingerprinting or automatic error reporting.',
+  'privacy.summary.search':
+    'What you type into the box on the home screen is matched on your device against a word list inside the page; it is not sent anywhere and not stored. No AI.',
   'privacy.summary.stored': 'Some information is kept only in this browser; each item is listed below and you can delete it.',
   'privacy.summary.report':
     'The app never sends anything on your behalf. If you want to report a problem, you download the diagnostics file and send it yourself.',
@@ -1022,7 +1026,7 @@ export const en: Record<MessageKey, string> = {
   'privacy.stored.howLong': 'When it is deleted',
   'privacy.stored.project.name': 'Project recipe',
   'privacy.stored.project.body':
-    'Project name, your clips and their order, frame/aspect settings, music settings, the text and style of caption lines. To recognise the source file again: its name, size, modification date, duration, resolution and type. The video and audio files themselves are not stored.',
+    'Project name, your clips and their order, frame/aspect settings, music settings, the text and style of caption lines. To recognise the source file again: its name, size, modification date, duration, resolution and type. The video and audio files themselves are not stored. Only edits made in the editor (“I will edit it myself”) are stored; work started from a task on the home screen (Cut, Make it vertical…) is not.',
   'privacy.stored.project.where': 'IndexedDB “clip-editor”, store “projects”',
   'privacy.stored.project.delete':
     'Until you delete it. You can clear this site’s data in your browser settings; when the editor asks for the file again, “Delete the saved project” also works. The browser may also evict it to free space.',
