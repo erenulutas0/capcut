@@ -60,6 +60,76 @@ export const MODELS = {
       wasm: null, // 1 GB of q8 weights on WASM is not a shippable configuration
     },
   },
+
+  // ---- October 2026 English spike (docs/spikes/2026-10-03-asr-on-device-english.md) ----
+  // Half-precision / 4-bit variants of the September candidates: the September
+  // WebGPU runs used an fp32 encoder (small: 336 MB of the 559 MB download).
+  'base-fp16': {
+    id: 'onnx-community/whisper-base_timestamped',
+    revision: '608c49e61301901684bc36cac8f74b95ff6b5a8e',
+    params: '74M',
+    optional: true,
+    dtypes: { webgpu: { encoder_model: 'fp16', decoder_model_merged: 'q4f16' }, wasm: null },
+  },
+  'small-fp16': {
+    id: 'onnx-community/whisper-small_timestamped',
+    revision: '65caa70f294b46e1c33ff820aae6b16d048ab818',
+    params: '244M',
+    optional: true,
+    dtypes: { webgpu: { encoder_model: 'fp16', decoder_model_merged: 'q4f16' }, wasm: null },
+  },
+  // English-only distilled Whisper (MIT). 2 decoder layers, same encoder as its teacher.
+  'distil-small.en': {
+    id: 'onnx-community/distil-small.en',
+    revision: '69be759f982d1d4c5b8a987d4140752742619bd0',
+    params: '166M',
+    optional: true,
+    englishOnly: true,
+    dtypes: {
+      webgpu: { encoder_model: 'fp16', decoder_model_merged: 'fp16' },
+      wasm: { encoder_model: 'q8', decoder_model_merged: 'q8' },
+    },
+  },
+  'distil-large-v3.5': {
+    id: 'onnx-community/distil-large-v3.5-ONNX',
+    revision: 'd908cd7fba0fb226f14b14ad955f22797ecfe5d5',
+    params: '756M',
+    optional: true,
+    dtypes: { webgpu: { encoder_model: 'q4f16', decoder_model_merged: 'q4f16' }, wasm: null },
+  },
+  // Moonshine (Useful Sensors, MIT): English, no timestamp tokens at all, so
+  // times can only come from the speech spans it is fed.
+  'moonshine-tiny': {
+    id: 'onnx-community/moonshine-tiny-ONNX',
+    revision: 'a6da1241cd305dcd64eab1edbd615f2bb9aabb95',
+    params: '27M',
+    optional: true,
+    englishOnly: true,
+    family: 'moonshine',
+    dtypes: {
+      webgpu: { encoder_model: 'fp32', decoder_model_merged: 'q4' },
+      wasm: { encoder_model: 'q8', decoder_model_merged: 'q8' },
+    },
+  },
+  'moonshine-base': {
+    id: 'onnx-community/moonshine-base-ONNX',
+    revision: 'b1e9b6aae3c3c7298f10c3798393fdf38e8fbbad',
+    params: '61M',
+    optional: true,
+    englishOnly: true,
+    family: 'moonshine',
+    dtypes: {
+      webgpu: { encoder_model: 'fp32', decoder_model_merged: 'q4' },
+      wasm: { encoder_model: 'q8', decoder_model_merged: 'q8' },
+    },
+  },
+};
+
+/** Silero VAD (MIT), the speech pre-filter the October spike compares with our own detector. */
+export const VAD_MODEL = {
+  id: 'onnx-community/silero-vad',
+  revision: 'e71cae966052b992a7eca6b17738916ce0eca4ec',
+  files: ['onnx/model.onnx'],
 };
 
 /**

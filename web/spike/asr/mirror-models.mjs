@@ -12,7 +12,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'no
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { CONFIG_FILES, MODELS, dtypesFor, onnxFilesFor } from './models.mjs';
+import { CONFIG_FILES, MODELS, VAD_MODEL, dtypesFor, onnxFilesFor } from './models.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const modelsDir = join(here, 'models');
@@ -44,12 +44,12 @@ const manifestPath = join(modelsDir, 'manifest.json');
 const manifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : { models: {} };
 
 for (const key of wanted) {
-  const model = MODELS[key];
+  const model = key === 'silero-vad' ? { ...VAD_MODEL, params: '0.5M' } : MODELS[key];
   if (!model) throw new Error(`unknown model ${key}`);
   const { gated, siblings } = await hfFiles(model.id, model.revision);
   if (gated) throw new Error(`${model.id} is gated; the spike must not use gated assets`);
-  const files = new Set(CONFIG_FILES);
-  for (const device of ['wasm', 'webgpu']) {
+  const files = new Set(model.files ?? CONFIG_FILES);
+  for (const device of model.files ? [] : ['wasm', 'webgpu']) {
     const dtypes = dtypesFor(key, device);
     if (dtypes) for (const f of onnxFilesFor(dtypes)) files.add(f);
   }
