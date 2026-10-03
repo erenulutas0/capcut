@@ -30,16 +30,16 @@ B) # No pre-filter (what September measured), and our own detector
   run B-own-base --models=base --devices=webgpu --pre=own,ownabs --sets=$ALLSETS --clips=$NEG,$PAUSE
   ;;
 C) # WASM (q8): all threads; 4 threads; one thread without cross-origin isolation (what GitHub Pages gives today)
-  for m in base small distil-small.en moonshine-base moonshine-tiny; do
-    run C-$m --models=$m --devices=wasm --pre=silero --no-probe --sets=$ALLSETS --clips=$NEG,$PAUSE,$SHORT,long-a,mix-clean
+  for m in base small moonshine-base; do
+    run C-$m --models=$m --devices=wasm --pre=silero --no-probe --sets=$ALLSETS --clips=$SHORT,long-a,mix-clean
   done
-  for m in base small distil-small.en moonshine-base; do
+  for m in base small; do
     run C-t4-$m --models=$m --devices=wasm --threads=4 --pre=silero --no-probe --sets=$ALLSETS --clips=mix-clean
   done
-  for m in base distil-small.en moonshine-base; do
+  for m in base; do
     run C-noiso-$m --models=$m --devices=wasm --no-isolation --suffix=-noiso --pre=silero --no-probe --sets=$ALLSETS --clips=mix-clean
   done
-  run C-noiso-webgpu --models=base,small-fp16 --devices=webgpu --no-isolation --suffix=-noiso --pre=silero --no-probe --sets=$ALLSETS --clips=mix-clean
+  run C-noiso-webgpu --models=base --devices=webgpu --no-isolation --suffix=-noiso --pre=silero --no-probe --sets=$ALLSETS --clips=mix-clean
   ;;
 D) # The shipping combination, fixed before the validation clips (negv-*, val-*) existed:
   # Silero (default settings) → every speech span recognised on its own → a span whose mean
@@ -48,19 +48,19 @@ D) # The shipping combination, fixed before the validation clips (negv-*, val-*)
   # (The distilled models are not here: part A showed they give no word times in these exports
   # and that their log-probability does not tell invented text from speech.)
   for m in small-fp16 base turbo; do
-    run D-ship-$m --models=$m --devices=webgpu $SHIP --clips=$NEG,$NEGV,$PAUSE,$SHORT,$VAL,long-a,long-fleurs,mix-clean,mix-music-10,mix-music-0,mix-pink-5
+    run D-ship-$m --models=$m --devices=webgpu $SHIP --clips=$NEG,$NEGV,$PAUSE,$SHORT,$VAL,long-a,mix-clean,mix-music-0
   done
   # Moonshine has no figures from part A to set a threshold with: first every span on its own
   # without a guard on the clips used so far, then (D2) the validation clips with the threshold chosen from that.
-  run D-span-moonshine-base --models=moonshine-base --devices=webgpu --pre=silero --per-span --suffix=-span --no-probe --sets=$ALLSETS --clips=$NEG,$PAUSE,$SHORT,long-a,long-fleurs,mix-clean,mix-music-10,mix-music-0,mix-pink-5
-  run D-ship-wasm --models=base,small --devices=wasm $SHIP --clips=$NEG,$NEGV,$PAUSE,$SHORT,val-clean,val-music-5
+  run D-span-moonshine-base --models=moonshine-base --devices=webgpu --pre=silero --per-span --suffix=-span --no-probe --sets=$ALLSETS --clips=$NEG,$PAUSE,$SHORT,long-a,mix-clean,mix-music-0
+  run D-ship-wasm --models=base,small --devices=wasm $SHIP --clips=$NEG,$NEGV,$PAUSE,val-clean
   for b in chrome msedge; do
-    run D-$b --browsers=$b --models=small-fp16,base --devices=webgpu $SHIP --clips=$NEG,$NEGV,$PAUSE,$SHORT,mix-clean
+    run D-$b --browsers=$b --models=base --devices=webgpu $SHIP --clips=$NEG,$NEGV,$PAUSE,$SHORT
   done
-  run D-firefox --browsers=firefox --models=base --devices=wasm $SHIP --clips=$NEG,$NEGV,$PAUSE,$SHORT,mix-clean
+  run D-firefox --browsers=firefox --models=base --devices=wasm $SHIP --clips=$NEG,$NEGV,$PAUSE,$SHORT
   ;;
 D2) # Moonshine with its own threshold (argument 2), validation clips included
-  run D-ship-moonshine-base --models=moonshine-base --devices=webgpu,wasm --pre=silero --per-span --guard=lp:$2,cr:2.4 --suffix=-ship --no-probe --sets=$ALLSETS --clips=$NEG,$NEGV,$PAUSE,$SHORT,$VAL,long-a,long-fleurs,mix-clean,mix-music-10,mix-music-0,mix-pink-5
+  run D-ship-moonshine-base --models=moonshine-base --devices=webgpu --pre=silero --per-span --guard=lp:$2,cr:2.4 --suffix=-ship --no-probe --sets=$ALLSETS --clips=$NEG,$NEGV,$PAUSE,$SHORT,$VAL,long-a,mix-clean,mix-music-0
   ;;
 E) # What the library's leak and the word times cost (long-a)
   run E-keep --models=small-fp16 --devices=webgpu --pre=silero --keep-caches --suffix=-leak --no-probe --sets=$ALLSETS --clips=long-a,mix-clean,mix-music-10

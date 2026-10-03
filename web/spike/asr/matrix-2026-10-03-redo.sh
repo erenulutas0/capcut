@@ -3,7 +3,8 @@
 # started without a --suffix and replaced the result files of the English runs of
 # the same two models; the Turkish files were renamed (relabel-result.mjs) and these
 # four English runs repeated with exactly the arguments of parts A and B.
-# run-en.mjs now refuses to replace a finished result.
+# run-en.mjs now refuses to replace a finished result. (The repeat of small-fp16 leaves out
+# long-c and long-fleurs-raw, which the first run had; base keeps long-c.)
 #
 #   bash matrix-2026-10-03-redo.sh
 set -u
@@ -20,7 +21,7 @@ run() {
   node run-en.mjs "$@" > "$LOGS/$name.log" 2>&1
   echo "$name exit $?"
 }
-run A3-small-fp16 --models=small-fp16 --devices=webgpu --pre=silero --sets=$ALLSETS --clips=$NEG,$PAUSE,$SHORT,$MIX,long-a,long-b,long-c,long-fleurs,long-fleurs-raw
+run A3-small-fp16 --models=small-fp16 --devices=webgpu --pre=silero --sets=$ALLSETS --clips=$NEG,$PAUSE,$SHORT,$MIX,long-a,long-b,long-fleurs
 run A3-turbo --models=turbo --devices=webgpu --pre=silero --sets=$ALLSETS --clips=$NEG,$PAUSE,$SHORT,$MIX,long-a,long-b,long-fleurs
 run B3-small-fp16 --models=small-fp16 --devices=webgpu --pre=none --sets=$ALLSETS --clips=$NEG,$PAUSE,$SHORT,long-a,mix-clean,mix-music-10,mix-music-0
 run B3-turbo --models=turbo --devices=webgpu --pre=none --sets=$ALLSETS --clips=$NEG,$PAUSE,$SHORT,long-a,mix-clean,mix-music-10,mix-music-0

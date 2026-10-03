@@ -217,6 +217,9 @@ function modelBytes(key, device) {
 const clips = loadClips();
 if (clips.length === 0) throw new Error('no clips selected');
 mkdirSync(outDir, { recursive: true });
+// Runs are queued back to back by the matrix scripts: wait a minute before asking for the lock,
+// so whoever else is waiting for it (they poll every 60 s) gets a turn between two of our runs.
+if (!args.includes('--no-lock') && !args.includes('--no-yield')) await new Promise((r) => setTimeout(r, 65_000));
 const release = await acquireLock(`asr spike run-en ${modelKeys.join(',')} ${devices.join(',')}`);
 const cleanup = () => {
   release();
