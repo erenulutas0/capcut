@@ -72,10 +72,20 @@ export interface PreparedOutput {
   refused: 'output_file_unavailable' | 'output_storage_insufficient' | null;
   target: Target;
   format: Mp4OutputFormat;
+  /**
+   * Bytes written so far; after `output.finalize()`, the finished file's
+   * size. ADR-035 reads it before `collect`, so a target-size attempt that
+   * came out too large is thrown away without ever becoming the saved file.
+   */
+  writtenBytes(target: Target): number;
   /** Call after `output.finalize()`. */
   collect(target: Target): Promise<CollectedOutput>;
-  /** Removes any partial file. Safe to call more than once. */
-  discard(): Promise<void>;
+  /**
+   * Removes any partial file. Safe to call more than once. `keepDestination`
+   * (ADR-035, another attempt follows): the file picked in the save dialog
+   * stays (empty) so the next attempt can write into it.
+   */
+  discard(keepDestination?: boolean): Promise<void>;
 }
 
 type SyncAccessHandle = {
@@ -101,6 +111,9 @@ function memoryRoute(
     refused: null,
     target: new BufferTarget(),
     format: new Mp4OutputFormat({ fastStart: 'in-memory' }),
+    writtenBytes(target: Target) {
+      return (target as BufferTarget).buffer?.byteLength ?? 0;
+    },
     async collect(target: Target) {
       const buffer = (target as BufferTarget).buffer;
       const bytes = buffer ? new Uint8Array(buffer) : new Uint8Array();
@@ -250,6 +263,9 @@ export async function prepareOutput(
     target: new StreamTarget(writable, { chunked: true, chunkSize: CHUNK_SIZE }),
     // moov at the end: nothing has to be held back to write it first.
     format: new Mp4OutputFormat({ fastStart: false }),
+    writtenBytes() {
+      return written;
+    },
     async collect() {
       trimAndClose();
       const file = await handle.getFile();
@@ -341,6 +357,9 @@ async function prepareFileOutput(
     refused,
     target: new BufferTarget(),
     format: new Mp4OutputFormat({ fastStart: false }),
+    writtenBytes() {
+      return 0;
+    },
     async collect() {
       throw new Error('refused');
     },
@@ -407,7 +426,10 @@ async function prepareFileOutput(
       written = Math.max(written, chunk.position + chunk.data.byteLength);
     },
     async close() {
-      await commit();
+      // Not committed here: the muxer closes the stream when it finishes, and
+      // the file only becomes the chosen one in `collect()` — after the
+      // caller has seen its size (ADR-035). Until then it is the browser's
+      // temporary file, and `discard()` drops it without a trace.
     },
     async abort() {
       await abort();
@@ -421,22 +443,25 @@ async function prepareFileOutput(
     refused: null,
     target: new StreamTarget(stream, { chunked: true, chunkSize: CHUNK_SIZE }),
     format: new Mp4OutputFormat({ fastStart: false }),
+    writtenBytes() {
+      return written;
+    },
     async collect() {
       await commit();
       const file = await picked.getFile();
       return { route: 'file', sizeBytes: file.size || written, bytes: null, file, entryName: null, savedName: picked.name };
     },
-    async discard() {
+    async discard(keepDestination = false) {
       if (state === 'open') {
         await abort();
-        await removeIfOurs();
+        if (!keepDestination) await removeIfOurs();
         return;
       }
       if (state === 'closed') {
         // The file was written but did not verify: it must not stay behind
         // under the chosen name as if it were the result.
         state = 'aborted';
-        if (picked.remove) {
+        if (picked.remove && !keepDestination) {
           await picked.remove().catch(() => undefined);
         } else {
           const empty = await picked.createWritable({ keepExistingData: false }).catch(() => null);

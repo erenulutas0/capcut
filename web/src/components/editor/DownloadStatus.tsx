@@ -3,8 +3,9 @@
 import { Icon } from '@/components/Icon';
 import { environmentPasses } from '@/adapters/exportCapability';
 import type { DownloadKind } from '@/domain/kesit';
+import type { TargetSizeShortfall } from '@/domain/exportEvents';
 import { formatStorageBytes } from '@/domain/outputStorage';
-import { formatBytes } from '@/domain/policy';
+import { formatByteLimit, formatBytes, formatBytesAgainstLimit } from '@/domain/policy';
 import { CHROMIUM_SHARE_MAX_BYTES } from '@/domain/share';
 import { formatTimecode } from '@/domain/time';
 import type { MessageKey } from '@/i18n/messages';
@@ -77,13 +78,88 @@ function ShareNotes({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase:
   );
 }
 
+type Finished = Extract<DownloadEntry, { phase: 'saved' | 'ready' }>;
+
+/** ADR-035: a sound-only (M4A) result. */
+function isAudio(entry: Finished): boolean {
+  return entry.result.output === 'audio';
+}
+
+/** "Kaydedildi: …" — "Ses dosyası kaydedildi: …" for a sound-only download. */
+function savedText(t: T, entry: Extract<DownloadEntry, { phase: 'saved' }>): string {
+  return t(isAudio(entry) ? 'download.audioSaved' : 'download.saved').replace('{name}', entry.fileName);
+}
+
+/**
+ * ADR-035: the result of a target-size download — the real size against the
+ * target, both read from the file. "Under the target" only when it is.
+ */
+function targetSizeText(t: T, entry: Finished): string | null {
+  const outcome = entry.result.targetSize;
+  if (!outcome) return null;
+  const mark = t('time.decimalMark');
+  const head = t(outcome.fits ? 'download.targetFits' : 'download.targetOver')
+    .replace('{size}', formatBytesAgainstLimit(outcome.actualBytes, outcome.targetBytes, mark))
+    .replace('{target}', formatByteLimit(outcome.targetBytes, mark));
+  const notes: string[] = [];
+  if (outcome.mode === 'copy') notes.push(t('download.targetCopy'));
+  else if (outcome.mode === 'normal') notes.push(t('download.targetNormal'));
+  else notes.push(t('download.targetResolution').replace('{height}', String(outcome.shortEdge)));
+  if (outcome.attempts > 1) notes.push(t('download.targetAttempts').replace('{count}', String(outcome.attempts)));
+  return `${head}. ${notes.join('; ')}.`;
+}
+
+/** The target-size line, with the numbers tests and the matrix read back. */
+function TargetSizeLine({ t, entry }: { t: T; entry: Finished }) {
+  const outcome = entry.result.targetSize;
+  const text = targetSizeText(t, entry);
+  if (!outcome || !text) return null;
+  return (
+    <span
+      className="dl-sub"
+      data-testid="target-size-result"
+      data-fits={outcome.fits ? 'true' : 'false'}
+      data-target-bytes={outcome.targetBytes}
+      data-planned-bytes={outcome.firstPlannedBytes}
+      data-actual-bytes={outcome.actualBytes}
+      data-attempts={outcome.attempts}
+      data-short-edge={outcome.shortEdge}
+      data-video-bitrate={outcome.videoBitrate}
+      data-audio-bitrate={outcome.audioBitrate}
+      data-encoder={outcome.encoderKind}
+      data-mode={outcome.mode}
+    >
+      {text}
+    </span>
+  );
+}
+
+/** ADR-035: why a target size was refused, in numbers the user can act on. */
+function targetShortfallText(t: T, shortfall: TargetSizeShortfall): string {
+  const mark = t('time.decimalMark');
+  return t(shortfall.maxDurationUs >= 1_000_000 ? 'download.targetTooSmall' : 'download.targetTooSmallNoFit')
+    .replace('{target}', formatByteLimit(shortfall.targetBytes, mark))
+    .replace('{min}', formatStorageBytes(shortfall.minBytes, 'up', mark))
+    .replace('{duration}', formatTimecode(shortfall.maxDurationUs));
+}
+
+/** The step a running download is in, as text. */
+function runningStep(t: T, entry: Extract<DownloadEntry, { phase: 'running' }>): string {
+  if (entry.step === 'waiting') return t('download.running.waiting');
+  if (entry.step === 'encoding' && entry.pass > 1) return t('export.running.pass').replace('{pass}', String(entry.pass));
+  if (entry.step === 'encoding' && entry.output === 'audio') return t('export.running.audio');
+  return t(`export.running.${entry.step}` as MessageKey);
+}
+
 /** The one sentence a screen reader hears per phase (the percentage is left out). */
 function announcement(t: T, entry: DownloadEntry, device: boolean): string {
   switch (entry.phase) {
     case 'running':
-      return entry.step === 'waiting' ? t('download.running.waiting') : t(`export.running.${entry.step}` as MessageKey);
-    case 'saved':
-      return `${t('download.saved').replace('{name}', entry.fileName)}. ${t('download.savedWhere')}`;
+      return runningStep(t, entry);
+    case 'saved': {
+      const target = targetSizeText(t, entry);
+      return `${savedText(t, entry)}. ${t('download.savedWhere')}${target ? ` ${target}` : ''}`;
+    }
     case 'ready':
       return readyTitle(t, entry, device);
     case 'blocked':
@@ -97,6 +173,10 @@ function announcement(t: T, entry: DownloadEntry, device: boolean): string {
 
 /** The ready sentence: a computer saves; a phone saves, or saves or shares (ADR-031). */
 function readyTitle(t: T, entry: Extract<DownloadEntry, { phase: 'ready' }>, device: boolean): string {
+  if (isAudio(entry)) {
+    if (!device) return t('download.audioReadyTitle');
+    return entry.share?.verdict === 'share' ? t('download.audioReadyTitleShare') : t('download.audioReadyTitleDevice');
+  }
   if (!device) return t('download.readyTitle');
   return entry.share?.verdict === 'share' ? t('download.readyTitleShare') : t('download.readyTitleDevice');
 }
@@ -108,6 +188,7 @@ function readyTitle(t: T, entry: Extract<DownloadEntry, { phase: 'ready' }>, dev
  */
 function methodText(t: T, entry: Extract<DownloadEntry, { phase: 'saved' | 'ready' }>): string {
   const { result } = entry;
+  if (result.output === 'audio') return t('export.method.audio');
   switch (result.method) {
     case 'copy':
       return t('export.method.copy');
@@ -127,6 +208,7 @@ function MethodLine({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase:
     <span
       className="dl-sub"
       data-testid="export-method"
+      data-output={result.output ?? 'video'}
       data-method={result.method}
       data-fallback={result.fallbackReason ?? ''}
       data-frames-encoded={result.framesEncoded}
@@ -156,12 +238,14 @@ function Details({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase: 's
             {formatTimecode(result.probe.durationUs)}
           </span>
         </li>
-        <li>
-          <span className="meta-key">{t('export.measuredResolution')}</span>
-          <span className="meta-value" data-testid="measured-resolution">
-            {result.probe.width}×{result.probe.height}
-          </span>
-        </li>
+        {result.output === 'audio' ? null : (
+          <li>
+            <span className="meta-key">{t('export.measuredResolution')}</span>
+            <span className="meta-value" data-testid="measured-resolution">
+              {result.probe.width}×{result.probe.height}
+            </span>
+          </li>
+        )}
         <li>
           <span className="meta-key">{t('export.measuredCodecs')}</span>
           <span className="meta-value" data-testid="measured-codecs">
@@ -231,9 +315,9 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
 
   if (entry.phase === 'running') {
     const percent = entry.progress === null ? null : Math.round(entry.progress * 100);
-    const step = entry.step === 'waiting' ? t('download.running.waiting') : t(`export.running.${entry.step}` as MessageKey);
+    const step = runningStep(t, entry);
     return (
-      <div className="dl-status" data-phase="running" data-testid="download-running">
+      <div className="dl-status" data-phase="running" data-testid="download-running" data-pass={entry.pass}>
         {status}
         <div className="dl-row">
           <span className="dl-text">
@@ -275,11 +359,12 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
         <div className="dl-row">
           <Icon name="check" size={16} />
           <span className="dl-text">
-            <span data-testid="download-saved">{t('download.saved').replace('{name}', entry.fileName)}</span>
+            <span data-testid="download-saved">{savedText(t, entry)}</span>
             {/* The page cannot know the folder's path; it can say which one. */}
             <span className="dl-where" data-testid="download-saved-where">
               {t('download.savedWhere')}
             </span>
+            <TargetSizeLine t={t} entry={entry} />
             <MethodLine t={t} entry={entry} />
             {entry.hdr ? (
               <span className="dl-sub" data-testid="export-hdr-note">
@@ -309,6 +394,7 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
           <Icon name="check" size={16} />
           <span className="dl-text">
             <span data-testid="download-ready-title">{title}</span>
+            <TargetSizeLine t={t} entry={entry} />
             <MethodLine t={t} entry={entry} />
             {entry.hdr ? (
               <span className="dl-sub" data-testid="export-hdr-note">
@@ -385,6 +471,11 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
                     ? t('export.blockedBody')
                     : t(`export.plan.${entry.reason}` as MessageKey)}
                 </span>
+                {entry.targetSize ? (
+                  <span className="dl-sub" data-testid="target-size-refusal" data-min-bytes={entry.targetSize.minBytes}>
+                    {targetShortfallText(t, entry.targetSize)}
+                  </span>
+                ) : null}
                 {report && !environmentPasses(report.environment) ? (
                   <span className="dl-sub">{t('export.detectedNote')}</span>
                 ) : null}
@@ -429,6 +520,11 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
               {t('export.fail.captionCue')
                 .replace('{index}', String(entry.captionCue.index))
                 .replace('{text}', () => entry.captionCue?.text ?? '')}
+            </span>
+          ) : null}
+          {entry.targetSize ? (
+            <span className="dl-sub" data-testid="target-size-refusal" data-min-bytes={entry.targetSize.minBytes}>
+              {targetShortfallText(t, entry.targetSize)}
             </span>
           ) : null}
           {entry.storage ? (

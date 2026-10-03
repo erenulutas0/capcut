@@ -58,6 +58,8 @@ export type FastCutFallbackReason =
   | 'encoder'
   /** The finished file failed its seam check in this browser's decoder. */
   | 'seam_check'
+  /** ADR-035: the copy would be larger than the size the download must fit. */
+  | 'target_size'
   /** Something unexpected went wrong in the fast cut; the full encode ran instead. */
   | 'error';
 

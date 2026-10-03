@@ -138,7 +138,7 @@ export function frameToUs(frame: number, fpsNum: number, fpsDen: number): Micros
  * Target bitrates. Deliberately a small documented table rather than a
  * "quality" guess: the same recipe must give the same file on every run.
  */
-function videoBitrateFor(width: number, height: number, fps: number): number {
+export function videoBitrateFor(width: number, height: number, fps: number): number {
   const pixelsPerSecond = width * height * fps;
   // ~0.09 bits per pixel: 1080p30 -> ~5.6 Mbit/s, 720p30 -> ~2.5 Mbit/s.
   const bitrate = Math.round(pixelsPerSecond * 0.09);

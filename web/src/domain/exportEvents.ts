@@ -10,6 +10,7 @@
  */
 
 import type { ExportMethod, FastCutFallbackReason } from './fastPath';
+import type { TargetSizeOutcome } from './targetSize';
 import type { Micros } from './time';
 
 export type ExportPhase =
@@ -24,6 +25,10 @@ export type ExportPhase =
 export type ExportFailureCode =
   | 'plan_invalid'
   | 'no_video_track'
+  /** ADR-035, audio-only: the video has no sound to save (no audio track, or every kesit muted) and there is no music. */
+  | 'no_audio_track'
+  /** ADR-035: the target size cannot be met at any acceptable quality; `targetSize` says the smallest that can. */
+  | 'target_size_too_small'
   | 'source_undecodable'
   | 'hdr_source_unsupported'
   | 'audio_undecodable'
@@ -95,6 +100,10 @@ export interface ExportResult {
   framesCopied: number;
   /** Output frames that went through the encoder. */
   framesEncoded: number;
+  /** ADR-035: `audio` for a sound-only M4A (then `probe` has no picture: width and height 0). */
+  output?: 'video' | 'audio';
+  /** ADR-035: set for a target-size download — what was planned and what the file really is. */
+  targetSize?: TargetSizeOutcome;
 }
 
 /**
@@ -115,6 +124,11 @@ export type ExportEvent =
       progress: number | null;
       framesDone: number;
       totalFrames: number;
+      /**
+       * ADR-035: above 1 when a target-size download is being encoded again
+       * because the previous file came out over the target.
+       */
+      pass?: number;
     }
   | { type: 'finalizing'; attemptId: string }
   | { type: 'verifying'; attemptId: string }
@@ -147,8 +161,19 @@ export type ExportEvent =
        * the browser's storage estimate offered, so the user is told both.
        */
       storage?: StorageShortfall;
+      /** With `target_size_too_small`: the target, and what would work instead. */
+      targetSize?: TargetSizeShortfall;
     }
   | { type: 'canceled'; attemptId: string };
+
+/** Why a target size was refused, in numbers the user can act on (ADR-035). */
+export interface TargetSizeShortfall {
+  targetBytes: number;
+  /** The smallest file this download can be at the lowest acceptable quality. */
+  minBytes: number;
+  /** The longest output that would fit the target (0: none). */
+  maxDurationUs: Micros;
+}
 
 /** Bytes the disk route asked for, and the free space the browser reported. */
 export interface StorageShortfall {
@@ -175,6 +200,14 @@ export const TERMINAL_EXPORT_TYPES: ReadonlySet<ExportEvent['type']> = new Set([
  * Tolerance for the produced duration (doc 22: "en çok bir çıktı karesi").
  * Muxers round the last sample's duration, so one frame is the budget.
  */
+/**
+ * Tolerance for a sound-only file (ADR-035): the AAC track is cut to the
+ * exact sample (ADR-032), so one AAC frame (1024 samples) is already a fault.
+ */
+export function audioDurationWithinTolerance(expectedUs: Micros, actualUs: Micros, sampleRate: number): boolean {
+  return Math.abs(actualUs - expectedUs) <= Math.ceil((1024 * 1_000_000) / sampleRate);
+}
+
 export function durationWithinTolerance(
   expectedUs: Micros,
   actualUs: Micros,

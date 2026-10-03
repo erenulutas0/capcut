@@ -10,6 +10,7 @@ import type { ExportEvent, ExportFailureCode } from '@/domain/exportEvents';
 import type { ExportMode } from '@/domain/fastPath';
 import type { HdrTransfer } from '@/domain/hdr';
 import type { RenderPlan } from '@/domain/renderPlan';
+import type { TargetSizeRequest } from '@/domain/targetSize';
 import type { HdrToneMapStatus } from './hdrProbe';
 
 export interface EncoderProbeConfig {
@@ -47,6 +48,31 @@ export interface CapabilityStageResult {
 }
 
 export type CaptionFontStatus = 'loaded' | 'api_missing' | 'load_failed';
+
+/** What the export writes: the video (default), or only its sound as an M4A file (ADR-035). */
+export type ExportOutputKind = 'video' | 'audio';
+
+/**
+ * A download that must come out at or under a size (ADR-035). `plan` in the
+ * request stays the ordinary plan; the worker runs the same planner the page
+ * showed its estimate from (`planTargetSize`), with the encoder it really has,
+ * and encodes at the size and bitrates that decides.
+ */
+export interface TargetSizeExport extends TargetSizeRequest {
+  /** The largest short edge worth encoding (`maxTargetShortEdge`). */
+  maxShortEdge: number;
+  /**
+   * Measurement hook only (`window.__clipExportOptions.forced`): encode at
+   * exactly this size and these bitrates, once, whatever the file's size.
+   * The app never sets it.
+   */
+  forced?: {
+    shortEdge: number;
+    videoBitrate: number;
+    audioBitrate: number;
+    bitrateMode?: 'constant' | 'variable';
+  };
+}
 
 export type WorkerRequest =
   | {
@@ -102,6 +128,10 @@ export type WorkerRequest =
        * encode. The result's `method` says which one ran.
        */
       mode?: ExportMode;
+      /** `audio`: only the sound, as M4A (AAC in MP4); no picture is decoded. Default `video`. */
+      output?: ExportOutputKind;
+      /** Set for a target-size download; ignored for `output: 'audio'`. */
+      targetSize?: TargetSizeExport | null;
     }
   | { type: 'cancel'; requestId: string };
 

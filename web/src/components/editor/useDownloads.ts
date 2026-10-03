@@ -10,13 +10,15 @@ import {
   type CapabilityReportV1,
 } from '@/adapters/exportCapability';
 import { recordCapability, recordError } from '@/adapters/diagnostics';
+import { encoderKindLookup, type EncoderKindLookup } from '@/adapters/export/encoderKind';
 import { ExportWorkerClient } from '@/adapters/export/exportClient';
+import type { TargetSizeExport } from '@/adapters/export/protocol';
 import { exportLog } from '@/adapters/exportLogStore';
 import { removeExportEntry, sweepExportEntries } from '@/adapters/export/opfsEntries';
 import { setAppBusy } from '@/adapters/pwa/serviceWorker';
 import { shareVerdictFor, shareVideo } from '@/adapters/share';
 import type { Project } from '@/domain/edl';
-import type { ExportFailureCode, ExportResult, StorageShortfall } from '@/domain/exportEvents';
+import type { ExportFailureCode, ExportResult, StorageShortfall, TargetSizeShortfall } from '@/domain/exportEvents';
 import { exportLogEntry, type AttemptEnd } from '@/domain/exportLog';
 import {
   downloadKind,
@@ -30,7 +32,61 @@ import {
 import { WEB_LOCAL_POLICY, outputOverrun, type OutputOverrun } from '@/domain/policy';
 import { compileRenderPlan, type PlanRejection, type RenderPlan } from '@/domain/renderPlan';
 import type { ShareVerdict } from '@/domain/share';
+import { audioFileName } from '@/domain/audioOnly';
+import {
+  estimateEncodeSeconds,
+  maxTargetShortEdge,
+  nativeShortEdge,
+  planForTargetSize,
+  planTargetSize,
+  targetSizeFacts,
+  type TargetSizeDecision,
+  type TargetSizeRefusal,
+  type TargetSizeRequest,
+} from '@/domain/targetSize';
 import { totalOutputDurationUs } from '@/domain/timeline';
+
+/**
+ * What a download should produce besides the ordinary video (ADR-035). The
+ * task screens pass it to `start`; nothing passed is the ordinary download.
+ */
+export interface DownloadOptions {
+  /** `audio`: only the sound of the selected ranges, as an .m4a file. Default `video`. */
+  output?: 'video' | 'audio';
+  /** The video must come out at or under `targetBytes` (see `SIZE_PRESETS`). Ignored for `audio`. */
+  targetSize?: TargetSizeRequest;
+}
+
+/** What a target-size download would be, known before anything is encoded. */
+export type TargetSizePreview =
+  | {
+      ok: true;
+      /** Resolution, bitrates and `plannedBytes` ("≈ 48 MB, 720p"). */
+      decision: TargetSizeDecision;
+      durationUs: number;
+      /** A rough encode time in seconds on this kind of encoder (ADR-035 says how rough). */
+      estimatedSeconds: number;
+    }
+  /** The target cannot be met: `refusal.minBytes` is the smallest that can, `maxDurationUs` the longest that fits. */
+  | { ok: false; reason: 'target_too_small'; refusal: TargetSizeRefusal }
+  /** There is nothing to download (no video, no kesit, over the output limit). */
+  | { ok: false; reason: 'unavailable' };
+
+/**
+ * Test hook only (`window.__clipExportOptions`): the options a press of the
+ * ordinary download button should use, so e2e tests and the matrix can drive
+ * a target-size or sound-only download through the real button. `forced` is
+ * for measurements (an exact size and bitrate, encoded once). The app never
+ * sets it.
+ */
+interface ExportOptionsHook extends DownloadOptions {
+  forced?: TargetSizeExport['forced'];
+}
+
+function hookOptions(): ExportOptionsHook | null {
+  const value = (globalThis as { __clipExportOptions?: unknown }).__clipExportOptions;
+  return typeof value === 'object' && value !== null ? (value as ExportOptionsHook) : null;
+}
 
 /**
  * The finished video, ready for the system share sheet (ADR-031): the `File`
@@ -57,6 +113,10 @@ export type DownloadState =
       totalFrames: number;
       /** The name picked in the save dialog; null on the fallback route. */
       fileName: string | null;
+      /** ADR-035: above 1 while a target-size download is encoded again to fit. */
+      pass: number;
+      /** ADR-035: `audio` while a sound-only file is being made. */
+      output: 'video' | 'audio';
     }
   /** Written straight into the file the user picked. Nothing else to do. */
   | { phase: 'saved'; fileName: string; result: ExportResult; hdr: boolean; share: ShareOffer | null }
@@ -64,10 +124,16 @@ export type DownloadState =
   | { phase: 'ready'; url: string; fileName: string; result: ExportResult; hdr: boolean; share: ShareOffer | null }
   | {
       phase: 'blocked';
-      /** `source_missing` and `capability` are UI states, not compiler verdicts. */
-      reason: PlanRejection | 'source_missing' | 'capability';
+      /**
+       * `source_missing` and `capability` are UI states, not compiler verdicts.
+       * ADR-035: `no_audio_track` (sound-only download of a video without
+       * sound) and `target_size_too_small` are refused before the save dialog.
+       */
+      reason: PlanRejection | 'source_missing' | 'capability' | 'no_audio_track' | 'target_size_too_small';
       overrun: OutputOverrun | null;
       report: CapabilityReportV1 | null;
+      /** With `target_size_too_small`: the target and what would work instead. */
+      targetSize?: TargetSizeShortfall;
     }
   | {
       phase: 'failed';
@@ -75,6 +141,8 @@ export type DownloadState =
       /** The caption line to shorten, numbered as the user sees the list. */
       captionCue?: { index: number; text: string };
       storage?: StorageShortfall;
+      /** With `target_size_too_small` (ADR-035). */
+      targetSize?: TargetSizeShortfall;
       /** The memory route's 5-minute sentence (ADR-021) for its refusals. */
       overrun: OutputOverrun | null;
     }
@@ -266,6 +334,62 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
     return () => window.clearTimeout(timer);
   }, [audioFile, backgroundKey, ensureCapability, videoFile, withFont]);
 
+  // ADR-035: which encoder this browser has at each size the target-size
+  // planner may pick, asked once per frame shape so a press can refuse an
+  // impossible target before the save dialog opens.
+  const { aspect } = project.canvas;
+  const { fpsNum, fpsDen } = project.export;
+  const kindsRef = useRef<{ key: string; lookup: EncoderKindLookup } | null>(null);
+  const kindsKey = `${aspect}|${fpsNum}/${fpsDen}`;
+  useEffect(() => {
+    let live = true;
+    void encoderKindLookup(aspect, fpsNum, fpsDen).then((lookup) => {
+      if (live) kindsRef.current = { key: kindsKey, lookup };
+    });
+    return () => {
+      live = false;
+    };
+  }, [aspect, fpsDen, fpsNum, kindsKey]);
+
+  /** Whether a download of `plan` would have any sound (the worker asks the file itself). */
+  const planHasAudio = useCallback(
+    (plan: RenderPlan): boolean => {
+      const asset = project.assets.find((item) => item.kind === 'video');
+      return (plan.audio.wantsSourceAudio && asset?.hasAudio !== false) || (plan.audio.music !== null && audioFile !== null);
+    },
+    [audioFile, project.assets],
+  );
+
+  /**
+   * What a target-size download of `target` would be — resolution, expected
+   * size, rough time — or why it cannot be made. Encodes nothing.
+   */
+  const previewTargetSize = useCallback(
+    async (target: DownloadTarget, request: TargetSizeRequest): Promise<TargetSizePreview> => {
+      const recipe = downloadRecipe(project, target, settings);
+      const compiled = recipe ? compileRenderPlan(recipe, WEB_LOCAL_POLICY) : null;
+      if (!compiled?.ok) return { ok: false, reason: 'unavailable' };
+      const plan = compiled.plan;
+      const lookup = await encoderKindLookup(plan.aspect, plan.fpsNum, plan.fpsDen);
+      const planned = planTargetSize(
+        request,
+        targetSizeFacts(plan, {
+          maxShortEdge: maxTargetShortEdge(project.export.shortEdge, nativeShortEdge(plan)),
+          hasAudio: planHasAudio(plan),
+          encoderKind: lookup,
+        }),
+      );
+      if (!planned.ok) return { ok: false, reason: 'target_too_small', refusal: planned };
+      return {
+        ok: true,
+        decision: planned,
+        durationUs: plan.expectedDurationUs,
+        estimatedSeconds: estimateEncodeSeconds(planned, plan.totalFrames),
+      };
+    },
+    [planHasAudio, project, settings],
+  );
+
   const setEntry = useCallback((key: string, entry: DownloadEntry | null) => {
     setEntries((current) => {
       const next = { ...current };
@@ -280,8 +404,11 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
    * save dialog is opened before the first `await`.
    */
   const start = useCallback(
-    (target: DownloadTarget) => {
+    (target: DownloadTarget, requested?: DownloadOptions) => {
       if (busyRef.current) return;
+      const hook = requested ? null : hookOptions();
+      const options: DownloadOptions = requested ?? hook ?? {};
+      const audioOnly = options.output === 'audio';
       const key = targetKey(target);
       const kind = downloadKind(project, target);
       const revision = project.revision;
@@ -289,7 +416,11 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
       const blocked = (
         reason: Extract<DownloadState, { phase: 'blocked' }>['reason'],
         fingerprint: string,
-        extra: { overrun?: OutputOverrun | null; report?: CapabilityReportV1 | null } = {},
+        extra: {
+          overrun?: OutputOverrun | null;
+          report?: CapabilityReportV1 | null;
+          targetSize?: TargetSizeShortfall;
+        } = {},
       ) => {
         recordError('plan', reason);
         setEntry(key, {
@@ -301,6 +432,7 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
           reason,
           overrun: extra.overrun ?? null,
           report: extra.report ?? null,
+          ...(extra.targetSize ? { targetSize: extra.targetSize } : {}),
         });
       };
       if (!recipe) {
@@ -323,15 +455,54 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
         blocked('source_missing', plan.fingerprint);
         return;
       }
+      // ADR-035, sound only: a video without sound (and no music) is refused
+      // here, before the save dialog. The worker asks the file itself again.
+      if (audioOnly && !planHasAudio(plan)) {
+        blocked('no_audio_track', plan.fingerprint);
+        return;
+      }
+      // ADR-035, target size: what the worker will plan, decided here too so
+      // an impossible target is refused before the save dialog, and the gate
+      // checks the encoder at the size that will really be encoded.
+      let targetSize: TargetSizeExport | null = null;
+      let gatePlan = plan;
+      if (!audioOnly && (options.targetSize || hook?.forced)) {
+        targetSize = {
+          targetBytes: options.targetSize?.targetBytes ?? Number.MAX_SAFE_INTEGER,
+          ...(options.targetSize?.minShortEdge !== undefined ? { minShortEdge: options.targetSize.minShortEdge } : {}),
+          maxShortEdge: maxTargetShortEdge(project.export.shortEdge, nativeShortEdge(plan)),
+          ...(hook?.forced ? { forced: hook.forced } : {}),
+        };
+        const kinds = kindsRef.current?.key === `${plan.aspect}|${plan.fpsNum}/${plan.fpsDen}` ? kindsRef.current.lookup : null;
+        if (kinds && !targetSize.forced) {
+          const planned = planTargetSize(
+            targetSize,
+            targetSizeFacts(plan, { maxShortEdge: targetSize.maxShortEdge, hasAudio: planHasAudio(plan), encoderKind: kinds }),
+          );
+          if (!planned.ok) {
+            blocked('target_size_too_small', plan.fingerprint, {
+              targetSize: {
+                targetBytes: planned.targetBytes,
+                minBytes: planned.minBytes,
+                maxDurationUs: planned.maxDurationUs,
+              },
+            });
+            return;
+          }
+          gatePlan = planForTargetSize(plan, planned);
+        }
+      }
       const known =
-        capability && capability.key === capabilityKey(plan, withFont, videoFile, audioFile) ? capability.report : null;
+        capability && capability.key === capabilityKey(gatePlan, withFont, videoFile, audioFile)
+          ? capability.report
+          : null;
       if (known && !known.canExport) {
         blocked('capability', plan.fingerprint, { report: known });
         return;
       }
 
       const clip = target.kind === 'kesit' ? project.clips.find((item) => item.clipId === target.clipId) : undefined;
-      const fileName = suggestedFileName(
+      const videoFileName = suggestedFileName(
         videoName ?? videoFile.name,
         clip
           ? { kind: 'kesit', sourceInUs: clip.sourceInUs, sourceOutUs: clip.sourceOutUs }
@@ -341,6 +512,9 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
               ? { kind: 'merged', count: project.clips.length }
               : { kind: 'whole' },
       );
+      // ADR-035: the sound-only file is M4A (AAC in MP4), `audio/mp4`.
+      const fileName = audioOnly ? audioFileName(videoFileName) : videoFileName;
+      const mime = audioOnly ? 'audio/mp4' : 'video/mp4';
 
       // Inside the click, before any await (user activation).
       const picker = savePicker();
@@ -349,7 +523,9 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
         picked = picker
           ? picker({
               suggestedName: fileName,
-              types: [{ description: 'MP4 video', accept: { 'video/mp4': ['.mp4'] } }],
+              types: audioOnly
+                ? [{ description: 'M4A audio', accept: { 'audio/mp4': ['.m4a'] } }]
+                : [{ description: 'MP4 video', accept: { 'video/mp4': ['.mp4'] } }],
             })
           : Promise.resolve(null);
       } catch (error) {
@@ -382,9 +558,11 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
           framesDone: 0,
           totalFrames: plan.totalFrames,
           fileName: destination?.name ?? null,
+          pass: 1,
+          output: audioOnly ? 'audio' : 'video',
         });
 
-        const report = await ensureCapability(plan, withFont, videoFile, audioFile);
+        const report = await ensureCapability(gatePlan, withFont, videoFile, audioFile);
         if (cancelRequestedRef.current) {
           if (destination) await removeEmptyPick(destination);
           setEntry(key, { key, kind, fingerprint: plan.fingerprint, revision, phase: 'canceled' });
@@ -408,6 +586,7 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
           step: Extract<DownloadState, { phase: 'running' }>['step'],
           progress: number | null,
           framesDone: number,
+          pass = 1,
         ) =>
           setEntry(key, {
             key,
@@ -420,11 +599,19 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
             framesDone,
             totalFrames: plan.totalFrames,
             fileName: destination?.name ?? null,
+            pass,
+            output: audioOnly ? 'audio' : 'video',
           });
 
         for await (const event of client().export(plan, videoFile, audioFile, {
-          memoryRouteLimitUs: WEB_LOCAL_POLICY.maxMemoryRouteOutputDurationUs,
+          // ADR-035: a sound-only file is small (60 min ≈ 58 MB), so the
+          // memory route may hold the whole output limit, not only 5 minutes.
+          memoryRouteLimitUs: audioOnly
+            ? WEB_LOCAL_POLICY.maxOutputDurationUs
+            : WEB_LOCAL_POLICY.maxMemoryRouteOutputDurationUs,
           destination,
+          output: audioOnly ? 'audio' : 'video',
+          targetSize,
         })) {
           switch (event.type) {
             case 'preparing':
@@ -432,7 +619,7 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
               if (cancelRequestedRef.current) client().cancel();
               break;
             case 'encoding':
-              running('encoding', event.progress, event.framesDone);
+              running('encoding', event.progress, event.framesDone, event.pass ?? 1);
               break;
             case 'finalizing':
             case 'verifying':
@@ -463,7 +650,7 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
                   fileName: event.output.fileName,
                   result: event.result,
                   hdr,
-                  share: saved ? shareOffer(new File([saved], event.output.fileName, { type: 'video/mp4' })) : null,
+                  share: saved ? shareOffer(new File([saved], event.output.fileName, { type: mime })) : null,
                 });
                 break;
               }
@@ -472,7 +659,7 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
               const blob = new File(
                 [event.output.kind === 'opfs' ? event.output.file : (event.output.data as BlobPart)],
                 fileName,
-                { type: 'video/mp4' },
+                { type: mime },
               );
               if (event.output.kind === 'opfs') entryNamesRef.current.set(key, event.output.entryName);
               const url = URL.createObjectURL(blob);
@@ -511,6 +698,7 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
                 code: event.code,
                 ...(cue ? { captionCue: { index: position + 1, text: cue.text } } : {}),
                 ...(event.storage ? { storage: event.storage } : {}),
+                ...(event.targetSize ? { targetSize: event.targetSize } : {}),
                 overrun: memoryRefusal
                   ? outputOverrun(plan.requestedDurationUs, WEB_LOCAL_POLICY.maxMemoryRouteOutputDurationUs)
                   : null,
@@ -536,6 +724,7 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
       capability,
       client,
       ensureCapability,
+      planHasAudio,
       project,
       releaseOffered,
       setEntry,
@@ -615,7 +804,16 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
     return () => window.removeEventListener('beforeunload', handler);
   }, [running]);
 
-  return { entries, activeKey, start, cancel, dismiss, share, capability: capability?.report ?? null };
+  return {
+    entries,
+    activeKey,
+    start,
+    previewTargetSize,
+    cancel,
+    dismiss,
+    share,
+    capability: capability?.report ?? null,
+  };
 }
 
 function shareOffer(file: File): ShareOffer | null {

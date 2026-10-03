@@ -13,7 +13,14 @@ import type { HdrTransfer } from '@/domain/hdr';
 import { TERMINAL_EXPORT_TYPES } from '@/domain/exportEvents';
 import type { RenderPlan } from '@/domain/renderPlan';
 import { EXPORT_PROFILE_WORKER_SUFFIX } from './exportProfile';
-import type { CapabilityStageResult, EncoderProbeConfig, WorkerRequest, WorkerResponse } from './protocol';
+import type {
+  CapabilityStageResult,
+  EncoderProbeConfig,
+  ExportOutputKind,
+  TargetSizeExport,
+  WorkerRequest,
+  WorkerResponse,
+} from './protocol';
 
 /** Stage C renders a tiny file, so this is generous but finite. */
 const CAPABILITY_TIMEOUT_MS = 60_000;
@@ -109,7 +116,14 @@ export class ExportWorkerClient {
     plan: RenderPlan,
     videoFile: File,
     audioFile: File | null,
-    options: { memoryRouteLimitUs: number; destination?: FileSystemFileHandle | null },
+    options: {
+      memoryRouteLimitUs: number;
+      destination?: FileSystemFileHandle | null;
+      /** ADR-035: `audio` writes only the sound, as M4A. */
+      output?: ExportOutputKind;
+      /** ADR-035: the file must come out at or under a size. */
+      targetSize?: TargetSizeExport | null;
+    },
   ): AsyncGenerator<ExportEvent, void, unknown> {
     const worker = this.ensureWorker();
     const requestId = this.nextId('exp');
@@ -157,6 +171,8 @@ export class ExportWorkerClient {
       // Test hook only (`window.__clipExportMode = 'encode'`): force the full
       // encode, e.g. to measure it against the fast cut. The app never sets it.
       mode: (globalThis as { __clipExportMode?: unknown }).__clipExportMode === 'encode' ? 'encode' : 'auto',
+      output: options.output ?? 'video',
+      targetSize: options.targetSize ?? null,
     };
     worker.postMessage(request);
 

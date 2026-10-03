@@ -307,6 +307,11 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
   async function exportOnce(page, setup, savePath, notes) {
     if (setup.quality) await setQuality(page, setup.quality);
     await removePickedFiles(page);
+    // ADR-035: a target-size or sound-only download, through the same button
+    // (the test hook the task screens' options go through).
+    await page.evaluate((options) => {
+      window.__clipExportOptions = options;
+    }, setup.exportOptions ?? null);
 
     await page.getByTestId('download-all').click();
     const first = await waitForAny(
@@ -319,7 +324,11 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     if (first === 'export-blocked' || first === 'export-over-limit') {
       const blockerTexts = await page.getByTestId('export-blockers').allTextContents().catch(() => []);
       const body = ((await page.getByTestId(first).textContent()) ?? '').replace(/\s+/g, ' ').trim();
-      return { blocked: true, gate: { passed: false }, blockerTexts, blockedText: body };
+      // ADR-035: a refusal before the save dialog must leave nothing behind.
+      const pickerCalls = await page.evaluate(() => (window.__pickerCalls ?? []).length);
+      const refusal = page.getByTestId('target-size-refusal');
+      const minBytes = (await refusal.count()) > 0 ? Number(await refusal.getAttribute('data-min-bytes')) : null;
+      return { blocked: true, gate: { passed: false }, blockerTexts, blockedText: body, pickerCalls, minBytes };
     }
 
     if (setup.backgroundDuringExport) {
@@ -348,7 +357,11 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     const succeeded = page.getByTestId('export-succeeded');
     const reported = {
       duration: await succeeded.locator('[data-testid="measured-duration"]').textContent(),
-      resolution: await succeeded.locator('[data-testid="measured-resolution"]').textContent(),
+      // A sound-only result (ADR-035) has no resolution line.
+      resolution:
+        (await succeeded.locator('[data-testid="measured-resolution"]').count()) > 0
+          ? await succeeded.locator('[data-testid="measured-resolution"]').textContent()
+          : null,
       codecs: await succeeded.locator('[data-testid="measured-codecs"]').textContent(),
       delta: await succeeded.locator('[data-testid="measured-delta"]').textContent(),
       route: await succeeded.locator('[data-testid="measured-route"]').textContent(),
@@ -360,6 +373,23 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       reported.method = await method.getAttribute('data-method');
       reported.fallbackReason = (await method.getAttribute('data-fallback')) || null;
       reported.framesEncoded = Number(await method.getAttribute('data-frames-encoded'));
+      reported.output = await method.getAttribute('data-output');
+    }
+    // ADR-035: what the app says about a target-size download.
+    const targetLine = succeeded.locator('[data-testid="target-size-result"]');
+    if ((await targetLine.count()) > 0) {
+      const number = async (name) => Number(await targetLine.getAttribute(`data-${name}`));
+      reported.targetSize = {
+        fits: (await targetLine.getAttribute('data-fits')) === 'true',
+        targetBytes: await number('target-bytes'),
+        plannedBytes: await number('planned-bytes'),
+        actualBytes: await number('actual-bytes'),
+        attempts: await number('attempts'),
+        shortEdge: await number('short-edge'),
+        encoder: await targetLine.getAttribute('data-encoder'),
+        mode: await targetLine.getAttribute('data-mode'),
+        text: ((await targetLine.textContent()) ?? '').trim(),
+      };
     }
     // Held frames are an honest partial result, and must show up in reports.
     const held = succeeded.locator('[data-testid="measured-frames-missing"]');
@@ -699,6 +729,22 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       return { checks, measured: {} };
     }
 
+    // ADR-035: a download refused before the save dialog, with its own reason.
+    if (want.refusedBeforeSave) {
+      const text = driveResult.blockedText ?? '';
+      add('indirme kodlamadan önce reddedildi', driveResult.blocked === true, text.slice(0, 200));
+      add(`gerekçe gösterildi (“${want.refusedBeforeSave.text}”)`, text.includes(want.refusedBeforeSave.text), text.slice(0, 200));
+      add('kaydetme penceresi açılmadı, dosya yazılmadı', driveResult.pickerCalls === 0, `pencere çağrısı ${driveResult.pickerCalls}`);
+      if (want.refusedBeforeSave.minBytes) {
+        add(
+          'sığacak en küçük boyut söylendi',
+          Number.isFinite(driveResult.minBytes) && driveResult.minBytes > (testCase.setup.exportOptions?.targetSize?.targetBytes ?? 0),
+          `en az ${driveResult.minBytes} bayt`,
+        );
+      }
+      return { checks, measured: { outcome: 'refused_before_save', minBytes: driveResult.minBytes ?? null } };
+    }
+
     if (want.blocksWith) {
       const combined = `${driveResult.blockedText ?? ''} ${(driveResult.blockerTexts ?? []).join(' ')}`;
       const blocked = driveResult.blocked === true;
@@ -792,6 +838,37 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
         `bildirilen ${measured.method}${measured.fallbackReason ? ` (${measured.fallbackReason})` : ''}, ` +
           `kodlanan kare ${driveResult.reported?.framesEncoded ?? '—'}`,
       );
+    }
+
+    // ADR-035, target size: the file itself against the target, and what the app said about it.
+    if (want.maxBytes !== undefined) {
+      const said = driveResult.reported?.targetSize ?? null;
+      measured.targetSize = said;
+      add(
+        `dosya hedef boyutun altında (≤ ${want.maxBytes} bayt)`,
+        measured.sizeBytes <= want.maxBytes,
+        `dosya ${measured.sizeBytes} bayt; plan ${said?.plannedBytes ?? '—'} bayt, ${said?.shortEdge ?? '—'}p, ` +
+          `${said?.encoder ?? '—'}, ${said?.mode ?? '—'}, deneme ${said?.attempts ?? '—'}`,
+      );
+      add(
+        'uygulamanın söylediği boyut dosyanın boyutu; “sığdı” yalnızca sığınca',
+        said !== null && said.actualBytes === measured.sizeBytes && said.fits === (measured.sizeBytes <= want.maxBytes),
+        said ? `${said.text}` : 'hedef boyut satırı yok',
+      );
+    }
+    // ADR-035, sound only: an M4A with no video track and the exact length.
+    if (want.audioOnly) {
+      add('video izi yok', video === undefined, video ? `${video.codec_name}` : 'yalnızca ses');
+      add('tek iz, AAC', probe.streams.length === 1 && audio?.codec_name === 'aac', probe.streams.map((s) => `${s.codec_type}:${s.codec_name}`).join(', '));
+      const audioDuration = Number(audio?.duration);
+      const delta = Math.abs(audioDuration - want.audioOnly.durationSeconds);
+      measured.audioDurationSeconds = audioDuration;
+      add(
+        `ses süresi tam ${want.audioOnly.durationSeconds} s (±1 ms)`,
+        delta <= 0.001,
+        `ölçülen ${audioDuration.toFixed(6)} s, sapma ${(delta * 1000).toFixed(3)} ms`,
+      );
+      add('uygulama sonucu ses dosyası olarak bildirdi', driveResult.reported?.output === 'audio', `${driveResult.reported?.output}`);
     }
 
     if (want.durationSeconds !== undefined) {

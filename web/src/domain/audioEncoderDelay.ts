@@ -169,6 +169,14 @@ export class AacPacketAligner {
     readonly delayFrames: number,
     /** Output frames the audio must cover: [0, endFrame). */
     readonly endFrame: number,
+    /**
+     * ADR-035, sound-only files: the last packet's duration is cut at
+     * `endFrame`, so the track (and the file) is exactly as long as the
+     * kesitler, to the sample, instead of ending on the next whole AAC frame
+     * (up to 21 ms later at 48 kHz). The packet's bytes are unchanged; players
+     * stop at the stated duration. The video download keeps whole frames.
+     */
+    private readonly trimEnd: boolean = false,
   ) {}
 
   place(timestampUs: number, durationUs: number | null): PlacedPacket | null {
@@ -183,9 +191,11 @@ export class AacPacketAligner {
     const durationFrames = durationUs === null ? null : Math.round((durationUs * rate) / 1_000_000);
     if (durationFrames !== null) this.coveredTo = Math.max(this.coveredTo, startFrame + durationFrames);
     this.keptPackets += 1;
+    const shownFrames =
+      durationFrames !== null && this.trimEnd ? Math.min(durationFrames, this.endFrame - startFrame) : durationFrames;
     return {
       timestamp: startFrame / rate,
-      duration: durationFrames === null ? undefined : durationFrames / rate,
+      duration: shownFrames === null ? undefined : shownFrames / rate,
     };
   }
 

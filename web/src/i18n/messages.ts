@@ -556,6 +556,31 @@ export const tr = {
   'export.fallback.seam_check': 'hızlı kesim bu tarayıcıdaki denetimi geçmedi',
   'export.fallback.error': 'hızlı kesim yapılamadı',
   'export.fallback.requested_encode': 'tam kodlama istendi',
+  // ADR-035: "Küçült" (hedef boyut) ve "Sesini al" (yalnızca ses).
+  'export.fallback.target_size': 'orijinal görüntü hedef boyuta sığmıyor',
+  'export.running.pass': 'Dosya hedeften büyük çıktı; daha küçük olacak şekilde yeniden kodlanıyor ({pass}. deneme)',
+  'export.running.audio': 'Ses dosyası oluşturuluyor',
+  'export.method.audio': 'Yalnızca ses: AAC, M4A dosyası. Görüntü yok.',
+  'export.fail.no_audio_track':
+    'Bu videoda kaydedilecek ses yok: videonun ses izi yok ya da bütün kesitlerin sesi kapalı.',
+  'export.fail.target_size_too_small': 'Bu video bu boyuta sığmaz.',
+  'export.plan.no_audio_track':
+    'Bu videoda kaydedilecek ses yok: videonun ses izi yok ya da bütün kesitlerin sesi kapalı.',
+  'export.plan.target_size_too_small': 'Bu video bu boyuta sığmaz.',
+  'download.targetTooSmall': 'Hedef {target}. En az {min} gerekir; ya da en çok {duration} uzunluğunda bir kesit seç.',
+  'download.targetTooSmallNoFit': 'Hedef {target}. En az {min} gerekir.',
+  'download.targetFits': '{size} — hedefin altında (hedef {target})',
+  'download.targetOver':
+    '{size} — hedefin üstünde (hedef {target}). Dosya bu boyuta indirilemedi; daha kısa bir kesit ya da daha büyük bir hedef seç.',
+  'download.targetResolution': '{height}p olarak kodlandı',
+  'download.targetNormal': 'Video zaten sığıyordu; kalite düşürülmedi',
+  'download.targetCopy': 'Orijinal görüntü zaten sığıyordu; yeniden kodlanmadı',
+  'download.targetAttempts': '{count} kez kodlandı',
+  'download.audioSaved': 'Ses dosyası kaydedildi: {name}',
+  'download.audioReadyTitle': 'Ses dosyası hazır. Bilgisayarına kaydetmek için aşağıdaki düğmeye bas.',
+  'download.audioReadyTitleDevice': 'Ses dosyası hazır. Kaydetmek için “Kaydet”e bas.',
+  'download.audioReadyTitleShare':
+    'Ses dosyası hazır. “Kaydet” cihazına kaydeder, “Paylaş” bir uygulamaya gönderir.',
   'export.save': 'Bilgisayara kaydet',
   'export.saveSpace': 'Kaydederken bilgisayarında yaklaşık {size} daha boş yer gerekir.',
   'export.saveSpaceUnknown': 'Kaydederken bilgisayarında dosyanın boyutu kadar daha boş yer gerekir.',
@@ -1361,6 +1386,31 @@ export const en: Record<MessageKey, string> = {
   'export.fallback.seam_check': 'the fast cut failed its check in this browser',
   'export.fallback.error': 'the fast cut could not be made',
   'export.fallback.requested_encode': 'a full encode was requested',
+  // ADR-035: target-size and sound-only downloads.
+  'export.fallback.target_size': 'the original picture does not fit the target size',
+  'export.running.pass': 'The file came out over the target; encoding it again to be smaller (attempt {pass})',
+  'export.running.audio': 'Making the audio file',
+  'export.method.audio': 'Sound only: AAC in an M4A file. No picture.',
+  'export.fail.no_audio_track':
+    'This video has no sound to save: it has no audio track, or every clip is muted.',
+  'export.fail.target_size_too_small': 'This video does not fit that size.',
+  'export.plan.no_audio_track':
+    'This video has no sound to save: it has no audio track, or every clip is muted.',
+  'export.plan.target_size_too_small': 'This video does not fit that size.',
+  'download.targetTooSmall': 'Target {target}. It needs at least {min}; or pick a clip of at most {duration}.',
+  'download.targetTooSmallNoFit': 'Target {target}. It needs at least {min}.',
+  'download.targetFits': '{size} — under the target ({target})',
+  'download.targetOver':
+    '{size} — over the target ({target}). The file could not be brought down to that size; pick a shorter clip or a larger target.',
+  'download.targetResolution': 'encoded at {height}p',
+  'download.targetNormal': 'The video already fit; quality was not lowered',
+  'download.targetCopy': 'The original picture already fit; it was not re-encoded',
+  'download.targetAttempts': 'encoded {count} times',
+  'download.audioSaved': 'Audio file saved: {name}',
+  'download.audioReadyTitle': 'The audio file is ready. Press the button below to save it to your computer.',
+  'download.audioReadyTitleDevice': 'The audio file is ready. Press “Save” to save it.',
+  'download.audioReadyTitleShare':
+    'The audio file is ready. “Save” keeps it on your device, “Share” sends it to an app.',
   'export.save': 'Save to this computer',
   'export.saveSpace': 'Saving needs about {size} more free space on this computer.',
   'export.saveSpaceUnknown': 'Saving needs about the file’s size again in free space on this computer.',

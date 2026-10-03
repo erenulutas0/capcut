@@ -192,8 +192,10 @@ export class AlignedAacEncoder {
     delayFrames: number,
     /** Output frames the audio must cover: [0, endFrame). */
     endFrame: number,
+    /** ADR-035, sound-only files: end the track exactly at `endFrame` (see `AacPacketAligner`). */
+    trimEnd = false,
   ) {
-    this.aligner = new AacPacketAligner(settings.sampleRate, delayFrames, endFrame);
+    this.aligner = new AacPacketAligner(settings.sampleRate, delayFrames, endFrame, trimEnd);
     this.encoder = new AudioEncoder({
       output: (chunk, meta) => this.onChunk(chunk, meta),
       error: (error) => this.fail(error),

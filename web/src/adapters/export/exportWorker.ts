@@ -42,12 +42,26 @@ import type {
   ExportProbe,
   ExportResult,
   StorageShortfall,
+  TargetSizeShortfall,
 } from '@/domain/exportEvents';
 import { encoderVideoBitrate, type VideoEncoderKind } from '@/domain/encoderBitrate';
-import { durationWithinTolerance, missingFramesAllowed } from '@/domain/exportEvents';
+import { audioDurationWithinTolerance, durationWithinTolerance, missingFramesAllowed } from '@/domain/exportEvents';
 import type { ExportMode, FastCutFallbackReason } from '@/domain/fastPath';
 import { frameToUs, sourceTimeForFrame, type RenderPlan, type RenderSegment } from '@/domain/renderPlan';
-import { requiredFreeBytes } from '@/domain/outputStorage';
+import { nominalOutputBytes, requiredFreeBytes } from '@/domain/outputStorage';
+import {
+  MAX_TARGET_ATTEMPTS,
+  TARGET_SAFETY_FRACTION,
+  containerOverheadBytes,
+  correctTargetSize,
+  planForTargetSize,
+  planTargetSize,
+  targetSizeFacts,
+  type TargetSizeDecision,
+  type TargetSizeFacts,
+  type TargetSizeMeasurement,
+} from '@/domain/targetSize';
+import { outputPixelSize } from '@/domain/edl';
 import { hdrTransferOf, type HdrTransfer } from '@/domain/hdr';
 import { outputRouteRefusal } from '@/domain/policy';
 import { US_PER_SECOND } from '@/domain/time';
@@ -74,18 +88,21 @@ import {
   reorderDepth,
 } from './avcReorder';
 import { holdDecoder, type DecoderHold } from './decoderHold';
+import { encoderKindLookup } from './encoderKind';
 import { FastCutFallback, prepareFastCut, type FastCutJob } from './fastCut';
 import { pickFrames } from './framePicker';
 import { createHdrContext, readHdrPixels } from './hdrCanvas';
 import { HDR_CLIP_WORKER_NAME, HDR_PIPELINE_DEPTH, HdrClipper, serveHdrClips } from './hdrClip';
 import { probeHdrToneMapping, type HdrProbeResult } from './hdrProbe';
 import { removeExportEntry, sweepExportEntries } from './opfsEntries';
-import { prepareOutput, sinkRefusal } from './outputSink';
+import { prepareOutput, sinkRefusal, type CollectedOutput } from './outputSink';
 import { AUDIO_CHUNK_FRAMES, SegmentAudioWriter, audioEndFrame, type AudioContextSources } from './segmentAudio';
 import type {
   CaptionFontStatus,
   CapabilityStageResult,
   EncoderProbeConfig,
+  ExportOutputKind,
+  TargetSizeExport,
   WorkerRequest,
   WorkerResponse,
 } from './protocol';
@@ -129,9 +146,23 @@ class ExportFailure extends Error {
     readonly cueId?: string,
     /** Set for `output_storage_insufficient`: needed vs reported free space. */
     readonly storage?: StorageShortfall,
+    /** Set for `target_size_too_small`: the target and what would work instead. */
+    readonly targetSize?: TargetSizeShortfall,
   ) {
     super(code);
     this.name = 'ExportFailure';
+  }
+}
+
+/**
+ * ADR-035: the file of a target-size attempt came out (or was certain to come
+ * out) over the target and another attempt is allowed. The attempt's file is
+ * discarded; `next` is what to encode instead.
+ */
+class TargetSizeOver extends Error {
+  constructor(readonly next: TargetSizeDecision) {
+    super('target_size_over');
+    this.name = 'TargetSizeOver';
   }
 }
 
@@ -173,6 +204,29 @@ async function probeProduced(produced: Uint8Array | Blob): Promise<ExportProbe> 
     videoCodec: await videoTrack.getCodec(),
     audioCodec: audioTrack ? await audioTrack.getCodec() : null,
     hasAudio: audioTrack !== null,
+  };
+}
+
+/**
+ * The same check for a sound-only file (ADR-035): it must have an audio track
+ * and must NOT have a video track. Width and height are reported as 0.
+ */
+async function probeProducedAudio(produced: Uint8Array | Blob): Promise<ExportProbe> {
+  const input = new Input({
+    formats: ALL_FORMATS,
+    source: produced instanceof Blob ? new BlobSource(produced) : new BufferSource(produced),
+  });
+  const audioTrack = await input.getPrimaryAudioTrack();
+  if (!audioTrack) throw new ExportFailure('output_probe_failed');
+  if ((await input.getPrimaryVideoTrack()) !== null) throw new ExportFailure('output_probe_failed');
+  const durationSeconds = await input.computeDuration();
+  return {
+    durationUs: Math.round(durationSeconds * US_PER_SECOND),
+    width: 0,
+    height: 0,
+    videoCodec: null,
+    audioCodec: await audioTrack.getCodec(),
+    hasAudio: true,
   };
 }
 
@@ -570,6 +624,22 @@ interface ExportRequestOptions {
   /** ADR-026: the file picked in the save dialog, or null for OPFS/memory. */
   destination: FileSystemFileHandle | null;
   mode: ExportMode;
+  output: ExportOutputKind;
+  targetSize: TargetSizeExport | null;
+  /** ADR-035: the target-size attempt this output file belongs to; set by `runExport`. */
+  target: TargetRun | null;
+}
+
+/** One target-size download (ADR-035): what was asked, and the attempt being encoded. */
+interface TargetRun {
+  request: TargetSizeExport;
+  facts: TargetSizeFacts;
+  /** The plan made before the first frame (what the page showed). */
+  first: TargetSizeDecision;
+  /** The attempt being encoded now. */
+  decision: TargetSizeDecision;
+  /** Set when the source's own pictures are copied because that file fits: its expected size. */
+  copyPlannedBytes: number | null;
 }
 
 /** Everything read from the sources once, shared by the fast cut and the full encode. */
@@ -608,14 +678,24 @@ function endsTheExport(error: unknown): boolean {
 }
 
 async function runExport(options: ExportRequestOptions): Promise<void> {
-  const { requestId, plan, videoFile, audioFile, origin, mode } = options;
+  const { requestId, plan, videoFile, audioFile, origin } = options;
   const startedAt = Date.now();
   const clock = createStageClock(profiling);
   emit(requestId, { type: 'preparing', attemptId: requestId });
 
+  // ADR-035: only the sound. No picture is opened, decoded or encoded.
+  if (options.output === 'audio') {
+    await runAudioExport(options, startedAt);
+    return;
+  }
+  const targetSize = options.targetSize;
+  // A forced size (measurement) is always a full encode.
+  const mode: ExportMode = targetSize?.forced ? 'encode' : options.mode;
+
   // Before any decoding or output file exists: a missing font or a line that
-  // cannot fit is known now, not after minutes of encoding.
-  const captionLayouts = await prepareCaptionLayouts(plan, origin);
+  // cannot fit is known now, not after minutes of encoding. A target-size
+  // download lays its captions out per attempt, at the size it encodes.
+  const captionLayouts = targetSize ? null : await prepareCaptionLayouts(plan, origin);
 
   const videoInput = new Input({ formats: ALL_FORMATS, source: new BlobSource(videoFile) });
   const videoTrack = await videoInput.getPrimaryVideoTrack();
@@ -637,19 +717,45 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
 
   const wantsAudio = sourceAudioUsable || musicTrack !== null;
 
-  // ADR-032: how many priming frames this browser's AAC encoder puts in
-  // front of the audio, measured before any output exists. An encoder whose
-  // delay cannot be measured would give sound out of sync with the picture.
-  let audioDelayFrames = 0;
-  let audioDelayCorrelation: number | null = null;
-  let audioDelayMs: number | null = null;
-  if (wantsAudio) {
-    const measuredAt = performance.now();
-    const delay = await measureAacEncoderDelay(aacSettings(plan));
-    audioDelayMs = performance.now() - measuredAt;
-    if (!delay.ok) throw new ExportFailure('audio_encoder_misaligned');
-    audioDelayFrames = delay.delayFrames;
-    audioDelayCorrelation = delay.correlation;
+  // ADR-035: the size, bitrates and expected file size of a target-size
+  // download, decided before anything is written — or refused here, with the
+  // smallest size that would work.
+  let target: TargetRun | null = null;
+  if (targetSize) {
+    const facts = targetSizeFacts(plan, {
+      maxShortEdge: targetSize.maxShortEdge,
+      hasAudio: wantsAudio,
+      encoderKind: await encoderKindLookup(plan.aspect, plan.fpsNum, plan.fpsDen),
+    });
+    let first: TargetSizeDecision;
+    if (targetSize.forced) {
+      const size = outputPixelSize(plan.aspect, targetSize.forced.shortEdge);
+      first = {
+        ok: true,
+        targetBytes: targetSize.targetBytes,
+        shortEdge: targetSize.forced.shortEdge,
+        width: size.width,
+        height: size.height,
+        videoBitrate: targetSize.forced.videoBitrate,
+        audioBitrate: wantsAudio ? targetSize.forced.audioBitrate : 0,
+        encoderKind: facts.encoderKind(size.width, size.height),
+        mode: 'reduced',
+        plannedBytes: targetSize.targetBytes,
+        // No correction: the measurement wants this exact encode.
+        attempt: MAX_TARGET_ATTEMPTS,
+      };
+    } else {
+      const planned = planTargetSize(targetSize, facts);
+      if (!planned.ok) {
+        throw new ExportFailure('target_size_too_small', undefined, undefined, {
+          targetBytes: planned.targetBytes,
+          minBytes: planned.minBytes,
+          maxDurationUs: planned.maxDurationUs,
+        });
+      }
+      first = planned;
+    }
+    target = { request: targetSize, facts, first, decision: first, copyPlannedBytes: null };
   }
 
   const sources: ExportSources = {
@@ -660,10 +766,14 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
     sourceAudioUsable,
     musicTrack,
     wantsAudio,
-    audioDelayFrames,
-    audioDelayCorrelation,
-    audioDelayMs,
+    audioDelayFrames: 0,
+    audioDelayCorrelation: null,
+    audioDelayMs: null,
   };
+  // ADR-032: how many priming frames this browser's AAC encoder puts in
+  // front of the audio, measured before any output exists. An encoder whose
+  // delay cannot be measured would give sound out of sync with the picture.
+  await measureAudioDelay(sources, plan);
 
   // Previous results from this worker are no longer offered once a new export
   // starts; stale files from closed tabs are swept too.
@@ -694,7 +804,31 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
   if (prepared.ok) {
     const job = prepared.job;
     try {
-      await produceOutput(options, sources, job, null, startedAt, clock);
+      // ADR-035: with a target size the source's pictures are kept only when
+      // that file fits — then the copy is the best quality there is. Its size
+      // is known before a byte is written: the copied packets, plus the sound.
+      let copyTarget: TargetRun | null = null;
+      if (target) {
+        const copyBytes = Math.ceil(
+          job.videoBytes +
+            nominalOutputBytes({
+              videoBitrate: 0,
+              audioBitrate: wantsAudio ? plan.audioBitrate : 0,
+              durationUs: plan.expectedDurationUs,
+            }) +
+            containerOverheadBytes({
+              durationUs: plan.expectedDurationUs,
+              fps: plan.fpsNum / plan.fpsDen,
+              audioSampleRate: wantsAudio ? plan.audio.sampleRate : null,
+            }),
+        );
+        if (copyBytes > target.request.targetBytes * (1 - TARGET_SAFETY_FRACTION)) {
+          throw new FastCutFallback('target_size');
+        }
+        copyTarget = { ...target, copyPlannedBytes: copyBytes };
+      }
+      if (copyTarget) sources.captionLayouts = await prepareCaptionLayouts(plan, origin);
+      await produceOutput({ ...options, target: copyTarget }, sources, job, null, startedAt, clock);
       return;
     } catch (error) {
       if (endsTheExport(error)) throw error;
@@ -708,7 +842,242 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
     fallbackReason = prepared.reason;
   }
 
-  await produceOutput(options, sources, null, fallbackReason, startedAt, clock);
+  if (!target) {
+    await produceOutput(options, sources, null, fallbackReason, startedAt, clock);
+    return;
+  }
+
+  // ADR-035: encode at the decided size; a file that comes out over the
+  // target is discarded and encoded again with what was measured, at most
+  // MAX_TARGET_ATTEMPTS times in all. What the last attempt really weighs is
+  // what the result says.
+  for (;;) {
+    const attemptPlan = planForTargetSize(plan, target.decision);
+    sources.captionLayouts = await prepareCaptionLayouts(attemptPlan, origin);
+    await measureAudioDelay(sources, attemptPlan);
+    try {
+      await produceOutput({ ...options, plan: attemptPlan, target }, sources, null, fallbackReason, startedAt, clock);
+      return;
+    } catch (error) {
+      if (!(error instanceof TargetSizeOver)) throw error;
+      target = { ...target, decision: error.next };
+      emit(requestId, { type: 'preparing', attemptId: requestId });
+    }
+  }
+}
+
+/** ADR-032: the AAC encoder's delay for this plan's audio settings (cached per setting). */
+async function measureAudioDelay(sources: ExportSources, plan: RenderPlan): Promise<void> {
+  if (!sources.wantsAudio) return;
+  const measuredAt = performance.now();
+  const delay = await measureAacEncoderDelay(aacSettings(plan));
+  sources.audioDelayMs = performance.now() - measuredAt;
+  if (!delay.ok) throw new ExportFailure('audio_encoder_misaligned');
+  sources.audioDelayFrames = delay.delayFrames;
+  sources.audioDelayCorrelation = delay.correlation;
+}
+
+/** Hands a verified file to the page; false when there is nothing to hand over. */
+function emitSucceeded(requestId: string, collected: CollectedOutput, result: ExportResult): boolean {
+  if (collected.route === 'file' && collected.savedName !== null) {
+    emit(requestId, {
+      type: 'succeeded',
+      attemptId: requestId,
+      result,
+      output: { kind: 'file', fileName: collected.savedName },
+    });
+    return true;
+  }
+  if (collected.file && collected.entryName) {
+    ownEntries.add(collected.entryName);
+    emit(requestId, {
+      type: 'succeeded',
+      attemptId: requestId,
+      result,
+      output: { kind: 'opfs', file: collected.file, entryName: collected.entryName },
+    });
+    return true;
+  }
+  if (collected.bytes) {
+    emit(
+      requestId,
+      { type: 'succeeded', attemptId: requestId, result, output: { kind: 'memory', data: collected.bytes } },
+      [collected.bytes.buffer],
+    );
+    return true;
+  }
+  return false;
+}
+
+/* ------------------------------------------------------------- audio only */
+
+/** How much output time one step of the sound-only export writes before it reports progress. */
+const AUDIO_ONLY_STEP_US = 2 * US_PER_SECOND;
+
+/**
+ * "Sesini al" (ADR-035): the selected ranges' sound as an M4A file (AAC in
+ * MP4, no video track).
+ *
+ * The same mix as the video download — each kesit's gain, the music with its
+ * envelope, headroom and limiter (`SegmentAudioWriter`) — through the same
+ * aligned AAC encoder (ADR-032: priming in front of 0 behind an edit list,
+ * the end cut to the exact sample). The video track is never opened: nothing
+ * is decoded or drawn. Always re-encoded, never a packet copy: a copy could
+ * only cut at AAC frame borders (21 ms at 48 kHz) and could not apply the
+ * gain or the music.
+ */
+async function runAudioExport(options: ExportRequestOptions, startedAt: number): Promise<void> {
+  const { requestId, plan, videoFile, audioFile, forceMemoryRoute, storageFreeBytes, storageReserveBytes, destination } =
+    options;
+
+  const videoInput = new Input({ formats: ALL_FORMATS, source: new BlobSource(videoFile) });
+  const sourceAudioTrack = await videoInput.getPrimaryAudioTrack();
+  const sourceAudioUsable =
+    sourceAudioTrack !== null && plan.audio.wantsSourceAudio && (await sourceAudioTrack.canDecode());
+
+  let musicTrack: InputAudioTrack | null = null;
+  if (audioFile && plan.audio.music) {
+    const musicInput = new Input({ formats: ALL_FORMATS, source: new BlobSource(audioFile) });
+    musicTrack = await musicInput.getPrimaryAudioTrack();
+    if (musicTrack && !(await musicTrack.canDecode())) throw new ExportFailure('audio_undecodable');
+  }
+  // A source track that exists but cannot be decoded is its own refusal.
+  if (sourceAudioTrack !== null && plan.audio.wantsSourceAudio && !sourceAudioUsable && musicTrack === null) {
+    throw new ExportFailure('audio_undecodable');
+  }
+  // Nothing to save: refused before any file exists.
+  if (!sourceAudioUsable && musicTrack === null) throw new ExportFailure('no_audio_track');
+
+  const delay = await measureAacEncoderDelay(aacSettings(plan));
+  if (!delay.ok) throw new ExportFailure('audio_encoder_misaligned');
+
+  for (const name of ownEntries) await removeExportEntry(name);
+  ownEntries.clear();
+  await sweepExportEntries().catch(() => 0);
+
+  const sink = await prepareOutput(
+    requestId,
+    requiredFreeBytes({ videoBitrate: 0, audioBitrate: plan.audioBitrate, durationUs: plan.expectedDurationUs }),
+    { forceMemory: forceMemoryRoute, storageFreeBytes, reserveBytes: storageReserveBytes, destination },
+  );
+  const refusal = sinkRefusal(sink, options.memoryRouteLimitUs, plan.expectedDurationUs);
+  if (refusal) {
+    await sink.discard();
+    throw new ExportFailure(refusal.code, undefined, refusal.storage ?? undefined);
+  }
+
+  const output = new Output({ format: sink.format, target: sink.target });
+  const audioPackets = new EncodedAudioPacketSource('aac');
+  output.addAudioTrack(audioPackets);
+  const endFrame = audioEndFrame(plan);
+  const encoder = new AlignedAacEncoder(audioPackets, aacSettings(plan), delay.delayFrames, endFrame, true);
+  const audioSources: AudioContextSources = {
+    clipReader:
+      sourceAudioUsable && sourceAudioTrack ? new AudioStreamReader(new AudioSampleSink(sourceAudioTrack)) : null,
+    musicReader: musicTrack ? new AudioStreamReader(new AudioSampleSink(musicTrack)) : null,
+  };
+
+  // Progress is the share of the sound written, on the plan's frame grid so
+  // the page shows it like any other download.
+  const totalFrames = plan.totalFrames;
+  let lastProgressAt = Number.NEGATIVE_INFINITY;
+  const emitProgress = (outputUs: number, last: boolean) => {
+    const now = performance.now();
+    if (!last && now - lastProgressAt < PROGRESS_INTERVAL_MS) return;
+    lastProgressAt = now;
+    const share = Math.min(1, Math.max(0, outputUs / Math.max(1, plan.expectedDurationUs)));
+    emit(requestId, {
+      type: 'encoding',
+      attemptId: requestId,
+      progress: share,
+      framesDone: Math.min(totalFrames, Math.round(share * totalFrames)),
+      totalFrames,
+    });
+  };
+
+  let succeeded = false;
+  try {
+    await output.start();
+    if (audioSources.musicReader && plan.audio.music) {
+      await audioSources.musicReader.open(
+        plan.audio.music.sourceInUs / US_PER_SECOND,
+        plan.audio.music.sourceOutUs / US_PER_SECOND,
+      );
+    }
+    emitProgress(0, false);
+
+    for (const segment of plan.segments) {
+      checkCanceled(requestId);
+      const writer = new SegmentAudioWriter(plan, segment, audioSources, encoder, () => checkCanceled(requestId));
+      const startUs = frameToUs(segment.startFrame, plan.fpsNum, plan.fpsDen);
+      for (let untilUs = startUs + AUDIO_ONLY_STEP_US; !writer.done; untilUs += AUDIO_ONLY_STEP_US) {
+        await writer.advanceTo(untilUs);
+        emitProgress(untilUs, false);
+      }
+    }
+    emitProgress(plan.expectedDurationUs, true);
+
+    checkCanceled(requestId);
+    emit(requestId, { type: 'finalizing', attemptId: requestId });
+    try {
+      await encoder.finish();
+    } catch (error) {
+      throw error instanceof AacAlignmentError ? new ExportFailure('audio_encoder_misaligned') : error;
+    }
+    audioPackets.close();
+    await output.finalize();
+
+    const collected = await sink.collect(output.target);
+    const produced = collected.file ?? collected.bytes;
+    if (!produced || collected.sizeBytes === 0) throw new ExportFailure('output_probe_failed');
+
+    emit(requestId, { type: 'verifying', attemptId: requestId });
+    const probe = await probeProducedAudio(produced);
+    if (probe.audioCodec !== 'aac') throw new ExportFailure('output_probe_failed');
+    if (!audioDurationWithinTolerance(plan.expectedDurationUs, probe.durationUs, plan.audio.sampleRate)) {
+      throw new ExportFailure('output_duration_mismatch');
+    }
+
+    const result: ExportResult = {
+      attemptId: requestId,
+      fingerprint: plan.fingerprint,
+      sizeBytes: collected.sizeBytes,
+      route: collected.route,
+      probe,
+      durationDeltaUs: probe.durationUs - plan.expectedDurationUs,
+      elapsedMs: Date.now() - startedAt,
+      framesMissing: 0,
+      method: 'encode',
+      fallbackReason: null,
+      framesCopied: 0,
+      framesEncoded: 0,
+      output: 'audio',
+    };
+    if (!emitSucceeded(requestId, collected, result)) throw new ExportFailure('output_probe_failed');
+    succeeded = true;
+  } finally {
+    if (profiling) {
+      console.info(
+        `${EXPORT_PROFILE_LOG_PREFIX} ${JSON.stringify({
+          succeeded,
+          method: 'audio',
+          audio: true,
+          route: sink.route,
+          audioDelayFrames: delay.delayFrames,
+          audioAlignment: encoder.stats,
+          expectedDurationUs: plan.expectedDurationUs,
+          audioEndFrame: endFrame,
+        })}`,
+      );
+    }
+    encoder.close();
+    await audioSources.clipReader?.close();
+    await audioSources.musicReader?.close();
+    if (output.state !== 'finalized') {
+      await output.cancel().catch(() => undefined);
+    }
+    if (!succeeded) await sink.discard();
+  }
 }
 
 /**
@@ -726,15 +1095,40 @@ async function produceOutput(
 ): Promise<void> {
   const { requestId, plan, memoryRouteLimitUs, forceMemoryRoute, storageFreeBytes, storageReserveBytes, destination } =
     options;
+  const { target } = options;
   const { videoTrack, hdrTransfer, captionLayouts, sourceAudioTrack, sourceAudioUsable, musicTrack, wantsAudio } =
     sources;
   const durationSeconds = plan.expectedDurationUs / US_PER_SECOND;
 
   // The fast cut's video is the source's own bytes; the full encode's is the
-  // encoder's bitrate (ADR-024).
+  // encoder's bitrate (ADR-024). A target-size attempt's bitrate is the
+  // planner's, as it is: the size decides, no factor is put on top (ADR-035).
   const videoBitrate = fastJob
     ? Math.ceil((fastJob.videoBytes * 8) / Math.max(durationSeconds, 0.001))
-    : await exportVideoBitrate(plan);
+    : target
+      ? plan.videoBitrate
+      : await exportVideoBitrate(plan);
+
+  // ADR-035: the encoded video bytes, counted as the encoder hands them over.
+  let videoBytes = fastJob ? fastJob.videoBytes : 0;
+  /** Everything in the file that is not video, as the planner counts it. */
+  const otherBytesEstimate = target
+    ? Math.ceil(
+        nominalOutputBytes({
+          videoBitrate: 0,
+          audioBitrate: wantsAudio ? plan.audioBitrate : 0,
+          durationUs: plan.expectedDurationUs,
+        }) +
+          containerOverheadBytes({
+            durationUs: plan.expectedDurationUs,
+            fps: plan.fpsNum / plan.fpsDen,
+            audioSampleRate: wantsAudio ? plan.audio.sampleRate : null,
+          }),
+      )
+    : 0;
+  /** The next attempt for a file of this size, or null when this one is the answer. */
+  const correction = (measured: TargetSizeMeasurement): TargetSizeDecision | null =>
+    target && !fastJob ? correctTargetSize(target.request, target.facts, target.decision, measured) : null;
 
   // Measured, not guessed (ADR-023): the file is written once, and its size
   // stays under this estimate.
@@ -776,10 +1170,19 @@ async function produceOutput(
     // The canvas is snapshotted into a sample here rather than by mediabunny's
     // CanvasSource: the same `new VideoSample(canvas)` it makes, but the
     // snapshot and the encoder hand-off can be timed apart (ADR-028).
+    const bitrateMode = target?.request.forced?.bitrateMode;
     videoSource = new VideoSampleSource({
       codec: 'avc',
       bitrate: videoBitrate,
       keyFrameInterval: 2,
+      ...(bitrateMode ? { bitrateMode } : {}),
+      ...(target
+        ? {
+            onEncodedPacket: (packet: { data: Uint8Array }) => {
+              videoBytes += packet.data.byteLength;
+            },
+          }
+        : {}),
     });
     output.addVideoTrack(videoSource, { frameRate: plan.fpsNum / plan.fpsDen });
   }
@@ -811,6 +1214,8 @@ async function produceOutput(
   let framesDrawn = 0;
   let framesMissing = 0;
   let succeeded = false;
+  /** ADR-035: this attempt's file is thrown away and another attempt follows. */
+  let retrying = false;
   // Measurement only (ADR-028 profile): what the decoder delivered and what
   // the produced file holds.
   const decodedTimesUs: number[][] = [];
@@ -833,6 +1238,9 @@ async function produceOutput(
       progress: totalFrames > 0 ? Math.min(1, framesDone / totalFrames) : null,
       framesDone,
       totalFrames,
+      ...(target && !fastJob && target.decision.attempt > 1 && !target.request.forced
+        ? { pass: target.decision.attempt }
+        : {}),
     });
   };
 
@@ -866,6 +1274,17 @@ async function produceOutput(
     if (framesDone % PROGRESS_EVERY_FRAMES === 0 || framesDone === plan.totalFrames) {
       emitProgress();
       clock.lap('progress');
+      // ADR-035: once the video already written is more than the whole file
+      // may be, finishing this attempt cannot fit. It stops here and the next
+      // attempt starts from the ratio seen so far.
+      if (target && videoBytes + otherBytesEstimate > target.decision.targetBytes) {
+        const projected = Math.ceil((videoBytes * plan.totalFrames) / Math.max(1, framesDone));
+        const next = correction({ videoBytes: projected, fileBytes: projected + otherBytesEstimate });
+        if (next) {
+          retrying = true;
+          throw new TargetSizeOver(next);
+        }
+      }
     }
   };
 
@@ -1044,6 +1463,24 @@ async function produceOutput(
     audioPackets?.close();
     await output.finalize();
 
+    // ADR-035: the finished file's size, read before it becomes the saved
+    // file. Over the target: the source's pictures do not fit after all (the
+    // full encode runs), or the encode is tried again with what was measured.
+    if (target) {
+      const fileBytes = sink.writtenBytes(output.target);
+      if (fileBytes > target.decision.targetBytes) {
+        if (fastJob) {
+          retrying = true;
+          throw new FastCutFallback('target_size');
+        }
+        const next = correction({ fileBytes, videoBytes });
+        if (next) {
+          retrying = true;
+          throw new TargetSizeOver(next);
+        }
+      }
+    }
+
     const collected = await sink.collect(output.target);
     const produced = collected.file ?? collected.bytes;
     if (!produced || collected.sizeBytes === 0) throw new ExportFailure('output_probe_failed');
@@ -1075,40 +1512,28 @@ async function produceOutput(
       fallbackReason: fastJob ? null : fallbackReason,
       framesCopied: fastJob ? fastJob.framesCopied : 0,
       framesEncoded: fastJob ? fastJob.framesEncoded : framesDone,
+      ...(target
+        ? {
+            targetSize: {
+              targetBytes: target.decision.targetBytes,
+              plannedBytes: fastJob ? (target.copyPlannedBytes ?? collected.sizeBytes) : target.decision.plannedBytes,
+              firstPlannedBytes: target.first.plannedBytes,
+              actualBytes: collected.sizeBytes,
+              // From the file itself: never "fits" for a file over the target.
+              fits: collected.sizeBytes <= target.decision.targetBytes,
+              attempts: fastJob ? 0 : target.decision.attempt,
+              shortEdge: Math.min(probe.width, probe.height),
+              videoBitrate,
+              audioBitrate: wantsAudio ? plan.audioBitrate : 0,
+              encoderKind: target.decision.encoderKind,
+              mode: fastJob ? ('copy' as const) : target.decision.mode,
+            },
+          }
+        : {}),
     };
 
-    if (collected.route === 'file' && collected.savedName !== null) {
-      succeeded = true;
-      emit(requestId, {
-        type: 'succeeded',
-        attemptId: requestId,
-        result,
-        output: { kind: 'file', fileName: collected.savedName },
-      });
-    } else if (collected.file && collected.entryName) {
-      ownEntries.add(collected.entryName);
-      succeeded = true;
-      emit(requestId, {
-        type: 'succeeded',
-        attemptId: requestId,
-        result,
-        output: { kind: 'opfs', file: collected.file, entryName: collected.entryName },
-      });
-    } else if (collected.bytes) {
-      succeeded = true;
-      emit(
-        requestId,
-        {
-          type: 'succeeded',
-          attemptId: requestId,
-          result,
-          output: { kind: 'memory', data: collected.bytes },
-        },
-        [collected.bytes.buffer],
-      );
-    } else {
-      throw new ExportFailure('output_probe_failed');
-    }
+    if (!emitSucceeded(requestId, collected, result)) throw new ExportFailure('output_probe_failed');
+    succeeded = true;
   } finally {
     if (clock.enabled) {
       // Measurement only (ADR-028): read by the scripts from the console.
@@ -1129,6 +1554,8 @@ async function produceOutput(
           audio: wantsAudio,
           route: sink.route,
           videoBitrate,
+          videoBytes,
+          targetSize: target ? { ...target.decision, retrying } : null,
           framesMissing,
           audioDelayFrames: sources.audioDelayFrames,
           audioDelayCorrelation: sources.audioDelayCorrelation,
@@ -1155,7 +1582,8 @@ async function produceOutput(
     }
     // A partial or unverified file must never be left behind as if it were a
     // result: only a verified success keeps its file.
-    if (!succeeded) await sink.discard();
+    // ADR-035: when another attempt follows, the picked file itself stays.
+    if (!succeeded) await sink.discard(retrying);
   }
 }
 
@@ -1271,6 +1699,9 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
         storageReserveBytes: request.storageReserveBytes,
         destination: request.destination,
         mode: request.mode ?? 'auto',
+        output: request.output ?? 'video',
+        targetSize: request.output === 'audio' ? null : (request.targetSize ?? null),
+        target: null,
       });
     } catch (error) {
       if (error instanceof CanceledError) {
@@ -1282,6 +1713,7 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
           code: error.code,
           ...(error.cueId !== undefined ? { cueId: error.cueId } : {}),
           ...(error.storage !== undefined ? { storage: error.storage } : {}),
+          ...(error.targetSize !== undefined ? { targetSize: error.targetSize } : {}),
         });
       } else {
         const name = error instanceof Error ? error.name : '';

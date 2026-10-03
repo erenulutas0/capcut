@@ -45,3 +45,6 @@ web/tests/media/fastcut/
 web/tests/media/android/
 web/matrix-results/android/
 web/fastcut-spike-results/
+
+# Generated fixtures for the target-size / sound-only e2e tests (ffmpeg, ADR-035)
+web/tests/media/targetsize/
