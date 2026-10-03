@@ -214,10 +214,11 @@ Bu bir "kabul edilebilir" eşiği, "iyi" değil: 360p'de 0,025 bit/pikselde SSIM
 - Yazılım kodlayıcı, **içeriğe bağlı bir hızın altına inemiyor**: daha az bit istenince aynı baytı
   yazıyor (en kaba nicemleme). Ölçülen taban: 0,023–0,028 bit/piksel (IP11, GOPRO), 0,052 (IP13),
   0,14 (S21). Tabanın üstünde hedefi çok iyi tutuyor (0,98–1,00).
-- Bu yüzden yazılımda "basamak eşiği" kodlayıcının tabanıdır: `STEP_DOWN_BITS_PER_PIXEL.software =
-  0,055` (olağan 1080p telefon kaydının tabanı 0,052; 1080 ↔ 720 SSIM geçişi de 0,056–0,057'de),
-  `REFUSE_BITS_PER_PIXEL.software = 0,03` (ölçülen en kolay kaydın tabanının hemen üstü; altında
-  hiçbir kayıt sığmıyor), `VIDEO_OVERSHOOT.software = 1,02`.
+- Bu yüzden yazılımda hem "basamak eşiği" hem ret tabanı kodlayıcının tabanıdır:
+  `STEP_DOWN_BITS_PER_PIXEL.software = REFUSE_BITS_PER_PIXEL.software = 0,07`. 10 sn'lik parçalarda
+  taban 0,023–0,052 ölçüldü (1080 ↔ 720 SSIM geçişi 0,056–0,057'de), ama **kaydın tamamında** (IP11,
+  5 dk 41 sn, 360p) kodlayıcı 0,062 bit/pikselin altına inemedi; 0,07 bunun hemen üstü (aşağıda
+  "Hedefe karşı gerçek boyut"). `VIDEO_OVERSHOOT.software = 1,02`.
 - Tabanı plandan yüksek olan kayıt (S21 gibi) ilk denemede taşar; düzeltme, ölçülen baytı piksel
   sayısıyla ölçekleyip sığacak basamağa iner (doymuş kodlayıcıda bayt piksel sayısını izliyor: S21
   1080 → 720 → 540 → 360: 8686 → 3873 → 2358 → 825 kbit/s; piksel oranları 0,44 / 0,25 / 0,11, bayt
@@ -245,7 +246,79 @@ kbit/s ile sığan çok dar bir hedefte ön izleme "sığar" der, işçi "sığm
 
 ## Hedefe karşı gerçek boyut
 
-<!-- TARGETS -->
+Gerçek hedef boyut indirmeleri (`measure-target-size.mjs --mode=targets`, uygulamanın kendisinden,
+olağan indirme düğmesi + `__clipExportOptions`), 3–4 Ekim 2026, ölçüm kilidi altında. "Plan": kodlamadan
+önce söylenen boyut (`firstPlannedBytes`). SSIM: 1080p (GOPRO'da 720p) referansa karşı; 90 sn'den
+uzun çıktıda ölçülmedi.
+
+**Chrome 154 (donanım kodlayıcısı). Edge 154: PIX4K dışındaki 17 satırın hepsi bayt bayt aynı** (aynı
+GPU kodlayıcısı; Edge 4K HEVC dosyayı açamadı).
+
+| Kayıt, süre | Hedef (bayt) | Plan | Gerçek | Hedefin | Çözünürlük | Deneme | Süre | SSIM |
+|---|---|---|---|---|---|---|---|---|
+| IP11 5 dk 41 sn | 52 428 800 | 47 692 496 | 47 532 650 | %90,7 | 540p | 1 | 26,3 sn | — |
+| IP11 5 dk 41 sn | 25 000 000 | 23 006 568 | 22 932 374 | %91,7 | 360p | 1 | 24,5 sn | — |
+| IP11 5 dk 41 sn | 16 000 000 | 14 906 582 | 14 795 584 | %92,5 | 360p | 1 | 25,4 sn | — |
+| IP11 60 sn | 52 428 800 | 42 972 164 | 43 087 445 | %82,2 | 1080p (olağan indirme sığıyor) | 1 | 10,9 sn | 0,962 |
+| IP11 60 sn | 16 000 000 | 14 489 249 | 14 513 978 | %90,7 | 720p | 1 | 7,3 sn | 0,921 |
+| IP11 60 sn | 5 000 000 | 4 589 249 | 4 577 131 | %91,5 | 360p | 1 | 6,7 sn | 0,862 |
+| IP11 60 sn | 2 000 000 | **ret** (31 ms): "En az 2,2 MB gerekir; ya da en çok 00:54.808…" | | | | | | |
+| IP13 88 sn | 52 428 800 | 47 316 747 | 47 268 851 | %90,2 | 1080p | 1 | 15,6 sn | 0,930 |
+| IP13 88 sn | 25 000 000 | 22 630 833 | 22 593 869 | %90,4 | 720p | 1 | 12,2 sn | 0,885 |
+| IP13 88 sn | 16 000 000 | 14 530 829 | 14 507 220 | %90,7 | 720p | 1 | 9,9 sn | 0,852 |
+| IP13 88 sn | 8 000 000 | 7 330 834 | 7 306 773 | %91,3 | 360p | 1 | 9,2 sn | 0,775 |
+| S21 4 sn | 2 000 000 | 1 806 079 | 1 913 150 | %95,7 | 1080p | 1 | 1,9 sn | 0,843 |
+| S21 4 sn | 1 000 000 | 906 079 | 956 850 | %95,7 | 720p | 1 | 1,3 sn | 0,802 |
+| S21 4 sn | 500 000 | 456 079 | 482 745 | %96,5 | 540p | 1 | 1,1 sn | 0,760 |
+| GOPRO 16 sn | 16 000 000 | 5 239 552 | 5 219 075 | %32,6 | 720p (olağan indirme sığıyor) | 1 | 2,7 sn | 0,971 |
+| GOPRO 16 sn | 4 000 000 | 3 623 900 | 3 615 299 | %90,4 | 720p | 1 | 2,1 sn | 0,968 |
+| GOPRO 16 sn | 2 000 000 | 1 823 900 | 1 823 290 | %91,2 | 540p | 1 | 1,8 sn | 0,958 |
+| PIX4K 10 sn | 16 000 000 | 7 163 288 | 7 161 452 | %44,8 | 1080p (olağan indirme sığıyor) | 1 | 2,8 sn | 0,914 |
+| PIX4K 10 sn | 3 000 000 | 2 714 990 | 2 715 153 | %90,5 | 720p | 1 | 1,8 sn | 0,857 |
+
+Donanımda 18 indirmenin 18'i **ilk denemede** hedefin altında (bit hızı düşürülen 15'i hedefin
+%90–97'sinde; plan ile gerçek
+arasındaki fark en çok %5,9 — S21, kodlayıcı orada 1,06 yazıyor); yeniden kodlama hiç gerekmedi.
+
+**Playwright Chromium 153 (yazılım kodlayıcısı, OpenH264), son tabanlarla (0,07 bit/piksel):**
+
+| Kayıt, süre | Hedef (bayt) | Plan | Gerçek | Hedefin | Çözünürlük | Deneme | Süre | SSIM |
+|---|---|---|---|---|---|---|---|---|
+| IP11 5 dk 41 sn | 52 428 800 | 50 541 785 | 51 369 062 | %98,0 | 360p | 1 | 110,9 sn | — |
+| IP11 5 dk 41 sn | 25 000 000 | **ret**: "En az 25,5 MB gerekir; ya da en çok 05:34.315…" | | | | | | |
+| IP11 5 dk 41 sn | 16 000 000 | **ret**: "En az 25,5 MB gerekir; ya da en çok 03:33.954…" | | | | | | |
+| IP11 60 sn | 52 428 800 | 50 406 782 | 50 710 746 | %96,7 | 1080p | 1 | 22,3 sn | 0,954 |
+| IP11 60 sn | 16 000 000 | 15 402 993 | 15 988 569 | %99,9 | 720p | 1 | 19,5 sn | 0,909 |
+| IP11 60 sn | 5 000 000 | 4 833 283 | 4 920 294 | %98,4 | 360p | 1 | 19,3 sn | 0,861 |
+| IP11 60 sn | 2 000 000 | **ret**: "En az 4,5 MB gerekir; ya da en çok 00:26.726…" | | | | | | |
+| IP13 88 sn | 52 428 800 | 50 420 233 | 44 740 250 | %85,3 | 720p | 2 | 73,9 sn | 0,902 |
+| IP13 88 sn | 25 000 000 | 24 064 385 | 22 382 052 | %89,5 | 540p | 2 | 63,3 sn | 0,851 |
+| IP13 88 sn | 16 000 000 | 15 416 440 | 13 259 582 | %82,9 | 360p | 3 | 97,6 sn | 0,800 |
+| IP13 88 sn | 8 000 000 | 7 729 385 | 7 710 759 | %96,4 | 360p | 3 | 95,2 sn | 0,768 |
+| S21 4 sn | 2 000 000 | 1 923 732 | 1 535 962 | %76,8 | 540p | 3 | 5,7 sn | 0,813 |
+| S21 4 sn | 1 000 000 | 962 849 | 767 420 | %76,7 | 360p | 2 | 3,2 sn | 0,776 |
+| S21 4 sn | 500 000 | 482 408 | **529 579** | **%105,9 — sığmadı** | 360p | 3 | 4,8 sn | 0,756 |
+| GOPRO 16 sn | 16 000 000 | 15 043 533 | 14 966 471 | %93,5 | 720p (olağan, 3 kat bit hızı) | 1 | 5,5 sn | 0,975 |
+| GOPRO 16 sn | 4 000 000 | 3 851 263 | 3 847 813 | %96,2 | 540p | 1 | 5,6 sn | 0,964 |
+| GOPRO 16 sn | 2 000 000 | 1 929 496 | 1 948 553 | %97,4 | 360p | 1 | 5,5 sn | 0,950 |
+
+PIX4K: Chromium dosyayı açamadı (HEVC çözücü yok). Yazılımda kodlanan 14 indirmenin 13'ü hedefin
+altında; **6'sı yeniden kodlama gerektirdi** (2 ya da 3 deneme: kodlayıcı o çözünürlükte tabanına
+dayandı, bir alt basamağa inildi) ve **1'i (S21, 500 KB) üç denemeden sonra da sığmadı**: dosya
+kaydedildi, ekranda "530 KB — hedefin üstünde (hedef 500 KB). Dosya bu boyuta indirilemedi…" yazdı,
+"sığdı" denmedi. Üç hedef kodlamadan önce reddedildi.
+
+Yazılım tabanı ilk ölçümde 0,03 / 0,055 idi; o tabanlarla aynı koşuda IP11 5 dk 41 sn 16 MB hedefi
+kabul edilip 132 sn kodlandı ve 23,7 MB çıktı (%148, "sığmadı"), 25 MB hedefi 251 sn'de 26,5 MB
+(%106) çıktı. Tabanlar bu yüzden 0,07'ye çekildi ve tablo yeniden koşuldu; artık ikisi de kodlamadan
+önce reddediliyor. Çok ayrıntılı kısa kayıtta (S21) taban 0,12–0,14: orada hâlâ kodlayıp dürüst sonuç
+veriyor.
+
+**Sentetik (matris ve e2e):** M20 (8 sn, 9:16 kırpma, hedef 1 MB): Chrome/Edge 526 761 bayt, 540p;
+Chromium 593 057 bayt, 360p (SSIM 0,919) — durağan test deseni bit hızının tamamını kullanmıyor, bu
+yüzden gerçek boyut planın (912 019 / 964 771) epey altında. M20c (20 sn, hedef 52,4 MB): kaynak
+kopyalandı, 481 630 bayt. e2e (Chromium): 4/12/24 sn × 7 hedef, hepsi hedefin altında; gürültülü 8 sn
+klip 6 MB hedefe 2 denemede 5 952 415 bayt.
 
 ## Yalnızca ses: ne oynatıyor
 
@@ -293,7 +366,22 @@ betiğin açtığı sekmeler kapatıldı, site verisi (OPFS, IndexedDB, localSto
 
 ## Testler
 
-<!-- TESTS -->
+> **ARA KAYIT (4 Ekim 2026, oturum kapanırken):** bu bölüm henüz tamamlanmadı.
+>
+> **Biten ölçümler (ölçüm kilidi altında, main birleştirildikten sonraki derlemeyle):** matris
+> Chromium 27/27 (son yazılım tabanlarıyla yeniden koşuldu), Chrome 27/27, Edge 27/27 (son iki
+> koşu yazılım tabanı ve ret başlığı değişikliğinden önceki derlemeyle; donanım yolunu etkilemez);
+> gerçek kayıtlar Chrome 15/15; hedef boyut tabloları Chrome, Edge (birleştirmeden önceki derleme,
+> aynı motor kodu) ve Chromium (son tabanlarla); yalnızca ses Chrome/Edge/Chromium; sabit bit hızı
+> ızgaraları; oynatma denetimi; telefon S–Z2 (ilk oturum).
+> Birim testleri: 731/731 (50 dosya), `tsc`, `eslint` temiz, `npm run build` geçti.
+> Yeni e2e dosyaları (`target-size.spec.ts`, `audio-only.spec.ts`): 9/9, ama **yazılım tabanı 0,07'ye
+> çekilmeden önceki** derlemeyle.
+>
+> **Bitmeyen / yeniden koşulacak:** tam `npx playwright test` (E2E_PORT=3311) **hiç koşmadı** (kilit
+> sırası beklenirken oturum kapandı) — yeni iki e2e dosyası da son derlemeyle yeniden koşulmalı;
+> Chrome ve Edge matrisi ile `run-real-media --browser=chrome` son derlemeyle yeniden koşulmalı;
+> telefon birleştirmeden sonra koşulmadı (bağlı değildi); CHANGELOG girdisi yazılmadı.
 
 ## Ölçülmeyen / denenmeyen
 
