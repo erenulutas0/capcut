@@ -24,7 +24,7 @@ for (const r of summary.results) {
   for (const x of r.rows) {
     if (x.error) continue;
     for (const w of x.windows ?? []) {
-      if (w.avgLogprob === null || w.noSpeechProb === null) continue;
+      if (w.avgLogprob === null) continue;
       if (x.kind === 'negative') {
         if (w.text.trim()) invented.push({ id: x.id, ...w });
       } else if (x.lang === 'en' && x.set !== 'pause') speech.push({ id: x.id, ...w });
@@ -32,8 +32,9 @@ for (const r of summary.results) {
   }
   if (speech.length === 0) continue;
   const byLp = [...speech].sort((a, b) => a.avgLogprob - b.avgLogprob);
-  const byNsp = [...speech].sort((a, b) => b.noSpeechProb - a.noSpeechProb);
+  const byNsp = speech.filter((w) => w.noSpeechProb !== null).sort((a, b) => b.noSpeechProb - a.noSpeechProb);
+  const nsp = (w) => (w.noSpeechProb === null ? 'n/a' : w.noSpeechProb.toFixed(2));
   console.log(
-    `| ${r.key} | ${speech.length} | ${byLp[0].avgLogprob.toFixed(2)} (${byLp[0].id}) | ${byLp[1]?.avgLogprob.toFixed(2)} (${byLp[1]?.id}) | ${byNsp[0].noSpeechProb.toFixed(2)} (${byNsp[0].id}) | ${invented.map((w) => `${w.id} ${w.avgLogprob.toFixed(2)} / ${w.noSpeechProb.toFixed(2)} "${w.text.trim().slice(0, 24)}"`).join('; ') || '—'} |`,
+    `| ${r.key} | ${speech.length} | ${byLp[0].avgLogprob.toFixed(2)} (${byLp[0].id}) | ${byLp[1]?.avgLogprob.toFixed(2)} (${byLp[1]?.id}) | ${byNsp[0] ? `${nsp(byNsp[0])} (${byNsp[0].id})` : 'n/a'} | ${invented.map((w) => `${w.id} ${w.avgLogprob.toFixed(2)} / ${nsp(w)} "${w.text.trim().slice(0, 24)}"`).join('; ') || '—'} |`,
   );
 }

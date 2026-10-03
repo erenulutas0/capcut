@@ -57,7 +57,12 @@ const keepCaches = args.includes('--keep-caches');
 // --guard=0.6,-1 → drop a window whose no-speech probability is above 0.6 while its mean log-probability is under -1.
 // --guard=lp:-0.75 → drop a window whose mean log-probability is under -0.75 (no extra model call).
 const guardArg = argValue('guard', '');
-const guard = !guardArg ? null : guardArg.startsWith('lp:') ? { noSpeech: null, logprob: Number(guardArg.slice(3)) } : { noSpeech: Number(guardArg.split(',')[0]), logprob: Number(guardArg.split(',')[1]) };
+// --guard=lp:-0.75,cr:2.4 → the same, and also drop a window whose text zlib shrinks more than 2.4× (a repetition loop).
+const guard = !guardArg
+  ? null
+  : guardArg.startsWith('lp:')
+    ? { noSpeech: null, logprob: Number(guardArg.slice(3).split(',')[0]), compression: /cr:([\d.]+)/.test(guardArg) ? Number(/cr:([\d.]+)/.exec(guardArg)[1]) : null }
+    : { noSpeech: Number(guardArg.split(',')[0]), logprob: Number(guardArg.split(',')[1]), compression: null };
 // --per-span: every speech span is recognised on its own instead of being packed into 30 s windows.
 const perSpan = args.includes('--per-span');
 const vadParams = argValue('vad', '') ? JSON.parse(argValue('vad', '')) : null;
@@ -330,6 +335,19 @@ try {
         for (const pre of pres) {
           const result = { ...base, pre, load, startedAt: new Date().toISOString(), clips: [], errors: [] };
           const fileName = `asr-${tag}-${browserName}-${device}-${key}-${pre}${threads ? `-t${threads}` : ''}${suffix}.json`;
+          // A finished result is never silently replaced (it happened once: a Turkish run took an English run's name).
+          if (existsSync(join(outDir, fileName)) && !args.includes('--overwrite')) {
+            let finished = false;
+            try {
+              finished = JSON.parse(readFileSync(join(outDir, fileName), 'utf8')).complete === true;
+            } catch {
+              finished = false;
+            }
+            if (finished) {
+              console.log(`    ${fileName} already holds a finished run; skipped (give it a --suffix, or --overwrite)`);
+              continue;
+            }
+          }
           const save = () => writeFileSync(join(outDir, fileName), JSON.stringify(result));
           const runStart = Date.now();
           let wordTs = wordTimestamps;

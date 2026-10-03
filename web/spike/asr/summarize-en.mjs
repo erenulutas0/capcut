@@ -371,7 +371,7 @@ p();
 p('#### T2. English word error rate (Whisper-normalised / strict September metric)');
 p();
 p('| Model | Device | Browser | Pre | short (FLEURS 6+1) | long-a | long-b | long-c | long-fleurs | long, all | mix-clean | music 20 dB | music 10 dB | music 5 dB | music 0 dB | pink 10 dB | pink 5 dB | pause | val-clean | val-pink-5 | val-music-5 |');
-p('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+p('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
 const werCell = (g) => (g ? `${pct(g.normWer)} / ${pct(g.strictWer)}` : '—');
 for (const r of results) {
   if (!r.rows.some((x) => x.kind === 'speech' && x.lang === 'en')) continue;
@@ -543,7 +543,7 @@ for (const r of results) {
   const negDropped = neg.flatMap((x) => x.windows.filter((w) => w.dropped).map(() => x.id));
   const speechWindows = speech.flatMap((x) => x.windows.map((w) => ({ id: x.id, ...w })));
   const dropped = speechWindows.filter((w) => w.dropped);
-  p(`| ${label(r)} | ${r.pre}${r.perSpan ? ', per span' : ''} | ${r.guard.noSpeech === null ? `log-prob. < ${r.guard.logprob}` : `no-speech > ${r.guard.noSpeech} and log-prob. < ${r.guard.logprob}`} | ${negDropped.length} (${new Set(negDropped).size}) | ${speechWindows.length - dropped.length} / ${dropped.length} | ${sum(dropped.map((w) => w.droppedWords))} | ${dropped.map((w) => `${w.id} ${num(w.start, 1)}–${num(w.end, 1)} s "${(w.droppedText ?? '').trim().slice(0, 40)}"`).join('; ') || '—'} |`);
+  p(`| ${label(r)} | ${r.pre}${r.perSpan ? ', per span' : ''} | ${r.guard.noSpeech === null ? `log-prob. < ${r.guard.logprob}${r.guard.compression ? ` or zlib ratio > ${r.guard.compression}` : ''}` : `no-speech > ${r.guard.noSpeech} and log-prob. < ${r.guard.logprob}`} | ${negDropped.length} (${new Set(negDropped).size}) | ${speechWindows.length - dropped.length} / ${dropped.length} | ${sum(dropped.map((w) => w.droppedWords))} | ${dropped.map((w) => `${w.id} ${num(w.start, 1)}–${num(w.end, 1)} s "${(w.droppedText ?? '').trim().slice(0, 40)}"`).join('; ') || '—'} |`);
 }
 p();
 

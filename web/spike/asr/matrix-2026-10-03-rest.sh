@@ -43,30 +43,32 @@ C) # WASM (q8): all threads; 4 threads; one thread without cross-origin isolatio
   ;;
 D) # The shipping combination, fixed before the validation clips (negv-*, val-*) existed:
   # Silero (default settings) → every speech span recognised on its own → a span whose mean
-  # log-probability is under -0.75 is dropped. Then the same in other browsers and on WASM.
-  SHIP="--pre=silero --per-span --guard=lp:-0.75 --suffix=-ship --no-probe --sets=$ALLSETS"
-  for m in small-fp16 base turbo distil-small.en; do
+  # log-probability is under -0.75, or whose text is a repetition loop (zlib ratio over 2.4), is dropped. Then the same in other browsers and on WASM.
+  SHIP="--pre=silero --per-span --guard=lp:-0.75,cr:2.4 --suffix=-ship --no-probe --sets=$ALLSETS"
+  # (The distilled models are not here: part A showed they give no word times in these exports
+  # and that their log-probability does not tell invented text from speech.)
+  for m in small-fp16 base turbo; do
     run D-ship-$m --models=$m --devices=webgpu $SHIP --clips=$NEG,$NEGV,$PAUSE,$SHORT,$VAL,long-a,long-fleurs,mix-clean,mix-music-10,mix-music-0,mix-pink-5
   done
   # Moonshine has no figures from part A to set a threshold with: first every span on its own
   # without a guard on the clips used so far, then (D2) the validation clips with the threshold chosen from that.
   run D-span-moonshine-base --models=moonshine-base --devices=webgpu --pre=silero --per-span --suffix=-span --no-probe --sets=$ALLSETS --clips=$NEG,$PAUSE,$SHORT,long-a,long-fleurs,mix-clean,mix-music-10,mix-music-0,mix-pink-5
-  run D-ship-wasm --models=base,small,distil-small.en --devices=wasm $SHIP --clips=$NEG,$NEGV,$PAUSE,val-clean
+  run D-ship-wasm --models=base,small --devices=wasm $SHIP --clips=$NEG,$NEGV,$PAUSE,$SHORT,val-clean,val-music-5
   for b in chrome msedge; do
     run D-$b --browsers=$b --models=small-fp16,base --devices=webgpu $SHIP --clips=$NEG,$NEGV,$PAUSE,$SHORT,mix-clean
   done
   run D-firefox --browsers=firefox --models=base --devices=wasm $SHIP --clips=$NEG,$NEGV,$PAUSE,$SHORT,mix-clean
   ;;
 D2) # Moonshine with its own threshold (argument 2), validation clips included
-  run D-ship-moonshine-base --models=moonshine-base --devices=webgpu,wasm --pre=silero --per-span --guard=lp:$2 --suffix=-ship --no-probe --sets=$ALLSETS --clips=$NEG,$NEGV,$PAUSE,$SHORT,$VAL,long-a,long-fleurs,mix-clean,mix-music-10,mix-music-0,mix-pink-5
+  run D-ship-moonshine-base --models=moonshine-base --devices=webgpu,wasm --pre=silero --per-span --guard=lp:$2,cr:2.4 --suffix=-ship --no-probe --sets=$ALLSETS --clips=$NEG,$NEGV,$PAUSE,$SHORT,$VAL,long-a,long-fleurs,mix-clean,mix-music-10,mix-music-0,mix-pink-5
   ;;
 E) # What the library's leak and the word times cost (long-a)
   run E-keep --models=small-fp16 --devices=webgpu --pre=silero --keep-caches --suffix=-leak --no-probe --sets=$ALLSETS --clips=long-a,mix-clean,mix-music-10
   run E-segts --models=small-fp16,base --devices=webgpu --pre=silero --no-word-ts --suffix=-segts --no-probe --sets=$ALLSETS --clips=long-a
   ;;
 F) # Turkish, briefly
-  run F-turbo --models=turbo --devices=webgpu --pre=silero,none --sets=tr
-  run F-small --models=small-fp16 --devices=webgpu --pre=silero,none --sets=tr
+  run F-turbo --models=turbo --devices=webgpu --pre=silero,none --suffix=-tr --sets=tr
+  run F-small --models=small-fp16 --devices=webgpu --pre=silero,none --suffix=-tr --sets=tr
   ;;
 *)
   echo "usage: bash matrix-2026-10-03-rest.sh B|C|D|E|F"

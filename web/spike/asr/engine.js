@@ -251,6 +251,18 @@ async function noSpeechProb(samples) {
 
 const round3 = (v) => (v === null || v === undefined ? null : Math.round(v * 1000) / 1000);
 
+/**
+ * Whisper's loop test: text that zlib shrinks by more than `guard.compression`
+ * (2.4 in openai/whisper) is one phrase said over and over.
+ */
+async function isLoop(text, guard) {
+  if (!guard?.compression || !text) return false;
+  const bytes = new TextEncoder().encode(text);
+  if (bytes.length === 0) return false;
+  const packed = await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer();
+  return bytes.length / packed.byteLength > guard.compression;
+}
+
 /** One window (≤ 30 s of samples) through the recogniser. Times are relative to the samples. */
 async function recognise(samples, { language, wordTimestamps, probe, guard = null }) {
   const isWhisper = current.type === 'whisper' || current.type === 'lite-whisper';
@@ -261,7 +273,7 @@ async function recognise(samples, { language, wordTimestamps, probe, guard = nul
     const out = await transcriber(samples, { logits_processor: listOf(recorder) });
     await freeDecoderCaches();
     const stats = recorder.finish();
-    const dropped = Boolean(guard) && stats.avgLogprob !== null && stats.avgLogprob < guard.logprob;
+    const dropped = Boolean(guard) && ((stats.avgLogprob !== null && stats.avgLogprob < guard.logprob) || (await isLoop(out.text, guard)));
     return { text: dropped ? '' : (out.text ?? ''), droppedText: dropped ? (out.text ?? '') : null, chunks: [], ms: performance.now() - started, probeMs: 0, noSpeechProb: null, avgLogprob: stats.avgLogprob, tokens: stats.tokens };
   }
   const multilingual = transcriber.model.generation_config.is_multilingual !== false;
@@ -294,6 +306,8 @@ async function recognise(samples, { language, wordTimestamps, probe, guard = nul
         dropped = nsp !== null && nsp > guard.noSpeech;
       }
     }
+    // A repetition loop is confident nonsense: its log-probability is high, so it needs its own test.
+    if (!dropped && (await isLoop(out.text, guard))) dropped = true;
   } else if (probe) {
     const probeStart = performance.now();
     nsp = await noSpeechProb(samples);

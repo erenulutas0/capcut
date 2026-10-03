@@ -67,8 +67,8 @@ E) # What the library's leak and the word times cost (small-fp16, long-a)
   run E-segts --models=small-fp16,base --devices=webgpu --pre=silero --no-word-ts --suffix=-segts --no-probe --sets=$ALLSETS --clips=long-a
   ;;
 F) # Turkish, briefly
-  run F-turbo --models=turbo --devices=webgpu --pre=silero,none --sets=tr
-  run F-small --models=small-fp16 --devices=webgpu --pre=silero,none --sets=tr
+  run F-turbo --models=turbo --devices=webgpu --pre=silero,none --suffix=-tr --sets=tr
+  run F-small --models=small-fp16 --devices=webgpu --pre=silero,none --suffix=-tr --sets=tr
   ;;
 *)
   echo "usage: bash matrix-2026-10-03.sh A|B|C|D|E|F"

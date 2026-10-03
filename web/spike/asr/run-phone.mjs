@@ -1,7 +1,6 @@
 /**
  * The spike page on the founder's phone (Chrome on Android over adb + CDP).
  *
- *   set NODE_PATH=<this folder>\node_modules      (cdp-own-tabs needs playwright-core)
  *   node run-phone.mjs --models=base,moonshine-base --devices=webgpu,wasm --clips=en-02,neg-01,neg-08,pause-01
  *
  * Etiquette (web/scripts/android/phone-run.mjs header): one tab that this
@@ -18,12 +17,18 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
-import { ownTabsEndpoint } from '../../scripts/android/cdp-own-tabs.mjs';
+import Module from 'node:module';
+
 import { MODELS, VAD_MODEL, dtypesFor, onnxFilesFor } from './models.mjs';
 import { wordErrors } from './metrics.mjs';
 import { startServer } from './serve.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
+// cdp-own-tabs.mjs requires playwright-core from web/node_modules; in a worktree where only this
+// folder was installed, let its require() also look in this folder's node_modules.
+process.env.NODE_PATH = [join(here, 'node_modules'), process.env.NODE_PATH].filter(Boolean).join(process.platform === 'win32' ? ';' : ':');
+Module._initPaths();
+const { ownTabsEndpoint } = await import('../../scripts/android/cdp-own-tabs.mjs');
 const webRoot = dirname(dirname(here));
 const speechDir = join(webRoot, 'tests', 'media', 'speech');
 const outDir = join(webRoot, 'spike-results');
