@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Açılış: yaz, bulalım</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#d2ef78}a:hover{color:#e4f7a6}
+input::placeholder{color:#abb4ae}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; padding: 16px 16px 20px; display: flex; flex-direction: column; gap: 16px; background: #101315; color: #f3f5ee; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <div style="display: flex; align-items: center; justify-content: space-between; height: 44px">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <div style="width: 32px; height: 32px; border-radius: 9px; background: #d2ef78; display: flex; align-items: center; justify-content: center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#17200c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6a3 3 0 1 0 6 0a3 3 0 1 0-6 0M3 18a3 3 0 1 0 6 0a3 3 0 1 0-6 0M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"></path></svg>
+      </div>
+      <div style="font-size: 20px; font-weight: 700; letter-spacing: -0.3px">clip</div>
+    </div>
+    <a href="#" style="font-size: 14px; padding: 12px 4px">Kendim düzenleyeceğim</a>
+  </div>
+
+  <h1 style="margin: 0; font-size: 30px; line-height: 1.15; font-weight: 750; letter-spacing: -0.5px">Ne yapmak istiyorsun?</h1>
+
+  <div style="display: flex; align-items: center; gap: 10px; height: 58px; padding: 0 14px; background: #181c1f; border: 2px solid #d2ef78; border-radius: 16px">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d2ef78" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11a8 8 0 1 0 16 0a8 8 0 1 0-16 0M21 21l-4.35-4.35"></path></svg>
+    <input type="text" aria-label="Ne yapmak istediğini yaz" placeholder="Yaz: videom WhatsApp’a sığmıyor" value="{{q}}" onChange="{{onType}}" style="flex-grow: 1; min-width: 0; height: 44px; background: transparent; border: 0; outline: none; color: #f3f5ee; font: inherit; font-size: 17px">
+  </div>
+
+  <sc-if value="{{isEmpty}}" hint-placeholder-val="{{true}}">
+    <div style="display: flex; flex-direction: column; gap: 18px">
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="font-size: 13px; color: #abb4ae">Örneğin</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <sc-for list="{{examples}}" as="example" hint-placeholder-count="4">
+            <button type="button" onClick="{{example.use}}" style="min-height: 44px; padding: 0 14px; background: transparent; border: 1px solid #5d6b63; border-radius: 999px; color: #f3f5ee; font: inherit; font-size: 15px; cursor: pointer">{{example.text}}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="font-size: 13px; color: #abb4ae">En çok kullanılanlar</div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+          <sc-for list="{{popular}}" as="task" hint-placeholder-count="4">
+            <button type="button" style="display: flex; flex-direction: column; gap: 10px; align-items: flex-start; padding: 16px; min-height: 126px; background: #181c1f; border: 1px solid #343d3b; border-radius: 14px; color: #f3f5ee; font: inherit; text-align: left; cursor: pointer">
+              <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(210, 239, 120, 0.12); display: flex; align-items: center; justify-content: center">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d2ef78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{task.d}}"></path></svg>
+              </div>
+              <div style="font-size: 18px; font-weight: 700">{{task.label}}</div>
+              <div style="font-size: 13px; color: #abb4ae">{{task.sub}}</div>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+      <a href="#" style="font-size: 15px; padding: 12px 0; text-align: center">Tüm işleri gör</a>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{hasResults}}" hint-placeholder-val="{{false}}">
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div style="font-size: 13px; color: #abb4ae">Bunu mu demek istedin?</div>
+      <sc-for list="{{results}}" as="task" hint-placeholder-count="2">
+        <button type="button" style="display: flex; align-items: center; gap: 12px; min-height: 68px; padding: 10px 12px; background: #181c1f; border: 1px solid #343d3b; border-radius: 14px; color: #f3f5ee; font: inherit; text-align: left; cursor: pointer">
+          <div style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; background: rgba(210, 239, 120, 0.12); display: flex; align-items: center; justify-content: center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d2ef78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{task.d}}"></path></svg>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-width: 0">
+            <div style="font-size: 18px; font-weight: 700">{{task.label}}</div>
+            <div style="font-size: 13px; color: #abb4ae">{{task.sub}}</div>
+          </div>
+          <div style="padding: 9px 14px; border-radius: 999px; background: #d2ef78; color: #17200c; font-size: 14px; font-weight: 700">Başla</div>
+        </button>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{noResults}}" hint-placeholder-val="{{false}}">
+    <div style="display: flex; flex-direction: column; gap: 10px; padding: 16px; background: #181c1f; border: 1px solid #343d3b; border-radius: 14px">
+      <div style="font-size: 17px; font-weight: 700">Bunu bulamadım.</div>
+      <div style="font-size: 14px; color: #abb4ae">Başka kelimelerle dene ya da bütün işlere bak.</div>
+      <a href="#" style="font-size: 15px; padding: 10px 0">Tüm işleri gör</a>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+var self = this;
+var q = (this.state && this.state.q) || '';
+var TASKS = [
+{ id: 'kes', label: 'Kes', sub: 'İstediğin yerleri al', keys: ['kes', 'kirp', 'kisalt', 'parca', 'bol', 'sil', 'cikar', 'bas', 'son', 'trim', 'cut', 'ayir'], d: 'M3 6a3 3 0 1 0 6 0a3 3 0 1 0-6 0M3 18a3 3 0 1 0 6 0a3 3 0 1 0-6 0M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12' },
+{ id: 'bosluk', label: 'Boşlukları at', sub: 'Sessiz yerleri çıkar', keys: ['sessiz', 'bosluk', 'sus', 'bekleme', 'duraklama', 'konusma', 'hizli', 'eee'], d: 'M4 10v4M8 6v12M12 11v2M16 6v12M20 10v4' },
+{ id: 'dikey', label: 'Dikey yap', sub: 'Reels, TikTok, Shorts', keys: ['dikey', 'reels', 'tiktok', 'shorts', 'instagram', 'story', 'hikaye', 'telefon', 'kare', 'yatay'], d: 'M7 4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM11 18h2' },
+{ id: 'kucult', label: 'Küçült', sub: 'WhatsApp’a sığdır', keys: ['kucult', 'sikistir', 'boyut', 'mb', 'whatsapp', 'sigmiyor', 'sigdir', 'gonderemiyorum', 'gonder', 'buyuk', 'eposta', 'mail', 'yer'], d: 'M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7' },
+{ id: 'yazi', label: 'Yazıya dök', sub: 'Altyazı ve metin', keys: ['yazi', 'altyazi', 'metin', 'transkript', 'dok', 'subtitle', 'ceviri', 'yaziya'], d: 'M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM7 15h4M15 15h2M7 11h2M13 11h4' },
+{ id: 'muzik', label: 'Müzik ekle', sub: 'Kendi müziğini koy', keys: ['muzik', 'sarki', 'fon', 'arka', 'ekle'], d: 'M9 18V5l12-2v13M3 18a3 3 0 1 0 6 0a3 3 0 1 0-6 0M15 16a3 3 0 1 0 6 0a3 3 0 1 0-6 0' },
+{ id: 'ses', label: 'Sesini al', sub: 'Videodan ses dosyası', keys: ['mp3', 'sesini', 'sesi', 'ses', 'dinle', 'podcast'], d: 'M11 5L6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7' },
+{ id: 'cevir', label: 'Her yerde açılsın', sub: 'Standart MP4’e çevir', keys: ['acilmiyor', 'oynatmiyor', 'mp4', 'cevir', 'donustur', 'format', 'iphone', 'mov', 'hevc', 'uyumlu', 'acmiyor'], d: 'M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5' }
+];
+function fold(text) {
+return text.toLocaleLowerCase('tr').replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u').replace(/[^a-z0-9 ]/g, ' ');
+}
+var tokens = fold(q).split(' ').filter(function (t) { return t.length >= 2; });
+var scored = TASKS.map(function (task) {
+var score = 0;
+tokens.forEach(function (token) {
+task.keys.forEach(function (key) {
+if (key === token) score += 3;
+else if (key.indexOf(token) === 0 || (token.length >= 3 && token.indexOf(key) === 0)) score += 2;
+else if (token.length >= 4 && key.indexOf(token) > 0) score += 1;
+});
+});
+return { task: task, score: score };
+}).filter(function (entry) { return entry.score > 0; });
+scored.sort(function (a, b) { return b.score - a.score; });
+var results = scored.slice(0, 3).map(function (entry) { return entry.task; });
+var isEmpty = tokens.length === 0;
+var examples = ['WhatsApp’a sığmıyor', 'sessiz yerleri sil', 'TikTok için dikey', 'altyazı ekle'].map(function (text) {
+return { text: text, use: function () { self.setState({ q: text }); } };
+});
+return {
+q: q,
+onType: function (event) { self.setState({ q: event.target.value }); },
+isEmpty: isEmpty,
+hasResults: !isEmpty && results.length > 0,
+noResults: !isEmpty && results.length === 0,
+results: results,
+examples: examples,
+popular: [TASKS[0], TASKS[3], TASKS[2], TASKS[1]]
+};
+}
+}
+</script>
+</body>
+</html>
