@@ -102,7 +102,32 @@ const CASES = [
   { id: 'Q', file: join(android, SYNC_CLIP), kesits: [], mode: 'encode', sync: true, expect: 'whole clip, forced full encode, clicks' },
   // ADR-033: a 24 fps twin on the 30 fps grid (some frames drawn twice), the second kesit to the clip's end.
   { id: 'R', file: join(android, SYNC_CLIP_24), kesits: [[0.4, 3.3], [9.5, 12]], mode: 'encode', sync: true, sourceFps: 24, expect: '24 fps clip, two kesitler to the end, forced full encode' },
+  // ADR-035: target-size downloads (`exportOptions` is the hook the task screens' options go through),
+  // the phone encoder's real/asked size at a forced bitrate, and sound-only downloads.
+  { id: 'S', file: join(real, 'web-samsung-s21-h264-60fps-rot90.mp4'), kesits: [[0.5, 4]], exportOptions: { targetSize: { targetBytes: 1_000_000 } }, expect: 'target 1 MB, detailed 60 fps recording' },
+  { id: 'T', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [], exportOptions: { targetSize: { targetBytes: 16_000_000 } }, expect: 'target 16 MB (WhatsApp), whole 3 min' },
+  { id: 'U', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [[10, 40]], exportOptions: { targetSize: { targetBytes: 4_000_000 } }, expect: 'target 4 MB, 30 s' },
+  { id: 'V', file: join(android, SYNC_CLIP), kesits: [[1.2, 6.5]], sync: true, exportOptions: { output: 'audio' }, expect: 'sound only (M4A), clicks' },
+  { id: 'W', file: join(real, 'web-samsung-s21-h264-60fps-rot90.mp4'), kesits: [[0.5, 4]], exportOptions: { output: 'audio' }, expect: 'sound only (M4A), recording' },
+  { id: 'X', file: join(real, 'web-samsung-s21-h264-60fps-rot90.mp4'), kesits: [[0.5, 4]], exportOptions: { forced: { shortEdge: 720, videoBitrate: 1_500_000, audioBitrate: 128_000, bitrateMode: 'constant' } }, expect: 'forced 720p 1.5 Mbit/s constant' },
+  { id: 'Y', file: join(real, 'web-samsung-s21-h264-60fps-rot90.mp4'), kesits: [[0.5, 4]], exportOptions: { forced: { shortEdge: 720, videoBitrate: 1_500_000, audioBitrate: 128_000 } }, expect: 'forced 720p 1.5 Mbit/s variable' },
+  { id: 'Z', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [[10, 40]], exportOptions: { forced: { shortEdge: 720, videoBitrate: 1_500_000, audioBitrate: 128_000, bitrateMode: 'constant' } }, expect: 'forced 720p 1.5 Mbit/s constant, 30 s' },
+  { id: 'Z2', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [[10, 40]], exportOptions: { forced: { shortEdge: 1080, videoBitrate: 3_000_000, audioBitrate: 96_000, bitrateMode: 'constant' } }, expect: 'forced 1080p 3 Mbit/s constant, 96 kbit/s audio, 30 s' },
 ];
+
+/** ADR-035: the bytes of one stream's packets (the encoder's real output, without the container). */
+function packetBytes(file, stream) {
+  const out = spawnSync('ffprobe', ['-v', 'error', '-select_streams', stream, '-show_entries', 'packet=size', '-of', 'csv=p=0', file], {
+    encoding: 'utf8',
+    maxBuffer: 256 * 1024 * 1024,
+  });
+  let total = 0;
+  for (const line of (out.stdout ?? '').split(/\r?\n/)) {
+    const value = Number.parseInt(line, 10);
+    if (Number.isFinite(value)) total += value;
+  }
+  return total;
+}
 
 function probe(file) {
   const out = spawnSync(
@@ -312,6 +337,11 @@ async function runCase(testCase) {
       window.__clipExportMode = 'encode';
     });
   }
+  if (testCase.exportOptions) {
+    await page.addInitScript((options) => {
+      window.__clipExportOptions = options;
+    }, testCase.exportOptions);
+  }
   const row = { id: testCase.id, source: basename(testCase.file), kesits: testCase.kesits, expect: testCase.expect };
   try {
     await page.goto(url, { waitUntil: 'load' });
@@ -371,13 +401,42 @@ async function runCase(testCase) {
       const local = join(outDir, `${testCase.id}-${name.replace(/^picked-\d+-/, '')}`);
       row.sizeBytes = await readPickedFile(page, name, local);
       row.probe = probe(local);
+      // ADR-035: what the app said about a target-size download, and the encoder's real/asked size.
+      row.output = await method.getAttribute('data-output');
+      const targetLine = page.getByTestId('target-size-result').first();
+      if ((await targetLine.count()) > 0) {
+        const attribute = (key) => targetLine.getAttribute(`data-${key}`);
+        row.targetSize = {
+          fits: (await attribute('fits')) === 'true',
+          targetBytes: Number(await attribute('target-bytes')),
+          plannedBytes: Number(await attribute('planned-bytes')),
+          actualBytes: Number(await attribute('actual-bytes')),
+          attempts: Number(await attribute('attempts')),
+          shortEdge: Number(await attribute('short-edge')),
+          videoBitrate: Number(await attribute('video-bitrate')),
+          audioBitrate: Number(await attribute('audio-bitrate')),
+          encoder: await attribute('encoder'),
+          mode: await attribute('mode'),
+        };
+        const videoBytes = packetBytes(local, 'v:0');
+        row.videoBytes = videoBytes;
+        row.audioBytes = packetBytes(local, 'a:0');
+        row.videoRatio = Number((videoBytes / ((row.targetSize.videoBitrate * row.probe.durationS) / 8)).toFixed(4));
+      }
       if (row.probe.audio) {
         row.audioLayout = audioLayout(local);
         row.audioSync = audioSync(testCase.file, testCase.kesits[0]?.[0] ?? 0, local);
       }
       // ADR-033: which source frame every output frame shows, read from the
       // barcode (sync clips) or against an ffmpeg reference (recordings).
-      if (testCase.sync) {
+      if (!row.probe.video) {
+        // Sound only (ADR-035): no picture to check; the track's exact length instead.
+        row.audioStream = spawnSync(
+          'ffprobe',
+          ['-v', 'error', '-select_streams', 'a:0', '-show_entries', 'stream=duration,duration_ts,nb_frames,start_time,sample_rate', '-of', 'json', local],
+          { encoding: 'utf8' },
+        ).stdout.replace(/\s+/g, ' ');
+      } else if (testCase.sync) {
         row.avSync = avSync(local);
         row.frameIdentity = frameIdentity(local, testCase.kesits, { sourceFps: testCase.sourceFps ?? 30 });
       } else {
@@ -410,7 +469,7 @@ async function runCase(testCase) {
 
 writeFileSync(join(outDir, `phone-run-${Date.now()}.json`), JSON.stringify({ url, desktop: desktop || null, at: new Date().toISOString(), results }, null, 2));
 // ADR-033: the frame check in one line — a case is only clean when it was saved and every frame was right.
-const identity = results.map((row) =>
+const identity = results.filter((row) => row.output !== 'audio').map((row) =>
   row.frameIdentity
     ? `${row.id}:${row.frameIdentity.wrong}${row.frameIdentity.unmatched ? `+${row.frameIdentity.unmatched} unmatched` : ''}/${row.frameIdentity.expectedFrames}`
     : `${row.id}:${row.frameIdentityError ? 'not measured' : row.outcome}`,

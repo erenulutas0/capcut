@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { audioFileName, audioOnlyBytes } from '@/domain/audioOnly';
+import { audioFileName, audioOnlyBytes, audioOnlyRecipe } from '@/domain/audioOnly';
+import { WEB_LOCAL_POLICY } from '@/domain/policy';
+import { compileRenderPlan } from '@/domain/renderPlan';
+import type { Project } from '@/domain/edl';
 import { AacPacketAligner } from '@/domain/audioEncoderDelay';
 import type { VideoEncoderKind } from '@/domain/encoderBitrate';
 import { audioDurationWithinTolerance } from '@/domain/exportEvents';
@@ -162,9 +165,9 @@ describe('planTargetSize', () => {
   });
 
   it('uses each encoder class’s own measured floors and overshoot', () => {
-    expect(STEP_DOWN_BITS_PER_PIXEL).toEqual({ hardware: 0.05, software: 0.055 });
+    expect(STEP_DOWN_BITS_PER_PIXEL).toEqual({ hardware: 0.04, software: 0.055 });
     expect(REFUSE_BITS_PER_PIXEL).toEqual({ hardware: 0.025, software: 0.03 });
-    expect(VIDEO_OVERSHOOT).toEqual({ hardware: 1.12, software: 1.02 });
+    expect(VIDEO_OVERSHOOT).toEqual({ hardware: 1.1, software: 1.02 });
     for (const kind of ['hardware', 'software'] as const) {
       const f = facts({ durationUs: 100 * SECOND, kind });
       const floor = Math.ceil(1920 * 1080 * 30 * STEP_DOWN_BITS_PER_PIXEL[kind]);
@@ -185,8 +188,8 @@ describe('planTargetSize', () => {
     expect(plan.encoderKind).toBe(plan.width >= 1280 ? 'hardware' : 'software');
   });
 
-  it('keeps 128 kbit/s audio while anything fits with it, then 96, then 64', () => {
-    expect([...TARGET_AUDIO_BITRATES]).toEqual([128_000, 96_000, 64_000]);
+  it('keeps 128 kbit/s audio while anything fits with it, then 96 (the lowest the browsers encode)', () => {
+    expect([...TARGET_AUDIO_BITRATES]).toEqual([128_000, 96_000]);
     const f = facts({ durationUs: 60 * SECOND, maxShortEdge: 360 });
     const floor = Math.ceil(640 * 360 * 30 * REFUSE_BITS_PER_PIXEL.hardware);
     const overhead = containerOverheadBytes({ durationUs: f.durationUs, fps: 30, audioSampleRate: 48_000 });
@@ -194,8 +197,22 @@ describe('planTargetSize', () => {
       Math.ceil((((floor * VIDEO_OVERSHOOT.hardware + audio + slackBits) * 60) / 8 + overhead) / 0.99);
     expect(decided(planTargetSize({ targetBytes: targetFor(128_000, 1_000) }, f)).audioBitrate).toBe(128_000);
     expect(decided(planTargetSize({ targetBytes: targetFor(96_000, 1_000) }, f)).audioBitrate).toBe(96_000);
-    expect(decided(planTargetSize({ targetBytes: targetFor(64_000, 1_000) }, f)).audioBitrate).toBe(64_000);
-    expect(planTargetSize({ targetBytes: targetFor(64_000, -2_000) }, f).ok).toBe(false);
+    expect(planTargetSize({ targetBytes: targetFor(96_000, -2_000) }, f).ok).toBe(false);
+  });
+
+  it('plans only with the audio bitrates the browser can really write', () => {
+    const f = facts({ durationUs: 60 * SECOND, maxShortEdge: 360 });
+    const floor = Math.ceil(640 * 360 * 30 * REFUSE_BITS_PER_PIXEL.hardware);
+    const overhead = containerOverheadBytes({ durationUs: f.durationUs, fps: 30, audioSampleRate: 48_000 });
+    // Fits with 96 kbit/s audio, not with 128.
+    const target = { targetBytes: Math.ceil((((floor * VIDEO_OVERSHOOT.hardware + 97_000) * 60) / 8 + overhead) / 0.99) };
+    expect(decided(planTargetSize(target, f)).audioBitrate).toBe(96_000);
+    // Chrome on Android (measured): 96 kbit/s cannot be aligned, so only 128 is planned with.
+    const only128 = planTargetSize(target, { ...f, audioBitrates: [128_000] });
+    expect(only128.ok).toBe(false);
+    if (!only128.ok) {
+      expect(decided(planTargetSize({ targetBytes: only128.minBytes }, { ...f, audioBitrates: [128_000] })).audioBitrate).toBe(128_000);
+    }
   });
 
   it('plans no audio bytes for a download without sound', () => {
@@ -216,7 +233,7 @@ describe('planTargetSize', () => {
     // The smallest size it names is accepted, one kilobyte less is not.
     const atMin = decided(planTargetSize({ targetBytes: refused.minBytes }, f));
     expect(atMin.shortEdge).toBe(360);
-    expect(atMin.audioBitrate).toBe(64_000);
+    expect(atMin.audioBitrate).toBe(96_000);
     expect(planTargetSize({ targetBytes: refused.minBytes - 1_000 }, f).ok).toBe(false);
     // The longest length it names fits the original target; a second more does not.
     expect(refused.maxDurationUs).toBeGreaterThan(0);
@@ -357,6 +374,47 @@ describe('sound-only helpers (ADR-035)', () => {
     expect(audioFileName('tatil_3-kesit.mp4')).toBe('tatil_3-kesit.m4a');
     expect(audioFileName('tatil_00-12-01-40.mp4')).toBe('tatil_00-12-01-40.m4a');
     expect(audioFileName('adsiz')).toBe('adsiz.m4a');
+  });
+
+  it('compiles on the sample grid: a kesit that is not a whole number of frames keeps its exact length', () => {
+    const project = {
+      schemaVersion: 2,
+      revision: 1,
+      assets: [{ assetId: 'a', kind: 'video', durationUs: 12 * SECOND, displayWidth: 1280, displayHeight: 720, hasAudio: true }],
+      clips: [
+        {
+          clipId: 'c1',
+          assetId: 'a',
+          sourceInUs: 2_500_000,
+          sourceOutUs: 9_250_000,
+          sourceGainDb: 0,
+          muted: false,
+          view: { x: 0, y: 0, width: 1, height: 1, fit: 'cover' },
+        },
+      ],
+      music: null,
+      canvas: { aspect: '16:9', background: '#000000' },
+      export: {
+        container: 'mp4',
+        videoCodec: 'h264',
+        audioCodec: 'aac',
+        shortEdge: 720,
+        fpsNum: 30,
+        fpsDen: 1,
+        colorMode: 'sdr_rec709',
+        audioSampleRate: 48_000,
+      },
+      captionTracks: [],
+    } as unknown as Project;
+    const video = compileRenderPlan(project, WEB_LOCAL_POLICY);
+    const audio = compileRenderPlan(audioOnlyRecipe(project), WEB_LOCAL_POLICY);
+    expect(video.ok && audio.ok).toBe(true);
+    if (!video.ok || !audio.ok) return;
+    // 6.75 s is 202.5 frames: the video is 203 frames long, the sound file 6.75 s.
+    expect(video.plan.expectedDurationUs).toBe(6_766_667);
+    expect(audio.plan.expectedDurationUs).toBe(6_750_000);
+    expect(audio.plan.totalFrames).toBe(324_000);
+    expect(audio.plan.audio.sampleRate).toBe(48_000);
   });
 
   it('estimates the size from the AAC bitrate and the length', () => {

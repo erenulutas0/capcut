@@ -32,7 +32,7 @@ import {
 import { WEB_LOCAL_POLICY, outputOverrun, type OutputOverrun } from '@/domain/policy';
 import { compileRenderPlan, type PlanRejection, type RenderPlan } from '@/domain/renderPlan';
 import type { ShareVerdict } from '@/domain/share';
-import { audioFileName } from '@/domain/audioOnly';
+import { audioFileName, audioOnlyRecipe } from '@/domain/audioOnly';
 import {
   estimateEncodeSeconds,
   maxTargetShortEdge,
@@ -515,6 +515,11 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
       // ADR-035: the sound-only file is M4A (AAC in MP4), `audio/mp4`.
       const fileName = audioOnly ? audioFileName(videoFileName) : videoFileName;
       const mime = audioOnly ? 'audio/mp4' : 'video/mp4';
+      // The plan the worker gets. Sound only: the same kesitler on the sample
+      // grid, so the file is as long as the kesitler to the sample (the gate
+      // and the entry keep the ordinary plan and its fingerprint).
+      const audioCompiled = audioOnly ? compileRenderPlan(audioOnlyRecipe(recipe), WEB_LOCAL_POLICY) : null;
+      const exportPlan = audioCompiled?.ok ? audioCompiled.plan : plan;
 
       // Inside the click, before any await (user activation).
       const picker = savePicker();
@@ -603,7 +608,7 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
             output: audioOnly ? 'audio' : 'video',
           });
 
-        for await (const event of client().export(plan, videoFile, audioFile, {
+        for await (const event of client().export(exportPlan, videoFile, audioFile, {
           // ADR-035: a sound-only file is small (60 min ≈ 58 MB), so the
           // memory route may hold the whole output limit, not only 5 minutes.
           memoryRouteLimitUs: audioOnly

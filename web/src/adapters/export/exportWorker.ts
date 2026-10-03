@@ -51,6 +51,7 @@ import { frameToUs, sourceTimeForFrame, type RenderPlan, type RenderSegment } fr
 import { nominalOutputBytes, requiredFreeBytes } from '@/domain/outputStorage';
 import {
   MAX_TARGET_ATTEMPTS,
+  TARGET_AUDIO_BITRATES,
   TARGET_SAFETY_FRACTION,
   containerOverheadBytes,
   correctTargetSize,
@@ -722,10 +723,21 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
   // smallest size that would work.
   let target: TargetRun | null = null;
   if (targetSize) {
+    // Only audio bitrates whose encoder delay can be measured here (ADR-032)
+    // are planned with: a bitrate the browser accepts but cannot align would
+    // end in a refusal after the plan was made.
+    const audioBitrates: number[] = [];
+    if (wantsAudio) {
+      for (const bitrate of TARGET_AUDIO_BITRATES) {
+        if ((await measureAacEncoderDelay({ ...aacSettings(plan), bitrate })).ok) audioBitrates.push(bitrate);
+      }
+      if (audioBitrates.length === 0) throw new ExportFailure('audio_encoder_misaligned');
+    }
     const facts = targetSizeFacts(plan, {
       maxShortEdge: targetSize.maxShortEdge,
       hasAudio: wantsAudio,
       encoderKind: await encoderKindLookup(plan.aspect, plan.fpsNum, plan.fpsDen),
+      ...(wantsAudio ? { audioBitrates } : {}),
     });
     let first: TargetSizeDecision;
     if (targetSize.forced) {
@@ -1170,7 +1182,11 @@ async function produceOutput(
     // The canvas is snapshotted into a sample here rather than by mediabunny's
     // CanvasSource: the same `new VideoSample(canvas)` it makes, but the
     // snapshot and the encoder hand-off can be timed apart (ADR-028).
-    const bitrateMode = target?.request.forced?.bitrateMode;
+    // ADR-035: a target-size encode asks for a constant bitrate. Measured on
+    // the hardware encoder, the file then stays within 0.99–1.06 of what was
+    // asked (variable: 1.07–1.30) at the same picture quality per byte. The
+    // ordinary download is untouched (mediabunny's default, variable).
+    const bitrateMode = !target ? undefined : target.request.forced ? target.request.forced.bitrateMode : 'constant';
     videoSource = new VideoSampleSource({
       codec: 'avc',
       bitrate: videoBitrate,

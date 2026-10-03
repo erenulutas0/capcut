@@ -126,7 +126,12 @@ async function waitForAny(page, testIds, timeoutMs) {
   return null;
 }
 
-async function openFile(context, item) {
+/**
+ * A fresh browser context per file: in a shared one the editor restores the
+ * previous file's project (its kesit included) and the export is twice as long.
+ */
+async function openFile(browser, item) {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
   await installSavePicker(page);
   await page.goto(`${baseURL}/editor`);
@@ -185,7 +190,6 @@ function referenceFor(item) {
 }
 
 const browser = await LAUNCH[browserName]();
-const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const rows = [];
 const outFile = join(outDir, `${mode}-${browserName}${label ? `-${label}` : ''}.json`);
 const save = () =>
@@ -200,7 +204,7 @@ try {
     const bpps = argValue('bpp', '') ? argValue('bpp', '').split(',').map(Number) : BPP;
     for (const item of FILES) {
       const reference = referenceFor(item);
-      const page = await openFile(context, item);
+      const page = await openFile(browser, item);
       const seconds = item.range[1] - item.range[0];
       for (const rung of RUNGS.filter((edge) => edge <= item.top)) {
         const [width, height] = sizeOf(item.aspect, rung);
@@ -218,6 +222,7 @@ try {
             const audio = packetBytes(savePath, 'a:0') ?? 0;
             const asked = (videoBitrate * seconds) / 8;
             Object.assign(row, {
+              durationS: Number(ffprobeJson(savePath)?.format?.duration),
               fileBytes: outcome.bytes,
               videoBytes: video,
               audioBytes: audio,
@@ -236,7 +241,7 @@ try {
           save();
         }
       }
-      await page.close();
+      await page.context().close();
     }
   } else if (mode === 'targets') {
     /** Whole-file or long-range downloads against the presets and small targets. */
@@ -250,7 +255,7 @@ try {
     ].filter((item) => only.length === 0 || only.includes(item.id));
     for (const item of CASES) {
       const reference = item.range[1] - item.range[0] <= 90 ? referenceFor({ ...item, id: `${item.id}-${item.range[1]}` }) : null;
-      const page = await openFile(context, item);
+      const page = await openFile(browser, item);
       const seconds = item.range[1] - item.range[0];
       for (const targetBytes of item.targets) {
         const savePath = join(workDir, `${item.id}-${seconds}-${targetBytes}.mp4`);
@@ -284,7 +289,7 @@ try {
         console.log(JSON.stringify(row));
         save();
       }
-      await page.close();
+      await page.context().close();
     }
   } else if (mode === 'audio') {
     const CASES = [
@@ -294,7 +299,7 @@ try {
       { id: 'GOPRO', file: 'ffs-h264_gopro_ambarella.mp4', aspect: '16-9', top: 720, range: [1, 9.2] },
     ].filter((item) => only.length === 0 || only.includes(item.id));
     for (const item of CASES) {
-      const page = await openFile(context, item);
+      const page = await openFile(browser, item);
       const seconds = item.range[1] - item.range[0];
       const savePath = join(outDir, `audio-${item.id}-${browserName}.m4a`);
       const outcome = await exportWith(page, { output: 'audio' }, savePath);
@@ -324,12 +329,11 @@ try {
       rows.push(row);
       console.log(JSON.stringify(row));
       save();
-      await page.close();
+      await page.context().close();
     }
   }
 } finally {
   save();
-  await context.close();
   await browser.close();
   rmSync(workDir, { recursive: true, force: true });
 }

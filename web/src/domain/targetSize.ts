@@ -63,8 +63,13 @@ export function sizePreset(id: SizePresetId): SizePreset {
  */
 export const TARGET_SHORT_EDGES = [1080, 720, 540, 360] as const;
 
-/** AAC bitrates, best first. Lowered only when nothing fits at the one before. */
-export const TARGET_AUDIO_BITRATES = [128_000, 96_000, 64_000] as const;
+/**
+ * AAC bitrates, best first; lowered only when nothing fits at the one before.
+ * There is no step under 96 kbit/s: Chrome, Edge and Chromium on Windows
+ * accept exactly 96, 128, 160 and 192 kbit/s for AAC and refuse 32–80 and
+ * 112 (`AudioEncoder.isConfigSupported`, measured; ADR-035).
+ */
+export const TARGET_AUDIO_BITRATES = [128_000, 96_000] as const;
 
 /** The lowest short edge unless the caller asks for a higher floor (e.g. 720). */
 export const DEFAULT_MIN_SHORT_EDGE = 360;
@@ -76,8 +81,9 @@ export const DEFAULT_MIN_SHORT_EDGE = 360;
  * - hardware (Chrome/Edge with a GPU encoder): below it the next smaller
  *   resolution gives the same or a better picture for the same bytes — SSIM
  *   against the source, compared at the download's own top size. The
- *   crossover depends on the footage (0.02–0.05 bit/pixel on ordinary phone
- *   recordings, above 0.07 on very detailed ones); 0.05 is the median.
+ *   crossover depends on the footage: 0.02–0.05 bit/pixel on ordinary phone
+ *   recordings, above 0.07 on very detailed ones; the median of the 1080p ->
+ *   720p crossovers is 0.04.
  * - software (OpenH264: Playwright's Chromium, browsers without a hardware
  *   encoder): this encoder cannot go under a rate that depends on the
  *   footage (0.027 / 0.052 / 0.14 bit/pixel on the three 1080p recordings
@@ -85,7 +91,7 @@ export const DEFAULT_MIN_SHORT_EDGE = 360;
  *   one: under it a typical phone recording does not fit at this size at all.
  */
 export const STEP_DOWN_BITS_PER_PIXEL: Record<VideoEncoderKind, number> = {
-  hardware: 0.05,
+  hardware: 0.04,
   software: 0.055,
 };
 
@@ -107,26 +113,28 @@ export const REFUSE_BITS_PER_PIXEL: Record<VideoEncoderKind, number> = {
 /**
  * Real/asked video size the first attempt allows for: the video bitrate
  * handed to the encoder is the budget divided by this (ADR-035 overshoot
- * table). A file that still comes out over the target is encoded again.
+ * table). A target-size encode asks for a CONSTANT bitrate; a file that still
+ * comes out over the target is encoded again.
  */
 export const VIDEO_OVERSHOOT: Record<VideoEncoderKind, number> = {
-  // Measured 0.85–1.12 on four of five recordings (median 1.07); the fifth,
-  // very detailed one ran 1.15–1.30 and is left to the second attempt.
-  hardware: 1.12,
+  // Constant bitrate, Chrome and Edge: 0.98–1.02 on four recordings, 1.04–1.09
+  // on the fifth (very detailed). The phone's encoder: 1.00. (Variable
+  // bitrate measured 1.07–1.30 on the desktop and 1.97 on the phone.)
+  hardware: 1.1,
   // Measured 0.98–1.00 wherever the encoder is not at its lowest rate.
   software: 1.02,
 };
 
 /** What an encoder is expected to produce of the bitrate it is asked for (for the "≈ 48 MB" shown up front). */
 export const VIDEO_EXPECTED_RATIO: Record<VideoEncoderKind, number> = {
-  hardware: 1.07,
+  hardware: 1,
   software: 0.99,
 };
 
 /** Kept free under the target on every attempt. */
 export const TARGET_SAFETY_FRACTION = 0.01;
 
-/** The retry aims this far under the target (it already knows the encoder's real ratio). */
+/** A retry aims this far under the target per attempt already made (it knows the encoder's real ratio by then). */
 export const RETRY_SAFETY_FRACTION = 0.03;
 
 /**
@@ -188,6 +196,13 @@ export interface TargetSizeFacts {
   maxShortEdge: number;
   /** Null when the download has no sound. */
   audioSampleRate: number | null;
+  /**
+   * The AAC bitrates this browser can really write, best first (default:
+   * `TARGET_AUDIO_BITRATES`). The worker leaves out a bitrate whose encoder
+   * delay it cannot measure (ADR-032): Chrome on Android accepted 96 kbit/s
+   * and then failed that check, so there only 128 kbit/s is used.
+   */
+  audioBitrates?: readonly number[];
   /** Which encoder the browser has for a frame of this size. */
   encoderKind: (width: number, height: number) => VideoEncoderKind;
 }
@@ -304,7 +319,7 @@ function expectedBytes(facts: TargetSizeFacts, rung: Rung, videoBitrate: number,
  * The plan for a target, made before anything is encoded.
  *
  * The audio keeps 128 kbit/s as long as any resolution fits with it; it is
- * lowered (96, then 64) only when nothing does. For each audio bitrate the
+ * lowered to 96 only when nothing does. For each audio bitrate the
  * largest resolution whose bits per pixel stay above the measured floor wins.
  * The video bitrate never exceeds the ordinary download's: when that already
  * fits, the plan is the ordinary download (`mode: 'normal'`).
@@ -317,7 +332,8 @@ export function planTargetSize(request: TargetSizeRequest, facts: TargetSizeFact
   const targetBytes = Math.floor(request.targetBytes);
   const rungs = rungsOf(request, facts);
   const last = rungs[rungs.length - 1] as Rung;
-  const lowestAudio = facts.audioSampleRate === null ? 0 : (TARGET_AUDIO_BITRATES[TARGET_AUDIO_BITRATES.length - 1] as number);
+  const ladder = audioLadderOf(facts);
+  const lowestAudio = ladder[ladder.length - 1] ?? 0;
   const minRate = last.floorBitrate * VIDEO_OVERSHOOT[last.kind] + lowestAudio;
   let minBytes = Math.ceil((bytesAt(minRate, facts.durationUs) + overheadOf(facts)) / (1 - TARGET_SAFETY_FRACTION));
   // Rounding inside the plan can leave the formula a few bytes short.
@@ -342,13 +358,20 @@ export function planTargetSize(request: TargetSizeRequest, facts: TargetSizeFact
   };
 }
 
+/** The audio bitrates to try, best first; `[0]` for a download without sound. */
+function audioLadderOf(facts: TargetSizeFacts): readonly number[] {
+  if (facts.audioSampleRate === null) return [0];
+  const usable = facts.audioBitrates ?? TARGET_AUDIO_BITRATES;
+  return usable.length > 0 ? usable : TARGET_AUDIO_BITRATES;
+}
+
 /** The plan when the target can be met, or null. */
 function fit(request: TargetSizeRequest, facts: TargetSizeFacts): TargetSizeDecision | null {
   const targetBytes = Math.floor(request.targetBytes);
   const seconds = Math.max(facts.durationUs / US_PER_SECOND, 0.001);
   const rungs = rungsOf(request, facts);
   const overhead = overheadOf(facts);
-  const audioLadder: readonly number[] = facts.audioSampleRate === null ? [0] : TARGET_AUDIO_BITRATES;
+  const audioLadder = audioLadderOf(facts);
   /** Bits per second left for picture and sound together. */
   const totalBitrate = ((targetBytes * (1 - TARGET_SAFETY_FRACTION) - overhead) * 8) / seconds;
 
@@ -428,7 +451,8 @@ export function correctTargetSize(
 
   // Everything in the file that was not video stays as it was.
   const otherBytes = Math.max(0, measured.fileBytes - measured.videoBytes);
-  const videoBudgetBytes = previous.targetBytes * (1 - RETRY_SAFETY_FRACTION) - otherBytes;
+  // 3% under the target on the second attempt, 6% on the third.
+  const videoBudgetBytes = previous.targetBytes * (1 - RETRY_SAFETY_FRACTION * previous.attempt) - otherBytes;
   if (videoBudgetBytes <= 0) return null;
   const askedBytes = bytesAt(previous.videoBitrate, facts.durationUs);
   const ratio = askedBytes > 0 ? measured.videoBytes / askedBytes : Number.POSITIVE_INFINITY;
@@ -531,6 +555,7 @@ export function targetSizeFacts(
     maxShortEdge: number;
     hasAudio: boolean;
     encoderKind: (width: number, height: number) => VideoEncoderKind;
+    audioBitrates?: readonly number[];
   },
 ): TargetSizeFacts {
   return {
@@ -540,6 +565,7 @@ export function targetSizeFacts(
     fpsDen: plan.fpsDen,
     maxShortEdge: options.maxShortEdge,
     audioSampleRate: options.hasAudio ? plan.audio.sampleRate : null,
+    ...(options.audioBitrates ? { audioBitrates: options.audioBitrates } : {}),
     encoderKind: options.encoderKind,
   };
 }
