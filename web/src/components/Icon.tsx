@@ -30,6 +30,20 @@ const PATHS = {
   grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
   share: 'M12 15V4m0 0L8 8m4-4 4 4M6 11H5v9h14v-9h-1',
   install: 'M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm4 4v7m0 0 3-3m-3 3-3-3',
+  // The opening screen and the task wizards (ADR-034; drawn in docs/ux/2026-10-03-home).
+  search: 'M3 11a8 8 0 1 0 16 0a8 8 0 1 0-16 0M21 21l-4.35-4.35',
+  back: 'M15 18l-6-6 6-6',
+  chevron: 'M9 18l6-6-6-6',
+  upload: 'M12 15V3M7 8l5-5 5 5M5 21h14',
+  taskCut:
+    'M3 6a3 3 0 1 0 6 0a3 3 0 1 0-6 0M3 18a3 3 0 1 0 6 0a3 3 0 1 0-6 0M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12',
+  taskSilence: 'M4 10v4M8 6v12M12 11v2M16 6v12M20 10v4',
+  taskVertical: 'M7 4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM11 18h2',
+  taskShrink: 'M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7',
+  taskText: 'M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM7 15h4M15 15h2M7 11h2M13 11h4',
+  taskMusic: 'M9 18V5l12-2v13M3 18a3 3 0 1 0 6 0a3 3 0 1 0-6 0M15 16a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
+  taskSound: 'M11 5L6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7',
+  taskConvert: 'M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5',
 } as const;
 
 export type IconName = keyof typeof PATHS;

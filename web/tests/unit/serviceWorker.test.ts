@@ -28,9 +28,13 @@ const urls = (entries: Array<{ url: string }>) => entries.map((entry) => entry.u
 describe('precache list (ADR-031)', () => {
   it('static export under /capcut: the pages, the build files, the typeface, icons, manifest — nothing else', () => {
     const web = tree({
-      'out/index.html': 'landing',
+      'out/index.html': 'opening screen',
       'out/editor/index.html': 'editor',
       'out/editor/index.txt': 'rsc payload',
+      'out/yap/kes/index.html': 'wizard',
+      'out/yap/kes/index.txt': 'rsc payload',
+      'out/yap/dikey/index.html': 'wizard',
+      'out/yap/__next._tree.txt': 'segment payload',
       'out/gizlilik/index.html': 'privacy',
       'out/gizlilik/en/index.html': 'privacy en',
       'out/404.html': 'not found',
@@ -50,7 +54,15 @@ describe('precache list (ADR-031)', () => {
       'out/robots.txt': 'x',
     });
     const list = collectPrecache({ webDir: web, mode: 'export', base: '/capcut' });
-    expect(urls(list.pages)).toEqual(['/capcut/', '/capcut/editor/', '/capcut/gizlilik/', '/capcut/gizlilik/en/']);
+    expect(urls(list.pages)).toEqual([
+      '/capcut/',
+      '/capcut/editor/',
+      '/capcut/gizlilik/',
+      '/capcut/gizlilik/en/',
+      // The task wizards (ADR-034): one page per task, kept for offline use.
+      '/capcut/yap/dikey/',
+      '/capcut/yap/kes/',
+    ]);
     expect(urls(list.assets)).toEqual([
       '/capcut/_next/static/chunks/app.js',
       '/capcut/_next/static/chunks/style.css',
@@ -64,8 +76,12 @@ describe('precache list (ADR-031)', () => {
 
   it('server build (next start, root path): prerendered pages, .next/static, public files, metadata routes', () => {
     const web = tree({
-      '.next/server/app/index.html': 'landing',
+      '.next/server/app/index.html': 'opening screen',
       '.next/server/app/editor.html': 'editor',
+      '.next/server/app/yap/kes.html': 'wizard',
+      '.next/server/app/yap/kes.rsc': 'rsc',
+      '.next/server/app/yap/kes.meta': 'meta',
+      '.next/server/app/yap/bosluk.html': 'wizard',
       '.next/server/app/gizlilik.html': 'privacy',
       '.next/server/app/gizlilik/en.html': 'privacy en',
       '.next/server/app/_not-found.html': 'internal',
@@ -81,7 +97,7 @@ describe('precache list (ADR-031)', () => {
       'public/icons/maskable-512.png': 'png',
     });
     const list = collectPrecache({ webDir: web, mode: 'server' });
-    expect(urls(list.pages)).toEqual(['/', '/editor', '/gizlilik', '/gizlilik/en']);
+    expect(urls(list.pages)).toEqual(['/', '/editor', '/gizlilik', '/gizlilik/en', '/yap/bosluk', '/yap/kes']);
     expect(urls(list.assets)).toEqual([
       '/_next/static/chunks/app.js',
       '/fonts/caption/inter-latin-ext-700-normal.woff2',

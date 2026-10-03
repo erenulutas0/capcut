@@ -200,12 +200,14 @@ test.describe('real quota: the space is claimed before encoding (ADR-023)', () =
     test.setTimeout(240_000);
     await noSavePicker(page);
     // Claim only 1 MiB up front (test hook), so the file must grow into a
-    // 3 MiB quota and the browser's own write refusal ends the export.
+    // 4 MiB quota and the browser's own write refusal ends the export.
+    // (4, not 3: the quota also holds the app's offline copy, which grew past
+    // 2 MB with the wizard pages of ADR-034 and left less than the 1 MiB claim.)
     await page.addInitScript(() => {
       (window as unknown as { __clipStorageReserveBytes: number }).__clipStorageReserveBytes = 1024 * 1024;
     });
     const errors = await openEditor(page);
-    await limitQuota(page, 3 * 1024 * 1024);
+    await limitQuota(page, 4 * 1024 * 1024);
     await openVideo(page, timelineFixture('long').file);
     await quality720(page);
     const run = await downloadUntilEnd(page);
@@ -228,7 +230,7 @@ test.describe('real quota: the space is claimed before encoding (ADR-023)', () =
       (window as unknown as { __clipStorageReserveBytes: number }).__clipStorageReserveBytes = 1024 * 1024;
     });
     const errors = await openEditor(page);
-    await limitQuota(page, 3 * 1024 * 1024);
+    await limitQuota(page, 4 * 1024 * 1024);
     await openVideo(page, timelineFixture('long').file);
     await quality720(page);
     const run = await downloadUntilEnd(page);

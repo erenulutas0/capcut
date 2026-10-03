@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
+import { availableTasks } from '../../src/domain/tasks';
 import {
   addKesit,
   noHorizontalOverflow,
@@ -13,6 +14,8 @@ import {
   openVideo,
   installSavePicker,
   opfsFiles,
+  probeMp4,
+  readSaved,
   sharedFiles,
   stubShare,
 } from './kesitFlow';
@@ -25,6 +28,7 @@ import {
  */
 
 const SAMPLE = join(process.cwd(), 'tests', 'media', 'sample-24s.mp4');
+const OTHER = join(process.cwd(), 'tests', 'media', 'other-8s.mp4');
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
 
 async function axe(page: Page) {
@@ -229,7 +233,7 @@ function pngSize(bytes: Buffer): { width: number; height: number } {
 
 test.describe('install as an app', () => {
   test('the manifest is linked from every page, valid, and its icons exist', async ({ page, request }) => {
-    for (const path of ['/', '/editor', '/gizlilik', '/gizlilik/en']) {
+    for (const path of ['/', '/editor', '/gizlilik', '/gizlilik/en', '/yap/kes', '/yap/dikey']) {
       await page.goto(path);
       await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');
       await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
@@ -252,7 +256,8 @@ test.describe('install as an app', () => {
     expect(manifest).toMatchObject({
       name: 'Clip',
       short_name: 'Clip',
-      start_url: '/editor',
+      // The installed app starts at the opening screen (ADR-034), not in the editor.
+      start_url: '/',
       scope: '/',
       id: '/',
       display: 'standalone',
@@ -380,6 +385,8 @@ const APP_PATH = [
   /^\/$/,
   /^\/editor$/,
   /^\/gizlilik(\/en)?$/,
+  // The task wizards (ADR-034).
+  /^\/yap\/(kes|bosluk|dikey|muzik|cevir)$/,
   /^\/_next\/static\/[^?]+$/,
   /^\/fonts\/caption\/inter-latin(-ext)?-700-normal\.woff2$/,
   /^\/icons\/(icon-192|icon-512|maskable-512)\.png$/,
@@ -399,7 +406,15 @@ test.describe('open without internet', () => {
 
     const config = await workerConfig(page);
     expect(config.version).toMatch(/^[0-9a-f]{16}$/);
-    expect(config.pages).toEqual(['/', '/editor', '/gizlilik', '/gizlilik/en']);
+    expect(config.pages).toEqual([
+      '/',
+      '/editor',
+      '/gizlilik',
+      '/gizlilik/en',
+      ...availableTasks()
+        .map((task) => `/yap/${task.id}`)
+        .sort(),
+    ]);
     const contents = await cacheContents(page);
     expect(Object.keys(contents)).toEqual([`clip-app-${config.version}`]);
     const stored = contents[`clip-app-${config.version}`] ?? [];
@@ -429,11 +444,15 @@ test.describe('open without internet', () => {
     await context.setOffline(true);
     expect(await page.evaluate(() => navigator.onLine)).toBe(false);
 
-    // Landing, then the editor through its link (the client-side navigation
-    // cannot fetch its data offline and falls back to a full page load).
+    // The opening screen, then the editor through its link (the client-side
+    // navigation cannot fetch its data offline and falls back to a full page load).
     await page.reload();
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await page.getByRole('link', { name: 'Editörü aç' }).first().click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ne yapmak istiyorsun?');
+    // The search needs no network: it is a word list in the page.
+    await page.getByTestId('finder-input').fill('sessiz yerleri sil');
+    await expect(page.getByRole('option')).toContainText(['Boşlukları at']);
+    await page.getByTestId('finder-clear').click();
+    await page.getByRole('link', { name: 'Kendim düzenleyeceğim' }).click();
     await expect(page).toHaveURL(/\/editor$/);
     await expect(page.getByTestId('download-all')).toBeVisible();
     for (const path of ['/gizlilik', '/gizlilik/en']) {
@@ -474,6 +493,63 @@ test.describe('open without internet', () => {
     const missing = await other.goto('/nerede').catch((error: Error) => error);
     expect(missing).toBeInstanceOf(Error);
     await other.close();
+    await context.setOffline(false);
+  });
+
+  test('offline: the opening screen, a wizard from its card to the saved file, and the editor hand-off (ADR-034)', async ({
+    page,
+    context,
+  }, testInfo) => {
+    test.setTimeout(240_000);
+    await installSavePicker(page);
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto('/');
+    await waitForWorker(page);
+    const before = await cacheContents(page);
+
+    await context.setOffline(true);
+    await page.reload();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ne yapmak istiyorsun?');
+    expect(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+
+    // Card → wizard page (from the stored copy) → video → "Sığdır" → İndir → saved.
+    await page.getByTestId('task-dikey').click();
+    await expect(page).toHaveURL(/\/yap\/dikey$/);
+    await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'pick');
+    await page.getByTestId('video-input').setInputFiles(OTHER);
+    await expect(page.getByTestId('dikey-choice')).toBeVisible({ timeout: 60_000 });
+    await page.getByTestId('option-contain').check();
+    await page.getByTestId('wizard-download').click();
+    await expect(page.getByTestId('download-saved')).toHaveText('Kaydedildi: saved-other-8s_dikey.mp4', {
+      timeout: 180_000,
+    });
+    const probe = probeMp4(await readSaved(page, testInfo, 'saved-other-8s_dikey.mp4'));
+    expect([probe.width, probe.height]).toEqual([1080, 1920]);
+
+    // "Daha fazla ayar → editörde aç" needs no page load, so it works offline with the video still open.
+    await page.getByTestId('wizard-open-editor').click();
+    await expect(page.getByTestId('preview-video')).toBeVisible();
+    await expect(page.getByTestId('preview-frame')).toHaveAttribute('data-aspect', '9:16');
+
+    // The silence analysis worker comes from the cache too.
+    await page.goto('/yap/bosluk');
+    await page.getByTestId('video-input').setInputFiles(SAMPLE);
+    await expect(page.locator('[data-testid="bosluk-summary"], [data-testid="bosluk-unclear"]')).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(page.getByTestId('bosluk-problem')).toHaveCount(0);
+
+    // Every other wizard page opens from the stored copy, with or without the trailing slash.
+    for (const path of ['/yap/kes', '/yap/muzik/', '/yap/cevir']) {
+      await page.goto(path);
+      await expect(page.getByTestId('pick-video')).toBeEnabled();
+    }
+
+    const after = await cacheContents(page);
+    expect(after).toEqual(before);
+    expect(JSON.stringify(after)).not.toMatch(/\.mp4|blob:|\.m4a/);
+    expect(errors).toEqual([]);
     await context.setOffline(false);
   });
 

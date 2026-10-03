@@ -28,7 +28,10 @@ if (!existsSync(target)) {
 const template = readFileSync(join(webDir, 'scripts', 'lib', 'service-worker.js'), 'utf8');
 const list = collectPrecache({ webDir, mode, base });
 const pageUrls = list.pages.map((entry) => entry.url);
-for (const needed of ['/', '/editor', '/gizlilik']) {
+// The opening screen, the editor, the privacy page and the task wizards
+// (ADR-034): `/yap/<id>` for every task that works today. The ids are read
+// from the build itself below; "kes" stands for "the wizards were built".
+for (const needed of ['/', '/editor', '/gizlilik', '/yap/kes']) {
   const found = pageUrls.some((url) => url.replace(/\/$/, '') === `${base}${needed}`.replace(/\/$/, ''));
   if (!found) {
     console.error(`build-sw: page ${base}${needed} not found in the build (${pageUrls.join(', ')})`);

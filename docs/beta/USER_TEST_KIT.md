@@ -20,8 +20,29 @@ tıkanılan yerleri görmek. Memnuniyet sözü ödeme isteği değildir (araşt�
 
 ## Görevler (yönlendirme yok; kurucu ekranı göstermez)
 
+**3 Ekim 2026'dan beri her görev açılış ekranından başlar** ("Ne yapmak istiyorsun?",
+[ADR-034](../adr/ADR-034-task-first-home.md)): katılımcıya adres verilir
+(https://erenulutas0.github.io/capcut/), editörün adresi verilmez. Kartı mı seçti, kutuya mı
+yazdı, "Kendim düzenleyeceğim"e mi gitti — hangisini neden seçtiği not alınır.
+
+0. **Açılış ekranı (yeni):** "Bu videoyla Instagram'da paylaşmak için dikey bir video
+   yap ve cihazına kaydet." Beklenen yol: "Dikey yap" kartı (ya da kutuya yazıp Enter) →
+   "Video seç" → "Doldur" / "Sığdır" → "İndir" → kaydetme penceresi (3–4 dokunuş). Not al:
+   - İlk bakışta ne yapacağını anladı mı; kartı mı kullandı, kutuyu mu? **Kutuya ne yazdı?**
+     (Yazdığı cümleyi **kelimesi kelimesine** not al: arama kelime listeleri bu cümlelerle
+     büyüyecek — `web/tests/unit/taskSearchHeldOut.test.ts`.)
+   - "Doldur" ile "Sığdır" arasındaki farkı önizlemeden anladı mı?
+   - "Kaydedildi"den sonra ne yaptı: "Paylaş", "Başka bir video", "Ana ekrana dön"?
+   - Aradığı iş yoksa ("Bu henüz yok, üzerinde çalışıyoruz." ya da "Bunu bulamadım.") ne yaptı?
+0b. **Serbest istek:** "Bu videoyla yapmak istediğin başka bir şey var mı? Dene." Yazdığı ya da
+   aradığı şey ve sonucu not alınır (bulundu / henüz yok / bulunamadı / yanlış iş çıktı).
+   Sihirbazı olan diğer işler: "Boşlukları at" (3 dokunuş), "Müzik ekle" (4), "Her yerde
+   açılsın" (3).
 1. **Klip:** "Videondan en sevdiğin iki bölümü seç, 30–45 saniyelik dikey bir video
    hazırla ve bilgisayarına indir."
+   Beklenen başlangıç: açılış ekranında **"Kes"** kartı → "Video seç" → kesit editörü aynı
+   videoyla açılır (ikinci dosya penceresi yok). Katılımcı "Kes"i mi, "Kendim
+   düzenleyeceğim"i mi seçti, not al.
    Arayüz 23 Eylül 2026'dan beri kesit listesidir (ADR-026): beklenen yol
    "Başlangıcı işaretle" → "Bitişi işaretle" (iki kez; 30 Eylül 2026'dan beri bitişi
    işaretlemek kesiti hemen listeye ekler, ayrı "Kesit ekle" adımı yok — ADR-030;
@@ -40,8 +61,11 @@ tıkanılan yerleri görmek. Memnuniyet sözü ödeme isteği değildir (araşt�
    yap ve sonra düzelt. Müzik ekle ve seviyesini konuşma duyulacak şekilde ayarla."
    (Kendi müziği yoksa görüşmeyi yapan kişi telifsiz kısa bir müzik dosyası verir.)
 3. **Sessizlik:** "Konuşmadaki uzun duraklamaları kısalt, sonucu dinle, beğenmediğin bir
-   kesimi geri al." (Sessizlikleri bul "Diğer" ⋯ menüsündedir; bulmakta
-   zorlanırsa bu da bir tıkanma olarak yazılır.)
+   kesimi geri al." Beklenen başlangıç: açılış ekranında "Boşlukları at" (ya da "sessiz
+   yerleri sil" yazmak) → "N sessiz yer bulundu, videon kısalacak: X → Y" → "İndir". Tek tek
+   dinleyip bir kesimi geri almak için "Daha fazla ayar → editörde aç" (kesimler kesit olarak
+   gelir) ya da editörde "Diğer" ⋯ → "Sessizlikleri bul". Hangi yolu bulduğu ve sihirbazdaki
+   özetin yetip yetmediği not alınır.
 
 Rakip karşılaştırması (araştırma eki: iki doğrudan rakip) ikinci turda; ilk turda
 yalnızca kendi ürünümüzdeki tıkanmaları görüyoruz.
@@ -58,6 +82,9 @@ yalnızca kendi ürünümüzdeki tıkanmaları görüyoruz.
 | Tanı dosyası | Hata olursa "Sorun bildir → Tanı dosyasını indir"; dosyayı katılımcı kendi isteğiyle gönderir |
 
 Başlangıç hedefi (araştırma eki): 10 kişiden en az 8'i Görev 1'i yardımsız bitirsin.
+Açılış ekranı için (ADR-034): 10 kişiden en az 9'u Görev 0'ı yardımsız bitirsin; kutuya
+yazılan cümlelerin en az %80'inde doğru iş ilk sırada çıksın (ilk ölçüm, elle yazılmış 56
+cümlede %86).
 Tutmazsa yeni özellik değil, akışın yeniden tasarımı.
 
 ## Oturum akışı (30–40 dk)
@@ -82,6 +109,10 @@ Tutmazsa yeni özellik değil, akışın yeniden tasarımı.
 Katılımcı: P01   Tarih:   Tarayıcı/sürüm:   Cihaz (RAM):
 Video: süre ≈   kaynak (telefon marka/model, katılımcı biliyorsa):
 
+Görev 0  başarı: E/Y/B   aktif süre:   yol: kart / yazarak / editör   kutuya yazdığı (aynen):
+         "Doldur/Sığdır" anlaşıldı: E/H   kaydetme penceresi: sorunsuz/şaşırttı   sonra: Paylaş / başka video / ana ekran
+Görev 0b istediği (aynen):   sonuç: bulundu / henüz yok / bulunamadı / yanlış iş
+Görev 1  başlangıç: Kes kartı / Kendim düzenleyeceğim / yazarak
 Görev 1  başarı: E/Y/B   aktif süre:   export süresi:   takıldığı yer:
          kart "İndir" / "Hepsini birleştirip indir" farkı anlaşıldı: E/H   kaydetme penceresi: sorunsuz/şaşırttı
 Görev 1b başarı: E/Y/B   takıldığı yer:

@@ -201,12 +201,28 @@ function capabilityKey(plan: RenderPlan, withFont: boolean, videoFile: File, aud
   ].join('|');
 }
 
+/**
+ * What a caller may add to the export request beyond what every download
+ * sets (ADR-034: the task wizards). The type follows the export client's own
+ * options, so an option added there (a size target, audio-only output) can be
+ * passed from a wizard without touching this hook.
+ */
+export type ExportExtras = Omit<
+  Parameters<ExportWorkerClient['export']>[3],
+  'memoryRouteLimitUs' | 'destination' | 'output' | 'targetSize'
+> &
+  DownloadOptions;
+
 interface Args {
   project: Project;
   settings: KesitSettings;
   videoFile: File | null;
   audioFile: File | null;
   videoName: string | null;
+  /** The name the save dialog suggests, instead of the kesit-based one (the task wizards). */
+  fileName?: string | null;
+  /** Extra options for the export request (the task wizards); none in the editor. */
+  exportExtras?: ExportExtras;
 }
 
 /**
@@ -223,7 +239,15 @@ interface Args {
  * video is open and its answer is kept per encoder configuration. A press
  * only waits for it if it has not finished yet.
  */
-export function useDownloads({ project, settings, videoFile, audioFile, videoName }: Args) {
+export function useDownloads({
+  project,
+  settings,
+  videoFile,
+  audioFile,
+  videoName,
+  fileName: fileNameOverride = null,
+  exportExtras,
+}: Args) {
   const [entries, setEntries] = useState<Record<string, DownloadEntry>>({});
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [capability, setCapability] = useState<{ key: string; report: CapabilityReportV1 } | null>(null);
@@ -406,8 +430,19 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
   const start = useCallback(
     (target: DownloadTarget, requested?: DownloadOptions) => {
       if (busyRef.current) return;
-      const hook = requested ? null : hookOptions();
-      const options: DownloadOptions = requested ?? hook ?? {};
+      // What to make: the caller's options for this press, else the hook's
+      // own (`exportExtras`: a wizard such as "Küçült" or "Sesini al"), else
+      // the test hook, else the ordinary video.
+      const { output: extrasOutput, targetSize: extrasTargetSize, ...otherExtras } = exportExtras ?? {};
+      const fromExtras: DownloadOptions | null =
+        extrasOutput !== undefined || extrasTargetSize !== undefined
+          ? {
+              ...(extrasOutput !== undefined ? { output: extrasOutput } : {}),
+              ...(extrasTargetSize !== undefined ? { targetSize: extrasTargetSize } : {}),
+            }
+          : null;
+      const hook = requested || fromExtras ? null : hookOptions();
+      const options: DownloadOptions = requested ?? fromExtras ?? hook ?? {};
       const audioOnly = options.output === 'audio';
       const key = targetKey(target);
       const kind = downloadKind(project, target);
@@ -502,17 +537,20 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
       }
 
       const clip = target.kind === 'kesit' ? project.clips.find((item) => item.clipId === target.clipId) : undefined;
-      const videoFileName = suggestedFileName(
-        videoName ?? videoFile.name,
-        clip
-          ? { kind: 'kesit', sourceInUs: clip.sourceInUs, sourceOutUs: clip.sourceOutUs }
-          : kind === 'kesit' && project.clips[0]
-            ? { kind: 'kesit', sourceInUs: project.clips[0].sourceInUs, sourceOutUs: project.clips[0].sourceOutUs }
-            : kind === 'merged'
-              ? { kind: 'merged', count: project.clips.length }
-              : { kind: 'whole' },
-      );
-      // ADR-035: the sound-only file is M4A (AAC in MP4), `audio/mp4`.
+      const videoFileName =
+        fileNameOverride ??
+        suggestedFileName(
+          videoName ?? videoFile.name,
+          clip
+            ? { kind: 'kesit', sourceInUs: clip.sourceInUs, sourceOutUs: clip.sourceOutUs }
+            : kind === 'kesit' && project.clips[0]
+              ? { kind: 'kesit', sourceInUs: project.clips[0].sourceInUs, sourceOutUs: project.clips[0].sourceOutUs }
+              : kind === 'merged'
+                ? { kind: 'merged', count: project.clips.length }
+                : { kind: 'whole' },
+        );
+      // ADR-035: the sound-only file is M4A (AAC in MP4), `audio/mp4`; a
+      // suggested `.mp4` name (a wizard's) gets the `.m4a` ending too.
       const fileName = audioOnly ? audioFileName(videoFileName) : videoFileName;
       const mime = audioOnly ? 'audio/mp4' : 'video/mp4';
       // The plan the worker gets. Sound only: the same kesitler on the sample
@@ -609,6 +647,7 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
           });
 
         for await (const event of client().export(exportPlan, videoFile, audioFile, {
+          ...otherExtras,
           // ADR-035: a sound-only file is small (60 min ≈ 58 MB), so the
           // memory route may hold the whole output limit, not only 5 minutes.
           memoryRouteLimitUs: audioOnly
@@ -729,6 +768,8 @@ export function useDownloads({ project, settings, videoFile, audioFile, videoNam
       capability,
       client,
       ensureCapability,
+      exportExtras,
+      fileNameOverride,
       planHasAudio,
       project,
       releaseOffered,

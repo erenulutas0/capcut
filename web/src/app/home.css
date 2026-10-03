@@ -1,0 +1,474 @@
+/*
+ * The opening screen (ADR-034): "Ne yapmak istiyorsun?" — the type-to-find
+ * box and the task cards. Phone first (360–390 px); from 700 px the cards go
+ * to three columns, from 1000 px to four, same order, nothing hidden.
+ * Colours are the Quiet Studio tokens of globals.css.
+ */
+
+.home {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 16px 16px 20px;
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+
+.home-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--tap);
+}
+
+.home a {
+  color: var(--accent);
+}
+
+.home-editor-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 4px;
+  font-size: 14px;
+  text-align: right;
+}
+
+.home-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.home-title {
+  margin: 0;
+  font-size: clamp(28px, 5.2vw, 44px);
+  line-height: 1.15;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.home-lede {
+  margin: -8px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* The small grey headings over a group ("Örneğin", "Bütün işler"). */
+.home-label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.home-label:focus-visible {
+  outline: 2px solid var(--focus);
+}
+
+/* ---------------------------------------------------------------- the box */
+
+.finder {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.finder-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 0 6px 0 14px;
+  background: var(--panel);
+  border: 2px solid var(--accent);
+  border-radius: 16px;
+  color: var(--accent);
+  max-width: 720px;
+}
+
+.finder-box svg.icon {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2.1;
+}
+
+.finder-box:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.finder-input {
+  flex: 1;
+  min-width: 0;
+  height: 54px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--text);
+  font-size: 17px;
+}
+
+/* The box draws the focus ring for the field inside it (:focus-within
+   above). The field's own outline stays, transparent: forced-colours modes
+   paint it, and nothing is drawn twice otherwise. */
+.finder-input:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 0;
+}
+
+.finder-input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.finder-clear {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.finder-clear:hover {
+  color: var(--text);
+  background: var(--raised);
+}
+
+.finder-examples,
+.finder-results,
+.task-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.finder-results[hidden] {
+  display: none;
+}
+
+.chip-list,
+.task-grid,
+.result-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  min-height: var(--tap);
+  padding: 0 14px;
+  background: transparent;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.chip:hover {
+  border-color: var(--text);
+}
+
+/* ---------------------------------------------------------------- results */
+
+.result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 720px;
+}
+
+.result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  cursor: pointer;
+}
+
+.result[aria-selected='true'] {
+  border-color: var(--accent);
+  background: var(--raised);
+}
+
+.result[aria-disabled='true'] {
+  cursor: default;
+  border-style: dashed;
+  border-color: var(--control-border);
+}
+
+.result-icon,
+.task-card-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: rgb(210 239 120 / 0.12);
+  color: var(--accent);
+}
+
+.result-icon {
+  width: 44px;
+  height: 44px;
+}
+
+.result-icon svg.icon {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2;
+}
+
+.result[aria-disabled='true'] .result-icon {
+  background: var(--raised);
+  color: var(--muted);
+}
+
+.result-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.result-label {
+  font-size: 18px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.result-sub {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.result[aria-disabled='true'] .result-sub {
+  color: var(--warning);
+}
+
+.result-start {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.finder-none {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  max-width: 720px;
+}
+
+.finder-none-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.finder-none p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.home-quiet-button {
+  align-self: flex-start;
+  min-height: var(--tap);
+  padding: 0 4px;
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  font-size: 15px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------------------------------------------------------------- cards */
+
+.task-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.task-grid > li {
+  display: flex;
+  min-width: 0;
+}
+
+.task-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 126px;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  color: var(--text);
+  text-decoration: none;
+}
+
+/* `.home a` colours links; a card is a link that looks like a card. */
+.home a.task-card {
+  color: var(--text);
+}
+
+.task-card:hover {
+  border-color: var(--accent);
+}
+
+.task-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+.task-card-icon svg.icon {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2;
+}
+
+.task-card-label {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.task-card-sub {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* The first card leads (design A): the one filled card on the screen. */
+.home a.task-card-lead {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.task-card-lead:hover {
+  border-color: var(--text);
+}
+
+.task-card-lead .task-card-icon {
+  background: rgb(23 32 12 / 0.14);
+  color: var(--accent-ink);
+}
+
+.task-card-lead .task-card-sub {
+  color: #2c3a17;
+}
+
+/* ---------------------------------------------------------------- footer */
+
+.home-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
+}
+
+.home-trust {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.home-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.home-note a {
+  display: inline-block;
+  padding: 6px 2px;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- wider */
+
+@media (min-width: 700px) {
+  .home {
+    gap: 22px;
+    padding: 24px 24px 28px;
+  }
+
+  .home-main {
+    gap: 20px;
+  }
+
+  .home-lede {
+    font-size: 17px;
+  }
+
+  .task-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .task-card {
+    min-height: 150px;
+    padding: 20px;
+  }
+
+  .task-card-label {
+    font-size: 20px;
+  }
+
+  .task-card-sub {
+    font-size: 14px;
+  }
+
+  .home-editor-link {
+    font-size: 15px;
+  }
+}
+
+/* Four columns only when they fill the rows (TaskFinder: wideColumns). */
+@media (min-width: 1000px) {
+  .task-grid[data-columns='4'] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

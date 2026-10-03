@@ -2,8 +2,10 @@ import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 import { expectPolicy, watchCsp } from './cspWatch';
+import { availableTasks } from '../../src/domain/tasks';
 import { fastCutFixture } from './fastcut-media';
 import { hdrFixture } from './hdr-media';
+import { silenceFixture } from './silence-media';
 import {
   addKesit,
   closeSheet,
@@ -36,7 +38,10 @@ test('every page carries the policy, and the policy is enforced', async ({ page,
   const csp = await watchCsp(context);
   await csp.attach(page);
 
-  for (const path of ['/', '/editor', '/gizlilik', '/gizlilik/en']) {
+  // The opening screen, the editor, the privacy pages and every task wizard (ADR-034).
+  const wizards = availableTasks().map((task) => `/yap/${task.id}`);
+  expect(wizards.length).toBeGreaterThanOrEqual(5);
+  for (const path of ['/', '/editor', '/gizlilik', '/gizlilik/en', ...wizards]) {
     await page.goto(path);
     await expect(page.locator('h1, [data-testid="download-all"]').first()).toBeVisible();
     await expectPolicy(page);
@@ -68,6 +73,80 @@ test('every page carries the policy, and the policy is enforced', async ({ page,
   await expect.poll(() => csp.violations.some((v) => v.includes('script-src'))).toBe(true);
 });
 
+/**
+ * ADR-034: the opening screen and the task wizards are new pages with new
+ * markup (the search listbox, the radio cards, the 9:16 preview, an <audio>
+ * player on a blob: URL, the analysis progress bar). One session through
+ * every wizard to its saved file, and the editor opened in place.
+ */
+test('the opening screen and every wizard, to the saved file, raise no CSP violation', async ({ page, context }) => {
+  test.setTimeout(600_000);
+  const csp = await watchCsp(context);
+  await csp.attach(page);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await installSavePicker(page);
+  const other = join(process.cwd(), 'tests', 'media', 'other-8s.mp4');
+  const saved = async () => {
+    await page.getByTestId('wizard-download').click();
+    await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 180_000 });
+  };
+
+  await page.goto('/');
+  await expectPolicy(page);
+  for (const phrase of ['tiktok için kes', 'videom whatsapp’a sığmıyor', 'pizza siparişi']) {
+    await page.getByTestId('finder-input').fill(phrase);
+  }
+  await page.getByTestId('finder-show-all').click();
+
+  // Kes: by its card (a client-side navigation), then the editor in place.
+  await page.getByTestId('task-kes').click();
+  await page.getByTestId('video-input').setInputFiles(other);
+  await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 60_000 });
+  await addKesit(page, '1', '3');
+  await page.getByTestId('kesit-download').click();
+  await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
+
+  // Boşlukları at: the analysis worker, the progress bar, the joined download.
+  await page.goto('/yap/bosluk');
+  await expectPolicy(page);
+  await page.getByTestId('video-input').setInputFiles(silenceFixture('showcase').file);
+  await expect(page.getByTestId('bosluk-found')).toBeVisible({ timeout: 60_000 });
+  await page.getByTestId('option-short').check();
+  await saved();
+
+  // Dikey yap: the 9:16 preview, both choices, the preview playing.
+  await page.goto('/yap/dikey');
+  await page.getByTestId('video-input').setInputFiles(other);
+  await expect(page.getByTestId('dikey-choice')).toBeVisible({ timeout: 60_000 });
+  await page.getByTestId('option-contain').check();
+  await page.getByTestId('wizard-play').click();
+  await page.getByTestId('wizard-play').click();
+  await saved();
+  await page.getByTestId('wizard-open-editor').click();
+  await expect(page.getByTestId('preview-video')).toBeVisible();
+
+  // Müzik ekle: the music file plays from a blob: URL.
+  await page.goto('/yap/muzik');
+  await page.getByTestId('video-input').setInputFiles(other);
+  await expect(page.getByTestId('muzik-pick')).toBeVisible({ timeout: 60_000 });
+  await page.getByTestId('audio-input').setInputFiles(join(process.cwd(), 'tests', 'media', 'tone-30s.m4a'));
+  await expect(page.getByTestId('muzik-picked')).toBeVisible();
+  await saved();
+
+  // Her yerde açılsın, and a refused file (the error markup).
+  await page.goto('/yap/cevir');
+  await page.getByTestId('video-input').setInputFiles({ name: 'not.txt', mimeType: 'text/plain', buffer: Buffer.from('x') });
+  await expect(page.getByTestId('media-error')).toBeVisible();
+  await page.getByTestId('video-input').setInputFiles(other);
+  await expect(page.getByTestId('cevir-info')).toBeVisible({ timeout: 60_000 });
+  await saved();
+
+  expect(await pickerCalls(page).then((calls) => calls.length)).toBe(1);
+  expect(errors).toEqual([]);
+  expect(csp.violations, csp.violations.join('\n')).toEqual([]);
+});
+
 test('a full editor session raises no CSP violation', async ({ page, context }, testInfo) => {
   test.setTimeout(900_000);
   const csp = await watchCsp(context);
@@ -76,11 +155,15 @@ test('a full editor session raises no CSP violation', async ({ page, context }, 
   page.on('pageerror', (error) => errors.push(error.message));
   await installSavePicker(page);
 
-  // Landing, then the editor by a client-side navigation: the landing
-  // page's policy stays in force for the rest of this document.
+  // The opening screen, then the editor by a client-side navigation
+  // ("Kendim düzenleyeceğim"): the opening screen's policy stays in force
+  // for the rest of this document.
   await page.goto('/');
   await expectPolicy(page);
-  await page.getByRole('link', { name: /Editörü aç/ }).first().click();
+  await page.getByTestId('finder-input').fill('tiktok için dikey');
+  await expect(page.getByRole('option')).toHaveCount(1);
+  await page.getByTestId('finder-clear').click();
+  await page.getByRole('link', { name: 'Kendim düzenleyeceğim' }).click();
   await expect(page.getByTestId('download-all')).toBeVisible();
 
   // Open a video (preview from a blob: URL, filmstrip thumbnails).

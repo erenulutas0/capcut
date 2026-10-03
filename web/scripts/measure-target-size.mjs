@@ -138,7 +138,11 @@ async function openFile(browser, item) {
   await page.getByTestId('download-all').waitFor({ timeout: 30_000 });
   await page.getByTestId('video-input').setInputFiles(join(mediaDir, item.file));
   const opened = await waitForAny(page, ['preview-video', 'media-error'], 120_000);
-  if (opened !== 'preview-video') throw new Error(`${item.id}: could not open`);
+  if (opened !== 'preview-video') {
+    // Not a failure of the measurement: this browser cannot open the file (e.g. HEVC without a decoder).
+    await context.close();
+    return null;
+  }
   await setAspect(page, item.aspect);
   await setQuality(page, item.top >= 1080 ? 1080 : 720);
   await addKesit(page, clock(item.range[0]), clock(item.range[1]));
@@ -205,6 +209,12 @@ try {
     for (const item of FILES) {
       const reference = referenceFor(item);
       const page = await openFile(browser, item);
+      if (!page) {
+        rows.push({ id: item.id, notOpened: true });
+        console.log(JSON.stringify(rows.at(-1)));
+        save();
+        continue;
+      }
       const seconds = item.range[1] - item.range[0];
       for (const rung of RUNGS.filter((edge) => edge <= item.top)) {
         const [width, height] = sizeOf(item.aspect, rung);
@@ -256,6 +266,12 @@ try {
     for (const item of CASES) {
       const reference = item.range[1] - item.range[0] <= 90 ? referenceFor({ ...item, id: `${item.id}-${item.range[1]}` }) : null;
       const page = await openFile(browser, item);
+      if (!page) {
+        rows.push({ id: item.id, notOpened: true });
+        console.log(JSON.stringify(rows.at(-1)));
+        save();
+        continue;
+      }
       const seconds = item.range[1] - item.range[0];
       for (const targetBytes of item.targets) {
         const savePath = join(workDir, `${item.id}-${seconds}-${targetBytes}.mp4`);
@@ -300,6 +316,12 @@ try {
     ].filter((item) => only.length === 0 || only.includes(item.id));
     for (const item of CASES) {
       const page = await openFile(browser, item);
+      if (!page) {
+        rows.push({ id: item.id, notOpened: true });
+        console.log(JSON.stringify(rows.at(-1)));
+        save();
+        continue;
+      }
       const seconds = item.range[1] - item.range[0];
       const savePath = join(outDir, `audio-${item.id}-${browserName}.m4a`);
       const outcome = await exportWith(page, { output: 'audio' }, savePath);

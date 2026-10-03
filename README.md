@@ -4,7 +4,9 @@
 
 [![CI](https://github.com/erenulutas0/capcut/actions/workflows/ci.yml/badge.svg)](https://github.com/erenulutas0/capcut/actions/workflows/ci.yml)
 
-> Durum: kesit listesi editörü (işaretle, ekle, kartından indir; ADR-026),
+> Durum: görev öncelikli açılış ekranı ("Ne yapmak istiyorsun?": iş kartları + yazarak
+> bulma, beş sihirbaz; [ADR-034](docs/adr/ADR-034-task-first-home.md)),
+> kesit listesi editörü (işaretle, ekle, kartından indir; ADR-026),
 > kaydetme penceresiyle doğrudan dosyaya indirme, gerçek MP4 çıktısı, yerel kayıt,
 > altyazı (elle, SRT/VTT, görüntüye bağlı, videoya işleme) ve yerel sessizlik
 > kesim önerisi çalışıyor. 15 gerçek kayıt ve 20 vakalık dosya matrisiyle ölçüldü:
@@ -12,7 +14,15 @@
 > kadar rafta (ADR-017). "Clip" geçici çalışma adıdır; marka/alan adı araştırması
 > yapılmadı.
 
-Kullanıcı kendi videosunda tutmak istediği aralıkları işaretler; her aralık
+Site **"Ne yapmak istiyorsun?"** ekranıyla açılır: kullanıcı bir iş kartına dokunur ya da
+ne istediğini kendi sözleriyle yazar ("sessiz yerleri sil", "TikTok için dikey"). Her iş
+kısa bir sihirbazdır: video seç → en fazla bir karar → İndir. Bugün çalışan işler: **Kes**,
+**Boşlukları at**, **Dikey yap**, **Müzik ekle**, **Her yerde açılsın**. Henüz yapılmamış
+işler (Küçült, Sesini al, Yazıya dök) kart olarak gösterilmez; arama onları kastederse "Bu
+henüz yok, üzerinde çalışıyoruz." der. Editör "Kendim düzenleyeceğim" bağlantısıyla bir
+dokunuş ötededir.
+
+Editörde kullanıcı kendi videosunda tutmak istediği aralıkları işaretler; her aralık
 "Kesitler" listesine düşer. Her kesit kendi ⬇ düğmesiyle ayrı indirilir ya da
 hepsi sırayla birleştirilip tek video olarak indirilir; görüntü çerçevesi, ses ve
 altyazı "Ayarlar"dan her indirmeye uygulanır. Kodlama tamamen tarayıcıda
@@ -27,7 +37,8 @@ Gereken: **Node ≥ 20.9** (geliştirme Node 20.18.0 ile yapıldı), npm.
 cd web && npm install && npm run dev
 ```
 
-Ardından tarayıcıda **http://localhost:3000** → editör: **/editor**
+Ardından tarayıcıda **http://localhost:3000** (açılış ekranı) → sihirbazlar: **/yap/kes**,
+**/yap/bosluk**, **/yap/dikey**, **/yap/muzik**, **/yap/cevir** → editör: **/editor**
 
 Üretim derlemesi:
 
@@ -51,6 +62,13 @@ Ekran görüntüleri (`web/screenshots/`), sunucu `:3100`'de ayaktayken:
 
 ```bash
 cd web && npm run shots
+```
+
+Açılış ekranı ve sihirbazların ekran görüntüleri (360, 390 ve 1440 px;
+`docs/ux/2026-10-03-home/shots/`), sunucu `:3100`'de ayaktayken:
+
+```bash
+cd web && node scripts/home-shots.mjs
 ```
 
 Gerçek çıktı doğrulaması — editörü sürer, MP4 üretir, indirir ve **ffprobe** ile
@@ -98,9 +116,10 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 
 | Yol | İçerik |
 |---|---|
-| `web/` | Next.js uygulaması (editör + tanıtım sayfası) |
-| `web/src/domain/` | Framework'süz EDL v1, zaman, timeline, çerçeveleme, politika, proje kaydı |
-| `web/src/application/` | Saf komutlar, undo/redo geçmişi |
+| `web/` | Next.js uygulaması (açılış ekranı, görev sihirbazları, editör, gizlilik sayfası) |
+| `web/src/domain/` | Framework'süz EDL v1, zaman, timeline, çerçeveleme, politika, proje kaydı; iş kaydı (`tasks.ts`) ve yazarak bulma (`taskSearch.ts`) |
+| `web/src/application/` | Saf komutlar, undo/redo geçmişi; sihirbaz tarifleri (`taskRecipes.ts`) |
+| `web/src/components/home/`, `web/src/components/wizard/` | Açılış ekranı ve sihirbaz çatısı (ADR-034) |
 | `web/src/adapters/` | Tarayıcı medya probe'u, uygunluk kapısı, IndexedDB proje deposu |
 | `web/src/adapters/export/` | Worker tabanlı encode hattı (WebCodecs + Mediabunny) |
 | `web/fixtures/edl/` | Dile bağımsız geçerli/geçersiz EDL örnekleri + manifest |
@@ -123,6 +142,14 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 - Videonun tamamını gösteren şerit: numaralı kesit bölgeleri, bekleyen aralık,
   yakınlaştırma (düğmeler, Ctrl/⌘ + tekerlek, iki parmak) ve kaydırma.
 - Tam ekran izleme (⛶ / F).
+- **Açılış ekranı ve sihirbazlar (ADR-034):** "Ne yapmak istiyorsun?" — iş kartları ve
+  yazarak bulma (cihazda, kelime listesiyle; yapay zekâ ve ağ isteği yok). Sihirbazlar: Kes
+  (kesit editörünü seçilen videoyla açar), Boşlukları at (sessiz yerleri bulur, "N sessiz yer
+  bulundu, videon kısalacak: X → Y", 20 parça sınırını söyler), Dikey yap (1080 × 1920;
+  "Doldur" / "Sığdır", canlı önizleme), Müzik ekle (videonun sesi kalsın / kapansın), Her yerde
+  açılsın (H.264/AAC MP4; zaten uygunsa söyler ve görüntüyü kopyalar). Her sihirbazda "Daha
+  fazla ayar → editörde aç": aynı video ve ayarlarla, dosya yeniden seçilmeden. Sihirbazdan
+  başlayan çalışma tarayıcıya kaydedilmez.
 - 9:16 / 16:9 / 1:1 oranları, doldur/sığdır ve merkezden yakınlaştırma.
 - Kendi ses dosyasını ekleme; bölüm, çıktı başlangıcı, seviye ve fade ayarları.
 - Domain değişikliklerinde undo/redo (son 100 adım).
@@ -193,7 +220,8 @@ Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
 [ADR-021 (120 dakika girdi, çıktı sınırı indirme kapısı)](docs/adr/ADR-021-input-limit-120min.md),
 [ADR-025 (4 GiB toplam kaynak boyutu ve ölçümü)](docs/adr/ADR-025-source-bytes-4gib.md),
 [ADR-026 (kesit listesi, kaydetme penceresiyle doğrudan dosyaya indirme)](docs/adr/ADR-026-kesit-list.md),
-[ADR-031 (telefonda paylaş, uygulama olarak yükle, internetsiz aç)](docs/adr/ADR-031-phone-share-install-offline.md).
+[ADR-031 (telefonda paylaş, uygulama olarak yükle, internetsiz aç)](docs/adr/ADR-031-phone-share-install-offline.md),
+[ADR-034 (görev öncelikli açılış ekranı: iş kartları, yazarak bulma, sihirbazlar)](docs/adr/ADR-034-task-first-home.md).
 
 ## Sıradaki tek görev
 

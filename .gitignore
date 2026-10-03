@@ -36,6 +36,9 @@ web/tests/media/silence/
 # Generated single-timeline fixtures (ffmpeg, made by the e2e setup)
 web/tests/media/timeline/
 
+# Generated task-wizard fixtures (ffmpeg, made by the e2e setup, ADR-034)
+web/tests/media/wizard/
+
 # Synthetic 60-minute source for the output-limit measurement (ADR-020)
 web/tests/media/long/
 

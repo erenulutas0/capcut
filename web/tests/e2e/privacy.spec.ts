@@ -533,6 +533,19 @@ test.describe('nothing leaves the machine', () => {
     download = page.waitForEvent('download');
     await page.getByTestId('diag-download').click();
     expect((await download).suggestedFilename()).toMatch(/\.json$/);
+    // The opening screen's search and a task wizard to its saved file (ADR-034):
+    // typing asks nobody, and the wizard is the same local export.
+    await page.goto('/');
+    for (const phrase of ['sessiz yerleri sil', 'videom whatsapp’a sığmıyor', 'pizza siparişi', 'tiktok için dikey']) {
+      await page.getByTestId('finder-input').fill(phrase);
+    }
+    await page.getByTestId('finder-input').press('Enter');
+    await expect(page).toHaveURL(/\/yap\/dikey$/);
+    await page.getByTestId('video-input').setInputFiles(join(process.cwd(), 'tests', 'media', 'other-8s.mp4'));
+    await expect(page.getByTestId('dikey-choice')).toBeVisible({ timeout: 60_000 });
+    await page.getByTestId('wizard-download').click();
+    await expect(page.getByTestId('export-download')).toBeVisible({ timeout: 180_000 });
+
     await page.waitForTimeout(500);
 
     expect(external, `beklenmeyen dış istek: ${external.join(', ')}`).toEqual([]);
@@ -544,6 +557,8 @@ test.describe('nothing leaves the machine', () => {
       /^\/$/,
       /^\/editor$/,
       /^\/gizlilik(\/en)?$/,
+      // The task wizards (ADR-034): their pages, visited above and kept by the service worker.
+      /^\/yap\/(kes|bosluk|dikey|muzik|cevir)$/,
       /^\/_next\/static\//,
       /^\/fonts\/caption\/inter-latin(-ext)?-700-normal\.woff2$/,
       /^\/favicon\.ico$/,
