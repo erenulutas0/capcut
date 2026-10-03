@@ -101,6 +101,39 @@ test.describe('opening screen', () => {
     });
   }
 
+  test('the opening screen is light: no media engine in its scripts, no worker started, nothing from elsewhere', async ({
+    page,
+  }) => {
+    // Doc 11: the first page must not carry the export engine (mediabunny);
+    // it arrives with the editor or a wizard. Its MP4 box names survive minification.
+    const scripts: string[] = [];
+    const outside: string[] = [];
+    const bodies: Array<Promise<void>> = [];
+    page.on('response', (response) => {
+      const url = response.url();
+      if (new URL(url).origin !== new URL(page.url() === 'about:blank' ? url : page.url()).origin) outside.push(url);
+      if (response.request().resourceType() !== 'script') return;
+      bodies.push(
+        response
+          .text()
+          .then((text) => {
+            if (text.includes('"moov"') || text.includes('unsupported or unrecognizable format')) scripts.push(url);
+          })
+          .catch(() => undefined),
+      );
+    });
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.getByTestId('finder-input').fill('tiktok için dikey');
+    await expect(page.getByRole('option')).toHaveCount(1);
+    await Promise.all(bodies);
+    expect(bodies.length).toBeGreaterThan(2);
+    expect(scripts, 'scripts carrying the media engine').toEqual([]);
+    expect(outside).toEqual([]);
+    // Only the service worker may exist; no export or analysis worker.
+    expect(page.workers().map((worker) => worker.url())).toEqual([]);
+  });
+
   test('a card opens its wizard at the first step', async ({ page }) => {
     for (const task of availableTasks()) {
       await page.goto('/');

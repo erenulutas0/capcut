@@ -119,9 +119,12 @@
   font-size: 17px;
 }
 
-/* The box draws the focus ring for the field inside it. */
+/* The box draws the focus ring for the field inside it (:focus-within
+   above). The field's own outline stays, transparent: forced-colours modes
+   paint it, and nothing is drawn twice otherwise. */
 .finder-input:focus-visible {
-  outline: none;
+  outline: 2px solid transparent;
+  outline-offset: 0;
 }
 
 .finder-input::placeholder {

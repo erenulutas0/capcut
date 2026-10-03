@@ -341,7 +341,7 @@ test.describe('layout', () => {
     await closeSheet(page);
   });
 
-  test('landing page has no overflow and links to the editor', async ({ page }) => {
+  test('the opening screen has no overflow and its quiet link leads to the editor (ADR-034)', async ({ page }) => {
     for (const size of [
       { width: 1440, height: 900 },
       { width: 390, height: 844 },
@@ -350,7 +350,11 @@ test.describe('layout', () => {
       await page.goto('/');
       await noHorizontalOverflow(page);
     }
-    await page.getByRole('link', { name: 'Editörü aç' }).first().click();
+    await page.getByRole('link', { name: 'Kendim düzenleyeceğim' }).click();
+    await expect(page).toHaveURL(/\/editor$/);
     await expect(page.getByTestId('download-all')).toBeVisible();
+    // The editor is as it was: empty, with its own pick button, nothing preselected.
+    await expect(page.getByTestId('pick-video')).toBeVisible();
+    await expect(page.getByTestId('moment-count')).toHaveText('(0)');
   });
 });

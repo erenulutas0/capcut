@@ -3,7 +3,8 @@ import { join, relative } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 import { expectPolicy, watchCsp } from '../e2e/cspWatch';
-import { addKesit, closeSheet, openMore, openSettings, installSavePicker } from '../e2e/kesitFlow';
+import { addKesit, closeSheet, openMore, openSettings, installSavePicker, probeMp4, readSaved } from '../e2e/kesitFlow';
+import { availableTasks } from '../../src/domain/tasks';
 
 /**
  * The published build, under /capcut/, end to end: every thing that resolves
@@ -15,6 +16,10 @@ import { addKesit, closeSheet, openMore, openSettings, installSavePicker } from 
  */
 
 const SAMPLE_VIDEO = join(__dirname, '..', 'media', 'sample-24s.mp4');
+const OTHER_VIDEO = join(__dirname, '..', 'media', 'other-8s.mp4');
+const WIZARD_PAGES = availableTasks()
+  .map((task) => `/capcut/yap/${task.id}/`)
+  .sort();
 
 function watchRequests(page: Page) {
   const failures: string[] = [];
@@ -41,7 +46,78 @@ async function playheadTo(page: Page, seconds: number) {
   for (let i = 0; i < seconds; i += 1) await page.keyboard.press('Shift+ArrowRight');
 }
 
-test('landing → editor → kesitler, caption, silence, download, report, privacy', async ({ page, context }) => {
+/**
+ * ADR-034 under the sub-path: the opening screen at /capcut/, the search, a
+ * card to its wizard page (/capcut/yap/<id>/), the video, the one choice,
+ * İndir and the saved file; then "Daha fazla ayar → editörde aç" over the
+ * same video. Every wizard page exists; a task that is not built has none.
+ */
+test('opening screen → search → wizard → download → editor hand-off', async ({ page, context, request }, testInfo) => {
+  test.setTimeout(240_000);
+  const seen = watchRequests(page);
+  const csp = await watchCsp(context);
+  await csp.attach(page);
+  await installSavePicker(page);
+
+  await page.goto('./');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ne yapmak istiyorsun?');
+  await expectPolicy(page);
+  const cards = page.getByTestId('task-grid').getByRole('link');
+  expect(await cards.evaluateAll((links) => links.map((link) => link.getAttribute('href')).sort())).toEqual(WIZARD_PAGES);
+
+  // Type to find: the unavailable task is honest, the available one starts with Enter.
+  await page.getByTestId('finder-input').fill('videom whatsapp’a sığmıyor');
+  await expect(page.getByTestId('result-kucult')).toContainText('Bu henüz yok, üzerinde çalışıyoruz.');
+  await expect(page.getByTestId('result-start')).toHaveCount(0);
+  await page.getByTestId('finder-input').fill('tiktok için dikey');
+  await page.getByTestId('finder-input').press('Enter');
+  await expect(page).toHaveURL(/\/capcut\/yap\/dikey\/$/);
+  await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'pick');
+  await expectPolicy(page);
+
+  await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+  await expect(page.getByTestId('dikey-choice')).toBeVisible({ timeout: 60_000 });
+  await page.getByTestId('option-contain').check();
+  await page.getByTestId('wizard-download').click();
+  await expect(page.getByTestId('download-saved')).toHaveText('Kaydedildi: saved-other-8s_dikey.mp4', {
+    timeout: 180_000,
+  });
+  const probe = probeMp4(await readSaved(page, testInfo, 'saved-other-8s_dikey.mp4'));
+  expect([probe.width, probe.height]).toEqual([1080, 1920]);
+  expect(probe.videoCodec).toBe('h264');
+
+  // The same video in the editor, in place: no navigation, no second file dialog.
+  await page.getByTestId('wizard-open-editor').click();
+  await expect(page.getByTestId('preview-video')).toBeVisible();
+  await expect(page.getByTestId('preview-frame')).toHaveAttribute('data-aspect', '9:16');
+  await expect(page).toHaveURL(/\/capcut\/yap\/dikey\/$/);
+  // And the wordmark leads back to the opening screen, under the base path.
+  await page.getByTestId('home-link').click();
+  await expect(page).toHaveURL(/\/capcut\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ne yapmak istiyorsun?');
+
+  // "Boşlukları at": its analysis worker is served from the sub-path too.
+  await page.getByTestId('task-bosluk').click();
+  await expect(page).toHaveURL(/\/capcut\/yap\/bosluk\/$/);
+  await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
+  await expect(page.locator('[data-testid="bosluk-summary"], [data-testid="bosluk-unclear"]')).toBeVisible({
+    timeout: 60_000,
+  });
+  await expect(page.getByTestId('bosluk-problem')).toHaveCount(0);
+
+  // Every wizard page is published; a task that is not built yet has no page.
+  for (const path of WIZARD_PAGES) expect((await request.get(path)).status(), path).toBe(200);
+  for (const id of ['kucult', 'ses', 'yazi']) {
+    expect((await request.get(`/capcut/yap/${id}/`)).status(), id).toBe(404);
+  }
+
+  // The only 404 of the session is the one asked for above (it is not a page request).
+  expect(seen.failures).toEqual([]);
+  expect(seen.outside).toEqual([]);
+  expect(csp.violations, csp.violations.join('\n')).toEqual([]);
+});
+
+test('opening screen → editor → kesitler, caption, silence, download, report, privacy', async ({ page, context }) => {
   const seen = watchRequests(page);
   const csp = await watchCsp(context);
   await csp.attach(page);
@@ -50,7 +126,7 @@ test('landing → editor → kesitler, caption, silence, download, report, priva
   await page.goto('./');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await expectPolicy(page);
-  await page.getByRole('link', { name: /Editörü aç/ }).first().click();
+  await page.getByRole('link', { name: 'Kendim düzenleyeceğim' }).click();
   await expect(page).toHaveURL(/\/capcut\/editor\/?$/);
 
   // The kesit list (ADR-026): mark with I / O, Enter adds; one more typed.
@@ -125,9 +201,10 @@ test('landing → editor → kesitler, caption, silence, download, report, priva
 /**
  * ADR-031 under the sub-path: the manifest and its icons, the service worker
  * scoped to /capcut/ with only /capcut/ app files in its cache, and the site
- * opening again with the network off — landing, editor (with and without
- * the trailing slash GitHub Pages redirects), privacy — and a kesit
- * downloading offline through the worker scripts served from the cache.
+ * opening again with the network off — the opening screen, the editor (with
+ * and without the trailing slash GitHub Pages redirects), privacy, a task
+ * wizard through to its saved file — and a kesit downloading offline through
+ * the worker scripts served from the cache.
  */
 test('installable and offline under /capcut/: manifest, service worker, offline reload and download', async ({
   page,
@@ -152,7 +229,8 @@ test('installable and offline under /capcut/: manifest, service worker, offline 
   };
   expect(manifest).toMatchObject({
     id: '/capcut/',
-    start_url: '/capcut/editor/',
+    // The installed app starts at the opening screen (ADR-034).
+    start_url: '/capcut/',
     scope: '/capcut/',
     display: 'standalone',
     name: 'Clip',
@@ -194,11 +272,11 @@ test('installable and offline under /capcut/: manifest, service worker, offline 
   expect(names).toHaveLength(1);
   expect(names[0]).toMatch(/^clip-app-[0-9a-f]{16}$/);
   const paths = cached[names[0] ?? ''] ?? [];
-  for (const stored of ['/capcut/', '/capcut/editor/', '/capcut/gizlilik/', '/capcut/gizlilik/en/']) {
+  for (const stored of ['/capcut/', '/capcut/editor/', '/capcut/gizlilik/', '/capcut/gizlilik/en/', ...WIZARD_PAGES]) {
     expect(paths).toContain(stored);
   }
   const allowed = [
-    /^\/capcut\/((editor|gizlilik|gizlilik\/en)\/)?$/,
+    /^\/capcut\/((editor|gizlilik|gizlilik\/en|yap\/(kes|bosluk|dikey|muzik|cevir))\/)?$/,
     /^\/capcut\/_next\/static\/.+\.(js|css|png|svg)$/,
     /^\/capcut\/fonts\/caption\/inter-latin(-ext)?-700-normal\.woff2$/,
     /^\/capcut\/icons\/(icon-192|icon-512|maskable-512)\.png$/,
@@ -209,7 +287,19 @@ test('installable and offline under /capcut/: manifest, service worker, offline 
   // No network: the stored copy opens every page, even the slash-less address.
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ne yapmak istiyorsun?');
+  // A wizard, offline, from its card to the saved file.
+  await page.getByTestId('task-cevir').click();
+  await expect(page).toHaveURL(/\/capcut\/yap\/cevir\/$/);
+  await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+  await expect(page.getByTestId('cevir-info')).toBeVisible({ timeout: 60_000 });
+  await page.getByTestId('wizard-download').click();
+  await expect(page.getByTestId('download-saved')).toHaveText('Kaydedildi: saved-other-8s_uyumlu.mp4', {
+    timeout: 120_000,
+  });
+  // The slash-less address GitHub Pages would redirect opens from the stored copy too.
+  await page.goto('./yap/kes');
+  await expect(page.getByTestId('pick-video')).toBeEnabled();
   await page.goto('./editor');
   await expect(page.getByTestId('download-all')).toBeVisible();
   await page.goto('./gizlilik/');

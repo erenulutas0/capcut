@@ -6,7 +6,9 @@ import { expect, test, type Locator, type Page, type TestInfo } from '@playwrigh
 import { tr } from '../../src/i18n/messages';
 import { browserDecodesHevc, hevcFixture } from './hevc-media';
 import { closeSheet, noSavePicker, openMore, openSettings, installSavePicker, stubShare } from './kesitFlow';
+import { silenceFixture } from './silence-media';
 import { timelineFixture } from './timeline-media';
+import { wizardFixture } from './wizard-media';
 
 /**
  * Accessibility audit (roadmap P2-03, launch checklist B).
@@ -201,11 +203,8 @@ test.describe('a11y: axe audit', () => {
     await clearStorage(page);
   });
 
-  test('landing page', async ({ page }, testInfo) => {
-    await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await audit(page, 'landing', testInfo);
-  });
+  // The opening screen (which replaced the landing page, ADR-034) is audited
+  // with the wizards, at the end of this file.
 
   test('privacy page (tr, en) and the report dialog', async ({ page }, testInfo) => {
     await page.goto('/gizlilik');
@@ -725,9 +724,9 @@ test.describe('a11y: reflow at 320 CSS px (WCAG 1.4.10)', () => {
     test.describe(`${width} px`, () => {
       test.use({ viewport: { width, height: 720 }, storageState: { cookies: [], origins: [] } });
 
-      test('landing and editor never scroll sideways', async ({ page }) => {
+      test('the opening screen and the editor never scroll sideways', async ({ page }) => {
         await page.goto('/');
-        expect(await horizontalOverflow(page), 'landing').toBe(0);
+        expect(await horizontalOverflow(page), 'opening screen').toBe(0);
         await clearStorage(page);
         await openEditor(page);
         expect(await horizontalOverflow(page), 'empty editor').toBe(0);
@@ -829,7 +828,7 @@ test.describe('a11y: text spacing (WCAG 1.4.12)', () => {
       await page.setViewportSize(viewport);
       await page.goto('/');
       await applyTextSpacing(page);
-      expect(await clippedControls(page), 'landing').toEqual([]);
+      expect(await clippedControls(page), 'opening screen').toEqual([]);
 
       await clearStorage(page);
       await withMoments(page);
@@ -989,5 +988,334 @@ test.describe('a11y: names a screen reader hears', () => {
 
     // The caption overlay is pixels; the words are in the caption panel.
     await expect(page.getByTestId('caption-overlay')).toHaveAttribute('aria-hidden', 'true');
+  });
+});
+
+// ---------------------------------------------- opening screen and wizards
+// ADR-034: the task-first opening screen (cards + type-to-find) and the task
+// wizards, with the same checks the editor gets above.
+
+const MUSIC_FILE = join(process.cwd(), 'tests', 'media', 'tone-30s.m4a');
+const finderBox = (page: Page) => page.getByTestId('finder-input');
+
+/** The opening screen's states, each audited: cards, results, a task not built yet, nothing found. */
+async function auditHome(page: Page, prefix: string, testInfo: TestInfo) {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ne yapmak istiyorsun?');
+  await audit(page, `${prefix}-home`, testInfo);
+  await finderBox(page).fill('tiktok için kes');
+  await expect(page.getByRole('option')).toHaveCount(2);
+  await audit(page, `${prefix}-home-results`, testInfo);
+  await finderBox(page).fill('videom whatsapp’a sığmıyor');
+  await expect(page.getByTestId('result-unavailable')).toBeVisible();
+  await audit(page, `${prefix}-home-unavailable`, testInfo);
+  await finderBox(page).fill('pizza siparişi');
+  await expect(page.getByTestId('finder-none')).toBeVisible();
+  await audit(page, `${prefix}-home-none`, testInfo);
+}
+
+/** One wizard through its three steps, each audited ("Dikey yap": it has the choice and the preview). */
+async function auditDikey(page: Page, prefix: string, testInfo: TestInfo) {
+  await page.goto('/yap/dikey');
+  await expect(page.getByTestId('pick-video')).toBeEnabled();
+  await audit(page, `${prefix}-wizard-pick`, testInfo);
+  await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+  await expect(page.getByTestId('dikey-choice')).toBeVisible({ timeout: 60_000 });
+  await audit(page, `${prefix}-wizard-choose`, testInfo);
+  await page.getByTestId('wizard-download').click();
+  await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 180_000 });
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await audit(page, `${prefix}-wizard-saved`, testInfo);
+}
+
+test.describe('a11y: opening screen and wizards, axe audit', () => {
+  test.use({ storageState: { cookies: [], origins: [] }, reducedMotion: 'reduce' });
+  test.describe.configure({ timeout: 300_000 });
+
+  test.beforeEach(async ({ page }) => {
+    await installSavePicker(page);
+  });
+
+  test('desktop: opening screen states and "Dikey yap" step by step', async ({ page }, testInfo) => {
+    await auditHome(page, 'desktop', testInfo);
+    await auditDikey(page, 'desktop', testInfo);
+  });
+
+  test('desktop: every other wizard’s own step, and the states that say no', async ({ page }, testInfo) => {
+    // Kes: the pick step, then the editor in place with "Bu düzenleme saklanmıyor".
+    await page.goto('/yap/kes');
+    await expect(page.getByTestId('pick-video')).toBeEnabled();
+    await audit(page, 'wizard-kes-pick', testInfo);
+    await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+    await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId('save-state-off')).toBeVisible();
+    await audit(page, 'wizard-kes-editor', testInfo);
+
+    // Boşlukları at: found, nothing found, no sound.
+    await page.goto('/yap/bosluk');
+    await page.getByTestId('video-input').setInputFiles(silenceFixture('showcase').file);
+    await expect(page.getByTestId('bosluk-found')).toBeVisible({ timeout: 60_000 });
+    await audit(page, 'wizard-bosluk-found', testInfo);
+    await page.getByTestId('video-input').setInputFiles(wizardFixture('shortGaps'));
+    await expect(page.getByTestId('bosluk-none')).toBeVisible({ timeout: 60_000 });
+    await audit(page, 'wizard-bosluk-none', testInfo);
+    await page.getByTestId('video-input').setInputFiles(wizardFixture('noAudio'));
+    await expect(page.getByTestId('bosluk-problem')).toBeVisible({ timeout: 60_000 });
+    await audit(page, 'wizard-bosluk-no-sound', testInfo);
+
+    // Müzik ekle: before the music (İndir waits), with it, and a refused file.
+    await page.goto('/yap/muzik');
+    await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+    await expect(page.getByTestId('muzik-pick')).toBeVisible({ timeout: 60_000 });
+    await audit(page, 'wizard-muzik-no-music', testInfo);
+    await page.getByTestId('audio-input').setInputFiles({
+      name: 'liste.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('ses değil'),
+    });
+    await expect(page.getByTestId('media-error')).toBeVisible();
+    await audit(page, 'wizard-muzik-refused', testInfo);
+    await page.getByTestId('audio-input').setInputFiles(MUSIC_FILE);
+    await expect(page.getByTestId('muzik-picked')).toBeVisible();
+    await audit(page, 'wizard-muzik-picked', testInfo);
+
+    // Her yerde açılsın: the explanation with the "already fine" note, then running and canceled.
+    await page.goto('/yap/cevir');
+    await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
+    await expect(page.getByTestId('cevir-already')).toBeVisible({ timeout: 60_000 });
+    await audit(page, 'wizard-cevir-info', testInfo);
+
+    await page.goto('/yap/dikey');
+    await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
+    await expect(page.getByTestId('dikey-choice')).toBeVisible({ timeout: 60_000 });
+    await page.getByTestId('wizard-download').click();
+    await expect(page.getByTestId('export-progress')).toBeVisible({ timeout: 60_000 });
+    await audit(page, 'wizard-running', testInfo);
+    await page.getByTestId('export-cancel').click();
+    await expect(page.getByTestId('export-canceled')).toBeVisible({ timeout: 30_000 });
+    await audit(page, 'wizard-canceled', testInfo);
+  });
+
+  test('the fallback route in a wizard: "Videon hazır" with "Bilgisayara kaydet" and "Paylaş"', async ({ browser }, testInfo) => {
+    const context = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    await noSavePicker(page);
+    await stubShare(page);
+    await page.goto('/yap/cevir');
+    await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+    await expect(page.getByTestId('cevir-info')).toBeVisible({ timeout: 60_000 });
+    await page.getByTestId('wizard-download').click();
+    await expect(page.getByTestId('export-download')).toBeVisible({ timeout: 180_000 });
+    await audit(page, 'wizard-ready-fallback', testInfo);
+    await context.close();
+  });
+
+  for (const size of [
+    { name: 'phone-360', width: 360, height: 780 },
+    { name: 'phone-390', width: 390, height: 844 },
+    { name: 'tablet-820', width: 820, height: 1100 },
+  ]) {
+    test(`${size.name}: opening screen states and "Dikey yap" step by step`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width: size.width, height: size.height });
+      await auditHome(page, size.name, testInfo);
+      await auditDikey(page, size.name, testInfo);
+    });
+  }
+});
+
+test.describe('a11y: opening screen and a wizard, keyboard only', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+  test.describe.configure({ timeout: 240_000 });
+
+  test('type, Enter, pick the video, choose, İndir, back home — no mouse, focus visible at every stop', async ({ page }) => {
+    await installSavePicker(page);
+    catchFileChoosers(page);
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto('/');
+    const unmarked: string[] = [];
+
+    // 1. The box, by Tab. Its ring is drawn by the box around it.
+    await tabTo(page, byTestId('finder-input'), unmarked, 'the search box');
+    const ring = await page.locator('.finder-box').evaluate((box) => {
+      const style = getComputedStyle(box);
+      return { style: style.outlineStyle, width: parseFloat(style.outlineWidth), color: style.outlineColor };
+    });
+    expect(ring.style).toBe('solid');
+    expect(ring.width).toBeGreaterThanOrEqual(2);
+    expect(ring.color).not.toBe('rgba(0, 0, 0, 0)');
+
+    // 2. Type; the results are announced; ↓ moves, Enter starts.
+    await page.keyboard.type('tiktok için kes');
+    await expect(page.getByTestId('finder-status')).toHaveText('2 sonuç. İlki: Dikey yap.');
+    await expect(page.getByTestId('finder-status')).toHaveAttribute('role', 'status');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowUp');
+    await expect(finderBox(page)).toHaveAttribute('aria-activedescendant', 'finder-option-dikey');
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/yap\/dikey$/);
+
+    // 3. The wizard's first step: "Video seç" opens the file dialog with Enter.
+    await expect(page.getByTestId('pick-video')).toBeEnabled();
+    await tabTo(page, byTestId('pick-video'), unmarked, 'Video seç');
+    const chooser = page.waitForEvent('filechooser', { timeout: 15_000 });
+    await page.keyboard.press('Enter');
+    await (await chooser).setFiles(OTHER_VIDEO);
+
+    // 4. The choice: focus is on the step's heading; Tab reaches the radio
+    //    group, the arrow keys change it.
+    await expect(page.getByTestId('dikey-choice')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId('wizard-title')).toBeFocused();
+    await tabTo(page, byTestId('option-cover'), unmarked, 'the choice');
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByTestId('option-contain')).toBeChecked();
+    await expect(page.getByTestId('option-contain')).toBeFocused();
+    await expect(page.getByTestId('wizard-preview-frame')).toHaveAttribute('data-fit', 'contain');
+
+    // 5. İndir with Enter; focus moves to the result's heading; the outcome is announced.
+    await tabTo(page, byTestId('wizard-download'), unmarked, 'İndir');
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'result');
+    await expect(page.getByTestId('wizard-title')).toBeFocused();
+    await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 180_000 });
+    await expect(page.getByTestId('download-status')).toHaveAttribute('role', 'status');
+    await expect(page.getByTestId('download-status')).toContainText('Kaydedildi: saved-other-8s_dikey.mp4');
+
+    // 6. "Ana ekrana dön" with Enter.
+    await tabTo(page, byTestId('wizard-home'), unmarked, 'Ana ekrana dön');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ne yapmak istiyorsun?');
+
+    // 7. And a card, by Tab and Enter.
+    await tabTo(page, byTestId('task-cevir'), unmarked, 'the last card');
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/yap\/cevir$/);
+    // Geri is the first stop of a wizard.
+    await tabTo(page, byTestId('wizard-back'), unmarked, 'Geri');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ne yapmak istiyorsun?');
+
+    expect(unmarked, 'stops without a visible focus indicator').toEqual([]);
+    expect(errors).toEqual([]);
+  });
+});
+
+test.describe('a11y: opening screen and wizards, the rest', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+  test.describe.configure({ timeout: 240_000 });
+
+  test('reduced motion: nothing animates on the opening screen or in a wizard', async ({ browser }) => {
+    const context = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    const moving = () =>
+      page.evaluate(() =>
+        Array.from(document.querySelectorAll<HTMLElement>('*'))
+          .filter((node) => {
+            const style = getComputedStyle(node);
+            const transition = style.transitionDuration.split(',').some((part) => parseFloat(part) > 0);
+            return style.animationName !== 'none' || transition;
+          })
+          .map((node) => node.className || node.tagName),
+      );
+    await page.goto('/');
+    await finderBox(page).fill('dikey');
+    expect(await moving(), 'opening screen').toEqual([]);
+    await page.goto('/yap/bosluk');
+    await page.getByTestId('video-input').setInputFiles(silenceFixture('showcase').file);
+    await expect(page.getByTestId('bosluk-summary')).toBeVisible({ timeout: 60_000 });
+    expect(await moving(), 'wizard').toEqual([]);
+    await context.close();
+  });
+
+  for (const width of [320, 640]) {
+    test(`reflow at ${width} px: the opening screen and a wizard never scroll sideways`, async ({ page }) => {
+      await installSavePicker(page);
+      await page.setViewportSize({ width, height: 720 });
+      await page.goto('/');
+      expect(await horizontalOverflow(page), 'opening screen').toBe(0);
+      for (const phrase of ['tiktok için kes', 'videom whatsapp’a sığmıyor', 'pizza siparişi']) {
+        await finderBox(page).fill(phrase);
+        expect(await horizontalOverflow(page), phrase).toBe(0);
+      }
+      for (const id of ['kes', 'bosluk', 'cevir']) {
+        await page.goto(`/yap/${id}`);
+        await expect(page.getByTestId('pick-video')).toBeEnabled();
+        expect(await horizontalOverflow(page), `${id} pick`).toBe(0);
+      }
+      await page.goto('/yap/muzik');
+      await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+      await expect(page.getByTestId('muzik-pick')).toBeVisible({ timeout: 60_000 });
+      expect(await horizontalOverflow(page), 'muzik without music').toBe(0);
+      await page.getByTestId('audio-input').setInputFiles(MUSIC_FILE);
+      await expect(page.getByTestId('muzik-picked')).toBeVisible();
+      expect(await horizontalOverflow(page), 'muzik with music').toBe(0);
+
+      await page.goto('/yap/dikey');
+      await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+      await expect(page.getByTestId('dikey-choice')).toBeVisible({ timeout: 60_000 });
+      expect(await horizontalOverflow(page), 'dikey choose').toBe(0);
+      await page.getByTestId('wizard-download').click();
+      await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 180_000 });
+      expect(await horizontalOverflow(page), 'dikey saved').toBe(0);
+      await page.locator('.dl-details summary').click();
+      expect(await horizontalOverflow(page), 'dikey saved, details open').toBe(0);
+    });
+  }
+
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    test(`text spacing: no control clips its text at ${viewport.width} px`, async ({ page }) => {
+      await installSavePicker(page);
+      await page.setViewportSize(viewport);
+      await page.goto('/');
+      await applyTextSpacing(page);
+      expect(await clippedControls(page), 'opening screen').toEqual([]);
+      expect(await horizontalOverflow(page), 'opening screen width').toBe(0);
+      await finderBox(page).fill('tiktok için kes');
+      expect(await clippedControls(page), 'results').toEqual([]);
+
+      await page.goto('/yap/dikey');
+      await applyTextSpacing(page);
+      expect(await clippedControls(page), 'wizard pick').toEqual([]);
+      await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+      await expect(page.getByTestId('dikey-choice')).toBeVisible({ timeout: 60_000 });
+      expect(await clippedControls(page), 'wizard choose').toEqual([]);
+      expect(await horizontalOverflow(page), 'wizard width').toBe(0);
+      await page.getByTestId('wizard-download').click();
+      await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 180_000 });
+      expect(await clippedControls(page), 'wizard saved').toEqual([]);
+      expect(await horizontalOverflow(page), 'wizard saved width').toBe(0);
+    });
+  }
+
+  test('names a screen reader hears: landmarks, the cards, the wizard’s controls', async ({ page }) => {
+    await installSavePicker(page);
+    await page.goto('/');
+    await expect(page.getByRole('banner')).toHaveCount(1);
+    await expect(page.getByRole('main')).toHaveCount(1);
+    await expect(page.getByRole('contentinfo')).toHaveCount(1);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+    // A card is one link whose name is the task and what it does.
+    await expect(page.getByRole('link', { name: 'Dikey yap Reels, TikTok, Shorts' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Bütün işler' })).toBeVisible();
+    await expect(page.getByRole('list', { name: 'Örneğin' }).getByRole('button')).toHaveCount(4);
+    // No icon is read out.
+    expect(await page.locator('svg:not([aria-hidden="true"])').count()).toBe(0);
+
+    await page.goto('/yap/dikey');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Videonu seç');
+    await expect(page.getByRole('link', { name: 'Ana ekrana dön' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Video seç/ })).toBeVisible();
+    await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+    await expect(page.getByRole('group', { name: 'Video çerçeveye nasıl otursun?' })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole('radio', { name: /^Doldur/ })).toBeChecked();
+    await expect(page.getByRole('radio', { name: /^Sığdır/ })).not.toBeChecked();
+    await expect(page.getByLabel('Dikey videonun önizlemesi')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Oynat' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Başka bir video seç' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'İndir' })).toBeVisible();
+    expect(await page.locator('svg:not([aria-hidden="true"])').count()).toBe(0);
   });
 });
