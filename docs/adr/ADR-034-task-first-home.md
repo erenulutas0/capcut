@@ -254,3 +254,21 @@ Koşu sayıları: bu belgenin sonundaki "Doğrulama".
   kendi davranışına dokunulmadı.
 - Arama yalnızca Türkçe ve İngilizce kelime bilir; arayüz dili Türkçe (EN çevirileri
   `messages.ts`'te hazır, dil seçimi yok).
+
+## Doğrulama (3 Ekim 2026, masaüstü, Playwright Chromium)
+
+Gerçekten çalıştırılanlar:
+
+- `npx tsc --noEmit -p .` ve `npx eslint .`: hatasız (son kodda).
+- `npx vitest run`: 49 dosya, **700 / 700** (son kodda).
+- Tam e2e (`E2E_PORT=3301 npx playwright test`, ölçüm kilidi altında, 18:46–18:55): **220 geçti,
+  3 kaldı, 2 atlandı**. Kalan üçü bu işin yan etkisiydi ve düzeltildi: iki kota testi (çevrimdışı
+  kopya 2 MB'ı geçince 3 MiB'lık kota 1 MiB'lık ayırmaya yetmedi → 4 MiB) ve ağ testi (izin
+  listesinde `/yap/…` sayfaları yoktu; teste arama + sihirbaz oturumu da eklendi). Düzeltmeden
+  sonra bu üçü ve açılış ekranı / CSP testleri hedefli koşuda geçti (22 / 22).
+- Ekran görüntüleri: 57 dosya, 2,2 MB (`shots/`).
+
+**Çalıştırılamayanlar** (ölçüm kilidi iki saat boyunca başka işlerdeydi; bekleyen koşu süre
+sınırında durduruldu): düzeltmelerden sonraki **tam** e2e koşusu, dosya matrisi
+(`run-matrix.mjs --browser=chromium`) ve GitHub Pages duman testi (`/capcut/` altında; testleri
+yazıldı ama **hiç koşturulmadı**). Bunlar birleştirmeden önce koşturulmalı.
