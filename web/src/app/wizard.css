@@ -78,6 +78,13 @@
   overflow-wrap: anywhere;
 }
 
+/* Focus is moved here when the step changes, for screen readers; the heading
+   is not a control, so it draws no ring. */
+.wizard-title:focus,
+.wizard-title:focus-visible {
+  outline: none;
+}
+
 /* ---------------------------------------------------------------- step 1 */
 
 .dropzone {

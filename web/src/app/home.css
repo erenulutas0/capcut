@@ -463,8 +463,9 @@
   }
 }
 
+/* Four columns only when they fill the rows (TaskFinder: wideColumns). */
 @media (min-width: 1000px) {
-  .task-grid {
+  .task-grid[data-columns='4'] {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

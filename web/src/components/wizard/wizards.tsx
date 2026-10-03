@@ -12,7 +12,7 @@ import {
   lengthsAfterCut,
   musicLengthUs,
   musicOutlastsVideo,
-  playsEverywhereRecipe,
+  ownSizeRecipe,
   silenceParamsFor,
   musicUnderWholeVideo,
   withMusicDefaults,
@@ -143,8 +143,10 @@ function BoslukWizard(host: WizardHostProps) {
       working={!done || status !== 'ok'}
       openVideo={async (file) => {
         silence.reset();
-        const outcome = await state.importVideo(file);
+        const outcome = await state.importVideo(file, ownSizeRecipe);
         if (outcome.kind !== 'opened') return false;
+        // The video's own frame: a shape between the frames gets bars, nothing is cut off.
+        state.changeFraming({ fit: 'contain', zoom: 1 });
         setChoice('long');
         search(file, outcome.lengthUs);
         return true;
@@ -382,7 +384,10 @@ function MuzikWizard(host: WizardHostProps) {
       blockedText={ready ? null : t('wizard.muzik.first')}
       openVideo={async (file) => {
         const outcome = await state.importVideo(file, musicUnderWholeVideo);
-        return outcome.kind === 'opened';
+        if (outcome.kind !== 'opened') return false;
+        // The video's own frame: a shape between the frames gets bars, nothing is cut off.
+        state.changeFraming({ fit: 'contain', zoom: 1 });
+        return true;
       }}
     >
       {({ busy }) => (
@@ -498,7 +503,7 @@ function CevirWizard(host: WizardHostProps) {
       fileTag="uyumlu"
       recipe={video ? state.project : null}
       openVideo={async (file) => {
-        const outcome = await state.importVideo(file, playsEverywhereRecipe);
+        const outcome = await state.importVideo(file, ownSizeRecipe);
         if (outcome.kind !== 'opened') return false;
         // Nothing of the picture is cut off: a shape between the frames gets bars.
         state.changeFraming({ fit: 'contain', zoom: 1 });

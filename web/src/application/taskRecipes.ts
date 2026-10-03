@@ -78,12 +78,12 @@ export function withMusicDefaults(project: Project, videoSoundKept: boolean): Pr
 /**
  * Opening a video in "Müzik ekle": the whole video becomes the one kesit,
  * and music picked for an earlier video is laid under the new one from its
- * start — as long as the new video, or as long as the music is — with the
- * defaults again (the new kesit's own sound is on; a video without sound
+ * start — as long as the new video, or as long as the music is — at the
+ * video's own size, with the defaults again (the new kesit's own sound is on; a video without sound
  * gets the music alone).
  */
 export function musicUnderWholeVideo(project: Project): Project {
-  const whole = wholeVideoAsKesit(project);
+  const whole = wholeVideoAsKesit(ownSizeRecipe(project));
   const music = whole.music;
   if (!music) return whole;
   const asset = whole.assets.find((item) => item.assetId === music.assetId);
@@ -99,21 +99,27 @@ export function musicUnderWholeVideo(project: Project): Project {
   return withMusicDefaults({ ...whole, music: refit }, videoSoundKept);
 }
 
-// ------------------------------------------------------------ Her yerde açılsın
+// ------------------------------------------------------------ the video's own size
 
 /**
- * The download's size for "Her yerde açılsın": the video's own (720p stays
- * 720p), and Full HD for anything larger — the two sizes the editor offers.
+ * The download's size for the wizards that keep the video's own frame
+ * ("Boşlukları at", "Müzik ekle", "Her yerde açılsın"): 720p stays 720p (and
+ * anything smaller becomes 720p), anything larger is Full HD — the two sizes
+ * the editor offers. A 720p video is then not blown up to 1080p for nothing,
+ * and where nothing else changes its pictures can be kept as they are
+ * (the fast cut, ADR-027).
  */
 export function shortEdgeForSource(displayWidth: number | undefined, displayHeight: number | undefined): 720 | 1080 {
   const shortEdge = Math.min(displayWidth ?? 0, displayHeight ?? 0);
   return shortEdge > 0 && shortEdge <= 720 ? 720 : 1080;
 }
 
-export function playsEverywhereRecipe(project: Project): Project {
+export function ownSizeRecipe(project: Project): Project {
   const asset = primaryVideoAsset(project);
   return setExportShortEdge(project, shortEdgeForSource(asset?.displayWidth, asset?.displayHeight));
 }
+
+// ------------------------------------------------------------ Her yerde açılsın
 
 /**
  * Whether the picked file is already what the task produces: H.264 picture,

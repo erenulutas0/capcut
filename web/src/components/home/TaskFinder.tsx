@@ -18,6 +18,15 @@ export function taskHref(task: Pick<TaskDefinition, 'id'>): string {
   return `/yap/${task.id}`;
 }
 
+/**
+ * Columns of the card grid on a wide screen: four when that fills the rows
+ * (8 cards → 4 + 4, 7 → 4 + 3), otherwise three (5 → 3 + 2, 6 → 3 + 3), so
+ * no card is left alone on a row.
+ */
+export function wideColumns(count: number): 3 | 4 {
+  return count % 4 === 0 || count % 4 === 3 ? 4 : 3;
+}
+
 function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
 }
@@ -229,7 +238,7 @@ export function TaskFinder() {
             <h2 className="home-label" id="task-grid-title" ref={gridRef} tabIndex={-1}>
               {t('home.tasks.title')}
             </h2>
-            <ul className="task-grid" data-testid="task-grid">
+            <ul className="task-grid" data-columns={wideColumns(cards.length)} data-testid="task-grid">
               {cards.map((task, index) => (
                 <li key={task.id}>
                   {/* prefetch={false}: see app/page.tsx. */}
