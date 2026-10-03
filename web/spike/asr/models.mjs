@@ -86,9 +86,20 @@ export const MODELS = {
     optional: true,
     englishOnly: true,
     dtypes: {
-      webgpu: { encoder_model: 'fp16', decoder_model_merged: 'fp16' },
+      // The repo's fp16 merged decoder does not load in onnxruntime-web 1.31 ("invalid model:
+      // subgraph output (logits) is an outer scope value", measured 3 Oct 2026; kept below as
+      // `distil-small.en-fp16dec`), so the decoder is the 4-bit file.
+      webgpu: { encoder_model: 'fp16', decoder_model_merged: 'q4' },
       wasm: { encoder_model: 'q8', decoder_model_merged: 'q8' },
     },
+  },
+  'distil-small.en-fp16dec': {
+    id: 'onnx-community/distil-small.en',
+    revision: '69be759f982d1d4c5b8a987d4140752742619bd0',
+    params: '166M',
+    optional: true,
+    englishOnly: true,
+    dtypes: { webgpu: { encoder_model: 'fp16', decoder_model_merged: 'fp16' }, wasm: null },
   },
   'distil-large-v3.5': {
     id: 'onnx-community/distil-large-v3.5-ONNX',

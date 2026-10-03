@@ -79,7 +79,7 @@ export function spansFromProbs(probs, frameS, totalS, params = DEFAULT_VAD) {
  * `quietestAt(from, to)` returns the best place to cut inside [from, to]
  * (lowest speech probability / lowest level); without it the cut is at `to`.
  */
-export function packWindows(spans, { maxS = 30, quietestAt = null } = {}) {
+export function packWindows(spans, { maxS = 30, quietestAt = null, perSpan = false } = {}) {
   const pieces = [];
   for (const span of spans) {
     let from = span.start;
@@ -95,7 +95,9 @@ export function packWindows(spans, { maxS = 30, quietestAt = null } = {}) {
   let cur = null;
   for (const piece of pieces) {
     const len = piece.end - piece.start;
-    if (!cur || cur.speechS + len > maxS) {
+    // `perSpan`: every span is recognised on its own, so the recogniser's confidence is known per
+    // span and a stretch of music that slipped through cannot hide inside a window full of speech.
+    if (!cur || perSpan || cur.speechS + len > maxS) {
       cur = { pieces: [], speechS: 0 };
       windows.push(cur);
     }

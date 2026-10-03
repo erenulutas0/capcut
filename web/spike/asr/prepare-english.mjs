@@ -79,6 +79,24 @@ const MUSIC = [
     url: 'https://upload.wikimedia.org/wikipedia/commons/1/11/John_Bartmann_-_13_-_Robot_Gypsy_Jazz.ogg',
     ext: 'ogg',
   },
+  // Two more tracks, used ONLY in the validation set (`negv`): never played to a model before the
+  // filter settings and the guard threshold were fixed.
+  {
+    key: 'val1',
+    title: 'Kevin MacLeod — Calmant',
+    license: 'CC-BY-3.0',
+    page: 'https://commons.wikimedia.org/wiki/File:Kevin_MacLeod_-_Calmant.ogg',
+    url: 'https://upload.wikimedia.org/wikipedia/commons/3/3c/Kevin_MacLeod_-_Calmant.ogg',
+    ext: 'ogg',
+  },
+  {
+    key: 'val2',
+    title: 'Kevin MacLeod — Windswept',
+    license: 'CC-BY-3.0',
+    page: 'https://commons.wikimedia.org/wiki/File:Kevin_MacLeod_-_Windswept.ogg',
+    url: 'https://upload.wikimedia.org/wikipedia/commons/2/23/Kevin_MacLeod_-_Windswept.ogg',
+    ext: 'ogg',
+  },
 ];
 
 function sh(cmd, args, opts = {}) {
@@ -113,7 +131,8 @@ function writeWav(file, samples) {
   header.write('data', 36);
   header.writeUInt32LE(data.length, 40);
   const buf = Buffer.concat([header, data]);
-  writeFileSync(file, buf);
+  // Unchanged clips are left alone, so the set can be extended while a run is reading it.
+  if (!existsSync(file) || !readFileSync(file).equals(buf)) writeFileSync(file, buf);
   return sha256(buf);
 }
 
@@ -398,6 +417,37 @@ async function main() {
   add({ id: 'negh-04', set: 'negh', kind: 'negative', label: 'held out: vlog bed at -30 dBFS (quiet background), 30 s' }, atLevel(music.vlog.subarray(seconds(20), seconds(50)).slice(), -30));
   add({ id: 'negh-05', set: 'negh', kind: 'negative', label: 'held out: piano over room tone, 40 s' }, concat([atLevel(music.piano.subarray(seconds(120), seconds(140)).slice(), -26), pink(20, 51, -50)]));
   add({ id: 'negh-06', set: 'negh', kind: 'negative', label: 'held out: brown noise at -28 dBFS (wind / traffic), 30 s' }, atLevel(lavfi(`anoisesrc=c=brown:r=${RATE}:a=0.3:d=30:s=52`), -28));
+
+  // ---- validation set, made AFTER the shipping rule was fixed (Silero defaults, every span on its
+  // own, a span is dropped when its mean log-probability is under -0.75): music the models never
+  // heard, and speech that played no part in choosing the threshold.
+  add({ id: 'negv-01', set: 'negv', kind: 'negative', label: 'validation: "Calmant" (MacLeod), 30 s' }, music.val1.subarray(seconds(10), seconds(40)).slice());
+  add({ id: 'negv-02', set: 'negv', kind: 'negative', label: 'validation: "Calmant", a later passage, 30 s' }, music.val1.subarray(seconds(70), seconds(100)).slice());
+  add({ id: 'negv-03', set: 'negv', kind: 'negative', label: 'validation: "Windswept" (MacLeod), 30 s' }, music.val2.subarray(seconds(10), seconds(40)).slice());
+  add({ id: 'negv-04', set: 'negv', kind: 'negative', label: 'validation: "Windswept", a later passage, 60 s' }, music.val2.subarray(seconds(60), seconds(120)).slice());
+  add({ id: 'negv-05', set: 'negv', kind: 'negative', label: 'validation: "Windswept" at -32 dBFS over room tone at -50 dBFS, 30 s' }, (() => {
+    const tone = pink(30, 61, -50);
+    return atLevel(music.val2.subarray(seconds(125), seconds(155)).slice(), -32).map((v, i) => v + (tone[i] ?? 0));
+  })());
+  add({ id: 'negv-06', set: 'negv', kind: 'negative', label: 'validation: piano, a passage not used before, 60 s' }, music.piano.subarray(seconds(200), seconds(260)).slice());
+  add({ id: 'negv-07', set: 'negv', kind: 'negative', label: 'validation: vlog bed played 1.2× faster and higher, 30 s' }, decode(join(poolDir, 'music', 'vlog.wav'), [], ['-af', 'aresample=16000,asetrate=19200', '-t', '30']));
+  add({ id: 'negv-08', set: 'negv', kind: 'negative', label: 'validation: band and vlog bed played together, 25 s' }, music.jazz.subarray(seconds(12), seconds(37)).map((v, i) => 0.5 * v + 0.5 * music.vlog[seconds(8) + i]));
+  {
+    const runs = [[8224, 274381], [8555, 284447]].map((c) => librispeechRun([c], 120));
+    let at = 0;
+    const run = { samples: concat(runs.map((r) => r.samples)), text: runs.map((r) => r.text).join(' '), words: [], utts: [] };
+    for (const r of runs) {
+      const off = at / RATE;
+      for (const w of r.words) run.words.push({ w: w.w, s: Number((w.s + off).toFixed(3)), e: Number((w.e + off).toFixed(3)) });
+      for (const u of r.utts) run.utts.push({ id: u.id, start: Number((u.start + off).toFixed(3)), end: Number((u.end + off).toFixed(3)) });
+      at += r.samples.length;
+    }
+    const meta = { kind: 'speech', reference: { raw: run.text }, words: run.words, source: { dataset: 'librispeech test-clean', utterances: run.utts } };
+    add({ id: 'val-clean', set: 'val', note: 'validation speech: two readers not used elsewhere, 4 min', ...meta }, run.samples);
+    const pinkBed = lavfi(`anoisesrc=c=pink:r=${RATE}:a=0.3:d=${Math.ceil(run.samples.length / RATE) + 1}:s=71`).subarray(0, run.samples.length);
+    add({ id: 'val-pink-5', set: 'val', note: 'validation speech + pink noise at SNR 5 dB', ...meta, noise: { type: 'pink noise', snrDb: 5 } }, mix(run.samples, pinkBed, 5).samples);
+    add({ id: 'val-music-5', set: 'val', note: 'validation speech + "Calmant" at SNR 5 dB', ...meta, noise: { type: 'music (Calmant)', snrDb: 5 } }, mix(run.samples, fit(music.val1, run.samples.length, seconds(5)), 5).samples);
+  }
 
   // ---- speech with long pauses: nothing may be written inside the gaps
   const pauseSpecs = [

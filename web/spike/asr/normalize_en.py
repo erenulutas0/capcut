@@ -10,6 +10,12 @@ import sys
 
 from whisper_normalizer.english import EnglishTextNormalizer
 
+import re
+
 normalizer = EnglishTextNormalizer()
 texts = json.load(sys.stdin.buffer)
-json.dump([normalizer(t) for t in texts], sys.stdout)
+# The normaliser deletes anything inside brackets (meant for "[music]" tags in
+# model output). FLEURS references use parentheses for ordinary spoken text,
+# so brackets become spaces first, on both sides.
+BRACKETS = re.compile(r"[()\[\]{}<>]")
+json.dump([normalizer(BRACKETS.sub(" ", t)) for t in texts], sys.stdout)

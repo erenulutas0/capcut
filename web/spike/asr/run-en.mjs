@@ -55,7 +55,11 @@ const vadProbs = args.includes('--vad-probs');
 // --keep-caches: leave Transformers.js as it is (decoder caches never released) to show what that costs.
 const keepCaches = args.includes('--keep-caches');
 // --guard=0.6,-1 → drop a window whose no-speech probability is above 0.6 while its mean log-probability is under -1.
-const guard = argValue('guard', '') ? { noSpeech: Number(argValue('guard', '').split(',')[0]), logprob: Number(argValue('guard', '').split(',')[1]) } : null;
+// --guard=lp:-0.75 → drop a window whose mean log-probability is under -0.75 (no extra model call).
+const guardArg = argValue('guard', '');
+const guard = !guardArg ? null : guardArg.startsWith('lp:') ? { noSpeech: null, logprob: Number(guardArg.slice(3)) } : { noSpeech: Number(guardArg.split(',')[0]), logprob: Number(guardArg.split(',')[1]) };
+// --per-span: every speech span is recognised on its own instead of being packed into 30 s windows.
+const perSpan = args.includes('--per-span');
 const vadParams = argValue('vad', '') ? JSON.parse(argValue('vad', '')) : null;
 const wordTimestamps = !args.includes('--no-word-ts');
 const tag = argValue('tag', '2026-10-03');
@@ -288,6 +292,7 @@ try {
           isolate,
           cpuBefore,
           keepCaches,
+          perSpan,
           guard,
           vadParams,
           probe,
@@ -341,6 +346,7 @@ try {
               returnProbs: vadProbs,
               guard,
               vadParams,
+              perSpan,
             };
             try {
               let r;

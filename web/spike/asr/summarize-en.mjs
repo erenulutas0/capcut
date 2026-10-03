@@ -194,6 +194,9 @@ for (const r of results) {
         noSpeechProb: w.noSpeechProb,
         avgLogprob: w.avgLogprob,
         compressionRatio: bytes.length ? bytes.length / deflateSync(bytes).length : null,
+        dropped: Boolean(w.dropped),
+        droppedText: w.droppedText ?? null,
+        droppedWords: w.dropped ? normalizeText(w.droppedText ?? '', clip.lang).split(' ').filter(Boolean).length : 0,
       };
     });
     if (clip.kind === 'negative') {
@@ -213,11 +216,6 @@ for (const r of results) {
 
       const hw = hypWords(row.chunks);
       // Words written inside a region that holds no speech.
-      if (clip.gaps) {
-        const inGap = hw.filter((h) => h.mid !== null && clip.gaps.some((g) => h.mid > g.start + 0.3 && h.mid < g.end - 0.3));
-        out.wordsInGaps = inGap.length;
-        out.wordsInGapsText = inGap.map((h) => h.w).join(' ');
-      }
       if (clip.words) {
         const refTokens = clip.words.map((x) => x.w ?? '\u0000unk');
         const ops = align(refTokens, hw.map((h) => h.w));
@@ -238,6 +236,14 @@ for (const r of results) {
           } else if (o.op === 'ins') {
             if (hw[o.hi].mid !== null) insAt.push(hw[o.hi].mid);
           } else if (clip.words[o.ri].w) refError[o.ri] = 1;
+        }
+        // Words written inside a region that holds no speech: words the reference does not have
+        // (insertions or substitutions) whose time falls in a gap. A real word that merely drifts
+        // over a gap's edge is a timing error, counted in the timing table, not an invention.
+        if (clip.gaps) {
+          const extra = ops.filter((o) => o.op === 'ins' || o.op === 'sub').map((o) => hw[o.hi]).filter((h) => h.mid !== null && clip.gaps.some((g) => h.mid > g.start && h.mid < g.end));
+          out.wordsInGaps = extra.length;
+          out.wordsInGapsText = extra.map((h) => h.w).join(' ');
         }
         rawTiming.set(out, { start: startErr, end: endErr });
         out.timing = { wordLevel: !hw.some((h) => h.segment), start: stats(startErr), end: stats(endErr), drift: thirds.map((t) => (t.length ? { n: t.length, medianSigned: median(t), medianAbs: median(t.map(Math.abs)) } : null)) };
@@ -358,42 +364,45 @@ p('|---|---|---|---|---|---|---|---|---|---|---|');
 for (const r of results.filter((x) => x.pre === 'silero')) {
   const long = group(r, (x) => x.set === 'long');
   const all = group(r, () => true);
-  p(`| ${label(r)} | ${dtypeOf(r)} | ${weightsOf(r)} | ${(r.load.cold.ms / 1000).toFixed(1)} s / ${(r.load.warm.ms / 1000).toFixed(1)} s | ${num(long?.rtf, 3)} | ${num(all?.rtf, 3)} | ${r.load.baseline.memory?.peakTotalMib ?? '—'} → ${r.memory?.peakTotalMib ?? '—'} MiB | ${r.load.baseline.gpu?.peakMib ?? '—'} → ${r.gpu?.peakMib ?? '—'} MiB | ${r.wordTimestamps ? 'yes' : 'no (segments)'} |`);
+  p(`| ${label(r)} | ${dtypeOf(r)} | ${weightsOf(r)} | ${(r.load.cold.ms / 1000).toFixed(1)} s / ${(r.load.warm.ms / 1000).toFixed(1)} s | ${num(long?.rtf, 3)} | ${num(all?.rtf, 3)} | ${r.load.baseline.memory?.peakTotalMib ?? '—'} → ${r.memory?.peakTotalMib ?? '—'} MiB | ${r.load.baseline.gpu?.peakMib ?? '—'} → ${r.gpu?.peakMib ?? '—'} MiB | ${r.load.type !== 'whisper' ? 'none (only the span it was given)' : r.wordTimestamps ? 'yes' : 'no (segments)'} |`);
 }
 p();
 
 p('#### T2. English word error rate (Whisper-normalised / strict September metric)');
 p();
-p('| Model | Device | Browser | Pre | short (FLEURS 6+1) | long-a | long-b | long-c | long-fleurs | long, all | mix-clean | music 20 dB | music 10 dB | music 5 dB | music 0 dB | pink 10 dB | pink 5 dB | pause |');
+p('| Model | Device | Browser | Pre | short (FLEURS 6+1) | long-a | long-b | long-c | long-fleurs | long, all | mix-clean | music 20 dB | music 10 dB | music 5 dB | music 0 dB | pink 10 dB | pink 5 dB | pause | val-clean | val-pink-5 | val-music-5 |');
 p('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
 const werCell = (g) => (g ? `${pct(g.normWer)} / ${pct(g.strictWer)}` : '—');
 for (const r of results) {
   if (!r.rows.some((x) => x.kind === 'speech' && x.lang === 'en')) continue;
   const one = (id) => werCell(group(r, (x) => x.id === id));
-  p(`| ${label(r)} | ${r.pre} | ${werCell(group(r, (x) => x.set === 'short'))} | ${one('long-a')} | ${one('long-b')} | ${one('long-c')} | ${one('long-fleurs')} | ${werCell(group(r, (x) => x.set === 'long'))} | ${one('mix-clean')} | ${one('mix-music-20')} | ${one('mix-music-10')} | ${one('mix-music-5')} | ${one('mix-music-0')} | ${one('mix-pink-10')} | ${one('mix-pink-5')} | ${werCell(group(r, (x) => x.set === 'pause'))} |`);
+  p(`| ${label(r)} | ${r.pre} | ${werCell(group(r, (x) => x.set === 'short'))} | ${one('long-a')} | ${one('long-b')} | ${one('long-c')} | ${one('long-fleurs')} | ${werCell(group(r, (x) => x.set === 'long'))} | ${one('mix-clean')} | ${one('mix-music-20')} | ${one('mix-music-10')} | ${one('mix-music-5')} | ${one('mix-music-0')} | ${one('mix-pink-10')} | ${one('mix-pink-5')} | ${werCell(group(r, (x) => x.set === 'pause'))} | ${one('val-clean')} | ${one('val-pink-5')} | ${one('val-music-5')} |`);
 }
 p();
 
-p('#### T3. Negatives: invented text (11 clips, the right transcript is empty)');
+p('#### T3. Negatives: invented text (the right transcript is empty; "neg" = 11 clips, "negh" = 6 held-out clips)');
 p();
 const GUARDS = {
   none: () => false,
   'nsp>0.6 & lp<-1': (w) => w.noSpeechProb !== null && w.noSpeechProb > 0.6 && w.avgLogprob !== null && w.avgLogprob < -1,
   'nsp>0.6': (w) => w.noSpeechProb !== null && w.noSpeechProb > 0.6,
   'lp<-1': (w) => w.avgLogprob !== null && w.avgLogprob < -1,
-  'nsp>0.6 | lp<-1': (w) => (w.noSpeechProb !== null && w.noSpeechProb > 0.6) || (w.avgLogprob !== null && w.avgLogprob < -1),
+  'nsp>0.6 or lp<-1': (w) => (w.noSpeechProb !== null && w.noSpeechProb > 0.6) || (w.avgLogprob !== null && w.avgLogprob < -1),
   'lp<-0.7': (w) => w.avgLogprob !== null && w.avgLogprob < -0.7,
 };
 const visibleWords = (w) => w.words > 0;
-p(`| Model | Device | Browser | Pre | Clips with invented text | ${Object.keys(GUARDS).slice(1).map((g) => `after guard ${g}`).join(' | ')} | Invented text |`);
-p(`|---|---|---|---|---|${Object.keys(GUARDS).slice(1).map(() => '---').join('|')}|---|`);
+p(`| Model | Device | Browser | Pre | Set | Clips with invented text | Punctuation only | ${Object.keys(GUARDS).slice(1).map((g) => `after guard ${g}`).join(' | ')} | Invented text |`);
+p(`|---|---|---|---|---|---|---|${Object.keys(GUARDS).slice(1).map(() => '---').join('|')}|---|`);
 for (const r of results) {
-  const neg = r.rows.filter((x) => x.kind === 'negative' && !x.error);
-  if (neg.length === 0) continue;
-  const invented = neg.filter((x) => x.invented);
-  const hasWindows = neg.every((x) => x.windows.length > 0 || !x.invented);
-  const cells = Object.entries(GUARDS).slice(1).map(([, rule]) => (hasWindows ? `${neg.filter((x) => x.windows.some((w) => visibleWords(w) && !rule(w))).length}/${neg.length}` : 'n/a'));
-  p(`| ${label(r)} | ${r.pre} | ${invented.length}/${neg.length} | ${cells.join(' | ')} | ${invented.map((x) => `${x.id}: "${x.inventedText.slice(0, 50)}"`).join('; ') || '—'} |`);
+  for (const set of ['neg', 'negh', 'negv']) {
+    const neg = r.rows.filter((x) => x.kind === 'negative' && x.set === set && !x.error);
+    if (neg.length === 0) continue;
+    const invented = neg.filter((x) => x.invented);
+    // Offline guards need the per-window figures; a run with the guard already applied, or without them, shows n/a.
+    const hasFigures = !r.guard && neg.every((x) => x.windows.every((w) => w.avgLogprob !== null && w.noSpeechProb !== null));
+    const cells = Object.entries(GUARDS).slice(1).map(([, rule]) => (hasFigures ? `${neg.filter((x) => x.windows.some((w) => visibleWords(w) && !rule(w))).length}/${neg.length}` : 'n/a'));
+    p(`| ${label(r)} | ${r.pre}${r.guard ? ' + guard in engine' : ''} | ${set} | ${invented.length}/${neg.length} | ${neg.filter((x) => x.punctuationOnly).length} | ${cells.join(' | ')} | ${invented.map((x) => `${x.id}: "${x.inventedText.slice(0, 50)}"`).join('; ') || '—'} |`);
+  }
 }
 p();
 
@@ -458,6 +467,31 @@ for (const r of results) {
 }
 p();
 
+// The word times of these exports sit a near-constant amount late. A fixed correction is fair only if it
+// is fixed where it is not judged: the offset is the median signed error on long-a, the figures are for
+// every other clip with reference times.
+p(`#### T7b. The same with one constant taken off (calibrated on long-a only, judged on the other clips; threshold ±${TIMING_THRESHOLD_S * 1000} ms)`);
+p();
+p('| Model | Device | Browser | Pre | Offset start / end (median signed error on long-a) | Judged on | Start: n / median / p95 / mean signed / within | End: n / median / p95 / mean signed / within |');
+p('|---|---|---|---|---|---|---|---|');
+summary.calibration = [];
+for (const r of results) {
+  const cal = r.rows.find((x) => !x.error && x.id === 'long-a' && rawTiming.get(x)?.start.length);
+  if (!cal) continue;
+  const off = { start: median(rawTiming.get(cal).start), end: median(rawTiming.get(cal).end) };
+  const corrected = (rows, which) => stats(rows.flatMap((x) => (rawTiming.get(x)?.[which] ?? []).map((v) => v - off[which])));
+  for (const [name, pred] of [['long-b, long-c', (x) => x.id === 'long-b' || x.id === 'long-c'], ['mix-clean', (x) => x.id === 'mix-clean'], ['music 10 dB', (x) => x.id === 'mix-music-10'], ['music 0 dB', (x) => x.id === 'mix-music-0'], ['pause', (x) => x.set === 'pause']]) {
+    const rows = r.rows.filter((x) => !x.error && x.timing && pred(x));
+    if (rows.length === 0) continue;
+    const cs = corrected(rows, 'start');
+    const ce = corrected(rows, 'end');
+    summary.calibration.push({ key: key(r), offset: off, judgedOn: name, start: cs, end: ce });
+    p(`| ${label(r)} | ${r.pre} | ${Math.round(off.start * 1000)} ms / ${Math.round(off.end * 1000)} ms | ${name} | ${timingCell(cs)} | ${timingCell(ce)} |`);
+  }
+}
+writeFileSync(join(outDir, `asr-${tag}-summary.json`), JSON.stringify(summary, null, 1));
+p();
+
 p('#### T8. Drift over long files (median signed start error per third of the file)');
 p();
 p('| Model | Device | Pre | Clip | First third | Middle third | Last third |');
@@ -495,6 +529,21 @@ for (const r of results) {
   if (rows.length === 0) continue;
   const t = (k) => sum(rows.map((x) => x.punct[k]));
   p(`| ${r.model} | ${r.device}${r.threads ? ` t${r.threads}` : ''} ${r.browser} | ${r.pre} | ${t('refSentenceEnds')} → ${t('hypSentenceEnds')} | ${t('refCommas')} → ${t('hypCommas')} | ${t('capitalKept')}/${t('refCapital')} (${pct(t('capitalKept') / t('refCapital'), 0)}) | ${t('sameCase')}/${t('hits')} (${pct(t('sameCase') / t('hits'), 0)}) | ${t('refNumberTokens')} → ${t('hypNumberTokens')} |`);
+}
+p();
+
+p('#### T13. Guard applied in the engine: what it dropped');
+p();
+p('| Model | Device | Browser | Pre | Guard | Negatives: spans dropped (clips) | Speech clips: spans kept / dropped | Words in the dropped speech spans | Which |');
+p('|---|---|---|---|---|---|---|---|---|');
+for (const r of results) {
+  if (!r.guard) continue;
+  const neg = r.rows.filter((x) => !x.error && x.kind === 'negative');
+  const speech = r.rows.filter((x) => !x.error && x.kind === 'speech');
+  const negDropped = neg.flatMap((x) => x.windows.filter((w) => w.dropped).map(() => x.id));
+  const speechWindows = speech.flatMap((x) => x.windows.map((w) => ({ id: x.id, ...w })));
+  const dropped = speechWindows.filter((w) => w.dropped);
+  p(`| ${label(r)} | ${r.pre}${r.perSpan ? ', per span' : ''} | ${r.guard.noSpeech === null ? `log-prob. < ${r.guard.logprob}` : `no-speech > ${r.guard.noSpeech} and log-prob. < ${r.guard.logprob}`} | ${negDropped.length} (${new Set(negDropped).size}) | ${speechWindows.length - dropped.length} / ${dropped.length} | ${sum(dropped.map((w) => w.droppedWords))} | ${dropped.map((w) => `${w.id} ${num(w.start, 1)}–${num(w.end, 1)} s "${(w.droppedText ?? '').trim().slice(0, 40)}"`).join('; ') || '—'} |`);
 }
 p();
 

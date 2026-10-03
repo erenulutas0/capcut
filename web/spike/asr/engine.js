@@ -256,8 +256,13 @@ async function recognise(samples, { language, wordTimestamps, probe, guard = nul
   const isWhisper = current.type === 'whisper' || current.type === 'lite-whisper';
   const started = performance.now();
   if (!isWhisper) {
-    const out = await transcriber(samples);
-    return { text: out.text ?? '', droppedText: null, chunks: [], ms: performance.now() - started, probeMs: 0, noSpeechProb: null, avgLogprob: null, tokens: null };
+    // Moonshine: no timestamps and no no-speech token, but the same mean log-probability can be kept.
+    const recorder = new Recorder(eosOf(transcriber.model.generation_config));
+    const out = await transcriber(samples, { logits_processor: listOf(recorder) });
+    await freeDecoderCaches();
+    const stats = recorder.finish();
+    const dropped = Boolean(guard) && stats.avgLogprob !== null && stats.avgLogprob < guard.logprob;
+    return { text: dropped ? '' : (out.text ?? ''), droppedText: dropped ? (out.text ?? '') : null, chunks: [], ms: performance.now() - started, probeMs: 0, noSpeechProb: null, avgLogprob: stats.avgLogprob, tokens: stats.tokens };
   }
   const multilingual = transcriber.model.generation_config.is_multilingual !== false;
   const recorder = new Recorder(eosOf(transcriber.model.generation_config));
@@ -278,11 +283,16 @@ async function recognise(samples, { language, wordTimestamps, probe, guard = nul
     // The shipping form of Whisper's rule: a window is dropped when the decoder was unsure of its own
     // text (mean log-probability under the threshold) AND the model says "no speech". The no-speech
     // step is only run for the unsure windows, so it costs nothing on ordinary speech; its time counts.
+    // With `noSpeech: null` the log-probability decides alone (no extra model call at all).
     if (stats.avgLogprob !== null && stats.avgLogprob < guard.logprob) {
-      const guardStart = performance.now();
-      nsp = await noSpeechProb(samples);
-      guardMs = performance.now() - guardStart;
-      dropped = nsp !== null && nsp > guard.noSpeech;
+      if (guard.noSpeech === null || guard.noSpeech === undefined) {
+        dropped = true;
+      } else {
+        const guardStart = performance.now();
+        nsp = await noSpeechProb(samples);
+        guardMs = performance.now() - guardStart;
+        dropped = nsp !== null && nsp > guard.noSpeech;
+      }
     }
   } else if (probe) {
     const probeStart = performance.now();
@@ -309,7 +319,7 @@ async function recognise(samples, { language, wordTimestamps, probe, guard = nul
  *  - 'silero' Silero VAD here → speech windows.
  *  - 'given'  `spans` from the driver (our own detector) → speech windows.
  */
-export async function transcribe({ url, language, wordTimestamps = true, pre = 'none', spans = null, vadParams = null, probe = true, maxWindowS = 30, returnProbs = false, guard = null }) {
+export async function transcribe({ url, language, wordTimestamps = true, pre = 'none', spans = null, vadParams = null, probe = true, maxWindowS = 30, returnProbs = false, guard = null, perSpan = false }) {
   if (!transcriber) throw new Error('no model loaded');
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${url} → ${res.status}`);
@@ -357,7 +367,7 @@ export async function transcribe({ url, language, wordTimestamps = true, pre = '
       }
       if (!speech) throw new Error(`pre=${pre} needs spans`);
       result.spans = speech.map((s) => ({ start: round3(s.start), end: round3(s.end) }));
-      windows = packWindows(speech, { maxS: maxWindowS, quietestAt });
+      windows = packWindows(speech, { maxS: maxWindowS, quietestAt, perSpan });
     }
     for (const window of windows) {
       const { samples, offsets, durationS } = windowAudio(audio, SAMPLE_RATE, window);
