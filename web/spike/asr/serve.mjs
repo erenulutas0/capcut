@@ -34,7 +34,12 @@ function pinnedRevisions() {
   return new Map(Object.values(json.models).map((m) => [m.id, m.revision]));
 }
 
-export function startServer(port = 3103) {
+/**
+ * `isolate: false` leaves out COOP/COEP: the page is then NOT crossOriginIsolated,
+ * has no SharedArrayBuffer and WASM runs on one thread — what a host that cannot
+ * send headers (GitHub Pages) gives the app today.
+ */
+export function startServer(port = 3103, { isolate = true } = {}) {
   const pinned = pinnedRevisions();
   const server = createServer((req, res) => {
     const url = new URL(req.url, 'http://x');
@@ -58,9 +63,9 @@ export function startServer(port = 3103) {
     res.writeHead(200, {
       'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream',
       'Content-Length': size,
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Embedder-Policy': 'require-corp',
-      'Cross-Origin-Resource-Policy': 'same-origin',
+      ...(isolate
+        ? { 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'require-corp', 'Cross-Origin-Resource-Policy': 'same-origin' }
+        : {}),
       'Cache-Control': 'no-store',
     });
     if (req.method === 'HEAD') {

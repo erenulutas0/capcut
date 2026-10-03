@@ -391,6 +391,14 @@ async function main() {
   );
   add({ id: 'neg-11', set: 'neg', kind: 'negative', label: 'room tone at -50 dBFS, 60 s (longer than one window)' }, pink(60, 13, -50));
 
+  // ---- held-out negatives: never looked at while choosing the filter settings and guards
+  add({ id: 'negh-01', set: 'negh', kind: 'negative', label: 'held out: piano, a later passage, 30 s' }, music.piano.subarray(seconds(75), seconds(105)).slice());
+  add({ id: 'negh-02', set: 'negh', kind: 'negative', label: 'held out: band, a later passage, 25 s' }, music.jazz.subarray(seconds(40), seconds(65)).slice());
+  add({ id: 'negh-03', set: 'negh', kind: 'negative', label: 'held out: vlog bed, a later passage, 30 s' }, music.vlog.subarray(seconds(45), seconds(75)).slice());
+  add({ id: 'negh-04', set: 'negh', kind: 'negative', label: 'held out: vlog bed at -30 dBFS (quiet background), 30 s' }, atLevel(music.vlog.subarray(seconds(20), seconds(50)).slice(), -30));
+  add({ id: 'negh-05', set: 'negh', kind: 'negative', label: 'held out: piano over room tone, 40 s' }, concat([atLevel(music.piano.subarray(seconds(120), seconds(140)).slice(), -26), pink(20, 51, -50)]));
+  add({ id: 'negh-06', set: 'negh', kind: 'negative', label: 'held out: brown noise at -28 dBFS (wind / traffic), 30 s' }, atLevel(lavfi(`anoisesrc=c=brown:r=${RATE}:a=0.3:d=30:s=52`), -28));
+
   // ---- speech with long pauses: nothing may be written inside the gaps
   const pauseSpecs = [
     {
@@ -483,9 +491,14 @@ async function main() {
   }
 
   // FLEURS: distinct sentences, one recording each, joined with 0.7 s of quiet room tone.
+  // FLEURS recordings differ in level by 50 dB (peaks from -0.2 to -54 dBFS in this
+  // selection). `long-fleurs` brings every recording to a -3 dBFS peak, as one talker's
+  // file would be; `long-fleurs-raw` leaves the levels alone (set `stress`): it shows
+  // what a 40 dB drop inside one file does to the speech filter.
   {
     const seen = new Set();
     const parts = [];
+    const rawParts = [];
     const texts = [];
     const utts = [];
     let at = 0;
@@ -501,14 +514,16 @@ async function main() {
       seen.add(row.id);
       utts.push({ id: name, sentenceId: row.id, start: Number((at / RATE).toFixed(3)), end: Number(((at + samples.length) / RATE).toFixed(3)), text: row.raw });
       texts.push(row.raw);
-      parts.push(samples, pink(0.7, 40 + utts.length, -60));
+      utts[utts.length - 1].peakDbfs = Number(peakDb(samples).toFixed(1));
+      const tone = pink(0.7, 40 + utts.length, -60);
+      parts.push(gain(samples, -3 - peakDb(samples)), tone);
+      rawParts.push(samples, tone);
       at += samples.length + seconds(0.7);
       if (at / RATE >= 600) break;
     }
-    add(
-      { id: 'long-fleurs', set: 'long', kind: 'speech', note: `${utts.length} FLEURS sentences, a different speaker each, punctuated and cased text with numbers`, reference: { raw: texts.join(' ') }, words: null, source: { dataset: 'google/fleurs en_us test', utterances: utts } },
-      concat(parts),
-    );
+    const meta = { kind: 'speech', reference: { raw: texts.join(' ') }, words: null, source: { dataset: 'google/fleurs en_us test', utterances: utts } };
+    add({ id: 'long-fleurs', set: 'long', note: `${utts.length} FLEURS sentences, a different speaker each, each recording peak-normalised to -3 dBFS; punctuated and cased text with numbers`, ...meta }, concat(parts));
+    add({ id: 'long-fleurs-raw', set: 'stress', note: `the same ${utts.length} FLEURS recordings at their own levels (peaks ${Math.min(...utts.map((u) => u.peakDbfs))} to ${Math.max(...utts.map((u) => u.peakDbfs))} dBFS)`, ...meta }, concat(rawParts));
   }
 
   const manifest = { createdAt: new Date().toISOString(), sampleRate: RATE, downloads, ownDetector: { params: detector.DEFAULT_SILENCE_PARAMS, source: 'web/src/domain/silence.ts (transpiled as-is)' }, clips };

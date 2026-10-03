@@ -36,6 +36,39 @@ let transcriber = null;
 let current = null;
 let vad = null;
 
+/**
+ * Transformers.js 4.3.0 keeps the decoder's key/value cache alive whenever
+ * `return_dict_in_generate` is set — which Whisper's generate() sets for word
+ * timestamps — and nothing downstream ever disposes it. On WebGPU those are
+ * GPU buffers: every generate() call leaks one decoder cache. The base
+ * generate() is wrapped once so the caches it hands back are remembered and
+ * released after each window (`keepCaches` leaves the library as it is, to
+ * measure what the leak costs).
+ */
+const leakedCaches = [];
+let releaseCaches = true;
+function trackDecoderCaches(model) {
+  let proto = Object.getPrototypeOf(model);
+  let base = null;
+  while (proto) {
+    if (Object.prototype.hasOwnProperty.call(proto, 'generate')) base = proto;
+    proto = Object.getPrototypeOf(proto);
+  }
+  if (!base || base.clipTracksCaches) return;
+  const original = base.generate;
+  base.generate = async function generate(...args) {
+    const out = await original.apply(this, args);
+    if (out && typeof out === 'object' && out.past_key_values?.dispose) leakedCaches.push(out.past_key_values);
+    return out;
+  };
+  base.clipTracksCaches = true;
+}
+async function freeDecoderCaches() {
+  const caches = leakedCaches.splice(0);
+  if (!releaseCaches) return;
+  for (const cache of caches) await cache.dispose().catch(() => undefined);
+}
+
 /** Parses a RIFF WAV (16-bit PCM or 32-bit float, mono, 16 kHz) to Float32. */
 function decodeWav(buffer) {
   const view = new DataView(buffer);
@@ -74,8 +107,9 @@ function decodeWav(buffer) {
   throw new Error('WAV without data chunk');
 }
 
-export async function load({ model, revision, device, dtype, threads = null }) {
+export async function load({ model, revision, device, dtype, threads = null, keepCaches = false }) {
   await dispose();
+  releaseCaches = !keepCaches;
   if (threads) env.backends.onnx.wasm.numThreads = threads;
   const files = new Map();
   const started = performance.now();
@@ -94,6 +128,7 @@ export async function load({ model, revision, device, dtype, threads = null }) {
   });
   const loadMs = performance.now() - started;
   const type = transcriber.model.config.model_type;
+  trackDecoderCaches(transcriber.model);
   current = { model, revision, device, dtype, type, threads: env.backends.onnx.wasm.numThreads ?? null };
   return { loadMs, files: [...files.values()], type };
 }
@@ -203,6 +238,7 @@ async function noSpeechProb(samples) {
     return_timestamps: false,
     logits_processor: listOf(recorder),
   });
+  await freeDecoderCaches();
   const data = recorder.firstStep;
   if (!data) return null;
   let max = -Infinity;
@@ -216,12 +252,12 @@ async function noSpeechProb(samples) {
 const round3 = (v) => (v === null || v === undefined ? null : Math.round(v * 1000) / 1000);
 
 /** One window (≤ 30 s of samples) through the recogniser. Times are relative to the samples. */
-async function recognise(samples, { language, wordTimestamps, probe }) {
+async function recognise(samples, { language, wordTimestamps, probe, guard = null }) {
   const isWhisper = current.type === 'whisper' || current.type === 'lite-whisper';
   const started = performance.now();
   if (!isWhisper) {
     const out = await transcriber(samples);
-    return { text: out.text ?? '', chunks: [], ms: performance.now() - started, probeMs: 0, noSpeechProb: null, avgLogprob: null, tokens: null };
+    return { text: out.text ?? '', droppedText: null, chunks: [], ms: performance.now() - started, probeMs: 0, noSpeechProb: null, avgLogprob: null, tokens: null };
   }
   const multilingual = transcriber.model.generation_config.is_multilingual !== false;
   const recorder = new Recorder(eosOf(transcriber.model.generation_config));
@@ -231,19 +267,33 @@ async function recognise(samples, { language, wordTimestamps, probe }) {
     logits_processor: listOf(recorder),
   };
   const out = await transcriber(samples, options);
+  await freeDecoderCaches();
   const ms = performance.now() - started;
   const stats = recorder.finish();
   let probeMs = 0;
   let nsp = null;
-  if (probe) {
+  let dropped = false;
+  let guardMs = 0;
+  if (guard) {
+    // The shipping form of Whisper's rule: a window is dropped when the decoder was unsure of its own
+    // text (mean log-probability under the threshold) AND the model says "no speech". The no-speech
+    // step is only run for the unsure windows, so it costs nothing on ordinary speech; its time counts.
+    if (stats.avgLogprob !== null && stats.avgLogprob < guard.logprob) {
+      const guardStart = performance.now();
+      nsp = await noSpeechProb(samples);
+      guardMs = performance.now() - guardStart;
+      dropped = nsp !== null && nsp > guard.noSpeech;
+    }
+  } else if (probe) {
     const probeStart = performance.now();
     nsp = await noSpeechProb(samples);
     probeMs = performance.now() - probeStart;
   }
   return {
-    text: out.text ?? '',
-    chunks: (out.chunks ?? []).map((c) => ({ text: c.text, start: c.timestamp?.[0] ?? null, end: c.timestamp?.[1] ?? null })),
-    ms,
+    text: dropped ? '' : (out.text ?? ''),
+    droppedText: dropped ? (out.text ?? '') : null,
+    chunks: dropped ? [] : (out.chunks ?? []).map((c) => ({ text: c.text, start: c.timestamp?.[0] ?? null, end: c.timestamp?.[1] ?? null })),
+    ms: ms + guardMs,
     probeMs,
     noSpeechProb: nsp,
     avgLogprob: stats.avgLogprob,
@@ -259,7 +309,7 @@ async function recognise(samples, { language, wordTimestamps, probe }) {
  *  - 'silero' Silero VAD here → speech windows.
  *  - 'given'  `spans` from the driver (our own detector) → speech windows.
  */
-export async function transcribe({ url, language, wordTimestamps = true, pre = 'none', spans = null, vadParams = null, probe = true, maxWindowS = 30 }) {
+export async function transcribe({ url, language, wordTimestamps = true, pre = 'none', spans = null, vadParams = null, probe = true, maxWindowS = 30, returnProbs = false, guard = null }) {
   if (!transcriber) throw new Error('no model loaded');
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${url} → ${res.status}`);
@@ -279,6 +329,7 @@ export async function transcribe({ url, language, wordTimestamps = true, pre = '
       chunk_length_s: 30,
       stride_length_s: 5,
     });
+    await freeDecoderCaches();
     texts.push(out.text ?? '');
     for (const c of out.chunks ?? []) chunks.push({ text: c.text, start: c.timestamp?.[0] ?? null, end: c.timestamp?.[1] ?? null });
     result.longForm = 'pipeline chunk_length_s=30 stride_length_s=5';
@@ -297,6 +348,7 @@ export async function transcribe({ url, language, wordTimestamps = true, pre = '
         const frameS = VAD_HOP / SAMPLE_RATE;
         speech = spansFromProbs(probs, frameS, audioS, { ...DEFAULT_VAD, ...(vadParams ?? {}) });
         result.vadMs = performance.now() - vadStart;
+        if (returnProbs) result.vadProbs = Array.from(probs, (v) => Math.round(v * 100));
         quietestAt = (from, to) => {
           let best = Math.floor(from / frameS);
           for (let i = best; i <= Math.min(probs.length - 1, Math.floor(to / frameS)); i += 1) if (probs[i] < probs[best]) best = i;
@@ -310,7 +362,7 @@ export async function transcribe({ url, language, wordTimestamps = true, pre = '
     for (const window of windows) {
       const { samples, offsets, durationS } = windowAudio(audio, SAMPLE_RATE, window);
       if (samples.length < SAMPLE_RATE * 0.1) continue;
-      const r = await recognise(samples, { language, wordTimestamps, probe });
+      const r = await recognise(samples, { language, wordTimestamps, probe, guard });
       const first = window.pieces[0];
       const last = window.pieces[window.pieces.length - 1];
       const mapped = r.chunks.map((c) => ({
@@ -327,6 +379,7 @@ export async function transcribe({ url, language, wordTimestamps = true, pre = '
         pieces: window.pieces.map((p) => ({ start: round3(p.start), end: round3(p.end) })),
         speechS: round3(durationS),
         text: r.text,
+        ...(r.droppedText !== null ? { dropped: true, droppedText: r.droppedText } : {}),
         firstChunk: chunks.length - mapped.length,
         chunkCount: mapped.length,
         ms: Math.round(r.ms),

@@ -8,6 +8,7 @@
  *
  *   node run-en.mjs --models=small-fp16 --devices=webgpu --pre=silero,none --sets=neg,pause
  *   node run-en.mjs --models=base --devices=wasm --threads=4 --sets=long --clips=long-a
+ *   node run-en.mjs --models=base --devices=wasm --no-isolation --suffix=-noiso   (no COOP/COEP: one WASM thread, as on GitHub Pages)
  *
  * --pre: none | silero | own | ownabs   (see engine.js and prepare-english.mjs)
  * --sets: neg, pause, mix, long (October) and short, tr (September's clips)
@@ -18,6 +19,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { cpus } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { chromium, firefox } from '@playwright/test';
 
@@ -49,6 +51,12 @@ const only = list('clips', '');
 const threads = Number(argValue('threads', '0')) || null;
 const headless = args.includes('--headless');
 const probe = !args.includes('--no-probe');
+const vadProbs = args.includes('--vad-probs');
+// --keep-caches: leave Transformers.js as it is (decoder caches never released) to show what that costs.
+const keepCaches = args.includes('--keep-caches');
+// --guard=0.6,-1 → drop a window whose no-speech probability is above 0.6 while its mean log-probability is under -1.
+const guard = argValue('guard', '') ? { noSpeech: Number(argValue('guard', '').split(',')[0]), logprob: Number(argValue('guard', '').split(',')[1]) } : null;
+const vadParams = argValue('vad', '') ? JSON.parse(argValue('vad', '')) : null;
 const wordTimestamps = !args.includes('--no-word-ts');
 const tag = argValue('tag', '2026-10-03');
 const suffix = argValue('suffix', '');
@@ -136,6 +144,28 @@ function startGpuSampler() {
   return { samples, stop: () => child.kill() };
 }
 
+/**
+ * Whole-machine CPU busy share, every 2 s. Other agents share this computer;
+ * a WebGPU run that shows the machine busy far beyond its own one or two
+ * cores was not measured alone, and the report says so.
+ */
+function startCpuSampler() {
+  const samples = [];
+  const snapshot = () => cpus().reduce((acc, c) => ({ idle: acc.idle + c.times.idle, total: acc.total + c.times.user + c.times.nice + c.times.sys + c.times.irq + c.times.idle }), { idle: 0, total: 0 });
+  let last = snapshot();
+  const timer = setInterval(() => {
+    const now = snapshot();
+    const total = now.total - last.total;
+    if (total > 0) samples.push({ at: Date.now(), busy: 1 - (now.idle - last.idle) / total });
+    last = now;
+  }, 2000);
+  return { samples, stop: () => clearInterval(timer) };
+}
+const cpuBetween = (samples, from, to) => {
+  const w = samples.filter((s) => s.at >= from && s.at <= to);
+  return w.length ? { samples: w.length, meanBusy: Number((w.reduce((a, s) => a + s.busy, 0) / w.length).toFixed(3)), maxBusy: Number(Math.max(...w.map((s) => s.busy)).toFixed(3)) } : null;
+};
+
 function peakBetween(samples, from, to) {
   const inWindow = samples.filter((s) => s.at >= from && s.at <= to);
   if (inWindow.length === 0) return null;
@@ -187,7 +217,14 @@ process.on('SIGINT', () => {
   process.exit(130);
 });
 
-const server = await startServer(PORT);
+// How busy the machine is before this run starts anything: other agents share it and do not all take the lock.
+const idleProbe = startCpuSampler();
+await new Promise((r) => setTimeout(r, 6500));
+idleProbe.stop();
+const cpuBefore = cpuBetween(idleProbe.samples, 0, Date.now());
+console.log(`machine CPU busy before the run: mean ${cpuBefore?.meanBusy}, max ${cpuBefore?.maxBusy}`);
+const isolate = !args.includes('--no-isolation');
+const server = await startServer(PORT, { isolate });
 const audioTotal = clips.reduce((s, c) => s + c.durationS, 0);
 console.log(`server on :${PORT}; ${clips.length} clips (${(audioTotal / 60).toFixed(1)} min); browsers=${browsers} devices=${devices} models=${modelKeys} pre=${pres} threads=${threads ?? 'default'}`);
 
@@ -204,6 +241,7 @@ try {
     console.log(`\n${browserName} ${version} (pid ${pid})`);
     const sampling = startSampler(pid);
     const gpuSampling = startGpuSampler();
+    const cpuSampling = startCpuSampler();
 
     for (const device of devices) {
       for (const key of modelKeys) {
@@ -233,7 +271,7 @@ try {
           await context.close();
           continue;
         }
-        const loadArgs = { model: model.id, revision: model.revision, device, dtype, threads };
+        const loadArgs = { model: model.id, revision: model.revision, device, dtype, threads, keepCaches };
         const base = {
           tag,
           browser: browserName,
@@ -246,6 +284,12 @@ try {
           files: onnxFilesFor(dtype),
           size: modelBytes(key, device),
           threads,
+          suffix,
+          isolate,
+          cpuBefore,
+          keepCaches,
+          guard,
+          vadParams,
           probe,
           wordTimestamps,
           env,
@@ -257,7 +301,8 @@ try {
             await window.asr.clearCache();
             window.asr.restart();
           });
-          await page.waitForTimeout(2000);
+          // Idle until the OS sampler has seen this browser with no model in it (it can take a few seconds to start).
+          for (let waited = 0; waited < 20_000 && sampling.samples.filter((x) => x.at >= t0).length < 3; waited += 500) await page.waitForTimeout(500);
           const baseline = { memory: peakBetween(sampling.samples, t0, Date.now()), gpu: gpuBetween(gpuSampling.samples, t0, Date.now()) };
           const coldStart = Date.now();
           const cold = await evalWithTimeout(page, (a) => window.asr.load(a), loadArgs, timeoutMs);
@@ -293,6 +338,9 @@ try {
               pre: pre === 'own' || pre === 'ownabs' ? 'given' : pre,
               spans: ownSpans,
               probe,
+              returnProbs: vadProbs,
+              guard,
+              vadParams,
             };
             try {
               let r;
@@ -306,7 +354,7 @@ try {
                 wordTs = false;
                 r = await evalWithTimeout(page, (a) => window.asr.transcribe(a), { ...clipArgs, wordTimestamps: false }, timeoutMs);
               }
-              const row = { id: clip.id, set: clip.set, lang: clip.lang, kind: clip.kind, audioS: r.audioS, ms: Math.round(r.ms), rtf: Number(r.rtf.toFixed(4)), vadMs: Math.round(r.vadMs), probeMs: Math.round(r.probeMs), hyp: r.text, chunks: r.chunks, windows: r.windows, spans: r.spans, longForm: r.longForm ?? null };
+              const row = { id: clip.id, set: clip.set, lang: clip.lang, kind: clip.kind, audioS: r.audioS, ms: Math.round(r.ms), rtf: Number(r.rtf.toFixed(4)), vadMs: Math.round(r.vadMs), probeMs: Math.round(r.probeMs), hyp: r.text, chunks: r.chunks, windows: r.windows, spans: r.spans, longForm: r.longForm ?? null, ...(r.vadProbs ? { vadProbs: r.vadProbs } : {}) };
               result.clips.push(row);
               let shown;
               if (clip.kind === 'negative') shown = r.text.trim() ? `INVENTED "${r.text.slice(0, 60)}"` : 'empty';
@@ -327,6 +375,7 @@ try {
           }
           result.memory = peakBetween(sampling.samples, runStart, Date.now());
           result.gpu = gpuBetween(gpuSampling.samples, runStart, Date.now());
+          result.cpu = cpuBetween(cpuSampling.samples, runStart, Date.now());
           result.pageErrors = pageErrors.splice(0, pageErrors.length).slice(0, 50);
           result.finishedAt = new Date().toISOString();
           result.complete = true;
@@ -334,7 +383,7 @@ try {
           const done = result.clips.filter((c) => !c.error);
           const audio = done.reduce((s, c) => s + c.audioS, 0);
           const ms = done.reduce((s, c) => s + c.ms, 0);
-          console.log(`    ${key}/${device}/${pre}: ${done.length} clips, RTF ${(ms / 1000 / audio).toFixed(3)}, peak ${result.memory?.peakTotalMib ?? '?'} MiB (baseline ${load.baseline.memory?.peakTotalMib ?? '?'}), GPU ${result.gpu?.peakMib ?? '?'} MiB (baseline ${load.baseline.gpu?.peakMib ?? '?'})`);
+          console.log(`    ${key}/${device}/${pre}: ${done.length} clips, RTF ${(ms / 1000 / audio).toFixed(3)}, peak ${result.memory?.peakTotalMib ?? '?'} MiB (baseline ${load.baseline.memory?.peakTotalMib ?? '?'}), GPU ${result.gpu?.peakMib ?? '?'} MiB (baseline ${load.baseline.gpu?.peakMib ?? '?'}), machine CPU busy mean ${result.cpu?.meanBusy ?? '?'}`);
         }
         await page.evaluate(() => window.asr.dispose()).catch(() => undefined);
         await context.close();
@@ -342,6 +391,7 @@ try {
     }
     sampling.stop();
     gpuSampling.stop();
+    cpuSampling.stop();
     await browser.close();
     await browserServer.close();
   }
