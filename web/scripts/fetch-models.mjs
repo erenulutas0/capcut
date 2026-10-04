@@ -18,9 +18,9 @@
  *     smoke test).
  *
  *   node scripts/fetch-models.mjs --dest=public/models            # dev / e2e (default: base)
- *   node scripts/fetch-models.mjs --dest=out/capcut-models …      # see ci.yml for the Pages build
  *   node scripts/fetch-models.mjs --models=base,turbo --dest=out/models
  *   node scripts/fetch-models.mjs --check --dest=out/models       # verify only, download nothing
+ *   --copy: plain copies instead of hard links (required for the Pages artifact)
  *
  * Nothing here runs in the browser; the browser side of the same check is
  * `src/adapters/transcript/modelStore.ts`.
@@ -45,6 +45,9 @@ const dest = resolve(webDir, arg('dest', 'public/models'));
 const cacheDir = resolve(webDir, arg('cache', '.models-cache'));
 const mirror = arg('from', null);
 const checkOnly = flag('check');
+// --copy: real copies, never hard links. The Pages artifact must contain plain files only
+// (actions/upload-pages-artifact: "not contain any symbolic or hard links").
+const copyOnly = flag('copy');
 const models = arg('models', 'base')
   .split(',')
   .map((name) => name.trim())
@@ -95,9 +98,13 @@ async function download(url, target) {
   renameSync(partial, target);
 }
 
-function place(from, to) {
+function place(from, to, link = !copyOnly) {
   mkdirSync(dirname(to), { recursive: true });
   if (existsSync(to)) rmSync(to);
+  if (!link) {
+    copyFileSync(from, to);
+    return;
+  }
   try {
     // Same volume: a hard link costs no space (never a junction or a symlink).
     linkSync(from, to);

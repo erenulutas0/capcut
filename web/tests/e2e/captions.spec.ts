@@ -324,7 +324,7 @@ test.describe('captions', () => {
     await expect(page.getByTestId('caption-size-large')).toBeChecked();
   });
 
-  test('an older v1 backup opens with no captions and is saved as v2', async ({ page }) => {
+  test('an older v1 backup opens with no captions and is saved as v3', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto('/editor');
@@ -378,7 +378,7 @@ test.describe('captions', () => {
         },
         { timeout: 15_000 },
       )
-      .toBe('2:0');
+      .toBe('3:0');
     expect(errors).toEqual([]);
   });
 
@@ -401,7 +401,7 @@ test.describe('captions', () => {
 test.describe('captions on a phone', () => {
   test.use({ storageState: { cookies: [], origins: [] }, viewport: { width: 390, height: 844 } });
 
-  test('the caption sheet works at 390 px, without horizontal scroll, and the backup carries v2 captions', async ({
+  test('the caption sheet works at 390 px, without horizontal scroll, and the backup carries v3 captions', async ({
     page,
   }) => {
     const errors = await openWithSample(page);
@@ -446,7 +446,7 @@ test.describe('captions on a phone', () => {
     for await (const chunk of stream) chunks.push(chunk as Buffer);
     const record = JSON.parse(Buffer.concat(chunks).toString('utf8'));
 
-    expect(record.edl.schemaVersion).toBe(2);
+    expect(record.edl.schemaVersion).toBe(3);
     expect(record.edl.captionTracks).toHaveLength(1);
     expect(record.edl.captionTracks[0].timeBase).toBe('source');
     expect(record.edl.captionTracks[0].style).toEqual({

@@ -22,6 +22,44 @@ yazı tipi veya stil yüklenmez (CSP `default-src 'self'`, e2e "nothing leaves t
 
 Arayüz yazı tipi yok: arayüz sistem yazı tiplerini kullanır (`--font-ui`, `--font-time`, `web/src/app/globals.css`).
 
+### 1.1 "Yazıya dök" ile gelenler (2026-10-04, ADR-036)
+
+Yalnızca transkript worker'ında, yalnızca bir yazıya dökme başladığında yüklenir (ayrı bir
+parça; açılış ekranı ve diğer işler bunu indirmez — ölçüm ADR-036 "Paket boyutu").
+
+| Paket | Sürüm (tam kilitli) | Lisans | Not |
+|---|---|---|---|
+| `@huggingface/transformers` | 4.3.0 | Apache-2.0 | Whisper ön/son işleme, kelime zamanı. Değiştirilmeden; bir kütüphane sızıntısı çağıran tarafta gideriliyor (`engine.ts`, `trackDecoderCaches`) |
+| `onnxruntime-web` (transformers bağımlılığı) | 1.31.0-dev.20260914-8d85527a0 | MIT | JS yapıştırıcısı pakete girer; WebAssembly dosyası (aşağıda) paketten değil model deposundan çalışır |
+| `onnxruntime-common` | 1.31.0-dev.20260911-2a43ec07e | MIT | |
+| `@huggingface/jinja`, `@huggingface/tokenizers` | 0.5.10, 0.2.0 | MIT, Apache-2.0 | transformers bağımlılıkları |
+| `flatbuffers`, `long`, `protobufjs` (+ `@protobufjs/*`), `guid-typescript`, `platform` | 25.9.23, 5.3.2, 7.6.6, 1.0.9, 1.3.6 | Apache-2.0, Apache-2.0, BSD-3-Clause, ISC, MIT | onnxruntime-web bağımlılıkları |
+
+`@huggingface/transformers` ayrıca `onnxruntime-node` 1.30.0 (MIT) ve `sharp`'ı kurar; ikisi de
+yalnız Node içindir, tarayıcı paketine girmez (paket `default` koşuluyla `transformers.web.js`'i
+seçer).
+
+**Model dosyaları (uygulama dosyası; git'te değil).** `web/src/domain/modelManifest.json` her
+dosyayı kaynağı, tam revizyonu, bayt sayısı ve sha256'sıyla sabitler; `web/scripts/fetch-models.mjs`
+derlemede bunları indirip doğrular ve siteye (`/models/…`) koyar; tarayıcı indirdiği her dosyayı
+aynı sha256 ile yeniden doğrular. Yanlarında `models/LICENSES.txt` yayınlanır.
+
+| Grup | Kaynak @ revizyon | Dosya | Bayt | sha256 | Lisans dayanağı |
+|---|---|---|---|---|---|
+| Çalışma zamanı | npm `onnxruntime-web@1.31.0-dev.20260914-8d85527a0`, `dist/` | `ort-wasm-simd-threaded.asyncify.wasm` | 26 861 777 | `49871f5a4409519797e127440868a6d1923339d9185907f301a5b2a1d90af082` | MIT (Microsoft) |
+| Konuşma bulucu | `onnx-community/silero-vad` @ `e71cae966052b992a7eca6b17738916ce0eca4ec` | `onnx/model.onnx` | 2 243 022 | `a4a068cd6cf1ea8355b84327595838ca748ec29a25bc91fc82e6c299ccdc5808` | MIT (Silero Team; github.com/snakers4/silero-vad `LICENSE`) |
+| `base` | `onnx-community/whisper-base_timestamped` @ `608c49e61301901684bc36cac8f74b95ff6b5a8e` | `onnx/encoder_model_quantized.onnx` | 23 159 167 | `2714484ebe1bae7c1646e8eadb768bb9d415cf11763466d21f23039a29c62e6f` | **Kartta lisans beyanı yok.** Üst model `openai/whisper-base`: kartında Apache-2.0; Whisper kodu MIT |
+| | | `onnx/decoder_model_merged_quantized.onnx` | 53 712 708 | `cf9a8d5bcddc0917a0078135b484cedcaf44f28909cd91910abd29dced9171db` | aynı |
+| | | 9 yapılandırma/tokenizer dosyası (`config.json` … `quantize_config.json`) | 2 869 152 | manifestte tek tek | aynı |
+| `turbo` | `onnx-community/whisper-large-v3-turbo_timestamped` @ `b3f77bf9a8c4d5ea3415827033d1ffea7955fd9a` | `onnx/encoder_model_q4f16.onnx` | 370 035 242 | `65261f977474ce30e46ed2c2b885e8ef68ef917941f78af48b098b86fad1adaa` | **Kartta lisans beyanı yok.** Üst model `openai/whisper-large-v3-turbo`: kartında MIT |
+| | | `onnx/decoder_model_merged_q4f16.onnx` | 193 566 135 | `617e5b4f91ca190c43fa4d3bd2e671cfbee19c9a6ac4890f0a4bbaf658f00cf4` | aynı |
+| | | 9 yapılandırma/tokenizer dosyası | 2 858 740 | manifestte tek tek | aynı |
+
+Toplam indirme: `base` 108 845 826 bayt (model 79 741 027 + bulucu + çalışma zamanı), `turbo`
+595 564 916 bayt. Depodaki tek gerçek konuşma kaydı `web/tests/media/speech-fleurs-en-01.mp4`
+(FLEURS, CC BY 4.0; atıf `web/tests/media/SPEECH_SOURCE.md`) yalnız testlerde kullanılır, siteye
+girmez.
+
 ## 2. Yalnız derleme/sunucu tarafında (tarayıcıya gitmez)
 
 `npm ls --omit=dev --all` bu ağacı "üretim" sayar, ama statik dışa aktarmada bunlar yalnızca
@@ -78,4 +116,16 @@ istediği `^20.19` altında (`EBADENGINE`, uyarı; CI `setup-node` 20'nin günce
   sayfası/dosyası. Bu belge o dosyanın kaynağı olarak kullanılabilir; eklenip eklenmeyeceği
   metin/hukuk kararıdır, bu çalışmada eklenmedi.
 - **SIL OFL 1.1 (Inter):** yazı tipi dosyaları değiştirilmeden, lisans metniyle birlikte yayınlanıyor.
+- **Whisper ONNX dışa aktarımları (ADR-036) — kurucu/hukuk notu:** `onnx-community/whisper-base_timestamped`
+  ve `…-large-v3-turbo_timestamped` depolarının model kartlarında lisans alanı **boş**. Ağırlıkların
+  kaynağı olan `openai/whisper-base` (Apache-2.0) ve `openai/whisper-large-v3-turbo` (MIT) serbest
+  yeniden dağıtıma izin veriyor ve dışa aktarım bunların biçim dönüşümü; bu yüzden dosyaları üst
+  lisanslarla, atıf ve lisans metniyle (`models/LICENSES.txt`) kendi sitemizden yayınlıyoruz. Bu bir
+  mühendislik okumasıdır, hukuki görüş değil: dışa aktaranın (Transformers.js ekibi) ayrı bir koşul
+  koymadığı varsayılıyor. İstenirse (a) Hugging Face'te karta lisans eklenmesi istenir ya da (b)
+  ağırlıklar `openai/*` depolarından kendi ONNX dışa aktarımımızla üretilir (torch + optimum kurulumu
+  gerekir; yapılmadı).
+- **Apache-2.0 (Transformers.js, tokenizers, flatbuffers, long):** NOTICE/atıf yükümlülüğü yukarıdaki
+  "üçüncü taraf bildirimleri" sayfası kararının kapsamına girer.
+- **CC BY 4.0 (FLEURS, tek test kaydı):** atıf depoda; siteyle dağıtılmıyor.
 - SBOM (belge 23 §5) üretilmiyor; `npm sbom --omit=dev --sbom-format=cyclonedx` yerel olarak üretebilir.

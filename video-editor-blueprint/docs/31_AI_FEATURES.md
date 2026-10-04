@@ -24,6 +24,25 @@ Bu tabloda herhangi bir API/model sağlayıcısı seçilmedi ve fiyatı araştı
 - **Otomatik transkript** (araştırma eki, altyazı adım 4): bütçe olmadığı için yalnızca cihaz üstü rota denendi (ADR-017). Açık Whisper modelleri Türkçede eşiği tutmadı (en iyi WER %20,6; sessizlikte uydurma metin). Uygulama başlamadı; bulut rotası kurucu bütçe kararına kadar ertelendi.
 - **Sessizlik kesim önerisi** bu belgenin ilk deneyi olarak başladı: ADR-018 (tamamen yerel, dış servis ve maliyet yok, ölçüm kapısı tanımlı).
 
+## Güncel durum (2026-10-04)
+
+- **Cihaz üstü yazıya dökme ve otomatik altyazı — yapıldı, yalnız İngilizce** (kurucu kararı
+  4 Ekim 2026; `docs/adr/ADR-036-on-device-transcript.md`). Açılış ekranında "Yazıya dök" kartı
+  ve editörde "Yazı" sekmesi: zaman damgalı satırlar, satıra tıklayınca o ana gitme, satırdan
+  kesit yapma ("metinden kesim seçimi" adayının yerel hâli), altyazıyı videoya işleme, TXT/SRT/VTT.
+  Model (Whisper `base`, isteğe bağlı `large-v3-turbo`) tarayıcıda çalışır; ses, görüntü ve metin
+  cihazdan çıkmaz; model dosyaları kendi sitemizden, açık bir düğmeyle, bir kez iner. Bulut ASR,
+  API anahtarı, kota ve ücret yok; belge 15 `2026-10-04.v7` bunu ücretsiz temel özellik olarak
+  kaydeder.
+- Bu belgenin kuralları aynen uygulandı: çıktı **veri**dir (yalnız altyazı metni olarak kullanılır),
+  mevcut tarifin üzerine kullanıcı eylemiyle ve tek geri alma adımıyla yazılır, model çalışmazsa
+  elle editör çalışmaya devam eder, uydurma metin göstermek yerine "(anlaşılamadı)" denir, çıktı
+  "Otomatik yazıldı — yanlış olabilir, düzeltebilirsin" etiketiyle gelir.
+- **Türkçe yok.** `large-v3-turbo` temiz Türkçe kliplerde %7,2–7,7 WER verdi (Ekim denemesi), ama
+  Türkçe için uydurma/negatif doğrulaması, uzun dosya ve kelime zamanı ölçülmedi; ölçülmeden
+  açılmaz.
+- Bulut/ücretli AI satırları ve "AI ilk abonelikte yok" kararı değişmedi.
+
 ## İlk AI deneyi
 
 Yalnızca bir aday: sessizlik aralıklarını **öner**. En az 20 hakları temiz örnekle sessiz oda, arka plan müziği, düşük konuşma sesi, Türkçe/İngilizce ve nefes aralıklarını test et. Bu örneklem performans sertifikası değil, erken hata yakalama setidir.

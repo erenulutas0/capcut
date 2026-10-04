@@ -53,7 +53,7 @@ jobs:
   e2e:
     needs: checks
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     defaults:
       run:
         working-directory: web
@@ -73,9 +73,23 @@ jobs:
         run: choco install ffmpeg --no-progress -y
       - name: Install Playwright Chromium
         run: npx playwright install chromium
-      - name: Build (root path) and run the e2e suite
+      # The speech model files of "Yazıya dök" (ADR-036) are not in git. They are fetched from
+      # their pinned revisions, sha256-checked (a mismatch fails the build), and kept in the
+      # Actions cache under the manifest's hash, so the source is asked once per pin, not per run.
+      - name: Restore the speech model files (cache keyed by the pinned manifest)
+        uses: actions/cache@v4
+        with:
+          path: web/.models-cache
+          key: clip-models-${{ hashFiles('web/src/domain/modelManifest.json') }}
+      - name: Place the small model next to the e2e server (the real-model test runs only with it)
+        run: node scripts/fetch-models.mjs --models=base --dest=public/models
+      # CLIP_TEST_HOOKS=1: this build (and only this one) lets the UI tests supply a tiny model
+      # list and a scripted stand-in recogniser. The published export below is built without it,
+      # and refuses to build with it (next.config.ts, scripts/apply-csp.mjs).
+      - name: Build (root path, with test hooks) and run the e2e suite
         env:
           GIT_COMMIT: ${{ github.sha }}
+          CLIP_TEST_HOOKS: '1'
         run: |
           npm run build
           npx playwright test
@@ -93,6 +107,13 @@ jobs:
         run: |
           if (Test-Path out) { Remove-Item -Recurse -Force out }
           npm run build
+      # Both models go into the published site: base (every device) and large-v3-turbo (WebGPU).
+      # ~675 MB of model files + the site; GitHub Pages allows 1 GB per published site.
+      # To publish the small model only, change the list to "base" — nothing else.
+      - name: Add the model files to the export (plain copies, sha256-checked)
+        run: |
+          node scripts/fetch-models.mjs --models=base,turbo --dest=out/models --copy
+          node scripts/fetch-models.mjs --models=base,turbo --dest=out/models --check
       - name: Smoke test the export under /capcut/
         run: npx playwright test -c playwright.pages.config.ts
       - name: Keep the tested export for the deploy job
@@ -114,7 +135,7 @@ jobs:
     needs: e2e
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     permissions:
       pages: write
       id-token: write

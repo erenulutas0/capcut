@@ -249,3 +249,40 @@ karşılaştırır.
 | Kalıcı worker: hatalı bir yayın kullanıcının tarayıcısında kalır | Orta: çevrimiçiyken sayfalar ağdan gelir (network-first), yani düzeltilmiş yayın bir sonraki çevrimiçi açılışta sayfaya ulaşır; worker betiği HTTP önbelleği atlanarak (`updateViaCache: 'none'`) her gezinmede denetlenir. Çevrimdışıyken eski kopya açılır. | **Acil durum yolu (uygulanmadı, gerekirse):** şablonu `install`'da `skipWaiting()`, `activate`'te `clip-app-*` önbelleklerini silip `self.registration.unregister()` çağıran bir worker'la değiştirip yayınlamak. Sayfa kodu değişmeden bütün kopyalar ilk çevrimiçi açılışta kalkar. |
 | `github.io` origin'i başka Pages projeleriyle paylaşılır | Düşük: aynı kullanıcının başka projeleri bu Cache Storage'ı okuyup silebilir; içinde yalnızca herkese açık uygulama dosyaları var. Worker yalnız `/capcut/` altını ele alır ve yalnız `clip-app-*` önbelleklerini siler. | Kendi domain'i (K01) ile kalkar. |
 | Paylaşma menüsü | Kullanıcının seçtiği uygulamaya dosya gider (kullanıcının kararı). Uygulama `navigator.share` dışında bir şey çağırmaz; menüyü tıklama açar. | Paylaşılan hedefin ne yaptığı uygulamanın dışında. |
+
+## Güncelleme 2026-10-04: "Yazıya dök" — konuşma modeli (ADR-036)
+
+**CSP değişmedi.** Kurucu, onnxruntime-web WebAssembly derlediği için `script-src`'ye
+`'wasm-unsafe-eval'` eklenmesini onaylamıştı (4 Ekim 2026). Uygulamada **gerekmediği ölçüldü ve
+eklenmedi**; politika 30 Eylül'deki hâliyle aynı, tek bir kelime gevşetilmedi.
+
+- **Neden gerekmiyor:** derleme sayfada değil, transkript **worker**'ında yapılıyor. URL'den
+  başlatılan bir worker'ın politikası kendi yanıt başlıklarından gelir, sayfanın `<meta>`
+  etiketinden değil; statik barındırıcı başlık göndermediği için o worker'da politika yoktur
+  (bu belgenin §2.2'sinde dışa aktarma ve sessizlik worker'ları için yazılan durumun aynısı).
+- **Ölçüm** (`web/scripts/transcript/csp-experiment.mjs`): sihirbaz sayfası, politikasından
+  `'wasm-unsafe-eval'` çıkarılmış hâlde (o gün denenen derlemede vardı; HTML tarayıcıya giderken
+  yeniden yazıldı) ve olduğu gibi, gerçek modelle birer yazıya dökme. Sonuç: Chromium 153.0.8010.12,
+  Chrome 154.0.8037.93, Edge 154.0.4258.53 ve Firefox 155.0'da anahtar kelime **olmadan** yazıya
+  döküldü, 0 ihlal. Anahtar kelime bunun üzerine kaynaktan çıkarıldı; bütün gerçek model testleri
+  (aşağıda) onsuz koşuyor.
+- **Sınırı:** sayfanın politikasını URL worker'larına da uygulayan bir tarayıcıda (Safari/WebKit
+  denenmedi; destek matrisinde yok) model başlamaz ve kullanıcı "Bu tarayıcı bu modeli
+  çalıştıramıyor" mesajını görür — sessiz bir gevşeme olmaz. O tarayıcı desteklenmek istenirse
+  onaylı değişiklik `web/scripts/lib/csp.mjs`'te tek kelimedir; `tests/unit/csp.test.ts` ve
+  `tests/e2e/cspWatch.ts` içindeki `unsafe-eval` aramaları o zaman `'wasm-unsafe-eval'`'i tam
+  adıyla ayırt edecek şekilde güncellenmelidir (bugün ikisi de `unsafe-eval` geçen her politikayı
+  reddediyor — yani yanlışlıkla eklenirse testler kırılır).
+- **Başlık ayarlanabilen bir barındırıcıya geçilirse (§5):** worker betiklerine de politika
+  gider; o zaman `'wasm-unsafe-eval'` gerçekten gerekir ve o politikaya yazılmalıdır.
+
+**Yeni yüzey ve nasıl sınırlandığı:**
+
+| Konu | Durum |
+|---|---|
+| Üçüncü taraf istek | Yok. Model dosyaları `<site>/models/…` altından (kendi origin'imiz) iner; `connect-src 'self'` aynen. Motorun `fetch`'i model deposunu okuyan fonksiyonla değiştirildi: Transformers.js'in varsayılan adresleri (huggingface.co, cdn.jsdelivr.net) kodda dizgi olarak durur ama hiçbir yol onlara istek atamaz. Kanıt: gerçek model e2e'si ve Pages duman testi, origin dışı istek 0 (çevrimdışıyken de çalışıyor). |
+| Dosya bütünlüğü | Her model dosyası indikten sonra SHA-256 ile sabit listeye karşı doğrulanır (`modelStore.ts`, `domain/sha256.ts`); tutmayan dosya silinir, işaretlenmez, kullanılmaz (e2e: bozuk dosya reddi). Derlemede aynı doğrulama `scripts/fetch-models.mjs`'te; uyuşmazlık derlemeyi durdurur. Liste kaynak kodda sabit (`modelManifest.json`); çalışma anında değiştirilemez. |
+| WebAssembly kaynağı | onnxruntime-web'in `.wasm` dosyası npm paketinden gelir, sha256'sı listede; worker'a bayt olarak verilir (`wasmBinary`), bir adresten derlenmez. Yapıştırıcı JS uygulama paketinin içindedir (`'self'`). |
+| Test ikizi | UI testlerinin sahte tanıyıcısı ve küçük model listesi yalnız `CLIP_TEST_HOOKS=1` derlemesinde vardır. Statik dışa aktarma bu bayrakla derlenmeyi reddeder (`next.config.ts`), `apply-csp.mjs` dışa aktarmada ikizin izini bulursa derlemeyi durdurur, Pages duman testi yayınlanan betiklerde izin (ve `__clipTranscriptTest`'in) olmadığını doğrular. |
+| Model önbelleği | Ayrı önbellek `clip-models-v1`; service worker'ın listesinde ve önbelleğinde model yok (birim: `precache`, e2e: `transcript.spec.ts`). `github.io` origin'ini paylaşan başka bir Pages projesi bu önbelleği okuyup değiştirebilir (§ "Kalan riskler", aynı origin notu): değiştirilen dosya bir sonraki kullanımda yeniden doğrulanmaz — doğrulama indirme anındadır. Etki: bozuk model → hata ya da saçma metin; kod çalıştırma değil (ONNX grafiği veri olarak yorumlanır; `.wasm` da aynı önbellekte durduğundan, aynı origin'deki kötü niyetli bir proje onu değiştirirse worker'da kendi WebAssembly'sini çalıştırabilir — o proje zaten aynı origin'de betik çalıştırabildiği için yeni bir yetki kazanmaz). Kendi alan adı (K01) ile kalkar. |
+| Transkript metni güvenilmeyen veridir | Belge 31: metin yalnızca altyazı metni olarak kullanılır (kanvasa çizilir, React metin düğümü olarak gösterilir, `normalizeCaptionText`'ten geçer); komut, HTML ya da adres olarak yorumlanmaz. |

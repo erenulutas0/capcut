@@ -39,7 +39,7 @@ test.describe('opening screen', () => {
 
     // The cards, in the registry's order: exactly the tasks that work today.
     const cards = page.getByTestId('task-grid').getByRole('link');
-    await expect(cards).toHaveCount(7);
+    await expect(cards).toHaveCount(8);
     expect(await cards.evaluateAll((links) => links.map((link) => link.getAttribute('href')))).toEqual(
       availableTasks().map((task) => `/yap/${task.id}`),
     );
@@ -49,6 +49,8 @@ test.describe('opening screen', () => {
     await expect(page.getByTestId('task-dikey')).toContainText('Dikey yap');
     await expect(page.getByTestId('task-kucult')).toContainText('Küçült');
     await expect(page.getByTestId('task-kucult')).toContainText('WhatsApp’a sığdır');
+    await expect(page.getByTestId('task-yazi')).toContainText('Yazıya dök');
+    await expect(page.getByTestId('task-yazi')).toContainText('Altyazı ve metin');
     await expect(page.getByTestId('task-muzik')).toContainText('Müzik ekle');
     await expect(page.getByTestId('task-ses')).toContainText('Sesini al');
     await expect(page.getByTestId('task-cevir')).toContainText('Her yerde açılsın');
@@ -82,7 +84,7 @@ test.describe('opening screen', () => {
           return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
         }),
       );
-      expect(boxes).toHaveLength(7);
+      expect(boxes).toHaveLength(8);
       for (const rect of boxes) {
         expect(rect.width).toBeGreaterThanOrEqual(120);
         expect(rect.height).toBeGreaterThanOrEqual(120);
@@ -92,7 +94,7 @@ test.describe('opening screen', () => {
       // Reading order = registry order: rows top to bottom, left to right.
       const sorted = [...boxes].sort((a, b) => a.y - b.y || a.x - b.x);
       expect(boxes).toEqual(sorted);
-      // Two columns on a phone; three from 700 px; four from 1000 px (seven cards: 4 + 3).
+      // Two columns on a phone; three from 700 px; four from 1000 px (eight cards: 4 + 4).
       const columns = new Set(boxes.map((rect) => Math.round(rect.x))).size;
       expect(columns).toBe(size.width >= 1000 ? 4 : size.width >= 700 ? 3 : 2);
 
@@ -273,35 +275,29 @@ test.describe('type to find', () => {
     }
   });
 
-  test('a task that is not built yet answers honestly: “Bu henüz yok”, no button, nothing starts', async ({ page }) => {
+  test('“Yazıya dök” is found by what people type, and starts (ADR-036); no task answers “Bu henüz yok” any more', async ({
+    page,
+  }) => {
     await page.goto('/');
-    // "Yazıya dök" is the one task not built yet (ADR-035 made "Küçült" and "Sesini al" work).
-    const phrases: Array<[string, string]> = [
-      ['altyazı ekle', 'yazi'],
-      ['yazıya dök', 'yazi'],
-      ['transkript', 'yazi'],
-    ];
-    for (const [phrase, id] of phrases) {
+    // Until ADR-036 these phrases answered "Bu henüz yok, üzerinde çalışıyoruz." with no button.
+    // (That answer is kept for the next task announced before it is built: taskSearch.test.ts.)
+    for (const phrase of ['altyazı ekle', 'yazıya dök', 'transkript']) {
       await box(page).fill(phrase);
-      const row = page.getByTestId(`result-${id}`);
+      const row = page.getByTestId('result-yazi');
       await expect(row).toBeVisible();
       await expect(results(page)).toHaveCount(1);
-      await expect(row).toHaveAttribute('aria-disabled', 'true');
-      await expect(row.getByTestId('result-unavailable')).toHaveText('Bu henüz yok, üzerinde çalışıyoruz.');
-      await expect(row.getByTestId('result-start')).toHaveCount(0);
-      await expect(page.getByText('Başla', { exact: true })).toHaveCount(0);
-      await expect(page.getByTestId('finder-status')).toContainText('Bu henüz yok, üzerinde çalışıyoruz.');
-      // Neither Enter nor a click goes anywhere.
-      await box(page).press('Enter');
-      // (forced: Playwright itself will not click an aria-disabled element.)
-      await row.click({ force: true });
-      await expect(page).toHaveURL(/\/$/);
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ne yapmak istiyorsun?');
+      await expect(row).not.toHaveAttribute('aria-disabled', 'true');
+      await expect(row.getByTestId('result-unavailable')).toHaveCount(0);
+      await expect(row.getByTestId('result-start')).toBeVisible();
     }
-    // And there is no page behind it.
-    for (const id of ['yazi']) {
-      const response = await page.request.get(`/yap/${id}`);
-      expect(response.status(), id).toBe(404);
+    await box(page).press('Enter');
+    await expect(page).toHaveURL(/\/yap\/yazi\/?$/);
+    await expect(page.getByTestId('wizard')).toHaveAttribute('data-task', 'yazi');
+    await expect(page.getByTestId('wizard-title')).toHaveText('Videonu seç');
+    // Every task in the registry has its page.
+    for (const task of TASKS) {
+      const response = await page.request.get(`/yap/${task.id}`);
+      expect(response.status(), task.id).toBe(200);
     }
   });
 
@@ -325,13 +321,12 @@ test.describe('type to find', () => {
     }
   });
 
-  test('an unavailable task next to an available one: only the available one can start', async ({ page }) => {
+  test('two tasks in one phrase: both are offered and both can start', async ({ page }) => {
     await page.goto('/');
     await box(page).fill('altyazı kes');
     await expect(results(page)).toHaveCount(2);
     await expect(page.getByTestId('result-kes').getByTestId('result-start')).toBeVisible();
-    await expect(page.getByTestId('result-yazi').getByTestId('result-start')).toHaveCount(0);
-    await expect(page.getByTestId('result-yazi')).toContainText('Bu henüz yok, üzerinde çalışıyoruz.');
+    await expect(page.getByTestId('result-yazi').getByTestId('result-start')).toBeVisible();
   });
 
   test('nothing found: “Bunu bulamadım” and “Tüm işleri gör” brings the cards back', async ({ page }) => {

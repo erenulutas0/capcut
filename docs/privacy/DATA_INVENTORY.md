@@ -178,6 +178,42 @@ Yeni saklanan veri **yok**.
 - Çevrimdışı kopya (§2.5) artık `/yap/kes`, `/yap/bosluk`, `/yap/dikey`, `/yap/muzik`,
   `/yap/cevir` sayfalarını da içerir (yalnızca uygulamanın kendi dosyaları).
 
+### 2.8 Konuşma modeli ve transkript — "Yazıya dök" (2026-10-04, ADR-036)
+
+- **Ses nereye gider:** hiçbir yere. Videonun sesi transkript worker'ında (`web/src/adapters/
+  transcript/`) çözülür, 16 kHz mono'ya indirilir, konuşma bulucu ve Whisper modeli **bu cihazda**
+  çalışır. Motorun ağ erişimi yoktur: kütüphanenin `fetch`'i model deposunu okuyan bir fonksiyonla
+  değiştirilmiştir, depoda olmayan dosya 404 alır, başka yerde aranmaz (`engine.ts`). Kanıt: e2e
+  `transcript-real.spec.ts` (gerçek model; çevrimiçi ve **çevrimdışı**; origin dışı istek 0, CSP
+  ihlali 0), `transcript.spec.ts`, Pages duman testi.
+- **Yeni saklanan veri — model deposu:** Cache Storage'da **ayrı** bir önbellek, adı
+  `clip-models-v1`. Yalnızca kullanıcı "Modeli indir"e basınca dolar; kendiliğinden indirme yok
+  (e2e: düğmeye basılmadan `/models/` isteği 0). İçindekiler uygulamanın kendi dosyalarıdır:
+  onnxruntime-web WebAssembly dosyası (26,9 MB), Silero VAD (2,2 MB), Whisper `base` (79,7 MB)
+  ve kullanıcı seçerse `large-v3-turbo` (566,5 MB) — toplam 108,8 MB ya da 595,6 MB. Dosyalar
+  **bu sitenin kendi adresinden** (`<site>/models/…`) gelir; başka bir siteye istek yok. Büyük
+  dosyalar 32 MiB'lik parçalar hâlinde saklanır (`…?part=N`); tam dosya sha256'sı sabit listeyle
+  (`web/src/domain/modelManifest.json`) tutunca `…?verified=1` işareti yazılır; tutmayan dosya
+  silinir ve kullanılmaz.
+- **Ne değil:** kullanıcının sesi, videosu ya da metni bu önbelleğe girmez. Service worker'ın
+  `clip-app-*` önbelleği (§2.5) model dosyası içermez; worker model önbelleğine dokunmaz, onu
+  silmez (yalnız `clip-app-*` adlarını siler).
+- **Ne zaman silinir:** kullanıcı silene kadar kalır. "Modeli sil": `/gizlilik` sayfasındaki
+  "Konuşma modeli" kartında ve editörde "Kısayollar ve sınırlar" penceresinde; ikisi de adı
+  `clip-models-` ile başlayan önbellekleri siler (`modelStore.ts`, `deleteStoredModels`). Sabit
+  revizyon değişirse eski revizyonun dosyaları bir sonraki indirmede silinir (`pruneStale`).
+  İndirme sırasında `navigator.storage.persist()` istenir (tarayıcı depolama baskısında dosyaları
+  kendiliğinden atmasın diye; Firefox bunu kullanıcıya sorar).
+- **Transkript metni:** altyazı izi olarak proje tarifinin içindedir (`captionTracks[0]`,
+  `origin: 'transcript'`, EDL v3). Editörde (`/editor`) diğer altyazı satırları gibi IndexedDB'ye
+  saklanır ve proje yedeğine girer (§2.1); sihirbazda (`/yap/yazi`) hiçbir şey saklanmaz (§2.7).
+  Kelime zamanları saklanmaz; yalnızca satırlar ve "anlaşılamadı" aralıkları.
+- **Kullanıcının tetiklediği yeni indirmeler:** "Metni indir" (TXT, zaman damgalı satırlar),
+  "SRT / VTT indir", "Altyazılı videoyu indir" (MP4). Hepsi tarayıcının yazdığı yerel dosyalardır.
+- **Ölçüm kancası:** `globalThis.__clipTranscriptRuns` dizisi sayfa yüklenmeden önce tanımlanmışsa
+  (yalnız ölçüm betikleri tanımlar) istemci bir koşunun kelime zamanlarını oraya yazar; olağan
+  kullanımda dizi yoktur ve hiçbir şey yazılmaz (`__clipSilenceEnvelopes` ile aynı kalıp).
+
 ## 4. Ağ
 
 ### 4.1 Uygulamanın kendi origin'i dışında istek: yok
@@ -253,7 +289,8 @@ girdilere bunları özellikle koyup çıktıda aramaz (`web/tests/unit/diagnosti
 Aşağıdakilerden biri eklenirse bu belge, `/gizlilik` metni ve e2e izin listesi aynı PR'da
 güncellenmeli: herhangi bir `fetch`/XHR/beacon/WebSocket; üçüncü taraf script, font veya CDN;
 analitik/hata raporlama SDK'sı; hesap/oturum; çerez veya web depolama; yeni IndexedDB store'u
-veya `ProjectRecord` alanı; OPFS'e yeni dosya türü; model dosyası indirme; service worker'ın listesine
+veya `ProjectRecord` alanı; OPFS'e yeni dosya türü; model dosyasının **başka bir adresten** indirilmesi
+(bugün yalnızca kendi origin'imizden, §2.8) ya da sesin/metnin bir sunucuya gitmesi; service worker'ın listesine
 uygulama dosyası dışında bir şey girmesi ya da çalışırken ağ yanıtlarını önbelleğe yazmaya başlaması.
 
 ## 7. Açık kurucu kararları (uygulama bunları uydurmaz)

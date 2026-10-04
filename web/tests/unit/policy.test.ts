@@ -14,7 +14,9 @@ import {
   outputOverrun,
   outputRouteRefusal,
 } from '@/domain/policy';
+import { CAPTION_LIMITS } from '@/domain/captions';
 import { formatClock, US_PER_SECOND } from '@/domain/time';
+import { downloadBytes } from '@/domain/transcriptModels';
 import { overLimitText } from '@/components/editor/outputLimitText';
 import { en, tr, type MessageKey } from '@/i18n/messages';
 
@@ -55,9 +57,34 @@ describe('web local policy', () => {
     expect(WEB_LOCAL_POLICY.maxTotalSourceBytes).toBe(4_294_967_296);
   });
 
-  it('records the v6 change (at most 30 fps, fast cut keeps the source rate and bitrate) in doc 15', () => {
+  it('records the v7 change (on-device transcript is a free basic feature) in doc 15; cloud AI stays out of Free', () => {
     const [docId] = WEB_LOCAL_POLICY.policyId.split('/');
-    expect(docId).toBe('2026-09-24.v6');
+    expect(docId).toBe('2026-10-04.v7');
+    const lines = doc15.split(/\r?\n/);
+    const note = lines.find((line) => line.startsWith(`**Değişiklik \`${docId}\``));
+    expect(note).toBeDefined();
+    expect(note).toContain('kurucu kararı, 4 Ekim 2026');
+    expect(note).toContain('ADR-036');
+    expect(note).toContain('ücretsiz temel özellik');
+    expect(note).toContain('yalnızca genişleme');
+    expect(note).toContain('Ölçülmeyen');
+    // The new row, and the cloud / paid AI row with its values as they were.
+    expect(doc15).toContain(
+      '| Cihaz üstü yazıya dökme ve otomatik altyazı (web, yalnız İngilizce; model tarayıcıda çalışır) | Dahil; adet ve dakika kotası yok | Aynı |',
+    );
+    expect(doc15).toContain('| AI işlemleri (bulut / ücretli) | Yok | Başlangıç aboneliğine dahil değil |');
+    // The limits the note states are the ones the code enforces and the UI shows.
+    expect(note).toContain(`en çok **${CAPTION_LIMITS.maxCuesPerTrack}** altyazı satırı`);
+    expect(note).toContain('en çok 120 dakika video, 4 GiB');
+    const mb = (bytes: number) => formatBytes(bytes, ',');
+    expect(note).toContain(`küçük model ${mb(downloadBytes('base'))}`);
+    expect(note).toContain(`büyük model ${mb(downloadBytes('turbo'))}`);
+    expect(tr['captions.error.caption_limit_exceeded']).toContain(String(CAPTION_LIMITS.maxCuesPerTrack));
+    expect(en['captions.error.caption_limit_exceeded']).toContain(String(CAPTION_LIMITS.maxCuesPerTrack));
+  });
+
+  it('keeps the v6 change (at most 30 fps, fast cut keeps the source rate and bitrate) in doc 15', () => {
+    const docId = '2026-09-24.v6';
     const lines = doc15.split(/\r?\n/);
     const note = lines.find((line) => line.startsWith(`**Değişiklik \`${docId}\``));
     expect(note).toBeDefined();

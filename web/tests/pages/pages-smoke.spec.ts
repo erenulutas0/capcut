@@ -1,4 +1,5 @@
-import { readdirSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -293,7 +294,7 @@ test('installable and offline under /capcut/: manifest, service worker, offline 
     expect(paths).toContain(stored);
   }
   const allowed = [
-    /^\/capcut\/((editor|gizlilik|gizlilik\/en|yap\/(kes|bosluk|dikey|kucult|muzik|ses|cevir))\/)?$/,
+    /^\/capcut\/((editor|gizlilik|gizlilik\/en|yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|cevir))\/)?$/,
     /^\/capcut\/_next\/static\/.+\.(js|css|png|svg)$/,
     /^\/capcut\/fonts\/caption\/inter-latin(-ext)?-700-normal\.woff2$/,
     /^\/capcut\/icons\/(icon-192|icon-512|maskable-512)\.png$/,
@@ -354,4 +355,95 @@ test('the export publishes compiled files only: no source maps, no TypeScript so
   const files = walk(join(process.cwd(), 'out')).map((f) => relative(process.cwd(), f));
   expect(files.length).toBeGreaterThan(10);
   expect(files.filter((f) => /\.(map|tsx?)$/.test(f))).toEqual([]);
+  // ADR-036: the bundler's copy of the speech runtime is not published twice,
+  // and the test stand-in for the recogniser is not in the published scripts.
+  expect(files.filter((f) => /_next[\\/]static[\\/].*\.wasm$/.test(f))).toEqual([]);
+  const scripts = files.filter((f) => f.endsWith('.js'));
+  expect(scripts.filter((f) => readFileSync(join(process.cwd(), f), 'utf8').includes('clip-transcript-stub-engine'))).toEqual([]);
+  expect(scripts.filter((f) => readFileSync(join(process.cwd(), f), 'utf8').includes('__clipTranscriptTest'))).toEqual([]);
+});
+
+// ------------------------------------------------------------ Yazıya dök (ADR-036)
+
+const MODEL_MANIFEST = JSON.parse(readFileSync(join(process.cwd(), 'src', 'domain', 'modelManifest.json'), 'utf8')) as {
+  groups: Record<string, { dir: string; files: { path: string; bytes: number; sha256: string }[] }>;
+};
+const OUT_MODELS = join(process.cwd(), 'out', 'models');
+const groupPublished = (id: string) =>
+  MODEL_MANIFEST.groups[id]!.files.every((file) => existsSync(join(OUT_MODELS, MODEL_MANIFEST.groups[id]!.dir, file.path)));
+const BASE_PUBLISHED = ['runtime', 'vad', 'base'].every(groupPublished);
+const SPEECH_VIDEO = join(__dirname, '..', 'media', 'speech-fleurs-en-01.mp4');
+
+test('the model files are served under /capcut/models/: exact length, exact sha256, Range, licences', async ({ request }) => {
+  test.skip(!BASE_PUBLISHED, 'out/models has no model files (node scripts/fetch-models.mjs --dest=out/models --copy) — NOT RUN');
+  test.setTimeout(300_000);
+  const published = ['runtime', 'vad', 'base', 'turbo'].filter(groupPublished);
+  expect(published).toEqual(expect.arrayContaining(['runtime', 'vad', 'base']));
+  let bytes = 0;
+  for (const id of published) {
+    const group = MODEL_MANIFEST.groups[id]!;
+    for (const file of group.files) {
+      // What is on disk in the export is what the pin says (the published bytes).
+      const body = readFileSync(join(OUT_MODELS, group.dir, file.path));
+      expect(body.length, `${group.dir}/${file.path}`).toBe(file.bytes);
+      expect(createHash('sha256').update(body).digest('hex'), `${group.dir}/${file.path}`).toBe(file.sha256);
+      bytes += body.length;
+      // And the server hands it out under the sub-path, in ranges.
+      const part = await request.get(`models/${group.dir}/${file.path}`, { headers: { Range: 'bytes=0-15' } });
+      expect([200, 206], `${group.dir}/${file.path}`).toContain(part.status());
+      if (part.status() === 206) expect((await part.body()).length).toBe(Math.min(16, file.bytes));
+    }
+  }
+  console.log(`PAGES-MODELS ${JSON.stringify({ published, bytes })}`);
+  const licences = await request.get('models/LICENSES.txt');
+  expect(licences.status()).toBe(200);
+  const text = await licences.text();
+  expect(text).toContain('Copyright (c) 2022 OpenAI');
+  expect(text).toContain('Silero Team');
+  expect(text).toContain('Apache License');
+});
+
+test('Yazıya dök under /capcut/ with the real model: download from this site, write, burn in; no request leaves it', async ({
+  page,
+  context,
+}, testInfo) => {
+  test.skip(!BASE_PUBLISHED, 'out/models has no model files — NOT RUN');
+  test.setTimeout(600_000);
+  const seen = watchRequests(page);
+  const watch = await watchCsp(context);
+  await watch.attach(page);
+  await installSavePicker(page);
+  const modelRequests: string[] = [];
+  page.context().on('request', (request) => {
+    if (request.url().includes('/models/')) modelRequests.push(new URL(request.url()).pathname);
+  });
+
+  await page.goto('./');
+  await page.getByTestId('task-yazi').click();
+  await expect(page).toHaveURL(/\/capcut\/yap\/yazi\/$/);
+  await expectPolicy(page);
+  await page.getByTestId('video-input').setInputFiles(SPEECH_VIDEO);
+  await expect(page.getByTestId('model-download')).toHaveText('Modeli indir (≈108,8 MB, bir kez)', { timeout: 60_000 });
+  // The published build has no test hooks.
+  await expect(page.getByTestId('transcribe-steps')).not.toHaveAttribute('data-test-hooks', '1');
+  expect(modelRequests).toEqual([]);
+  await page.getByTestId('model-download').click();
+  await expect(page.getByTestId('transcribe-start')).toBeVisible({ timeout: 300_000 });
+  expect(modelRequests.length).toBeGreaterThan(5);
+  expect(modelRequests.every((path) => path.startsWith('/capcut/models/'))).toBe(true);
+
+  await page.getByTestId('transcribe-start').click();
+  await expect(page.getByTestId('transcript-panel')).toBeVisible({ timeout: 300_000 });
+  const text = (await page.locator('[data-testid="transcript-row"][data-kind="cue"] .transcript-text').allTextContents()).join(' ');
+  expect(text).toContain('French people who had made peace with the Germans in 1940');
+  await expect(page.getByTestId('transcript-machine-note')).toContainText('Otomatik yazıldı');
+
+  await page.getByTestId('wizard-download').click();
+  await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 240_000 });
+  const saved = probeMp4(await readSaved(page, testInfo, 'saved-speech-fleurs-en-01_altyazili.mp4'));
+  expect(saved.videoCodec).toBe('h264');
+
+  expect(watch.violations).toEqual([]);
+  expect(seen.failures).toEqual([]);
+  expect(seen.outside).toEqual([]);
 });

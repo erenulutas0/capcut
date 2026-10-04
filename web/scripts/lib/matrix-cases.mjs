@@ -561,6 +561,28 @@ export const CASES = [
     setup: anchoredSetup({ variants: [{ label: 'cikti', track: 'output' }] }),
     expect: anchoredExpect({ sameAs: { caseId: 'M18', variant: 'kaynak' } }),
   },
+  {
+    // ADR-036: the lines "Yazıya dök" makes. The texts are what Whisper base wrote for the
+    // FLEURS sentence of the real-model test, cut into lines by the app's own rules (two
+    // lines, two lines, a one-liner); the track is stored as the app stores a transcript:
+    // origin 'transcript', English, with an unclear span that must NOT be drawn.
+    id: 'M22',
+    title: 'Transkriptten gelen altyazı videoya işleniyor',
+    expectation:
+      'origin: transcript izi (İngilizce, iki satırlı satırlar, bir anlaşılamayan aralık) kaynak zamanlı her iz gibi O + (t − S) karelerinde görünüyor; anlaşılamayan aralıkta ve başka yerde altyazı yok',
+    setup: anchoredSetup({
+      variants: [{ label: 'transkript', track: 'source' }],
+      sourceCues: [
+        { startUs: 1_000_000, endUs: 3_000_000, text: 'It was ruled by the\nVicki French.' },
+        { startUs: 3_000_000, endUs: 5_000_000, text: 'These were French people\nwho had made peace with the' },
+        { startUs: 9_000_000, endUs: 11_000_000, text: 'Germans in 1940' },
+      ],
+      track: { origin: 'transcript', language: 'en', unclear: [{ startUs: 5_500_000, endUs: 5_900_000 }] },
+    }),
+    expect: anchoredExpect({
+      screenshot: { file: 'screenshots/caption-transcript-frame.png', variant: 'transkript', frame: 285 },
+    }),
+  },
 ];
 
 /**
@@ -577,7 +599,7 @@ export const CASES = [
  * (width, and a second line for "üç-beş"), which is how the measurement
  * tells back-to-back lines apart.
  */
-function anchoredSetup({ variants }) {
+function anchoredSetup({ variants, sourceCues, track }) {
   return {
     video: 'm01-portrait-20s.mp4',
     moments: [['00:08.000', '00:12.000'], ['00:00.000', '00:04.000'], ['00:02.000', '00:06.000']],
@@ -586,7 +608,9 @@ function anchoredSetup({ variants }) {
     anchoredCaptions: {
       style: { preset: 'box', position: 'bottom', size: 'medium' },
       // SOURCE time (timeBase 'source', bound to the video asset).
-      sourceCues: [
+      // Extra fields of the stored track (M22: a transcript track).
+      track: track ?? {},
+      sourceCues: sourceCues ?? [
         { startUs: 1_000_000, endUs: 3_000_000, text: 'bir' },
         { startUs: 3_000_000, endUs: 5_000_000, text: 'üç-beş\nkesimin iki yanında' },
         { startUs: 9_000_000, endUs: 11_000_000, text: 'dokuz' },

@@ -72,7 +72,27 @@ createServer((request, response) => {
     createReadStream(file).pipe(createGzip()).pipe(response);
     return;
   }
-  response.writeHead(200, { 'Content-Type': type });
+  // Byte ranges, as GitHub Pages serves them: the speech model's large files
+  // are fetched (and resumed) in parts (ADR-036).
+  const size = statSync(file).size;
+  const range = /^bytes=(\d+)-(\d*)$/.exec(request.headers.range ?? '');
+  if (range) {
+    const start = Number(range[1]);
+    const end = range[2] === '' ? size - 1 : Math.min(size - 1, Number(range[2]));
+    if (start >= size || end < start) {
+      response.writeHead(416, { 'Content-Range': `bytes */${size}` }).end();
+      return;
+    }
+    response.writeHead(206, {
+      'Content-Type': type,
+      'Content-Length': end - start + 1,
+      'Content-Range': `bytes ${start}-${end}/${size}`,
+      'Accept-Ranges': 'bytes',
+    });
+    createReadStream(file, { start, end }).pipe(response);
+    return;
+  }
+  response.writeHead(200, { 'Content-Type': type, 'Content-Length': size, 'Accept-Ranges': 'bytes' });
   createReadStream(file).pipe(response);
 }).listen(port, '127.0.0.1', () => {
   console.log(`serving ${root} at http://127.0.0.1:${port}${base}/`);

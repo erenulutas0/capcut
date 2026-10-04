@@ -4,6 +4,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { buildPolicy, inlineHashes } from '../../scripts/lib/csp.mjs';
+import { isOfflineAsset } from '../../scripts/lib/precache.mjs';
 import manifestJson from '@/domain/modelManifest.json';
 import { Sha256, sha256Hex } from '@/domain/sha256';
 import {
@@ -110,6 +112,25 @@ describe('the pinned model list', () => {
   it('runs each model the way the spike measured it', () => {
     expect(MODEL_RUNTIME.base).toMatchObject({ device: 'wasm', dtype: { encoder_model: 'q8', decoder_model_merged: 'q8' } });
     expect(MODEL_RUNTIME.turbo).toMatchObject({ device: 'webgpu', dtype: { encoder_model: 'q4f16', decoder_model_merged: 'q4f16' } });
+  });
+});
+
+describe('the model stays out of the app shell and the policy stays as it was', () => {
+  it('the service worker stores neither model files nor the speech runtime', () => {
+    expect(isOfflineAsset('_next/static/media/ort-wasm-simd-threaded.asyncify.0phdreyubz4lg.wasm')).toBe(false);
+    expect(isOfflineAsset('models/whisper-base-608c49e6/onnx/encoder_model_quantized.onnx')).toBe(false);
+    expect(isOfflineAsset('models/runtime-ort-1.31.0/ort-wasm-simd-threaded.asyncify.wasm')).toBe(false);
+    expect(isOfflineAsset('models/index.json')).toBe(false);
+    // The app's own chunks still are.
+    expect(isOfflineAsset('_next/static/chunks/abc.js')).toBe(true);
+  });
+
+  it('script-src was not relaxed for WebAssembly (measured unnecessary: the compile runs in a worker)', () => {
+    const policy = buildPolicy(inlineHashes('<html><head><meta charset="utf-8"></head><body><script>1</script></body></html>'));
+    expect(policy).not.toContain('wasm-unsafe-eval');
+    expect(policy).not.toContain('unsafe-eval');
+    expect(policy).toContain("connect-src 'self';");
+    expect(policy).not.toMatch(/huggingface|hf\.co|jsdelivr/);
   });
 });
 

@@ -134,8 +134,35 @@ test.describe('Yazıya dök with the real model', () => {
     });
     await installSavePicker(page);
 
+    // The recogniser's script (Transformers.js + onnxruntime-web, ~570 KB) is fetched only when
+    // a transcription starts: not by the opening screen, not by the wizard page, not by the model download.
+    const engineScripts: string[] = [];
+    const bodies: Array<Promise<void>> = [];
+    context.on('response', (response) => {
+      if (!/\.js(\?|$)/.test(response.url())) return;
+      bodies.push(
+        response
+          .text()
+          .then((body) => {
+            if (body.includes('onnxruntime') && body.includes('WhisperForConditionalGeneration')) engineScripts.push(response.url());
+          })
+          .catch(() => undefined),
+      );
+    });
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.goto('/yap/yazi');
+    await page.getByTestId('video-input').setInputFiles(SPEECH);
+    await expect(page.getByTestId('transcribe-steps')).toBeVisible({ timeout: 60_000 });
+    await page.waitForSelector('[data-testid="model-download"], [data-testid="transcribe-start"]', { timeout: 60_000 });
+    await page.waitForLoadState('networkidle');
+    await Promise.all(bodies);
+    expect(engineScripts, 'no recogniser script before "Yazıya dök"').toEqual([]);
+
     await runWizard(page, SPEECH);
     await expect(page.getByTestId('transcript-panel')).toBeVisible({ timeout: 300_000 });
+    await Promise.all(bodies);
+    expect(engineScripts.length, 'the recogniser script arrived with the transcription').toBeGreaterThan(0);
     // The model's files came from this site, under /models/, and from nowhere else.
     expect(modelRequests.length).toBeGreaterThan(5);
     expect(outside).toEqual([]);

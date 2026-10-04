@@ -646,6 +646,8 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
                   endUs: cue.endUs,
                   text: cue.text,
                 })),
+                // M22: a transcript track's own fields (origin, language, unclear spans).
+                ...(variant.track === 'source' ? (spec.track ?? {}) : {}),
               },
             ];
       const backupPath = join(outDir, `${testCase.id}-${variant.label}.clip.json`);

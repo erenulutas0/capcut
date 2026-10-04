@@ -1007,8 +1007,11 @@ async function auditHome(page: Page, prefix: string, testInfo: TestInfo) {
   await expect(page.getByRole('option')).toHaveCount(2);
   await audit(page, `${prefix}-home-results`, testInfo);
   await finderBox(page).fill('altyazı ekle');
-  await expect(page.getByTestId('result-unavailable')).toBeVisible();
-  await audit(page, `${prefix}-home-unavailable`, testInfo);
+  // Every task works since ADR-036: "altyazı ekle" now finds "Yazıya dök" and can start it.
+  // (The "Bu henüz yok" answer is still in the code for the next announced task; with no such
+  // task it cannot be reached in the app, so it is not audited here — unit-tested in taskSearch.test.ts.)
+  await expect(page.getByTestId('result-yazi').getByTestId('result-start')).toBeVisible();
+  await audit(page, `${prefix}-home-yazi-result`, testInfo);
   await finderBox(page).fill('pizza siparişi');
   await expect(page.getByTestId('finder-none')).toBeVisible();
   await audit(page, `${prefix}-home-none`, testInfo);

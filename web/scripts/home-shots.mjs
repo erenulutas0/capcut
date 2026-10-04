@@ -167,6 +167,38 @@ for (const size of SIZES) {
     await shot('71-ses-3-saved');
   }
 
+  // ---- Yazıya dök (ADR-036): the real model on a real sentence (tests/media/SPEECH_SOURCE.md).
+  // Needs the model files next to the site: node scripts/fetch-models.mjs --dest=public/models
+  if (only.length === 0 || only.includes('yazi')) {
+    const speech = join(root, 'tests', 'media', 'speech-fleurs-en-01.mp4');
+    await open('/yap/yazi');
+    await pick(speech);
+    await page.getByTestId('model-download').waitFor({ timeout: 60_000 });
+    await shot('80-yazi-2-model');
+    await page.getByTestId('model-download').click();
+    await page.getByTestId('transcribe-start').waitFor({ timeout: 600_000 });
+    await shot('81-yazi-2-ready');
+    await page.getByTestId('transcribe-start').click();
+    await page.locator('[data-testid="transcribe-running"][data-phase="writing"]').waitFor({ timeout: 120_000 }).catch(() => undefined);
+    await shot('82-yazi-2-running');
+    await page.getByTestId('transcript-panel').waitFor({ timeout: 600_000 });
+    await page.getByTestId('transcript-row').nth(1).getByTestId('transcript-line').click();
+    await shot('83-yazi-2-result');
+    await page.getByTestId('transcript-row').first().getByTestId('transcript-edit').click();
+    await shot('84-yazi-2-correcting');
+    await page.getByTestId('transcript-cancel').click();
+    await saved();
+    await shot('85-yazi-3-saved');
+    await page.getByTestId('wizard-open-editor').click();
+    await page.getByTestId('preview-video').waitFor({ timeout: 60_000 });
+    await page.getByTestId('transcript-row').nth(1).getByTestId('transcript-check').click();
+    await page.getByTestId('transcript-row').nth(2).getByTestId('transcript-check').click();
+    await shot('86-yazi-editor-panel');
+    await page.getByTestId('transcript-make-kesit').click();
+    await page.getByTestId('side-tab-kesit').click();
+    await shot('87-yazi-editor-kesit-from-text');
+  }
+
   await context.close();
 }
 
