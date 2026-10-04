@@ -215,6 +215,18 @@ describe('planTargetSize', () => {
     }
   });
 
+  it('never refuses or steps down for needing more bits than the source itself has', () => {
+    // 10 minutes that weigh 6 MB (80 kbit/s): plain, long, already small.
+    const f = facts({ durationUs: 600 * SECOND, kind: 'software' });
+    const target = { targetBytes: 16_000_000 };
+    expect(planTargetSize(target, f).ok).toBe(false);
+    const known = decided(planTargetSize(target, { ...f, sourceBitrate: 80_000 }));
+    expect(known.shortEdge).toBe(1080);
+    expect(known.plannedBytes).toBeLessThanOrEqual(16_000_000);
+    // A detailed source keeps the measured floors.
+    expect(planTargetSize(target, { ...f, sourceBitrate: 12_000_000 }).ok).toBe(false);
+  });
+
   it('plans no audio bytes for a download without sound', () => {
     const silent = decided(planTargetSize({ targetBytes: 3_000_000 }, facts({ audioSampleRate: null })));
     const loud = decided(planTargetSize({ targetBytes: 3_000_000 }, facts()));

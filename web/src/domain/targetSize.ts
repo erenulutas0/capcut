@@ -207,6 +207,14 @@ export interface TargetSizeFacts {
    * and then failed that check, so there only 128 kbit/s is used.
    */
   audioBitrates?: readonly number[];
+  /**
+   * The source file's own bitrate (its bytes over its length, picture and
+   * sound together), when known. No size is refused or stepped down for
+   * needing more bits than the source itself has: a long, plain recording
+   * that is already small must not be told "does not fit" by floors measured
+   * on detailed footage.
+   */
+  sourceBitrate?: number;
   /** Which encoder the browser has for a frame of this size. */
   encoderKind: (width: number, height: number) => VideoEncoderKind;
 }
@@ -284,12 +292,14 @@ function rungOf(facts: TargetSizeFacts, shortEdge: number, smallest: boolean): R
   const fps = facts.fpsNum / facts.fpsDen;
   const kind = facts.encoderKind(width, height);
   const floor = smallest ? REFUSE_BITS_PER_PIXEL[kind] : STEP_DOWN_BITS_PER_PIXEL[kind];
+  const byPixels = Math.ceil(width * height * fps * floor);
+  const source = facts.sourceBitrate !== undefined && facts.sourceBitrate > 0 ? Math.ceil(facts.sourceBitrate) : null;
   return {
     shortEdge,
     width,
     height,
     kind,
-    floorBitrate: Math.ceil(width * height * fps * floor),
+    floorBitrate: source === null ? byPixels : Math.min(byPixels, source),
     normalBitrate: encoderVideoBitrate(videoBitrateFor(width, height, fps), kind),
   };
 }
@@ -564,6 +574,7 @@ export function targetSizeFacts(
     hasAudio: boolean;
     encoderKind: (width: number, height: number) => VideoEncoderKind;
     audioBitrates?: readonly number[];
+    sourceBitrate?: number;
   },
 ): TargetSizeFacts {
   return {
@@ -574,6 +585,7 @@ export function targetSizeFacts(
     maxShortEdge: options.maxShortEdge,
     audioSampleRate: options.hasAudio ? plan.audio.sampleRate : null,
     ...(options.audioBitrates ? { audioBitrates: options.audioBitrates } : {}),
+    ...(options.sourceBitrate !== undefined ? { sourceBitrate: options.sourceBitrate } : {}),
     encoderKind: options.encoderKind,
   };
 }

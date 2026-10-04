@@ -151,20 +151,30 @@ test.describe('target-size download (ADR-035)', () => {
     await setTarget(page, minBytes);
     const result = await downloadTarget(page, testInfo);
     expect(result.savedBytes).toBeLessThanOrEqual(minBytes);
-    expect(result.shortEdge).toBe(360);
     expect(errors).toEqual([]);
   });
 
-  test('a floor of 720p refuses instead of going below it', async ({ page }) => {
-    await open(page, SAMPLE);
-    await setFrame(page, '16-9', '1080');
-    await addKesit(page, '00:00.000', '00:24.000');
-    // Fits at 360p (see the test above), not at 720p.
-    await setTarget(page, 2_500_000, 720);
+  test('a floor of 720p refuses instead of going below it', async ({ page }, testInfo) => {
+    // A detailed source (12 Mbit/s): the measured floors apply in full.
+    await open(page, noisyFixture());
+    await setFrame(page, '16-9', '720');
+    await addKesit(page, '00:00.000', '00:08.000');
+    // 1.2 MB for 8 s is too little for 720p …
+    await setTarget(page, 1_200_000, 720);
     await page.waitForTimeout(1500);
     await page.getByTestId('download-all').click();
     await expect(page.getByTestId('target-size-refusal')).toBeVisible({ timeout: 30_000 });
     expect(await pickerCalls(page)).toEqual([]);
+    await page.getByTestId('download-dismiss').first().click();
+    // … and without that floor the planner goes down to 360p instead of refusing.
+    await setTarget(page, 1_200_000);
+    await page.getByTestId('download-all').click();
+    await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 240_000 });
+    const line = page.getByTestId('target-size-result');
+    await expect(line).toHaveAttribute('data-short-edge', '360');
+    const name = (await pickerCalls(page)).at(-1) as string;
+    const saved = fileBytes(await readSaved(page, testInfo, `saved-${name}`));
+    expect((await line.getAttribute('data-fits')) === 'true').toBe(saved <= 1_200_000);
   });
 
   test('a source that already fits is copied, not re-encoded', async ({ page }, testInfo) => {

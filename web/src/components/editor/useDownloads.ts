@@ -375,6 +375,13 @@ export function useDownloads({
     };
   }, [aspect, fpsDen, fpsNum, kindsKey]);
 
+  /** ADR-035: the open video's own bitrate (bytes over length), for the target-size planner. */
+  const sourceBitrate = useCallback((): number | undefined => {
+    const asset = project.assets.find((item) => item.kind === 'video');
+    if (!videoFile || !asset || !(asset.durationUs > 0)) return undefined;
+    return (videoFile.size * 8) / (asset.durationUs / 1_000_000);
+  }, [project.assets, videoFile]);
+
   /** Whether a download of `plan` would have any sound (the worker asks the file itself). */
   const planHasAudio = useCallback(
     (plan: RenderPlan): boolean => {
@@ -401,6 +408,7 @@ export function useDownloads({
           maxShortEdge: maxTargetShortEdge(project.export.shortEdge, nativeShortEdge(plan)),
           hasAudio: planHasAudio(plan),
           encoderKind: lookup,
+          sourceBitrate: sourceBitrate(),
         }),
       );
       if (!planned.ok) return { ok: false, reason: 'target_too_small', refusal: planned };
@@ -411,7 +419,7 @@ export function useDownloads({
         estimatedSeconds: estimateEncodeSeconds(planned, plan.totalFrames),
       };
     },
-    [planHasAudio, project, settings],
+    [planHasAudio, project, settings, sourceBitrate],
   );
 
   const setEntry = useCallback((key: string, entry: DownloadEntry | null) => {
@@ -512,7 +520,12 @@ export function useDownloads({
         if (kinds && !targetSize.forced) {
           const planned = planTargetSize(
             targetSize,
-            targetSizeFacts(plan, { maxShortEdge: targetSize.maxShortEdge, hasAudio: planHasAudio(plan), encoderKind: kinds }),
+            targetSizeFacts(plan, {
+              maxShortEdge: targetSize.maxShortEdge,
+              hasAudio: planHasAudio(plan),
+              encoderKind: kinds,
+              sourceBitrate: sourceBitrate(),
+            }),
           );
           if (!planned.ok) {
             blocked('target_size_too_small', plan.fingerprint, {
@@ -773,6 +786,7 @@ export function useDownloads({
       planHasAudio,
       project,
       releaseOffered,
+      sourceBitrate,
       setEntry,
       settings,
       videoFile,

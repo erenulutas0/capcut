@@ -1006,7 +1006,7 @@ async function auditHome(page: Page, prefix: string, testInfo: TestInfo) {
   await finderBox(page).fill('tiktok için kes');
   await expect(page.getByRole('option')).toHaveCount(2);
   await audit(page, `${prefix}-home-results`, testInfo);
-  await finderBox(page).fill('videom whatsapp’a sığmıyor');
+  await finderBox(page).fill('altyazı ekle');
   await expect(page.getByTestId('result-unavailable')).toBeVisible();
   await audit(page, `${prefix}-home-unavailable`, testInfo);
   await finderBox(page).fill('pizza siparişi');
@@ -1317,5 +1317,97 @@ test.describe('a11y: opening screen and wizards, the rest', () => {
     await expect(page.getByRole('button', { name: 'Başka bir video seç' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'İndir' })).toBeVisible();
     expect(await page.locator('svg:not([aria-hidden="true"])').count()).toBe(0);
+  });
+});
+
+// ------------------------------------------------------------------ ADR-035: Küçült, Sesini al
+
+test.describe('a11y: “Küçült” and “Sesini al” (ADR-035), axe audit and keyboard', () => {
+  test.use({ storageState: { cookies: [], origins: [] }, reducedMotion: 'reduce' });
+  test.describe.configure({ timeout: 300_000 });
+
+  test.beforeEach(async ({ page }) => {
+    await installSavePicker(page);
+  });
+
+  const hintsReady = async (page: Page) => {
+    for (const id of ['share', 'email', 'whatsapp']) {
+      await expect(page.getByTestId(`size-hint-${id}`)).not.toHaveAttribute('data-state', 'pending', { timeout: 60_000 });
+    }
+  };
+
+  for (const size of [
+    { name: 'phone-360', width: 360, height: 780 },
+    { name: 'phone-390', width: 390, height: 844 },
+    { name: 'desktop-1440', width: 1440, height: 900 },
+  ]) {
+    test(`${size.name}: every step of both wizards, no axe finding, nothing scrolls sideways`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width: size.width, height: size.height });
+
+      // Küçült: pick, the choice with every option's outcome, the saved result with the real size.
+      await page.goto('/yap/kucult');
+      await expect(page.getByTestId('pick-video')).toBeEnabled();
+      await audit(page, `${size.name}-kucult-pick`, testInfo);
+      await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+      await expect(page.getByTestId('kucult-choice')).toBeVisible({ timeout: 60_000 });
+      await hintsReady(page);
+      await audit(page, `${size.name}-kucult-choose`, testInfo);
+      expect(await horizontalOverflow(page), 'kucult choose').toBe(0);
+      await page.getByTestId('option-whatsapp').check();
+      await page.getByTestId('wizard-download').click();
+      await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 180_000 });
+      await expect(page.getByTestId('target-size-result')).toBeVisible();
+      await audit(page, `${size.name}-kucult-saved`, testInfo);
+      expect(await horizontalOverflow(page), 'kucult saved').toBe(0);
+
+      // Sesini al: the one-line explanation, the saved result, and the video without sound.
+      await page.goto('/yap/ses');
+      await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+      await expect(page.getByTestId('ses-info')).toBeVisible({ timeout: 60_000 });
+      await audit(page, `${size.name}-ses-info`, testInfo);
+      await page.getByTestId('wizard-download').click();
+      await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
+      await audit(page, `${size.name}-ses-saved`, testInfo);
+      expect(await horizontalOverflow(page), 'ses saved').toBe(0);
+      await page.goto('/yap/ses');
+      await page.getByTestId('video-input').setInputFiles(wizardFixture('noAudio'));
+      await expect(page.getByTestId('wizard-blocked')).toBeVisible({ timeout: 60_000 });
+      await audit(page, `${size.name}-ses-no-sound`, testInfo);
+      expect(await horizontalOverflow(page), 'ses no sound').toBe(0);
+    });
+  }
+
+  test('keyboard only: the size is chosen with the arrow keys, İndir with Enter, the result is announced', async ({ page }) => {
+    const unmarked: string[] = [];
+    await page.goto('/yap/kucult');
+    await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+    await expect(page.getByTestId('kucult-choice')).toBeVisible({ timeout: 60_000 });
+    await hintsReady(page);
+    await expect(page.getByTestId('wizard-title')).toBeFocused();
+    // One radio group: Tab reaches the checked option, the arrows move the choice.
+    await tabTo(page, byTestId('option-share'), unmarked, 'the size choice');
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByTestId('option-email')).toBeChecked();
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByTestId('option-whatsapp')).toBeChecked();
+    await expect(page.getByTestId('option-whatsapp')).toBeFocused();
+    await tabTo(page, byTestId('wizard-download'), unmarked, 'İndir');
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'result');
+    await expect(page.getByTestId('wizard-title')).toBeFocused();
+    await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 180_000 });
+    // The screen reader's sentence carries the real size against the target.
+    await expect(page.getByTestId('download-status')).toHaveAttribute('role', 'status');
+    await expect(page.getByTestId('download-status')).toContainText('hedefin altında (hedef 16 MB)');
+
+    // Sesini al: no choice, so İndir comes after the video row.
+    await page.goto('/yap/ses');
+    await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+    await expect(page.getByTestId('ses-info')).toBeVisible({ timeout: 60_000 });
+    await tabTo(page, byTestId('wizard-download'), unmarked, 'İndir (ses)');
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByTestId('download-status')).toContainText('Ses dosyası kaydedildi: saved-other-8s_ses.m4a');
+    expect(unmarked, 'stops without a visible focus indicator').toEqual([]);
   });
 });

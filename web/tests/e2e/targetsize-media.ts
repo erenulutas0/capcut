@@ -35,6 +35,34 @@ export function noisyFixture(): string {
   ]);
 }
 
+/**
+ * 14 s of the same noisy picture: about 21 MB, over WhatsApp's 16 MB and under
+ * the e-mail and share limits — "Küçült" has one size to really shrink to.
+ */
+export function noisyLongFixture(): string {
+  return make('noisy-720p30-14s.mp4', [
+    '-f', 'lavfi', '-i', 'testsrc2=size=1280x720:rate=30:duration=14',
+    '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000:duration=14',
+    '-filter_complex', '[0:v]noise=alls=60:allf=t+u[v]', '-map', '[v]', '-map', '1:a',
+    '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-b:v', '12M',
+    '-c:a', 'aac', '-b:a', '128k',
+  ]);
+}
+
+/**
+ * 5 minutes of noisy 640x360 at about 1 Mbit/s (~38 MB): too long for 16 MB
+ * with the software encoder's floor, so "Küçült → WhatsApp" has to say no.
+ */
+export function longNoisyFixture(): string {
+  return make('noisy-360p30-300s.mp4', [
+    '-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=30:duration=300',
+    '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000:duration=300',
+    '-filter_complex', '[0:v]noise=alls=40:allf=t+u[v]', '-map', '[v]', '-map', '1:a',
+    '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-b:v', '900k', '-maxrate', '1200k', '-bufsize', '2M',
+    '-c:a', 'aac', '-b:a', '96k',
+  ]);
+}
+
 /** 6 s of 640x360 video with NO audio track. */
 export function silentFixture(): string {
   return make('no-audio-360p-6s.mp4', [

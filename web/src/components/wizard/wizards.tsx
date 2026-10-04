@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 
 import { safeFileName } from '@/adapters/browserMedia';
 import { applySilenceCuts, withWholeKesit } from '@/application/commands';
@@ -19,12 +19,16 @@ import {
   type GapChoice,
 } from '@/application/taskRecipes';
 import { Icon } from '@/components/Icon';
+import type { TargetSizePreview } from '@/components/editor/useDownloads';
 import { useSilenceAnalysis } from '@/components/editor/useSilenceAnalysis';
 import { useHydrated } from '@/components/useHydrated';
-import { WEB_LOCAL_POLICY } from '@/domain/policy';
+import { formatStorageBytes } from '@/domain/outputStorage';
+import { WEB_LOCAL_POLICY, formatByteLimit, formatBytes } from '@/domain/policy';
+import { SIZE_PRESETS, type SizePresetId, type TargetSizeRequest } from '@/domain/targetSize';
 import type { AvailableTaskId } from '@/domain/tasks';
+import { formatTimecode } from '@/domain/time';
 import { translator, type MessageKey } from '@/i18n/messages';
-import { VideoPreview, WizardFlow, fill, lengthText, type WizardHostProps } from './WizardFlow';
+import { VideoPreview, WizardFlow, fill, lengthText, type FlowInfo, type WizardHostProps } from './WizardFlow';
 
 const t = translator('tr');
 
@@ -526,6 +530,211 @@ function CevirWizard(host: WizardHostProps) {
   );
 }
 
+// ---------------------------------------------------------------- Küçült
+
+/** The order the choices are shown in: the roomiest first (it is the default). */
+const SIZE_CHOICES: readonly SizePresetId[] = ['share', 'email', 'whatsapp'];
+
+type SizePreviews = Partial<Record<SizePresetId, TargetSizePreview>>;
+
+/**
+ * What one size would give, said before anything is encoded (ADR-035):
+ * "≈ 48 MB · 720p", "already fits", or the honest "does not fit" with the
+ * smallest size that would.
+ */
+function sizeHint(preview: TargetSizePreview | undefined, videoBytes: number, targetBytes: number): string {
+  const mark = t('time.decimalMark');
+  if (!preview) return t('wizard.kucult.calculating');
+  if (!preview.ok) {
+    return preview.reason === 'target_too_small'
+      ? fill(t('wizard.kucult.tooSmall'), { min: formatStorageBytes(preview.refusal.minBytes, 'up', mark) })
+      : t('wizard.kucult.calculating');
+  }
+  // The file itself is already under the limit: its pictures are kept where they can be.
+  if (videoBytes <= targetBytes) {
+    return fill(t('wizard.kucult.alreadyFits'), { size: formatBytes(videoBytes, mark) });
+  }
+  const { decision } = preview;
+  const values = {
+    size: formatBytes(decision.plannedBytes, mark),
+    height: String(decision.shortEdge),
+    seconds: String(preview.estimatedSeconds),
+  };
+  return fill(t(decision.mode === 'normal' ? 'wizard.kucult.planNormal' : 'wizard.kucult.plan'), values);
+}
+
+/**
+ * The size choice of "Küçült". The three previews are asked once per video
+ * (the planner is pure arithmetic plus one question to the browser about its
+ * encoder), so every option says its outcome before the user picks.
+ */
+function SizeChoice({
+  info,
+  videoBytes,
+  recipeKey,
+  choice,
+  onChoice,
+  previews,
+  onPreviews,
+}: {
+  info: FlowInfo;
+  videoBytes: number;
+  /** Changes when the video (and so the recipe) changes. */
+  recipeKey: string;
+  choice: SizePresetId;
+  onChoice: (id: SizePresetId) => void;
+  previews: SizePreviews;
+  onPreviews: (key: string, previews: SizePreviews) => void;
+}) {
+  const { previewSize } = info;
+  useEffect(() => {
+    let live = true;
+    void Promise.all(
+      SIZE_PRESETS.map(async (preset) => [preset.id, await previewSize({ targetBytes: preset.bytes })] as const),
+    ).then((entries) => {
+      if (live) onPreviews(recipeKey, Object.fromEntries(entries) as SizePreviews);
+    });
+    return () => {
+      live = false;
+    };
+    // `previewSize` follows the recipe; the key says when the video changed.
+  }, [previewSize, recipeKey, onPreviews]);
+
+  return (
+    <fieldset className="wizard-choice" data-testid="kucult-choice">
+      <legend>{t('wizard.kucult.choice')}</legend>
+      {SIZE_CHOICES.map((id) => {
+        const preset = SIZE_PRESETS.find((item) => item.id === id);
+        if (!preset) return null;
+        const preview = previews[id];
+        return (
+          <label className="wizard-option" data-checked={choice === id} key={id}>
+            <input
+              type="radio"
+              name="size"
+              value={id}
+              checked={choice === id}
+              disabled={info.busy}
+              onChange={() => onChoice(id)}
+              data-testid={`option-${id}`}
+            />
+            <span className="wizard-option-text">
+              <span className="wizard-option-label">{t(`wizard.kucult.${id}` as MessageKey)}</span>
+              <span
+                className="wizard-option-hint"
+                data-testid={`size-hint-${id}`}
+                data-state={!preview ? 'pending' : preview.ok ? (videoBytes <= preset.bytes ? 'already' : preview.decision.mode) : 'refused'}
+                data-planned-bytes={preview?.ok ? preview.decision.plannedBytes : undefined}
+                data-short-edge={preview?.ok ? preview.decision.shortEdge : undefined}
+                data-min-bytes={preview && !preview.ok && preview.reason === 'target_too_small' ? preview.refusal.minBytes : undefined}
+              >
+                {sizeHint(preview, videoBytes, preset.bytes)}
+              </span>
+            </span>
+          </label>
+        );
+      })}
+    </fieldset>
+  );
+}
+
+/**
+ * "Küçült" (ADR-035): the whole video at or under a size. One choice — where
+ * it has to fit (share sheet, e-mail, WhatsApp) — and every option says what
+ * it would give before "İndir": the expected size and resolution, that the
+ * video already fits, or that it cannot fit and what the smallest size is.
+ * The result line then says what the saved file really weighs.
+ */
+function KucultWizard(host: WizardHostProps) {
+  const { state } = host;
+  const { video } = state;
+  const [choice, setChoice] = useState<SizePresetId>('share');
+  const [previews, setPreviews] = useState<{ key: string; previews: SizePreviews }>({ key: '', previews: {} });
+  const onPreviews = useCallback((key: string, next: SizePreviews) => setPreviews({ key, previews: next }), []);
+  const recipeKey = video ? `${video.fileName}|${video.file.size}|${video.durationUs}|${state.project.export.shortEdge}` : '';
+  const current = previews.key === recipeKey ? previews.previews : {};
+  const preset = SIZE_PRESETS.find((item) => item.id === choice) ?? SIZE_PRESETS[0];
+  const selected = current[choice];
+  const refused = selected && !selected.ok && selected.reason === 'target_too_small' ? selected.refusal : null;
+  const request: TargetSizeRequest | null = preset ? { targetBytes: preset.bytes } : null;
+  const mark = t('time.decimalMark');
+
+  return (
+    <WizardFlow
+      {...host}
+      titleKey="wizard.kucult.title"
+      fileTag="kucuk"
+      // Nothing to download while the size is not known to fit: an impossible
+      // target is refused here, before the save dialog.
+      recipe={video && selected?.ok ? state.project : null}
+      exportExtras={request ? { targetSize: request } : undefined}
+      blockedText={
+        refused && preset
+          ? fill(t(refused.maxDurationUs >= 1_000_000 ? 'wizard.kucult.blocked' : 'wizard.kucult.blockedNoFit'), {
+              target: formatByteLimit(preset.bytes, mark),
+              min: formatStorageBytes(refused.minBytes, 'up', mark),
+              duration: formatTimecode(refused.maxDurationUs),
+            })
+          : null
+      }
+      openVideo={async (file) => {
+        const outcome = await state.importVideo(file, ownSizeRecipe);
+        if (outcome.kind !== 'opened') return false;
+        // The video's own frame: nothing of the picture is cut off.
+        state.changeFraming({ fit: 'contain', zoom: 1 });
+        setChoice('share');
+        return true;
+      }}
+    >
+      {(info) =>
+        video ? (
+          <>
+            <SizeChoice
+              info={info}
+              videoBytes={video.file.size}
+              recipeKey={recipeKey}
+              choice={choice}
+              onChoice={setChoice}
+              previews={current}
+              onPreviews={onPreviews}
+            />
+            <p className="wizard-hint">{t('wizard.kucult.note')}</p>
+          </>
+        ) : null
+      }
+    </WizardFlow>
+  );
+}
+
+// ---------------------------------------------------------------- Sesini al
+
+/**
+ * "Sesini al" (ADR-035): no decision. The whole video's sound as an M4A file
+ * (AAC — what phones, computers and browsers play); the picture is not even
+ * decoded. A video without sound is told so and nothing can be downloaded.
+ */
+function SesWizard(host: WizardHostProps) {
+  const { state } = host;
+  const { video } = state;
+  const silent = video?.hasAudio === false;
+  return (
+    <WizardFlow
+      {...host}
+      titleKey="wizard.ses.title"
+      fileTag="ses"
+      recipe={video && !silent ? state.project : null}
+      exportExtras={{ output: 'audio' }}
+      blockedText={silent ? t('wizard.ses.noSound') : null}
+      openVideo={async (file) => (await state.importVideo(file, ownSizeRecipe)).kind === 'opened'}
+    >
+      <div className="wizard-panel" data-testid="ses-info">
+        <p className="wizard-panel-title">{t('wizard.ses.body')}</p>
+        <p className="wizard-hint">{t('wizard.ses.keeps')}</p>
+      </div>
+    </WizardFlow>
+  );
+}
+
 /**
  * The wizard of every task that works today. Enabling a task is one line in
  * `domain/tasks.ts` (`available: true`) and its component here; the type
@@ -535,7 +744,9 @@ export const WIZARDS: Record<AvailableTaskId, ComponentType<WizardHostProps>> = 
   kes: KesWizard,
   bosluk: BoslukWizard,
   dikey: DikeyWizard,
+  kucult: KucultWizard,
   muzik: MuzikWizard,
+  ses: SesWizard,
   cevir: CevirWizard,
 };
 

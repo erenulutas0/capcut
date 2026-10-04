@@ -726,6 +726,8 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
     // Only audio bitrates whose encoder delay can be measured here (ADR-032)
     // are planned with: a bitrate the browser accepts but cannot align would
     // end in a refusal after the plan was made.
+    // The source's own bitrate: no size is refused for needing more than that.
+    const sourceSeconds = await videoInput.computeDuration().catch(() => 0);
     const audioBitrates: number[] = [];
     if (wantsAudio) {
       for (const bitrate of TARGET_AUDIO_BITRATES) {
@@ -738,6 +740,7 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
       hasAudio: wantsAudio,
       encoderKind: await encoderKindLookup(plan.aspect, plan.fpsNum, plan.fpsDen),
       ...(wantsAudio ? { audioBitrates } : {}),
+      ...(sourceSeconds > 0 ? { sourceBitrate: (videoFile.size * 8) / sourceSeconds } : {}),
     });
     let first: TargetSizeDecision;
     if (targetSize.forced) {

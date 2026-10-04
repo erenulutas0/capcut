@@ -75,7 +75,7 @@ export const PHRASES: ReadonlyArray<readonly [string, TaskId]> = [
   ['convert to mp4', 'cevir'],
   ['video won’t open', 'cevir'],
   ['windows’ta çalışmıyor', 'cevir'],
-  // Küçült — not available yet; the search must still know what was meant.
+  // Küçült (available since ADR-035).
   ['videom whatsapp’a sığmıyor', 'kucult'],
   ["videom whatsapp'a sığmıyor", 'kucult'],
   ['WhatsApp’a sığmıyor', 'kucult'],
@@ -87,7 +87,7 @@ export const PHRASES: ReadonlyArray<readonly [string, TaskId]> = [
   ['make it smaller', 'kucult'],
   ['too big for email', 'kucult'],
   ['whatsap', 'kucult'],
-  // Sesini al — not available yet.
+  // Sesini al (available since ADR-035).
   ['sesini mp3 yap', 'ses'],
   ['videonun sesini al', 'ses'],
   ['sadece ses', 'ses'],
@@ -211,11 +211,19 @@ describe('searchTasks: rules', () => {
   });
 
   it('reports tasks that are not available as such, never hiding them', () => {
-    const result = searchTasks('videom whatsapp’a sığmıyor');
+    const result = searchTasks('altyazı ekle');
     expect(result.kind).toBe('results');
     if (result.kind !== 'results') return;
-    expect(result.matches[0]?.task.id).toBe('kucult');
+    expect(result.matches[0]?.task.id).toBe('yazi');
     expect(result.matches[0]?.task.available).toBe(false);
+    // ADR-035: "Küçült" and "Sesini al" now work, and the search says so.
+    for (const [phrase, id] of [['videom whatsapp’a sığmıyor', 'kucult'], ['sesini mp3 yap', 'ses']] as const) {
+      const found = searchTasks(phrase);
+      expect(found.kind, phrase).toBe('results');
+      if (found.kind !== 'results') continue;
+      expect(found.matches[0]?.task.id, phrase).toBe(id);
+      expect(found.matches[0]?.task.available, phrase).toBe(true);
+    }
   });
 });
 
@@ -226,8 +234,8 @@ describe('task registry', () => {
   });
 
   it('offers exactly the tasks the engine can do today', () => {
-    expect(availableTasks().map((task) => task.id)).toEqual(['kes', 'bosluk', 'dikey', 'muzik', 'cevir']);
-    expect(TASKS.filter((task) => !task.available).map((task) => task.id)).toEqual(['kucult', 'yazi', 'ses']);
+    expect(availableTasks().map((task) => task.id)).toEqual(['kes', 'bosluk', 'dikey', 'kucult', 'muzik', 'ses', 'cevir']);
+    expect(TASKS.filter((task) => !task.available).map((task) => task.id)).toEqual(['yazi']);
   });
 
   it('keeps every word folded, so the search compares like with like', () => {

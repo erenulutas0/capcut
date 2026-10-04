@@ -39,7 +39,7 @@ test.describe('opening screen', () => {
 
     // The cards, in the registry's order: exactly the tasks that work today.
     const cards = page.getByTestId('task-grid').getByRole('link');
-    await expect(cards).toHaveCount(5);
+    await expect(cards).toHaveCount(7);
     expect(await cards.evaluateAll((links) => links.map((link) => link.getAttribute('href')))).toEqual(
       availableTasks().map((task) => `/yap/${task.id}`),
     );
@@ -47,7 +47,10 @@ test.describe('opening screen', () => {
     await expect(page.getByTestId('task-kes')).toContainText('İstediğin yerleri al');
     await expect(page.getByTestId('task-bosluk')).toContainText('Boşlukları at');
     await expect(page.getByTestId('task-dikey')).toContainText('Dikey yap');
+    await expect(page.getByTestId('task-kucult')).toContainText('Küçült');
+    await expect(page.getByTestId('task-kucult')).toContainText('WhatsApp’a sığdır');
     await expect(page.getByTestId('task-muzik')).toContainText('Müzik ekle');
+    await expect(page.getByTestId('task-ses')).toContainText('Sesini al');
     await expect(page.getByTestId('task-cevir')).toContainText('Her yerde açılsın');
     // Not built yet: no card, no mention on the screen.
     for (const task of TASKS.filter((item) => !item.available)) {
@@ -272,10 +275,11 @@ test.describe('type to find', () => {
 
   test('a task that is not built yet answers honestly: “Bu henüz yok”, no button, nothing starts', async ({ page }) => {
     await page.goto('/');
+    // "Yazıya dök" is the one task not built yet (ADR-035 made "Küçült" and "Sesini al" work).
     const phrases: Array<[string, string]> = [
-      ['videom whatsapp’a sığmıyor', 'kucult'],
-      ['sesini mp3 yap', 'ses'],
       ['altyazı ekle', 'yazi'],
+      ['yazıya dök', 'yazi'],
+      ['transkript', 'yazi'],
     ];
     for (const [phrase, id] of phrases) {
       await box(page).fill(phrase);
@@ -295,19 +299,39 @@ test.describe('type to find', () => {
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ne yapmak istiyorsun?');
     }
     // And there is no page behind it.
-    for (const id of ['kucult', 'ses', 'yazi']) {
+    for (const id of ['yazi']) {
       const response = await page.request.get(`/yap/${id}`);
       expect(response.status(), id).toBe(404);
     }
   });
 
+  test('“Küçült” and “Sesini al” are found by what people type, and start (ADR-035)', async ({ page }) => {
+    await page.goto('/');
+    for (const [phrase, id, heading] of [
+      ['videom whatsapp’a sığmıyor', 'kucult', 'Videonu seç'],
+      ['sesini mp3 yap', 'ses', 'Videonu seç'],
+    ] as const) {
+      await box(page).fill(phrase);
+      const row = page.getByTestId(`result-${id}`);
+      await expect(row).toBeVisible();
+      await expect(row).not.toHaveAttribute('aria-disabled', 'true');
+      await expect(row.getByTestId('result-start')).toBeVisible();
+      await expect(row.getByTestId('result-unavailable')).toHaveCount(0);
+      await box(page).press('Enter');
+      await expect(page).toHaveURL(new RegExp(`/yap/${id}/?$`));
+      await expect(page.getByTestId('wizard')).toHaveAttribute('data-task', id);
+      await expect(page.getByTestId('wizard-title')).toHaveText(heading);
+      await page.goto('/');
+    }
+  });
+
   test('an unavailable task next to an available one: only the available one can start', async ({ page }) => {
     await page.goto('/');
-    await box(page).fill('sesi kes');
+    await box(page).fill('altyazı kes');
     await expect(results(page)).toHaveCount(2);
     await expect(page.getByTestId('result-kes').getByTestId('result-start')).toBeVisible();
-    await expect(page.getByTestId('result-ses').getByTestId('result-start')).toHaveCount(0);
-    await expect(page.getByTestId('result-ses')).toContainText('Bu henüz yok, üzerinde çalışıyoruz.');
+    await expect(page.getByTestId('result-yazi').getByTestId('result-start')).toHaveCount(0);
+    await expect(page.getByTestId('result-yazi')).toContainText('Bu henüz yok, üzerinde çalışıyoruz.');
   });
 
   test('nothing found: “Bunu bulamadım” and “Tüm işleri gör” brings the cards back', async ({ page }) => {

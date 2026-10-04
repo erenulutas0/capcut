@@ -9,12 +9,13 @@ import { Icon, Wordmark } from '@/components/Icon';
 import { DownloadStatus } from '@/components/editor/DownloadStatus';
 import { MediaErrorNotice } from '@/components/editor/MediaErrorNotice';
 import { ReportDialog } from '@/components/editor/ReportDialog';
-import type { ExportExtras } from '@/components/editor/useDownloads';
+import type { ExportExtras, TargetSizePreview } from '@/components/editor/useDownloads';
 import type { EditorState } from '@/components/editor/useEditorState';
 import { useLayoutMode } from '@/components/editor/useLayoutMode';
 import { useTouchScreen } from '@/components/editor/useTouchScreen';
 import { useHydrated } from '@/components/useHydrated';
 import type { Project } from '@/domain/edl';
+import type { TargetSizeRequest } from '@/domain/targetSize';
 import type { TaskDefinition } from '@/domain/tasks';
 import { formatLengthShort } from '@/domain/time';
 import { translator, type MessageKey } from '@/i18n/messages';
@@ -45,6 +46,8 @@ export interface FlowInfo {
   capability: CapabilityReportV1 | null;
   /** A download is running: choices must not change under it. */
   busy: boolean;
+  /** "Küçült" (ADR-035): what a download at this size would be, before anything is encoded. */
+  previewSize: (target: TargetSizeRequest) => Promise<TargetSizePreview>;
 }
 
 interface Props extends WizardHostProps {
@@ -208,7 +211,7 @@ export function WizardFlow({
           : entry.phase === 'saved'
             ? t('wizard.result.saved')
             : entry.phase === 'ready'
-              ? t('wizard.result.ready')
+              ? t(entry.result.output === 'audio' ? 'wizard.result.readyAudio' : 'wizard.result.ready')
               : entry.phase === 'canceled'
                 ? t('wizard.result.canceled')
                 : t('wizard.result.failed');
@@ -291,7 +294,9 @@ export function WizardFlow({
               changing={importing}
             />
             <MediaErrorNotice t={t} error={state.mediaError} onDismiss={state.clearMediaError} />
-            {typeof children === 'function' ? children({ capability: exporter.capability, busy }) : children}
+            {typeof children === 'function'
+              ? children({ capability: exporter.capability, busy, previewSize: exporter.previewSize })
+              : children}
             {working ? null : (
               <div className="wizard-actions">
                 {blockedText ? (

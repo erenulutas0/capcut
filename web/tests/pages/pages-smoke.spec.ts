@@ -66,8 +66,8 @@ test('opening screen → search → wizard → download → editor hand-off', as
   expect(await cards.evaluateAll((links) => links.map((link) => link.getAttribute('href')).sort())).toEqual(WIZARD_PAGES);
 
   // Type to find: the unavailable task is honest, the available one starts with Enter.
-  await page.getByTestId('finder-input').fill('videom whatsapp’a sığmıyor');
-  await expect(page.getByTestId('result-kucult')).toContainText('Bu henüz yok, üzerinde çalışıyoruz.');
+  await page.getByTestId('finder-input').fill('altyazı ekle');
+  await expect(page.getByTestId('result-yazi')).toContainText('Bu henüz yok, üzerinde çalışıyoruz.');
   await expect(page.getByTestId('result-start')).toHaveCount(0);
   await page.getByTestId('finder-input').fill('tiktok için dikey');
   await page.getByTestId('finder-input').press('Enter');
@@ -112,9 +112,21 @@ test('opening screen → search → wizard → download → editor hand-off', as
 
   // Every wizard page is published; a task that is not built yet has no page.
   for (const path of WIZARD_PAGES) expect((await request.get(path)).status(), path).toBe(200);
-  for (const id of ['kucult', 'ses', 'yazi']) {
+  for (const id of ['yazi']) {
     expect((await request.get(`/capcut/yap/${id}/`)).status(), id).toBe(404);
   }
+
+  // "Sesini al" (ADR-035): the export worker's sound-only path under the sub-path.
+  await page.goto('./');
+  await page.getByTestId('task-ses').click();
+  await expect(page).toHaveURL(/\/capcut\/yap\/ses\/$/);
+  await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+  await expect(page.getByTestId('ses-info')).toBeVisible({ timeout: 60_000 });
+  await page.getByTestId('wizard-download').click();
+  await expect(page.getByTestId('download-saved')).toHaveText('Ses dosyası kaydedildi: saved-other-8s_ses.m4a', {
+    timeout: 120_000,
+  });
+  await expect(page.getByTestId('export-method')).toHaveAttribute('data-output', 'audio');
 
   // The only 404 of the session is the one asked for above (it is not a page request).
   expect(seen.failures).toEqual([]);

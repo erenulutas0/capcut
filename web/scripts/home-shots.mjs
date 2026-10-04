@@ -21,6 +21,8 @@ const outDir = join(root, '..', 'docs', 'ux', '2026-10-03-home', 'shots');
 const sample = join(root, 'tests', 'media', 'sample-24s.mp4');
 const music = join(root, 'tests', 'media', 'tone-30s.m4a');
 const baseURL = process.env.SHOT_URL ?? 'http://127.0.0.1:3100';
+/** `--only=kucult,ses`: only those wizards' shots (the rest are left as they are). */
+const only = (process.argv.find((a) => a.startsWith('--only=')) ?? '--only=').slice(7).split(',').filter(Boolean);
 
 mkdirSync(outDir, { recursive: true });
 
@@ -80,6 +82,7 @@ for (const size of SIZES) {
     await page.getByTestId('download-saved').waitFor({ timeout: 180_000 });
   };
 
+  if (only.length === 0) {
   // ---- the opening screen and the search
   await open('/');
   await shot('01-home');
@@ -87,7 +90,7 @@ for (const size of SIZES) {
   await shot('02-search-results');
   await page.getByTestId('finder-input').fill('sesi kes');
   await shot('03-search-two-results');
-  await page.getByTestId('finder-input').fill('videom whatsapp’a sığmıyor');
+  await page.getByTestId('finder-input').fill('altyazı ekle');
   await shot('04-search-unavailable');
   await page.getByTestId('finder-input').fill('pizza siparişi');
   await shot('05-search-none');
@@ -140,6 +143,29 @@ for (const size of SIZES) {
   await shot('50-cevir-2-info');
   await saved();
   await shot('51-cevir-3-saved');
+
+  }
+
+  // ---- Küçült (ADR-035): the choice with what each size would give, then the real size
+  if (only.length === 0 || only.includes('kucult')) {
+    await open('/yap/kucult');
+    await pick(sample);
+    await page.locator('[data-testid="size-hint-whatsapp"]:not([data-state="pending"])').waitFor({ timeout: 60_000 });
+    await shot('60-kucult-2-choice');
+    await page.getByTestId('option-whatsapp').check();
+    await saved();
+    await shot('61-kucult-3-saved');
+  }
+
+  // ---- Sesini al (ADR-035)
+  if (only.length === 0 || only.includes('ses')) {
+    await open('/yap/ses');
+    await pick(sample);
+    await page.getByTestId('ses-info').waitFor();
+    await shot('70-ses-2-info');
+    await saved();
+    await shot('71-ses-3-saved');
+  }
 
   await context.close();
 }

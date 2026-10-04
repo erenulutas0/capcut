@@ -131,7 +131,7 @@ const REGISTRY = [
     icon: 'taskShrink',
     labelKey: 'task.kucult.label',
     subKey: 'task.kucult.sub',
-    available: false,
+    available: true,
     steps: ['pick', 'choose', 'download'],
     words: {
       strong: [
@@ -180,7 +180,7 @@ const REGISTRY = [
     icon: 'taskSound',
     labelKey: 'task.ses.label',
     subKey: 'task.ses.sub',
-    available: false,
+    available: true,
     steps: ['pick', 'download'],
     words: {
       // No "sesi": "sesiz" must stay a typo of "sessiz", not "sesi" + "z".

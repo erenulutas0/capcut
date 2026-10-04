@@ -8,6 +8,7 @@ import {
   installSavePicker,
   noSavePicker,
   openSettings,
+  opfsFiles,
   pickerCalls,
   probeMp4,
   readSaved,
@@ -15,6 +16,7 @@ import {
   stubShare,
 } from './kesitFlow';
 import { silenceFixture } from './silence-media';
+import { decodeMono, fileBytes, longNoisyFixture, noisyLongFixture, probeStreams } from './targetsize-media';
 import { bandLuma, meanVolumeDb, wizardFixture } from './wizard-media';
 
 /**
@@ -444,6 +446,170 @@ test.describe('Her yerde açılsın', () => {
 });
 
 // ------------------------------------------------------------------ the frame every wizard shares
+
+// ------------------------------------------------------------------ Küçült (ADR-035)
+
+test.describe('Küçült', () => {
+  const hint = (page: Page, id: string) => page.getByTestId(`size-hint-${id}`);
+  /** Every option has said what it would give. */
+  async function hintsReady(page: Page) {
+    for (const id of ['share', 'email', 'whatsapp']) {
+      await expect(hint(page, id)).not.toHaveAttribute('data-state', 'pending', { timeout: 60_000 });
+    }
+  }
+
+  test('one choice, each option says its outcome first; WhatsApp: the saved file is under 16 MB and says its real size', async ({
+    page,
+  }, testInfo) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    const source = noisyLongFixture();
+    // About 21 MB: over WhatsApp's limit, under the other two.
+    expect(fileBytes(source)).toBeGreaterThan(16_000_000);
+    expect(fileBytes(source)).toBeLessThan(25_000_000);
+    await startTask(page, 'kucult', source);
+    await expect(page.getByTestId('kucult-choice')).toBeVisible({ timeout: 60_000 });
+    await expect(title(page)).toHaveText('Videonu küçültelim');
+    await expect(page.getByRole('radio')).toHaveCount(3);
+    await expect(page.getByTestId('option-share')).toBeChecked();
+    await expect(page.getByTestId('kucult-choice')).toContainText('Paylaşmak için (52 MB altı)');
+    await expect(page.getByTestId('kucult-choice')).toContainText('E-posta (25 MB altı)');
+    await expect(page.getByTestId('kucult-choice')).toContainText('WhatsApp (16 MB altı)');
+    await hintsReady(page);
+
+    // Already under the two larger limits: said so. WhatsApp: the planned size and resolution, up front.
+    await expect(hint(page, 'share')).toHaveAttribute('data-state', 'already');
+    await expect(hint(page, 'share')).toContainText('Videon zaten bunun altında');
+    await expect(hint(page, 'email')).toHaveAttribute('data-state', 'already');
+    await expect(hint(page, 'whatsapp')).toHaveAttribute('data-state', 'reduced');
+    await expect(hint(page, 'whatsapp')).toContainText(/^≈ \d+(,\d)? MB · (1080|720|540|360)p/);
+    const planned = Number(await hint(page, 'whatsapp').getAttribute('data-planned-bytes'));
+    expect(planned).toBeGreaterThan(1_000_000);
+    expect(planned).toBeLessThanOrEqual(16_000_000);
+
+    await page.getByTestId('option-whatsapp').check();
+    await download(page);
+    expect(await pickerCalls(page)).toEqual(['noisy-720p30-14s_kucuk.mp4']);
+    const file = await readSaved(page, testInfo, 'saved-noisy-720p30-14s_kucuk.mp4');
+    const savedBytes = fileBytes(file);
+    const line = page.getByTestId('target-size-result');
+    await expect(line).toHaveAttribute('data-target-bytes', '16000000');
+    // What the app says is the file's own size, and "under the target" only when it is.
+    expect(Number(await line.getAttribute('data-actual-bytes'))).toBe(savedBytes);
+    expect((await line.getAttribute('data-fits')) === 'true').toBe(savedBytes <= 16_000_000);
+    expect(savedBytes).toBeLessThanOrEqual(16_000_000);
+    await expect(line).toContainText('hedefin altında (hedef 16 MB)');
+    const probe = probeMp4(file);
+    expect(probe.videoCodec).toBe('h264');
+    expect(probe.audioCodec).toBe('aac');
+    expect(probe.durationS).toBeCloseTo(14, 1);
+    console.log(
+      `Küçült → WhatsApp: source ${fileBytes(source)}, planned ${planned}, saved ${savedBytes}, ` +
+        `${await line.getAttribute('data-short-edge')}p, attempts ${await line.getAttribute('data-attempts')}`,
+    );
+    // Nothing is stored by a wizard.
+    await page.waitForTimeout(1200);
+    expect(await storedProjects(page)).toBe(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('a video already under the limit: said before İndir, and its pictures are copied, not re-encoded', async ({
+    page,
+  }, testInfo) => {
+    await startTask(page, 'kucult', SAMPLE);
+    await expect(page.getByTestId('kucult-choice')).toBeVisible({ timeout: 60_000 });
+    await hintsReady(page);
+    for (const id of ['share', 'email', 'whatsapp']) {
+      await expect(hint(page, id)).toHaveAttribute('data-state', 'already');
+      await expect(hint(page, id)).toContainText('Videon zaten bunun altında (473 KB)');
+    }
+    await page.getByTestId('option-whatsapp').check();
+    await download(page);
+    const file = await readSaved(page, testInfo, 'saved-sample-24s_kucuk.mp4');
+    expect(fileBytes(file)).toBeLessThanOrEqual(16_000_000);
+    await expect(page.getByTestId('export-method')).toHaveAttribute('data-method', 'copy');
+    const line = page.getByTestId('target-size-result');
+    await expect(line).toHaveAttribute('data-mode', 'copy');
+    await expect(line).toContainText('hedefin altında');
+    await expect(line).toContainText('yeniden kodlanmadı');
+    expect([probeMp4(file).width, probeMp4(file).height]).toEqual([1280, 720]);
+  });
+
+  test('a video that cannot fit: the option says the smallest size, İndir stays off, nothing is written', async ({
+    page,
+  }) => {
+    // 5 minutes at ~1 Mbit/s (~38 MB). With this browser's software encoder 16 MB is not reachable.
+    await startTask(page, 'kucult', longNoisyFixture());
+    await expect(page.getByTestId('kucult-choice')).toBeVisible({ timeout: 120_000 });
+    await hintsReady(page);
+    await expect(hint(page, 'whatsapp')).toHaveAttribute('data-state', 'refused');
+    await expect(hint(page, 'whatsapp')).toContainText(/Bu video buna sığmaz: en az \d+(,\d)? MB gerekir\./);
+    const minBytes = Number(await hint(page, 'whatsapp').getAttribute('data-min-bytes'));
+    expect(minBytes).toBeGreaterThan(16_000_000);
+    // The default (share, 52 MB) can be downloaded …
+    await expect(page.getByTestId('wizard-download')).toBeEnabled();
+    // … the one that cannot fit cannot: the reason is next to the button, and the button is off.
+    await page.getByTestId('option-whatsapp').check();
+    await expect(page.getByTestId('wizard-download')).toBeDisabled();
+    await expect(page.getByTestId('wizard-blocked')).toContainText('Bu video bu boyuta sığmaz (hedef 16 MB). En az');
+    await expect(page.getByTestId('wizard-blocked')).toContainText('uzunluğunda bir kesit seç');
+    expect(await pickerCalls(page)).toEqual([]);
+    expect(Object.keys(await opfsFiles(page)).filter((name) => name.startsWith('saved-'))).toEqual([]);
+    // E-mail (25 MB) fits and can be chosen again.
+    await page.getByTestId('option-email').check();
+    await expect(page.getByTestId('wizard-download')).toBeEnabled();
+    await expect(page.getByTestId('wizard-blocked')).toHaveCount(0);
+  });
+});
+
+// ------------------------------------------------------------------ Sesini al (ADR-035)
+
+test.describe('Sesini al', () => {
+  test('no decision: İndir saves an M4A with no video track, exactly as long as the video', async ({ page }, testInfo) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await startTask(page, 'ses', SAMPLE);
+    await expect(page.getByTestId('ses-info')).toBeVisible({ timeout: 60_000 });
+    await expect(title(page)).toHaveText('Videonun sesini alalım');
+    await expect(page.getByTestId('ses-info')).toContainText('ses dosyası (M4A)');
+    await expect(page.getByRole('radio')).toHaveCount(0);
+
+    await download(page);
+    await expect(page.getByTestId('download-saved')).toHaveText('Ses dosyası kaydedildi: saved-sample-24s_ses.m4a');
+    await expect(page.getByTestId('export-method')).toHaveAttribute('data-output', 'audio');
+    expect(await pickerCalls(page)).toEqual(['sample-24s_ses.m4a']);
+    const file = await readSaved(page, testInfo, 'saved-sample-24s_ses.m4a');
+    const probe = probeStreams(file);
+    expect(probe.streams.map((stream) => `${stream.type}:${stream.codec}`)).toEqual(['audio:aac']);
+    expect(Math.abs(probe.durationS - 24)).toBeLessThan(0.001);
+    expect(decodeMono(file).length).toBe(24 * 48_000);
+    await page.waitForTimeout(1200);
+    expect(await storedProjects(page)).toBe(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('a video without sound: said on the step, İndir stays off, no save dialog, nothing written', async ({ page }) => {
+    await startTask(page, 'ses', wizardFixture('noAudio'));
+    await expect(page.getByTestId('ses-info')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId('wizard-blocked')).toHaveText('Bu videoda ses yok; kaydedilecek bir ses dosyası çıkmaz.');
+    await expect(page.getByTestId('wizard-download')).toBeDisabled();
+    expect(await pickerCalls(page)).toEqual([]);
+    expect(Object.keys(await opfsFiles(page)).filter((name) => name.startsWith('saved-'))).toEqual([]);
+  });
+
+  test('without a save dialog: “Ses dosyan hazır”, the download is an .m4a', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const page = await context.newPage();
+    await noSavePicker(page);
+    await startTask(page, 'ses', OTHER);
+    await expect(page.getByTestId('ses-info')).toBeVisible({ timeout: 60_000 });
+    await page.getByTestId('wizard-download').click();
+    await expect(page.getByTestId('export-download')).toBeVisible({ timeout: 120_000 });
+    await expect(title(page)).toHaveText('Ses dosyan hazır');
+    await expect(page.getByTestId('export-download')).toHaveAttribute('download', 'other-8s_ses.m4a');
+    await context.close();
+  });
+});
 
 test.describe('wizard frame', () => {
   test('focus moves to the heading on every step; Geri walks back step by step', async ({ page }) => {

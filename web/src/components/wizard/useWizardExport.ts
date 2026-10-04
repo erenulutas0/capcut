@@ -5,7 +5,13 @@ import { useCallback } from 'react';
 import { taggedFileName } from '@/application/taskRecipes';
 import type { Project } from '@/domain/edl';
 import type { KesitSettings } from '@/domain/kesit';
-import { useDownloads, type DownloadEntry, type ExportExtras } from '@/components/editor/useDownloads';
+import {
+  useDownloads,
+  type DownloadEntry,
+  type ExportExtras,
+  type TargetSizePreview,
+} from '@/components/editor/useDownloads';
+import type { TargetSizeRequest } from '@/domain/targetSize';
 
 /** What a wizard asks the export for. */
 export interface WizardExportRequest {
@@ -49,7 +55,12 @@ export function useWizardExport(request: WizardExportRequest) {
     exportExtras: request.extras,
   });
 
-  const { start: startDownload, dismiss: dismissDownload, share: shareDownload } = downloads;
+  const { start: startDownload, dismiss: dismissDownload, share: shareDownload, previewTargetSize } = downloads;
+  /** ADR-035: what a target-size download of this recipe would be; encodes nothing. */
+  const previewSize = useCallback(
+    (target: TargetSizeRequest): Promise<TargetSizePreview> => previewTargetSize({ kind: 'all' }, target),
+    [previewTargetSize],
+  );
   /** MUST be called synchronously from the click (the save dialog opens inside it). */
   const start = useCallback(() => startDownload({ kind: 'all' }), [startDownload]);
   const dismiss = useCallback(() => dismissDownload(KEY), [dismissDownload]);
@@ -65,6 +76,7 @@ export function useWizardExport(request: WizardExportRequest) {
     share,
     /** The capability report of the background check, once it is known. */
     capability: downloads.capability,
+    previewSize,
   };
 }
 
