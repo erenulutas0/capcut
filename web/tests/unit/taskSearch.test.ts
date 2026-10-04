@@ -211,13 +211,21 @@ describe('searchTasks: rules', () => {
   });
 
   it('reports tasks that are not available as such, never hiding them', () => {
-    const result = searchTasks('altyazı ekle');
+    // Every task works today (ADR-036 enabled the last one); the rule is kept
+    // for the next task that is announced before it is built.
+    const withOneOff = TASKS.map((task) => (task.id === 'yazi' ? { ...task, available: false } : task));
+    const result = searchTasks('altyazı ekle', withOneOff);
     expect(result.kind).toBe('results');
     if (result.kind !== 'results') return;
     expect(result.matches[0]?.task.id).toBe('yazi');
     expect(result.matches[0]?.task.available).toBe(false);
-    // ADR-035: "Küçült" and "Sesini al" now work, and the search says so.
-    for (const [phrase, id] of [['videom whatsapp’a sığmıyor', 'kucult'], ['sesini mp3 yap', 'ses']] as const) {
+    // ADR-035 and ADR-036: "Küçült", "Sesini al" and "Yazıya dök" work, and the search says so.
+    for (const [phrase, id] of [
+      ['videom whatsapp’a sığmıyor', 'kucult'],
+      ['sesini mp3 yap', 'ses'],
+      ['altyazı ekle', 'yazi'],
+      ['konuşmayı yazıya dök', 'yazi'],
+    ] as const) {
       const found = searchTasks(phrase);
       expect(found.kind, phrase).toBe('results');
       if (found.kind !== 'results') continue;
@@ -234,8 +242,8 @@ describe('task registry', () => {
   });
 
   it('offers exactly the tasks the engine can do today', () => {
-    expect(availableTasks().map((task) => task.id)).toEqual(['kes', 'bosluk', 'dikey', 'kucult', 'muzik', 'ses', 'cevir']);
-    expect(TASKS.filter((task) => !task.available).map((task) => task.id)).toEqual(['yazi']);
+    expect(availableTasks().map((task) => task.id)).toEqual(['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'cevir']);
+    expect(TASKS.filter((task) => !task.available).map((task) => task.id)).toEqual([]);
   });
 
   it('keeps every word folded, so the search compares like with like', () => {

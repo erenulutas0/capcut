@@ -2759,8 +2759,16 @@ input[type='range']:disabled::-webkit-slider-thumb {
   padding: 10px 14px 0;
 }
 
-.side > .kesits,
-.side > .transcript {
+.side-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.side-body > .kesits,
+.side-body > .transcript {
   flex: 1;
   border-left: 0;
 }

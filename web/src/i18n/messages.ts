@@ -7,7 +7,7 @@ export const tr = {
   'app.name': 'clip',
   'app.workingName': 'Clip geçici çalışma adıdır.',
   'landing.note':
-    'Bu bir deneme sürümüdür. İndirme en iyi Chrome ve Edge’de çalışır. Hesap, abonelik, bulut yükleme ve yapay zekâ yok.',
+    'Bu bir deneme sürümüdür. İndirme en iyi Chrome ve Edge’de çalışır. Hesap, abonelik ve bulut yükleme yok; her şey cihazında çalışır.',
 
   // Names only assistive technology hears (landmarks, hidden labels).
   'a11y.editorHeading': 'Clip editörü',
@@ -86,18 +86,18 @@ export const tr = {
 
   'privacy.summary.title': 'Kısaca',
   'privacy.summary.local':
-    'Seçtiğin video, ses ve altyazı dosyaları bu tarayıcıda, kendi cihazında işlenir. Düzenleme, sessizlik bulma ve dışa aktarma için hiçbir sunucuya gönderilmez.',
+    'Seçtiğin video, ses ve altyazı dosyaları bu tarayıcıda, kendi cihazında işlenir. Düzenleme, sessizlik bulma, yazıya dökme ve dışa aktarma için hiçbir sunucuya gönderilmez.',
   'privacy.summary.nothingCollected':
     'Hesap yok. Analitik, reklam, çerez, cihaz parmak izi ve otomatik hata raporlama yok.',
   'privacy.summary.search':
-    'Ana ekrandaki kutuya yazdıkların, sayfanın içindeki bir kelime listesiyle cihazında eşleştirilir; hiçbir yere gönderilmez, saklanmaz. Yapay zekâ yok.',
+    'Ana ekrandaki kutuya yazdıkların, sayfanın içindeki bir kelime listesiyle cihazında eşleştirilir; hiçbir yere gönderilmez, saklanmaz. Bunun için bir yapay zekâ kullanılmaz.',
   'privacy.summary.stored': 'Bazı bilgiler yalnızca bu tarayıcıda saklanır; aşağıda tek tek listelendi ve silebilirsin.',
   'privacy.summary.report':
     'Uygulama senin adına hiçbir şey göndermez. Sorun bildirmek istersen tanı dosyasını sen indirir, sen gönderirsin.',
 
   'privacy.network.title': 'Sayfayı açınca ağda ne olur',
   'privacy.network.body':
-    'Tarayıcın uygulamanın kendi dosyalarını (sayfalar, kod, stil dosyaları, altyazı yazı tipi) bu siteyi sunan sunucudan indirir. Her web sitesinde olduğu gibi sunucu bu sırada IP adresini, istek zamanını ve tarayıcı bilgisini (user agent) görebilir. Başka bir adrese istek yapılmaz; bunu her sürümde otomatik bir testle kontrol ediyoruz. Uygulama sunucuya dosya veya form göndermez. Siteyi bir kez açtıktan sonra bu dosyaların bir kopyası tarayıcında saklanır ve internet yokken oradan açılır (aşağıda “Çevrimdışı kopya”).',
+    'Tarayıcın uygulamanın kendi dosyalarını (sayfalar, kod, stil dosyaları, altyazı yazı tipi) bu siteyi sunan sunucudan indirir. Her web sitesinde olduğu gibi sunucu bu sırada IP adresini, istek zamanını ve tarayıcı bilgisini (user agent) görebilir. Başka bir adrese istek yapılmaz; bunu her sürümde otomatik bir testle kontrol ediyoruz. Uygulama sunucuya dosya veya form göndermez. Siteyi bir kez açtıktan sonra bu dosyaların bir kopyası tarayıcında saklanır ve internet yokken oradan açılır (aşağıda “Çevrimdışı kopya”). Yazıya çevirme bu cihazda yapılır; ses, görüntü ya da metin hiçbir yere gönderilmez. “Modeli indir”e basarsan konuşma modelinin dosyaları da başka bir siteden değil, bu sitenin kendi adresinden indirilir.',
   'privacy.network.host': 'Barındırma sağlayıcısı',
   'privacy.network.logs': 'Sunucu erişim kayıtları (kim tutar, ne kadar süre: sağlayıcının kendi bildirimi)',
 
@@ -138,6 +138,16 @@ export const tr = {
   'privacy.stored.offline.where': 'Cache Storage, adı “clip-app-” ile başlayan önbellek; hizmet çalışanı kaydı (“sw.js”)',
   'privacy.stored.offline.delete':
     'Yeni sürüm gelince eski kopya silinir. Hepsini tarayıcının bu siteye ait verisini temizleyerek silebilirsin.',
+  'privacy.stored.model.name':
+    'Konuşma modeli (yalnızca “Modeli indir”e bastıysan)',
+  'privacy.stored.model.body':
+    '“Yazıya dök” için “Modeli indir”e bastığında bu sitenin kendi sunucusundan indirilen model dosyaları: küçük model yaklaşık 109 MB, istersen seçtiğin büyük model yaklaşık 596 MB. Videon ya da sesin değil; yalnızca uygulamanın kendi dosyası. Kendiliğinden indirilmez. İndirildikten sonra yazıya dökme internetsiz de çalışır.',
+  'privacy.stored.model.where':
+    'Cache Storage, adı “clip-models-” ile başlayan önbellek (uygulamanın çevrimdışı kopyasından ayrı)',
+  'privacy.stored.model.delete':
+    'Sen silene ya da tarayıcının bu siteye ait verisini temizleyene kadar kalır. Aşağıdaki “Modeli sil” ile silebilirsin; editörde “Kısayollar ve sınırlar” penceresinde de aynı düğme var.',
+  'privacy.model.checking':
+    'Bakılıyor…',
   'privacy.stored.none': 'Çerez ve sessionStorage kullanılmaz; localStorage’da yalnızca yukarıdaki ipucu bilgisi durur.',
 
   'privacy.downloads.title': 'Senin indirdiğin dosyalar',
@@ -155,7 +165,7 @@ export const tr = {
 
   'privacy.notCollected.title': 'Toplanmayanlar',
   'privacy.notCollected.body':
-    'Hesap veya e-posta, analitik ya da kullanım istatistiği, çerez, reklam kimliği, cihaz parmak izi, konum, otomatik hata veya çökme raporu. Bu sürümde yapay zekâ özelliği ve indirilen model dosyası yok.',
+    'Hesap veya e-posta, analitik ya da kullanım istatistiği, çerez, reklam kimliği, cihaz parmak izi, konum, otomatik hata veya çökme raporu. Videonun sesi, görüntüsü ve yazıya dökülmüş metni de: yazıya dökme bu cihazda çalışır, bulutta çalışan bir yapay zekâ kullanılmaz.',
 
   'privacy.report.title': 'Sorun bildirme',
   'privacy.report.body':
@@ -379,7 +389,7 @@ export const tr = {
   'captions.error.range_reversed': 'Bitiş zamanı başlangıçtan sonra olmalı.',
   'captions.error.caption_cue_too_short': 'Bir altyazı satırı en az 0,2 saniye görünmeli.',
   'captions.error.caption_cue_overlap': 'Bu aralıkta başka bir satır var; satırlar üst üste binemez.',
-  'captions.error.caption_limit_exceeded': 'Bir projede en çok 500 altyazı satırı olabilir.',
+  'captions.error.caption_limit_exceeded': 'Bir projede en çok 3000 altyazı satırı olabilir.',
   'captions.error.caption_outside_output': 'Satır, video bitmeden başlamalı.',
   'captions.error.range_out_of_source': 'Satır, kaynak videonun süresi içinde kalmalı.',
   'captions.error.caption_not_found': 'Bu satır artık yok; geri alınmış olabilir.',
@@ -483,7 +493,7 @@ export const tr = {
   'captions.skip.caption_cue_too_short': '0,2 saniyeden kısa.',
   'captions.skip.caption_cue_overlap': 'önceki satırla üst üste biniyor.',
   'captions.skip.range_out_of_source': 'orijinal videonun süresini aşıyor.',
-  'captions.skip.caption_limit_exceeded': '500 satır sınırını aşıyor.',
+  'captions.skip.caption_limit_exceeded': '3000 satır sınırını aşıyor.',
 
   'captions.export.title': 'Altyazı dosyası indir',
   'captions.export.body':
@@ -680,7 +690,7 @@ export const tr = {
   'help.limit.mix': 'Önizlemede iki oynatıcı birlikte çalışır; gerçek miks yalnızca çıktıda yapılır.',
   'help.limit.save':
     'Proje tarifi bu tarayıcıya kaydedilir; bulut yedeği yoktur ve video dosyaları saklanmaz.',
-  'help.limit.cloud': 'Bulut, hesap, ödeme ve yapay zekâ yok.',
+  'help.limit.cloud': 'Bulut, hesap ve ödeme yok. Yazıya dökme bu cihazda çalışır; bulutta çalışan bir yapay zekâ yok.',
 
   'kesit.title': 'Kesitler',
   'kesit.emptyNoVideo':
@@ -1063,7 +1073,7 @@ export const en: Record<MessageKey, string> = {
   'app.name': 'clip',
   'app.workingName': 'Clip is a provisional working name.',
   'landing.note':
-    'This is a trial version. Downloading works best in Chrome and Edge. No account, subscription, cloud upload or AI.',
+    'This is a trial version. Downloading works best in Chrome and Edge. No account, subscription or cloud upload; everything runs on your device.',
 
   // Names only assistive technology hears (landmarks, hidden labels).
   'a11y.editorHeading': 'Clip editor',
@@ -1142,18 +1152,18 @@ export const en: Record<MessageKey, string> = {
 
   'privacy.summary.title': 'In short',
   'privacy.summary.local':
-    'The video, audio and subtitle files you choose are processed in this browser, on your own device. They are not sent to any server for editing, silence detection or export.',
+    'The video, audio and subtitle files you pick are processed in this browser, on your own device. They are not sent to any server for editing, silence detection, turning speech into text or export.',
   'privacy.summary.nothingCollected':
     'No account. No analytics, advertising, cookies, device fingerprinting or automatic error reporting.',
   'privacy.summary.search':
-    'What you type into the box on the home screen is matched on your device against a word list inside the page; it is not sent anywhere and not stored. No AI.',
+    'What you type into the box on the opening screen is matched on your device against a word list inside the page; it is not sent anywhere and not stored. No AI is used for that.',
   'privacy.summary.stored': 'Some information is kept only in this browser; each item is listed below and you can delete it.',
   'privacy.summary.report':
     'The app never sends anything on your behalf. If you want to report a problem, you download the diagnostics file and send it yourself.',
 
   'privacy.network.title': 'What happens on the network when you open the page',
   'privacy.network.body':
-    'Your browser downloads the app’s own files (pages, code, stylesheets, the caption typeface) from the server that hosts this site. As with any website, that server can see your IP address, the time of the request and your browser identification (user agent). No other address is contacted; an automated test checks this for every version. The app does not send files or forms to the server. After your first visit a copy of these files is kept in your browser and the site opens from it without internet (see “Offline copy” below).',
+    'Your browser downloads the app’s own files (pages, code, stylesheets, the caption typeface) from the server that hosts this site. As with any website, that server can see your IP address, the time of the request and your browser identification (user agent). No other address is contacted; an automated test checks this for every version. The app does not send files or forms to the server. After your first visit a copy of these files is kept in your browser and the site opens from it without internet (see “Offline copy” below). Turning speech into text happens on this device; no sound, picture or text is sent anywhere. If you press “Download the model”, the speech model’s files are also downloaded from this site’s own address, not from another site.',
   'privacy.network.host': 'Hosting provider',
   'privacy.network.logs': 'Server access logs (who keeps them and for how long: the provider’s own statement)',
 
@@ -1194,6 +1204,16 @@ export const en: Record<MessageKey, string> = {
   'privacy.stored.offline.where': 'Cache Storage, a cache whose name starts with “clip-app-”; the service worker registration (“sw.js”)',
   'privacy.stored.offline.delete':
     'The old copy is deleted when a new version arrives. Clearing this site’s data in the browser deletes all of it.',
+  'privacy.stored.model.name':
+    'Speech model (only if you pressed “Download the model”)',
+  'privacy.stored.model.body':
+    'The model files downloaded from this site’s own server when you press “Download the model” for “Turn speech into text”: the small model is about 109 MB, the large one you may choose about 596 MB. Not your video or its sound; only the app’s own file. It is never downloaded by itself. Once downloaded, turning speech into text also works without the internet.',
+  'privacy.stored.model.where':
+    'Cache Storage, a cache whose name starts with “clip-models-” (separate from the app’s offline copy)',
+  'privacy.stored.model.delete':
+    'It stays until you delete it or clear this site’s data in the browser. “Delete the model” below removes it; the same button is in the editor’s “Shortcuts and limits” window.',
+  'privacy.model.checking':
+    'Checking…',
   'privacy.stored.none': 'No cookies or sessionStorage are used; localStorage holds only the hint value above.',
 
   'privacy.downloads.title': 'Files you download',
@@ -1211,7 +1231,7 @@ export const en: Record<MessageKey, string> = {
 
   'privacy.notCollected.title': 'Not collected',
   'privacy.notCollected.body':
-    'Account or email, analytics or usage statistics, cookies, advertising IDs, device fingerprints, location, automatic error or crash reports. This version has no AI feature and downloads no model files.',
+    'Account or email, analytics or usage statistics, cookies, advertising IDs, device fingerprints, location, automatic error or crash reports. Nor your video’s sound, picture or transcript: speech is turned into text on this device, and no AI running in a cloud is used.',
 
   'privacy.report.title': 'Reporting a problem',
   'privacy.report.body':
@@ -1433,7 +1453,7 @@ export const en: Record<MessageKey, string> = {
   'captions.error.range_reversed': 'The end must come after the start.',
   'captions.error.caption_cue_too_short': 'A caption line must stay on screen for at least 0.2 seconds.',
   'captions.error.caption_cue_overlap': 'Another line already uses this time; lines cannot overlap.',
-  'captions.error.caption_limit_exceeded': 'A project can hold at most 500 caption lines.',
+  'captions.error.caption_limit_exceeded': 'A project can hold at most 3000 caption lines.',
   'captions.error.caption_outside_output': 'The line must start before the video ends.',
   'captions.error.range_out_of_source': 'The line must stay within the source video.',
   'captions.error.caption_not_found': 'This line no longer exists; it may have been undone.',
@@ -1533,7 +1553,7 @@ export const en: Record<MessageKey, string> = {
   'captions.skip.caption_cue_too_short': 'shorter than 0.2 seconds.',
   'captions.skip.caption_cue_overlap': 'overlaps the previous line.',
   'captions.skip.range_out_of_source': 'runs past the end of the original video.',
-  'captions.skip.caption_limit_exceeded': 'over the 500-line limit.',
+  'captions.skip.caption_limit_exceeded': 'over the 3000-line limit.',
 
   'captions.export.title': 'Download a subtitle file',
   'captions.export.body':
@@ -1732,7 +1752,7 @@ export const en: Record<MessageKey, string> = {
   'help.limit.mix': 'The preview runs two players together; the real mix happens only in the export.',
   'help.limit.save':
     'The project recipe is saved to this browser; there is no cloud backup and video files are not stored.',
-  'help.limit.cloud': 'No cloud, account, payment or AI.',
+  'help.limit.cloud': 'No cloud, account or payment. Speech is turned into text on this device; there is no AI running in a cloud.',
 
   'kesit.title': 'Clips',
   'kesit.emptyNoVideo':

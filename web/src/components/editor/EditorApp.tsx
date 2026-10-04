@@ -32,7 +32,12 @@ import { computeSourceView } from '@/domain/transform';
 import { frameStepUs, type TrimEdge } from '@/domain/trim';
 import { translator, type MessageKey } from '@/i18n/messages';
 import { listenForUncaughtErrors, recordError } from '@/adapters/diagnostics';
-import { Sheet } from './Dialog';
+import { TranscribeSteps, fillText } from '@/components/transcript/TranscribeSteps';
+import { TranscriptPanel } from '@/components/transcript/TranscriptPanel';
+import { useTranscription } from '@/components/transcript/useTranscription';
+import { transcriptLines } from '@/domain/transcript';
+import { Dialog, Sheet } from './Dialog';
+import { onTablistKeyDown } from './tablist';
 import { DownloadStatus } from './DownloadStatus';
 import { HelpDialog } from './HelpDialog';
 import { SettingsPanel, type InspectorTab } from './Inspector';
@@ -182,6 +187,14 @@ export function EditorView({ state, stored }: { state: EditorState; stored: bool
   const [markRefusal, setMarkRefusal] = useState<MessageKey | null>(null);
   const silence = useSilenceAnalysis();
   const captionFont = useCaptionFont();
+  /** "Videoyu yazıya dök" (ADR-036): the dialog with the model step and the progress. */
+  const [transcribeOpen, setTranscribeOpen] = useState(false);
+  const transcription = useTranscription();
+  /** The side column shows the kesitler or, once there is one, the transcript. */
+  const [sideTab, setSideTab] = useState<'kesit' | 'yazi'>(() =>
+    // Opened from "Yazıya dök" with a fresh transcript and no kesit yet: the text is what the user came for.
+    state.project.captionTracks[0]?.origin === 'transcript' && state.project.clips.length === 0 ? 'yazi' : 'kesit',
+  );
   /** Where the playhead was when an edge drag started, so Esc can put it back. */
   const edgeRestoreRef = useRef<Micros | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
@@ -649,6 +662,14 @@ export function EditorView({ state, stored }: { state: EditorState; stored: bool
       ? captionAtVideoTime(project, playback.timeUs, playback.range?.clipId ?? state.selectedClipId)
       : undefined;
   const captionMarks = useMemo(() => videoCues(project), [project]);
+  // The transcript panel (ADR-036) reads the lines anchored to this video:
+  // the transcript's, and just as well a subtitle file's — both are lines on
+  // the video's own clock, and both can be cut by.
+  const sourceTrack =
+    captionTrack?.timeBase === 'source' && captionTrack.assetId === state.asset?.assetId ? captionTrack : undefined;
+  const textLines = useMemo(() => transcriptLines(sourceTrack), [sourceTrack]);
+  const hasText = video !== null && textLines.length > 0;
+  const showText = hasText && sideTab === 'yazi';
 
   const thumbs = useThumbnails(
     video?.objectUrl ?? null,
@@ -730,6 +751,27 @@ export function EditorView({ state, stored }: { state: EditorState; stored: bool
     : project.clips.length === 0
       ? t('more.silence.whole')
       : t('more.silence.all');
+
+  const kesitListNode = (
+    <KesitList
+      t={t}
+      project={project}
+      selectedClipId={state.selectedClipId}
+      playingClipId={playback.playing ? (playback.range?.clipId ?? null) : null}
+      thumbs={thumbs}
+      downloading={downloads.activeKey !== null}
+      statusFor={(clipId) => statusNode({ kind: 'kesit', clipId })}
+      topStatus={topStatus}
+      onSelect={selectKesit}
+      onPlay={playKesit}
+      onDownload={(clipId) => startDownload({ kind: 'kesit', clipId })}
+      onDelete={deleteKesit}
+      onMove={state.moveKesit}
+      emptyText={emptyText}
+      hasVideo={video !== null}
+      saveNote={hydrated && state.video !== null && canPickSaveFile() ? t('download.overwriteNote') : null}
+    />
+  );
 
   return (
     <div
@@ -982,24 +1024,78 @@ export function EditorView({ state, stored }: { state: EditorState; stored: bool
           </div>
         </div>
 
-        <KesitList
-          t={t}
-          project={project}
-          selectedClipId={state.selectedClipId}
-          playingClipId={playback.playing ? (playback.range?.clipId ?? null) : null}
-          thumbs={thumbs}
-          downloading={downloads.activeKey !== null}
-          statusFor={(clipId) => statusNode({ kind: 'kesit', clipId })}
-          topStatus={topStatus}
-          onSelect={selectKesit}
-          onPlay={playKesit}
-          onDownload={(clipId) => startDownload({ kind: 'kesit', clipId })}
-          onDelete={deleteKesit}
-          onMove={state.moveKesit}
-          emptyText={emptyText}
-          hasVideo={video !== null}
-          saveNote={hydrated && state.video !== null && canPickSaveFile() ? t('download.overwriteNote') : null}
-        />
+        {hasText ? (
+          // Kesitler | Yazı (ADR-036): the transcript sits where the kesit list
+          // is, so the video stays in view beside it (under it on a phone).
+          <div className="side" data-testid="side-panel">
+            <div className="segmented" role="tablist" aria-label={t('transcript.tabs')} onKeyDown={onTablistKeyDown}>
+              <button
+                type="button"
+                role="tab"
+                id="side-tab-kesit"
+                aria-selected={!showText}
+                aria-controls="side-tabpanel"
+                tabIndex={showText ? -1 : 0}
+                onClick={() => setSideTab('kesit')}
+                data-testid="side-tab-kesit"
+              >
+                <Icon name="scissors" size={16} />
+                {t('transcript.tab.kesit')} ({project.clips.length})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="side-tab-yazi"
+                aria-selected={showText}
+                aria-controls="side-tabpanel"
+                tabIndex={showText ? 0 : -1}
+                onClick={() => setSideTab('yazi')}
+                data-testid="side-tab-yazi"
+              >
+                <Icon name="taskText" size={16} />
+                {t('transcript.tab.text')} ({textLines.length})
+              </button>
+            </div>
+            <div
+              className="side-body"
+              role="tabpanel"
+              id="side-tabpanel"
+              aria-labelledby={showText ? 'side-tab-yazi' : 'side-tab-kesit'}
+            >
+              {showText ? (
+                <TranscriptPanel
+                  t={t}
+                  headingId="editor-transcript-title"
+                  lines={textLines}
+                  timeUs={playback.timeUs}
+                  videoDurationUs={durationUs}
+                  machineMade={sourceTrack?.origin === 'transcript'}
+                  onSeek={playback.seek}
+                  onEdit={(cueId, text) => {
+                    const result = state.updateCaption(cueId, { text });
+                    return result.ok ? { ok: true } : { ok: false, reason: t(`captions.error.${result.reason}` as MessageKey) };
+                  }}
+                  onWriteUnclear={(range, text) => {
+                    const result = state.addCaption({ ...range, text });
+                    return result.ok ? { ok: true } : { ok: false, reason: t(`captions.error.${result.reason}` as MessageKey) };
+                  }}
+                  onMakeKesitler={(ranges) => {
+                    const result = state.addKesitler(ranges);
+                    if (result.ok) return { ok: true, added: result.added };
+                    if (result.reason === 'clip_limit_exceeded') {
+                      return { ok: false, reason: 'clip_limit_exceeded', room: result.room ?? 0, wanted: result.wanted ?? ranges.length };
+                    }
+                    return { ok: false, reason: 'other' };
+                  }}
+                />
+              ) : (
+                kesitListNode
+              )}
+            </div>
+          </div>
+        ) : (
+          kesitListNode
+        )}
       </main>
 
       {phone && video && project.clips.length > 0 ? (
@@ -1090,6 +1186,22 @@ export function EditorView({ state, stored }: { state: EditorState; stored: bool
             {silenceMenuText}
           </button>
           <p className="hint-small">{t('more.silence.hint')}</p>
+          <button
+            type="button"
+            className="btn btn-block"
+            onClick={() => {
+              playback.stop();
+              setMoreOpen(false);
+              transcription.reset();
+              setTranscribeOpen(true);
+            }}
+            disabled={!video}
+            data-testid="open-transcribe"
+          >
+            <Icon name="taskText" />
+            {t('more.transcribe')}
+          </button>
+          <p className="hint-small">{t('more.transcribe.hint')}</p>
           <hr className="divider" />
           <div data-testid="backup-panel">
             <p className="field-label">{t('backup.title')}</p>
@@ -1143,6 +1255,74 @@ export function EditorView({ state, stored }: { state: EditorState; stored: bool
         onReportProblem={() => setReportOpen(true)}
       />
       {reportOpen ? <ReportDialog t={t} project={project} onClose={() => setReportOpen(false)} /> : null}
+      {video ? (
+        <Dialog
+          open={transcribeOpen}
+          onClose={() => {
+            // Closing stops a transcription (nothing partial is kept); a model download keeps what it has.
+            transcription.cancel();
+            setTranscribeOpen(false);
+            returnFocusToMore();
+          }}
+          labelledBy="transcribe-title"
+        >
+          <div className="dialog-head">
+            <h2 id="transcribe-title">{t('transcript.dialog.title')}</h2>
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={() => {
+                transcription.cancel();
+                setTranscribeOpen(false);
+                returnFocusToMore();
+              }}
+              aria-label={t('help.close')}
+            >
+              <Icon name="close" />
+            </button>
+          </div>
+          {transcription.job.kind === 'done' ? (
+            <>
+              <p className="wizard-note" role="status" data-testid="transcribe-done">
+                <Icon name="check" />
+                <span>{fillText(t('transcript.dialog.done'), { lines: String(transcription.job.lines) })}</span>
+              </p>
+              <div className="dialog-actions">
+                <button
+                  type="button"
+                  className="btn btn-accent"
+                  onClick={() => {
+                    setTranscribeOpen(false);
+                    setSideTab('yazi');
+                  }}
+                  data-testid="transcribe-close"
+                >
+                  {t('transcript.dialog.close')}
+                </button>
+              </div>
+            </>
+          ) : video.hasAudio === false ? (
+            <p className="wizard-blocked" role="alert" data-testid="transcribe-no-sound">
+              {t('transcript.failed.no_audio')}
+            </p>
+          ) : (
+            <TranscribeSteps
+              t={t}
+              transcription={transcription}
+              canStart
+              replaceNote={(captionTrack?.cues.length ?? 0) > 0 ? t('transcript.dialog.replace') : null}
+              onStart={() =>
+                void transcription.start({
+                  file: video.file,
+                  durationUs: video.durationUs,
+                  style: captionStyle,
+                  apply: state.applyTranscript,
+                })
+              }
+            />
+          )}
+        </Dialog>
+      ) : null}
       {silenceScope && video ? (
         <SilenceDialog
           t={t}

@@ -57,11 +57,18 @@ export function inlineHashes(html) {
 /**
  * The policy. Every relaxation beyond 'self' has a reason:
  * - script-src hashes: Next's inline bootstrap scripts (see above).
- * - script-src 'wasm-unsafe-eval': "Yazıya dök" runs the speech model with
- *   onnxruntime-web, which compiles WebAssembly (ADR-036; founder decision,
- *   4 Oct 2026). The keyword allows WebAssembly compilation ONLY — not
- *   eval(), not new Function(), not inline script. The module's bytes come
- *   from this site and are sha256-checked before they are compiled.
+ * - NOT here: 'wasm-unsafe-eval'. "Yazıya dök" runs the speech model with
+ *   onnxruntime-web, which compiles WebAssembly, and the founder approved
+ *   adding the keyword for it (4 Oct 2026, ADR-036). It turned out not to be
+ *   needed: the compile happens inside the transcript WORKER, and a worker
+ *   started from a URL is governed by its own response headers, not by this
+ *   <meta>. Measured with the keyword taken out of the page's policy
+ *   (scripts/transcript/csp-experiment.mjs): transcription works in Chromium
+ *   153, Chrome 154, Edge 154 and Firefox 155 with zero violations. So
+ *   script-src stays exactly as it was. If a browser that applies the page's
+ *   policy to workers must be supported, the approved change is one word in
+ *   the line below — and the tests in tests/unit/csp.test.ts and
+ *   tests/e2e/cspWatch.ts must then be told about it.
  * - style-src 'unsafe-hashes' + hashes: server-rendered `style` attributes
  *   (icon sizes, the timeline playhead). Only these exact values; styles set
  *   later through the DOM (React) are not affected by CSP.
@@ -73,7 +80,7 @@ export function buildPolicy({ scripts, styles, hasStyleAttributes }) {
   const styleSrc = ["'self'", ...(hasStyleAttributes ? ["'unsafe-hashes'"] : []), ...styles];
   return [
     "default-src 'self'",
-    `script-src ${["'self'", "'wasm-unsafe-eval'", ...scripts].join(' ')}`,
+    `script-src ${["'self'", ...scripts].join(' ')}`,
     `style-src ${styleSrc.join(' ')}`,
     "img-src 'self' data: blob:",
     "media-src 'self' blob:",

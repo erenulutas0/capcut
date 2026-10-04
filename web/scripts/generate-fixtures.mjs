@@ -65,7 +65,7 @@ const cue = (cueId, inS, outS, text) => ({
 });
 
 const project = (patch = {}) => ({
-  schemaVersion: 2,
+  schemaVersion: 3,
   projectId: 'p_fixture_001',
   revision: 1,
   assets: [videoAsset],
@@ -78,7 +78,7 @@ const project = (patch = {}) => ({
 
 /** The canonical doc-10 example: two ranges -> 10 s, music 5-15 s. */
 const docExample = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   projectId: 'p_example_001',
   revision: 3,
   assets: [videoAsset, musicAsset],
@@ -163,6 +163,32 @@ const valid = {
         [cue('q_001', 1, 3, 'Baştaki an'), cue('q_002', 9, 13, 'Sonradan eklenen an'), cue('q_003', 15, 19, 'Kullanılmayan')],
         { timeBase: 'source', assetId: 'a_video_001', origin: 'imported' },
       ),
+    ],
+  }),
+  // v3 (ADR-036): a track written by the on-device transcript. Source-anchored,
+  // English, with the spans that were heard but could not be written.
+  'caption-transcript-unclear': project({
+    clips: [clip('c_001', 0, 14)],
+    captionTracks: [
+      captionTrack(
+        [cue('q_001', 1, 3.2, `He hoped there would be${LF}stew for dinner,`), cue('q_002', 3.2, 5, 'turnips and carrots.')],
+        {
+          timeBase: 'source',
+          assetId: 'a_video_001',
+          origin: 'transcript',
+          language: 'en',
+          unclear: [
+            { startUs: 6 * S, endUs: 8 * S },
+            { startUs: 15 * S, endUs: 19 * S },
+          ],
+        },
+      ),
+    ],
+  }),
+  // A transcript that could write nothing: only unclear spans.
+  'caption-transcript-only-unclear': project({
+    captionTracks: [
+      captionTrack([], { timeBase: 'source', assetId: 'a_video_001', origin: 'transcript', language: 'en', unclear: [{ startUs: 2 * S, endUs: 5 * S }] }),
     ],
   }),
   'caption-outline-top-en': project({
@@ -270,7 +296,7 @@ const invalid = {
     }),
     ['asset_kind_mismatch'],
   ],
-  'future-schema': [project({ schemaVersion: 3 }), ['schema_version_unsupported']],
+  'future-schema': [project({ schemaVersion: 4 }), ['schema_version_unsupported']],
   'missing-caption-tracks': [
     (() => {
       const { captionTracks: _drop, ...rest } = project();
@@ -332,6 +358,51 @@ const invalid = {
     project({ captionTracks: [captionTrack([cue('q_001', 0, 2, 'çıktı')], { assetId: 'a_video_001' })] }),
     ['caption_track_invalid'],
   ],
+  // v3 (ADR-036): unclear spans belong to a source-anchored transcript track only,
+  // sorted, apart, inside the video.
+  'caption-unclear-on-manual-track': [
+    project({
+      captionTracks: [
+        captionTrack([cue('q_001', 0, 2, 'elle')], { timeBase: 'source', assetId: 'a_video_001', unclear: [{ startUs: 3 * S, endUs: 4 * S }] }),
+      ],
+    }),
+    ['caption_track_invalid'],
+  ],
+  'caption-unclear-overlap': [
+    project({
+      captionTracks: [
+        captionTrack([cue('q_001', 0, 2, 'hello')], {
+          timeBase: 'source',
+          assetId: 'a_video_001',
+          origin: 'transcript',
+          language: 'en',
+          unclear: [
+            { startUs: 3 * S, endUs: 6 * S },
+            { startUs: 5 * S, endUs: 7 * S },
+          ],
+        }),
+      ],
+    }),
+    ['caption_cue_overlap'],
+  ],
+  'caption-unclear-past-video': [
+    project({
+      captionTracks: [
+        captionTrack([cue('q_001', 0, 2, 'hello')], {
+          timeBase: 'source',
+          assetId: 'a_video_001',
+          origin: 'transcript',
+          language: 'en',
+          unclear: [{ startUs: 19 * S, endUs: 21 * S }],
+        }),
+      ],
+    }),
+    ['range_out_of_source'],
+  ],
+  'caption-unknown-origin': [
+    project({ captionTracks: [captionTrack([cue('q_001', 0, 2, 'hello')], { origin: 'cloud' })] }),
+    ['caption_track_invalid'],
+  ],
   'two-caption-tracks': [
     project({
       captionTracks: [
@@ -361,8 +432,9 @@ rmSync(root, { recursive: true, force: true });
 mkdirSync(join(root, 'valid'), { recursive: true });
 mkdirSync(join(root, 'invalid'), { recursive: true });
 mkdirSync(join(root, 'legacy-v1'), { recursive: true });
+mkdirSync(join(root, 'legacy-v2'), { recursive: true });
 
-const manifest = { schemaVersion: 2, valid: [], invalid: [], legacy: [] };
+const manifest = { schemaVersion: 3, valid: [], invalid: [], legacy: [] };
 
 // Valid recipes the export refuses as they are (ADR-021): the reason the
 // render plan gives. Every other valid fixture is not checked for export here.
@@ -393,6 +465,27 @@ const legacy = {
 for (const [name, [value, expect]] of Object.entries(legacy)) {
   writeFileSync(join(root, 'legacy-v1', `${name}.json`), `${JSON.stringify(value, null, 2)}${LF}`);
   manifest.legacy.push({ file: `legacy-v1/${name}.json`, expect });
+}
+
+// v2 recipes (ADR-015/016), as every build before ADR-036 wrote them. v3 only
+// allows more, so migration changes the number and nothing else.
+const asV2 = (value) => ({ ...value, schemaVersion: 2 });
+const legacyV2 = {
+  'single-clip': [asV2(project()), 'valid'],
+  'doc10-example': [asV2(docExample), 'valid'],
+  'caption-source-anchored': [asV2(valid['caption-source-anchored']), 'valid'],
+  // A v2 file without its caption list was never written by any build.
+  'v2-without-captions': [
+    (() => {
+      const { captionTracks: _drop, ...rest } = asV2(project());
+      return rest;
+    })(),
+    'invalid',
+  ],
+};
+for (const [name, [value, expect]] of Object.entries(legacyV2)) {
+  writeFileSync(join(root, 'legacy-v2', `${name}.json`), `${JSON.stringify(value, null, 2)}${LF}`);
+  manifest.legacy.push({ file: `legacy-v2/${name}.json`, expect });
 }
 
 for (const [name, [value, codes]] of Object.entries(invalid)) {

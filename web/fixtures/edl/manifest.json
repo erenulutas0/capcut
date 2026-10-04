@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "valid": [
     {
       "file": "valid/single-clip.json"
@@ -38,6 +38,12 @@
     },
     {
       "file": "valid/caption-source-anchored.json"
+    },
+    {
+      "file": "valid/caption-transcript-unclear.json"
+    },
+    {
+      "file": "valid/caption-transcript-only-unclear.json"
     },
     {
       "file": "valid/caption-outline-top-en.json"
@@ -195,6 +201,30 @@
       ]
     },
     {
+      "file": "invalid/caption-unclear-on-manual-track.json",
+      "expectedIssueCodes": [
+        "caption_track_invalid"
+      ]
+    },
+    {
+      "file": "invalid/caption-unclear-overlap.json",
+      "expectedIssueCodes": [
+        "caption_cue_overlap"
+      ]
+    },
+    {
+      "file": "invalid/caption-unclear-past-video.json",
+      "expectedIssueCodes": [
+        "range_out_of_source"
+      ]
+    },
+    {
+      "file": "invalid/caption-unknown-origin.json",
+      "expectedIssueCodes": [
+        "caption_track_invalid"
+      ]
+    },
+    {
       "file": "invalid/two-caption-tracks.json",
       "expectedIssueCodes": [
         "caption_track_limit_exceeded"
@@ -242,6 +272,22 @@
     },
     {
       "file": "legacy-v1/v1-with-captions.json",
+      "expect": "invalid"
+    },
+    {
+      "file": "legacy-v2/single-clip.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v2/doc10-example.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v2/caption-source-anchored.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v2/v2-without-captions.json",
       "expect": "invalid"
     }
   ]

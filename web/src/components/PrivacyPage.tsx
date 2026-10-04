@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 import { Wordmark } from '@/components/Icon';
 import { ExportLogPanel } from '@/components/ExportLogPanel';
+import { ModelStoragePanel } from '@/components/transcript/ModelStoragePanel';
 import { translator, type Locale, type MessageKey } from '@/i18n/messages';
 
 /**
@@ -59,6 +60,14 @@ const STORED: Array<{ name: MessageKey; body: MessageKey; where: MessageKey; del
     body: 'privacy.stored.offline.body',
     where: 'privacy.stored.offline.where',
     delete: 'privacy.stored.offline.delete',
+  },
+  {
+    // ADR-036: the speech model of "Yazıya dök", only after an explicit download.
+    id: 'model',
+    name: 'privacy.stored.model.name',
+    body: 'privacy.stored.model.body',
+    where: 'privacy.stored.model.where',
+    delete: 'privacy.stored.model.delete',
   },
 ];
 
@@ -162,6 +171,7 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
               {item.id === 'log' ? (
                 <ExportLogPanel locale={locale} buttonClassName="btn-ghost-light" />
               ) : null}
+              {item.id === 'model' ? <ModelStoragePanel locale={locale} buttonClassName="btn-ghost-light" /> : null}
             </article>
           ))}
           <p>{t('privacy.stored.none')}</p>

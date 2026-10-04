@@ -2,6 +2,7 @@
 
 import { withBasePath } from '@/basePath';
 import { Icon } from '@/components/Icon';
+import { ModelStoragePanel } from '@/components/transcript/ModelStoragePanel';
 import { Dialog } from './Dialog';
 import type { MessageKey } from '@/i18n/messages';
 
@@ -76,6 +77,12 @@ export function HelpDialog({
           </li>
         ))}
       </ul>
+
+      <hr className="divider" />
+
+      {/* ADR-036: the speech model is the one large thing the app keeps; it is deleted here. */}
+      <p className="field-label">{t('help.model.title')}</p>
+      <ModelStoragePanel locale="tr" buttonClassName="btn" />
 
       <hr className="divider" />
 
