@@ -8,6 +8,26 @@
 > kuralımız gereği çalışmayan özellik ana akışa konmadı. Ücretsiz ek yollar raporda
 > (Türkçe ince ayarlı model, VAD ön filtresi, boyut sınırı gevşetilirse large-v3-turbo);
 > devam kararı kurucunun.
+>
+> **Durum güncellemesi — 2026-10-04 (ikinci deneme, yalnız İngilizce):**
+> `docs/spikes/2026-10-03-asr-on-device-english.md`. Kurucu kararıyla (3 Ekim) kapsam şimdilik
+> İngilizce. Sonuç: **uygulamaya geçilebilir (SHIP), "taslak" etiketiyle, kurucu kararları
+> bekliyor** — uygulama henüz başlamadı.
+> - Uydurma metin: Silero VAD + her konuşma aralığını ayrı çözme + "ortalama log-olasılık < −0,75
+>   ya da tekrar döngüsü → at" kuralıyla 25 negatif klibin 25'inde 0 (8'i kural sabitlendikten
+>   sonra üretildi); base, small ve large-v3-turbo; Chromium, Chrome, Edge, Firefox.
+> - İngilizce WER (katı ölçü): large-v3-turbo %2,0–7,8 (geçti); base %4,1–10,5 (sınırda).
+> - Kelime zamanı: ham p95 369–449 ms — **eşik (250 ms) geçilmedi**; ~0,2 s'lik sabit gecikme
+>   çıkarılınca base'de başlangıç 185–242 ms, bitiş 222–294 ms; turbo'da 205–284 / 260–411 ms.
+>   Eşik değiştirilmedi; değişiklik önerisi deneme raporunun 10. bölümünde ayrıca tartışıldı.
+> - Eylül'deki 8,6 GiB bellek bir kütüphane sızıntısıydı; düzeltmeyle base/WASM 1,1–1,5 GiB,
+>   turbo/WebGPU 3,7 GiB.
+> - Bu ADR'deki "~40–250 MB" indirme aralığına base (80 MB) sığar; turbo (566 MB) sığmaz —
+>   isteğe bağlı ikinci model olarak önerildi.
+> - Bekleyen kararlar: CSP'ye `'wasm-unsafe-eval'`; model dosyasının yeri (kendi sitemiz /
+>   Hugging Face); WebGPU'suz cihazlar; zaman eşiği; şema (`transcripts[]`). Telefon ve dizüstü
+>   ölçülmedi. Türkçe: turbo ile temiz kümede %7,2–7,7 (erişilebilir, 566 MB, yalnız WebGPU).
+>
 > Bu ADR, `transcript_araştırma/04` belgesinin istediği **değişiklik önerisidir**: araştırma
 > ekiyle belge 31 arasındaki sıralama çelişkisini açıkça çözer ve kanonik belgelerde
 > neyin değiştiğini, neyin değişmediğini yazar. Uygulama, aşağıdaki uygunluk

@@ -5,6 +5,9 @@
 # four English runs repeated with exactly the arguments of parts A and B.
 # run-en.mjs now refuses to replace a finished result. (The repeat of small-fp16 leaves out
 # long-c and long-fleurs-raw, which the first run had; base keeps long-c.)
+# Of these four, A3-turbo, B3-small-fp16 and B3-turbo finished on 3 October; A3-small-fp16 was
+# cut off while queued for the lock and was done on 4 October as the last line of
+# matrix-2026-10-04-final.sh.
 #
 #   bash matrix-2026-10-03-redo.sh
 set -u

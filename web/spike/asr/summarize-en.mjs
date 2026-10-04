@@ -370,7 +370,7 @@ p();
 
 p('#### T2. English word error rate (Whisper-normalised / strict September metric)');
 p();
-p('| Model | Device | Browser | Pre | short clean (September's 6 FLEURS clips) | long-a | long-b | long-c | long-fleurs | long, all | mix-clean | music 20 dB | music 10 dB | music 5 dB | music 0 dB | pink 10 dB | pink 5 dB | pause | val-clean | val-pink-5 | val-music-5 |');
+p('| Model | Device | Browser | Pre | short clean (the 6 September FLEURS clips) | long-a | long-b | long-c | long-fleurs | long, all | mix-clean | music 20 dB | music 10 dB | music 5 dB | music 0 dB | pink 10 dB | pink 5 dB | pause | val-clean | val-pink-5 | val-music-5 |');
 p('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
 const werCell = (g) => (g ? `${pct(g.normWer)} / ${pct(g.strictWer)}` : '—');
 for (const r of results) {
