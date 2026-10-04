@@ -11,7 +11,10 @@
  *   TypeScript sources Turbopack copies next to the workers;
  * - the caption typeface (`/fonts/caption/*.woff2`), the icons and the manifest.
  *
- * Not stored: anything else (OFL.txt, RSC payloads, 404 page, `sw.js` itself).
+ * Not stored: anything else (OFL.txt, RSC payloads, 404 page, `sw.js` itself),
+ * and nothing of the speech model (ADR-036): not `/models/…`, not the
+ * WebAssembly runtime. Those live in their own cache, filled only by "Modeli
+ * indir" (`src/adapters/transcript/modelStore.ts`).
  */
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
@@ -31,7 +34,11 @@ const posix = (path) => path.split(sep).join('/');
 
 /** A build file, or a public file, the offline app needs (path relative to the site root, no leading slash). */
 export function isOfflineAsset(rel) {
-  if (rel.startsWith('_next/static/')) return !/\.(map|tsx?)$/.test(rel);
+  // `.wasm`: the bundler copies onnxruntime-web's 27 MB WebAssembly file next
+  // to the transcript worker. It is not part of the offline app: the speech
+  // runtime is downloaded with the model, on an explicit click, into the
+  // model store (ADR-036), and the engine runs it from there.
+  if (rel.startsWith('_next/static/')) return !/\.(map|tsx?|wasm)$/.test(rel);
   if (/^fonts\/caption\/[^/]+\.woff2$/.test(rel)) return true;
   if (/^icons\/[^/]+\.png$/.test(rel)) return true;
   return rel === 'icon.svg' || rel === 'apple-icon.png' || rel === 'manifest.webmanifest';

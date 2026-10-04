@@ -12,7 +12,10 @@ import {
 import {
   addCaptionCue,
   addClip,
+  addKesitlerFromRanges,
   applySilenceCuts,
+  applyTranscriptTrack,
+  type KesitlerFromRangesResult,
   convertCaptionTimeBase,
   createEmptyProject,
   importCaptionTrack,
@@ -56,7 +59,7 @@ import {
   undo as historyUndo,
   type History,
 } from '@/application/history';
-import type { AspectRatio, CaptionStyleV2, FitMode, MusicV1, Project } from '@/domain/edl';
+import type { AspectRatio, CaptionStyleV2, CaptionUnclearV3, FitMode, MusicV1, Project } from '@/domain/edl';
 import { DEFAULT_KESIT_SETTINGS, type KesitSettings } from '@/domain/kesit';
 import { WEB_LOCAL_POLICY, exceedsTotalSourceBytes } from '@/domain/policy';
 import {
@@ -591,6 +594,32 @@ export function useEditorState() {
   );
 
   /**
+   * Puts the on-device transcript in as the caption track (ADR-036): source
+   * lines, the unclear spans, English. Replaces the lines there were. One
+   * undo step.
+   */
+  const applyTranscript = useCallback(
+    (cues: readonly ImportedCueInput[], unclear: readonly CaptionUnclearV3[]): CaptionImportResult =>
+      runCommand((base) => applyTranscriptTrack(base, cues, unclear)),
+    [runCommand],
+  );
+
+  /**
+   * "Bunlardan kesit yap" (ADR-036): every range becomes a kesit, all or
+   * none. One undo step.
+   */
+  const addKesitler = useCallback(
+    (ranges: readonly { sourceInUs: Micros; sourceOutUs: Micros }[]): KesitlerFromRangesResult => {
+      const result = runCommand((base) =>
+        addKesitlerFromRanges(base, ranges, WEB_LOCAL_POLICY, settingsOf(base) ?? looseSettings),
+      );
+      if (result.ok) setActionError(null);
+      return result;
+    },
+    [looseSettings, runCommand],
+  );
+
+  /**
    * Removes the silences the user approved in the dialog (ADR-018). One undo
    * step; the dialog shows the report, so the result is returned directly.
    * `whole`: there was no kesit, the dialog looked at the whole video as one
@@ -711,6 +740,8 @@ export function useEditorState() {
     convertCaptions,
     shiftAllCaptions,
     importCaptions,
+    applyTranscript,
+    addKesitler,
     cutSilences,
   };
 }

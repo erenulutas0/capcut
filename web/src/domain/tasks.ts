@@ -148,8 +148,8 @@ const REGISTRY = [
     icon: 'taskText',
     labelKey: 'task.yazi.label',
     subKey: 'task.yazi.sub',
-    available: false,
-    steps: ['pick', 'download'],
+    available: true,
+    steps: ['pick', 'choose', 'download'],
     words: {
       strong: [
         'yazi', 'yaziya', 'altyazi', 'metin', 'metne', 'transkript', 'desifre', 'dokum', 'subtitle', 'subtitles',

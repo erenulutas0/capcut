@@ -57,6 +57,11 @@ export function inlineHashes(html) {
 /**
  * The policy. Every relaxation beyond 'self' has a reason:
  * - script-src hashes: Next's inline bootstrap scripts (see above).
+ * - script-src 'wasm-unsafe-eval': "Yazıya dök" runs the speech model with
+ *   onnxruntime-web, which compiles WebAssembly (ADR-036; founder decision,
+ *   4 Oct 2026). The keyword allows WebAssembly compilation ONLY — not
+ *   eval(), not new Function(), not inline script. The module's bytes come
+ *   from this site and are sha256-checked before they are compiled.
  * - style-src 'unsafe-hashes' + hashes: server-rendered `style` attributes
  *   (icon sizes, the timeline playhead). Only these exact values; styles set
  *   later through the DOM (React) are not affected by CSP.
@@ -68,7 +73,7 @@ export function buildPolicy({ scripts, styles, hasStyleAttributes }) {
   const styleSrc = ["'self'", ...(hasStyleAttributes ? ["'unsafe-hashes'"] : []), ...styles];
   return [
     "default-src 'self'",
-    `script-src ${["'self'", ...scripts].join(' ')}`,
+    `script-src ${["'self'", "'wasm-unsafe-eval'", ...scripts].join(' ')}`,
     `style-src ${styleSrc.join(' ')}`,
     "img-src 'self' data: blob:",
     "media-src 'self' blob:",

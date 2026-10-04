@@ -12,7 +12,14 @@ import { buildTimeline, mapOutputToSource } from './timeline';
 export const CAPTION_LIMITS = {
   /** v2 shows one track; a second (e.g. a translation) is a later decision. */
   maxTracks: 1,
-  maxCuesPerTrack: 500,
+  /**
+   * 500 until ADR-036. A transcript makes 16.5–20.7 lines per minute of
+   * dense speech (spike §6.8), so 500 covered ~24–30 minutes; 3000 covers
+   * the 120-minute input limit at 25 lines a minute. What that costs the
+   * preview, the export preflight and the saved recipe is measured in
+   * ADR-036 ("Satır sınırı").
+   */
+  maxCuesPerTrack: 3000,
   /** Counted in user-perceived characters (code points), not UTF-16 units. */
   maxTextChars: 120,
   /** Explicit line breaks the user may type; wrapping may not exceed it either. */
@@ -27,6 +34,7 @@ export const DEFAULT_CAPTION_STYLE: CaptionStyleV2 = {
   size: 'medium',
 };
 
+export const CAPTION_ORIGINS = ['manual', 'imported', 'transcript'] as const;
 export const CAPTION_PRESETS = ['box', 'outline'] as const;
 export const CAPTION_POSITIONS = ['bottom', 'middle', 'top'] as const;
 export const CAPTION_SIZES = ['small', 'medium', 'large'] as const;

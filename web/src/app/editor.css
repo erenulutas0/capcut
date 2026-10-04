@@ -2742,3 +2742,251 @@ input[type='range']:disabled::-webkit-slider-thumb {
 .kesit-dock-download {
   flex: 1 1 12em;
 }
+
+/* ------------------------------------------------ transcript (ADR-036) */
+
+/* Kesitler | Yazı: the side column when the video has a transcript. */
+.side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+}
+
+.side .segmented {
+  padding: 10px 14px 0;
+}
+
+.side > .kesits,
+.side > .transcript {
+  flex: 1;
+  border-left: 0;
+}
+
+.editor-body[data-mode='phone'] .side {
+  border-left: 0;
+}
+
+.transcript {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel);
+  padding: 14px 14px 20px;
+}
+
+.transcript-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.transcript-head h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.transcript-note {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--warning);
+}
+
+.transcript-selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.transcript-selection > span {
+  flex: 1 1 10em;
+}
+
+.transcript-status {
+  margin: 0;
+  min-height: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--success);
+}
+
+.transcript-status:not(:empty) {
+  margin: 4px 0 8px;
+}
+
+.transcript-list {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 120px;
+  max-height: 46vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg);
+}
+
+/* In the editor's side column the list takes the room there is. */
+.side .transcript-list {
+  flex: 1;
+  max-height: none;
+}
+
+.editor-body[data-mode='phone'] .side .transcript-list {
+  flex: none;
+  max-height: 52vh;
+}
+
+.transcript-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 2px 6px;
+  border-left: 3px solid transparent;
+}
+
+.transcript-row[data-active='true'] {
+  border-left-color: var(--accent);
+  background: var(--raised);
+}
+
+.transcript-row[data-selected='true'] {
+  background: #263238;
+}
+
+.transcript-check {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 11px 2px 0;
+  accent-color: var(--accent);
+}
+
+.transcript-line {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 15px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.transcript-line:hover {
+  background: var(--raised);
+}
+
+.transcript-time {
+  flex: none;
+  min-width: 3.2em;
+  font-family: var(--font-time);
+  font-size: 13px;
+  color: var(--focus);
+}
+
+.transcript-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.transcript-row[data-kind='unclear'] .transcript-text {
+  color: var(--warning);
+  font-style: italic;
+}
+
+.transcript-edit-btn {
+  flex: none;
+  margin-top: 6px;
+}
+
+.transcript-edit {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0;
+}
+
+.transcript-field {
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 10px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.transcript-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.transcript-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.transcript-downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.transcript-downloads .btn {
+  flex: 1 1 9em;
+}
+
+.transcribe {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* The transcript inside a wizard: a card like the other wizard panels. */
+.wizard .transcript {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 14px;
+}
+
+.help-model {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.help-model p {
+  flex: 1 1 14em;
+  margin: 0;
+}

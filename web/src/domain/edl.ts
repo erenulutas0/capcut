@@ -1,8 +1,11 @@
 /**
- * EDL v2 — the canonical, portable editing recipe (doc 10).
+ * EDL v3 — the canonical, portable editing recipe (doc 10).
  *
- * v2 = v1 + `captionTracks` (ADR-015). Everything else is unchanged, so a v1
- * recipe is read through `migrateProject` (migration.ts) and never rejected.
+ * v2 = v1 + `captionTracks` (ADR-015). v3 = v2 + caption tracks written by
+ * the on-device transcript (ADR-036): `origin: 'transcript'`, the spans that
+ * could not be written (`unclear`), and a higher line limit. Everything else
+ * is unchanged, so v1 and v2 recipes are read through `migrateProject`
+ * (migration.ts) and never rejected.
  *
  * It carries asset *identities* and edit semantics only. Local URIs, blob URLs,
  * signed URLs, tokens, licences and user identity are deliberately absent:
@@ -11,7 +14,7 @@
 
 import type { Micros } from './time';
 
-export const EDL_SCHEMA_VERSION = 2;
+export const EDL_SCHEMA_VERSION = 3;
 
 export type AssetKind = 'video' | 'audio';
 export type AspectRatio = '9:16' | '16:9' | '1:1';
@@ -111,8 +114,11 @@ export type CaptionTimeBase = 'output' | 'source';
 
 export interface CaptionTrackV2 {
   trackId: string;
-  /** Where the lines came from: typed in the editor, or an SRT/VTT file. */
-  origin: 'manual' | 'imported';
+  /**
+   * Where the lines came from: typed in the editor, an SRT/VTT file, or the
+   * on-device transcript (ADR-036; machine-made, and the UI says so).
+   */
+  origin: CaptionOrigin;
   timeBase: CaptionTimeBase;
   /** Required for `source` tracks, absent for `output` tracks. */
   assetId?: string;
@@ -120,6 +126,26 @@ export interface CaptionTrackV2 {
   language: string;
   style: CaptionStyleV2;
   cues: CaptionCueV2[];
+  /**
+   * Transcript tracks only (ADR-036): source ranges where speech was heard
+   * but could not be written. Shown as "(anlaşılamadı)" in the transcript
+   * panel; never drawn on the video and never exported as subtitles.
+   * Sorted, not overlapping each other, inside the video.
+   */
+  unclear?: CaptionUnclearV3[];
+}
+
+export type CaptionOrigin = 'manual' | 'imported' | 'transcript';
+
+/** A half-open source range the transcript could not write. */
+export interface CaptionUnclearV3 {
+  startUs: Micros;
+  endUs: Micros;
+}
+
+/** The v2 recipe (ADR-015/016): the same shape, before transcript tracks existed. */
+export interface LegacyProjectV2 extends Omit<Project, 'schemaVersion'> {
+  schemaVersion: 2;
 }
 
 /** The v1 recipe as stored by older builds. Only migration.ts reads it. */

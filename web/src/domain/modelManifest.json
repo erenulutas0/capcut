@@ -1,0 +1,171 @@
+{
+  "note": "Pinned files of the on-device transcript (ADR-036). Read by src/domain/transcriptModels.ts and scripts/fetch-models.mjs. sha256 = Hugging Face LFS oid where the file is an LFS file; verified on every download.",
+  "storeVersion": 1,
+  "groups": {
+    "runtime": {
+      "dir": "runtime-ort-1.31.0-dev.20260914-8d85527a0",
+      "source": {
+        "kind": "npm",
+        "package": "onnxruntime-web",
+        "version": "1.31.0-dev.20260914-8d85527a0",
+        "path": "dist/"
+      },
+      "license": "MIT",
+      "files": [
+        {
+          "path": "ort-wasm-simd-threaded.asyncify.wasm",
+          "bytes": 26861777,
+          "sha256": "49871f5a4409519797e127440868a6d1923339d9185907f301a5b2a1d90af082"
+        }
+      ]
+    },
+    "vad": {
+      "dir": "silero-vad-e71cae96",
+      "source": {
+        "kind": "huggingface",
+        "repo": "onnx-community/silero-vad",
+        "revision": "e71cae966052b992a7eca6b17738916ce0eca4ec"
+      },
+      "license": "MIT",
+      "files": [
+        {
+          "path": "onnx/model.onnx",
+          "bytes": 2243022,
+          "sha256": "a4a068cd6cf1ea8355b84327595838ca748ec29a25bc91fc82e6c299ccdc5808"
+        }
+      ]
+    },
+    "base": {
+      "dir": "whisper-base-608c49e6",
+      "source": {
+        "kind": "huggingface",
+        "repo": "onnx-community/whisper-base_timestamped",
+        "revision": "608c49e61301901684bc36cac8f74b95ff6b5a8e"
+      },
+      "license": "Apache-2.0 (openai/whisper-base weights; the ONNX export card declares none)",
+      "files": [
+        {
+          "path": "config.json",
+          "bytes": 2243,
+          "sha256": "f4d0608f7d918166da7edb3e188de5ef1bfe70d9802e785d271fd88111e9cf4b"
+        },
+        {
+          "path": "generation_config.json",
+          "bytes": 3832,
+          "sha256": "61070cf8de25b1e9256e8e102ded49d8d24a8369ed36ef84fdf21549e68125a0"
+        },
+        {
+          "path": "preprocessor_config.json",
+          "bytes": 339,
+          "sha256": "a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d"
+        },
+        {
+          "path": "tokenizer.json",
+          "bytes": 2480466,
+          "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "bytes": 282682,
+          "sha256": "2e036e4dbacfdeb7242c7d4ec4149f4a16e86026048f94d1637e3a8ee9c6a573"
+        },
+        {
+          "path": "special_tokens_map.json",
+          "bytes": 2194,
+          "sha256": "e67ae3a0aaa99abcd9f187138e12db1f65c16a14761c50ef10eef2c174a7a691"
+        },
+        {
+          "path": "added_tokens.json",
+          "bytes": 34604,
+          "sha256": "9715fd2243b6f06a5858b5e32950d2853f73dd5bc201aafcf76f5082a2d8acd1"
+        },
+        {
+          "path": "normalizer.json",
+          "bytes": 52666,
+          "sha256": "bf1c507dc8724ca9cf9903640dacfb69dae2f00edee4f21ceba106a7392f26dd"
+        },
+        {
+          "path": "quantize_config.json",
+          "bytes": 10126,
+          "sha256": "b3c4c46d19751453cf47929fc25828e39f6e46025d9d66840e4f85047640b268"
+        },
+        {
+          "path": "onnx/encoder_model_quantized.onnx",
+          "bytes": 23159167,
+          "sha256": "2714484ebe1bae7c1646e8eadb768bb9d415cf11763466d21f23039a29c62e6f"
+        },
+        {
+          "path": "onnx/decoder_model_merged_quantized.onnx",
+          "bytes": 53712708,
+          "sha256": "cf9a8d5bcddc0917a0078135b484cedcaf44f28909cd91910abd29dced9171db"
+        }
+      ]
+    },
+    "turbo": {
+      "dir": "whisper-large-v3-turbo-b3f77bf9",
+      "source": {
+        "kind": "huggingface",
+        "repo": "onnx-community/whisper-large-v3-turbo_timestamped",
+        "revision": "b3f77bf9a8c4d5ea3415827033d1ffea7955fd9a"
+      },
+      "license": "MIT (openai/whisper-large-v3-turbo weights; the ONNX export card declares none)",
+      "files": [
+        {
+          "path": "config.json",
+          "bytes": 1330,
+          "sha256": "32c02d1dfb9a93ff236cdcf0f741f8f3a4cedb437c407a361a022451ac009131"
+        },
+        {
+          "path": "generation_config.json",
+          "bytes": 3797,
+          "sha256": "8568ddf83476167b4607014956b87142763fa6923e71259a606734beb39bdfc8"
+        },
+        {
+          "path": "preprocessor_config.json",
+          "bytes": 340,
+          "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711"
+        },
+        {
+          "path": "tokenizer.json",
+          "bytes": 2480645,
+          "sha256": "b3c8202bbf06d8ee4232c5984baa563784ac4737e2e7fdc42fa180200d3cfcdb"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "bytes": 282843,
+          "sha256": "844b642c73a91359722f47b35705f7174686df33d252695d8572cf9ac03a6389"
+        },
+        {
+          "path": "special_tokens_map.json",
+          "bytes": 2186,
+          "sha256": "baea4ea09372eb4fca86b4e4346139fd73cb807d5087e9de0948e971739c3e74"
+        },
+        {
+          "path": "added_tokens.json",
+          "bytes": 34648,
+          "sha256": "3c51f66c4c21f9e126970078f11ae77a78c74aee8df606ee9daba86e467108e0"
+        },
+        {
+          "path": "normalizer.json",
+          "bytes": 52666,
+          "sha256": "bf1c507dc8724ca9cf9903640dacfb69dae2f00edee4f21ceba106a7392f26dd"
+        },
+        {
+          "path": "quantize_config.json",
+          "bytes": 285,
+          "sha256": "8da6e4e50ef7c210ba66a98a4256e6d60e38cef8a9a9c74d327251aaf4e78767"
+        },
+        {
+          "path": "onnx/encoder_model_q4f16.onnx",
+          "bytes": 370035242,
+          "sha256": "65261f977474ce30e46ed2c2b885e8ef68ef917941f78af48b098b86fad1adaa"
+        },
+        {
+          "path": "onnx/decoder_model_merged_q4f16.onnx",
+          "bytes": 193566135,
+          "sha256": "617e5b4f91ca190c43fa4d3bd2e671cfbee19c9a6ac4890f0a4bbaf658f00cf4"
+        }
+      ]
+    }
+  }
+}

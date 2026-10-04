@@ -8,6 +8,8 @@
 
 import {
   DEFAULT_EXPORT_SPEC,
+  EDL_SCHEMA_VERSION,
+  type CaptionUnclearV3,
   type AspectRatio,
   type AssetV1,
   type CaptionCueV2,
@@ -40,7 +42,7 @@ import { nextId } from './ids';
 
 export function createEmptyProject(projectId = 'p_local_001'): Project {
   return {
-    schemaVersion: 2,
+    schemaVersion: EDL_SCHEMA_VERSION,
     projectId,
     revision: 0,
     assets: [],
@@ -615,7 +617,8 @@ export function convertCaptionTimeBase(
       ok: true,
       report: { split, dropped: unused + (shown.length - kept.length) },
       project: withTrack(project, (current) => {
-        const { assetId: _unused, ...rest } = current;
+        // Unclear spans are ranges of the video file; an output track has no such clock.
+        const { assetId: _unused, unclear: _unclear, ...rest } = current;
         return { ...rest, timeBase: 'output', cues };
       }),
     };
@@ -739,6 +742,50 @@ export function importCaptionTrack(
   cues: readonly ImportedCueInput[],
   timeBase: CaptionTrackV2['timeBase'],
 ): CaptionImportResult {
+  return replaceCaptionTrack(project, cues, timeBase, null);
+}
+
+/**
+ * Replaces the caption track with the on-device transcript of the video
+ * (ADR-036): source-anchored lines, `origin: 'transcript'`, English, and the
+ * spans that could not be written. The same rules as a subtitle file — a
+ * line that breaks one is skipped and counted, never bent to fit. A
+ * transcript with no line at all is still kept when it has unclear spans:
+ * "speech was heard, nothing could be written" is a result, not a failure.
+ * One undo step.
+ */
+export function applyTranscriptTrack(
+  project: Project,
+  cues: readonly ImportedCueInput[],
+  unclear: readonly CaptionUnclearV3[],
+): CaptionImportResult {
+  return replaceCaptionTrack(project, cues, 'source', { unclear });
+}
+
+/** Sorted, inside the video, apart from each other, within the line limit. */
+function cleanUnclear(ranges: readonly CaptionUnclearV3[], durationUs: Micros): CaptionUnclearV3[] {
+  const sorted = ranges
+    .map((range) => ({
+      startUs: Math.max(0, Math.round(range.startUs)),
+      endUs: Math.min(durationUs, Math.round(range.endUs)),
+    }))
+    .filter((range) => range.endUs > range.startUs)
+    .sort((a, b) => a.startUs - b.startUs);
+  const out: CaptionUnclearV3[] = [];
+  for (const range of sorted) {
+    const last = out[out.length - 1];
+    if (last && range.startUs <= last.endUs) last.endUs = Math.max(last.endUs, range.endUs);
+    else out.push(range);
+  }
+  return out.slice(0, CAPTION_LIMITS.maxCuesPerTrack);
+}
+
+function replaceCaptionTrack(
+  project: Project,
+  cues: readonly ImportedCueInput[],
+  timeBase: CaptionTrackV2['timeBase'],
+  transcript: { unclear: readonly CaptionUnclearV3[] } | null,
+): CaptionImportResult {
   const video = primaryVideoAsset(project);
   if (timeBase === 'source' && !video) return { ok: false, reason: 'caption_no_video' };
 
@@ -767,20 +814,25 @@ export function importCaptionTrack(
   }
   skipped.sort((a, b) => a.index - b.index);
   const report = { imported: accepted.length, skipped };
-  if (accepted.length === 0) return { ok: false, reason: 'caption_import_empty', report };
+  const unclear = transcript && video ? cleanUnclear(transcript.unclear, video.durationUs) : [];
+  if (accepted.length === 0 && unclear.length === 0) return { ok: false, reason: 'caption_import_empty', report };
 
   const numbered = accepted.map((cue, position) => ({
     cueId: `q_${String(position + 1).padStart(3, '0')}`,
     ...cue,
   }));
   const next = withTrack(project, (current) => {
-    const { assetId: _unused, ...rest } = current;
+    // A new set of lines: the old track's anchor and unclear spans go with the old lines.
+    const { assetId: _unused, unclear: _old, ...rest } = current;
     return {
       ...rest,
-      origin: 'imported',
+      origin: transcript ? 'transcript' : 'imported',
       timeBase,
       ...(timeBase === 'source' && video ? { assetId: video.assetId } : {}),
+      // The transcript is English only for now (ADR-036); a file keeps the track's language.
+      ...(transcript ? { language: 'en' } : {}),
       cues: numbered,
+      ...(unclear.length > 0 ? { unclear } : {}),
     };
   });
   return { ok: true, project: next, report };
@@ -890,4 +942,44 @@ export function selectWithinClipLimit(
   }
   selected.sort((a, b) => a.startUs - b.startUs);
   return { selected, leftOut: suggestions.length - selected.length };
+}
+
+/* --------------------------------------------- kesitler from text (ADR-036) */
+
+export type KesitlerFromRangesResult =
+  | { ok: true; project: Project; added: number; clipIds: string[] }
+  | {
+      ok: false;
+      reason: AddClipRejection | 'nothing_selected';
+      /** For `clip_limit_exceeded`: how many kesitler still fit. */
+      room?: number;
+      wanted?: number;
+    };
+
+/**
+ * "Bunlardan kesit yap": every range becomes a kesit at the end of the list,
+ * in the order given — all of them or none. One undo step. The kesit limit
+ * is checked first and answered with how many still fit, so the UI can say
+ * it instead of adding some and dropping the rest.
+ */
+export function addKesitlerFromRanges(
+  project: Project,
+  ranges: readonly { sourceInUs: Micros; sourceOutUs: Micros }[],
+  policy: ExportPolicy = WEB_LOCAL_POLICY,
+  settings: KesitSettings = DEFAULT_KESIT_SETTINGS,
+): KesitlerFromRangesResult {
+  if (ranges.length === 0) return { ok: false, reason: 'nothing_selected' };
+  const room = Math.max(0, policy.maxClips - project.clips.length);
+  if (ranges.length > room) return { ok: false, reason: 'clip_limit_exceeded', room, wanted: ranges.length };
+  let current = project;
+  const clipIds: string[] = [];
+  for (const range of ranges) {
+    const result = addClip(current, range, policy, settings);
+    if (!result.ok) return { ok: false, reason: result.reason };
+    current = result.project;
+    const newest = current.clips[current.clips.length - 1];
+    if (newest) clipIds.push(newest.clipId);
+  }
+  // One command, one revision step.
+  return { ok: true, project: { ...current, revision: project.revision + 1 }, added: ranges.length, clipIds };
 }

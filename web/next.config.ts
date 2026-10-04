@@ -40,6 +40,10 @@ function gitCommit(): string {
  */
 const staticExport = process.env.STATIC_EXPORT === '1';
 const basePath = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/+$/, '');
+const testHooks = process.env.CLIP_TEST_HOOKS === '1';
+if (testHooks && staticExport) {
+  throw new Error('CLIP_TEST_HOOKS=1 is for the e2e build only; the static export (the published site) must not contain test hooks.');
+}
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -58,6 +62,11 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_APP_VERSION: appVersion(),
     NEXT_PUBLIC_GIT_COMMIT: gitCommit(),
     NEXT_PUBLIC_BASE_PATH: basePath,
+    // '1' only for the e2e build (ADR-036): lets a test supply a tiny model
+    // list and a scripted stand-in for the speech recogniser. Always defined,
+    // so the code behind it is removed from every other build; a static
+    // export (the published site) refuses the flag outright below.
+    NEXT_PUBLIC_CLIP_TEST_HOOKS: testHooks ? '1' : '',
   },
 };
 

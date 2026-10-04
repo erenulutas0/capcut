@@ -49,5 +49,13 @@ web/tests/media/android/
 web/matrix-results/android/
 web/fastcut-spike-results/
 
+# Speech model files of "Yazıya dök" (ADR-036): fetched and sha256-checked by
+# web/scripts/fetch-models.mjs at build time, never committed (up to 370 MB each).
+web/public/models/
+web/.models-cache/
+# Generated fixtures and measurements of the transcript feature (ADR-036)
+web/tests/media/transcript/
+web/transcript-results/
+
 # Generated fixtures for the target-size / sound-only e2e tests (ffmpeg, ADR-035)
 web/tests/media/targetsize/

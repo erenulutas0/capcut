@@ -21,6 +21,7 @@ import {
 } from './edl';
 import {
   CAPTION_LIMITS,
+  CAPTION_ORIGINS,
   CAPTION_POSITIONS,
   CAPTION_PRESETS,
   CAPTION_SIZES,
@@ -187,7 +188,8 @@ const EXPORT_KEYS = [
   'audioSampleRate',
 ] as const;
 
-const CAPTION_TRACK_KEYS = ['trackId', 'origin', 'timeBase', 'assetId', 'language', 'style', 'cues'] as const;
+const CAPTION_TRACK_KEYS = ['trackId', 'origin', 'timeBase', 'assetId', 'language', 'style', 'cues', 'unclear'] as const;
+const CAPTION_UNCLEAR_KEYS = ['startUs', 'endUs'] as const;
 const CAPTION_STYLE_KEYS = ['preset', 'position', 'size'] as const;
 const CAPTION_CUE_KEYS = ['cueId', 'startUs', 'endUs', 'text'] as const;
 
@@ -197,6 +199,56 @@ const CAPTION_CUE_KEYS = ['cueId', 'startUs', 'endUs', 'text'] as const;
  * them, and the render plan clips them. Source-time cues must lie inside their
  * video file. Everything else about a cue must be well-formed.
  */
+/**
+ * `unclear` (v3, ADR-036): the spans a transcript could not write. Only a
+ * transcript track has them; they are plain source ranges, sorted and apart.
+ */
+function validateUnclear(
+  bag: IssueBag,
+  track: Record<string, unknown>,
+  path: string,
+  sourceDurationUs: number | null,
+): void {
+  if (track.unclear === undefined) return;
+  // They are ranges of one video file: only a source-anchored transcript has them.
+  if (track.origin !== 'transcript' || track.timeBase !== 'source' || !Array.isArray(track.unclear)) {
+    bag.add(
+      'caption_track_invalid',
+      `${path}.unclear`,
+      'unclear yalnızca kaynak zamanlı transkript izinde, dizi olarak bulunur.',
+    );
+    return;
+  }
+  if (track.unclear.length > CAPTION_LIMITS.maxCuesPerTrack) {
+    bag.add('caption_cue_limit_exceeded', `${path}.unclear`, 'Çok fazla anlaşılamayan aralık.');
+  }
+  let previousEnd: number | null = null;
+  track.unclear.forEach((range: unknown, index: number) => {
+    const rangePath = `${path}.unclear[${index}]`;
+    if (!isPlainObject(range)) {
+      bag.add('not_an_object', rangePath, 'Aralık nesnesi bekleniyor.');
+      return;
+    }
+    checkUnknownFields(bag, range, CAPTION_UNCLEAR_KEYS, rangePath);
+    const startOk = checkMicros(bag, range.startUs, `${rangePath}.startUs`);
+    const endOk = checkMicros(bag, range.endUs, `${rangePath}.endUs`);
+    if (!startOk || !endOk) return;
+    const start = range.startUs as number;
+    const end = range.endUs as number;
+    if (end <= start) {
+      bag.add('range_reversed', rangePath, 'Bitiş başlangıçtan sonra olmalı.');
+      return;
+    }
+    if (sourceDurationUs !== null && end > sourceDurationUs) {
+      bag.add('range_out_of_source', rangePath, 'Aralık videonun süresini aşıyor.');
+    }
+    if (previousEnd !== null && start < previousEnd) {
+      bag.add('caption_cue_overlap', rangePath, 'Aralıklar sıralı olmalı ve üst üste binmemeli.');
+    }
+    previousEnd = end;
+  });
+}
+
 function validateCaptionTracks(bag: IssueBag, raw: unknown, assets: Map<string, AssetV1>): void {
   if (!Array.isArray(raw)) {
     bag.add('missing_field', 'captionTracks', 'captionTracks bir dizi olmalı.');
@@ -225,14 +277,14 @@ function validateCaptionTracks(bag: IssueBag, raw: unknown, assets: Map<string, 
       ids.add(track.trackId as string);
     }
     if (
-      (track.origin !== 'manual' && track.origin !== 'imported') ||
+      !(CAPTION_ORIGINS as readonly unknown[]).includes(track.origin) ||
       (track.timeBase !== 'output' && track.timeBase !== 'source') ||
       !isCaptionLanguage(track.language)
     ) {
       bag.add(
         'caption_track_invalid',
         path,
-        'İz kaynağı (manual/imported), zaman tabanı (output/source) ve dil kodu geçerli olmalı.',
+        'İz kaynağı (manual/imported/transcript), zaman tabanı (output/source) ve dil kodu geçerli olmalı.',
       );
     }
 
@@ -266,6 +318,8 @@ function validateCaptionTracks(bag: IssueBag, raw: unknown, assets: Map<string, 
         bag.add('caption_style_invalid', `${path}.style`, 'Bilinmeyen altyazı stili.');
       }
     }
+
+    validateUnclear(bag, track, path, sourceDurationUs);
 
     if (!Array.isArray(track.cues)) {
       bag.add('missing_field', `${path}.cues`, 'cues bir dizi olmalı.');

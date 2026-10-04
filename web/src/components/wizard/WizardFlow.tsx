@@ -70,6 +70,8 @@ interface Props extends WizardHostProps {
   preview?: ReactNode;
   /** Puts the wizard's own result into the recipe before the editor opens over it. */
   beforeEditor?: () => void;
+  /** The download button's words when "İndir" alone would not say what is saved ("Altyazılı videoyu indir"). */
+  downloadLabelKey?: MessageKey;
   /** The one decision (or the one-line explanation) of this task. */
   children: ReactNode | ((info: FlowInfo) => ReactNode);
 }
@@ -102,6 +104,7 @@ export function WizardFlow({
   blockedText = null,
   preview,
   beforeEditor,
+  downloadLabelKey = 'wizard.download',
   children,
 }: Props) {
   const hydrated = useHydrated();
@@ -313,7 +316,7 @@ export function WizardFlow({
                   data-testid="wizard-download"
                 >
                   <Icon name="download" />
-                  {t('wizard.download')}
+                  {t(downloadLabelKey)}
                 </button>
                 {moreSettings}
               </div>
@@ -433,14 +436,21 @@ export function VideoPreview({
   shape = 'wide',
   fit = 'contain',
   label,
+  mediaRef,
+  onTime,
 }: {
   video: MediaHandle;
   shape?: 'wide' | 'vertical';
   fit?: 'cover' | 'contain';
   label?: string;
+  /** Lets the owner move the video (the transcript's lines jump to their moment). */
+  mediaRef?: { current: HTMLVideoElement | null };
+  /** The video's own time in µs, as it plays or is moved. */
+  onTime?: (us: number) => void;
 }) {
   const ref = useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = useState(false);
+  const report = (event: { currentTarget: HTMLVideoElement }) => onTime?.(Math.round(event.currentTarget.currentTime * 1_000_000));
   const portrait = (video.displayHeight ?? 0) > (video.displayWidth ?? 0);
 
   const toggle = () => {
@@ -454,7 +464,12 @@ export function VideoPreview({
     <div className="video-preview" data-shape={shape} data-portrait={portrait} data-testid="wizard-preview">
       <div className="video-preview-frame" data-fit={fit} data-testid="wizard-preview-frame">
         <video
-          ref={ref}
+          ref={(element) => {
+            ref.current = element;
+            if (mediaRef) mediaRef.current = element;
+          }}
+          onTimeUpdate={onTime ? report : undefined}
+          onSeeked={onTime ? report : undefined}
           // "#t=0.1": show a picture, not an empty box, before anything plays.
           src={`${video.objectUrl}#t=0.1`}
           playsInline

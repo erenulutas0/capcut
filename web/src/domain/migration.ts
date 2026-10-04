@@ -3,7 +3,8 @@
  *
  * v1 → v2 only adds `captionTracks` (ADR-015), so the migration is lossless
  * and mechanical: a v1 recipe gets an empty caption list and nothing else
- * changes. Everything that reads stored or imported recipes goes through
+ * changes. v2 → v3 (ADR-036) changes nothing in an existing recipe but the
+ * number. Everything that reads stored or imported recipes goes through
  * `loadProject`; `validateProject` itself only knows the current schema.
  */
 
@@ -21,7 +22,13 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * returned untouched so the validator reports it with the usual codes.
  */
 export function migrateProject(input: unknown): unknown {
-  if (!isPlainObject(input) || input.schemaVersion !== 1) return input;
+  if (!isPlainObject(input)) return input;
+  // v2 → v3 (ADR-036): the number only. v3 only ALLOWS more (transcript
+  // tracks, their unclear spans, more lines), so every valid v2 recipe is a
+  // valid v3 recipe. A v2 recipe without its caption list is left for the
+  // validator to refuse rather than repaired by guessing.
+  if (input.schemaVersion === 2) return { ...input, schemaVersion: EDL_SCHEMA_VERSION };
+  if (input.schemaVersion !== 1) return input;
   // A v1 recipe never had captions. If one claims to, it is not a v1 recipe
   // this code understands: leave it for the validator to refuse.
   if ('captionTracks' in input) return input;
