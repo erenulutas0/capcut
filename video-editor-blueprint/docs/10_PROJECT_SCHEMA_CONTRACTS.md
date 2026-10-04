@@ -128,9 +128,47 @@ Kurallar:
   Metin, kendi normalleştirilmiş hâline eşit değilse geçersizdir.
 - Bir satır çıktının sonunu aşabilir; bu geçerlidir. Anlar kısalınca satır silinmez; render planı onu çıktı sonunda keser, tamamen dışarıda kalanı çizmez, arayüz de bunu gösterir.
 
+## EDL v3 — transkript izi (2026-10-04, kurucu kararı; ADR-036)
+
+v3, v2'nin aynısıdır; altyazı izine üç **genişletme** gelir. Hiçbir v2 alanı değişmez ya da
+kalkmaz, bu yüzden v2 tarif kayıpsız okunur: yalnızca `schemaVersion` 3 yapılır (v1 önce v2
+kuralıyla `captionTracks: []` alır). Geçerli her v2 tarif, numarası değişince geçerli bir v3
+tariftir; fixture'lar `web/fixtures/edl/legacy-v2/`.
+
+```json
+"captionTracks": [
+  {
+    "trackId": "t_001",
+    "origin": "transcript",
+    "timeBase": "source",
+    "assetId": "a_video_001",
+    "language": "en",
+    "style": { "preset": "box", "position": "bottom", "size": "medium" },
+    "cues": [
+      { "cueId": "q_001", "startUs": 1000000, "endUs": 3200000, "text": "He hoped there would be\nstew for dinner," }
+    ],
+    "unclear": [ { "startUs": 6000000, "endUs": 8000000 } ]
+  }
+]
+```
+
+- `origin`: `manual` | `imported` | **`transcript`** (cihaz üstü transkriptten geldi; makine
+  yazdı, arayüz bunu söyler).
+- **`unclear`** (isteğe bağlı): konuşma duyulan ama yazılamayan kaynak aralıkları, yarı açık
+  `[startUs, endUs)`. Yalnızca `origin: "transcript"` **ve** `timeBase: "source"` olan izde
+  bulunabilir (başka izde `caption_track_invalid`); sıralıdır, birbirinin üstüne binmez
+  (`caption_cue_overlap`), videonun süresi içindedir (`range_out_of_source`), tam sayı
+  mikrosaniyedir. Transkript panelinde "(anlaşılamadı)" satırı olarak görünür; **videoya
+  çizilmez, SRT/VTT'ye yazılmaz**. Bir satır aynı aralığa elle yazılınca o aralık panelde bir
+  daha gösterilmez (veri silinmez). İz sonuç zamanına çevrilirse ya da bir altyazı dosyası içe
+  aktarılırsa `unclear` kaldırılır.
+- **Satır sınırı:** iz başına en çok **3000** satır (v2'de 500) ve en çok 3000 `unclear` aralığı.
+  Gerekçe ve ölçülen bedel: ADR-036 "Satır sınırı".
+- Kelime zamanları saklanmaz; transkript, satırlarından ve `unclear` aralıklarından ibarettir.
+
 ## Doğrulama kuralları
 
-`schemaVersion=2` (v1 okunurken yukarıdaki geçişle yükseltilir); bilinmeyen ana alanlar ilk sürümde hata verir. Alan genişletme ihtiyacı değişiklik kaydıyla ele alınır. `projectId/assetId/clipId` sınırlı uzunlukta opaque kimliktir. Her `assetId` tekil; klipte referans verilen asset `video`; müzik asset'i `audio` olmalıdır. Tüm sayılar finite; NaN/Infinity kabul edilmez.
+`schemaVersion=3` (v1 ve v2 okunurken yukarıdaki geçişlerle yükseltilir); bilinmeyen ana alanlar ilk sürümde hata verir. Alan genişletme ihtiyacı değişiklik kaydıyla ele alınır. `projectId/assetId/clipId` sınırlı uzunlukta opaque kimliktir. Her `assetId` tekil; klipte referans verilen asset `video`; müzik asset'i `audio` olmalıdır. Tüm sayılar finite; NaN/Infinity kabul edilmez.
 
 Zamanlar güvenli integer ve ≥0; JSON'da stringe çevrilmez. JavaScript safe-integer sınırı korunur. `0 ≤ in < out ≤ probedDuration`; her klip ≥100.000 µs. Düzenlemede tekrarlanan/örtüşen kaynak aralıkları geçerlidir; örneğin aynı sahnenin tekrar gösterilmesi mümkündür. Çıktı timeline'ında klipler ardışık ve boşluksuzdur; konum dizi sırasından türetilir.
 

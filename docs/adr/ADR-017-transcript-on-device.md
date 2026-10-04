@@ -1,6 +1,18 @@
 # ADR-017 — Altyazı adım 4: otomatik transkript, cihaz üstü (tarayıcıda) rota
 
-> Tarih: 2026-09-21 · Durum: ROTA KABUL EDİLDİ, **UYGUNLUK DENEMESİ GEÇMEDİ — uygulama başlamadı**
+> Tarih: 2026-09-21 · Durum: ROTA KABUL EDİLDİ; **İNGİLİZCE İÇİN UYGULANDI (4 Ekim 2026,
+> [ADR-036](ADR-036-on-device-transcript.md))**; Türkçe için uygunluk denemesi geçmedi/ölçülmedi.
+>
+> **Durum güncellemesi — 2026-10-04 (uygulama):** kurucu kararlarıyla (4 Ekim) "Yazıya dök"
+> yapıldı: cihaz üstü, yalnız İngilizce, `base` varsayılan + isteğe bağlı `large-v3-turbo`,
+> model kendi sitemizden, belge 15 `2026-10-04.v7` ile ücretsiz temel özellik, şema EDL v3.
+> Bu ADR'nin eşikleri değiştirilmedi; uygulama yolundaki yeniden ölçüm ve eşiklere karşı durum
+> ADR-036'dadır. Aşağıdaki "Uygulama sınırları"ndan iki sapma ADR-036'da gerekçelendirildi:
+> transkript ayrı bir `TranscriptAsset` değil doğrudan kaynak zamanlı altyazı izidir (kelime
+> zamanı saklanmaz), ve girdi "yalnızca tutulan anlar" değil videonun tamamıdır (yazıdan kesit
+> yapmak bütün videonun yazısını ister).
+>
+> İlk deneme (Eylül): **uygunluk denemesi geçmedi — uygulama başlamadı.**
 > Deneme raporu: `docs/spikes/2026-09-21-asr-on-device.md`. Özet: hiçbir açık Whisper
 > modeli (tiny/base/small; WebGPU ve WASM; Chromium/Chrome/Edge/Firefox) eşikleri
 > tutmadı. Türkçe WER en iyi modelde %20,6 (eşik %10); üç model de sessizlik ve müzikte

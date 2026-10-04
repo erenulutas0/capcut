@@ -18,10 +18,10 @@ Site **"Ne yapmak istiyorsun?"** ekranıyla açılır: kullanıcı bir iş kart�
 ne istediğini kendi sözleriyle yazar ("sessiz yerleri sil", "TikTok için dikey"). Her iş
 kısa bir sihirbazdır: video seç → en fazla bir karar → İndir. Bugün çalışan işler: **Kes**,
 **Boşlukları at**, **Dikey yap**, **Küçült** (WhatsApp, e-posta ya da paylaşım sınırına
-sığdırır), **Müzik ekle**, **Sesini al** (videonun sesi M4A olarak), **Her yerde açılsın**.
-Henüz yapılmamış iş (Yazıya dök) kart olarak gösterilmez; arama onu kastederse "Bu
-henüz yok, üzerinde çalışıyoruz." der. Editör "Kendim düzenleyeceğim" bağlantısıyla bir
-dokunuş ötededir.
+sığdırır), **Yazıya dök** (İngilizce konuşmayı bu cihazda zaman damgalı yazıya ve altyazıya
+çevirir; [ADR-036](docs/adr/ADR-036-on-device-transcript.md)), **Müzik ekle**, **Sesini al**
+(videonun sesi M4A olarak), **Her yerde açılsın**. Editör "Kendim düzenleyeceğim" bağlantısıyla
+bir dokunuş ötededir.
 
 Editörde kullanıcı kendi videosunda tutmak istediği aralıkları işaretler; her aralık
 "Kesitler" listesine düşer. Her kesit kendi ⬇ düğmesiyle ayrı indirilir ya da
@@ -53,11 +53,25 @@ cd web && npm run build && npm start
 cd web && npm run typecheck && npm run lint && npm test
 ```
 
-Tarayıcı testleri (kendi derlemesini `127.0.0.1:3100` üzerinde ayağa kaldırır):
+Tarayıcı testleri (kendi derlemesini `127.0.0.1:3100` üzerinde ayağa kaldırır). e2e derlemesi
+`CLIP_TEST_HOOKS=1` ile yapılır: "Yazıya dök" arayüz testleri küçük bir test model listesi ve
+sahte bir tanıyıcı (test ikizi) kullanır; bu bayrak olmadan o testler "e2e derlemesi gerekir"
+diyerek **kalır** (yayınlanan derleme bu bayrakla derlenmeyi reddeder):
 
 ```bash
-cd web && npm run build && npm run test:e2e
+cd web && CLIP_TEST_HOOKS=1 npm run build && npm run test:e2e
 ```
+
+**Konuşma modeli dosyaları** ("Yazıya dök", [ADR-036](docs/adr/ADR-036-on-device-transcript.md))
+git'te değildir. Geliştirmede ve gerçek modelli testlerde gerekir; sabit revizyonlardan indirir,
+sha256'yı doğrular, `web/public/models/` altına koyar (109 MB; `--models=base,turbo` ile 675 MB):
+
+```bash
+cd web && node scripts/fetch-models.mjs --dest=public/models
+```
+
+Dosyalar yoksa gerçek modelli testler (`transcript-real.spec.ts`, Pages duman testinin iki
+testi) **atlanır ve atlandığını söyler**; geçti sayılmaz.
 
 Ekran görüntüleri (`web/screenshots/`), sunucu `:3100`'de ayaktayken:
 
@@ -143,6 +157,15 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 - Videonun tamamını gösteren şerit: numaralı kesit bölgeleri, bekleyen aralık,
   yakınlaştırma (düğmeler, Ctrl/⌘ + tekerlek, iki parmak) ve kaydırma.
 - Tam ekran izleme (⛶ / F).
+- **Yazıya dök (ADR-036):** videodaki **İngilizce** konuşma bu cihazda yazıya dökülür (Whisper
+  `base`, WebAssembly; WebGPU'lu cihazda isteğe bağlı `large-v3-turbo`). Model bir kez, açık bir
+  düğmeyle, bu sitenin kendi adresinden iner (108,8 MB) ve tarayıcıda saklanır; ses, görüntü ve
+  metin cihazdan çıkmaz, sonra internetsiz de çalışır. Sonuç: zaman damgalı satırlar (satıra
+  dokun → video oraya gider, konuşulan satır izlenir), yanlış kelimeyi yerinde düzeltme,
+  yazılamayan yerler "(anlaşılamadı)" olarak görünür (uydurma metin gösterilmez), altyazılı
+  videoyu indirme, TXT / SRT / VTT. Editörde "Yazı" sekmesi: satırları işaretle → **"Bunlardan
+  kesit yap"** (yazıdan kesim; tek geri alma adımı). Çıktı "Otomatik yazıldı — yanlış olabilir"
+  etiketiyle gelir; ölçülen doğruluk, hız ve sınırlar ADR-036'da.
 - **Açılış ekranı ve sihirbazlar (ADR-034):** "Ne yapmak istiyorsun?" — iş kartları ve
   yazarak bulma (cihazda, kelime listesiyle; yapay zekâ ve ağ isteği yok). Sihirbazlar: Kes
   (kesit editörünü seçilen videoyla açar), Boşlukları at (sessiz yerleri bulur, "N sessiz yer
@@ -189,8 +212,8 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 ## Bu sürümde olmayanlar
 
 Bulut yedeği veya cihazlar arası senkron, çoklu proje listesi, serbest kırpma,
-çoklu video kaynağı, otomatik transkript ve çeviri,
-hesap, ödeme ve native uygulama.
+çoklu video kaynağı, **Türkçe** (ve İngilizce dışındaki her dil için) otomatik transkript,
+çeviri, hesap, ödeme ve native uygulama.
 
 Yerel kayıt yalnızca **bu tarayıcıdadır**: tarayıcı verisi temizlenirse veya
 başka bir cihaz/tarayıcı kullanılırsa proje orada olmaz. Video dosyaları
@@ -222,7 +245,8 @@ Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
 [ADR-025 (4 GiB toplam kaynak boyutu ve ölçümü)](docs/adr/ADR-025-source-bytes-4gib.md),
 [ADR-026 (kesit listesi, kaydetme penceresiyle doğrudan dosyaya indirme)](docs/adr/ADR-026-kesit-list.md),
 [ADR-031 (telefonda paylaş, uygulama olarak yükle, internetsiz aç)](docs/adr/ADR-031-phone-share-install-offline.md),
-[ADR-034 (görev öncelikli açılış ekranı: iş kartları, yazarak bulma, sihirbazlar)](docs/adr/ADR-034-task-first-home.md).
+[ADR-034 (görev öncelikli açılış ekranı: iş kartları, yazarak bulma, sihirbazlar)](docs/adr/ADR-034-task-first-home.md),
+[ADR-036 (Yazıya dök: cihaz üstü İngilizce transkript, otomatik altyazı, yazıdan kesit)](docs/adr/ADR-036-on-device-transcript.md).
 
 ## Sıradaki tek görev
 

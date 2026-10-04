@@ -170,6 +170,8 @@ for (const clip of clips) {
     const wallMs = Date.now() - t0;
     const cpu1 = cpuTimes();
     sampler?.stop();
+    // The run is over; the page now shows either the transcript or why there is none (the lines are laid out first).
+    await page.waitForSelector('[data-testid="transcript-panel"], [data-testid="transcribe-failed"]', { timeout: 120_000 });
     const failed = await page.locator('[data-testid="transcribe-failed"]').count();
     // A run that heard nothing still ran: its figures are kept ("nothing_heard" is the UI's word for an empty result).
     const run = await page.evaluate(() => window.__clipTranscriptRuns[0] ?? null);

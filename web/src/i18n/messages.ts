@@ -1010,7 +1010,8 @@ export const tr = {
   'transcript.model.failed.worker_unavailable': 'İndirme bu tarayıcıda başlatılamadı. Sayfayı yenileyip tekrar dene.',
   'transcript.start': 'Yazıya dök',
   'transcript.retry': 'Tekrar dene',
-  'transcript.startHint': 'Bu cihazda çalışır; videonun uzunluğuna göre birkaç dakika sürebilir.',
+  'transcript.startHint':
+    'Bu cihazda çalışır ve zaman alır: konuşmanın süresinin yarısı kadar sürebilir, yavaş cihazda daha uzun (10 dakikalık konuşma için yaklaşık 4–7 dakika).',
   'transcript.loading': 'Model başlatılıyor…',
   'transcript.listening': 'Konuşma aranıyor: {done} / {total}',
   'transcript.writing': 'Yazılıyor: {done} / {total} konuşma parçası',
@@ -2068,7 +2069,8 @@ export const en: Record<MessageKey, string> = {
   'transcript.model.failed.worker_unavailable': 'The download could not start in this browser. Reload the page and try again.',
   'transcript.start': 'Turn speech into text',
   'transcript.retry': 'Try again',
-  'transcript.startHint': 'It runs on this device; depending on the video’s length it can take a few minutes.',
+  'transcript.startHint':
+    'It runs on this device and takes time: up to about half the length of the speech, longer on a slow device (about 4–7 minutes for 10 minutes of speech).',
   'transcript.loading': 'Starting the model…',
   'transcript.listening': 'Looking for speech: {done} / {total}',
   'transcript.writing': 'Writing: {done} of {total} stretches of speech',

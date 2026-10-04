@@ -202,6 +202,21 @@ for (const run of summary.runs) {
         `| ${row.id} | ${row.durationS.toFixed(0)} s | ${pct(row.wer)} | ${row.refWords}/${row.hypWords} | ${row.unclearSpans}/${row.spans} | ${row.gapWords ? row.gapWords.length : '—'} | ${t ? `${ms(t.start.medianAbs)} / ${ms(t.start.p95Abs)} / ${pct(t.start.within, 0)}` : '—'} | ${t ? `${ms(t.end.medianAbs)} / ${ms(t.end.p95Abs)} / ${pct(t.end.within, 0)}` : '—'} | ${row.rtf.toFixed(3)} | ${row.memory ? `${row.memory.peakMiB} MiB` : '—'} |`,
       );
     }
+    // Pooled per set: total errors over total reference words.
+    const sets = [...new Set(speech.map((row) => row.set))];
+    lines.push(
+      '',
+      `Kümelere göre WER (toplam hata / toplam referans kelime): ${sets
+        .map((set) => {
+          const rows = speech.filter((row) => row.set === set);
+          const errors = rows.reduce((sum, row) => sum + row.errors, 0);
+          const words = rows.reduce((sum, row) => sum + row.refWords, 0);
+          const dropped = rows.reduce((sum, row) => sum + (row.unclearSpans ?? 0), 0);
+          const spans = rows.reduce((sum, row) => sum + (row.spans ?? 0), 0);
+          return `${set} ${pct(errors / words)} (${errors}/${words}; anlaşılamayan ${dropped}/${spans} aralık)`;
+        })
+        .join(' · ')}.`,
+    );
     const timed = speech.filter((row) => row.timing);
     if (timed.length) {
       const start = pool(timed, 'start');

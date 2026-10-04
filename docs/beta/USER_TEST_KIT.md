@@ -67,6 +67,32 @@ yazdı, "Kendim düzenleyeceğim"e mi gitti — hangisini neden seçtiği not al
    gelir) ya da editörde "Diğer" ⋯ → "Sessizlikleri bul". Hangi yolu bulduğu ve sihirbazdaki
    özetin yetip yetmediği not alınır.
 
+4. **Yazıya dök (yeni, 4 Ekim 2026 — [ADR-036](../adr/ADR-036-on-device-transcript.md)):**
+   yalnızca **İngilizce konuşmalı** bir videosu olan katılımcıyla (yoksa bu görev atlanır;
+   Türkçe videoda sonuç anlamsız çıkar ve bu bir hata sayılmaz — arayüz bunu baştan söylüyor mu,
+   not al). "Bu videodaki konuşmayı yazıya dök; yanlış yazılmış bir kelimeyi düzelt; altyazılı
+   videoyu indir." Beklenen yol: "Yazıya dök" kartı (ya da "altyazı ekle" yazmak) → "Video seç"
+   → ilk kullanımda **"Modeli indir (≈108,8 MB, bir kez)"** → "Yazıya dök" → satırlar →
+   kalem → düzelt → "Altyazılı videoyu indir" (ilk kullanımda 5 dokunuş + dosya penceresi,
+   sonra 4). Not al:
+   - "Şimdilik yalnızca İngilizce" cümlesini okudu mu, anladı mı?
+   - Model indirmeyi **neden** gerektiğini anladı mı; 109 MB'ı ve "bir kez"i gördü mü; indirmeyi
+     onayladı mı, vazgeçti mi? Mobil veriyle mi, Wi-Fi ile mi? (İndirme süresini yaz.)
+   - Beklerken ne yaptı: ilerleme yazısını ("Konuşma aranıyor 03:10 / 12:00", "Yazılıyor: 14 / 87
+     konuşma parçası") anladı mı; sayfayı kapattı ya da başka sekmeye geçti mi? **Süreyi yaz**
+     (video uzunluğu ve geçen süre): masaüstü ölçümü konuşma süresinin 0,4–0,7 katı; dizüstü ve
+     telefon ölçülmedi.
+   - "Otomatik yazıldı — yanlış olabilir, düzeltebilirsin" cümlesini gördü mü; metne güvendi mi?
+     Kaç yanlış kelime saydı (kabaca)? "(anlaşılamadı)" satırını gördüyse ne anladı?
+   - Satıra dokununca videonun oraya gittiğini fark etti mi; kalemi buldu mu?
+   - Sonuç: "Bu altyazılı videoyu paylaşır mıydın?" (evet / hayır, neden — okunabilirlik,
+     satır uzunluğu, zamanlama).
+4b. **Yazıdan kesit:** "Şimdi yalnızca şu cümlenin geçtiği yeri ayrı bir video yap." Beklenen
+   yol: "Daha fazla ayar → editörde aç" → "Yazı" sekmesi → satır(lar)ı işaretle → "Bunlardan
+   kesit yap" → "Kesitler" sekmesi → kesitin "İndir"i. Not al: işaret kutularını ve düğmeyi
+   buldu mu; bitişik satırların tek kesit olmasını bekledi mi; kesitin başı/sonu sözü kesiyor mu
+   (zaman hatası: ölçümde p95 ~0,2–0,25 s).
+
 Rakip karşılaştırması (araştırma eki: iki doğrudan rakip) ikinci turda; ilk turda
 yalnızca kendi ürünümüzdeki tıkanmaları görüyoruz.
 

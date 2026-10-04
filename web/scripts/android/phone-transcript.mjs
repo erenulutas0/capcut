@@ -208,6 +208,8 @@ try {
       row.wallS = Number(((Date.now() - t0) / 1000).toFixed(1));
       row.rtf = Number((row.wallS / clip.durationS).toFixed(3));
       row.memory = { beforePssMiB: before ? Math.round(before / 1024) : null, peakPssMiB: peak ? Math.round(peak / 1024) : null };
+      // The run is over; the page now shows either the transcript or why there is none.
+      await page.waitForSelector('[data-testid="transcript-panel"], [data-testid="transcribe-failed"]', { timeout: 120_000 });
       const run = await page.evaluate(() => window.__clipTranscriptRuns[0] ?? null);
       row.stats = run?.stats ?? null;
       if (await page.locator('[data-testid="transcribe-failed"]').count()) {
