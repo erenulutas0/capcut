@@ -88,9 +88,10 @@ window.asr = {
   },
   async transcribe(args) {
     const r = await call('transcribe', args);
-    log(`  ${args.url.split('/').pop()} ${r.rtf.toFixed(2)}x: ${r.text.slice(0, 80)}`);
+    log(`  ${args.url.split('/').pop()} ${args.pre ?? 'none'} ${r.rtf.toFixed(2)}x: ${r.text.slice(0, 80)}`);
     return r;
   },
+  loadVad: (args) => call('loadVad', args),
   dispose: () => call('dispose'),
   status: () => call('status'),
 };

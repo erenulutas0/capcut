@@ -1,2 +1,5 @@
 node_modules/
 models/
+.venv/
+.pip-cache/
+.generated/
