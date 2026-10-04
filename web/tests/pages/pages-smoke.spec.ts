@@ -73,6 +73,11 @@ test('opening screen → search → wizard → download → editor hand-off', as
   await page.getByTestId('finder-input').press('Enter');
   await expect(page).toHaveURL(/\/capcut\/yap\/dikey\/$/);
   await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'pick');
+  // The search moved here without a page load, so <head> is the opening
+  // screen's, re-ordered by the router (its policy was applied at load and
+  // still holds). Load the wizard's own HTML to check the policy IT ships.
+  await page.reload();
+  await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'pick');
   await expectPolicy(page);
 
   await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);

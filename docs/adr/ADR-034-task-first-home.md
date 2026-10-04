@@ -272,3 +272,19 @@ Gerçekten çalıştırılanlar:
 sınırında durduruldu): düzeltmelerden sonraki **tam** e2e koşusu, dosya matrisi
 (`run-matrix.mjs --browser=chromium`) ve GitHub Pages duman testi (`/capcut/` altında; testleri
 yazıldı ama **hiç koşturulmadı**). Bunlar birleştirmeden önce koşturulmalı.
+
+## Doğrulama — birleşim sonrası (3 Ekim 2026, ana oturum)
+
+Bu ADR'yi yazan işin çalıştıramadığı üç koşu `main` üzerinde (commit 03eb084 + Pages testi
+düzeltmesi) ölçüm kilidi altında çalıştırıldı:
+
+- `tsc`, `eslint`, derleme: temiz. `vitest`: 700/700.
+- Tam e2e (`E2E_PORT=3191`): **223 geçti, 2 atlandı, 0 kaldı.**
+- Matris: Chromium, Chrome, Edge **22/22**. (Ana klasörün matris videoları boş bulundu;
+  `generate-matrix-media.mjs` ile yeniden üretildi — bkz. değişiklik kaydı.)
+- Pages duman testi (`/capcut` altında statik çıktı): ilk koşuda 1/4 kaldı. Sebep testin
+  varsayımıydı: aramadan sihirbaza sayfa yüklenmeden geçilince yönlendirici `<head>` sırasını
+  değiştiriyor ve test "politika etiketi charset'ten hemen sonra" sırasını o anda arıyordu.
+  Politika sayfa yüklenirken uygulanır ve geçerliliğini korur; test artık sihirbazın kendi
+  HTML'ini yükleyip onun politikasını denetliyor. Düzeltmeden sonra **4/4**.
+
