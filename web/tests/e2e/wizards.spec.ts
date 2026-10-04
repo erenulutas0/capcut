@@ -481,7 +481,8 @@ test.describe('Küçült', () => {
     await expect(hint(page, 'share')).toHaveAttribute('data-state', 'already');
     await expect(hint(page, 'share')).toContainText('Videon zaten bunun altında');
     await expect(hint(page, 'email')).toHaveAttribute('data-state', 'already');
-    await expect(hint(page, 'whatsapp')).toHaveAttribute('data-state', 'reduced');
+    // Smaller than the source either way: the bitrate lowered, or this browser's ordinary download already under 16 MB.
+    await expect(hint(page, 'whatsapp')).toHaveAttribute('data-state', /^(reduced|normal)$/);
     await expect(hint(page, 'whatsapp')).toContainText(/^≈ \d+(,\d)? MB · (1080|720|540|360)p/);
     const planned = Number(await hint(page, 'whatsapp').getAttribute('data-planned-bytes'));
     expect(planned).toBeGreaterThan(1_000_000);

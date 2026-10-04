@@ -17,8 +17,9 @@
 Site **"Ne yapmak istiyorsun?"** ekranıyla açılır: kullanıcı bir iş kartına dokunur ya da
 ne istediğini kendi sözleriyle yazar ("sessiz yerleri sil", "TikTok için dikey"). Her iş
 kısa bir sihirbazdır: video seç → en fazla bir karar → İndir. Bugün çalışan işler: **Kes**,
-**Boşlukları at**, **Dikey yap**, **Müzik ekle**, **Her yerde açılsın**. Henüz yapılmamış
-işler (Küçült, Sesini al, Yazıya dök) kart olarak gösterilmez; arama onları kastederse "Bu
+**Boşlukları at**, **Dikey yap**, **Küçült** (WhatsApp, e-posta ya da paylaşım sınırına
+sığdırır), **Müzik ekle**, **Sesini al** (videonun sesi M4A olarak), **Her yerde açılsın**.
+Henüz yapılmamış iş (Yazıya dök) kart olarak gösterilmez; arama onu kastederse "Bu
 henüz yok, üzerinde çalışıyoruz." der. Editör "Kendim düzenleyeceğim" bağlantısıyla bir
 dokunuş ötededir.
 

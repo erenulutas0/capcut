@@ -25,12 +25,14 @@ Taslak tuvali: https://claude.ai/artifact/Q4V3e67pHd5KiAVLNU9rkW (özel bağlant
 
 Karar kaydı: [ADR-034](../../adr/ADR-034-task-first-home.md). Taslaklardan farklar:
 
-- Taslaklarda sekiz kart vardı; **yalnızca çalışan beş işin** kartı gösteriliyor (Kes,
-  Boşlukları at, Dikey yap, Müzik ekle, Her yerde açılsın). Küçült, Sesini al ve Yazıya dök
-  hazır olunca kartları kendiliğinden gelir (kayıtta tek satır).
+- Taslaklarda sekiz kart vardı; **yalnızca çalışan yedi işin** kartı gösteriliyor (Kes,
+  Boşlukları at, Dikey yap, Küçült, Müzik ekle, Sesini al, Her yerde açılsın; Küçült ve
+  Sesini al ADR-035 ile eklendi). Yazıya dök hazır olunca kartı kendiliğinden gelir
+  (kayıtta tek satır).
 - Taslak C'nin "En çok kullanılanlar" başlığı yok (kullanım ölçmüyoruz); başlık "Bütün işler".
 - Kutudaki örnek "videom WhatsApp’a sığmıyor" değil "sessiz yerleri sil": örnek, bugün
-  çalışan bir işe götürmeli. (WhatsApp cümlesi "Bu henüz yok, üzerinde çalışıyoruz." der.)
+  çalışan bir işe götürmeli. (WhatsApp cümlesi artık Küçült'ü buluyor; "Bu henüz yok,
+  üzerinde çalışıyoruz." cümlesini bugün yalnızca Yazıya dök'ü kasteden aramalar alıyor.)
 - Taslak B'nin "Bu videoyla ne yapalım?" listesi yok: önce iş seçiliyor, "Video seç"
   sihirbazın ilk adımı.
 
@@ -41,8 +43,10 @@ Ekran görüntüleri (çalışan uygulamadan, Playwright; `web/scripts/home-shot
 |---|---|
 | `01-home` | Açılış ekranı |
 | `02-search-results` | Arama: "tiktok için dikey" → Dikey yap |
-| `03-search-two-results` | Arama: "sesi kes" → Kes + (henüz olmayan) Sesini al |
-| `04-search-unavailable` | Arama: "videom whatsapp’a sığmıyor" → "Bu henüz yok" |
+| `03-search-two-results` | Arama: "sesi kes" → Kes + Sesini al |
+| `04-search-unavailable` | Arama: "altyazı ekle" → "Bu henüz yok" |
+| `60-kucult-2-choice`, `61-kucult-3-saved` | Küçült: üç hedef ve her birinin sonucu → kaydedildi, gerçek boyut hedefe karşı |
+| `70-ses-2-info`, `71-ses-3-saved` | Sesini al: tek açıklama → "Ses dosyası kaydedildi" |
 | `05-search-none` | Arama: "Bunu bulamadım" |
 | `10-kes-1-pick`, `11-kes-2-editor` | Kes: video seç → kesit editörü (ilk açılış ipucuyla) |
 | `20-bosluk-2-choice`, `21-bosluk-3-saved` | Boşlukları at: bulunanlar ve karar → kaydedildi |

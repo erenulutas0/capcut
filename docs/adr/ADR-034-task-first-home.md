@@ -47,7 +47,7 @@ arama olmadan çalışıyor; göreve göre düzenlenmiş gezinme özelliğe gör
 |---|---|
 | Kutu | `role="combobox"`, `aria-controls` ile sonuç listesine (`role="listbox"`), `aria-activedescendant` ile vurgulu sonuca bağlı; odak hep kutuda. ↑/↓ sonuçta gezer (başa sarar), Enter vurgulu sonucu başlatır, Esc kutuyu boşaltır, × de. Sonuç sayısı `role="status"` ile duyurulur ("2 sonuç. İlki: Dikey yap."). |
 | Örnek cümleler | "sessiz yerleri sil", "TikTok için dikey", "başını kes", "müzik koy": dokununca kutuya yazılır. Hepsi bugün çalışan bir işe götürür (birim testi). |
-| Kartlar | Kayıttaki sırayla, yalnızca `available: true` işler: Kes (dolu, öne çıkan kart), Boşlukları at, Dikey yap, Müzik ekle, Her yerde açılsın. Kart bir bağlantıdır (JavaScript olmadan da çalışır), en az 126 px yüksek. Telefonda 2 sütun; 700 px'ten itibaren 3; 1000 px'ten itibaren satırları dolduruyorsa 4 (8 kart → 4 + 4; bugünkü 5 kart → 3 + 2, tek kalan kart olmasın diye). Hiçbir kart gizlenmez. |
+| Kartlar | Kayıttaki sırayla, yalnızca `available: true` işler: Kes (dolu, öne çıkan kart), Boşlukları at, Dikey yap, Küçült, Müzik ekle, Sesini al, Her yerde açılsın (Küçült ve Sesini al [ADR-035](ADR-035-target-size-and-audio-only.md) ile açıldı). Kart bir bağlantıdır (JavaScript olmadan da çalışır), en az 126 px yüksek. Telefonda 2 sütun; 700 px'ten itibaren 3; 1000 px'ten itibaren satırları dolduruyorsa 4 (8 kart → 4 + 4; bugünkü 7 kart → 4 + 3; 5 kart → 3 + 2, tek kalan kart olmasın diye). Hiçbir kart gizlenmez. |
 | Yazınca | Kartlar ve örnekler yerini "Bunu mu demek istedin?" listesine bırakır (en fazla 3 satır; her satırda "Başla"). Kutuyu boşaltmak ya da "Tüm işleri gör" kartları geri getirir. Tek harf ya da yalnızca "video" yazmak henüz bir şey söylememektir: kartlar durur. |
 | Bulunamadı | "Bunu bulamadım. Başka kelimelerle dene ya da bütün işlere bak." + "Tüm işleri gör". |
 | Yük | Açılış ekranı dışa aktarma motorunu (mediabunny) yüklemez, worker başlatmaz, başka kökene istek yapmaz (e2e). |
@@ -107,10 +107,10 @@ buradan okur.
 | Kes (`kes`) | evet | video → editör | — (kesit editörü bu işin kendisi) |
 | Boşlukları at (`bosluk`) | evet | video → karar → indir | "Uzun boşluklar" (varsayılan) / "Kısa duraksamalar da" |
 | Dikey yap (`dikey`) | evet | video → karar → indir | "Doldur" (varsayılan) / "Sığdır" |
-| Küçült (`kucult`) | **hayır** | — | (hedef boyut; motoru başka bir iş kaleminde) |
+| Küçült (`kucult`) | evet (ADR-035) | video → karar → indir | Nereye sığsın: "Paylaşmak için (52 MB altı)" (varsayılan) / "E-posta (25 MB altı)" / "WhatsApp (16 MB altı)"; her seçenek sonucu baştan söyler ("≈ 15,4 MB · 720p", "Videon zaten bunun altında", "Bu video buna sığmaz: en az … gerekir") |
 | Yazıya dök (`yazi`) | **hayır** | — | (cihazda transkript denemesi sürüyor) |
 | Müzik ekle (`muzik`) | evet | video → karar → indir | Videonun sesi "Kalsın" (varsayılan) / "Kapansın" |
-| Sesini al (`ses`) | **hayır** | — | (yalnızca ses çıktısı; motoru başka bir iş kaleminde) |
+| Sesini al (`ses`) | evet (ADR-035) | video → indir | — (ses M4A olarak kaydedilir; sessiz videoda İndir kapalı ve sebebi yazılı) |
 | Her yerde açılsın (`cevir`) | evet | video → indir | — |
 
 **Bir işi açmak:** `tasks.ts`'te `available: true` (tek satır) + `components/wizard/wizards.tsx`
@@ -198,8 +198,9 @@ değişmedi.
 
 ## Bilerek gösterilmeyenler
 
-- **Küçült, Sesini al, Yazıya dök'ün kartı.** Çalışmayan bir işe kart koymak, basınca "henüz
-  yok" demek olurdu. Arama kastederse dürüst satır var; kart yok.
+- **Yazıya dök'ün kartı.** Çalışmayan bir işe kart koymak, basınca "henüz yok" demek olurdu.
+  Arama kastederse dürüst satır var; kart yok. (Küçült ve Sesini al, motorları gelince
+  ADR-035 ile kart oldu.)
 - **Editörün ayarları** (kare oranı, yakınlaştırma, kalite, ses seviyeleri, müzik aralığı ve
   geçişleri, altyazı, sessizliklerin tek tek listesi ve "Dinle"). Sihirbazda tek karar var;
   gerisi "Daha fazla ayar → editörde aç".
@@ -243,8 +244,8 @@ Koşu sayıları: bu belgenin sonundaki "Doğrulama".
 
 ## Yapılmayanlar / açık kalanlar
 
-- Küçült, Sesini al, Yazıya dök sihirbazları (motorları ayrı iş kalemlerinde). Sesini al için
-  kaydetme penceresinin dosya türü (bugün yalnızca `.mp4`) o sihirbazla birlikte ele alınmalı.
+- Yazıya dök sihirbazı (motoru ayrı iş kaleminde). Küçült ve Sesini al ADR-035 ile yapıldı
+  (kaydetme penceresi ses dosyasında `.m4a` / `audio/mp4` sunuyor).
 - Gerçek telefon (Galaxy S23) ve gerçek kullanıcı denemesi yapılmadı; ölçümler masaüstünde
   Playwright'ın Chromium'uyla. Kullanıcı testi kiti açılış ekranından başlayacak şekilde güncellendi.
 - Sihirbazda müzikle videonun birlikte dinlenmesi yok (müzik ve video ayrı ayrı oynatılır);

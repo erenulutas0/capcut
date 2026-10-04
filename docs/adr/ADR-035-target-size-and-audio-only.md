@@ -1,6 +1,6 @@
 # ADR-035 — "Küçült" (hedef boyuta indirme) ve "Sesini al" (yalnızca ses, M4A)
 
-> Tarih: 2026-10-03 · Durum: UYGULANDI (motor, API ve testler; iş kartları ve sihirbazlar ayrı işte).
+> Tarih: 2026-10-03 (kartlar ve sihirbazlar 4 Ekim) · Durum: UYGULANDI (motor, API, iki kart ve sihirbazları, testler).
 > Politika (`2026-09-24.v6`, belge 15) ve şema (EDL v2, belge 10) **değişmedi**. 720p'nin altına
 > inme **kurucu sorusu olarak açık** (aşağıda "Belge 15 ile ilişki"). [ADR-024](ADR-024-software-encoder-bitrate.md)
 > (yazılım kodlayıcıya 3 kat), [ADR-027](ADR-027-fast-cut.md) (hızlı kesim),
@@ -43,6 +43,10 @@ Kurucu kuralları: sahte dışa aktarma, sahte ilerleme, çalışmayan şeye ba�
   ve Chromium (Windows) AAC için yalnızca 96, 128, 160, 192 kbit/s kabul ediyor (ölçüm aşağıda).
   İşçi, gecikmesini ölçemediği (ADR-032) ses bit hızıyla plan yapmaz: telefondaki Chrome 96 kbit/s'i
   "destekliyorum" diyor ama gecikme ölçümü tutmuyor; orada yalnızca 128 kullanılır.
+- **Kaynağın kendi bit hızı tavandır:** hiçbir basamak, kaynağın kendisinde olandan fazla bit
+  gerektirdiği için reddedilmez ya da atlanmaz (`sourceBitrate`: dosyanın baytı ÷ süresi). Tabanlar
+  ayrıntılı kamera görüntüsünde ölçüldü; uzun, sade ve zaten küçük bir kayda (ör. 10 dakikalık 6 MB
+  ekran kaydı) "sığmaz" demek yanlış olurdu.
 - **ADR-024 ile ilişki:** hedef boyutta 3 kat kuralı **uygulanmaz** — bit hızını boyut belirler.
   Yazılım kodlayıcının farkı planlayıcıdadır: kendi tabanları (yazılım kodlayıcı az bitle aynı
   resmi veremez, bir alt çözünürlüğe iner) ve olağan indirmedeki 3 katlı bit hızı tavanı.
@@ -109,6 +113,33 @@ kullanırsa çıkacak boyuttur; durağan içerik daha küçük çıkar.
 İşçi isteği (`protocol.ts`): `output?: 'video' | 'audio'`, `targetSize?: { targetBytes,
 minShortEdge?, maxShortEdge }`. Test kancası: `window.__clipExportOptions` (olağan indirme düğmesi bu
 seçeneklerle çalışır; `forced` alanı yalnızca ölçüm içindir).
+
+## Kartlar ve sihirbazlar (ADR-034'ün çatısında)
+
+`web/src/domain/tasks.ts`'te `kucult` ve `ses` `available: true`; bileşenleri
+`web/src/components/wizard/wizards.tsx` (`KucultWizard`, `SesWizard`). İkisi de ADR-034'ün ortak
+akışını kullanır (video seç → en fazla bir karar → İndir → sonuç) ve dışa aktarmaya
+`useWizardExport` → `useDownloads` üzerinden, `exportExtras` ile gider.
+
+- **Küçült:** tek karar "Nereye sığsın?" — "Paylaşmak için (52 MB altı)" (varsayılan), "E-posta
+  (25 MB altı)", "WhatsApp (16 MB altı)". Video açılınca üç hedefin planı bir kez hesaplanır
+  (`previewTargetSize`; hiçbir şey kodlanmaz) ve **her seçenek sonucunu baştan söyler**:
+  "≈ 15,4 MB · 720p · yaklaşık 9 sn sürer"; olağan indirme sığıyorsa "… kalite düşmeden sığıyor";
+  dosyanın kendisi zaten sınırın altındaysa "Videon zaten bunun altında (473 KB). Görüntü, mümkünse
+  yeniden işlenmeden olduğu gibi kopyalanır."; sığmıyorsa "Bu video buna sığmaz: en az 25,5 MB
+  gerekir." Sığmayan seçenek seçilince İndir kapalıdır ve yanında sebep yazar ("… En az X gerekir;
+  ya da editörde en çok 03:33 uzunluğunda bir kesit seç."); kaydetme penceresi açılmaz. Video kendi
+  çerçevesinde ve kendi boyutunda (en çok Full HD) kalır (`ownSizeRecipe`, "Sığdır"). Sonuç satırı
+  dosyanın gerçek boyutunu hedefe karşı söyler ("14,2 MB — hedefin altında (hedef 16 MB). 720p
+  olarak kodlandı.") ya da dürüstçe "… hedefin üstünde …".
+- **Sesini al:** karar yok. Bir açıklama ("Videonun sesi, görüntüsü olmadan bir ses dosyası (M4A)
+  olarak kaydedilir."), İndir, "Ses dosyası kaydedildi: …_ses.m4a". Sessiz videoda İndir kapalı,
+  yanında "Bu videoda ses yok; kaydedilecek bir ses dosyası çıkmaz."; hiçbir şey yazılmaz.
+- **720p'nin altına inme tek yerden açılıp kapanır:** `DEFAULT_MIN_SHORT_EDGE`
+  (`web/src/domain/targetSize.ts`, bugün 360). Kurucu "inmesin" derse 720 yapılır; sihirbaz o zaman
+  sığmayan hedefi aynı dürüst cümleyle reddeder.
+- Arama: "videom whatsapp'a sığmıyor", "sıkıştır", "sesini mp3 yap" gibi cümleler artık bu iki işi
+  "Başla" düğmesiyle buluyor; "Bu henüz yok" cümlesini yalnızca Yazıya dök'ü kasteden aramalar alıyor.
 
 ## Belge 15 ile ilişki (kurucu sorusu)
 

@@ -82,7 +82,7 @@ test.describe('opening screen', () => {
           return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
         }),
       );
-      expect(boxes).toHaveLength(5);
+      expect(boxes).toHaveLength(7);
       for (const rect of boxes) {
         expect(rect.width).toBeGreaterThanOrEqual(120);
         expect(rect.height).toBeGreaterThanOrEqual(120);
@@ -92,9 +92,9 @@ test.describe('opening screen', () => {
       // Reading order = registry order: rows top to bottom, left to right.
       const sorted = [...boxes].sort((a, b) => a.y - b.y || a.x - b.x);
       expect(boxes).toEqual(sorted);
-      // Two columns on a phone; three on a desktop (five cards: 3 + 2, no card alone on a row).
+      // Two columns on a phone; three from 700 px; four from 1000 px (seven cards: 4 + 3).
       const columns = new Set(boxes.map((rect) => Math.round(rect.x))).size;
-      expect(columns).toBe(size.width >= 700 ? 3 : 2);
+      expect(columns).toBe(size.width >= 1000 ? 4 : size.width >= 700 ? 3 : 2);
 
       // Every other control is at least 44 px tall.
       for (const testId of ['home-editor-link', 'finder-input', 'finder-example']) {
