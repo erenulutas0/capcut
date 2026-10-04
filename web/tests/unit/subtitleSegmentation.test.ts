@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest';
 
 import { applyTranscriptTrack, createEmptyProject, setVideoAsset } from '@/application/commands';
 import { preflightCaptions } from '@/domain/captionBurnIn';
-import { ALL_CAPTION_FRAMES, fitsEveryFrame, type MeasureText } from '@/domain/captionLayout';
+import { ALL_CAPTION_FRAMES, fitsEveryFrame } from '@/domain/captionFrames';
+import type { MeasureText } from '@/domain/captionLayout';
 import { CAPTION_LIMITS, DEFAULT_CAPTION_STYLE, captionTextProblem, normalizeCaptionText } from '@/domain/captions';
 import type { AssetV1 } from '@/domain/edl';
 import { CUE_RULES, cuesForWords, glued, layoutLines, transcriptToCues, type SegmentedCue } from '@/domain/subtitleSegmentation';

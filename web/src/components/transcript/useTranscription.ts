@@ -15,7 +15,7 @@ import {
   type TranscribeStats,
 } from '@/adapters/transcript/transcriptClient';
 import type { CaptionImportResult, ImportedCueInput } from '@/application/commands';
-import { fitsEveryFrame } from '@/domain/captionLayout';
+import { fitsEveryFrame } from '@/domain/captionFrames';
 import { DEFAULT_CAPTION_STYLE } from '@/domain/captions';
 import type { CaptionStyleV2, CaptionUnclearV3 } from '@/domain/edl';
 import { CUE_RULES, transcriptToCues, type FitsFrame } from '@/domain/subtitleSegmentation';

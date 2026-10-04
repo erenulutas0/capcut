@@ -48,9 +48,10 @@ if (staticExport) {
   // WebAssembly file. The transcript engine never loads it from there — it
   // runs the sha256-checked copy in the model store (ADR-036), which
   // scripts/fetch-models.mjs publishes under /models/ — so the site does not
-  // carry the same 27 MB twice.
+  // carry the same 27 MB twice. `.mjs` there is onnxruntime-web's bundle for
+  // its proxy-worker mode, which the engine does not use.
   const unpublished = files.filter(
-    (f) => f.endsWith('.map') || (/[\\/]_next[\\/]static[\\/]media[\\/]/.test(f) && /\.(tsx?|wasm)$/.test(f)),
+    (f) => f.endsWith('.map') || (/[\\/]_next[\\/]static[\\/]media[\\/]/.test(f) && /\.(tsx?|wasm|mjs)$/.test(f)),
   );
   for (const file of unpublished) {
     rmSync(file);

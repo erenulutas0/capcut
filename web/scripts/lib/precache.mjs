@@ -38,6 +38,10 @@ export function isOfflineAsset(rel) {
   // to the transcript worker. It is not part of the offline app: the speech
   // runtime is downloaded with the model, on an explicit click, into the
   // model store (ADR-036), and the engine runs it from there.
+  // `media/*.mjs`: onnxruntime-web's own bundle, copied for its proxy-worker
+  // mode, which the engine does not use (the runtime's code is inside the
+  // transcript chunk).
+  if (rel.startsWith('_next/static/media/') && rel.endsWith('.mjs')) return false;
   if (rel.startsWith('_next/static/')) return !/\.(map|tsx?|wasm)$/.test(rel);
   if (/^fonts\/caption\/[^/]+\.woff2$/.test(rel)) return true;
   if (/^icons\/[^/]+\.png$/.test(rel)) return true;

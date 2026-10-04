@@ -10,8 +10,9 @@
 > kaydetme penceresiyle doğrudan dosyaya indirme, gerçek MP4 çıktısı, yerel kayıt,
 > altyazı (elle, SRT/VTT, görüntüye bağlı, videoya işleme) ve yerel sessizlik
 > kesim önerisi çalışıyor. 15 gerçek kayıt ve 20 vakalık dosya matrisiyle ölçüldü:
-> [destek matrisi](docs/SUPPORT_MATRIX.md). Otomatik transkript bütçe kararına
-> kadar rafta (ADR-017). "Clip" geçici çalışma adıdır; marka/alan adı araştırması
+> [destek matrisi](docs/SUPPORT_MATRIX.md). Cihaz üstü **İngilizce** yazıya dökme ve otomatik
+> altyazı ("Yazıya dök") çalışıyor ([ADR-036](docs/adr/ADR-036-on-device-transcript.md));
+> Türkçe ve bulut transkript yok (ADR-017). "Clip" geçici çalışma adıdır; marka/alan adı araştırması
 > yapılmadı.
 
 Site **"Ne yapmak istiyorsun?"** ekranıyla açılır: kullanıcı bir iş kartına dokunur ya da

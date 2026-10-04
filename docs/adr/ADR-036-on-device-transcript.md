@@ -413,15 +413,96 @@ zaten ikili aramaydı (ADR-015). Ön denetimin gerçek yazı tipiyle tarayıcıd
 
 ### Paket boyutu (önce: `24cb564`; sonra: bu çalışma; statik dışa aktarma, `bundle-sizes.mjs`)
 
-⟦PAKET⟧
+Sayfanın HTML'inin adını verdiği betikler (tarayıcının sayfayı açarken indirdiği), ham / gzip bayt:
+
+| Sayfa | Önce | Sonra | Fark |
+|---|---|---|---|
+| `/` (açılış ekranı) | 714 494 / 221 296 | 730 165 / 225 397 | +15,7 KB / **+4,1 KB** |
+| `/editor/` | 948 570 / 291 781 | 1 008 080 / 310 660 | +59,5 KB / **+18,9 KB** |
+| `/yap/kes/` (bütün sihirbazlar aynı paketi paylaşır; `/yap/yazi/` de bu) | 977 034 / 299 959 | 1 040 118 / 320 173 | +63,1 KB / **+20,2 KB** |
+
+- **Tanıyıcı** (Transformers.js + onnxruntime-web'in JS'i): tek parça, **572 237 / 163 590 bayt**;
+  hiçbir sayfanın HTML'inde yok, model indirirken de yüklenmez — yalnızca bir yazıya dökme
+  başlayınca worker'ın içinden istenir (e2e `transcript-real.spec.ts`: açılış ekranı, sihirbaz
+  sayfası ve video seçimi sonrasında bu betik için istek 0; "Yazıya dök"ten sonra ≥ 1).
+- **Dürüst olan kısım:** "diğer işler hiçbir şey ödemiyor" değil. Açılış ekranı +4,1 KB gzip
+  (tr + en mesaj tablosu ortak; yeni metinler), editör ve diğer sihirbazlar +19–20 KB gzip
+  (yazı paneli, model deposu, satır kuralları, SHA-256 — sihirbazlar tek pakettir). Bunları
+  ayrı parçaya almak yapılmadı.
+- **Service worker'ın arka planda indirdiği çevrimdışı kopya:** 11 sayfa + 41 dosya, 2 061 615 /
+  661 300 bayt → 12 sayfa + 45 dosya, **2 734 188 / 856 910** bayt (+672 KB ham, +196 KB gzip);
+  farkın 572 / 164 KB'ı tanıyıcıdır — yazıya dökmenin internetsiz çalışması için listededir.
+  Sayfa açılışını geciktirmez (kurulum arka plandadır) ama her ziyaretçi bir kez indirir.
+- onnxruntime-web'in 26,9 MB'lık `.wasm`'ı ve 118 KB'lık kendi `.mjs` paketi (paketleyici
+  `_next/static/media/`'ya kopyalar) çevrimdışı listesinde yok ve statik dışa aktarmadan silinir.
+- Yayınlanan dışa aktarma: modelsiz 3 132 102 bayt; iki modelle **678 457 253 bayt**, 140 dosya.
 
 ## Telefon (Galaxy S23)
 
-⟦TELEFON⟧
+**Ölçülmedi.** Telefon USB ile bağlıydı ve yetkiliydi (`adb devices`: `RFCW20W2WFX device`),
+ama Chrome çalışmıyordu: telefonda `chrome_devtools_remote` soketi yoktu (4 Ekim 23:50 ve 5 Ekim
+00:55'te bakıldı; ekran açıktı). Görgü kuralı gereği tarayıcı telefonda uzaktan başlatılmadı,
+hiçbir uygulama açılmadı, hiçbir sekme listelenmedi; `adb forward`/`reverse` eşlemeleri kaldırıldı,
+telefonda hiçbir veri oluşturulmadı. Betik hazır ve kendi kendine temizler
+(`web/scripts/android/phone-transcript.mjs`: yalnız kendi açtığı sekme, yerel derleme `adb
+reverse` ile, sonunda model önbelleği dahil site verisini siler ve eşlemeleri kaldırır):
+
+```
+cd web && npm run build && npx next start -p 3321      # modeller public/models'ta
+node scripts/android/phone-transcript.mjs --clips=en-01,neg-06,pause-01,long-fleurs
+```
+
+`base`/WASM'in telefonda yüklenip yüklenmediği, süresi, belleği ve sekmenin dayanıp dayanmadığı
+**bilinmiyor**. Telefon için beklenti yazılmadı: masaüstü işlemcisinde konuşma süresinin
+0,45–0,72 katı süren bir iş telefonda daha uzun sürer; ne kadar olduğu ölçülmeden söylenemez.
 
 ## Testler
 
-⟦TESTLER⟧
+Hepsi 4–5 Ekim 2026'da bu makinede, son kaynakla koşuldu.
+
+- **Birim (vitest): 837 / 837** (55 dosya). Yeni: `transcriptModels` (14: akışlı SHA-256 Node'a
+  karşı, sabit liste, çalışma zamanı dosyası `node_modules`'takiyle aynı, parçalar, kabul kuralı,
+  worker listesinde model yok, CSP gevşetilmedi), `speechSpans` (23: VAD kuralları, uzun aralığı
+  bölme, 16 kHz örnekleme), `transcript` (33: koruma kuralı, zaman düzeltmesi, iz eşlemesi, EDL
+  v3 doğrulaması ve v2 geçişi, panel satırları, metin dosyası, yazıdan kesit), `subtitleSegmentation`
+  (23: gerçek model çıktısıyla), `captionLimit` (1: 3000 satırın bedeli); `policy` (+1: v7),
+  `fixtures` (v3; `legacy-v2/` 4 dosya; 2 yeni geçerli, 4 yeni geçersiz fixture).
+- **e2e (Playwright Chromium, `CLIP_TEST_HOOKS=1` derlemesi, port 3321, kilit altında):** 273 test.
+  Son derlemeden önceki tam koşu **271 geçti, 2 atlandı, 0 başarısız**. Son derlemeyle iki tam
+  koşu: her biri **270 geçti, 2 atlandı, 1 başarısız** — başarısız olan iki koşuda **farklı** ve
+  bu çalışmanın dokunmadığı testlerdi: `editor.spec.ts:170` (`page.goto: net::ERR_NO_BUFFER_SPACE`)
+  ve `output-limits.spec.ts:224` (gerçek kota testi); ikisi tek başına yinelenince geçti (5/5 ve
+  3/3). Makine o sırada başka ajanlarla doluydu; yine de "tam koşu temiz geçti" denemez, olan budur.
+  Atlanan 2 test eskiden beri atlanan sessizlik ekran görüntüleridir.
+  - Yeni: `transcript.spec.ts` 15 (test ikiziyle: açık indirme ve gerçek ilerleme, kendiliğinden
+    indirme yok, sha256 reddi, kaldığı yerden devam, `Range`'siz sunucu, model silme, sihirbaz ve
+    dört çıkışı, yerinde düzeltme ve geri alma, ses yok / konuşma yok / yalnız anlaşılamayan,
+    durdurma, editörde panel, klavye, yazıdan kesit ve tek geri alma, 20 kesit sınırı, CSP ve ağ),
+    `transcript-a11y.spec.ts` 11 (axe 360 / 390 / 1440: **0 bulgu**; 320 ve 640 px'te yana
+    kayma yok; yazı aralığı; yalnız klavye, her durakta görünür odak; azaltılmış hareket; ekran
+    okuyucu adları).
+  - **Gerçek modelle koşan testler: 2 / 2 koştu ve geçti** (`transcript-real.spec.ts`; model
+    dosyaları `public/models`'taydı): gerçek cümle yazıya döküldü (WER ≤ %12), satıra tıklama,
+    altyazı karede (en parlak piksel > 200), origin dışı istek 0, CSP ihlali 0, tanıyıcı betiği
+    yalnız yazıya dökmede, **çevrimdışı** ikinci koşu aynı metin ve 0 model isteği; konuşmasız
+    müzikte kelime yok.
+- **Pages duman testi (statik dışa aktarma, `/capcut/`, port 3104): 6 / 6.** Yeni iki test model
+  dosyalarıyla koştu: yayınlanan 24 dosyanın baytı ve sha256'sı listeyle aynı (675 305 943 bayt),
+  `Range` → 206, lisans dosyası; sihirbaz gerçek `base` modeliyle alt yolda (indirme yalnız
+  `/capcut/models/…`'tan, 404 yok, origin dışı istek 0, ihlal 0, test kancası yok). Ayrıca:
+  dışa aktarmada test ikizinin izi yok, `.wasm` yok.
+- **Matris: Chromium 153 28 / 28, Chrome 154 28 / 28, Edge 154 28 / 28** (yeni satır **M22**:
+  `origin: transcript` izi, iki satırlı İngilizce satırlar, bir `unclear` aralığı — her planlanan
+  karede doğru satır, planlanmayan karede ve `unclear` aralığında altyazı yok; ekran görüntüsü
+  `web/screenshots/caption-transcript-frame.png`). Firefox/WebKit matris sütunları yeniden
+  koşulmadı (eski sonuçlar duruyor).
+- `npx tsc --noEmit -p .` ve `npx eslint .` temiz; `npm audit --omit=dev`: 0 açık.
+- **Firefox'ta "Yazıya dök":** çalışıyor (yukarıdaki ölçüm: 25 negatif + 10 dakika). Altyazılı
+  **video** indirme Firefox'ta kapalı kalır (AAC kodlayıcı yok; mevcut uygunluk kapısı söyler);
+  panel, düzeltme, TXT/SRT/VTT kodlayıcı istemez. Bunlar Firefox'ta ayrıca otomatik testle
+  sınanmadı (e2e paketi Chromium'da koşar).
+- Ekran görüntüleri: `docs/ux/2026-10-03-home/shots/80-yazi-…` – `87-yazi-…` (360, 390, 1440;
+  gerçek modelle).
 
 ## Ölçülmeyen / yapılmayan
 

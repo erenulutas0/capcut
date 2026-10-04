@@ -66,10 +66,9 @@ test('opening screen → search → wizard → download → editor hand-off', as
   const cards = page.getByTestId('task-grid').getByRole('link');
   expect(await cards.evaluateAll((links) => links.map((link) => link.getAttribute('href')).sort())).toEqual(WIZARD_PAGES);
 
-  // Type to find: the unavailable task is honest, the available one starts with Enter.
+  // Type to find: every task can start since ADR-036 ("altyazı ekle" finds "Yazıya dök"); Enter starts the first result.
   await page.getByTestId('finder-input').fill('altyazı ekle');
-  await expect(page.getByTestId('result-yazi')).toContainText('Bu henüz yok, üzerinde çalışıyoruz.');
-  await expect(page.getByTestId('result-start')).toHaveCount(0);
+  await expect(page.getByTestId('result-yazi').getByTestId('result-start')).toBeVisible();
   await page.getByTestId('finder-input').fill('tiktok için dikey');
   await page.getByTestId('finder-input').press('Enter');
   await expect(page).toHaveURL(/\/capcut\/yap\/dikey\/$/);
@@ -113,9 +112,8 @@ test('opening screen → search → wizard → download → editor hand-off', as
 
   // Every wizard page is published; a task that is not built yet has no page.
   for (const path of WIZARD_PAGES) expect((await request.get(path)).status(), path).toBe(200);
-  for (const id of ['yazi']) {
-    expect((await request.get(`/capcut/yap/${id}/`)).status(), id).toBe(404);
-  }
+  // Every task has its page since ADR-036 ("Yazıya dök" was the last without one); an id that is no task has none.
+  expect((await request.get('/capcut/yap/yok/')).status()).toBe(404);
 
   // "Sesini al" (ADR-035): the export worker's sound-only path under the sub-path.
   await page.goto('./');
@@ -419,8 +417,9 @@ test('Yazıya dök under /capcut/ with the real model: download from this site, 
   });
 
   await page.goto('./');
-  await page.getByTestId('task-yazi').click();
-  await expect(page).toHaveURL(/\/capcut\/yap\/yazi\/$/);
+  await expect(page.getByTestId('task-yazi')).toHaveAttribute('href', '/capcut/yap/yazi/');
+  // Loaded as a document (not a soft navigation), so the page's own policy tag can be read.
+  await page.goto('yap/yazi/');
   await expectPolicy(page);
   await page.getByTestId('video-input').setInputFiles(SPEECH_VIDEO);
   await expect(page.getByTestId('model-download')).toHaveText('Modeli indir (≈108,8 MB, bir kez)', { timeout: 60_000 });

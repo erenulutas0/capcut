@@ -10,7 +10,7 @@
  * make its own layout decisions.
  */
 
-import { outputPixelSize, type AspectRatio, type CaptionPosition, type CaptionSize, type CaptionStyleV2 } from './edl';
+import type { AspectRatio, CaptionPosition, CaptionSize, CaptionStyleV2 } from './edl';
 import { CAPTION_LIMITS } from './captions';
 
 export type MeasureText = (text: string, fontPx: number) => number;
@@ -161,18 +161,4 @@ export function layoutCaption(
       outlinePx: Math.max(2, Math.round(fontPx * 0.12)),
     },
   };
-}
-
-/** Every frame a download can have: the three shapes at 720p and Full HD. */
-export const ALL_CAPTION_FRAMES: readonly CaptionFrame[] = (['9:16', '16:9', '1:1'] as const).flatMap((aspect) =>
-  [720, 1080].map((shortEdge) => ({ aspect, ...outputPixelSize(aspect, shortEdge) })),
-);
-
-/**
- * Whether a line fits (two lines at most) whatever frame the user picks
- * later. The transcript's lines are made to pass this (ADR-036), so a
- * subtitle the app wrote itself is never the reason an export is refused.
- */
-export function fitsEveryFrame(text: string, style: CaptionStyleV2, measure: MeasureText): boolean {
-  return ALL_CAPTION_FRAMES.every((frame) => layoutCaption(text, style, frame, measure).ok);
 }

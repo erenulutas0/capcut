@@ -47,6 +47,13 @@ Ekran görüntüleri (çalışan uygulamadan, Playwright; `web/scripts/home-shot
 | `04-search-unavailable` | Arama: "altyazı ekle" → "Bu henüz yok" |
 | `60-kucult-2-choice`, `61-kucult-3-saved` | Küçült: üç hedef ve her birinin sonucu → kaydedildi, gerçek boyut hedefe karşı |
 | `70-ses-2-info`, `71-ses-3-saved` | Sesini al: tek açıklama → "Ses dosyası kaydedildi" |
+| `80-yazi-2-model`, `81-yazi-2-ready`, `82-yazi-2-running` | Yazıya dök (ADR-036): "Modeli indir (≈108,8 MB, bir kez)" → model hazır, "Yazıya dök" → gerçek sayılarla ilerleme |
+| `83-yazi-2-result`, `84-yazi-2-correcting`, `85-yazi-3-saved` | Sonuç: yazı paneli (etkin satır işaretli), metin / SRT / VTT, "Altyazılı videoyu indir" → bir satırı yerinde düzeltme → kaydedildi |
+| `86-yazi-editor-panel`, `87-yazi-editor-kesit-from-text` | Editörde "Kesitler \| Yazı": iki satır işaretli, "Bunlardan kesit yap" → "Kesitler" sekmesinde yazıdan yapılan kesit |
+
+`80`–`87` gerçek modelle (Whisper `base`, bu makinede) ve gerçek bir cümleyle çekildi
+(`web/tests/media/speech-fleurs-en-01.mp4`, FLEURS, CC BY 4.0); görüntü siyahtır çünkü test
+videosunun görüntüsü siyahtır. Üretim: `node scripts/home-shots.mjs --only=yazi`.
 | `05-search-none` | Arama: "Bunu bulamadım" |
 | `10-kes-1-pick`, `11-kes-2-editor` | Kes: video seç → kesit editörü (ilk açılış ipucuyla) |
 | `20-bosluk-2-choice`, `21-bosluk-3-saved` | Boşlukları at: bulunanlar ve karar → kaydedildi |

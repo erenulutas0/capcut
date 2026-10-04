@@ -18,9 +18,9 @@ Her satır `video-editor-blueprint/docs/22_QA_TEST_MATRIX.md` içindeki bir fixt
 
 | Tarayıcı | Sürüm | Encoder kabiliyeti | Çalıştırma |
 |---|---|---|---|
-| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-10-04 09:58 UTC |
-| Google Chrome | 154.0.0.0 | H.264 var · AAC var | 2026-10-04 10:01 UTC |
-| Microsoft Edge | 154.0.0.0 | H.264 var · AAC var | 2026-10-04 10:04 UTC |
+| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-10-04 21:06 UTC |
+| Google Chrome | 154.0.0.0 | H.264 var · AAC var | 2026-10-04 21:10 UTC |
+| Microsoft Edge | 154.0.0.0 | H.264 var · AAC var | 2026-10-04 21:16 UTC |
 | Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-21 18:36 UTC |
 | WebKit (Playwright) | 26.6 | WebCodecs yok | 2026-09-21 18:36 UTC |
 
@@ -57,8 +57,9 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Bu matris gerç
 | M21b | Yalnızca ses: sessiz videoda açık ret | ✅ | ✅ | ✅ | — | — |
 | M18 | Görüntüye bağlı altyazı anlarla taşınıyor | ✅ | ✅ | ✅ | ⛔ | — |
 | M18b | Kaynak → sonuç dönüşümü görünen altyazıyı değiştirmiyor | ✅ | ✅ | ✅ | ⛔ | — |
+| M22 | Transkriptten gelen altyazı videoya işleniyor | ✅ | ✅ | ✅ | — | — |
 
-| Toplam | | 27✅ 0⛔ 0❌ 0💥 0— | 27✅ 0⛔ 0❌ 0💥 0— | 27✅ 0⛔ 0❌ 0💥 0— | 4✅ 16⛔ 0❌ 0💥 0— | 0✅ 0⛔ 0❌ 0💥 20— |
+| Toplam | | 28✅ 0⛔ 0❌ 0💥 0— | 28✅ 0⛔ 0❌ 0💥 0— | 28✅ 0⛔ 0❌ 0💥 0— | 4✅ 16⛔ 0❌ 0💥 0— | 0✅ 0⛔ 0❌ 0💥 20— |
 
 ## Ölçülen değerler (Chromium)
 
@@ -89,6 +90,7 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Bu matris gerç
 | M21b | — | — | — | — | sonuç: refused_before_save |
 | M18 | 12.010667 s | 360 | 720x1280 | — | — |
 | M18b | 12.010667 s | 360 | 720x1280 | — | — |
+| M22 | 12.010667 s | 360 | 720x1280 | — | — |
 
 ## Matris çalıştırılamayan ortamlar
 
