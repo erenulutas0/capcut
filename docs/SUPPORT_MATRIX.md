@@ -18,9 +18,9 @@ Her satır `video-editor-blueprint/docs/22_QA_TEST_MATRIX.md` içindeki bir fixt
 
 | Tarayıcı | Sürüm | Encoder kabiliyeti | Çalıştırma |
 |---|---|---|---|
-| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-10-03 22:16 UTC |
-| Google Chrome | 154.0.0.0 | H.264 var · AAC var | 2026-10-03 21:05 UTC |
-| Microsoft Edge | 154.0.0.0 | H.264 var · AAC var | 2026-10-03 21:08 UTC |
+| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-10-04 09:58 UTC |
+| Google Chrome | 154.0.0.0 | H.264 var · AAC var | 2026-10-04 10:01 UTC |
+| Microsoft Edge | 154.0.0.0 | H.264 var · AAC var | 2026-10-04 10:04 UTC |
 | Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-21 18:36 UTC |
 | WebKit (Playwright) | 26.6 | WebCodecs yok | 2026-09-21 18:36 UTC |
 
@@ -74,15 +74,15 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Bu matris gerç
 | M08 | 10.005333 s | 300 | 720x1280 | — | müzik önce -69.5 → sonra -36.1 dB |
 | M09 | 6.016 s | 180 | 1280x720 | — | sınır -24.4 / genel -24.1 dB |
 | M10-hevc | — | — | — | — | sonuç: import_rejected |
-| M10-hdr | 3.008 s | 90 | 1280x720 | 0.9699 | HDR→SDR: en yakın ref-hable, ΔE00 3.074, kayma 3.623, doygunluk 1.004..1.005, ton 1.957°, kırpma -0.047 |
-| M10-hdr-hlg | 3.008 s | 90 | 720x1280 | 0.9729 | HDR→SDR: en yakın placebo-spline, ΔE00 3.256, kayma 2.241, doygunluk 1.038..1.038, ton 2.351°, kırpma -0.001 |
+| M10-hdr | 3.008 s | 90 | 1280x720 | 0.9699 | HDR→SDR: en yakın ref-hable, ΔE00 3.073, kayma 3.614, doygunluk 1.004..1.005, ton 1.952°, kırpma -0.047 |
+| M10-hdr-hlg | 3.008 s | 90 | 720x1280 | 0.9729 | HDR→SDR: en yakın placebo-spline, ΔE00 3.259, kayma 2.248, doygunluk 1.038..1.038, ton 2.348°, kırpma -0.001 |
 | M12 | 4.010667 s | 120 | 1280x720 | — | — |
 | M14 | 10.005333 s | 300 | 720x1280 | — | — |
 | M15 | 6.016 s | 180 | 1280x720 | — | — |
 | M16 | 6.016 s | 180 | 1280x720 | — | tepe -19.8 dB; fade -43 → -28.2 dB |
 | M19 | 8.405333 s | 252 | 1920x1080 | 0.9842 | — |
 | M17 | 10.005333 s | 300 | 720x1280 | — | — |
-| M20 | 8 s | 240 | 360x640 | 0.9193 | — |
+| M20 | 8 s | 240 | 720x1280 | 0.9219 | — |
 | M20b | — | — | — | — | sonuç: refused_before_save |
 | M20c | 20.010667 s | 600 | 720x1280 | — | — |
 | M21 | 10 s | — | — | — | — |
@@ -130,7 +130,7 @@ Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer�
 | R14 | REFUSED | hevc | 1920x1080 | -90° | 30.017 | 11.8 s | 14.4 MiB | bt709 | aac | — |
 | R15 | PASS | h264 | 1920x1080 | -90° | 60.042 | 4.4 s | 14.8 MiB | bt709 | aac | 0.8704 |
 
-### Google Chrome — 15 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-10-03 21:17 UTC)
+### Google Chrome — 15 PASS, 0 REFUSED, 0 FAIL, 0 ERROR (2026-10-04 10:11 UTC)
 
 | # | Durum | Codec | Boyut | Rotasyon | fps | Süre | Dosya | Renk | Ses | SSIM |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -144,14 +144,14 @@ Bellek yolunda artış çıktı boyutuyla doğrusal büyür (çıktı hem muxer�
 | R08 | PASS | h264 | 224x128 | 0° | 15 | 34.4 s | 0.7 MiB | bt709 | aac | 0.9909 |
 | R09 | PASS | hevc | 3840x2160 | 0° | 29.024 | 1.1 s | 6.8 MiB | smpte2084 | aac | 0.9347 |
 | R10 | PASS | h264 | 1920x1080 | 0° | 29.974 | 341.2 s | 618.3 MiB | bt709 | aac | 0.9446 |
-| R11 | PASS | hevc | 1920x1080 | -90° | 56.536 (VFR?) | 21.7 s | 33.3 MiB | arib-std-b67 | aac | 0.9473 |
+| R11 | PASS | hevc | 1920x1080 | -90° | 56.536 (VFR?) | 21.7 s | 33.3 MiB | arib-std-b67 | aac | 0.9472 |
 | R12 | PASS | h264 | 1920x1080 | -180° | 59.93 | 88.7 s | 249 MiB | bt709 | aac | 0.9571 |
 | R13 | PASS | hevc | 3840x2160 | -90° | 29.83 | 10.4 s | 53.8 MiB | bt709 | aac | 0.9101 |
 | R14 | PASS | hevc | 1920x1080 | -90° | 30.017 | 11.8 s | 14.4 MiB | bt709 | aac | 0.9879 |
 | R15 | PASS | h264 | 1920x1080 | -90° | 60.042 | 4.4 s | 14.8 MiB | bt709 | aac | 0.8607 |
 
 - R09 HDR→SDR: en yakın ref-hable, ΔE00 5.316, kayma 1.049, doygunluk 1.082..1.092, ton 1.356°, kırpma 0.016
-- R11 HDR→SDR: en yakın placebo-spline, ΔE00 5.275, kayma 1.15, doygunluk 1.018..1.154, ton 8.552°, kırpma 0
+- R11 HDR→SDR: en yakın placebo-spline, ΔE00 5.278, kayma 1.123, doygunluk 1.017..1.154, ton 8.552°, kırpma 0
 
 ### Microsoft Edge — 11 PASS, 4 REFUSED, 0 FAIL, 0 ERROR (2026-09-24 23:27 UTC)
 

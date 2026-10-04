@@ -397,22 +397,39 @@ betiğin açtığı sekmeler kapatıldı, site verisi (OPFS, IndexedDB, localSto
 
 ## Testler
 
-> **ARA KAYIT (4 Ekim 2026, oturum kapanırken):** bu bölüm henüz tamamlanmadı.
->
-> **Biten ölçümler (ölçüm kilidi altında, main birleştirildikten sonraki derlemeyle):** matris
-> Chromium 27/27 (son yazılım tabanlarıyla yeniden koşuldu), Chrome 27/27, Edge 27/27 (son iki
-> koşu yazılım tabanı ve ret başlığı değişikliğinden önceki derlemeyle; donanım yolunu etkilemez);
-> gerçek kayıtlar Chrome 15/15; hedef boyut tabloları Chrome, Edge (birleştirmeden önceki derleme,
-> aynı motor kodu) ve Chromium (son tabanlarla); yalnızca ses Chrome/Edge/Chromium; sabit bit hızı
-> ızgaraları; oynatma denetimi; telefon S–Z2 (ilk oturum).
-> Birim testleri: 731/731 (50 dosya), `tsc`, `eslint` temiz, `npm run build` geçti.
-> Yeni e2e dosyaları (`target-size.spec.ts`, `audio-only.spec.ts`): 9/9, ama **yazılım tabanı 0,07'ye
-> çekilmeden önceki** derlemeyle.
->
-> **Bitmeyen / yeniden koşulacak:** tam `npx playwright test` (E2E_PORT=3311) **hiç koşmadı** (kilit
-> sırası beklenirken oturum kapandı) — yeni iki e2e dosyası da son derlemeyle yeniden koşulmalı;
-> Chrome ve Edge matrisi ile `run-real-media --browser=chrome` son derlemeyle yeniden koşulmalı;
-> telefon birleştirmeden sonra koşulmadı (bağlı değildi); CHANGELOG girdisi yazılmadı.
+Hepsi 4 Ekim 2026'da, main (3650b5e) birleştirildikten sonraki **son derlemeyle** ve ölçüm kilidi
+altında koşuldu (aksi yazılmadıkça).
+
+| Koşu | Sonuç |
+|---|---|
+| `npx tsc --noEmit -p .`, `npx eslint .` | temiz |
+| `npx vitest run` | **732 / 732** (50 dosya); bu işin testleri `tests/unit/targetSize.test.ts` (32) ve güncellenen `taskSearch.test.ts` |
+| `npm run build` | geçti (11 sayfa: `/yap/kucult` ve `/yap/ses` dahil) |
+| `npx playwright test` (E2E_PORT=3311, Chromium) | **243 geçti, 2 atlandı** (ekran görüntüsü testleri, eskiden beri), 0 kaldı; 7,8 dk |
+| — içinde bu işin testleri | `target-size.spec.ts` 5, `audio-only.spec.ts` 4, `wizards.spec.ts` Küçült 3 + Sesini al 3, `a11y.spec.ts` ADR-035 bloğu 4 (axe 360 / 390 / 1440: 0 bulgu, yana kayma yok; yalnızca klavye), `home.spec.ts` (yedi kart, arama) |
+| Matris (`run-matrix.mjs`) | Chromium **27/27**, Chrome **27/27**, Edge **27/27** PASS (M20, M20b, M20c, M21, M21b dahil) |
+| Gerçek kayıtlar (`run-real-media.mjs --browser=chrome`) | **15/15** PASS |
+| Pages duman testi (`playwright.pages.config.ts`, `/capcut` altında statik derleme, CI'ın ortam değişkenleriyle) | **4/4**; ilk test artık "Sesini al"ı da kaydedilen `.m4a`'ya kadar sürüyor |
+| Telefon | Bu oturumda bağlı değildi: **koşulmadı.** Yukarıdaki telefon tablosu ilk oturumun (birleştirme ve sihirbazlardan önce, aynı motor) sonuçlarıdır. |
+
+Notlar:
+
+- İlk tam e2e koşusunda 2 test kaldı (`privacy.spec.ts` ve `pwa.spec.ts`: izin verilen sayfa
+  listesinde `/yap/kucult` ve `/yap/ses` yoktu); listeler güncellendi ve tam koşu yeniden yapıldı
+  (243 geçti). Uygulama kodunda bir hata değildi.
+- "Hedefe karşı gerçek boyut" tabloları (Chrome, Edge, Chromium) 3–4 Ekim'de, "kaynağın kendi bit
+  hızı tavandır" kuralı eklenmeden önce ölçüldü. O kayıtların kaynak bit hızı 10–28 Mbit/s: bütün
+  tabanların üstünde, yani kural o planları değiştirmez; tablolar yeniden koşulmadı. Kuralın etkisi
+  sentetik testlerde görülüyor (M20: 360p/540p yerine 720p; e2e: 24 sn'lik sade desen 720p'de).
+- e2e'den (Chromium, yazılım kodlayıcı): 4/12/24 sn × 7 hedef hepsi hedefin altında ve ilk denemede;
+  gürültülü 8 sn klip 6 MB hedefe 2 denemede 5 966 061 bayt; "Küçült → WhatsApp" (24,7 MB'lık
+  gürültülü kaynak): plan 13 163 284, kaydedilen 14 032 615 bayt, 720p, 1 deneme.
+- Ekran görüntüleri: `docs/ux/2026-10-03-home/shots/60-kucult-2-choice`, `61-kucult-3-saved`,
+  `70-ses-2-info`, `71-ses-3-saved` (360, 390, 1440). Küçült görüntüleri 473 KB'lık test videosuyla
+  alındı: üç seçenek de "zaten bunun altında" durumunu gösteriyor; "≈ … MB · 720p" ve "sığmaz"
+  durumları e2e ile doğrulandı, ekran görüntüsü alınmadı.
+- Ölçüm kilidi: kilit başka bir işin elindeyken 60 sn'de bir denendi; bir kez (3 Ekim) açlık
+  yüzünden daha sık yoklandı, bir kez de (4 Ekim) iki koşu arasında 60 sn yerine 22 sn beklendi.
 
 ## Ölçülmeyen / denenmeyen
 
@@ -433,6 +450,7 @@ betiğin açtığı sekmeler kapatıldı, site verisi (OPFS, IndexedDB, localSto
   telefon ve başka makineler için ölçülmedi, ilerleme çubuğu bunu kullanmaz.
 - Altyazılı (yakılan) hedef boyut indirmesi: altyazı her denemede o çözünürlükte yeniden yerleştirilir;
   birim/e2e ile değil yalnızca kod yoluyla kapsandı (ayrı ölçüm yapılmadı).
+- Sihirbazlar gerçek telefonda ve gerçek kullanıcıyla denenmedi.
 
 ## Sonuçlar
 

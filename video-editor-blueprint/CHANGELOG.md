@@ -3,6 +3,22 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Küçült ve Sesini al — 3–4 Ekim 2026 (ADR-035; politika ve şema değişmedi)
+
+Açılış ekranına iki iş daha geldi (yedi kart): **Küçült** ve **Sesini al**. İkisi de cihazda çalışır; video hiçbir yere gönderilmez.
+
+**Küçült (hedef boyuta indirme):** kullanıcı nereye sığacağını seçer — "Paylaşmak için (52 MB altı)", "E-posta (25 MB altı)", "WhatsApp (16 MB altı)" — ve her seçenek sonucunu **kodlamadan önce** söyler ("≈ 15,4 MB · 720p", "Videon zaten bunun altında", "Bu video buna sığmaz: en az 25,5 MB gerekir"). Saf planlayıcı (`web/src/domain/targetSize.ts`) çözünürlüğü (1080 → 720 → 540 → 360), video ve ses bit hızını ölçülen tabanlara göre seçer; kodlayıcıdan sabit bit hızı istenir; dosya kaydedilmeden önce tartılır ve hedefi aşarsa ölçülen oranla yeniden kodlanır (en çok 3 kodlama). Hâlâ büyükse dosya kaydedilir ama **"sığdı" denmez**: "530 KB — hedefin üstünde (hedef 500 KB)…". Kaynağın kendisi sığıyorsa görüntü kopyalanır (hızlı kesim). Sığmayan hedef kaydetme penceresi açılmadan reddedilir ve sığacak en küçük boyut söylenir. Hazır hedefler: paylaşma 52 428 800 bayt (ADR-031 ölçümü), e-posta 25 000 000 (Gmail yardım sayfası), WhatsApp 16 000 000 (Meta'nın WhatsApp medya belgesi); dosya bu uygulamalara gönderilerek **denenmedi**.
+
+**Sesini al:** seçili videonun sesi M4A (MP4 içinde AAC) olarak kaydedilir; görüntü hiç çözülmez; süre örneğine kadar tamdır (ADR-032'nin hizalı AAC yolu, düzenleme listesi duruyor). Sessiz videoda İndir kapalıdır ve sebebi yazar; hiçbir şey yazılmaz. MP3 yok: tarayıcıda MP3 kodlayıcı yok.
+
+**Ölçülen (tek masaüstü, bir telefon; ayrıntı ADR-035):** donanım kodlayıcısı (Chrome/Edge 154) 18 gerçek kayıt indirmesinin 18'inde ilk denemede hedefin altında (bit hızı düşürülenler hedefin %90–97'si); yazılım kodlayıcı (Playwright Chromium) 14 indirmenin 13'ünde hedefin altında, 6'sında 2–3 kodlama gerekti, 1'i üç denemeden sonra hedefin %106'sında kaldı ve öyle bildirildi; telefonda (Galaxy S23, ilk oturum) üç hedef ilk denemede tuttu. Değişken bit hızında donanım kodlayıcısı istenenin 1,07–1,30 katını, telefonda 1,97 katını yazıyor; sabit bit hızında 0,98–1,09 (telefonda 1,00). Ses dosyası Chrome/Edge `<audio>`, ffmpeg ve Windows Media Foundation'da (başsız) çalıyor; süre tam, kayma 0.
+
+**Açık soru (kurucu):** belge 15 "720p / 1080p … dahil" diyor ama daha düşük çözünürlüğü yasaklamıyor; Küçült bugün 540p/360p'ye inebiliyor (tek yerden kapatılır: `DEFAULT_MIN_SHORT_EDGE`). Belge 15 değişmedi.
+
+**Testler:** birim 732/732; e2e (Chromium) 243 geçti, 2 atlandı — hedef boyut, yalnızca ses, iki sihirbaz, erişilebilirlik (axe 360/390/1440: 0 bulgu) ve klavye dahil; matris Chromium/Chrome/Edge 27/27 (yeni satırlar M20, M20b, M20c, M21, M21b); gerçek kayıtlar Chrome 15/15; Pages duman testi 4/4. Telefon bu oturumda bağlı değildi: sihirbazlar telefonda koşulmadı.
+
+Mevcut kullanıcı haklarına etkisi: yalnızca genişleme. Olağan indirme (hedefsiz) aynı bit hızı, aynı mod ve aynı hızlı kesim kurallarıyla çalışır; sınırlar, fiyatlar ve şema değişmedi. Ölçülmeyen: iOS/Safari/macOS, WhatsApp ve e-posta uygulamalarının kendisi, başka GPU'lar, 60 dakikalık hedef boyut indirmesi, birleştirmeden sonra telefon.
+
 ## Görev öncelikli açılış ekranı — 3 Ekim 2026 (ADR-034; politika ve şema değişmedi)
 
 Kurucu kararı (taslak A + C): editörle açılan ekran "bir çocuğun bile istediğini yapabileceği" kadar kolay değildi.
