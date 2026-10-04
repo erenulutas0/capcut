@@ -71,7 +71,14 @@ export function TranscribeSteps({
   const partial = status !== null && !status.ready && status.missingBytes < status.totalBytes;
 
   return (
-    <div className="transcribe" data-testid="transcribe-steps" data-job={job.kind} data-model-ready={ready}>
+    <div
+      className="transcribe"
+      data-testid="transcribe-steps"
+      data-job={job.kind}
+      data-model-ready={ready}
+      // Present only in the e2e build (CLIP_TEST_HOOKS=1): lets a test tell which build it is driving.
+      data-test-hooks={process.env.NEXT_PUBLIC_CLIP_TEST_HOOKS === '1' ? '1' : undefined}
+    >
       <p className="wizard-note" data-testid="transcribe-english">
         <Icon name="info" />
         <span>
