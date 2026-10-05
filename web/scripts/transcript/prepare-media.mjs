@@ -103,11 +103,11 @@ if (withLong) {
       const list = join(outDir, `${name}.txt`);
       writeFileSync(list, order.map((part) => `file '${join(speechDir, part.file).replace(/\\/g, '/')}'`).join('\n'));
       const wav = join(outDir, `${name}.wav`);
-      // Cut at exactly the target length, so the 120-minute file is inside the app's input limit.
-      ffmpeg(['-f', 'concat', '-safe', '0', '-i', list, '-t', String(minutes * 60 - 1), '-c:a', 'pcm_s16le', wav]);
+      // Cut ten seconds under the target length (the wrapped video track runs about 2 s longer than the audio), so the 120-minute file is inside the app's input limit.
+      ffmpeg(['-f', 'concat', '-safe', '0', '-i', list, '-t', String(minutes * 60 - 10), '-c:a', 'pcm_s16le', wav]);
       wrap(wav, mp4);
     }
-    clips.push({ id: name, set: 'xlong', kind: 'speech', file: `${name}.mp4`, durationS: minutes * 60 - 1, reference: null, words: null, gaps: null, parts: order.map((part) => part.id) });
+    clips.push({ id: name, set: 'xlong', kind: 'speech', file: `${name}.mp4`, durationS: minutes * 60 - 10, reference: null, words: null, gaps: null, parts: order.map((part) => part.id) });
     console.log(`prepare-media: ${name}.mp4`);
   }
 }

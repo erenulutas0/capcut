@@ -192,6 +192,24 @@ for (const clip of clips) {
           text: element.querySelector('.transcript-text')?.textContent ?? '',
         })),
       );
+      // How heavy the (unvirtualised) panel is with this many rows: its DOM size and the frame times while it scrolls.
+      row.panel = await page.evaluate(async () => {
+        const panel = document.querySelector('[data-testid="transcript-panel"]');
+        let scroller = panel;
+        for (const element of panel.querySelectorAll('*')) if (element.scrollHeight > element.clientHeight + 50 && element.scrollHeight > scroller.scrollHeight - 1) scroller = element;
+        if (scroller.scrollHeight <= scroller.clientHeight + 50) scroller = document.scrollingElement;
+        const frames = [];
+        let last = performance.now();
+        for (let k = 0; k < 60; k += 1) {
+          scroller.scrollTop = (scroller.scrollHeight * k) / 60;
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+          const now = performance.now();
+          frames.push(now - last);
+          last = now;
+        }
+        frames.sort((a, b) => a - b);
+        return { domNodes: panel.querySelectorAll('*').length, frameMedianMs: frames[30], frameMaxMs: frames[59] };
+      });
       row.machineNote = await page.locator('[data-testid="transcript-machine-note"]').count();
     }
     row.wallMs = wallMs;

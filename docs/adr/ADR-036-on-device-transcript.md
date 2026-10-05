@@ -440,8 +440,8 @@ Sayfanın HTML'inin adını verdiği betikler (tarayıcının sayfayı açarken 
 ## Telefon (Galaxy S23)
 
 **Ölçülmedi.** Telefon USB ile bağlıydı ve yetkiliydi (`adb devices`: `RFCW20W2WFX device`),
-ama Chrome çalışmıyordu: telefonda `chrome_devtools_remote` soketi yoktu (4 Ekim 23:50 ve 5 Ekim
-00:55'te bakıldı; ekran açıktı). Görgü kuralı gereği tarayıcı telefonda uzaktan başlatılmadı,
+ama Chrome çalışmıyordu: telefonda `chrome_devtools_remote` soketi yoktu (4 Ekim ~21:55, 5 Ekim
+~00:00 ve 01:04'te bakıldı; ilk bakışta ekran açıktı). Görgü kuralı gereği tarayıcı telefonda uzaktan başlatılmadı,
 hiçbir uygulama açılmadı, hiçbir sekme listelenmedi; `adb forward`/`reverse` eşlemeleri kaldırıldı,
 telefonda hiçbir veri oluşturulmadı. Betik hazır ve kendi kendine temizler
 (`web/scripts/android/phone-transcript.mjs`: yalnız kendi açtığı sekme, yerel derleme `adb
