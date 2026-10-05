@@ -69,7 +69,10 @@ test.describe('Yazıya dök: the wizard', () => {
     page.on('pageerror', (error) => errors.push(error.message));
     const models = testModels();
     const server = await serveModels(context, models);
-    await installTranscriptTest(page, models);
+    // Slow enough (4 spans × 700 ms) for the progress bar to be read while it
+    // is on screen: at the default pace the whole run lasted under half a
+    // second and a slow CI runner found the bar already gone.
+    await installTranscriptTest(page, models, { ...STUB_SCRIPT, stepMs: 700 });
     await installSavePicker(page);
 
     // The card exists and says what it is.
