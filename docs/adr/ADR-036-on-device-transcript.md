@@ -383,7 +383,35 @@ ses çözme geçişi dahil). Bellek = tarayıcı süreç ağacının özel baytl
 
 ### Uzun dosya: 60 dakika ve 120 dakika (girdi sınırı)
 
-⟦UZUN-DOSYA⟧
+Uygulama yolu, Pages dışa aktarması (`/capcut`, CSP'li, iş parçacıksız), Chromium 153, `base`;
+yoğun okuma konuşması (denemenin uzun klipleri uç uca), AAC MP4. İkisi de ölçüm kilidi altında,
+tek seferde, baştan sona bitti:
+
+| | 60 dakika (3599 s) | 120 dakika (7190 s) |
+|---|---|---|
+| Toplam süre | 37,7 dk (RTF 0,63; makine %71 dolu) | 54,5 dk (RTF 0,45; makine %31 dolu) |
+| Dinleme geçişi (çözme + VAD) | 72,5 s | 120,2 s |
+| Bellek tepe (tarayıcı süreç ağacı) | 1,12 GiB (1150 MiB) | 1,18 GiB (1207 MiB) |
+| Konuşma aralığı / anlaşılamayan | 446 / 46 | 927 / 96 |
+| Panel satırı (altyazı satırı) | 1234 (1189) | 2491 (2398) |
+| WER (katı) | %7,2 (632/8734) | %6,9 |
+| Kelime zamanı p95 başlangıç / bitiş | 238 / 271 ms | 228 / 264 ms |
+| CSP ihlali / dış istek | 0 / 0 | 0 / 0 |
+
+- **Bellek dosya uzunluğuyla büyümüyor** (10 dk: 1,0–1,3 GiB; 60 dk: 1,12; 120 dk: 1,18): iki
+  geçişli ses akışı ve aralık başına çözme sınırlı kalıyor. Bu yüzden ayrı bir "yazıya dökme
+  süresi sınırı" konmadı; geçerli sınır uygulamanın mevcut 120 dakikalık girdi sınırı.
+- **120 dakikalık video 3000 satır sınırına sığdı** (2398 altyazı satırı; dakikada 20,0).
+- İki ölçümün hız farkı makinenin o andaki yükünden (%71 / %31); ikisi de "konuşmanın süresinin
+  yarısı kadar, yavaş cihazda daha uzun" cümlesinin içinde ya da hemen üstünde.
+- Anlaşılamayan aralık oranı uzun dosyalarda ~%10 (aynı kliplerin 10 dakikalık ölçümleriyle aynı
+  düzeyde): bu aralıklar "(anlaşılamadı)" olarak görünür, metin uydurulmaz; WER'e eksik kelime
+  olarak girer.
+- **Ölçülmeyen:** 60 ve 120 dakika Chrome, Edge ve Firefox'ta koşulmadı (bu tarayıcılarda en uzun
+  ölçüm 10 dakika); `turbo` ile 60/120 dakika koşulmadı; telefonda hiçbir uzunluk ölçülmedi.
+- İlk 120 dakika denemesinde test dosyasının görüntü izi 7201,2 s çıktı ve sihirbaz dosyayı
+  "120 dakika sınırının üzerinde" diye dürüstçe reddetti; dosya 7190 s'ye kesilip yeniden koşuldu
+  (`prepare-media.mjs` artık sınırın 10 s altında kesiyor).
 
 ### Satır sınırı: 500 → 3000
 
@@ -409,7 +437,10 @@ altyazı, 20 kesit; aynı dolu makinede, Node 20):
 Hepsi bir karenin (16 ms) çevresinde ya da çok altında; dışa aktarmada kare başına satır araması
 zaten ikili aramaydı (ADR-015). Ön denetimin gerçek yazı tipiyle tarayıcıdaki süresi ayrıca
 ölçülmedi (yerleşim başına birkaç `measureText`). Panel 3000 satırı sanallaştırmadan çizer;
-⟦PANEL-UZUN⟧
+120 dakikalık ölçümde sihirbazın sonuç ekranındaki panel 2491 satır ve 17 443 DOM düğümüyle
+çizildi; baştan sona 60 adımda kaydırılırken kare süresi ortanca 16,8 ms, en uzun 18,1 ms
+(başsız Chromium, masaüstü). Telefonda ve editördeki panelde bu uzunlukta ölçülmedi; yavaş
+cihazda sorun çıkarsa sanallaştırma eklenir.
 
 ### Paket boyutu (önce: `24cb564`; sonra: bu çalışma; statik dışa aktarma, `bundle-sizes.mjs`)
 
@@ -542,4 +573,6 @@ Hepsi 4–5 Ekim 2026'da bu makinede, son kaynakla koşuldu.
 5. **Türkçe:** `turbo` ile ölçüm yapılsın mı (negatif küme, uzun dosya, kelime zamanı)?
 6. **Kelime zamanı eşiği:** bitiş p95 274–306 ms (eşik 250). Eşik aynen kalsın mı, yoksa
    denemenin önerdiği "başlangıç ≤ 250, bitiş ≤ 400" mi yazılsın?
-7. **Uzun video süresi:** ⟦UZUN-SORU⟧
+7. **Uzun video süresi:** 60 ve 120 dakika masaüstü Chromium'da bitti (37,7 ve 54,5 dakika;
+   bellek ~1,2 GiB). Ayrı bir sınır konmadı. Telefonda uzun video ölçülmedi: telefon için daha
+   kısa bir sınır ya da "bu uzun sürecek" uyarısı istenir mi? (Önce gerçek cihaz ölçümü gerekir.)
