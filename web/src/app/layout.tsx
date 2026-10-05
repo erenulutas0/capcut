@@ -6,9 +6,9 @@ import { PwaClient } from '@/components/pwa/PwaClient';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Clip — anlarını seç, videonu hazırla',
+  title: 'Clip — videonla ne yapmak istiyorsun?',
   description:
-    'Kendi videondan tutmak istediğin bölümleri seç, sırala, görüntü ve sesi ayarla. Dosyalar cihazından çıkmaz.',
+    'Videonu kes, küçült, dikey yap, sesini al ya da yazıya dök. Birkaç dokunuşta; dosyalar cihazından çıkmaz.',
   // Links out (GitHub Issues, the host's privacy statement) carry no
   // Referer: the page address is nobody else's business. Nothing on the
   // site's own origin reads it. The Content-Security-Policy is not here but
