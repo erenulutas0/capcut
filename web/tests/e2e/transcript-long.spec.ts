@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 
+import { expectStylesApplied } from './stylesReady';
 import { LONG_LINE_S, expectTestBuild, installTranscriptTest, longScript, longVideo, serveModels, testModels } from './transcriptKit';
 
 /**
@@ -335,6 +336,7 @@ test.describe('Yazı panel: a long transcript', () => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await openLong(page, context);
       const audit = async (state: string) => {
+        await expectStylesApplied(page, state, testInfo);
         const result = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
         const findings = result.violations.map((violation) => ({ rule: violation.id, nodes: violation.nodes.length, targets: violation.nodes.slice(0, 4).map((node) => node.target.join(' ')) }));
         if (findings.length > 0) await testInfo.attach(`axe-${state}`, { body: JSON.stringify(result.violations, null, 2), contentType: 'application/json' });

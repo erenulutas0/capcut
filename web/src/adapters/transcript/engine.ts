@@ -392,7 +392,7 @@ export async function transcribeFile(
       compressionRatio: heard.evidence.compressionRatio,
       verdict: spanVerdict(heard.evidence),
       words: heard.chunks.map((chunk) => ({ text: chunk.text, start: chunk.start, end: chunk.end })),
-      tokens: heard.tokens.ids.map((id, k) => ({ text: tokenText(id), logprob: Number((heard.tokens.logprobs[k] as number).toFixed(4)) })),
+      tokens: heard.tokens.ids.map((id, k) => ({ text: tokenText(id), logprob: Math.round((heard.tokens.logprobs[k] as number) * 10_000) / 10_000 })),
     });
     const cut = (span: SpeechSpan): Float32Array => {
       const from = Math.max(0, Math.round(span.start * VAD_SAMPLE_RATE));
@@ -541,7 +541,7 @@ export async function transcribeFile(
       listenMs: Math.round(listenMs),
       writeMs: Math.round(writeMs),
       totalMs: Math.round(performance.now() - started),
-      ...(tracing ? { trace: { settings, probs: probs.map((value) => Number(value.toFixed(3))), spans: trace } } : {}),
+      ...(tracing ? { trace: { settings, probs: probs.map((value) => Math.round(value * 1000) / 1000), spans: trace } } : {}),
     };
   } catch (error) {
     if (error instanceof EngineError) throw error;

@@ -3,6 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
 import { installSavePicker } from './kesitFlow';
+import { expectStylesApplied } from './stylesReady';
 import { STUB_LINES, STUB_SCRIPT, installTranscriptTest, lineTexts, panelLines, serveModels, testModels } from './transcriptKit';
 
 /**
@@ -20,6 +21,8 @@ const SAMPLE = join(process.cwd(), 'tests', 'media', 'sample-24s.mp4');
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
 
 async function audit(page: Page, state: string, testInfo: TestInfo): Promise<void> {
+  // An audit stands on the page's stylesheets: a sheet that never arrived is a broken page, not a contrast finding.
+  await expectStylesApplied(page, state, testInfo);
   const result = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
   const findings = result.violations.map((violation) => ({
     rule: violation.id,
