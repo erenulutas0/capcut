@@ -33,6 +33,8 @@ interface Props {
   relinkNode?: React.ReactNode;
   /** The caption panel, built by the editor (it needs playback and history). */
   captionsNode: React.ReactNode;
+  /** "Görüntüyü iyileştir" (ADR-037), built by the editor (it needs the open video). */
+  enhanceNode?: React.ReactNode;
 }
 
 const ASPECT_CHOICES: Array<{ value: AspectRatio; labelKey: MessageKey; w: number; h: number }> = [
@@ -47,7 +49,8 @@ export function FramePanel({
   framing,
   onFraming,
   onShortEdge,
-}: Pick<Props, 't' | 'project' | 'framing' | 'onFraming' | 'onShortEdge'>) {
+  enhanceNode,
+}: Pick<Props, 't' | 'project' | 'framing' | 'onFraming' | 'onShortEdge' | 'enhanceNode'>) {
   return (
     <>
       <div className="section-head">
@@ -143,6 +146,8 @@ export function FramePanel({
         <option value={1080}>{t('export.quality.1080')}</option>
         <option value={720}>{t('export.quality.720')}</option>
       </select>
+
+      {enhanceNode}
 
       <p className="hint-small">{t('frame.appliesToAll')}</p>
       <p className="hint">{t('frame.note')}</p>

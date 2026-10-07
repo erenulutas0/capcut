@@ -2998,3 +2998,187 @@ input[type='range']:disabled::-webkit-slider-thumb {
   flex: 1 1 14em;
   margin: 0;
 }
+
+/* ------------------------------------------------ "İyileştir": before / after (ADR-037) */
+
+.ba {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ba-frame {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.ba-picture {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The earlier version lies on top and is cut off at the line. */
+.ba-before {
+  clip-path: inset(0 calc(100% - var(--ba-split, 50%)) 0 0);
+}
+
+.ba-tag {
+  position: absolute;
+  top: 8px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 650;
+  pointer-events: none;
+}
+
+.ba-tag-before {
+  left: 8px;
+}
+
+.ba-tag-after {
+  right: 8px;
+}
+
+/* The whole picture is the slider: the thumb is a hair wide, so the line sits exactly under the pointer. */
+.ba-range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: ew-resize;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  touch-action: pan-y;
+}
+
+.ba-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 2px;
+  height: 100vh;
+}
+
+.ba-range::-moz-range-thumb {
+  width: 2px;
+  height: 100vh;
+  border: 0;
+}
+
+.ba-range:disabled {
+  cursor: default;
+}
+
+.ba-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--ba-split, 50%);
+  width: 2px;
+  margin-left: -1px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.ba-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #111;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* Two small arrows on the handle: it moves sideways. */
+.ba-handle::before,
+.ba-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 0;
+  height: 0;
+  margin-top: -5px;
+  border: 5px solid transparent;
+}
+
+.ba-handle::before {
+  left: 3px;
+  border-right-color: #111;
+}
+
+.ba-handle::after {
+  right: 3px;
+  border-left-color: #111;
+}
+
+.ba-range:focus-visible + .ba-line .ba-handle {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.ba-message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.ba-loading-title,
+.ba-failed {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.ba-status:empty {
+  display: none;
+}
+
+.ba-hint,
+.ba-foot p {
+  margin: 0;
+}
+
+.ba-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.ba[data-compact='true'] .ba-handle {
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+}
+
+.ba[data-compact='true'] .ba-handle::before,
+.ba[data-compact='true'] .ba-handle::after {
+  display: none;
+}

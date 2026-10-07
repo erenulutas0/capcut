@@ -6,6 +6,7 @@
  * into a message, into app state, or anywhere off the machine.
  */
 
+import type { AnalysisPoint, EnhanceParams, EnhanceSummary } from '@/domain/enhance';
 import type { ExportEvent, ExportFailureCode } from '@/domain/exportEvents';
 import type { ExportMode } from '@/domain/fastPath';
 import type { HdrTransfer } from '@/domain/hdr';
@@ -74,6 +75,46 @@ export interface TargetSizeExport extends TargetSizeRequest {
   };
 }
 
+/**
+ * ADR-037: what the frames of a video looked like, measured once and usable
+ * for every strength. `key` says what was measured (`analysisKey`): the
+ * worker only uses points whose key matches the plan it is given.
+ */
+export interface EnhanceAnalysis {
+  key: string;
+  points: AnalysisPoint[];
+}
+
+/** ADR-037: one real frame of the video before and after "İyileştir". */
+export type EnhancePreviewResult =
+  | {
+      ok: true;
+      /** The frame as the export draws it, and the same frame enhanced; both at the export's size. */
+      before: ImageBitmap;
+      after: ImageBitmap;
+      width: number;
+      height: number;
+      /** The output frame that is shown. */
+      frame: number;
+      /** The measurements, to hand back with the next request or with the export. */
+      analysis: EnhanceAnalysis;
+      /** What the plan changes over the whole video. */
+      summary: EnhanceSummary;
+      /** What was applied to this frame. */
+      params: EnhanceParams;
+      engine: 'webgl2' | 'cpu';
+    }
+  | { ok: false; reason: EnhancePreviewFailure };
+
+export type EnhancePreviewFailure =
+  | 'no_video_track'
+  | 'source_undecodable'
+  | 'hdr_source_unsupported'
+  | 'no_frame'
+  | 'not_enhanced'
+  | 'canceled'
+  | 'internal_error';
+
 export type WorkerRequest =
   | {
       type: 'capability';
@@ -132,9 +173,34 @@ export type WorkerRequest =
       output?: ExportOutputKind;
       /** Set for a target-size download; ignored for `output: 'audio'`. */
       targetSize?: TargetSizeExport | null;
+      /**
+       * ADR-037: measurements already made for this plan (by the wizard's
+       * preview), so the export need not look at the video a second time.
+       * Used only when its key matches; absent or stale, the export measures.
+       */
+      enhanceAnalysis?: EnhanceAnalysis | null;
+      /**
+       * Test/measurement hook only (`window.__clipEnhanceEngine = 'cpu'`):
+       * enhance with the reference renderer even where the GPU path works.
+       */
+      enhanceEngine?: 'cpu' | null;
+    }
+  | {
+      /** ADR-037: one frame of `plan` (which must ask for enhancement) before and after. Nothing is encoded. */
+      type: 'enhancePreview';
+      requestId: string;
+      plan: RenderPlan;
+      videoFile: File;
+      /** The output frame to show. */
+      frame: number;
+      enhanceAnalysis?: EnhanceAnalysis | null;
+      enhanceEngine?: 'cpu' | null;
     }
   | { type: 'cancel'; requestId: string };
 
 export type WorkerResponse =
   | { type: 'capability'; requestId: string; result: CapabilityStageResult }
+  /** ADR-037: the share of the frames looked at so far, while a preview is being prepared. */
+  | { type: 'enhancePreviewProgress'; requestId: string; progress: number }
+  | { type: 'enhancePreview'; requestId: string; result: EnhancePreviewResult }
   | { type: 'event'; requestId: string; event: ExportEvent };

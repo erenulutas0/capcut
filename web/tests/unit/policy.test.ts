@@ -57,9 +57,40 @@ describe('web local policy', () => {
     expect(WEB_LOCAL_POLICY.maxTotalSourceBytes).toBe(4_294_967_296);
   });
 
-  it('records the v7 change (on-device transcript is a free basic feature) in doc 15; cloud AI stays out of Free', () => {
+  it('records the v8 change (on-device picture enhancement is a free basic feature) in doc 15; no AI, no upscaling promised', () => {
     const [docId] = WEB_LOCAL_POLICY.policyId.split('/');
-    expect(docId).toBe('2026-10-04.v7');
+    expect(docId).toBe('2026-10-07.v8');
+    const lines = doc15.split(/\r?\n/);
+    const note = lines.find((line) => line.startsWith(`**Değişiklik \`${docId}\``));
+    expect(note).toBeDefined();
+    expect(note).toContain('kurucu kararı, 7 Ekim 2026');
+    expect(note).toContain('ADR-037');
+    expect(note).toContain('ücretsiz temel özellik');
+    expect(note).toContain('yapay zekâ değildir');
+    expect(note).toContain('vaat edilmez');
+    expect(note).toContain('yalnızca genişleme');
+    expect(note).toContain('Ölçülmeyen');
+    expect(note).toContain('EDL v4');
+    // The new row, and the cloud / paid AI row with its values as they were.
+    expect(doc15).toContain(
+      '| Cihaz üstü görüntü iyileştirme (web; ışık, renk, keskinlik, kumlanma; klasik görüntü işleme, AI değil) | Dahil; adet ve dakika kotası yok | Aynı |',
+    );
+    expect(doc15).toContain('| AI işlemleri (bulut / ücretli) | Yok | Başlangıç aboneliğine dahil değil |');
+    // The UI makes the same promise and no larger one: tidy up, cannot fix a very blurry video.
+    for (const text of [tr['task.iyilestir.result'], tr['wizard.iyilestir.body'], tr['enhance.setting.hint']]) {
+      expect(text).toContain('netleştiremez');
+    }
+    for (const text of [en['task.iyilestir.result'], en['wizard.iyilestir.body'], en['enhance.setting.hint']]) {
+      expect(text).toContain('cannot make a very blurry video sharp');
+    }
+    for (const [key, text] of [...Object.entries(tr), ...Object.entries(en)]) {
+      if (!/iyilestir|enhance/.test(key)) continue;
+      expect(text, key).not.toMatch(/yapay zek|\bAI\b|upscal|4K|büyüt/i);
+    }
+  });
+
+  it('keeps the v7 change (on-device transcript is a free basic feature) in doc 15; cloud AI stays out of Free', () => {
+    const docId = '2026-10-04.v7';
     const lines = doc15.split(/\r?\n/);
     const note = lines.find((line) => line.startsWith(`**Değişiklik \`${docId}\``));
     expect(note).toBeDefined();

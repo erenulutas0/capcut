@@ -16,6 +16,7 @@ import {
   type CaptionStyleV2,
   type CaptionTrackV2,
   type ClipV1,
+  type EnhanceStrengthV4,
   type FitMode,
   type MusicV1,
   type Project,
@@ -382,6 +383,20 @@ export function removeMusic(project: Project): Project {
 export function setExportShortEdge(project: Project, shortEdge: number): Project {
   if (project.export.shortEdge === shortEdge) return project;
   return bump(project, { export: { ...project.export, shortEdge } });
+}
+
+/**
+ * "İyileştir" (ADR-037) for every download: at a strength, or off (`null`,
+ * the field is removed so the recipe is what it was before the setting
+ * existed).
+ */
+export function setEnhance(project: Project, strength: EnhanceStrengthV4 | null): Project {
+  if ((project.enhance?.strength ?? null) === strength) return project;
+  if (strength === null) {
+    const { enhance: _off, ...rest } = project;
+    return { ...rest, revision: project.revision + 1 };
+  }
+  return bump(project, { enhance: { strength } });
 }
 
 /* ------------------------------------------------------------- captions */

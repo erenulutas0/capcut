@@ -102,6 +102,21 @@ export const PHRASES: ReadonlyArray<readonly [string, TaskId]> = [
   ['add subtitles', 'yazi'],
   ['captions', 'yazi'],
   ['transcribe', 'yazi'],
+  // İyileştir (ADR-037) — including what it cannot do: those words lead to the card and its honest line.
+  ['videoyu iyileştir', 'iyilestir'],
+  ['görüntüyü netleştir', 'iyilestir'],
+  ['video çok karanlık', 'iyilestir'],
+  ['karanlık videoyu aydınlat', 'iyilestir'],
+  ['renkleri düzelt', 'iyilestir'],
+  ['bulanık çıkmış', 'iyilestir'],
+  ['kaliteyi yükselt', 'iyilestir'],
+  ['4K yap', 'iyilestir'],
+  ['bulanıklığı sil', 'iyilestir'],
+  ['enhance my video', 'iyilestir'],
+  ['sharpen', 'iyilestir'],
+  ['brighten the video', 'iyilestir'],
+  ['improve quality', 'iyilestir'],
+  ['upscale to 4k', 'iyilestir'],
 ];
 
 describe('foldText', () => {
@@ -236,13 +251,13 @@ describe('searchTasks: rules', () => {
 });
 
 describe('task registry', () => {
-  it('lists the eight tasks in card order with unique ids', () => {
-    expect(TASKS.map((task) => task.id)).toEqual(['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'cevir']);
+  it('lists the nine tasks in card order with unique ids', () => {
+    expect(TASKS.map((task) => task.id)).toEqual(['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'cevir', 'iyilestir']);
     expect(new Set(TASKS.map((task) => task.id)).size).toBe(TASKS.length);
   });
 
   it('offers exactly the tasks the engine can do today', () => {
-    expect(availableTasks().map((task) => task.id)).toEqual(['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'cevir']);
+    expect(availableTasks().map((task) => task.id)).toEqual(['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'cevir', 'iyilestir']);
     expect(TASKS.filter((task) => !task.available).map((task) => task.id)).toEqual([]);
   });
 

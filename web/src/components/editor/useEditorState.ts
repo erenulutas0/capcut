@@ -29,6 +29,7 @@ import {
   removeMusic,
   setCaptionLanguage,
   setCaptionStyle,
+  setEnhance,
   setExportShortEdge,
   setFraming,
   setMusicAsset,
@@ -59,7 +60,15 @@ import {
   undo as historyUndo,
   type History,
 } from '@/application/history';
-import type { AspectRatio, CaptionStyleV2, CaptionUnclearV3, FitMode, MusicV1, Project } from '@/domain/edl';
+import type {
+  AspectRatio,
+  CaptionStyleV2,
+  CaptionUnclearV3,
+  EnhanceStrengthV4,
+  FitMode,
+  MusicV1,
+  Project,
+} from '@/domain/edl';
 import { DEFAULT_KESIT_SETTINGS, type KesitSettings } from '@/domain/kesit';
 import { WEB_LOCAL_POLICY, exceedsTotalSourceBytes } from '@/domain/policy';
 import {
@@ -454,6 +463,14 @@ export function useEditorState() {
     return ok;
   }, []);
 
+  /** "İyileştir" (ADR-037) for every download: a strength, or off. One undo step. */
+  const changeEnhance = useCallback((strength: EnhanceStrengthV4 | null) => {
+    setHistory((current) => {
+      const next = setEnhance(current.present, strength);
+      return next === current.present ? current : commit(current, next);
+    });
+  }, []);
+
   const changeShortEdge = useCallback((shortEdge: number) => {
     setHistory((current) => {
       const next = setExportShortEdge(current.present, shortEdge);
@@ -732,6 +749,7 @@ export function useEditorState() {
     changeVideoMuted,
     changeMusic,
     changeShortEdge,
+    changeEnhance,
     addCaption,
     updateCaption,
     removeCaption,

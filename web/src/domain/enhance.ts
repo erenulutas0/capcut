@@ -129,6 +129,7 @@ export interface EnhanceTuning {
   deadBlack: number;
   deadGamma: number;
   deadCast: number;
+  deadVibrance: number;
   /** Pictures at least this saturated get no colour lift (mean saturation 0..1). */
   vividSaturation: number;
   /** Noise (8-bit levels) below which the noise filter stays off, and where it is fully on. */
@@ -169,22 +170,23 @@ export const ENHANCE_TUNING: EnhanceTuning = {
   deadGain: 0.1,
   deadBlack: 0.004,
   deadGamma: 0.04,
-  deadCast: 0.015,
+  deadCast: 0.02,
+  deadVibrance: 0.05,
   vividSaturation: 0.35,
-  noiseFloor: 2,
-  noiseFull: 4.5,
+  noiseFloor: 1.5,
+  noiseFull: 3.4,
   maxDenoiseSigma: 24,
   sharpEnough: 1.05,
   softest: 0.8,
-  thresholdPerNoise: 1.5,
+  thresholdPerNoise: 2,
   thresholdFloor: 0,
-  noSharpenNoise: 6,
+  noSharpenNoise: 4.6,
   smoothSeconds: 2,
   smoothLuma: 0.08,
   strengths: {
-    light: { maxGain: 1.5, gainShare: 0.75, maxBlack: 0.03, blackShare: 0.4, minGamma: 1, whiteBalance: 0.3, maxCast: 0.05, vibrance: 0.06, sharpen: 0.7, denoise: 1 },
-    auto: { maxGain: 3, gainShare: 1, maxBlack: 0.06, blackShare: 0.7, minGamma: 1, whiteBalance: 0.5, maxCast: 0.08, vibrance: 0.15, sharpen: 1.5, denoise: 1.6 },
-    strong: { maxGain: 4, gainShare: 1, maxBlack: 0.1, blackShare: 1, minGamma: 0.8, whiteBalance: 0.8, maxCast: 0.15, vibrance: 0.3, sharpen: 2.5, denoise: 2.2 },
+    light: { maxGain: 1.5, gainShare: 0.75, maxBlack: 0.03, blackShare: 0.4, minGamma: 1, whiteBalance: 0, maxCast: 0, vibrance: 0.06, sharpen: 0.7, denoise: 1.3 },
+    auto: { maxGain: 3, gainShare: 1, maxBlack: 0.06, blackShare: 0.7, minGamma: 1, whiteBalance: 0.5, maxCast: 0.06, vibrance: 0.15, sharpen: 1.5, denoise: 2.1 },
+    strong: { maxGain: 4, gainShare: 1, maxBlack: 0.1, blackShare: 1, minGamma: 0.8, whiteBalance: 0.8, maxCast: 0.15, vibrance: 0.3, sharpen: 2.5, denoise: 2.9 },
   },
 };
 
@@ -230,7 +232,7 @@ const DETAIL_GRID = 3;
 const NOISE_BLOCK = 8;
 /** The share of blocks (flattest first) whose noise is read, and the factor that undoes picking the lowest. */
 const NOISE_PERCENTILE = 0.2;
-const NOISE_BIAS = 1.55;
+const NOISE_BIAS = 1.18;
 /** Mean squared gradient (8-bit levels²) a tile needs before its sharpness is judged. */
 const MIN_STRUCTURE = 6;
 
@@ -522,6 +524,12 @@ export function toneIsNeutral(tone: ToneParams): boolean {
   return tone.black === 0 && tone.gain === 1 && tone.gamma === 1;
 }
 
+/** The light-and-colour stage has nothing to do: no tone, no white balance, no colour lift. */
+export function toneStageIsNeutral(params: EnhanceParams): boolean {
+  const [r, g, b] = params.whiteBalance;
+  return toneIsNeutral(params) && r === 1 && g === 1 && b === 1 && params.vibrance === 0;
+}
+
 export function lookIsNeutral(look: LookParams): boolean {
   const [r, g, b] = look.whiteBalance;
   return r === 1 && g === 1 && b === 1 && look.vibrance === 0 && look.denoise === 0 && look.sharpen === 0;
@@ -664,17 +672,22 @@ export function chooseLook(
   const camera = cameraShare(stats, tuning);
 
   // White balance: gains that undo the agreed cast, scaled so grey keeps its luminance.
-  const cast = measuredCast(stats, limits.maxCast).map((value) => value * camera) as [number, number, number];
+  // What is removed is the measured cast times the strength's share; a removal too small to see is not made.
+  const cast = measuredCast(stats, limits.maxCast).map((value) => value * camera * limits.whiteBalance) as [
+    number,
+    number,
+    number,
+  ];
   let whiteBalance: [number, number, number] = [1, 1, 1];
   if (Math.max(Math.abs(cast[0]), Math.abs(cast[1]), Math.abs(cast[2])) >= tuning.deadCast) {
-    const gains = cast.map((value) => 1 / (1 + value * limits.whiteBalance)) as [number, number, number];
+    const gains = cast.map((value) => 1 / (1 + value)) as [number, number, number];
     const light = LUMA_R * gains[0] + LUMA_G * gains[1] + LUMA_B * gains[2];
     whiteBalance = [gains[0] / light, gains[1] / light, gains[2] / light];
   }
 
   // Colour lift: only for dull pictures, fading out as the picture is more saturated already.
   const dull = clamp(1 - stats.saturation / tuning.vividSaturation, 0, 1) * camera;
-  const vibrance = limits.vibrance * dull < 0.01 ? 0 : limits.vibrance * dull;
+  const vibrance = limits.vibrance * dull < tuning.deadVibrance ? 0 : limits.vibrance * dull;
 
   // Noise filter: off below the floor; its range follows the measured noise.
   const noisy = clamp((stats.noise - tuning.noiseFloor) / (tuning.noiseFull - tuning.noiseFloor), 0, 1);

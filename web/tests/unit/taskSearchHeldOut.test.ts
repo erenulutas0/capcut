@@ -77,6 +77,21 @@ export const HELD_OUT: ReadonlyArray<readonly [string, TaskId]> = [
   ['subtitle ekle', 'yazi'],
   ['generate captions', 'yazi'],
   ['ne dediğimi yaz', 'yazi'],
+  // İyileştir (ADR-037): written after its word list, measured before any fix (the ADR has the first-run count).
+  ['video çok karanlık çıkmış', 'iyilestir'],
+  ['görüntü kalitesini arttır', 'iyilestir'],
+  ['videoyu netleştirmek istiyorum', 'iyilestir'],
+  ['renkleri canlandır', 'iyilestir'],
+  ['bulanık videoyu düzelt', 'iyilestir'],
+  ['daha kaliteli olsun', 'iyilestir'],
+  ['videoyu güzelleştir', 'iyilestir'],
+  ['ışığı az, aydınlat', 'iyilestir'],
+  ['make my video look better', 'iyilestir'],
+  ['video is too dark', 'iyilestir'],
+  ['increase video quality', 'iyilestir'],
+  ['remove blur', 'iyilestir'],
+  ['videoyu full hd yap', 'iyilestir'],
+  ['gece çekimi çok kumlu', 'iyilestir'],
 ];
 
 function first(query: string): string {
@@ -105,6 +120,8 @@ describe('searchTasks: held-out phrases', () => {
   it('never answers a held-out phrase with a different task as the only result when it misses badly', () => {
     // A miss must at least not be silent: either another task is shown (the
     // user sees it is the wrong one) or "Bunu bulamadım" with all tasks one tap away.
-    for (const miss of misses) expect(['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'cevir', 'none', 'empty']).toContain(miss.got);
+    for (const miss of misses) {
+      expect(['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'cevir', 'iyilestir', 'none', 'empty']).toContain(miss.got);
+    }
   });
 });

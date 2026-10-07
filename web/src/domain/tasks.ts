@@ -12,7 +12,7 @@
  * check refuses an available task without a wizard (`AvailableTaskId`).
  */
 
-export type TaskId = 'kes' | 'bosluk' | 'dikey' | 'kucult' | 'yazi' | 'muzik' | 'ses' | 'cevir';
+export type TaskId = 'kes' | 'bosluk' | 'dikey' | 'kucult' | 'yazi' | 'muzik' | 'ses' | 'cevir' | 'iyilestir';
 
 /** Names of the task icons in `components/Icon.tsx`. */
 export type TaskIcon =
@@ -23,7 +23,8 @@ export type TaskIcon =
   | 'taskText'
   | 'taskMusic'
   | 'taskSound'
-  | 'taskConvert';
+  | 'taskConvert'
+  | 'taskEnhance';
 
 /**
  * A wizard's screens, in order. Every wizard starts with `pick` (the video)
@@ -58,6 +59,12 @@ export interface TaskDefinition {
   available: boolean;
   steps: readonly WizardStep[];
   words: TaskWords;
+  /**
+   * Shown under the label in the search results instead of `subKey`, where
+   * the short card line would promise too much: "İyileştir" is found by
+   * "4K yap" and "bulanıklığı sil" and must answer with what it really does.
+   */
+  resultKey?: 'task.iyilestir.result';
   /**
    * The task whose words people use about any job ("kes", "cut", "sil"):
    * when the search scores it level with another task, the other goes first.
@@ -209,6 +216,36 @@ const REGISTRY = [
       phrases: [
         'her yerde', 'her cihazda', 'wont open', 'won t open', 'cant open', 'can t open', 'not playing', 'doesnt play',
         'doesn t play', 'wont play', 'won t play', 'goruntu yok',
+      ],
+    },
+  },
+  {
+    // ADR-037. Classic picture processing on the device: light, colour,
+    // sharpness, noise. People also ask for what it cannot do ("4K yap",
+    // "bulanıklığı sil", "upscale"): those words lead here too, and the
+    // result line says honestly what it does (`resultKey`).
+    id: 'iyilestir',
+    icon: 'taskEnhance',
+    labelKey: 'task.iyilestir.label',
+    subKey: 'task.iyilestir.sub',
+    resultKey: 'task.iyilestir.result',
+    available: true,
+    steps: ['pick', 'choose', 'download'],
+    words: {
+      strong: [
+        'iyilestir', 'iyilestirme', 'guzellestir', 'toparla', 'netlestir', 'netlik', 'net', 'keskin', 'keskinlestir',
+        'keskinlik', 'bulanik', 'bulaniklik', 'bulanikligi', 'flu', 'karanlik', 'aydinlat', 'aydinlik', 'parlak',
+        'parlaklik', 'isik', 'isigi', 'isigini', 'renk', 'renkler', 'renkleri', 'renkli', 'soluk', 'kalite', 'kaliteyi',
+        'kalitesini', 'kaliteli', 'kalitesiz', 'kumlu', 'kumlanma', 'grenli', 'piksel', 'pikselli', 'cozunurluk',
+        '4k', 'hd', 'enhance', 'enhancer', 'improve', 'sharpen', 'sharper', 'sharp', 'brighten', 'brighter', 'bright',
+        'dark', 'blurry', 'blur', 'unblur', 'deblur', 'quality', 'upscale', 'upscaler', 'clearer', 'color', 'colors',
+        'colour', 'colours', 'denoise', 'grainy', 'noisy', 'lighting',
+      ],
+      weak: ['yukselt', 'artir', 'duzelt', 'gorunsun', 'goruntu', 'goruntuyu', 'better', 'fix', 'look', 'clear', 'light'],
+      phrases: [
+        'kaliteyi yukselt', 'kalitesini yukselt', 'kaliteyi artir', 'kalitesini artir', 'daha net', 'daha iyi gorunsun',
+        '4k yap', 'hd yap', 'bulanikligi sil', 'bulanikligi gider', 'bulanikligi al', 'goruntuyu duzelt', 'cok karanlik',
+        'make it sharper', 'make it brighter', 'improve quality', 'better quality', 'fix lighting', 'too dark',
       ],
     },
   },

@@ -3,14 +3,15 @@
  * WebGL2 fragment shaders, run on an `OffscreenCanvas` inside the export
  * worker.
  *
- * Three passes, each reading whole pixels (`texelFetch`, no filtering):
+ * Up to three passes, each reading whole pixels (`texelFetch`, no filtering):
  *
- *   noise filter (only when asked) -> light and colour -> sharpening
+ *   noise filter -> light and colour -> sharpening
  *
- * The last pass writes the canvas; the pixels outside the picture rectangle
- * (the bars of a "Sığdır" frame) are copied from the source unchanged.
- * Intermediate pictures are half-float where the browser can render to it,
- * so nothing is rounded to 8 bits before the last step.
+ * A pass that has nothing to do for a frame is not run at all. Whichever
+ * pass is last writes the canvas; there the pixels outside the picture
+ * rectangle (the bars of a "Sığdır" frame) are copied from the source
+ * unchanged. Intermediate pictures are half-float where the browser can
+ * render to it, so nothing is rounded to 8 bits before the last step.
  *
  * The shader sources are plain strings compiled by WebGL: no inline script,
  * no `eval`, nothing a strict Content-Security-Policy objects to.
@@ -28,6 +29,7 @@ import {
   SHOULDER_KNEE,
   shoulderOf,
   toneIsNeutral,
+  toneStageIsNeutral,
   type EnhanceParams,
   type PictureRect,
 } from '@/domain/enhance';
@@ -43,6 +45,8 @@ const HEADER = `#version 300 es
 precision highp float;
 precision highp int;
 uniform sampler2D uPicture;
+// The frame as it came in: what the pixels outside the picture rectangle keep.
+uniform sampler2D uSource;
 // The picture rectangle in pixels: x0, y0, x1, y1 (inclusive).
 uniform ivec4 uRect;
 // Height of the target when it is the canvas (rows run bottom-up there); 0 for an intermediate picture.
@@ -57,6 +61,13 @@ ivec2 here() {
 vec3 pictureAt(ivec2 p) {
   return texelFetch(uPicture, clamp(p, uRect.xy, uRect.zw), 0).rgb;
 }
+// On the canvas, outside the picture: the frame's own bars, untouched. True when the pixel is done.
+bool keptAsIs(ivec2 p) {
+  if (uFlipHeight == 0) return false;
+  if (p.x >= uRect.x && p.y >= uRect.y && p.x <= uRect.z && p.y <= uRect.w) return false;
+  outColor = vec4(texelFetch(uSource, p, 0).rgb, 1.0);
+  return true;
+}
 `;
 
 const DENOISE = `${HEADER}
@@ -66,6 +77,7 @@ const ivec2 OFFSETS[TAPS] = ivec2[TAPS](${DENOISE_TAPS.map((tap) => `ivec2(${tap
 const float WEIGHTS[TAPS] = float[TAPS](${DENOISE_TAPS.map((tap) => tap.weight.toFixed(8)).join(', ')});
 void main() {
   ivec2 p = here();
+  if (keptAsIs(p)) return;
   vec3 centre = pictureAt(p);
   float luma = dot(centre, LUMA);
   vec3 sum = vec3(0.0);
@@ -100,7 +112,9 @@ vec3 encode(vec3 light) {
 float maxOf(vec3 v) { return max(v.r, max(v.g, v.b)); }
 float minOf(vec3 v) { return min(v.r, min(v.g, v.b)); }
 void main() {
-  vec3 rgb = decode(pictureAt(here()));
+  ivec2 p = here();
+  if (keptAsIs(p)) return;
+  vec3 rgb = decode(pictureAt(p));
   if (uBlack > 0.0) {
     float soft = 0.5 * uBlack;
     float white = 0.5 * (1.0 - uBlack + sqrt((1.0 - uBlack) * (1.0 - uBlack) + soft * soft));
@@ -134,20 +148,15 @@ void main() {
 }`;
 
 const SHARPEN = `${HEADER}
-uniform sampler2D uSource;
 uniform float uAmount;
 uniform float uThreshold;
 float lumaAt(ivec2 p) { return dot(pictureAt(p), LUMA); }
 void main() {
   ivec2 p = here();
-  if (p.x < uRect.x || p.y < uRect.y || p.x > uRect.z || p.y > uRect.w) {
-    // Outside the picture: the frame's own bars, untouched.
-    outColor = vec4(texelFetch(uSource, p, 0).rgb, 1.0);
-    return;
-  }
+  if (keptAsIs(p)) return;
   vec3 colour = pictureAt(p);
   float delta = 0.0;
-  if (uAmount > 0.0) {
+  {
     float centre = dot(colour, LUMA);
     float north = lumaAt(p + ivec2(0, -1));
     float south = lumaAt(p + ivec2(0, 1));
@@ -333,45 +342,47 @@ export class GlEnhancer {
     const y1 = Math.min(height - 1, y0 + Math.max(1, Math.round(rect.height)) - 1);
     gl.bindVertexArray(this.vertexArray);
 
-    const pass = (program: Program, input: WebGLTexture, output: Target | null): void => {
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this.source);
+
+    // The passes this frame needs, in order; the last one writes the canvas.
+    // The light-and-colour pass also runs when nothing else does, so that
+    // there is always one pass to put the frame on the canvas.
+    const wanted: ('denoise' | 'tone' | 'sharpen')[] = [];
+    if (params.denoise > 0) wanted.push('denoise');
+    if (!toneStageIsNeutral(params) || (params.denoise <= 0 && params.sharpen <= 0)) wanted.push('tone');
+    if (params.sharpen > 0) wanted.push('sharpen');
+
+    let current: WebGLTexture = this.source;
+    wanted.forEach((name, index) => {
+      const last = index === wanted.length - 1;
+      const output = last ? null : this.targets[index % 2 === 0 ? 0 : 1];
+      const program = this.programs[name];
       gl.bindFramebuffer(gl.FRAMEBUFFER, output ? output.framebuffer : null);
       gl.useProgram(program.program);
       gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, input);
+      gl.bindTexture(gl.TEXTURE_2D, current);
       gl.uniform1i(location(gl, program, 'uPicture'), 0);
+      gl.uniform1i(location(gl, program, 'uSource'), 1);
       gl.uniform4i(location(gl, program, 'uRect'), x0, y0, x1, y1);
       gl.uniform1i(location(gl, program, 'uFlipHeight'), output ? 0 : height);
-    };
-    const draw = (): void => gl.drawArrays(gl.TRIANGLES, 0, 3);
-
-    let current: WebGLTexture = this.source;
-    if (params.denoise > 0) {
-      const { denoise } = this.programs;
-      pass(denoise, current, this.targets[0]);
-      gl.uniform1f(location(gl, denoise, 'uFalloff'), 1 / (2 * params.denoise * params.denoise));
-      draw();
-      current = this.targets[0].texture;
-    }
-
-    const { tone } = this.programs;
-    pass(tone, current, this.targets[1]);
-    gl.uniform1f(location(gl, tone, 'uBlack'), params.black);
-    gl.uniform1f(location(gl, tone, 'uGain'), params.gain);
-    gl.uniform1f(location(gl, tone, 'uGamma'), params.gamma);
-    gl.uniform1f(location(gl, tone, 'uShoulder'), shoulderOf(params));
-    gl.uniform3f(location(gl, tone, 'uBalance'), params.whiteBalance[0], params.whiteBalance[1], params.whiteBalance[2]);
-    gl.uniform1f(location(gl, tone, 'uVibrance'), params.vibrance);
-    gl.uniform1i(location(gl, tone, 'uTonal'), toneIsNeutral(params) ? 0 : 1);
-    draw();
-
-    const { sharpen } = this.programs;
-    pass(sharpen, this.targets[1].texture, null);
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, this.source);
-    gl.uniform1i(location(gl, sharpen, 'uSource'), 1);
-    gl.uniform1f(location(gl, sharpen, 'uAmount'), params.sharpen);
-    gl.uniform1f(location(gl, sharpen, 'uThreshold'), params.sharpenThreshold);
-    draw();
+      if (name === 'denoise') {
+        gl.uniform1f(location(gl, program, 'uFalloff'), 1 / (2 * params.denoise * params.denoise));
+      } else if (name === 'tone') {
+        gl.uniform1f(location(gl, program, 'uBlack'), params.black);
+        gl.uniform1f(location(gl, program, 'uGain'), params.gain);
+        gl.uniform1f(location(gl, program, 'uGamma'), params.gamma);
+        gl.uniform1f(location(gl, program, 'uShoulder'), shoulderOf(params));
+        gl.uniform3f(location(gl, program, 'uBalance'), params.whiteBalance[0], params.whiteBalance[1], params.whiteBalance[2]);
+        gl.uniform1f(location(gl, program, 'uVibrance'), params.vibrance);
+        gl.uniform1i(location(gl, program, 'uTonal'), toneIsNeutral(params) ? 0 : 1);
+      } else {
+        gl.uniform1f(location(gl, program, 'uAmount'), params.sharpen);
+        gl.uniform1f(location(gl, program, 'uThreshold'), params.sharpenThreshold);
+      }
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      if (output) current = output.texture;
+    });
 
     return !this.lost && !gl.isContextLost();
   }

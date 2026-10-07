@@ -185,7 +185,8 @@ export function TaskFinder() {
               <span className="result-text">
                 <span className="result-label">{t(task.labelKey)}</span>
                 <span className="result-sub" data-testid={task.available ? undefined : 'result-unavailable'}>
-                  {task.available ? t(task.subKey) : t('home.results.unavailable')}
+                  {/* A result may say more than its card: what the task does and what it does not (ADR-037). */}
+                  {task.available ? t(task.resultKey ?? task.subKey) : t('home.results.unavailable')}
                 </span>
               </span>
               {task.available ? (

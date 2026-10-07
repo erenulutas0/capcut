@@ -36,7 +36,9 @@ import {
 
 import { cueIndexAtFrame, preflightCaptions } from '@/domain/captionBurnIn';
 import type { CaptionLayout } from '@/domain/captionLayout';
+import { paramsAtFrame, planEnhancement, summarize, type EnhanceTimeline, type PictureRect } from '@/domain/enhance';
 import type {
+  EnhanceOutcome,
   ExportEvent,
   ExportFailureCode,
   ExportProbe,
@@ -47,7 +49,13 @@ import type {
 import { encoderVideoBitrate, type VideoEncoderKind } from '@/domain/encoderBitrate';
 import { audioDurationWithinTolerance, durationWithinTolerance, missingFramesAllowed } from '@/domain/exportEvents';
 import type { ExportMode, FastCutFallbackReason } from '@/domain/fastPath';
-import { frameToUs, sourceTimeForFrame, type RenderPlan, type RenderSegment } from '@/domain/renderPlan';
+import {
+  frameToUs,
+  segmentDrawRect,
+  sourceTimeForFrame,
+  type RenderPlan,
+  type RenderSegment,
+} from '@/domain/renderPlan';
 import { nominalOutputBytes, requiredFreeBytes } from '@/domain/outputStorage';
 import {
   MAX_TARGET_ATTEMPTS,
@@ -90,9 +98,11 @@ import {
 } from './avcReorder';
 import { holdDecoder, type DecoderHold } from './decoderHold';
 import { encoderKindLookup } from './encoderKind';
+import { analyseForEnhance, analysisKey, pictureRects } from './enhanceAnalysis';
+import { EnhanceFailed, createFrameEnhancer, glEnhancerCheck, type FrameEnhancer } from './frameEnhancer';
 import { FastCutFallback, prepareFastCut, type FastCutJob } from './fastCut';
 import { pickFrames } from './framePicker';
-import { createHdrContext, readHdrPixels } from './hdrCanvas';
+import { createHdrContext, readHdrPixels, softClippedImage } from './hdrCanvas';
 import { HDR_CLIP_WORKER_NAME, HDR_PIPELINE_DEPTH, HdrClipper, serveHdrClips } from './hdrClip';
 import { probeHdrToneMapping, type HdrProbeResult } from './hdrProbe';
 import { removeExportEntry, sweepExportEntries } from './opfsEntries';
@@ -102,6 +112,9 @@ import type {
   CaptionFontStatus,
   CapabilityStageResult,
   EncoderProbeConfig,
+  EnhanceAnalysis,
+  EnhancePreviewFailure,
+  EnhancePreviewResult,
   ExportOutputKind,
   TargetSizeExport,
   WorkerRequest,
@@ -629,6 +642,96 @@ interface ExportRequestOptions {
   targetSize: TargetSizeExport | null;
   /** ADR-035: the target-size attempt this output file belongs to; set by `runExport`. */
   target: TargetRun | null;
+  /** ADR-037: measurements the page already has for this plan, if any. */
+  enhanceAnalysis: EnhanceAnalysis | null;
+  /** ADR-037, test hook: the reference renderer instead of the GPU. */
+  enhanceForceCpu: boolean;
+}
+
+/* ------------------------------------------------------------- İyileştir */
+
+/** ADR-037: the correction for every frame of one plan, decided before the first frame is encoded. */
+interface EnhanceRun {
+  timeline: EnhanceTimeline;
+  /** Frames of the video that were measured. */
+  analysedFrames: number;
+  /** Measurement only: how long looking at them took (0 when the page supplied them). */
+  analyseMs: number;
+}
+
+/** Measurements made in this worker, by what was measured: a retry or a second strength does not look again. */
+const analysisCache = new Map<string, EnhanceAnalysis>();
+const ANALYSIS_CACHE_LIMIT = 4;
+
+/**
+ * The measurements for `plan`: the page's, this worker's earlier ones, or
+ * made now. Null where the frames cannot be read back.
+ */
+async function enhanceAnalysisFor(
+  plan: RenderPlan,
+  videoFile: File,
+  track: InputVideoTrack,
+  hdr: boolean,
+  provided: EnhanceAnalysis | null,
+  checkCanceledNow: () => void,
+  onProgress: (share: number) => void,
+): Promise<{ analysis: EnhanceAnalysis; measuredMs: number } | null> {
+  const key = analysisKey(plan, videoFile);
+  if (provided && provided.key === key && Array.isArray(provided.points) && provided.points.length > 0) {
+    return { analysis: provided, measuredMs: 0 };
+  }
+  const cached = analysisCache.get(key);
+  if (cached) return { analysis: cached, measuredMs: 0 };
+  const startedAt = performance.now();
+  const measured = await analyseForEnhance({
+    plan,
+    track,
+    key,
+    hdr,
+    draw: drawSegmentFrame,
+    checkCanceled: checkCanceledNow,
+    onProgress,
+  });
+  if (!measured) return null;
+  const analysis: EnhanceAnalysis = { key, points: measured.points };
+  if (analysisCache.size >= ANALYSIS_CACHE_LIMIT) {
+    const oldest = analysisCache.keys().next().value;
+    if (oldest !== undefined) analysisCache.delete(oldest);
+  }
+  analysisCache.set(key, analysis);
+  return { analysis, measuredMs: performance.now() - startedAt };
+}
+
+/** The enhancement of one export attempt, or null when the plan does not ask for it. */
+async function prepareEnhancement(
+  options: ExportRequestOptions,
+  plan: RenderPlan,
+  sources: ExportSources,
+): Promise<EnhanceRun | null> {
+  if (!plan.enhance) return null;
+  const { requestId } = options;
+  let lastProgressAt = Number.NEGATIVE_INFINITY;
+  const found = await enhanceAnalysisFor(
+    plan,
+    options.videoFile,
+    sources.videoTrack,
+    sources.hdrTransfer !== null,
+    options.enhanceAnalysis,
+    () => checkCanceled(requestId),
+    (share) => {
+      const now = performance.now();
+      if (share < 1 && now - lastProgressAt < PROGRESS_INTERVAL_MS) return;
+      lastProgressAt = now;
+      emit(requestId, { type: 'analysing', attemptId: requestId, progress: Math.min(1, Math.max(0, share)) });
+    },
+  );
+  // An HDR source whose float picture cannot be read back was refused earlier; anything else is unexpected.
+  if (!found) throw new ExportFailure(sources.hdrTransfer !== null ? 'hdr_source_unsupported' : 'internal_error');
+  return {
+    timeline: planEnhancement(found.analysis.points, plan.enhance.strength, plan.fpsNum / plan.fpsDen),
+    analysedFrames: found.analysis.points.length,
+    analyseMs: found.measuredMs,
+  };
 }
 
 /** One target-size download (ADR-035): what was asked, and the attempt being encoded. */
@@ -1145,6 +1248,16 @@ async function produceOutput(
   const correction = (measured: TargetSizeMeasurement): TargetSizeDecision | null =>
     target && !fastJob ? correctTargetSize(target.request, target.facts, target.decision, measured) : null;
 
+  // ADR-037: what "İyileştir" does to every frame, decided before any output
+  // exists. The fast cut never reaches here with it: an enhanced video is
+  // never a copy (`fastCutEligibility`).
+  let enhancement: EnhanceRun | null = null;
+  if (!fastJob && plan.enhance) {
+    clock.lap('setup');
+    enhancement = await prepareEnhancement(options, plan, sources);
+    clock.lap('analyse');
+  }
+
   // Measured, not guessed (ADR-023): the file is written once, and its size
   // stays under this estimate.
   const sink = await prepareOutput(
@@ -1172,6 +1285,10 @@ async function produceOutput(
   let canvas: OffscreenCanvas | null = null;
   let context: OffscreenCanvasRenderingContext2D | null = null;
   let hdrContext: ReturnType<typeof createHdrContext> = null;
+  let enhancer: FrameEnhancer | null = null;
+  /** ADR-037: where the current moment's picture sits in the frame; everything outside it is left alone. */
+  let pictureRect: PictureRect = { x: 0, y: 0, width: plan.width, height: plan.height };
+  let enhancedFrames = 0;
   if (fastJob) {
     fastJob.addTrack(output);
   } else {
@@ -1182,6 +1299,8 @@ async function produceOutput(
     // the same path the runtime check verified; SDR frames draw directly.
     hdrContext = hdrTransfer ? createHdrContext(plan.width, plan.height) : null;
     if (hdrTransfer && !hdrContext) throw new ExportFailure('hdr_source_unsupported');
+    // ADR-037: the GPU where its shaders were proven equal to the reference, the reference renderer otherwise.
+    enhancer = enhancement ? createFrameEnhancer(plan.width, plan.height, options.enhanceForceCpu) : null;
     // The canvas is snapshotted into a sample here rather than by mediabunny's
     // CanvasSource: the same `new VideoSample(canvas)` it makes, but the
     // snapshot and the encoder hand-off can be timed apart (ADR-028).
@@ -1226,7 +1345,7 @@ async function produceOutput(
   const audioLane = clock.lane();
   // HDR: the soft clip runs on a helper thread when one starts (ADR-028).
   const hdrClipper = hdrContext ? new HdrClipper(plan.width * plan.height * 4) : null;
-  const hdrQueue: { frame: number; picture: Promise<Uint8ClampedArray> }[] = [];
+  const hdrQueue: { frame: number; picture: Promise<Uint8ClampedArray>; drawn: boolean }[] = [];
   const totalFrames = fastJob ? fastJob.totalFrames : plan.totalFrames;
   const frameDuration = plan.fpsDen / plan.fpsNum;
   let framesDone = 0;
@@ -1267,8 +1386,23 @@ async function produceOutput(
    * Captions, snapshot and encoder hand-off of the picture now on `canvas`,
    * as output frame `frameIndex`, then the bookkeeping of a finished frame.
    */
-  const encodeCanvasFrame = async (frameIndex: number, pacer: MediaPacer): Promise<void> => {
+  const encodeCanvasFrame = async (frameIndex: number, pacer: MediaPacer, drawn: boolean): Promise<void> => {
     if (!videoSource || !context || !canvas) throw new ExportFailure('internal_error');
+    // ADR-037: light, colour, sharpness and noise of the picture now on the
+    // canvas (an SDR picture: an HDR frame has been tone mapped and soft
+    // clipped by now, ADR-022), with this frame's parameters from the plan.
+    // Before the caption: the text is drawn on the finished picture, never
+    // sharpened or recoloured. A frame with no picture (background only) is
+    // left as it is.
+    if (enhancer && enhancement && drawn) {
+      try {
+        enhancer.apply(context, paramsAtFrame(enhancement.timeline, frameIndex), pictureRect);
+      } catch (error) {
+        throw error instanceof EnhanceFailed ? new ExportFailure('enhance_failed') : error;
+      }
+      enhancedFrames += 1;
+      clock.lap('enhance');
+    }
     // Burned in on top of the picture, before the frame is handed to the
     // encoder. Drawn even on a held/background frame: the caption belongs
     // to output time, not to the source frame.
@@ -1322,7 +1456,7 @@ async function produceOutput(
     context.putImageData(new ImageData(rgba as Uint8ClampedArray<ArrayBuffer>, plan.width, plan.height), 0, 0);
     hdrClipper.recycle(rgba);
     clock.lap('hdrWrite');
-    await encodeCanvasFrame(next.frame, pacer);
+    await encodeCanvasFrame(next.frame, pacer, next.drawn);
   };
 
   try {
@@ -1364,6 +1498,7 @@ async function produceOutput(
       if (timestamps.length === 0) continue;
       if (!videoSource || !context || !canvas) throw new ExportFailure('internal_error');
       const frameContext = hdrContext ?? context;
+      pictureRect = pictureRects(segment, plan).outer;
 
       // Full encode only (ADR-028): the moment's audio is mixed and encoded
       // alongside its frames, in the time the worker would otherwise only wait
@@ -1434,11 +1569,11 @@ async function produceOutput(
             const picture = hdrClipper.clip(pixels);
             // Awaited below in order; a failure is raised there, not here.
             picture.catch(() => undefined);
-            hdrQueue.push({ frame, picture });
+            hdrQueue.push({ frame, picture, drawn: sample !== null });
             frame += 1;
             if (hdrQueue.length >= HDR_PIPELINE_DEPTH) await finishHdrFrame(pacer);
           } else {
-            await encodeCanvasFrame(frame, pacer);
+            await encodeCanvasFrame(frame, pacer, sample !== null);
             frame += 1;
           }
           clock.mark();
@@ -1531,6 +1666,17 @@ async function produceOutput(
       fallbackReason: fastJob ? null : fallbackReason,
       framesCopied: fastJob ? fastJob.framesCopied : 0,
       framesEncoded: fastJob ? fastJob.framesEncoded : framesDone,
+      ...(enhancement && enhancer && plan.enhance
+        ? {
+            enhance: {
+              strength: plan.enhance.strength,
+              engine: enhancer.engine,
+              summary: summarize(enhancement.timeline),
+              analysedFrames: enhancement.analysedFrames,
+              enhancedFrames,
+            } satisfies EnhanceOutcome,
+          }
+        : {}),
       ...(target
         ? {
             targetSize: {
@@ -1575,6 +1721,18 @@ async function produceOutput(
           videoBitrate,
           videoBytes,
           targetSize: target ? { ...target.decision, retrying } : null,
+          enhance:
+            enhancement && enhancer
+              ? {
+                  engine: enhancer.engine,
+                  check: glEnhancerCheck(),
+                  analysedFrames: enhancement.analysedFrames,
+                  analyseMs: Math.round(enhancement.analyseMs),
+                  enhancedFrames,
+                  look: enhancement.timeline.look,
+                  tones: enhancement.timeline.tones.slice(0, 400),
+                }
+              : null,
           framesMissing,
           audioDelayFrames: sources.audioDelayFrames,
           audioDelayCorrelation: sources.audioDelayCorrelation,
@@ -1590,6 +1748,7 @@ async function produceOutput(
       );
     }
     hdrClipper?.close();
+    enhancer?.close();
     audioSource?.close();
     hdrQueue.length = 0;
     await audioSources.clipReader?.close();
@@ -1663,20 +1822,117 @@ function drawSegmentFrame(
   }
 
   // contain: fit the cropped region inside the frame and letterbox the rest.
-  const scale = Math.min(plan.width / crop.width, plan.height / crop.height);
-  const drawWidth = crop.width * scale;
-  const drawHeight = crop.height * scale;
-  sample.draw(
-    context,
-    crop.x,
-    crop.y,
-    crop.width,
-    crop.height,
-    (plan.width - drawWidth) / 2,
-    (plan.height - drawHeight) / 2,
-    drawWidth,
-    drawHeight,
+  const place = segmentDrawRect(segment, plan);
+  sample.draw(context, crop.x, crop.y, crop.width, crop.height, place.x, place.y, place.width, place.height);
+}
+
+/* ------------------------------------------------------ İyileştir: preview */
+
+class PreviewRefusal extends Error {
+  constructor(readonly reason: EnhancePreviewFailure) {
+    super(reason);
+    this.name = 'PreviewRefusal';
+  }
+}
+
+/**
+ * ADR-037: one real frame of the video before and after "İyileştir".
+ *
+ * Not a second, prettier system (doc 11): the frame is decoded, picked and
+ * drawn by the calls the export uses (`pickFrames`, `drawSegmentFrame`, the
+ * HDR path), the plan is made by the same `planEnhancement` from the same
+ * measurements, and the "after" picture comes out of the same
+ * `FrameEnhancer.apply`. Nothing is encoded or written.
+ */
+async function runEnhancePreview(
+  request: Extract<WorkerRequest, { type: 'enhancePreview' }>,
+): Promise<EnhancePreviewResult> {
+  const { requestId, plan, videoFile } = request;
+  if (!plan.enhance) throw new PreviewRefusal('not_enhanced');
+  const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(videoFile) });
+  const track = await input.getPrimaryVideoTrack();
+  if (!track) throw new PreviewRefusal('no_video_track');
+  if (!(await track.canDecode())) throw new PreviewRefusal('source_undecodable');
+  let hdrTransfer: HdrTransfer | null;
+  try {
+    hdrTransfer = await refuseUnverifiedHdr(track);
+  } catch {
+    throw new PreviewRefusal('hdr_source_unsupported');
+  }
+  await correctAvcReorder(track, plan.segments).catch(() => false);
+
+  let lastProgressAt = Number.NEGATIVE_INFINITY;
+  const found = await enhanceAnalysisFor(
+    plan,
+    videoFile,
+    track,
+    hdrTransfer !== null,
+    request.enhanceAnalysis ?? null,
+    () => checkCanceled(requestId),
+    (share) => {
+      const now = performance.now();
+      if (share < 1 && now - lastProgressAt < PROGRESS_INTERVAL_MS) return;
+      lastProgressAt = now;
+      const progress: WorkerResponse = { type: 'enhancePreviewProgress', requestId, progress: Math.min(1, Math.max(0, share)) };
+      scope.postMessage(progress);
+    },
   );
+  if (!found) throw new PreviewRefusal(hdrTransfer !== null ? 'hdr_source_unsupported' : 'internal_error');
+  const timeline = planEnhancement(found.analysis.points, plan.enhance.strength, plan.fpsNum / plan.fpsDen);
+
+  const frame = Math.min(plan.totalFrames - 1, Math.max(0, Math.round(request.frame)));
+  const segment = plan.segments.find((item) => frame >= item.startFrame && frame < item.endFrame);
+  if (!segment) throw new PreviewRefusal('no_frame');
+  const canvas = new OffscreenCanvas(plan.width, plan.height);
+  const context = canvas.getContext('2d', { alpha: false });
+  if (!context) throw new PreviewRefusal('internal_error');
+  const hdrContext = hdrTransfer ? createHdrContext(plan.width, plan.height) : null;
+  if (hdrTransfer && !hdrContext) throw new PreviewRefusal('hdr_source_unsupported');
+  const frameContext = hdrContext ?? context;
+
+  const time = sourceTimeForFrame(segment, frame, plan.fpsNum, plan.fpsDen);
+  const sink = new VideoSampleSink(track);
+  let drawn = false;
+  for await (const picked of pickFrames(sink.samples(time, time + 0.001), [time], plan.fpsDen / plan.fpsNum)) {
+    checkCanceled(requestId);
+    if (!picked.frame) continue;
+    frameContext.fillStyle = plan.background;
+    frameContext.fillRect(0, 0, plan.width, plan.height);
+    drawSegmentFrame(frameContext, picked.frame, segment, plan);
+    drawn = true;
+  }
+  if (!drawn) throw new PreviewRefusal('no_frame');
+  if (hdrContext) {
+    const clipped = softClippedImage(hdrContext, plan.width, plan.height);
+    if (!clipped) throw new PreviewRefusal('hdr_source_unsupported');
+    context.putImageData(clipped, 0, 0);
+  }
+
+  const before = await createImageBitmap(canvas);
+  const params = paramsAtFrame(timeline, frame);
+  const enhancer = createFrameEnhancer(plan.width, plan.height, request.enhanceEngine === 'cpu');
+  let after: ImageBitmap;
+  try {
+    enhancer.apply(context, params, pictureRects(segment, plan).outer);
+    after = await createImageBitmap(canvas);
+  } catch (error) {
+    before.close();
+    throw error;
+  } finally {
+    enhancer.close();
+  }
+  return {
+    ok: true,
+    before,
+    after,
+    width: plan.width,
+    height: plan.height,
+    frame,
+    analysis: found.analysis,
+    summary: summarize(timeline),
+    params,
+    engine: enhancer.engine,
+  };
 }
 
 /* ------------------------------------------------------------- message loop */
@@ -1696,6 +1952,27 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
     return;
   }
 
+
+  if (request.type === 'enhancePreview') {
+    let result: EnhancePreviewResult;
+    try {
+      result = await runEnhancePreview(request);
+    } catch (error) {
+      const reason: EnhancePreviewFailure =
+        error instanceof CanceledError
+          ? 'canceled'
+          : error instanceof PreviewRefusal
+            ? error.reason
+            : 'internal_error';
+      result = { ok: false, reason };
+    } finally {
+      if (cancelRequestedFor === request.requestId) cancelRequestedFor = null;
+    }
+    const response: WorkerResponse = { type: 'enhancePreview', requestId: request.requestId, result };
+    if (result.ok) scope.postMessage(response, [result.before, result.after]);
+    else scope.postMessage(response);
+    return;
+  }
 
   if (request.type === 'capability') {
     const result = await runSelfTest(request.config, request.captionFontOrigin, request.hdrTransfer);
@@ -1721,6 +1998,8 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
         output: request.output ?? 'video',
         targetSize: request.output === 'audio' ? null : (request.targetSize ?? null),
         target: null,
+        enhanceAnalysis: request.enhanceAnalysis ?? null,
+        enhanceForceCpu: request.enhanceEngine === 'cpu',
       });
     } catch (error) {
       if (error instanceof CanceledError) {

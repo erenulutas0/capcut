@@ -16,6 +16,8 @@ import { EXPORT_PROFILE_WORKER_SUFFIX } from './exportProfile';
 import type {
   CapabilityStageResult,
   EncoderProbeConfig,
+  EnhanceAnalysis,
+  EnhancePreviewResult,
   ExportOutputKind,
   TargetSizeExport,
   WorkerRequest,
@@ -29,6 +31,15 @@ const CAPABILITY_TIMEOUT_MS = 60_000;
 function testHookBytes(name: '__clipStorageFreeBytes' | '__clipStorageReserveBytes'): number | null {
   const value = (globalThis as Record<string, unknown>)[name];
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+/**
+ * Test/measurement hook only (`window.__clipEnhanceEngine = 'cpu'`, ADR-037):
+ * enhance with the reference renderer even where the GPU path works. The app
+ * never sets it.
+ */
+function enhanceEngineHook(): 'cpu' | null {
+  return (globalThis as { __clipEnhanceEngine?: unknown }).__clipEnhanceEngine === 'cpu' ? 'cpu' : null;
 }
 
 function createWorker(): Worker {
@@ -123,6 +134,12 @@ export class ExportWorkerClient {
       output?: ExportOutputKind;
       /** ADR-035: the file must come out at or under a size. */
       targetSize?: TargetSizeExport | null;
+      /**
+       * ADR-037: measurements of this video the page already has (from the
+       * wizard's before/after preview); the export then does not look at the
+       * video a second time. Ignored unless they were made for this very plan.
+       */
+      enhanceAnalysis?: EnhanceAnalysis | null;
     },
   ): AsyncGenerator<ExportEvent, void, unknown> {
     const worker = this.ensureWorker();
@@ -173,6 +190,8 @@ export class ExportWorkerClient {
       mode: (globalThis as { __clipExportMode?: unknown }).__clipExportMode === 'encode' ? 'encode' : 'auto',
       output: options.output ?? 'video',
       targetSize: options.targetSize ?? null,
+      enhanceAnalysis: options.enhanceAnalysis ?? null,
+      enhanceEngine: enhanceEngineHook(),
     };
     worker.postMessage(request);
 
@@ -201,6 +220,49 @@ export class ExportWorkerClient {
       worker.removeEventListener('error', onError);
       if (this.activeRequestId === requestId) this.activeRequestId = null;
     }
+  }
+
+  /**
+   * ADR-037: one real frame of `plan` before and after "İyileştir", made by
+   * the export's own code in the worker. Nothing is encoded. Resolves with
+   * `{ ok: false, reason: 'canceled' }` when `cancel()` was called meanwhile.
+   */
+  enhancePreview(
+    plan: RenderPlan,
+    videoFile: File,
+    frame: number,
+    options: { analysis?: EnhanceAnalysis | null; onProgress?: (share: number) => void } = {},
+  ): Promise<EnhancePreviewResult> {
+    const worker = this.ensureWorker();
+    const requestId = this.nextId('enh');
+    this.activeRequestId = requestId;
+    return new Promise<EnhancePreviewResult>((resolve) => {
+      const done = (result: EnhancePreviewResult) => {
+        worker.removeEventListener('message', onMessage);
+        worker.removeEventListener('error', onError);
+        if (this.activeRequestId === requestId) this.activeRequestId = null;
+        resolve(result);
+      };
+      const onMessage = (event: MessageEvent<WorkerResponse>) => {
+        const data = event.data;
+        if (data.requestId !== requestId) return;
+        if (data.type === 'enhancePreviewProgress') options.onProgress?.(data.progress);
+        else if (data.type === 'enhancePreview') done(data.result);
+      };
+      const onError = () => done({ ok: false, reason: 'internal_error' });
+      worker.addEventListener('message', onMessage);
+      worker.addEventListener('error', onError);
+      const request: WorkerRequest = {
+        type: 'enhancePreview',
+        requestId,
+        plan,
+        videoFile,
+        frame,
+        enhanceAnalysis: options.analysis ?? null,
+        enhanceEngine: enhanceEngineHook(),
+      };
+      worker.postMessage(request);
+    });
   }
 
   private activeRequestId: string | null = null;
