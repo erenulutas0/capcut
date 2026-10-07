@@ -14,7 +14,8 @@ import {
   musicOutlastsVideo,
   ownSizeRecipe,
   silenceParamsFor,
-  musicUnderWholeVideo,
+  musicUnderVideo,
+  soundlessRecipe,
   withMusicDefaults,
   type GapChoice,
 } from '@/application/taskRecipes';
@@ -394,7 +395,7 @@ function MuzikWizard(host: WizardHostProps) {
       audioFile={audio?.file ?? null}
       blockedText={ready ? null : t('wizard.muzik.first')}
       openVideo={async (file) => {
-        const outcome = await state.importVideo(file, musicUnderWholeVideo);
+        const outcome = await state.importVideo(file, musicUnderVideo);
         if (outcome.kind !== 'opened') return false;
         // The video's own frame: a shape between the frames gets bars, nothing is cut off.
         state.changeFraming({ fit: 'contain', zoom: 1 });
@@ -742,6 +743,48 @@ function SesWizard(host: WizardHostProps) {
   );
 }
 
+// ---------------------------------------------------------------- Sesi kapat
+
+/**
+ * "Sesi kapat": no decision. The whole video in its own frame and size with
+ * its sound switched off. The saved file has NO audio track (not a track of
+ * silence): that is what every player shows as a video without sound, it
+ * costs no bytes, and it is the file the export already writes — and the
+ * tests already measure — for a video that never had sound. Where the fast
+ * cut allows (ADR-027) the pictures are copied, not re-encoded, and the
+ * result's method line says which it was. A video that has no sound to
+ * begin with is told so; there is nothing to download.
+ */
+function SusturWizard(host: WizardHostProps) {
+  const { state } = host;
+  const { video, settings } = state;
+  const already = video?.hasAudio === false;
+  return (
+    <WizardFlow
+      {...host}
+      titleKey="wizard.sustur.title"
+      fileTag="sessiz"
+      // Only with the sound really switched off: never a download that still has it.
+      recipe={video && !already && settings.muted ? state.project : null}
+      blockedText={already ? t('wizard.sustur.already') : null}
+      preview={video ? <VideoPreview video={video} muted label={t('wizard.sustur.preview')} /> : undefined}
+      openVideo={async (file) => {
+        const outcome = await state.importVideo(file, soundlessRecipe);
+        if (outcome.kind !== 'opened') return false;
+        // Nothing of the picture is cut off: a shape between the frames gets bars.
+        state.changeFraming({ fit: 'contain', zoom: 1 });
+        state.changeVideoMuted(true);
+        return true;
+      }}
+    >
+      <div className="wizard-panel" data-testid="sustur-info">
+        <p className="wizard-panel-title">{t('wizard.sustur.body')}</p>
+        <p className="wizard-hint">{t('wizard.sustur.keeps')}</p>
+      </div>
+    </WizardFlow>
+  );
+}
+
 // ---------------------------------------------------------------- Yazıya dök
 
 /**
@@ -897,6 +940,7 @@ export const WIZARDS: Record<AvailableTaskId, ComponentType<WizardHostProps>> = 
   yazi: YaziWizard,
   muzik: MuzikWizard,
   ses: SesWizard,
+  sustur: SusturWizard,
   cevir: CevirWizard,
 };
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { searchTasks } from '@/domain/taskSearch';
-import type { TaskId } from '@/domain/tasks';
+import { TASKS, type TaskId } from '@/domain/tasks';
 
 /**
  * A second table of phrases, written AFTER the word lists. Its first run,
@@ -105,6 +105,6 @@ describe('searchTasks: held-out phrases', () => {
   it('never answers a held-out phrase with a different task as the only result when it misses badly', () => {
     // A miss must at least not be silent: either another task is shown (the
     // user sees it is the wrong one) or "Bunu bulamadım" with all tasks one tap away.
-    for (const miss of misses) expect(['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'cevir', 'none', 'empty']).toContain(miss.got);
+    for (const miss of misses) expect([...TASKS.map((task) => task.id), 'none', 'empty']).toContain(miss.got);
   });
 });

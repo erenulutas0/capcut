@@ -370,6 +370,40 @@ export const CASES = [
     },
   },
   {
+    // Music added while there is NO kesit, then "Videoyu indir" (the whole
+    // video). Until 7 Oct 2026 the music was 0.1 s long in this file
+    // (domain/musicFit.ts). The video is 12 s with no sound of its own, the
+    // music 10 s: it must be heard from the start to its own end and not
+    // after it (music is never looped).
+    id: 'M16b',
+    title: 'Kesit yokken eklenen müzik, bütün videonun altında',
+    expectation: 'Müzik indirilen videonun başından kendi sonuna kadar duyuluyor (0,1 sn değil); bittikten sonra sessiz, döngü yok',
+    setup: {
+      video: 'm04-silent.mp4',
+      music: 'm04-music.wav',
+      moments: [],
+      aspect: '16-9',
+      quality: '720',
+    },
+    expect: {
+      exports: true,
+      durationSeconds: 12,
+      audioCodec: 'aac',
+      tonePresent: [TONE.wav],
+      toneWindows: {
+        frequency: TONE.wav,
+        audible: [
+          [0.5, 1],
+          [4.5, 1],
+          [8.5, 1],
+        ],
+        silent: [[10.8, 1]],
+        maxSpreadDb: 3,
+        minMarginDb: 30,
+      },
+    },
+  },
+  {
     // Placed before the caption rows: cases share one browser context, and the
     // caption rows leave an output-time caption track in the stored project.
     id: 'M19',

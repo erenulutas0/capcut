@@ -18,9 +18,9 @@ Her satır `video-editor-blueprint/docs/22_QA_TEST_MATRIX.md` içindeki bir fixt
 
 | Tarayıcı | Sürüm | Encoder kabiliyeti | Çalıştırma |
 |---|---|---|---|
-| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-10-04 21:06 UTC |
-| Google Chrome | 154.0.0.0 | H.264 var · AAC var | 2026-10-04 21:10 UTC |
-| Microsoft Edge | 154.0.0.0 | H.264 var · AAC var | 2026-10-04 21:16 UTC |
+| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-10-07 17:17 UTC |
+| Google Chrome | 154.0.0.0 | H.264 var · AAC var | 2026-10-07 17:20 UTC |
+| Microsoft Edge | 154.0.0.0 | H.264 var · AAC var | 2026-10-07 17:24 UTC |
 | Firefox (Playwright) | 155.0 | H.264 var · AAC yok | 2026-09-21 18:36 UTC |
 | WebKit (Playwright) | 26.6 | WebCodecs yok | 2026-09-21 18:36 UTC |
 
@@ -48,6 +48,7 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Bu matris gerç
 | M14 | Kaynağa erişim kaybı ve yeniden bağlama | ✅ | ✅ | ✅ | ⛔ | — |
 | M15 | Export sırasında sekme arka plana alınıyor | ✅ | ✅ | ✅ | ⛔ | — |
 | M16 | Gain toplamı / fade sınırları | ✅ | ✅ | ✅ | ⛔ | — |
+| M16b | Kesit yokken eklenen müzik, bütün videonun altında | ✅ | ✅ | ✅ | — | — |
 | M19 | Hızlı kesim: 1080p30 H.264, anahtar kare dışında iki kesim | ✅ | ✅ | ✅ | — | — |
 | M17 | Altyazı videoya işleniyor | ✅ | ✅ | ✅ | ⛔ | — |
 | M20 | Hedef boyut: 8 s kırpılmış video 1 MB’a sığdırılıyor | ✅ | ✅ | ✅ | — | — |
@@ -59,7 +60,7 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Bu matris gerç
 | M18b | Kaynak → sonuç dönüşümü görünen altyazıyı değiştirmiyor | ✅ | ✅ | ✅ | ⛔ | — |
 | M22 | Transkriptten gelen altyazı videoya işleniyor | ✅ | ✅ | ✅ | — | — |
 
-| Toplam | | 28✅ 0⛔ 0❌ 0💥 0— | 28✅ 0⛔ 0❌ 0💥 0— | 28✅ 0⛔ 0❌ 0💥 0— | 4✅ 16⛔ 0❌ 0💥 0— | 0✅ 0⛔ 0❌ 0💥 20— |
+| Toplam | | 29✅ 0⛔ 0❌ 0💥 0— | 29✅ 0⛔ 0❌ 0💥 0— | 29✅ 0⛔ 0❌ 0💥 0— | 4✅ 16⛔ 0❌ 0💥 0— | 0✅ 0⛔ 0❌ 0💥 20— |
 
 ## Ölçülen değerler (Chromium)
 
@@ -75,12 +76,13 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Bu matris gerç
 | M08 | 10.005333 s | 300 | 720x1280 | — | müzik önce -69.5 → sonra -36.1 dB |
 | M09 | 6.016 s | 180 | 1280x720 | — | sınır -24.4 / genel -24.1 dB |
 | M10-hevc | — | — | — | — | sonuç: import_rejected |
-| M10-hdr | 3.008 s | 90 | 1280x720 | 0.9699 | HDR→SDR: en yakın ref-hable, ΔE00 3.073, kayma 3.614, doygunluk 1.004..1.005, ton 1.952°, kırpma -0.047 |
-| M10-hdr-hlg | 3.008 s | 90 | 720x1280 | 0.9729 | HDR→SDR: en yakın placebo-spline, ΔE00 3.259, kayma 2.248, doygunluk 1.038..1.038, ton 2.348°, kırpma -0.001 |
+| M10-hdr | 3.008 s | 90 | 1280x720 | 0.9699 | HDR→SDR: en yakın ref-hable, ΔE00 3.074, kayma 3.621, doygunluk 1.004..1.005, ton 1.954°, kırpma -0.047 |
+| M10-hdr-hlg | 3.008 s | 90 | 720x1280 | 0.9729 | HDR→SDR: en yakın placebo-spline, ΔE00 3.257, kayma 2.251, doygunluk 1.038..1.038, ton 2.345°, kırpma -0.001 |
 | M12 | 4.010667 s | 120 | 1280x720 | — | — |
 | M14 | 10.005333 s | 300 | 720x1280 | — | — |
 | M15 | 6.016 s | 180 | 1280x720 | — | — |
 | M16 | 6.016 s | 180 | 1280x720 | — | tepe -19.8 dB; fade -43 → -28.2 dB |
+| M16b | 12.010667 s | 360 | 1280x720 | — | — |
 | M19 | 8.405333 s | 252 | 1920x1080 | 0.9842 | — |
 | M17 | 10.005333 s | 300 | 720x1280 | — | — |
 | M20 | 8 s | 240 | 720x1280 | 0.9219 | — |

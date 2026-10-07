@@ -436,6 +436,7 @@ export function VideoPreview({
   shape = 'wide',
   fit = 'contain',
   label,
+  muted = false,
   mediaRef,
   onTime,
 }: {
@@ -443,6 +444,8 @@ export function VideoPreview({
   shape?: 'wide' | 'vertical';
   fit?: 'cover' | 'contain';
   label?: string;
+  /** Plays without sound: the preview of a result that has none ("Sesi kapat"). */
+  muted?: boolean;
   /** Lets the owner move the video (the transcript's lines jump to their moment). */
   mediaRef?: { current: HTMLVideoElement | null };
   /** The video's own time in µs, as it plays or is moved. */
@@ -473,6 +476,7 @@ export function VideoPreview({
           // "#t=0.1": show a picture, not an empty box, before anything plays.
           src={`${video.objectUrl}#t=0.1`}
           playsInline
+          muted={muted}
           preload="metadata"
           aria-label={label ?? t('wizard.video.label')}
           onPlay={() => setPlaying(true)}

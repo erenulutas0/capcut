@@ -38,6 +38,7 @@ import { MIN_CLIP_DURATION_US, type Micros } from '../domain/time';
 import { buildTimeline, totalOutputDurationUs } from '../domain/timeline';
 import { piecesAfterRemoval, type ClipSilence } from '../domain/silence';
 import { clampIndex, clipWithSettings, DEFAULT_KESIT_SETTINGS, type KesitSettings } from '../domain/kesit';
+import { downloadDurationUs, fittedMusicEndUs, isMusicFitted, musicFollowing } from '../domain/musicFit';
 import { nextId } from './ids';
 
 export function createEmptyProject(projectId = 'p_local_001'): Project {
@@ -53,8 +54,19 @@ export function createEmptyProject(projectId = 'p_local_001'): Project {
   };
 }
 
+/**
+ * The next recipe. A command that changes the kesitler or the sources may
+ * change how long the download is; music that was laid under the whole
+ * download keeps covering it (`musicFit.ts`) — inside the same step, so one
+ * undo takes the kesit change and the music's new end back together. A
+ * command that sets the music itself is left exactly as it asked.
+ */
 function bump(project: Project, patch: Partial<Project>): Project {
-  return { ...project, ...patch, revision: project.revision + 1 };
+  const next: Project = { ...project, ...patch, revision: project.revision + 1 };
+  if (next.music === undefined || 'music' in patch) return next;
+  if (patch.clips === undefined && patch.assets === undefined) return next;
+  const music = musicFollowing(project, next);
+  return music === next.music ? next : { ...next, music };
 }
 
 export function primaryVideoAsset(project: Project): AssetV1 | undefined {
@@ -318,15 +330,20 @@ export function currentFraming(project: Project): { fit: FitMode; zoom: number }
   };
 }
 
+/**
+ * Adds (or replaces) the music, laid under the whole download from its
+ * start: the joined kesitler, or the whole video while there is no kesit —
+ * as long as the music lasts (`musicFit.ts`). It then follows the download
+ * when kesitler change, until the user sets a range by hand.
+ */
 export function setMusicAsset(project: Project, asset: AssetV1): Project {
   const others = project.assets.filter((existing) => existing.kind !== 'audio');
-  const outputUs = totalOutputDurationUs(project);
-  const selectionUs = Math.min(asset.durationUs, Math.max(MIN_CLIP_DURATION_US, outputUs));
+  const start = { sourceInUs: 0, timelineStartUs: 0 };
   const music: MusicV1 = {
     assetId: asset.assetId,
-    sourceInUs: 0,
-    sourceOutUs: selectionUs,
-    timelineStartUs: 0,
+    sourceInUs: start.sourceInUs,
+    sourceOutUs: fittedMusicEndUs(start, asset.durationUs, downloadDurationUs(project)),
+    timelineStartUs: start.timelineStartUs,
     gainDb: -12,
     muted: false,
     fadeInUs: 0,
@@ -349,6 +366,13 @@ export function updateMusic(
   if (!project.music) return { ok: false, reason: 'no_music' };
   const asset = project.assets.find((item) => item.assetId === project.music?.assetId);
   const music: MusicV1 = { ...project.music, ...patch };
+  // Music that covers the download keeps covering it when only its start is
+  // moved ("begin the song at 0:30", "let it come in after 5 s"): the end
+  // moves along. Setting the end is what makes a range the user's own.
+  const movedStart = patch.sourceInUs !== undefined || patch.timelineStartUs !== undefined;
+  if (asset && movedStart && patch.sourceOutUs === undefined && isMusicFitted(project)) {
+    music.sourceOutUs = fittedMusicEndUs(music, asset.durationUs, downloadDurationUs(project));
+  }
 
   if (music.sourceOutUs <= music.sourceInUs) return { ok: false, reason: 'range_reversed' };
   if (music.sourceInUs < 0 || (asset && music.sourceOutUs > asset.durationUs)) {

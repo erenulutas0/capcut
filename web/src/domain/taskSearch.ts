@@ -20,11 +20,20 @@
  * 4. Strong words score 3 (exact) or 2 (stem, prefix, typo); weak words
  *    ("ekle", "sil") 1 or 0.75 and never by typo.
  * 5. Phrases ("her yerde", "make it vertical") add 4 when their words appear
- *    in order, stop words included.
+ *    in order, stop words included — and 1 more for each word beyond the
+ *    second: the longer phrase is the more specific one ("arka plan
+ *    değiştir" is about the background; "arka plan" alone is how music is
+ *    asked for). Only the longest phrase of a task counts.
  * 6. Rank by score. A tie goes to the more specific task ("cut the pauses"
  *    is Boşlukları at, not the generic Kes), then to registry order. Keep at
  *    most three, and only those within 40 % of the best — a stray weak word
  *    does not add a row.
+ * 7. When the best match is something the app cannot do yet ("gife çevir",
+ *    "tiktok logosunu kaldır"), the answer is "Bunu henüz yapamıyoruz." and
+ *    a task that only shares a word with the request ("çevir", "tiktok") is
+ *    not offered under it: rows of tasks that work stay only when they score
+ *    nearly as much as the best (80 %), i.e. the words point at them just as
+ *    much ("döndür ve kes").
  */
 
 import { TASKS, type TaskDefinition } from './tasks';
@@ -137,6 +146,8 @@ interface WordMatch {
 const STRONG_SCORE: Record<MatchKind, number> = { exact: 3, part: 2, typo: 2 };
 const WEAK_SCORE: Record<MatchKind, number> = { exact: 1, part: 0.75, typo: 0 };
 const PHRASE_SCORE = 4;
+/** Each word of a phrase beyond the second. */
+const PHRASE_EXTRA_WORD_SCORE = 1;
 
 function partMatch(matched: number, strong: boolean): WordMatch {
   return { kind: 'part', tier: matched >= 4 ? 3 : 1, matched, strong };
@@ -189,6 +200,8 @@ export type TaskSearchResult =
 
 export const MAX_RESULTS = 3;
 const KEEP_RATIO = 0.4;
+/** Under a best match that cannot be done yet, a task that works needs this share of its score to be shown. */
+const KEEP_UNDER_CANNOT_RATIO = 0.8;
 
 export function searchTasks(query: string, tasks: readonly TaskDefinition[] = TASKS): TaskSearchResult {
   const raw = rawTokens(query);
@@ -224,7 +237,10 @@ export function searchTasks(query: string, tasks: readonly TaskDefinition[] = TA
   });
 
   for (const task of tasks) {
-    if (task.words.phrases.some((phrase) => containsPhrase(raw, phrase))) add(task, PHRASE_SCORE);
+    const found = task.words.phrases
+      .filter((phrase) => containsPhrase(raw, phrase))
+      .map((phrase) => phrase.split(' ').length);
+    if (found.length > 0) add(task, PHRASE_SCORE + (Math.max(...found) - 2) * PHRASE_EXTRA_WORD_SCORE);
   }
 
   const ranked = tasks
@@ -239,8 +255,10 @@ export function searchTasks(query: string, tasks: readonly TaskDefinition[] = TA
 
   const top = ranked[0];
   if (!top) return tokens.length === 0 ? { kind: 'empty' } : { kind: 'none' };
+  const cannotDoYet = !top.task.available;
   const matches = ranked
     .filter((entry) => entry.score >= top.score * KEEP_RATIO)
+    .filter((entry) => !cannotDoYet || !entry.task.available || entry.score >= top.score * KEEP_UNDER_CANNOT_RATIO)
     .slice(0, MAX_RESULTS)
     .map(({ task, score }) => ({ task, score }));
   return { kind: 'results', matches };

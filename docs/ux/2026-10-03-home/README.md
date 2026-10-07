@@ -25,14 +25,15 @@ Taslak tuvali: https://claude.ai/artifact/Q4V3e67pHd5KiAVLNU9rkW (özel bağlant
 
 Karar kaydı: [ADR-034](../../adr/ADR-034-task-first-home.md). Taslaklardan farklar:
 
-- Taslaklarda sekiz kart vardı; **yalnızca çalışan yedi işin** kartı gösteriliyor (Kes,
-  Boşlukları at, Dikey yap, Küçült, Müzik ekle, Sesini al, Her yerde açılsın; Küçült ve
-  Sesini al ADR-035 ile eklendi). Yazıya dök hazır olunca kartı kendiliğinden gelir
-  (kayıtta tek satır).
+- Taslaklarda sekiz kart vardı; **yalnızca çalışan işlerin** kartı gösteriliyor — 7 Ekim 2026'da
+  dokuz: Kes, Boşlukları at, Dikey yap, Küçült, Yazıya dök, Müzik ekle, Sesini al, Sesi kapat,
+  Her yerde açılsın (Küçült ve Sesini al ADR-035, Yazıya dök ADR-036, Sesi kapat 7 Ekim 2026).
+  Bir iş hazır olunca kartı kendiliğinden gelir (kayıtta tek satır).
 - Taslak C'nin "En çok kullanılanlar" başlığı yok (kullanım ölçmüyoruz); başlık "Bütün işler".
 - Kutudaki örnek "videom WhatsApp’a sığmıyor" değil "sessiz yerleri sil": örnek, bugün
-  çalışan bir işe götürmeli. (WhatsApp cümlesi artık Küçült'ü buluyor; "Bu henüz yok,
-  üzerinde çalışıyoruz." cümlesini bugün yalnızca Yazıya dök'ü kasteden aramalar alıyor.)
+  çalışan bir işe götürmeli. (WhatsApp cümlesi artık Küçült'ü buluyor. Yapılamayan on istek —
+  döndür, hızlandır, birleştir, GIF, filigran sil… — 7 Ekim 2026'dan beri "Bunu henüz
+  yapamıyoruz." yanıtını alıyor; cümle eskiden "Bu henüz yok, üzerinde çalışıyoruz." idi.)
 - Taslak B'nin "Bu videoyla ne yapalım?" listesi yok: önce iş seçiliyor, "Video seç"
   sihirbazın ilk adımı.
 
@@ -41,10 +42,11 @@ Ekran görüntüleri (çalışan uygulamadan, Playwright; `web/scripts/home-shot
 
 | Dosya | Ekran |
 |---|---|
-| `01-home` | Açılış ekranı |
+| `01-home` | Açılış ekranı (7 Ekim 2026: dokuz kart; geniş ekranda 3 + 3 + 3) |
 | `02-search-results` | Arama: "tiktok için dikey" → Dikey yap |
 | `03-search-two-results` | Arama: "sesi kes" → Kes + Sesini al |
-| `04-search-unavailable` | Arama: "altyazı ekle" → "Bu henüz yok" |
+| `04-search-unavailable` | Arama: "gife çevir" → "GIF yap — Bunu henüz yapamıyoruz.", düğme yok, altında başka kart yok (7 Ekim 2026; eskiden "altyazı ekle" ile çekilmişti) |
+| `75-sesi-kapat-0-search`, `-1-pick`, `-2-info`, `-3-saved` | Sesi kapat (7 Ekim 2026): "sesini kapat" araması → video seç → tek açıklama → "Kaydedildi" (yöntem satırı: hızlı kesim) |
 | `60-kucult-2-choice`, `61-kucult-3-saved` | Küçült: üç hedef ve her birinin sonucu → kaydedildi, gerçek boyut hedefe karşı |
 | `70-ses-2-info`, `71-ses-3-saved` | Sesini al: tek açıklama → "Ses dosyası kaydedildi" |
 | `80-yazi-2-model`, `81-yazi-2-ready`, `82-yazi-2-running` | Yazıya dök (ADR-036): "Modeli indir (≈108,8 MB, bir kez)" → model hazır, "Yazıya dök" → gerçek sayılarla ilerleme |

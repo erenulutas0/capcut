@@ -98,15 +98,44 @@ export function formatLengthShort(us: Micros, words: { second: string; decimalMa
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${seconds}` : `${minutes}:${seconds}`;
 }
 
-/** Short, human label (silence dialog): `4.0 sn` / `1:06 dk`. */
-export function formatDurationShort(us: Micros): string {
+/**
+ * A plain number with a fixed count of decimals and the reader's decimal
+ * mark (ADR-030: Turkish "0,9", English "0.9"). EVERY non-integer number the
+ * interface shows goes through here or through a formatter built on the same
+ * rule (`formatLengthShort`, `formatLength`, `formatBytes`…): `toFixed` by
+ * itself always writes a dot (tests/unit/numberFormat.test.ts keeps it out
+ * of the components). `trimZeros` drops a fraction that says nothing
+ * ("×2", not "×2,0").
+ */
+export function formatDecimal(
+  value: number,
+  decimals: number,
+  decimalMark: string,
+  options: { trimZeros?: boolean } = {},
+): string {
+  if (!Number.isFinite(value)) return '—';
+  const fixed = value.toFixed(Math.max(0, decimals));
+  const shown = options.trimZeros && fixed.includes('.') ? fixed.replace(/\.?0+$/, '') : fixed;
+  // "-0,0" is zero.
+  const unsigned = /^-0(\.0+)?$/.test(shown) ? shown.slice(1) : shown;
+  return unsigned.replace('.', decimalMark);
+}
+
+/**
+ * Short, human label (silence dialog): `4,0 sn` / `1:06 dk` — in English
+ * `4.0 s` / `1:06 min`. Words and decimal mark come from the caller.
+ */
+export function formatDurationShort(
+  us: Micros,
+  words: { minute: string; second: string; decimalMark: string },
+): string {
   const seconds = Math.max(0, us) / US_PER_SECOND;
-  if (seconds < 60) {
-    return `${seconds.toFixed(1)} sn`;
+  // 59.96 s would read "60,0 sn": from there on it is a clock.
+  if (Math.round(seconds * 10) < 600) {
+    return `${formatDecimal(seconds, 1, words.decimalMark)} ${words.second}`;
   }
-  const minutes = Math.floor(seconds / 60);
-  const rest = Math.round(seconds - minutes * 60);
-  return `${minutes}:${String(rest).padStart(2, '0')} dk`;
+  const total = Math.round(seconds);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')} ${words.minute}`;
 }
 
 /**
