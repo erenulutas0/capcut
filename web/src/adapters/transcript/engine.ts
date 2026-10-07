@@ -34,7 +34,9 @@ import {
   splitLongSpans,
   type SpeechSpan,
 } from '@/domain/speechSpans';
-import { buildSegment, type RecognisedChunk } from '@/domain/transcript';
+import { LevelNormaliser, atFullLevel } from '@/domain/levelNormalise';
+import { buildSegment, spanVerdict, type RecognisedChunk, type SpanEvidence, type TranscriptSegment } from '@/domain/transcript';
+import { settingsFromProbe, type EngineProbe } from '@/domain/transcriptSettings';
 import {
   MODEL_RUNTIME,
   filesFor,
@@ -45,7 +47,8 @@ import {
 import { AudioFeedError, openAudio, streamMono16k } from './audioFeed';
 import { EngineError, type EngineSink } from './engine.types';
 import { readModelFile } from './modelStore';
-import type { TranscribeStats } from './protocol';
+import type { AttemptTrace, SpanTrace, TranscribeStats } from './protocol';
+import { SlidingAudio } from './slidingAudio';
 
 /** The library reads model files from this made-up host; nothing is ever sent to it. */
 const STORE_HOST = 'https://clip-model-store.invalid/';
@@ -88,6 +91,7 @@ interface WhisperOutput {
 interface Transcriber {
   (samples: Float32Array, options: Record<string, unknown>): Promise<WhisperOutput>;
   model: { generation_config: { eos_token_id: number | number[] } };
+  tokenizer: { decode(ids: number[]): string };
   dispose(): Promise<unknown>;
 }
 
@@ -151,9 +155,11 @@ export async function transcribeFile(
   model: TranscriptModelId,
   manifest: ModelManifest,
   sink: EngineSink,
+  probe?: EngineProbe,
 ): Promise<TranscribeStats> {
   const started = performance.now();
   const runtime = MODEL_RUNTIME[model];
+  const settings = settingsFromProbe(probe);
 
   // ---- the sound first: a video without sound needs no model at all
   let audio;
@@ -240,8 +246,7 @@ export async function transcribeFile(
       state = out.stateN;
       probs.push(out.output.data[0] as number);
     };
-    sink.progress({ phase: 'listening', doneUs: 0, totalUs });
-    const totalSamples = await streamMono16k(audio.track, async (samples) => {
+    const hear = async (samples: Float32Array) => {
       let at = 0;
       while (at < samples.length) {
         const take = Math.min(VAD_HOP - hopFill, samples.length - at);
@@ -253,6 +258,13 @@ export async function transcribeFile(
           hopFill = 0;
         }
       }
+    };
+    // The detector hears a level-normalised copy (quiet speech after loud sound is not skipped);
+    // what the recogniser is given later is cut from the sound as decoded.
+    const leveller = settings.level ? new LevelNormaliser(VAD_SAMPLE_RATE, settings.level) : null;
+    sink.progress({ phase: 'listening', doneUs: 0, totalUs });
+    const totalSamples = await streamMono16k(audio.track, async (samples) => {
+      await hear(leveller ? leveller.push(samples) : samples);
       const now = performance.now();
       if (now - lastPost >= PROGRESS_INTERVAL_MS) {
         lastPost = now;
@@ -260,9 +272,10 @@ export async function transcribeFile(
         sink.progress({ phase: 'listening', doneUs: Math.min(doneUs, totalUs || doneUs), totalUs: totalUs || doneUs });
       }
     });
+    if (leveller) await hear(leveller.flush());
     const audioS = totalSamples / VAD_SAMPLE_RATE;
     const audioUs = Math.round(audioS * US_PER_SECOND);
-    const spans = spansFromProbs(probs, VAD_FRAME_S, audioS);
+    const spans = spansFromProbs(probs, VAD_FRAME_S, audioS, settings.vad);
     const pieces = splitLongSpans(spans, (from, to) => quietestFrameTime(probs, VAD_FRAME_S, from, to)).filter(
       (piece) => Math.round(piece.end * VAD_SAMPLE_RATE) - Math.round(piece.start * VAD_SAMPLE_RATE) >= MIN_SPAN_SAMPLES,
     );
@@ -285,6 +298,8 @@ export async function transcribeFile(
       lastLen = 0;
       sum = 0;
       count = 0;
+      ids: number[] = [];
+      logprobs: number[] = [];
       account(token: number): void {
         const data = this.pending;
         if (!data) return;
@@ -296,6 +311,8 @@ export async function transcribeFile(
         if (Number.isFinite(logProb)) {
           this.sum += logProb;
           this.count += 1;
+          this.ids.push(token);
+          this.logprobs.push(logProb);
         }
         this.pending = null;
       }
@@ -315,17 +332,20 @@ export async function transcribeFile(
     }
 
     const speaker = transcriber;
-    let spansDone = 0;
-    let unclearSpans = 0;
-    let speechUs = 0;
-    const recognise = async (span: SpeechSpan, samples: Float32Array) => {
+    interface Heard {
+      chunks: RecognisedChunk[];
+      evidence: SpanEvidence;
+      tokens: { ids: number[]; logprobs: number[] };
+    }
+    /** One call of the recogniser on one stretch of sound. */
+    const recognise = async (samples: Float32Array): Promise<Heard> => {
       const recorder = new Recorder();
       // A fresh list every call: Whisper's generate() pushes its own processors onto the list it is given.
       const list = new tf.LogitsProcessorList();
       list.push(recorder);
       let out: WhisperOutput;
       try {
-        out = await speaker(samples, {
+        out = await speaker(settings.spanLevel ? atFullLevel(samples, VAD_SAMPLE_RATE) : samples, {
           language: 'en',
           task: 'transcribe',
           return_timestamps: 'word',
@@ -342,57 +362,168 @@ export async function transcribeFile(
         start: chunk.timestamp?.[0] ?? null,
         end: chunk.timestamp?.[1] ?? null,
       }));
-      const segment = buildSegment(
-        span,
+      const avgLogprob = recorder.finish();
+      return {
         chunks,
-        { text, avgLogprob: recorder.finish(), compressionRatio: await compressionRatio(text) },
-        runtime.timingOffset,
-      );
-      if (segment.state === 'unclear') unclearSpans += 1;
+        evidence: { text, avgLogprob, compressionRatio: await compressionRatio(text) },
+        tokens: { ids: recorder.ids, logprobs: recorder.logprobs },
+      };
+    };
+
+    /** The sound between the oldest sample still needed and the newest decoded. */
+    const sound = new SlidingAudio();
+    const labPads = (probe?.lab?.padS ?? []).filter((value) => Number.isFinite(value) && value > 0);
+    const reachSamples = Math.round(Math.max(0, ...labPads) * VAD_SAMPLE_RATE);
+    const trace: SpanTrace[] = [];
+    const tracing = probe?.trace === true;
+    const tokenText = (id: number): string => {
+      try {
+        return speaker.tokenizer.decode([id]);
+      } catch {
+        return '';
+      }
+    };
+    const traced = (kind: string, span: SpeechSpan, heard: Heard): AttemptTrace => ({
+      kind,
+      startS: span.start,
+      endS: span.end,
+      text: heard.evidence.text,
+      avgLogprob: heard.evidence.avgLogprob,
+      compressionRatio: heard.evidence.compressionRatio,
+      verdict: spanVerdict(heard.evidence),
+      words: heard.chunks.map((chunk) => ({ text: chunk.text, start: chunk.start, end: chunk.end })),
+      tokens: heard.tokens.ids.map((id, k) => ({ text: tokenText(id), logprob: Number((heard.tokens.logprobs[k] as number).toFixed(4)) })),
+    });
+    const cut = (span: SpeechSpan): Float32Array => {
+      const from = Math.max(0, Math.round(span.start * VAD_SAMPLE_RATE));
+      const to = Math.min(totalSamples, Math.round(span.end * VAD_SAMPLE_RATE));
+      const samples = sound.slice(from, to);
+      return samples.length > 0 ? samples : new Float32Array(1);
+    };
+    const unclearOver = (span: SpeechSpan): TranscriptSegment => {
+      const startUs = Math.round(span.start * US_PER_SECOND);
+      return { startUs, endUs: Math.max(startUs, Math.round(span.end * US_PER_SECOND)), state: 'unclear', words: [] };
+    };
+
+    let spansDone = 0;
+    let unclearSpans = 0;
+    let unclearUs = 0;
+    let speechUs = 0;
+    let secondLooks = 0;
+    let rescuedUs = 0;
+    const emit = (segment: TranscriptSegment) => {
+      if (segment.state === 'unclear') {
+        unclearSpans += 1;
+        unclearUs += segment.endUs - segment.startUs;
+      }
       speechUs += segment.endUs - segment.startUs;
-      spansDone += 1;
       sink.segment(segment);
+    };
+
+    /**
+     * A span the guard dropped, looked at again: cut in two at its quietest
+     * point, each half recognised and judged ON ITS OWN by the same guard. A
+     * half that passes is written; a half that does not stays
+     * "(anlaşılamadı)". Nothing is accepted on a weaker test than the first
+     * attempt's.
+     */
+    const lookAgain = async (span: SpeechSpan, depth: number, attempts: AttemptTrace[]): Promise<TranscriptSegment[]> => {
+      const rule = settings.secondLook;
+      if (!rule || depth >= rule.maxDepth || span.end - span.start < rule.splitMinS) return [unclearOver(span)];
+      const quarter = (span.end - span.start) / 4;
+      const at = quietestFrameTime(probs, VAD_FRAME_S, span.start + quarter, span.end - quarter);
+      if (!(at > span.start && at < span.end)) return [unclearOver(span)];
+      const out: TranscriptSegment[] = [];
+      for (const half of [
+        { start: span.start, end: at },
+        { start: at, end: span.end },
+      ]) {
+        if (Math.round((half.end - half.start) * VAD_SAMPLE_RATE) < MIN_SPAN_SAMPLES) {
+          out.push(unclearOver(half));
+          continue;
+        }
+        secondLooks += 1;
+        const heard = await recognise(cut(half));
+        if (tracing) attempts.push(traced(`look:${depth + 1}`, half, heard));
+        const segment = buildSegment(half, heard.chunks, heard.evidence, runtime.timingOffset);
+        if (segment.state === 'ok') {
+          rescuedUs += segment.endUs - segment.startUs;
+          out.push(segment);
+        } else {
+          out.push(...(await lookAgain(half, depth + 1, attempts)));
+        }
+      }
+      // Neighbouring halves that both stayed unclear are one unclear stretch again.
+      const joined: TranscriptSegment[] = [];
+      for (const segment of out) {
+        const last = joined[joined.length - 1];
+        if (last && last.state === 'unclear' && segment.state === 'unclear' && segment.startUs <= last.endUs) {
+          last.endUs = Math.max(last.endUs, segment.endUs);
+        } else {
+          joined.push(segment);
+        }
+      }
+      return joined;
+    };
+
+    /** Lab only: what other second attempts WOULD have said about a dropped span. Recorded, never used. */
+    const labAttempts = async (span: SpeechSpan, attempts: AttemptTrace[]) => {
+      for (const pad of labPads) {
+        const wide = { start: Math.max(0, span.start - pad), end: Math.min(audioS, span.end + pad) };
+        attempts.push(traced(`lab-pad:${pad}`, wide, await recognise(cut(wide))));
+      }
+      if (!probe?.lab?.split || settings.secondLook) return;
+      const walk = async (part: SpeechSpan, depth: number): Promise<void> => {
+        if (depth >= 2 || part.end - part.start < 2) return;
+        const quarter = (part.end - part.start) / 4;
+        const at = quietestFrameTime(probs, VAD_FRAME_S, part.start + quarter, part.end - quarter);
+        if (!(at > part.start && at < part.end)) return;
+        for (const half of [
+          { start: part.start, end: at },
+          { start: at, end: part.end },
+        ]) {
+          const again = await recognise(cut(half));
+          attempts.push(traced(`lab-split:${depth + 1}`, half, again));
+          if (spanVerdict(again.evidence) === 'unclear') await walk(half, depth + 1);
+        }
+      };
+      await walk(span, 0);
+    };
+
+    const handle = async (span: SpeechSpan) => {
+      const heard = await recognise(cut(span));
+      const attempts: AttemptTrace[] = tracing ? [traced('first', span, heard)] : [];
+      const segment = buildSegment(span, heard.chunks, heard.evidence, runtime.timingOffset);
+      if (segment.state === 'ok') {
+        emit(segment);
+      } else {
+        for (const part of await lookAgain(span, 0, attempts)) emit(part);
+        if (tracing && probe?.lab) await labAttempts(span, attempts);
+      }
+      if (tracing) trace.push({ startS: span.start, endS: span.end, attempts });
+      spansDone += 1;
       sink.progress({ phase: 'writing', spansDone, spansTotal: pieces.length });
     };
 
     sink.progress({ phase: 'writing', spansDone: 0, spansTotal: pieces.length });
     if (pieces.length > 0) {
       let index = 0;
-      const bounds = pieces.map((piece) => ({
-        from: Math.max(0, Math.round(piece.start * VAD_SAMPLE_RATE)),
-        to: Math.min(totalSamples, Math.round(piece.end * VAD_SAMPLE_RATE)),
-      }));
-      let buffer = new Float32Array(0);
-      let filled = 0;
-      const begin = () => {
-        const current = bounds[index];
-        buffer = current ? new Float32Array(Math.max(0, current.to - current.from)) : new Float32Array(0);
-        filled = 0;
-      };
-      begin();
-      await streamMono16k(audio.track, async (samples, first) => {
-        const last = first + samples.length;
-        while (index < pieces.length) {
-          const current = bounds[index] as { from: number; to: number };
-          if (last <= current.from) return;
-          const from = Math.max(first, current.from + filled);
-          const to = Math.min(last, current.to);
-          if (to > from) {
-            buffer.set(samples.subarray(from - first, to - first), from - current.from);
-            filled = to - current.from;
-          }
-          if (last < current.to) return;
-          await recognise(pieces[index] as SpeechSpan, buffer);
+      const startOf = (k: number) => Math.max(0, Math.round((pieces[k] as SpeechSpan).start * VAD_SAMPLE_RATE) - reachSamples);
+      const endOf = (k: number) => Math.min(totalSamples, Math.round((pieces[k] as SpeechSpan).end * VAD_SAMPLE_RATE) + reachSamples);
+      sound.dropBefore(startOf(0));
+      const work = async (atEnd: boolean) => {
+        while (index < pieces.length && (atEnd || sound.end >= endOf(index))) {
+          await handle(pieces[index] as SpeechSpan);
           index += 1;
-          begin();
+          sound.dropBefore(index < pieces.length ? startOf(index) : sound.end);
         }
+      };
+      await streamMono16k(audio.track, async (samples, first) => {
+        sound.append(samples, first);
+        await work(false);
       });
       // The second decode came up short of the first (it should not): what was collected is still recognised.
-      while (index < pieces.length) {
-        await recognise(pieces[index] as SpeechSpan, buffer.subarray(0, Math.max(filled, 1)));
-        index += 1;
-        begin();
-      }
+      await work(true);
     }
     const writeMs = performance.now() - writeStart;
 
@@ -403,10 +534,14 @@ export async function transcribeFile(
       speechUs,
       spans: pieces.length,
       unclearSpans,
+      unclearUs,
+      secondLooks,
+      rescuedUs,
       loadMs: Math.round(loadMs),
       listenMs: Math.round(listenMs),
       writeMs: Math.round(writeMs),
       totalMs: Math.round(performance.now() - started),
+      ...(tracing ? { trace: { settings, probs: probs.map((value) => Number(value.toFixed(3))), spans: trace } } : {}),
     };
   } catch (error) {
     if (error instanceof EngineError) throw error;

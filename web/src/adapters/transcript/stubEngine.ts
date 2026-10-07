@@ -62,6 +62,11 @@ export async function runStubTranscription(
     speechUs: script.segments.reduce((sum, segment) => sum + (segment.endUs - segment.startUs), 0),
     spans: script.segments.length,
     unclearSpans: script.segments.filter((segment) => segment.state === 'unclear').length,
+    unclearUs: script.segments
+      .filter((segment) => segment.state === 'unclear')
+      .reduce((sum, segment) => sum + (segment.endUs - segment.startUs), 0),
+    secondLooks: 0,
+    rescuedUs: 0,
     loadMs: 0,
     listenMs: 0,
     writeMs: 0,

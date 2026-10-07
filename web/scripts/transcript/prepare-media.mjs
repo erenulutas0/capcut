@@ -77,6 +77,27 @@ for (const clip of english.clips) {
   });
   console.log(`prepare-media: ${file}`);
 }
+// The realistic set of 7 Oct 2026 (conversation, calls, loudness steps, music next to speech), when it has been built.
+if (existsSync(join(speechDir, 'manifest-real.json'))) {
+  const real = JSON.parse(readFileSync(join(speechDir, 'manifest-real.json'), 'utf8'));
+  for (const clip of real.clips) {
+    const file = `${clip.id}.mp4`;
+    wrap(join(speechDir, clip.file), join(outDir, file));
+    clips.push({
+      id: clip.id,
+      set: clip.set,
+      kind: clip.kind,
+      file,
+      durationS: clip.durationS,
+      reference: referenceText(clip.reference),
+      words: clip.words ?? null,
+      gaps: clip.gaps ?? null,
+      levels: clip.levels ?? null,
+      note: clip.note ?? clip.label ?? null,
+    });
+    console.log(`prepare-media: ${file}`);
+  }
+}
 // The September short set (FLEURS sentences), kept for continuity with both spikes.
 for (const id of ['en-01', 'en-02', 'en-03', 'en-04', 'en-05', 'en-06', 'noisy-04']) {
   const clip = september.clips.find((item) => item.id === id);

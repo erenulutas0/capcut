@@ -19,6 +19,12 @@
  *
  * Options: --clips=a,b  --sets=…  --browser=chromium|chrome|msedge|firefox
  *          --model=base|turbo  --path=/yap/yazi/  --headed  --offline-after-model
+ *          --settings=2026-10-05   run the recogniser with the settings that shipped on that day
+ *                                  (the "before" column; `domain/transcriptSettings.ts`)
+ *          --override=<json>       individual settings over that
+ *          --trace                 keep what the guard saw for every span
+ *          --lab=<json>            lab attempts on dropped spans, recorded only ({'padS':[1],'split':true}; single quotes survive the shell)
+ *          --part=<n>              write app-<tag>.part<n>.json (several runs of one tag side by side)
  * Output: transcript-results/app-<tag>.json (gitignored). A finished clip is
  * never run again for the same tag.
  */
@@ -55,10 +61,19 @@ if (clips.length === 0) {
 
 const outDir = join(webDir, 'transcript-results');
 mkdirSync(outDir, { recursive: true });
-const outFile = join(outDir, `app-${tag}.json`);
+const part = arg('part', '');
+const outFile = join(outDir, `app-${tag}${part ? `.part${part}` : ''}.json`);
+// Shells eat double quotes on the way here: single quotes are accepted in their place.
+const json = (text) => JSON.parse(text.replace(/'/g, '"'));
+const probe = {
+  ...(arg('settings', '') ? { base: arg('settings', '') } : {}),
+  ...(arg('override', '') ? { settings: json(arg('override', '')) } : {}),
+  ...(flag('trace') || arg('lab', '') ? { trace: true } : {}),
+  ...(arg('lab', '') ? { lab: json(arg('lab', '')) } : {}),
+};
 const result = existsSync(outFile)
   ? JSON.parse(readFileSync(outFile, 'utf8'))
-  : { tag, base, browser: browserName, model, startedAt: new Date().toISOString(), machine: null, rows: [] };
+  : { tag, base, browser: browserName, model, probe, startedAt: new Date().toISOString(), machine: null, rows: [] };
 const save = () => writeFileSync(outFile, `${JSON.stringify(result, null, 1)}\n`);
 
 const launchOptions = {
@@ -99,13 +114,14 @@ function startMemorySampler(pid) {
 const cpuTimes = () => os.cpus().reduce((acc, cpu) => ({ idle: acc.idle + cpu.times.idle, total: acc.total + Object.values(cpu.times).reduce((a, b) => a + b, 0) }), { idle: 0, total: 0 });
 
 const page = await context.newPage();
-await page.addInitScript(() => {
+await page.addInitScript((asked) => {
   window.__clipTranscriptRuns = [];
+  if (Object.keys(asked).length > 0) window.__clipTranscriptProbe = asked;
   window.__clipCsp = [];
   document.addEventListener('securitypolicyviolation', (event) => {
     window.__clipCsp.push(`${event.effectiveDirective} blocked=${event.blockedURI}`);
   });
-});
+}, probe);
 const origin = new URL(base).origin;
 const outside = [];
 const modelRequests = [];
@@ -161,7 +177,8 @@ for (const clip of clips) {
     const cpu0 = cpuTimes();
     const t0 = Date.now();
     await page.locator('[data-testid="transcribe-start"]').click();
-    const timeout = Math.max(600_000, clip.durationS * 1000 * 3);
+    // Side-by-side runs and lab attempts are slower than a run on its own.
+    const timeout = Math.max(600_000, clip.durationS * 1000 * (flag('parallel') || arg('lab', '') ? 12 : 3));
     await page.waitForFunction(
       () => window.__clipTranscriptRuns.length > 0 || document.querySelector('[data-testid="transcribe-failed"]') !== null,
       null,
@@ -176,8 +193,10 @@ for (const clip of clips) {
     // A run that heard nothing still ran: its figures are kept ("nothing_heard" is the UI's word for an empty result).
     const run = await page.evaluate(() => window.__clipTranscriptRuns[0] ?? null);
     if (run) {
-      row.stats = run.stats;
+      const { trace, ...stats } = run.stats;
+      row.stats = stats;
       row.segments = run.segments;
+      if (trace) row.trace = trace;
     }
     if (failed) {
       row.failed = await page.locator('[data-testid="transcribe-failed"]').getAttribute('data-reason');
@@ -213,6 +232,8 @@ for (const clip of clips) {
       row.machineNote = await page.locator('[data-testid="transcript-machine-note"]').count();
     }
     row.wallMs = wallMs;
+    // Other browsers were transcribing at the same time: this row's speed and memory are not measurements.
+    if (flag('parallel')) row.parallel = true;
     row.rtf = wallMs / 1000 / clip.durationS;
     row.cpuBusy = 1 - (cpu1.idle - cpu0.idle) / Math.max(1, cpu1.total - cpu0.total);
     if (sampler) {

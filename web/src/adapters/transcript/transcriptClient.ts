@@ -8,6 +8,7 @@
 
 import type { TranscriptSegment } from '@/domain/transcript';
 import { MODEL_MANIFEST, isModelManifest, type ModelManifest, type TranscriptModelId } from '@/domain/transcriptModels';
+import type { EngineProbe } from '@/domain/transcriptSettings';
 import type { DownloadFailure, DownloadProgress } from './modelStore';
 import type {
   TranscribeFailure,
@@ -47,6 +48,21 @@ export function transcriptTestOptions(): TranscriptTestOptions | undefined {
 export function activeManifest(): ModelManifest {
   const test = transcriptTestOptions();
   return test?.manifest && isModelManifest(test.manifest) ? test.manifest : MODEL_MANIFEST;
+}
+
+/**
+ * Measurement instrumentation, inert in normal use: a measuring script that
+ * has defined the `__clipTranscriptRuns` array before the page loads may
+ * also define `__clipTranscriptProbe` to run the recogniser with an older
+ * named set of settings (the "before" column of a before/after table) or to
+ * get back what the guard saw. Without the runs array this is never read:
+ * the app itself always runs the shipped settings.
+ */
+function measuringProbe(): EngineProbe | undefined {
+  const scope = globalThis as { __clipTranscriptRuns?: unknown; __clipTranscriptProbe?: unknown };
+  if (!Array.isArray(scope.__clipTranscriptRuns)) return undefined;
+  const probe = scope.__clipTranscriptProbe;
+  return typeof probe === 'object' && probe !== null ? (probe as EngineProbe) : undefined;
 }
 
 function createWorker(): Worker {
@@ -120,9 +136,10 @@ export class TranscriptClient {
     onProgress: (progress: TranscribeProgress) => void,
   ): Promise<TranscribeOutcome> {
     const test = transcriptTestOptions();
+    const probe = measuringProbe();
     const segments: TranscriptSegment[] = [];
     return this.run<TranscribeOutcome>(
-      (requestId) => ({ type: 'transcribe', requestId, model, file, ...(test ? { test } : {}) }),
+      (requestId) => ({ type: 'transcribe', requestId, model, file, ...(test ? { test } : {}), ...(probe ? { probe } : {}) }),
       (data, finish) => {
         if (data.type === 'progress') {
           onProgress(data.progress);

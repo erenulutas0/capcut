@@ -58,7 +58,7 @@ async function transcribe(request: Extract<TranscriptWorkerRequest, { type: 'tra
       return;
     }
     const { transcribeFile } = await import('./engine');
-    const stats = await transcribeFile(request.file, request.model, manifestFor(request.test), sink);
+    const stats = await transcribeFile(request.file, request.model, manifestFor(request.test), sink, request.probe);
     post({ type: 'done', requestId, stats });
     return;
   } catch (error) {
