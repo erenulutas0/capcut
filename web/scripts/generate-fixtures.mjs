@@ -65,7 +65,7 @@ const cue = (cueId, inS, outS, text) => ({
 });
 
 const project = (patch = {}) => ({
-  schemaVersion: 3,
+  schemaVersion: 4,
   projectId: 'p_fixture_001',
   revision: 1,
   assets: [videoAsset],
@@ -78,7 +78,7 @@ const project = (patch = {}) => ({
 
 /** The canonical doc-10 example: two ranges -> 10 s, music 5-15 s. */
 const docExample = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   projectId: 'p_example_001',
   revision: 3,
   assets: [videoAsset, musicAsset],
@@ -199,6 +199,13 @@ const valid = {
       }),
     ],
   }),
+  // v4 (ADR-037): "İyileştir" for every download, at one of three strengths.
+  'enhance-auto': project({ enhance: { strength: 'auto' } }),
+  'enhance-light-with-music': { ...docExample, enhance: { strength: 'light' } },
+  'enhance-strong-with-captions': project({
+    captionTracks: [captionTrack([cue('q_001', 0, 2, 'Daha net')])],
+    enhance: { strength: 'strong' },
+  }),
 };
 
 const invalid = {
@@ -296,7 +303,11 @@ const invalid = {
     }),
     ['asset_kind_mismatch'],
   ],
-  'future-schema': [project({ schemaVersion: 4 }), ['schema_version_unsupported']],
+  'future-schema': [project({ schemaVersion: 5 }), ['schema_version_unsupported']],
+  // v4 (ADR-037): the enhancement setting is `{ strength }` with a known strength, nothing else.
+  'enhance-unknown-strength': [project({ enhance: { strength: 'max' } }), ['enhance_invalid']],
+  'enhance-unknown-field': [project({ enhance: { strength: 'auto', sharpen: 2 } }), ['unknown_field']],
+  'enhance-not-an-object': [project({ enhance: 'auto' }), ['not_an_object']],
   'missing-caption-tracks': [
     (() => {
       const { captionTracks: _drop, ...rest } = project();
@@ -433,8 +444,9 @@ mkdirSync(join(root, 'valid'), { recursive: true });
 mkdirSync(join(root, 'invalid'), { recursive: true });
 mkdirSync(join(root, 'legacy-v1'), { recursive: true });
 mkdirSync(join(root, 'legacy-v2'), { recursive: true });
+mkdirSync(join(root, 'legacy-v3'), { recursive: true });
 
-const manifest = { schemaVersion: 3, valid: [], invalid: [], legacy: [] };
+const manifest = { schemaVersion: 4, valid: [], invalid: [], legacy: [] };
 
 // Valid recipes the export refuses as they are (ADR-021): the reason the
 // render plan gives. Every other valid fixture is not checked for export here.
@@ -486,6 +498,22 @@ const legacyV2 = {
 for (const [name, [value, expect]] of Object.entries(legacyV2)) {
   writeFileSync(join(root, 'legacy-v2', `${name}.json`), `${JSON.stringify(value, null, 2)}${LF}`);
   manifest.legacy.push({ file: `legacy-v2/${name}.json`, expect });
+}
+
+// v3 recipes (ADR-036), as every build before ADR-037 wrote them. v4 only
+// adds the optional `enhance` setting, so migration changes the number and
+// nothing else.
+const asV3 = (value) => ({ ...value, schemaVersion: 3 });
+const legacyV3 = {
+  'single-clip': [asV3(project()), 'valid'],
+  'doc10-example': [asV3(docExample), 'valid'],
+  'caption-transcript-unclear': [asV3(valid['caption-transcript-unclear']), 'valid'],
+  // A "v3" that carries the v4 field is not something any build wrote.
+  'v3-with-enhance': [asV3(project({ enhance: { strength: 'auto' } })), 'invalid'],
+};
+for (const [name, [value, expect]] of Object.entries(legacyV3)) {
+  writeFileSync(join(root, 'legacy-v3', `${name}.json`), `${JSON.stringify(value, null, 2)}${LF}`);
+  manifest.legacy.push({ file: `legacy-v3/${name}.json`, expect });
 }
 
 for (const [name, [value, codes]] of Object.entries(invalid)) {

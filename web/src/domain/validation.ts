@@ -12,6 +12,7 @@
 import {
   ASPECT_RATIOS,
   EDL_SCHEMA_VERSION,
+  ENHANCE_STRENGTHS_V4,
   PROJECT_TOP_LEVEL_KEYS,
   type AssetV1,
   type ClipV1,
@@ -71,7 +72,8 @@ export type IssueCode =
   | 'caption_id_duplicate'
   | 'caption_text_invalid'
   | 'caption_cue_too_short'
-  | 'caption_cue_overlap';
+  | 'caption_cue_overlap'
+  | 'enhance_invalid';
 
 export interface ValidationIssue {
   code: IssueCode;
@@ -683,6 +685,18 @@ function validateExportSpec(bag: IssueBag, raw: unknown): void {
   }
 }
 
+/** v4 (ADR-037): `{ strength }`, one of the three known strengths; nothing else. */
+function validateEnhance(bag: IssueBag, raw: unknown): void {
+  if (!isPlainObject(raw)) {
+    bag.add('not_an_object', 'enhance', 'enhance bir nesne olmalı.');
+    return;
+  }
+  checkUnknownFields(bag, raw, ['strength'], 'enhance');
+  if (typeof raw.strength !== 'string' || !(ENHANCE_STRENGTHS_V4 as readonly string[]).includes(raw.strength)) {
+    bag.add('enhance_invalid', 'enhance.strength', `Yalnızca ${ENHANCE_STRENGTHS_V4.join(', ')} destekleniyor.`);
+  }
+}
+
 /** Sum of clip durations; there are no transitions or speed changes (doc 09). */
 function sumClipDurations(clips: unknown): number {
   if (!Array.isArray(clips)) return 0;
@@ -767,6 +781,7 @@ export function validateProject(
   }
 
   validateCaptionTracks(bag, input.captionTracks, assets);
+  if (input.enhance !== undefined) validateEnhance(bag, input.enhance);
 
   if (!bag.ok) {
     return { ok: false, issues: bag.issues };

@@ -446,7 +446,7 @@ test.describe('captions on a phone', () => {
     for await (const chunk of stream) chunks.push(chunk as Buffer);
     const record = JSON.parse(Buffer.concat(chunks).toString('utf8'));
 
-    expect(record.edl.schemaVersion).toBe(3);
+    expect(record.edl.schemaVersion).toBe(4);
     expect(record.edl.captionTracks).toHaveLength(1);
     expect(record.edl.captionTracks[0].timeBase).toBe('source');
     expect(record.edl.captionTracks[0].style).toEqual({

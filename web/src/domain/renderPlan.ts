@@ -18,6 +18,7 @@ import {
   type Project,
 } from './edl';
 import { outputCues, primaryCaptionTrack } from './captions';
+import { ENHANCE_ENGINE_VERSION, type EnhanceStrength } from './enhance';
 import type { ExportPolicy } from './policy';
 import { totalOutputDurationUs } from './timeline';
 import { cropPixels, type CropRect } from './transform';
@@ -86,6 +87,15 @@ export interface RenderCaptionPlan {
   cues: RenderCaption[];
 }
 
+/**
+ * "İyileştir" (ADR-037): the picture is cleaned up at this strength. What is
+ * done to each frame is decided by the engine from the video itself
+ * (`domain/enhance.ts`); the plan only carries the request.
+ */
+export interface RenderEnhancePlan {
+  strength: EnhanceStrength;
+}
+
 export interface RenderPlan {
   planVersion: typeof RENDER_PLAN_VERSION;
   engineId: string;
@@ -110,6 +120,8 @@ export interface RenderPlan {
   audio: RenderAudioPlan;
   /** Null when the project has no caption line inside the output. */
   captions: RenderCaptionPlan | null;
+  /** Null when the picture is not enhanced (the default). */
+  enhance: RenderEnhancePlan | null;
 }
 
 export type PlanRejection =
@@ -232,6 +244,7 @@ export function compileRenderPlan(project: Project, policy: ExportPolicy): PlanR
   };
 
   const captions = captionPlan(project, totalFrames, fpsNum, fpsDen);
+  const enhance: RenderEnhancePlan | null = project.enhance ? { strength: project.enhance.strength } : null;
 
   const body = JSON.stringify({
     v: RENDER_PLAN_VERSION,
@@ -258,6 +271,8 @@ export function compileRenderPlan(project: Project, policy: ExportPolicy): PlanR
     ]),
     audio,
     captions,
+    // Only present when asked for, so every plan without it keeps the fingerprint it always had.
+    ...(enhance ? { enhance: [enhance.strength, ENHANCE_ENGINE_VERSION] } : {}),
   });
 
   return {
@@ -283,6 +298,7 @@ export function compileRenderPlan(project: Project, policy: ExportPolicy): PlanR
       segments,
       audio,
       captions,
+      enhance,
     },
   };
 }
@@ -312,6 +328,23 @@ function captionPlan(
   }
   if (cues.length === 0) return null;
   return { language: track.language, style: { ...track.style }, cues };
+}
+
+/**
+ * Where a moment's picture lands in the output frame, in output pixels (not
+ * rounded): the whole frame for "Doldur", the centred rectangle for "Sığdır"
+ * (the rest is the background). The export draws into exactly this rectangle
+ * and the enhancement leaves everything outside it alone.
+ */
+export function segmentDrawRect(
+  segment: Pick<RenderSegment, 'crop' | 'fit'>,
+  plan: Pick<RenderPlan, 'width' | 'height'>,
+): { x: number; y: number; width: number; height: number } {
+  if (segment.fit === 'cover') return { x: 0, y: 0, width: plan.width, height: plan.height };
+  const scale = Math.min(plan.width / segment.crop.width, plan.height / segment.crop.height);
+  const width = segment.crop.width * scale;
+  const height = segment.crop.height * scale;
+  return { x: (plan.width - width) / 2, y: (plan.height - height) / 2, width, height };
 }
 
 /** Source timestamp (seconds) to sample for a given output frame. */
