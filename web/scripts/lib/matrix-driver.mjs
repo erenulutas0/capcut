@@ -5,6 +5,7 @@
  * (a user's own recordings) must exercise exactly the same code paths, so the
  * driving and the assessment live here once.
  */
+import { spawnSync } from 'node:child_process';
 import { statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,6 +39,10 @@ import {
   ssim,
 } from './media-measure.mjs';
 import { referenceIdentity } from './frame-identity.mjs';
+
+/** Runs ffmpeg / ffprobe and hands back what it printed (text unless `encoding: 'buffer'`). */
+const tool = (command, args, options = {}) =>
+  spawnSync(command, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...options });
 
 /** 'mm:ss.mmm' (the moment fields' format) to microseconds. */
 function clockToUs(text) {
@@ -292,6 +297,9 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     if (setup.anchoredCaptions) {
       return driveAnchoredCaptionExports(page, testCase, artefactPath, { momentCount, editorDisplaySize, notes });
     }
+    if (setup.enhance) {
+      return driveEnhanceExports(page, testCase, artefactPath, { momentCount, editorDisplaySize, notes });
+    }
 
     const outcome = await exportOnce(page, setup, artefactPath, notes);
     return { ...outcome, momentCount, editorDisplaySize, relinked, notes };
@@ -391,6 +399,20 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
         text: ((await targetLine.textContent()) ?? '').trim(),
       };
     }
+    // ADR-037: what the app says "İyileştir" did.
+    const enhanceLine = succeeded.locator('[data-testid="export-enhance"]');
+    if ((await enhanceLine.count()) > 0) {
+      reported.enhance = {
+        strength: await enhanceLine.getAttribute('data-strength'),
+        engine: await enhanceLine.getAttribute('data-engine'),
+        light: await enhanceLine.getAttribute('data-light'),
+        nothing: (await enhanceLine.getAttribute('data-nothing')) === 'true',
+        analysedFrames: Number(await enhanceLine.getAttribute('data-analysed-frames')),
+        enhancedFrames: Number(await enhanceLine.getAttribute('data-enhanced-frames')),
+        text: ((await enhanceLine.textContent()) ?? '').trim(),
+      };
+    }
+    reported.methodText = (await method.count()) > 0 ? ((await method.textContent()) ?? '').trim() : null;
     // Held frames are an honest partial result, and must show up in reports.
     const held = succeeded.locator('[data-testid="measured-frames-missing"]');
     if ((await held.count()) > 0) {
@@ -406,6 +428,45 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
     await page.getByTestId('download-dismiss').first().click().catch(() => undefined);
 
     return { exported: true, gate: { passed: true }, reported };
+  }
+
+  /* ------------------------------------------------------------ İyileştir */
+
+  /** Sets Ayarlar → Görüntü → "Görüntüyü iyileştir" ('off' | 'light' | 'auto' | 'strong'). */
+  async function setEnhance(page, value) {
+    await page.getByTestId('open-settings').click();
+    await page.getByTestId('inspector-tab-frame').click();
+    await page.getByTestId('enhance-strength').selectOption(value);
+    await page.keyboard.press('Escape');
+  }
+
+  /**
+   * ADR-037: the same edit downloaded twice through the editor's own button —
+   * plain, as a full encode (the test hook `__clipExportMode`, so both files
+   * come out of the same encoder), then with "İyileştir" switched on in
+   * Ayarlar. The enhanced file is the case's artefact; the plain one is kept
+   * next to it for the comparison.
+   */
+  async function driveEnhanceExports(page, testCase, artefactPath, base) {
+    const setup = testCase.setup;
+    const { notes } = base;
+    const plainPath = artefactPath.replace(/\.mp4$/, '-plain.mp4');
+
+    await page.evaluate(() => {
+      window.__clipExportMode = 'encode';
+    });
+    const plain = await exportOnce(page, setup, plainPath, notes);
+    await page.evaluate(() => {
+      window.__clipExportMode = undefined;
+    });
+    if (!plain.exported) return { ...plain, ...base };
+
+    await setEnhance(page, setup.enhance);
+    const enhanced = await exportOnce(page, setup, artefactPath, notes);
+    // The setting is part of the stored project; leave the editor as the next case expects it.
+    await setEnhance(page, 'off').catch(() => undefined);
+    if (!enhanced.exported) return { ...enhanced, ...base };
+    return { ...enhanced, enhancePlain: { path: plainPath, reported: plain.reported }, ...base };
   }
 
   /* ------------------------------------------------------------- captions */
@@ -916,6 +977,114 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
         w === want.editorDisplaySize[0] && h === want.editorDisplaySize[1],
         `okunan ${w}x${h}`,
       );
+    }
+
+    // --- İyileştir (ADR-037): the enhanced file against the plain one from the same browser ---
+    if (want.enhanced) {
+      const said = driveResult.reported?.enhance ?? null;
+      const plain = driveResult.enhancePlain ?? null;
+      measured.enhance = said;
+      add(
+        'yöntem satırı görüntünün yeniden işlendiğini ve nedenini söylüyor',
+        measured.method === 'encode' && measured.fallbackReason === 'enhance' && /iyileştirme/.test(driveResult.reported?.methodText ?? ''),
+        `${driveResult.reported?.methodText ?? '—'}`,
+      );
+      add(
+        `uygulama iyileştirmeyi bildirdi (${want.enhanced.strength}, ışık: ${want.enhanced.light})`,
+        said !== null && said.strength === want.enhanced.strength && said.light === want.enhanced.light && !said.nothing,
+        said ? `${said.text} [${said.engine}, bakılan kare ${said.analysedFrames}]` : 'iyileştirme satırı yok',
+      );
+      add(
+        'her kare iyileştirildi',
+        said !== null && said.enhancedFrames === measured.frames,
+        `iyileştirilen ${said?.enhancedFrames ?? '—'} / ${measured.frames}`,
+      );
+      add('düz çıktıda iyileştirme satırı yok', plain !== null && !plain.reported?.enhance, plain?.reported?.method ?? '—');
+      try {
+        const plainProbe = plain ? ffprobeJson(plain.path) : null;
+        const plainVideo = plainProbe?.streams.find((s) => s.codec_type === 'video');
+        const plainAudio = plainProbe?.streams.find((s) => s.codec_type === 'audio');
+        add(
+          'kare sayısı ve süre düz çıktıyla birebir',
+          plainVideo !== undefined && Number(plainVideo.nb_frames) === measured.frames && plainVideo.duration === video?.duration,
+          `düz ${plainVideo?.nb_frames} kare / ${plainVideo?.duration} s, iyileştirilmiş ${measured.frames} kare / ${video?.duration} s`,
+        );
+        // Presentation times, frame by frame: the enhancement must not move a single one.
+        const times = (file) =>
+          tool('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'packet=pts_time', '-of', 'csv=p=0', file])
+            .stdout.split(/\r?\n/).filter(Boolean).map(Number).sort((a, b) => a - b).join(',');
+        add('kare zamanları düz çıktıyla birebir', plain !== null && times(plain.path) === times(artefactPath));
+        const tags = (stream) => [stream?.pix_fmt, stream?.color_range, stream?.color_space, stream?.color_transfer, stream?.color_primaries].join(' / ');
+        measured.colorTags = { plain: tags(plainVideo), enhanced: tags(video) };
+        add('renk etiketleri (aralık, matris) düz çıktıyla aynı', tags(plainVideo) === tags(video), `düz ${tags(plainVideo)}; iyileştirilmiş ${tags(video)}`);
+        // The sound never goes near the picture path: decoded, it is the same samples.
+        const audioMd5 = (file) => tool('ffmpeg', ['-v', 'error', '-i', file, '-map', '0:a:0', '-f', 'md5', '-']).stdout.trim();
+        add(
+          'ses düz çıktıyla aynı (çözülmüş örnekler birebir)',
+          plain !== null && audioMd5(plain.path) !== '' && audioMd5(plain.path) === audioMd5(artefactPath),
+          `${plainAudio?.codec_name ?? '—'} ${plainAudio?.duration ?? '—'} s / ${audio?.codec_name ?? '—'} ${audio?.duration ?? '—'} s`,
+        );
+
+        // The picture, frame by frame, on small RGB frames ffmpeg converts with each file's own tags.
+        const frameWidth = 64;
+        const frameHeight = 36;
+        const grays = (file) => {
+          const raw = tool('ffmpeg', ['-v', 'error', '-i', file, '-vf', `scale=${frameWidth}:${frameHeight}:flags=area`, '-pix_fmt', 'gray', '-f', 'rawvideo', '-'], { encoding: 'buffer', maxBuffer: 256 * 1024 * 1024 }).stdout;
+          const size = frameWidth * frameHeight;
+          const out = [];
+          for (let start = 0; start + size <= raw.length; start += size) out.push(raw.subarray(start, start + size));
+          return out;
+        };
+        const enhancedFrames = grays(artefactPath);
+        const plainFrames = plain ? grays(plain.path) : [];
+        const meanOf = (frame) => frame.reduce((sum, value) => sum + value, 0) / frame.length;
+        const correlation = (a, b) => {
+          const ma = meanOf(a);
+          const mb = meanOf(b);
+          let cov = 0;
+          let va = 0;
+          let vb = 0;
+          for (let i = 0; i < a.length; i += 1) {
+            cov += (a[i] - ma) * (b[i] - mb);
+            va += (a[i] - ma) ** 2;
+            vb += (b[i] - mb) ** 2;
+          }
+          return va > 0 && vb > 0 ? cov / Math.sqrt(va * vb) : 0;
+        };
+        let leastGain = Number.POSITIVE_INFINITY;
+        let leastCorrelation = Number.POSITIVE_INFINITY;
+        let darkest = Number.POSITIVE_INFINITY;
+        let largestStep = 0;
+        for (let index = 0; index < enhancedFrames.length && index < plainFrames.length; index += 1) {
+          const lumaEnhanced = meanOf(enhancedFrames[index]);
+          leastGain = Math.min(leastGain, lumaEnhanced - meanOf(plainFrames[index]));
+          leastCorrelation = Math.min(leastCorrelation, correlation(enhancedFrames[index], plainFrames[index]));
+          darkest = Math.min(darkest, lumaEnhanced);
+          if (index > 0) largestStep = Math.max(largestStep, Math.abs(lumaEnhanced - meanOf(enhancedFrames[index - 1])));
+        }
+        measured.enhancePicture = {
+          frames: enhancedFrames.length,
+          leastLumaGain: Number(leastGain.toFixed(2)),
+          leastCorrelation: Number(leastCorrelation.toFixed(4)),
+          darkestFrameLuma: Number(darkest.toFixed(2)),
+          largestFrameToFrameLumaStep: Number(largestStep.toFixed(2)),
+        };
+        add(
+          `her kare düz çıktıdakinden aydınlık (ortalama luma en az +${want.enhanced.minLumaGain})`,
+          enhancedFrames.length === plainFrames.length && leastGain >= want.enhanced.minLumaGain,
+          `en az artış ${leastGain.toFixed(1)}; ${enhancedFrames.length} / ${plainFrames.length} kare`,
+        );
+        add(
+          `her kare düz çıktıdakiyle aynı resim (korelasyon ≥ ${want.enhanced.minCorrelation})`,
+          leastCorrelation >= want.enhanced.minCorrelation,
+          `en düşük ${leastCorrelation.toFixed(4)}`,
+        );
+        const black = blackFrames(artefactPath);
+        add('siyah ya da bozuk kare yok', black.length === 0 && darkest > 30, `en karanlık kare luma ${darkest.toFixed(1)}; siyah kare ${black.length}`);
+        add('parlaklık kareden kareye sıçramıyor', largestStep < 6, `en büyük kare-kare fark ${largestStep.toFixed(2)}`);
+      } catch (error) {
+        add('iyileştirme karşılaştırması', false, String(error).slice(0, 200));
+      }
     }
 
     // --- picture ------------------------------------------------------------

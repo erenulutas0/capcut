@@ -1,5 +1,5 @@
 /**
- * Generates the doc 22 media matrix (M01-M16) as real local files.
+ * Generates the doc 22 media matrix (M01-M16, and the later rows' own files) as real local files.
  *
  * Everything is synthesised with ffmpeg: no downloads, no copyrighted content,
  * no user media. The files are large-ish and reproducible, so they are NOT
@@ -204,6 +204,26 @@ if (wanted('M13')) {
   closeSync(fd);
   rmSync(clip, { force: true });
   record('M13', 'm13-oversize-4gib.mp4', '4 s 720p clip + free boxes, intentionally over 4 GiB');
+}
+
+// M23 — "İyileştir" (ADR-037). The test patterns above are flat graphics, which the enhancement
+// leaves alone on purpose; this is a continuous-tone picture that measures like camera footage
+// (fractal noise over soft colour gradients, a grid, a dark and a bright box, a little grain),
+// about two stops underexposed, tagged bt709 limited range. Generated, not filmed.
+if (wanted('M23')) {
+  ff(['-f', 'lavfi', '-i', 'perlin=s=1280x720:r=30:octaves=6:persistence=0.65:xscale=6:yscale=6:tscale=0.4:random_seed=7',
+      '-f', 'lavfi', '-i', 'gradients=s=1280x720:r=30:c0=0x5a6f8f:c1=0xc9b89a:c2=0x6f8f6a:c3=0x9a7070:n=4:speed=0.01:seed=3',
+      ...toneIn(440, 6),
+      '-filter_complex',
+      '[0:v]format=gbrp[n];[1:v]format=gbrp[g];[n][g]blend=all_mode=overlay,eq=contrast=1.3,' +
+        'drawgrid=w=320:h=240:t=3:c=white@0.55,drawbox=x=120:y=100:w=180:h=120:c=black@0.75:t=fill,' +
+        'drawbox=x=840:y=420:w=240:h=160:c=white@0.8:t=fill,noise=alls=4:allf=t,' +
+        "lutrgb=r='val*0.5':g='val*0.5':b='val*0.5',scale=out_color_matrix=bt709:out_range=tv,format=yuv420p[v]",
+      '-map', '[v]', '-map', '2:a', '-t', '6',
+      '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-preset', 'veryfast', '-crf', '18', '-g', '30',
+      '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv',
+      ...AAC, '-shortest', p('m23-dark-natural.mp4')], 'M23');
+  record('M23', 'm23-dark-natural.mp4', '1280x720 camera-like synthetic picture, about two stops underexposed, bt709');
 }
 
 // L01 — dense 1080p content for memory measurements.

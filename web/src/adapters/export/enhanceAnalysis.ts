@@ -14,7 +14,14 @@
 
 import { VideoSampleSink, type InputVideoTrack, type VideoSample } from 'mediabunny';
 
-import { analysisFrames, measureFrame, type AnalysisPoint, type PictureRect } from '@/domain/enhance';
+import {
+  REFINE_BUDGET,
+  analysisFrames,
+  frameToRefine,
+  measureFrame,
+  type AnalysisPoint,
+  type PictureRect,
+} from '@/domain/enhance';
 import { segmentDrawRect, sourceTimeForFrame, type RenderPlan, type RenderSegment } from '@/domain/renderPlan';
 import { pickFrames } from './framePicker';
 import { createHdrContext, softClippedImage } from './hdrCanvas';
@@ -82,9 +89,12 @@ export function analysisKey(plan: RenderPlan, file: { name: string; size: number
 
 export interface AnalysisResult {
   key: string;
+  /** Sorted by frame. */
   points: AnalysisPoint[];
   /** How many frames were asked for; fewer points means the decoder did not deliver some. */
   requested: number;
+  /** Frames looked at in addition, to find where the light changes. */
+  refined: number;
 }
 
 interface AnalyseOptions {
@@ -172,5 +182,32 @@ export async function analyseForEnhance(options: AnalyseOptions): Promise<Analys
     }
   }
 
-  return { key: options.key, points, requested: wanted.length };
+  // Where neighbouring analysed frames would be corrected differently, look in between
+  // (`frameToRefine`): a sudden change is narrowed down to the two frames it happens between.
+  points.sort((a, b) => a.frame - b.frame);
+  const failed = new Set<number>();
+  let refined = 0;
+  while (refined < REFINE_BUDGET) {
+    const frame = frameToRefine(points, failed);
+    if (frame === null) break;
+    checkCanceled();
+    const segment = plan.segments.find((item) => frame >= item.startFrame && frame < item.endFrame);
+    const before = points.length;
+    if (segment) {
+      const time = sourceTimeForFrame(segment, frame, plan.fpsNum, plan.fpsDen);
+      for await (const sample of sink.samplesAtTimestamps([time])) {
+        if (!sample) continue;
+        try {
+          if (!measure(sample, segment, frame)) return null;
+        } finally {
+          sample.close();
+        }
+      }
+    }
+    if (points.length === before) failed.add(frame);
+    else points.sort((a, b) => a.frame - b.frame);
+    refined += 1;
+  }
+
+  return { key: options.key, points, requested: wanted.length, refined };
 }

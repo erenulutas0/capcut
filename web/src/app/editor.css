@@ -3051,8 +3051,12 @@ input[type='range']:disabled::-webkit-slider-thumb {
   right: 8px;
 }
 
-/* The whole picture is the slider: the thumb is a hair wide, so the line sits exactly under the pointer. */
-.ba-range {
+/*
+ * The whole picture is the slider: the track fills it and the thumb is a
+ * hair wide, so the line sits exactly under the pointer. (Selectors carry
+ * the type so they outrank the editor's general range-input rules above.)
+ */
+input[type='range'].ba-range {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -3061,26 +3065,40 @@ input[type='range']:disabled::-webkit-slider-thumb {
   padding: 0;
   opacity: 0;
   cursor: ew-resize;
-  -webkit-appearance: none;
-  appearance: none;
   background: transparent;
   touch-action: pan-y;
 }
 
-.ba-range::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 2px;
-  height: 100vh;
-}
-
-.ba-range::-moz-range-thumb {
-  width: 2px;
-  height: 100vh;
+input[type='range'].ba-range::-webkit-slider-runnable-track {
+  height: 100%;
   border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
-.ba-range:disabled {
+input[type='range'].ba-range::-moz-range-track {
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+input[type='range'].ba-range::-webkit-slider-thumb {
+  width: 2px;
+  height: 100%;
+  margin-top: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+input[type='range'].ba-range::-moz-range-thumb {
+  width: 2px;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+
+input[type='range'].ba-range:disabled {
   cursor: default;
 }
 
@@ -3131,7 +3149,7 @@ input[type='range']:disabled::-webkit-slider-thumb {
   border-left-color: #111;
 }
 
-.ba-range:focus-visible + .ba-line .ba-handle {
+input[type='range'].ba-range:focus-visible + .ba-line .ba-handle {
   outline: 3px solid var(--accent);
   outline-offset: 3px;
 }

@@ -759,6 +759,64 @@ export function analysisFrames(
   return frames;
 }
 
+/** At most this many more frames are looked at to find where the light changes (see `frameToRefine`). */
+export const REFINE_BUDGET = 96;
+
+/**
+ * How differently two analysed frames would be corrected, in units of "just
+ * noticeable": below 1 the two corrections can be blended into each other
+ * without anyone seeing it. Judged at the strongest setting, so one look at
+ * the video serves all three.
+ */
+export function toneDistance(a: FrameStats, b: FrameStats, tuning: EnhanceTuning = ENHANCE_TUNING): number {
+  const first = chooseTone(a, 'strong', tuning);
+  const second = chooseTone(b, 'strong', tuning);
+  return Math.max(
+    Math.abs(Math.log(first.gain / second.gain)) / Math.log(1.12),
+    Math.abs(first.black - second.black) / 0.008,
+    Math.abs(first.gamma - second.gamma) / 0.04,
+  );
+}
+
+/**
+ * The next frame worth looking at, or null when the analysed frames are
+ * enough.
+ *
+ * Between two analysed frames the correction is blended from one to the
+ * other. Where the two would be corrected alike that is invisible. Where
+ * they would not — the light was switched off, the video cuts to another
+ * scene, the exposure swings — a blend over half a second would brighten the
+ * bright side before the change and leave the dark side dark after it. So
+ * the frame in the middle of the most different pair is looked at too, again
+ * and again: a sudden change ends up between two neighbouring frames (the
+ * correction switches exactly there), a quick but gradual one gets as many
+ * analysed frames as it needs to be followed.
+ *
+ * `points` must be sorted by frame. `skip`: middles that were asked for and
+ * could not be decoded.
+ */
+export function frameToRefine(
+  points: readonly AnalysisPoint[],
+  skip: ReadonlySet<number> = new Set(),
+  tuning: EnhanceTuning = ENHANCE_TUNING,
+): number | null {
+  let best: number | null = null;
+  let most = 1;
+  for (let index = 1; index < points.length; index += 1) {
+    const left = points[index - 1];
+    const right = points[index];
+    if (!left || !right || right.frame - left.frame < 2) continue;
+    const middle = left.frame + Math.floor((right.frame - left.frame) / 2);
+    if (skip.has(middle)) continue;
+    const distance = toneDistance(left.stats, right.stats, tuning);
+    if (distance > most) {
+      most = distance;
+      best = middle;
+    }
+  }
+  return best;
+}
+
 /**
  * The plan for the whole download.
  *
@@ -768,7 +826,9 @@ export function analysisFrames(
  * analysed frame's correction is first averaged with its neighbours in time
  * that look alike (within `smoothLuma` of its median), so a single odd frame
  * cannot make the brightness jump, and between analysed frames the
- * correction is interpolated.
+ * correction is interpolated. Where the light really changes at once, the
+ * analysis has put two analysed frames next to each other (`frameToRefine`),
+ * and the correction switches between those two frames.
  */
 export function planEnhancement(
   points: readonly AnalysisPoint[],

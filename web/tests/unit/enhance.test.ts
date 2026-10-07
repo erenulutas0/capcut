@@ -6,6 +6,7 @@ import {
   ENHANCE_TUNING,
   MAX_ANALYSIS_POINTS,
   NEUTRAL_PARAMS,
+  REFINE_BUDGET,
   NEUTRAL_TONE,
   SHOULDER_KNEE,
   analysisFrames,
@@ -13,6 +14,7 @@ import {
   cameraShare,
   chooseLook,
   chooseTone,
+  frameToRefine,
   isEnhanceStrength,
   linearToSrgb,
   lookIsNeutral,
@@ -26,6 +28,7 @@ import {
   srgbToLinear,
   summarize,
   toneAtFrame,
+  toneDistance,
   toneIsNeutral,
   toneLift,
   typicalStats,
@@ -583,6 +586,97 @@ describe('analysisFrames', () => {
     expect(new Set(frames).size).toBe(frames.length);
     expect(analysisFrames([], 30)).toEqual([]);
     expect(analysisFrames([{ startFrame: 10, endFrame: 10 }], 30)).toEqual([]);
+  });
+});
+
+describe('frameToRefine: looking closer where the light changes', () => {
+  const dark = stats({ low: 0.02, median: 0.2, high: 0.45 });
+  const bright = stats();
+
+  /** Analyses the frames `frameToRefine` asks for until it asks for none, as the worker does. */
+  function refine(points: AnalysisPoint[], statsAt: (frame: number) => FrameStats): { points: AnalysisPoint[]; looked: number } {
+    const sorted = [...points].sort((a, b) => a.frame - b.frame);
+    let looked = 0;
+    for (;;) {
+      const frame = frameToRefine(sorted);
+      if (frame === null || looked >= REFINE_BUDGET) return { points: sorted, looked };
+      sorted.push({ frame, stats: statsAt(frame) });
+      sorted.sort((a, b) => a.frame - b.frame);
+      looked += 1;
+    }
+  }
+
+  it('asks for nothing when neighbouring analysed frames would be corrected alike', () => {
+    const steady = Array.from({ length: 10 }, (_, i) => ({ frame: i * 15, stats: dark }));
+    expect(frameToRefine(steady)).toBeNull();
+    expect(toneDistance(dark, dark)).toBe(0);
+    expect(toneDistance(dark, bright)).toBeGreaterThan(1);
+    // Two healthy pictures that differ in everything but their need for correction: nothing to look for.
+    expect(toneDistance(stats({ median: 0.4 }), stats({ median: 0.6, saturation: 0.1 }))).toBe(0);
+  });
+
+  it('narrows a sudden change down to the two frames it happens between, in a handful of looks', () => {
+    // The light goes on at frame 173; frames were analysed every 15.
+    const statsAt = (frame: number) => (frame < 173 ? dark : bright);
+    const base = Array.from({ length: 21 }, (_, i) => ({ frame: i * 15, stats: statsAt(i * 15) }));
+    expect(frameToRefine(base)).toBe(172);
+    const { points, looked } = refine(base, statsAt);
+    expect(looked).toBeLessThanOrEqual(4);
+    const frames = points.map((point) => point.frame);
+    expect(frames).toContain(172);
+    expect(frames).toContain(173);
+
+    // The correction then switches exactly there: no brightening of the bright side before, no dark frame after.
+    const timeline = planEnhancement(points, 'auto', 30);
+    const gain = chooseTone(dark, 'auto').gain;
+    for (let frame = 150; frame <= 172; frame += 1) expect(toneAtFrame(timeline, frame).gain).toBeCloseTo(gain, 2);
+    for (let frame = 173; frame <= 200; frame += 1) expect(toneAtFrame(timeline, frame).gain).toBe(1);
+  });
+
+  it('without the closer look the correction would be blended across the change (what the look prevents)', () => {
+    const statsAt = (frame: number) => (frame < 173 ? dark : bright);
+    const base = Array.from({ length: 21 }, (_, i) => ({ frame: i * 15, stats: statsAt(i * 15) }));
+    const blended = planEnhancement(base, 'auto', 30);
+    // Frame 176 is already bright, yet half-way between the two analysed frames it would still be gained up.
+    expect(toneAtFrame(blended, 176).gain).toBeGreaterThan(1.2);
+  });
+
+  it('gives a quick but gradual change as many analysed frames as it takes to follow it', () => {
+    // The exposure doubles and doubles again over two seconds.
+    const statsAt = (frame: number): FrameStats => {
+      const share = Math.min(1, Math.max(0, (frame - 60) / 60));
+      return stats({ low: 0.02, median: 0.2 + 0.3 * share, high: 0.4 + 0.53 * share });
+    };
+    const base = Array.from({ length: 13 }, (_, i) => ({ frame: i * 15, stats: statsAt(i * 15) }));
+    const { points, looked } = refine(base, statsAt);
+    expect(looked).toBeGreaterThan(2);
+    expect(looked).toBeLessThan(REFINE_BUDGET);
+    // Afterwards no two neighbours differ noticeably, so blending between them is invisible.
+    for (let i = 1; i < points.length; i += 1) {
+      const left = points[i - 1];
+      const right = points[i];
+      if (!left || !right || right.frame - left.frame < 2) continue;
+      expect(toneDistance(left.stats, right.stats)).toBeLessThanOrEqual(1);
+    }
+    // And the gain comes down steadily over the change.
+    const timeline = planEnhancement(points, 'auto', 30);
+    let previous = Number.POSITIVE_INFINITY;
+    for (let frame = 55; frame <= 125; frame += 1) {
+      const gain = toneAtFrame(timeline, frame).gain;
+      expect(gain).toBeLessThanOrEqual(previous + 1e-9);
+      previous = gain;
+    }
+  });
+
+  it('skips a middle frame that could not be decoded instead of asking for it for ever', () => {
+    const points = [
+      { frame: 0, stats: dark },
+      { frame: 30, stats: bright },
+    ];
+    expect(frameToRefine(points)).toBe(15);
+    expect(frameToRefine(points, new Set([15]))).toBeNull();
+    // Frames next to each other have nothing in between.
+    expect(frameToRefine([{ frame: 10, stats: dark }, { frame: 11, stats: bright }])).toBeNull();
   });
 });
 

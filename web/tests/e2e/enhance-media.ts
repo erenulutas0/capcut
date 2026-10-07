@@ -33,7 +33,12 @@ function scene(seconds: number): { inputs: string[]; graph: string } {
   };
 }
 
-const ENCODE = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-pix_fmt', 'yuv420p', '-g', '30', '-c:a', 'aac', '-b:a', '128k', '-shortest'];
+// Tagged bt709, limited range: the browser and ffmpeg then read the same colours from the file.
+const ENCODE = [
+  '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-pix_fmt', 'yuv420p', '-g', '30',
+  '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv',
+  '-c:a', 'aac', '-b:a', '128k', '-shortest',
+];
 
 /** `k`: the picture's code values are multiplied by it (0.5 is about two stops darker). */
 const darker = (k: number): string => `lutrgb=r='val*${k}':g='val*${k}':b='val*${k}'`;
@@ -72,7 +77,7 @@ export function enhanceFixture(name: EnhanceFixture): string {
   const partial = `${file}.part.mp4`;
   rmSync(partial, { force: true });
   const { inputs, graph } = scene(spec.seconds);
-  const filter = `${graph}${spec.filter ? `,${spec.filter}` : ''},format=yuv420p[v]`;
+  const filter = `${graph}${spec.filter ? `,${spec.filter}` : ''},scale=out_color_matrix=bt709:out_range=tv,format=yuv420p[v]`;
   execFileSync(
     'ffmpeg',
     ['-hide_banner', '-loglevel', 'error', '-y', ...inputs, '-filter_complex', filter, '-map', '[v]', '-map', '2:a', '-t', String(spec.seconds), ...ENCODE, partial],
@@ -83,15 +88,25 @@ export function enhanceFixture(name: EnhanceFixture): string {
   return file;
 }
 
-/** Mean luma (0–255) of every frame of a video, by ffmpeg (`signalstats`), in order. */
+/**
+ * Mean luma (0–255, full range) of every frame of a video, in order.
+ * Measured on RGB that ffmpeg converted with the file's own colour tags, so a
+ * limited-range source and a full-range export are compared like with like.
+ */
 export function frameLumas(file: string): number[] {
+  const width = 160;
+  const height = 90;
   const result = spawnSync(
     'ffmpeg',
-    ['-hide_banner', '-loglevel', 'error', '-i', file, '-vf', 'signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-', '-f', 'null', '-'],
-    { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 },
+    ['-hide_banner', '-loglevel', 'error', '-i', file, '-vf', `scale=${width}:${height}:flags=area`, '-pix_fmt', 'rgb24', '-f', 'rawvideo', 'pipe:1'],
+    { maxBuffer: 512 * 1024 * 1024 },
   );
-  if (result.status !== 0) throw new Error(`ffmpeg failed: ${result.stderr}`);
-  return [...result.stdout.matchAll(/lavfi\.signalstats\.YAVG=([\d.]+)/g)].map((match) => Number(match[1]));
+  const bytes = result.stdout as unknown as Buffer;
+  if (result.status !== 0) throw new Error(`ffmpeg failed: ${String(result.stderr)}`);
+  const size = width * height * 3;
+  const out: number[] = [];
+  for (let start = 0; start + size <= bytes.length; start += size) out.push(rgbMeans(bytes.subarray(start, start + size)).luma);
+  return out;
 }
 
 /** One frame as 8-bit RGB at the file's own size. */
