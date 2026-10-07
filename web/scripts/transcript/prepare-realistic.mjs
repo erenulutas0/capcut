@@ -398,8 +398,70 @@ async function buildDev() {
   neg('rneg-10', 'ocean waves at -50 dBFS after 10 s of loud applause', concat([(await sound('applause')).subarray(0, seconds(10)).slice(), atLevel((await sound('ocean')).subarray(seconds(60), seconds(90)).slice(), -50)]));
 }
 
+/**
+ * The validation set. Written and built on 7 Oct 2026 AFTER the settings were
+ * frozen on the development set (the freeze is its own commit), and run once.
+ * Nothing here was heard by a model before: other meetings (another site,
+ * other speakers), other calls, other readers, other music, other sounds.
+ */
 async function buildVal() {
-  throw new Error('the validation set is defined after the settings are frozen on the dev set');
+  // ---- real conversation: a meeting recorded at another site, headset mix and one table microphone
+  const is1009a = amiWords('IS1009a');
+  const plain = (words) => words.map(({ w, s, e }) => ({ w, s, e }));
+  add({ id: 'ami-is1009a', set: 'rval', kind: 'speech', note: 'AMI IS1009a, headset mix (Idiap room, four other speakers)', reference: { raw: textOf(is1009a) }, words: plain(is1009a), source: { dataset: 'AMI', meeting: 'IS1009a', signal: 'Mix-Headset' } }, await amiAudio('IS1009a', 'Mix-Headset'));
+  add({ id: 'ami-is1009a-far', set: 'rval', kind: 'speech', note: 'AMI IS1009a, ONE far-field table microphone', reference: { raw: textOf(is1009a) }, words: plain(is1009a), source: { dataset: 'AMI', meeting: 'IS1009a', signal: 'Array1-01' } }, await amiAudio('IS1009a', 'Array1-01'));
+
+  // ---- real calls: one of 51 minutes (the length of the video that showed the problem), one with another accent
+  for (const [id, note] of [
+    ['4474229', 'Earnings-22 call 4474229 (UK), whole call, 51 minutes'],
+    ['4481221', 'Earnings-22 call 4481221 (India), whole call'],
+  ]) {
+    const call = await earningsCall(id);
+    add({ id: `earn-${id}`, set: 'rval', kind: 'speech', note: `${note}; reference has no word times`, reference: { raw: call.text }, words: null, source: { dataset: 'Earnings-22', file: id } }, call.samples);
+  }
+
+  // ---- loudness changes inside one file: other readers, another order of levels
+  const steps = loudnessSteps([3570, 3575, 4077, 4446], 6, [-38, 0, -25, -42, -8, -33, -48, 0], 500);
+  add({ id: 'steps-libri-v', set: 'rval', kind: 'speech', note: 'clean read speech, four other readers; each utterance at its own level: -38 / 0 / -25 / -42 / -8 / -33 / -48 / 0 dB', reference: { raw: textOf(steps.words) }, words: steps.words, levels: steps.levels, source: { dataset: 'librispeech test-clean', speakers: [3570, 3575, 4077, 4446] } }, steps.samples);
+
+  const ts3003a = amiWords('TS3003a');
+  const meeting = await amiAudio('TS3003a', 'Mix-Headset');
+  const quietTalk = amiCut(meeting, ts3003a, 180, 540);
+  const talkSteps = [{ atS: 0, db: -30 }, { atS: 50, db: 0 }, { atS: 95, db: -42 }, { atS: 150, db: -18 }, { atS: 200, db: -36 }, { atS: 260, db: -6 }, { atS: 305, db: -28 }];
+  add({ id: 'steps-ami-v', set: 'rval', kind: 'speech', note: 'AMI TS3003a 3:00–9:00 with the level stepping -30 / 0 / -42 / -18 / -36 / -6 / -28 dB', reference: { raw: textOf(quietTalk.words) }, words: quietTalk.words, levels: talkSteps, source: { dataset: 'AMI', meeting: 'TS3003a', signal: 'Mix-Headset', fromS: 180, toS: 540 } }, applySteps(quietTalk.samples, talkSteps));
+
+  // ---- music under the talking: a track no model has been played
+  const calmant = await sound('val1');
+  const windswept = await sound('val2');
+  const bedTalk = amiCut(meeting, ts3003a, 660, 960);
+  add({ id: 'bed-ami-v', set: 'rval', kind: 'speech', note: 'AMI TS3003a 11:00–16:00 with "Calmant" under it at SNR 10 dB', reference: { raw: textOf(bedTalk.words) }, words: bedTalk.words, noise: { type: 'music (Calmant)', snrDb: 10 }, source: { dataset: 'AMI', meeting: 'TS3003a', signal: 'Mix-Headset', fromS: 660, toS: 960 } }, mix(bedTalk.samples, fit(calmant, bedTalk.samples.length, seconds(8)), 10));
+
+  // ---- music and sounds right next to the talking
+  const typing = await sound('typing');
+  const surf = await sound('surf');
+  const sweeper = await sound('sweeper');
+  const next = speechWithNeighbours(librispeechUtterances(5105, 5), [
+    { what: '"Windswept" intro, 14 s', samples: windswept.subarray(seconds(20), seconds(34)).slice() },
+    { what: '"Calmant", 9 s', samples: calmant.subarray(seconds(50), seconds(59)).slice() },
+    { what: 'typing, 6 s', samples: fit(typing, seconds(6)) },
+    { what: 'quiet "Windswept" (-42 dBFS), 10 s', samples: atLevel(windswept.subarray(seconds(90), seconds(100)).slice(), -42) },
+    { what: 'surf, 8 s', samples: surf.subarray(seconds(5), seconds(13)).slice() },
+    { what: '"Calmant" outro, 15 s', samples: calmant.subarray(seconds(100), seconds(115)).slice() },
+  ]);
+  add({ id: 'next-music-v', set: 'rval', kind: 'speech', note: 'clean speech with music and everyday sounds butted right against it: nothing may be written in them', reference: { raw: textOf(next.words) }, words: next.words, gaps: next.gaps, source: { dataset: 'librispeech test-clean', speakers: [5105] } }, next.samples);
+
+  // ---- negatives: no speech at all
+  const neg = (id, label, samples) => add({ id, set: 'rnegv', kind: 'negative', label }, samples);
+  neg('rnegv-01', '"Calmant" at -54 dBFS (very quiet), 30 s', atLevel(calmant.subarray(seconds(20), seconds(50)).slice(), -54));
+  neg('rnegv-02', '"Windswept" at -50 dBFS (very quiet), 40 s', atLevel(windswept.subarray(seconds(40), seconds(80)).slice(), -50));
+  neg('rnegv-03', '"Windswept" loud (-20 dBFS) 20 s, then 38 dB quieter, 30 s', concat([atLevel(windswept.subarray(seconds(0), seconds(20)).slice(), -20), atLevel(windswept.subarray(seconds(20), seconds(50)).slice(), -58)]));
+  neg('rnegv-04', '"Calmant" loud 15 s, room tone (-62 dBFS) 20 s, "Calmant" at -46 dBFS 25 s', concat([atLevel(calmant.subarray(seconds(5), seconds(20)).slice(), -20), pink(20, 701, -62), atLevel(calmant.subarray(seconds(60), seconds(85)).slice(), -46)]));
+  neg('rnegv-05', 'brown noise at -68 dBFS, 30 s', atLevel(lavfi(`anoisesrc=c=brown:r=${RATE}:a=0.3:d=30:s=702`), -68));
+  neg('rnegv-06', 'pink noise stepping -70 / -40 / -60 dBFS, 45 s', concat([pink(15, 703, -70), pink(15, 704, -40), pink(15, 705, -60)]));
+  neg('rnegv-07', 'typing (real recording)', fit(typing, seconds(Math.min(30, typing.length / RATE))));
+  neg('rnegv-08', 'surf (real recording), 40 s', surf.subarray(seconds(0), seconds(40)).slice());
+  neg('rnegv-09', 'street sweepers (real recording), 45 s', sweeper.subarray(seconds(10), seconds(55)).slice());
+  neg('rnegv-10', 'street sweepers 12 s, then surf at -52 dBFS 30 s', concat([sweeper.subarray(seconds(60), seconds(72)).slice(), atLevel(surf.subarray(seconds(40), seconds(70)).slice(), -52)]));
 }
 
 mkdirSync(outDir, { recursive: true });
