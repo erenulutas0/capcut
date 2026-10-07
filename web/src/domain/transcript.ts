@@ -52,6 +52,36 @@ export function spanVerdict(evidence: SpanEvidence): SpanVerdict {
   return 'ok';
 }
 
+// ------------------------------------------------------------ how much was understood
+
+/** From this share of the found speech left unwritten, the result says so in numbers. */
+export const COVERAGE_NOTE_FROM = 0.1;
+
+export interface Coverage {
+  /** Whole per cent of the FOUND speech time that was written, rounded down (never "100" with something missing). */
+  writtenPercent: number;
+  /** Stretches left as "(anlaşılamadı)". */
+  unclearCount: number;
+  /** A meaningful part was not written: tell the user plainly. */
+  worthSaying: boolean;
+}
+
+/**
+ * How much of the speech the detector found ended up as text, by time.
+ * It cannot count speech the detector never found — the sentence shown
+ * says "bulunan konuşmanın" for that reason.
+ */
+export function transcriptCoverage(run: { speechUs: number; unclearUs: number; unclearSpans: number }): Coverage {
+  const speechUs = Math.max(0, run.speechUs);
+  const unclearUs = Math.min(speechUs, Math.max(0, run.unclearUs));
+  const share = speechUs > 0 ? unclearUs / speechUs : 0;
+  return {
+    writtenPercent: speechUs > 0 ? Math.floor((1 - share) * 100) : 0,
+    unclearCount: Math.max(0, run.unclearSpans),
+    worthSaying: run.unclearSpans > 0 && share >= COVERAGE_NOTE_FROM,
+  };
+}
+
 // ------------------------------------------------------------ words and segments
 
 export interface TranscriptWord {

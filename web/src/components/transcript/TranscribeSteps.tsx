@@ -6,7 +6,7 @@ import { activeManifest } from '@/adapters/transcript/transcriptClient';
 import { Icon } from '@/components/Icon';
 import { formatBytes } from '@/domain/policy';
 import { lineClock } from '@/domain/transcript';
-import { downloadBytes } from '@/domain/transcriptModels';
+import { RECOMMENDED_MODEL, downloadBytes } from '@/domain/transcriptModels';
 import type { MessageKey } from '@/i18n/messages';
 import type { Transcription } from './useTranscription';
 
@@ -89,8 +89,9 @@ export function TranscribeSteps({
       {largeOffered && !busy ? (
         <fieldset className="wizard-choice" data-testid="transcribe-quality">
           <legend>{t('transcript.model.quality')}</legend>
-          {(['base', 'turbo'] as const).map((id) => (
-            <label className="wizard-option" data-checked={model === id} key={id}>
+          {/* The recommended model first; the small one stays, as the smaller download. */}
+          {([RECOMMENDED_MODEL, 'base'] as const).map((id) => (
+            <label className="wizard-option" data-checked={model === id} data-recommended={id === RECOMMENDED_MODEL || undefined} key={id}>
               <input
                 type="radio"
                 name="transcript-model"

@@ -2832,14 +2832,75 @@ input[type='range']:disabled::-webkit-slider-thumb {
   margin: 4px 0 8px;
 }
 
+.transcript-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.transcript-search-field {
+  flex: 1 1 9em;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 10px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.transcript-search-field:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.transcript-search-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.transcript-search-status {
+  flex: 1 1 100%;
+  margin: 0;
+  min-height: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.transcript-search-hint {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/*
+ * A long transcript is drawn a window at a time (TranscriptPanel): the two
+ * pseudo-elements stand for the rows above and below the window, so the
+ * scroll bar and every row's place are those of the whole list. Rows are
+ * blocks with their own gap; the list itself keeps the reader's place when a
+ * row turns out taller than guessed (no browser scroll anchoring on top).
+ */
 .transcript-list {
   position: relative;
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: block;
+  overflow-anchor: none;
   min-height: 120px;
   max-height: 46vh;
   overflow-y: auto;
@@ -2860,12 +2921,40 @@ input[type='range']:disabled::-webkit-slider-thumb {
   max-height: 52vh;
 }
 
+.transcript-list::before,
+.transcript-list::after {
+  content: '';
+  display: block;
+}
+
+.transcript-list::before {
+  height: var(--rows-before, 0px);
+}
+
+.transcript-list::after {
+  height: var(--rows-after, 0px);
+}
+
 .transcript-row {
   display: flex;
   align-items: flex-start;
   gap: 6px;
+  margin-bottom: 2px;
   padding: 2px 6px;
   border-left: 3px solid transparent;
+}
+
+.transcript-row[data-match] .transcript-text {
+  text-decoration: underline;
+  text-decoration-color: var(--focus);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.transcript-row[data-found] {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+  border-radius: 8px;
 }
 
 .transcript-row[data-active='true'] {

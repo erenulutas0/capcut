@@ -17,7 +17,10 @@
  * (`transcript-real.spec.ts`, and the Pages smoke test).
  */
 
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect, type BrowserContext, type Page, type Route } from '@playwright/test';
 
 const S = 1_000_000;
@@ -166,18 +169,80 @@ export const STUB_LINES = [
   'Thanks for watching.',
 ];
 
-/** Puts the test doubles on the page before it loads. `stub: null` keeps the real recogniser. */
+/**
+ * Puts the test doubles on the page before it loads. `stub: null` keeps the real recogniser.
+ * `largeModel`: whether "this browser can run the large model" — said by the test, never asked of the
+ * machine's graphics card (a test must not change with the computer it runs on). Default: it cannot.
+ */
 export async function installTranscriptTest(
   page: Page,
   models: TestModels | null,
   stub: unknown | null = STUB_SCRIPT,
+  options: { largeModel?: boolean } = {},
 ): Promise<void> {
   await page.addInitScript(
     (hook) => {
       (window as unknown as { __clipTranscriptTest: unknown }).__clipTranscriptTest = hook;
     },
-    { ...(models ? { manifest: models.manifest } : {}), ...(stub ? { stub } : {}) },
+    { ...(models ? { manifest: models.manifest } : {}), ...(stub ? { stub } : {}), largeModel: options.largeModel === true },
   );
+}
+
+/**
+ * A long, all but empty video (black picture, a quiet tone), made with ffmpeg on first use into a
+ * gitignored folder: room on the clock for a transcript of hundreds of lines. The stand-in hears nothing.
+ */
+export function longVideo(minutes: number): string {
+  const dir = join(process.cwd(), 'tests', 'media', 'transcript');
+  const file = join(dir, `e2e-long-${minutes}min.mp4`);
+  if (existsSync(file)) return file;
+  mkdirSync(dir, { recursive: true });
+  const partial = `${file}.part.mp4`;
+  rmSync(partial, { force: true });
+  execFileSync(
+    'ffmpeg',
+    [
+      '-hide_banner', '-loglevel', 'error', '-y',
+      '-f', 'lavfi', '-i', 'color=c=black:s=320x240:r=2',
+      '-f', 'lavfi', '-i', 'sine=frequency=220:sample_rate=16000',
+      '-t', String(minutes * 60),
+      '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage', '-pix_fmt', 'yuv420p', '-g', '20',
+      '-c:a', 'aac', '-b:a', '24k', '-ac', '1', '-movflags', '+faststart',
+      partial,
+    ],
+    { stdio: 'pipe' },
+  );
+  renameSync(partial, file);
+  return file;
+}
+
+/** Seconds between the starts of two lines of `longScript`. */
+export const LONG_LINE_S = 2.3;
+
+/** What the stand-in "hears" for a long transcript: `count` one-line stretches, "Line 1, …" to "Line <count>, …"; every 40th could not be written. */
+export function longScript(count: number): { stepMs: number; segments: unknown[] } {
+  const WORDS = ['the', 'meeting', 'starts', 'with', 'a', 'short', 'look', 'at', 'numbers', 'from', 'last', 'week', 'and', 'what', 'we', 'plan', 'next'];
+  const segments: unknown[] = [];
+  for (let k = 0; k < count; k += 1) {
+    const startUs = Math.round((2 + k * LONG_LINE_S) * S);
+    if (k % 40 === 17) {
+      segments.push({ startUs, endUs: startUs + 2 * S, state: 'unclear', words: [] });
+      continue;
+    }
+    const texts = ['Line', `${k + 1},`, ...Array.from({ length: 2 + (k % 4) }, (_, i) => WORDS[(k * 7 + i * 3) % WORDS.length] as string)];
+    texts[texts.length - 1] += '.';
+    segments.push({
+      startUs,
+      endUs: startUs + 2 * S,
+      state: 'ok',
+      words: texts.map((text, i) => ({
+        text,
+        startUs: startUs + Math.round((i * 1.8 * S) / texts.length),
+        endUs: startUs + Math.round(((i + 1) * 1.8 * S) / texts.length) - 20_000,
+      })),
+    });
+  }
+  return { stepMs: 0, segments };
 }
 
 /** This suite drives test doubles: it must run against the e2e build, and says so instead of passing by accident. */

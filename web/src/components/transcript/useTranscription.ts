@@ -20,7 +20,8 @@ import { DEFAULT_CAPTION_STYLE } from '@/domain/captions';
 import type { CaptionStyleV2, CaptionUnclearV3 } from '@/domain/edl';
 import { CUE_RULES, transcriptToCues, type FitsFrame } from '@/domain/subtitleSegmentation';
 import type { Micros } from '@/domain/time';
-import type { TranscriptModelId } from '@/domain/transcriptModels';
+import { transcriptCoverage, type Coverage } from '@/domain/transcript';
+import { RECOMMENDED_MODEL, preselectedModel, type TranscriptModelId } from '@/domain/transcriptModels';
 
 export type TranscriptionJob =
   | { kind: 'idle' }
@@ -35,6 +36,10 @@ export type TranscriptionJob =
       lines: number;
       unclear: number;
       skipped: number;
+      /** How much of the found speech was written (real times of this run). */
+      coverage: Coverage;
+      /** A meaningful part was not written, the small model wrote it, and the recommended one can run here. */
+      suggestLarger: boolean;
     };
 
 export interface TranscriptionTarget {
@@ -74,8 +79,11 @@ export function useTranscription() {
   const [model, setModel] = useState<TranscriptModelId>('base');
   const [status, setStatus] = useState<ModelStatus | null>(null);
   const [largeOffered, setLargeOffered] = useState(false);
+  /** False until this browser has been asked what it can run and what it already holds. */
+  const [decided, setDecided] = useState(false);
   const [job, setJob] = useState<TranscriptionJob>({ kind: 'idle' });
   const aliveRef = useRef(true);
+  const largeRef = useRef(false);
 
   const client = () => {
     clientRef.current ??= new TranscriptClient();
@@ -93,8 +101,18 @@ export function useTranscription() {
 
   useEffect(() => {
     aliveRef.current = true;
-    void supportsLargeModel().then((ok) => {
-      if (aliveRef.current) setLargeOffered(ok);
+    // Which model is selected to begin with (`preselectedModel`): asked once, before any button is shown,
+    // so the download button never shows one model's size and then another's.
+    const manifest = activeManifest();
+    const stored = (which: TranscriptModelId) => modelStatus(which, manifest).catch(() => null);
+    void Promise.all([supportsLargeModel(), stored('base'), stored('turbo')]).then(([largeSupported, base, turbo]) => {
+      if (!aliveRef.current) return;
+      const first = preselectedModel({ largeSupported, baseReady: base?.ready === true, turboReady: turbo?.ready === true });
+      largeRef.current = largeSupported;
+      setLargeOffered(largeSupported);
+      setModel(first);
+      setStatus(first === 'turbo' ? turbo : base);
+      setDecided(true);
     });
     return () => {
       aliveRef.current = false;
@@ -104,6 +122,7 @@ export function useTranscription() {
   }, []);
 
   useEffect(() => {
+    if (!decided) return undefined;
     // The stored-model check reads Cache Storage: asynchronous, set from its answer.
     let live = true;
     void modelStatus(model, activeManifest()).then(
@@ -117,7 +136,7 @@ export function useTranscription() {
     return () => {
       live = false;
     };
-  }, [model]);
+  }, [model, decided]);
 
   const chooseModel = useCallback((next: TranscriptModelId) => {
     setStatus(null);
@@ -161,12 +180,15 @@ export function useTranscription() {
         setJob({ kind: 'failed', reason: 'internal_error' });
         return;
       }
+      const coverage = transcriptCoverage(outcome.stats);
       setJob({
         kind: 'done',
         stats: outcome.stats,
         lines: applied.report.imported,
         unclear: made.unclear.length,
         skipped: applied.report.skipped.length,
+        coverage,
+        suggestLarger: coverage.worthSaying && outcome.stats.model !== RECOMMENDED_MODEL && largeRef.current,
       });
     },
     [model, refresh],

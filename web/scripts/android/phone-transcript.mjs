@@ -178,6 +178,11 @@ try {
       await sendFile(page, join(mediaDir, clip.file));
       await page.waitForSelector('[data-testid="model-download"], [data-testid="transcribe-start"]', { timeout: 120_000 });
       row.largeModelOffered = (await page.locator('[data-testid="option-model-turbo"]').count()) > 0;
+      // The phone measurement is of the small model, also where the large one is offered and pre-selected.
+      if (await page.locator('[data-testid="option-model-base"]').count()) {
+        await page.locator('[data-testid="option-model-base"]').check();
+        await page.waitForSelector('[data-testid="model-download"], [data-testid="transcribe-start"]', { timeout: 120_000 });
+      }
       if (await page.locator('[data-testid="model-download"]').count()) {
         row.downloadLabel = (await page.locator('[data-testid="model-download"]').innerText()).trim();
         const t0 = Date.now();

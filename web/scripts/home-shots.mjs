@@ -174,6 +174,9 @@ for (const size of SIZES) {
     await open('/yap/yazi');
     await pick(speech);
     await page.getByTestId('model-download').waitFor({ timeout: 60_000 });
+    // With a graphics card the large model is offered and pre-selected; the pictures are of the small one.
+    if (await page.getByTestId('option-model-base').count()) await page.getByTestId('option-model-base').check();
+    await page.getByTestId('model-download').waitFor({ timeout: 60_000 });
     await shot('80-yazi-2-model');
     await page.getByTestId('model-download').click();
     await page.getByTestId('transcribe-start').waitFor({ timeout: 600_000 });

@@ -56,6 +56,10 @@ async function run(name, withKeyword) {
     result.scriptSrc = policy;
     await page.setInputFiles('[data-testid="video-input"]', clip);
     await page.waitForSelector('[data-testid="model-download"], [data-testid="transcribe-start"]', { timeout: 120_000 });
+    if (await page.locator('[data-testid="option-model-base"]').count()) {
+      await page.locator('[data-testid="option-model-base"]').check();
+      await page.waitForSelector('[data-testid="model-download"], [data-testid="transcribe-start"]', { timeout: 120_000 });
+    }
     if (await page.locator('[data-testid="model-download"]').count()) {
       await page.locator('[data-testid="model-download"]').click();
       await page.waitForSelector('[data-testid="transcribe-start"]', { timeout: 600_000 });

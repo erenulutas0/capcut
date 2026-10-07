@@ -151,8 +151,12 @@ for (const clip of clips) {
     await page.goto(`${base}${wizardPath}`, { waitUntil: 'load' });
     await page.setInputFiles('[data-testid="video-input"]', join(mediaDir, clip.file));
     await page.waitForSelector('[data-testid="transcribe-steps"][data-model-ready]', { timeout: 120_000 });
-    if (model === 'turbo') {
-      await page.locator('[data-testid="option-model-turbo"]').check({ timeout: 15_000 });
+    // Where both models can run the app pre-selects one itself (the recommended one, or the one already here):
+    // the measurement names the model it wants.
+    const ready = () => document.querySelector('[data-testid="model-download"]') !== null || document.querySelector('[data-testid="transcribe-start"]') !== null;
+    await page.waitForFunction(ready, null, { timeout: 60_000 });
+    if (model === 'turbo' || (await page.locator(`[data-testid="option-model-${model}"]`).count())) {
+      await page.locator(`[data-testid="option-model-${model}"]`).check({ timeout: 15_000 });
     }
     await page.waitForFunction(
       () => document.querySelector('[data-testid="model-download"]') !== null || document.querySelector('[data-testid="transcribe-start"]') !== null,

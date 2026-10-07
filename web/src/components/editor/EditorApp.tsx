@@ -36,6 +36,7 @@ import { TranscribeSteps, fillText } from '@/components/transcript/TranscribeSte
 import { TranscriptPanel } from '@/components/transcript/TranscriptPanel';
 import { useTranscription } from '@/components/transcript/useTranscription';
 import { transcriptLines } from '@/domain/transcript';
+import { RECOMMENDED_MODEL } from '@/domain/transcriptModels';
 import { Dialog, Sheet } from './Dialog';
 import { onTablistKeyDown } from './tablist';
 import { DownloadStatus } from './DownloadStatus';
@@ -1287,6 +1288,33 @@ export function EditorView({ state, stored }: { state: EditorState; stored: bool
                 <Icon name="check" />
                 <span>{fillText(t('transcript.dialog.done'), { lines: String(transcription.job.lines) })}</span>
               </p>
+              {transcription.job.coverage.worthSaying ? (
+                <div className="wizard-panel" data-testid="transcribe-coverage">
+                  <p className="wizard-panel-title" role="status">
+                    {fillText(t('transcript.coverage'), {
+                      pct: String(transcription.job.coverage.writtenPercent),
+                      n: String(transcription.job.coverage.unclearCount),
+                    })}
+                  </p>
+                  {transcription.job.suggestLarger ? (
+                    <>
+                      <p className="wizard-hint">{t('transcript.coverage.larger')}</p>
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => {
+                          // The same dialog, one step back, with the recommended model selected; nothing downloads by itself.
+                          transcription.chooseModel(RECOMMENDED_MODEL);
+                          transcription.reset();
+                        }}
+                        data-testid="transcribe-try-larger"
+                      >
+                        {t('transcript.coverage.tryLarger')}
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="dialog-actions">
                 <button
                   type="button"

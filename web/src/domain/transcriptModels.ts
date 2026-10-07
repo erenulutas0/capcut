@@ -65,6 +65,32 @@ export const MODEL_RUNTIME: Record<TranscriptModelId, ModelRuntime> = {
 
 export const TRANSCRIPT_MODELS: readonly TranscriptModelId[] = ['base', 'turbo'];
 
+/**
+ * The model the app recommends where it can run (WebGPU with `shader-f16`):
+ * the large one. On the realistic set of 7 Oct 2026 (ADR-036) it wrote far
+ * more of the speech and dropped far fewer stretches than the small model.
+ * Where it cannot run there is one model and nothing to recommend.
+ */
+export const RECOMMENDED_MODEL: TranscriptModelId = 'turbo';
+
+/**
+ * The model that is selected when the step opens, before the user chooses.
+ *
+ * - the large model cannot run here → the small one (the only choice);
+ * - the large model is already in this browser → the large one;
+ * - ONLY the small one is in this browser → the small one: "Yazıya dök"
+ *   works at once, and the 596 MB download stays the user's own decision
+ *   (the large model is still shown, marked "Önerilen", with its size);
+ * - nothing is here yet → the large one: a download is needed either way,
+ *   and the button says its size before anything starts.
+ */
+export function preselectedModel(input: { largeSupported: boolean; baseReady: boolean; turboReady: boolean }): TranscriptModelId {
+  if (!input.largeSupported) return 'base';
+  if (input.turboReady) return 'turbo';
+  if (input.baseReady) return 'base';
+  return RECOMMENDED_MODEL;
+}
+
 /** The groups a model needs to run: the runtime, the speech detector, its own files. */
 export function groupsFor(model: TranscriptModelId): readonly ModelGroupId[] {
   return ['runtime', 'vad', model];

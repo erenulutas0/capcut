@@ -51,11 +51,11 @@ export const DEFAULT_LEVEL: LevelParams = {
   aheadS: 1.5,
   targetDb: -20,
   maxGainDb: 40,
-  minContrastDb: 0,
+  minContrastDb: 20,
 };
 
 /** Blocks quieter than this count as this for the contrast rule (digital silence has no level). */
-const CONTRAST_FLOOR = 10 ** (-90 / 20);
+const CONTRAST_FLOOR = 10 ** (-100 / 20);
 
 const fromDb = (db: number) => 10 ** (db / 20);
 

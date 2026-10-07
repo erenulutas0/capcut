@@ -101,6 +101,12 @@ async function runWizard(page: Page, file: string) {
   await page.getByTestId('video-input').setInputFiles(file);
   await expect(page.getByTestId('transcribe-steps')).toBeVisible({ timeout: 60_000 });
   await page.waitForSelector('[data-testid="model-download"], [data-testid="transcribe-start"]', { timeout: 60_000 });
+  // Where this browser can run the large model it is the pre-selected, recommended one (ADR-036, 7 Oct);
+  // these tests are about the small one and say so.
+  if (await page.getByTestId('option-model-base').count()) {
+    await page.getByTestId('option-model-base').check();
+    await page.waitForSelector('[data-testid="model-download"], [data-testid="transcribe-start"]', { timeout: 60_000 });
+  }
   if (await page.getByTestId('model-download').count()) {
     // The real size, on the button, before anything is fetched.
     await expect(page.getByTestId('model-download')).toHaveText('Modeli indir (≈108,8 MB, bir kez)');

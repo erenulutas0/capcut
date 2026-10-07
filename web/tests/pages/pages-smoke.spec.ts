@@ -422,6 +422,10 @@ test('Yazıya dök under /capcut/ with the real model: download from this site, 
   await page.goto('yap/yazi/');
   await expectPolicy(page);
   await page.getByTestId('video-input').setInputFiles(SPEECH_VIDEO);
+  await expect(page.getByTestId('model-download')).toBeVisible({ timeout: 60_000 });
+  // Where this browser can run the large model it is the pre-selected, recommended one (ADR-036, 7 Oct):
+  // this test is about the small one, so it says so.
+  if (await page.getByTestId('option-model-base').count()) await page.getByTestId('option-model-base').check();
   await expect(page.getByTestId('model-download')).toHaveText('Modeli indir (≈108,8 MB, bir kez)', { timeout: 60_000 });
   // The published build has no test hooks.
   await expect(page.getByTestId('transcribe-steps')).not.toHaveAttribute('data-test-hooks', '1');

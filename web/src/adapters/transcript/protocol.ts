@@ -20,6 +20,12 @@ import type { DownloadFailure } from './modelStore';
 export interface TranscriptTestOptions {
   manifest?: ModelManifest;
   stub?: StubScript;
+  /**
+   * Says whether "this browser can run the large model" instead of asking
+   * the graphics card: the test machines have none, and the choice between
+   * the two models must be testable both ways.
+   */
+  largeModel?: boolean;
 }
 
 /** What the stand-in engine "hears": fixed segments, posted one by one. */

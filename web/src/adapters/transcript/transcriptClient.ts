@@ -175,6 +175,8 @@ export class TranscriptClient {
 
 /** WebGPU with half-precision shaders — the only place the large model is offered. */
 export async function supportsLargeModel(): Promise<boolean> {
+  const forced = transcriptTestOptions()?.largeModel;
+  if (typeof forced === 'boolean') return forced;
   try {
     const gpu = (navigator as { gpu?: { requestAdapter(): Promise<{ features: { has(name: string): boolean } } | null> } }).gpu;
     if (!gpu) return false;

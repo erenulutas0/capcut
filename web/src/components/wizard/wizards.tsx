@@ -25,6 +25,7 @@ import { TranscriptPanel } from '@/components/transcript/TranscriptPanel';
 import { useTranscription } from '@/components/transcript/useTranscription';
 import { primaryCaptionTrack } from '@/domain/captions';
 import { transcriptLines } from '@/domain/transcript';
+import { RECOMMENDED_MODEL } from '@/domain/transcriptModels';
 import type { TargetSizePreview } from '@/components/editor/useDownloads';
 import { useSilenceAnalysis } from '@/components/editor/useSilenceAnalysis';
 import { useHydrated } from '@/components/useHydrated';
@@ -809,6 +810,36 @@ function YaziWizard(host: WizardHostProps) {
                     : ''}
                 </span>
               </p>
+            ) : null}
+            {transcription.job.kind === 'done' && transcription.job.coverage.worthSaying ? (
+              // Plainly: how much of the speech became text. Not a warning that the user did something wrong.
+              <div className="wizard-panel" data-testid="yazi-coverage">
+                <p className="wizard-panel-title" role="status">
+                  {fill(t('transcript.coverage'), {
+                    pct: String(transcription.job.coverage.writtenPercent),
+                    n: String(transcription.job.coverage.unclearCount),
+                  })}
+                </p>
+                {transcription.job.suggestLarger ? (
+                  <>
+                    <p className="wizard-hint">{t('transcript.coverage.larger')}</p>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => {
+                        // Back to the step before, with the recommended model selected. Nothing downloads by
+                        // itself: the step shows "Modeli indir" with its size, or "Yazıya dök" when it is here.
+                        transcription.chooseModel(RECOMMENDED_MODEL);
+                        transcription.reset();
+                        state.undo();
+                      }}
+                      data-testid="yazi-try-larger"
+                    >
+                      {t('transcript.coverage.tryLarger')}
+                    </button>
+                  </>
+                ) : null}
+              </div>
             ) : null}
             <TranscriptPanel
               t={t}

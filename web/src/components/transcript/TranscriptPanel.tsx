@@ -1,6 +1,17 @@
 'use client';
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type MouseEvent,
+} from 'react';
 
 import { Icon } from '@/components/Icon';
 import {
@@ -11,6 +22,7 @@ import {
   type TranscriptLine,
 } from '@/domain/transcript';
 import type { Micros } from '@/domain/time';
+import { WINDOW_FROM_ROWS, nextMatch, rowOffsets, searchLines, visibleRows } from '@/domain/virtualList';
 import type { MessageKey } from '@/i18n/messages';
 import { fillText } from './TranscribeSteps';
 
@@ -44,10 +56,19 @@ interface Props {
 
 const flat = (text: string) => text.split('\n').join(' ');
 
+/** Space under every row (the stylesheet's `margin-bottom` of `.transcript-row`). */
+const ROW_GAP_PX = 2;
+/** A row's height before any row has been measured (one line of text). */
+const ROW_GUESS_PX = 48;
+/** From this many lines the panel offers its own search box. */
+const SEARCH_FROM_ROWS = 12;
+
 interface RowProps {
   t: T;
   line: TranscriptLine;
   index: number;
+  /** How many lines the whole transcript has: a reader of a windowed list still hears "12 of 2491". */
+  total: number;
   active: boolean;
   /** This row holds the list's one Tab stop. */
   current: boolean;
@@ -56,18 +77,28 @@ interface RowProps {
   editable: boolean;
   editing: boolean;
   editError: string | null;
+  /** The search found this line / this is the result the search is on. */
+  match: boolean;
+  found: boolean;
+  /**
+   * Set when the row is drawn outside the window (it holds the focus or is
+   * being edited and has been scrolled away): its place in the list, in px.
+   */
+  pinnedTop: number | null;
   onSeek: (index: number) => void;
   onToggle: (index: number, shift: boolean) => void;
   onStartEdit: (index: number) => void;
   onSaveEdit: (index: number, text: string) => void;
   onCancelEdit: () => void;
   onFocusRow: (index: number) => void;
+  onMount: (index: number, element: HTMLLIElement | null) => void;
 }
 
 const Row = memo(function Row({
   t,
   line,
   index,
+  total,
   active,
   current,
   selectable,
@@ -75,12 +106,16 @@ const Row = memo(function Row({
   editable,
   editing,
   editError,
+  match,
+  found,
+  pinnedTop,
   onSeek,
   onToggle,
   onStartEdit,
   onSaveEdit,
   onCancelEdit,
   onFocusRow,
+  onMount,
 }: RowProps) {
   const unclear = line.kind === 'unclear';
   const text = unclear ? t('transcript.unclear') : flat(line.text);
@@ -98,6 +133,8 @@ const Row = memo(function Row({
     field.select();
   }, [editing]);
 
+  const mount = useCallback((element: HTMLLIElement | null) => onMount(index, element), [index, onMount]);
+
   const onEditKey = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     event.stopPropagation();
     if (event.key === 'Escape') {
@@ -109,13 +146,24 @@ const Row = memo(function Row({
     }
   };
 
+  const pinned: CSSProperties | undefined = pinnedTop === null ? undefined : { position: 'absolute', top: pinnedTop, left: 0, right: 0 };
+
   return (
     <li
+      ref={mount}
       className="transcript-row"
+      style={pinned}
+      // The list may hold only a window of its rows: its size and this row's place are said outright.
+      aria-setsize={total}
+      aria-posinset={index + 1}
       data-active={active}
       data-selected={selected}
       data-kind={line.kind}
       data-index={index}
+      data-key={line.key}
+      data-match={match || undefined}
+      data-found={found || undefined}
+      data-pinned={pinnedTop === null ? undefined : 'true'}
       data-testid="transcript-row"
     >
       {selectable ? (
@@ -217,6 +265,17 @@ const Row = memo(function Row({
  * - The pencil fixes a wrong word in place (Enter saves, Esc leaves).
  * - "(anlaşılamadı)" lines are spans that were heard but not written; they
  *   can be listened to and typed by hand.
+ *
+ * A LONG transcript (more than `WINDOW_FROM_ROWS` lines; two hours are about
+ * 2500) is drawn a window at a time: only the rows near what is visible are
+ * in the page, between two spacers that stand for the rest. Everything above
+ * works the same on a row that is not drawn — it is drawn first:
+ * - every row says its place (`aria-posinset` of `aria-setsize`), so a screen
+ *   reader announces "12 of 2491", not "12 of 40";
+ * - the row that holds the focus, and a row being edited, stay in the page
+ *   when they are scrolled away (focus is never lost to the page);
+ * - the browser's own find-in-page only sees drawn rows, so the panel has
+ *   its own search box over ALL lines ("Yazıda ara").
  */
 export function TranscriptPanel({
   t,
@@ -237,6 +296,29 @@ export function TranscriptPanel({
   const [editing, setEditing] = useState<{ key: string; error: string | null } | null>(null);
   const [following, setFollowing] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [found, setFound] = useState<number | null>(null);
+
+  // ---- the window: which rows are in the page
+  const windowed = lines.length > WINDOW_FROM_ROWS;
+  /** Measured row heights by line key (a line keeps its height when lines are added or removed around it). */
+  const [heights, setHeights] = useState<ReadonlyMap<string, number>>(() => new Map());
+  /** Height assumed for a row not measured yet: the mean of the first rows that were. Fixed once known, so spacers do not drift. */
+  const [guess, setGuess] = useState<number | null>(null);
+  const [view, setView] = useState({ top: 0, height: 0 });
+  const rowElements = useRef(new Map<number, HTMLLIElement>());
+  const observerRef = useRef<ResizeObserver | null>(null);
+  /** A control to focus once its row is in the page: [row, control]. */
+  const pendingFocus = useRef<{ index: number; control: string } | null>(null);
+
+  const offsets = useMemo(
+    () => (windowed ? rowOffsets(lines.length, (index) => heights.get((lines[index] as TranscriptLine).key) ?? guess ?? ROW_GUESS_PX, ROW_GAP_PX) : null),
+    [windowed, lines, heights, guess],
+  );
+  const range = useMemo(
+    () => (offsets ? visibleRows(offsets, view.top, view.height > 0 ? view.height : 800) : { first: 0, last: lines.length - 1 }),
+    [offsets, view, lines.length],
+  );
 
   const active = useMemo(() => activeLineIndex(lines, timeUs), [lines, timeUs]);
   const selectable = onMakeKesitler !== undefined;
@@ -246,21 +328,142 @@ export function TranscriptPanel({
     const keys = new Set(lines.map((line) => line.key));
     return new Set([...selected].filter((key) => keys.has(key)));
   }, [lines, selected]);
+  const editingIndex = useMemo(() => (editing ? lines.findIndex((line) => line.key === editing.key) : -1), [editing, lines]);
+  const unclearCount = useMemo(() => lines.filter((line) => line.kind === 'unclear').length, [lines]);
+
+  // ---- the search over every line, drawn or not
+  const unclearLabel = t('transcript.unclear');
+  const texts = useMemo(() => lines.map((line) => (line.kind === 'cue' ? flat(line.text) : unclearLabel)), [lines, unclearLabel]);
+  const matches = useMemo(() => searchLines(texts, query), [texts, query]);
+  const matchSet = useMemo(() => new Set(matches), [matches]);
+  const foundRow = found !== null && matchSet.has(found) ? found : null;
+
+  /** Where a row is, from the page when it is drawn, from the arithmetic when it is not. */
+  const rowBox = useCallback(
+    (index: number): { top: number; height: number } | null => {
+      const element = rowElements.current.get(index);
+      if (element) return { top: element.offsetTop, height: element.offsetHeight };
+      if (!offsets || index < 0 || index >= lines.length) return null;
+      return { top: offsets[index] as number, height: (offsets[index + 1] as number) - (offsets[index] as number) - ROW_GAP_PX };
+    },
+    [offsets, lines.length],
+  );
+
+  /** Brings a row into the list's view (the LIST scrolls, never the page; focus does not move). */
+  const reveal = useCallback(
+    (index: number, smooth: boolean) => {
+      const list = listRef.current;
+      const box = rowBox(index);
+      if (!list || !box) return;
+      if (box.top >= list.scrollTop && box.top + box.height <= list.scrollTop + list.clientHeight) return;
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      list.scrollTo({ top: Math.max(0, box.top - list.clientHeight / 3), behavior: smooth && !reduce ? 'smooth' : 'auto' });
+    },
+    [rowBox],
+  );
+
+  // `reveal` and the heights change whenever a row is measured; the effects below read the latest through these.
+  const revealRef = useRef(reveal);
+  const heightsRef = useRef(heights);
+  useEffect(() => {
+    revealRef.current = reveal;
+    heightsRef.current = heights;
+  }, [reveal, heights]);
 
   // Keep the spoken line in view: scroll the LIST (never the page), never move focus.
   useEffect(() => {
     if (!following || active < 0 || editing) return;
-    const list = listRef.current;
-    const row = list?.children[active] as HTMLElement | undefined;
-    if (!list || !row) return;
-    // The list is the rows' offset parent (`position: relative` in the stylesheet).
-    const top = row.offsetTop;
-    const visibleTop = list.scrollTop;
-    const visibleBottom = visibleTop + list.clientHeight;
-    if (top >= visibleTop && top + row.offsetHeight <= visibleBottom) return;
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    list.scrollTo({ top: Math.max(0, top - list.clientHeight / 3), behavior: reduce ? 'auto' : 'smooth' });
+    revealRef.current(active, true);
   }, [active, following, editing]);
+
+  // ---- measuring: the list's own height, and every drawn row
+  const onScroll = useCallback(() => {
+    const list = listRef.current;
+    if (!list) return;
+    setView((previous) => (previous.top === list.scrollTop && previous.height === list.clientHeight ? previous : { top: list.scrollTop, height: list.clientHeight }));
+  }, []);
+
+  useEffect(() => {
+    if (!windowed) return undefined;
+    const list = listRef.current;
+    if (!list || typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver((entries) => {
+      const changed: [string, number][] = [];
+      let shift = 0;
+      for (const entry of entries) {
+        const element = entry.target as HTMLElement;
+        if (element === list) continue;
+        const key = element.dataset.key;
+        if (!key || !element.isConnected) continue;
+        const height = element.offsetHeight;
+        // The room this row was given: its last measured height, or the guess for a row never seen.
+        const room = heightsRef.current.get(key) ?? Number(list.dataset.guess ?? ROW_GUESS_PX);
+        if (Math.abs(room - height) < 0.5) {
+          if (!heightsRef.current.has(key)) changed.push([key, height]);
+          continue;
+        }
+        // A row ABOVE what is visible took a different height than it was given room for:
+        // what the reader is looking at must not move.
+        if (!element.dataset.pinned && element.offsetTop < list.scrollTop) shift += height - room;
+        changed.push([key, height]);
+      }
+      if (shift !== 0) list.scrollTop += shift;
+      if (changed.length > 0) {
+        const next = new Map(heightsRef.current);
+        for (const [key, height] of changed) next.set(key, height);
+        // Kept here at once: the observer may report again before the next render.
+        heightsRef.current = next;
+        setHeights(next);
+        setGuess((previous) => previous ?? Math.round(changed.reduce((sum, [, height]) => sum + height, 0) / changed.length));
+      }
+      setView((previous) => (previous.top === list.scrollTop && previous.height === list.clientHeight ? previous : { top: list.scrollTop, height: list.clientHeight }));
+    });
+    observerRef.current = observer;
+    observer.observe(list);
+    for (const element of rowElements.current.values()) observer.observe(element);
+    return () => {
+      observer.disconnect();
+      observerRef.current = null;
+    };
+  }, [windowed]);
+
+  const mountRow = useCallback((index: number, element: HTMLLIElement | null) => {
+    const previous = rowElements.current.get(index);
+    if (previous && previous !== element) observerRef.current?.unobserve(previous);
+    if (element) {
+      rowElements.current.set(index, element);
+      observerRef.current?.observe(element);
+    } else {
+      rowElements.current.delete(index);
+    }
+  }, []);
+
+  const focusControl = useCallback((index: number, control: string): boolean => {
+    const row = rowElements.current.get(index);
+    const target =
+      row?.querySelector<HTMLElement>(`[data-row-control="${control}"]`) ??
+      row?.querySelector<HTMLElement>('[data-row-control="line"]');
+    if (!target) return false;
+    // Focusing scrolls the row into view (the browser's own behaviour), also when it was drawn out of the window.
+    target.focus();
+    return true;
+  }, []);
+
+  /** Focus a control of a row that may not be drawn yet: it is drawn (as the focus row) first. */
+  const focusWhenDrawn = useCallback(
+    (index: number, control: string) => {
+      if (focusControl(index, control)) return;
+      pendingFocus.current = { index, control };
+      setFocusRow(index);
+    },
+    [focusControl],
+  );
+
+  useLayoutEffect(() => {
+    const pending = pendingFocus.current;
+    if (!pending) return;
+    if (focusControl(pending.index, pending.control)) pendingFocus.current = null;
+  });
 
   /** The user moved the list themselves: stop following until they ask. */
   const stopFollowing = useCallback(() => setFollowing(false), []);
@@ -309,14 +512,6 @@ export function TranscriptPanel({
     [lines],
   );
 
-  const focusControl = (index: number, control: string) => {
-    const row = listRef.current?.children[index] as HTMLElement | undefined;
-    const target =
-      row?.querySelector<HTMLElement>(`[data-row-control="${control}"]`) ??
-      row?.querySelector<HTMLElement>('[data-row-control="line"]');
-    target?.focus();
-  };
-
   const saveEdit = useCallback(
     (index: number, text: string) => {
       const line = lines[index];
@@ -332,17 +527,17 @@ export function TranscriptPanel({
       }
       setEditing(null);
       // Back to the line that was edited (its key may be new: a written span becomes a line).
-      window.requestAnimationFrame(() => focusControl(index, 'line'));
+      window.requestAnimationFrame(() => focusWhenDrawn(index, 'line'));
     },
-    [lines, onEdit, onWriteUnclear],
+    [lines, onEdit, onWriteUnclear, focusWhenDrawn],
   );
 
   const cancelEdit = useCallback(() => {
     const key = editing?.key;
     setEditing(null);
     const index = lines.findIndex((line) => line.key === key);
-    if (index >= 0) window.requestAnimationFrame(() => focusControl(index, 'edit'));
-  }, [editing, lines]);
+    if (index >= 0) window.requestAnimationFrame(() => focusWhenDrawn(index, 'edit'));
+  }, [editing, lines, focusWhenDrawn]);
 
   const onListKeyDown = (event: KeyboardEvent<HTMLUListElement>) => {
     if (editing) return;
@@ -371,7 +566,7 @@ export function TranscriptPanel({
     setFollowing(false);
     if (event.shiftKey && selectable && control === 'check') toggleRow(next, true);
     setFocusRow(next);
-    focusControl(next, control);
+    focusWhenDrawn(next, control);
   };
 
   const makeKesitler = () => {
@@ -390,10 +585,49 @@ export function TranscriptPanel({
     }
   };
 
-  const unclearCount = lines.filter((line) => line.kind === 'unclear').length;
+  /** To the next (or previous) line the search found: shown in the list and made the list's Tab stop. Focus stays in the box. */
+  const goToMatch = (step: 1 | -1) => {
+    const target = nextMatch(matches, foundRow ?? (step === 1 ? -1 : lines.length), step);
+    if (target < 0) return;
+    setFound(target);
+    setFocusRow(target);
+    setFollowing(false);
+    reveal(target, false);
+  };
+
+  const searchStatus = (() => {
+    if (!query.trim()) return '';
+    if (matches.length === 0) return t('transcript.search.none');
+    if (foundRow === null) return fillText(t('transcript.search.count'), { n: String(matches.length) });
+    const line = lines[foundRow] as TranscriptLine;
+    return fillText(t('transcript.search.at'), {
+      k: String(matches.indexOf(foundRow) + 1),
+      n: String(matches.length),
+      time: lineClock(line.startUs),
+      text: texts[foundRow] ?? '',
+    });
+  })();
+
+  // The rows in the page: the window, plus (drawn at their own place) the focus row and a row being edited.
+  const drawn: number[] = [];
+  for (let index = range.first; index <= range.last; index += 1) drawn.push(index);
+  const outside = (index: number) => index >= 0 && index < lines.length && (index < range.first || index > range.last);
+  if (windowed) {
+    const extra = [...new Set([currentRow, editingIndex])].filter(outside).sort((a, b) => a - b);
+    for (const index of extra) {
+      if (index < range.first) drawn.splice(extra.filter((other) => other < index).length, 0, index);
+      else drawn.push(index);
+    }
+  }
+  const spacers: CSSProperties | undefined = offsets
+    ? ({
+        '--rows-before': `${offsets[Math.min(range.first, lines.length)] as number}px`,
+        '--rows-after': `${Math.max(0, (offsets[lines.length] as number) - (offsets[Math.min(range.last + 1, lines.length)] as number))}px`,
+      } as CSSProperties)
+    : undefined;
 
   return (
-    <section className="transcript" aria-labelledby={headingId} data-testid="transcript-panel">
+    <section className="transcript" aria-labelledby={headingId} data-testid="transcript-panel" data-windowed={windowed || undefined}>
       <div className="transcript-head">
         <h2 id={headingId}>
           {t('transcript.panel.title')}{' '}
@@ -412,6 +646,64 @@ export function TranscriptPanel({
           {t('transcript.machine')}
           {unclearCount > 0 ? ` ${fillText(t('transcript.unclearCount'), { n: String(unclearCount) })}` : ''}
         </p>
+      ) : null}
+
+      {lines.length >= SEARCH_FROM_ROWS ? (
+        <div className="transcript-search" role="search" aria-label={t('transcript.search.label')} data-testid="transcript-search">
+          <label className="transcript-search-field">
+            <Icon name="search" size={16} />
+            <span className="visually-hidden">{t('transcript.search.label')}</span>
+            <input
+              type="search"
+              value={query}
+              placeholder={t('transcript.search.label')}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setFound(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                goToMatch(event.shiftKey ? -1 : 1);
+              }}
+              aria-describedby={`${headingId}-search-status`}
+              enterKeyHint="search"
+              autoComplete="off"
+              spellCheck={false}
+              data-testid="transcript-search-input"
+            />
+          </label>
+          <button
+            type="button"
+            className="icon-btn icon-btn-sm"
+            onClick={() => goToMatch(-1)}
+            disabled={matches.length === 0}
+            aria-label={t('transcript.search.previous')}
+            title={t('transcript.search.previous')}
+            data-testid="transcript-search-previous"
+          >
+            <Icon name="up" size={16} />
+          </button>
+          <button
+            type="button"
+            className="icon-btn icon-btn-sm"
+            onClick={() => goToMatch(1)}
+            disabled={matches.length === 0}
+            aria-label={t('transcript.search.next')}
+            title={t('transcript.search.next')}
+            data-testid="transcript-search-next"
+          >
+            <Icon name="down" size={16} />
+          </button>
+          <p className="transcript-search-status" id={`${headingId}-search-status`} role="status" data-testid="transcript-search-status">
+            {searchStatus}
+          </p>
+          {windowed ? (
+            <p className="transcript-search-hint" data-testid="transcript-search-hint">
+              {t('transcript.search.windowHint')}
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       {selectable ? (
@@ -458,33 +750,44 @@ export function TranscriptPanel({
         <ul
           ref={listRef}
           className="transcript-list"
+          style={spacers}
           aria-labelledby={headingId}
           onKeyDown={onListKeyDown}
           onWheel={stopFollowing}
           onTouchMove={stopFollowing}
+          onScroll={windowed ? onScroll : undefined}
+          data-guess={guess ?? ROW_GUESS_PX}
           data-testid="transcript-list"
         >
-          {lines.map((line, index) => (
-            <Row
-              key={line.key}
-              t={t}
-              line={line}
-              index={index}
-              active={index === active}
-              current={index === currentRow}
-              selectable={selectable}
-              selected={liveSelected.has(line.key)}
-              editable={line.kind === 'cue' ? onEdit !== undefined : onWriteUnclear !== undefined}
-              editing={editing?.key === line.key}
-              editError={editing?.key === line.key ? editing.error : null}
-              onSeek={seekRow}
-              onToggle={toggleRow}
-              onStartEdit={startEdit}
-              onSaveEdit={saveEdit}
-              onCancelEdit={cancelEdit}
-              onFocusRow={setFocusRow}
-            />
-          ))}
+          {drawn.map((index) => {
+            const line = lines[index] as TranscriptLine;
+            return (
+              <Row
+                key={line.key}
+                t={t}
+                line={line}
+                index={index}
+                total={lines.length}
+                active={index === active}
+                current={index === currentRow}
+                selectable={selectable}
+                selected={liveSelected.has(line.key)}
+                editable={line.kind === 'cue' ? onEdit !== undefined : onWriteUnclear !== undefined}
+                editing={editing?.key === line.key}
+                editError={editing?.key === line.key ? editing.error : null}
+                match={matchSet.has(index)}
+                found={foundRow === index}
+                pinnedTop={offsets && outside(index) ? (offsets[index] as number) : null}
+                onSeek={seekRow}
+                onToggle={toggleRow}
+                onStartEdit={startEdit}
+                onSaveEdit={saveEdit}
+                onCancelEdit={cancelEdit}
+                onFocusRow={setFocusRow}
+                onMount={mountRow}
+              />
+            );
+          })}
         </ul>
       )}
     </section>
