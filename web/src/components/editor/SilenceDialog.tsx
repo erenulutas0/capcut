@@ -20,7 +20,14 @@ import {
   type LoudnessEnvelope,
   type SilenceParams,
 } from '@/domain/silence';
-import { US_PER_SECOND, formatDurationShort, formatTimecode, secondsToUs, type Micros } from '@/domain/time';
+import {
+  US_PER_SECOND,
+  formatDecimal,
+  formatDurationShort,
+  formatTimecode,
+  secondsToUs,
+  type Micros,
+} from '@/domain/time';
 import type { MessageKey } from '@/i18n/messages';
 import { Dialog } from './Dialog';
 import type { SilenceRun } from './useSilenceAnalysis';
@@ -190,6 +197,10 @@ export function SilenceDialog({
 
   const setParam = (patch: Partial<SilenceParams>) => setParams((current) => ({ ...current, ...patch }));
 
+  // ADR-030: Turkish reads "0,9 sn", English "0.9 s" — never a bare toFixed().
+  const mark = t('time.decimalMark');
+  const lengthWords = { minute: t('time.minuteShort'), second: t('time.secondShort'), decimalMark: mark };
+
   const track = primaryCaptionTrack(project);
   const captionsOn = (track?.cues.length ?? 0) > 0;
   const analysed = review.clips.length - review.pending;
@@ -249,8 +260,8 @@ export function SilenceDialog({
                 ? t('silence.progressStarting')
                 : fill(t('silence.progressValue'), {
                     percent,
-                    done: (run.framesDone / FRAMES_PER_SECOND).toFixed(1),
-                    total: (run.framesTotal / FRAMES_PER_SECOND).toFixed(1),
+                    done: formatDecimal(run.framesDone / FRAMES_PER_SECOND, 1, mark),
+                    total: formatDecimal(run.framesTotal / FRAMES_PER_SECOND, 1, mark),
                   })}
             </span>
           </div>
@@ -300,7 +311,7 @@ export function SilenceDialog({
             <li>
               <span className="meta-key">{t('silence.applied.removed')}</span>
               <span className="meta-value" data-testid="silence-report-removed">
-                {formatDurationShort(report.removedUs)}
+                {formatDurationShort(report.removedUs, lengthWords)}
               </span>
             </li>
             <li>
@@ -336,7 +347,7 @@ export function SilenceDialog({
                     <label className="field-label" htmlFor="silence-min" style={{ margin: 0 }}>
                       {t('silence.param.minSilence')}
                     </label>
-                    <span className="slider-value">{(params.minSilenceUs / US_PER_SECOND).toFixed(1)}</span>
+                    <span className="slider-value" data-testid="silence-min-value">{formatDecimal(params.minSilenceUs / US_PER_SECOND, 1, mark)}</span>
                   </div>
                   <input
                     id="silence-min"
@@ -345,6 +356,8 @@ export function SilenceDialog({
                     max={SILENCE_PARAM_LIMITS.minSilenceUs.max / US_PER_SECOND}
                     step={0.1}
                     value={params.minSilenceUs / US_PER_SECOND}
+                    // A screen reader would read the raw value ("0.7"); say it as the screen shows it.
+                    aria-valuetext={formatDecimal(params.minSilenceUs / US_PER_SECOND, 1, mark)}
                     aria-describedby="silence-min-hint"
                     onChange={(event) =>
                       setParam({ minSilenceUs: Math.round(Number(event.target.value) * 10) * 100_000 })
@@ -467,7 +480,7 @@ export function SilenceDialog({
                                   data-testid="silence-check"
                                 />
                                 <span className="silence-time">{range}</span>
-                                <span className="silence-length">{formatDurationShort(item.endUs - item.startUs)}</span>
+                                <span className="silence-length">{formatDurationShort(item.endUs - item.startUs, lengthWords)}</span>
                               </label>
                               <div className="silence-listen">
                                 <button

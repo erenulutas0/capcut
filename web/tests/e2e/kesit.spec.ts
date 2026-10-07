@@ -152,6 +152,9 @@ test.describe('kesit list: mark, add, play, download', () => {
     );
     await expect(page.getByTestId('export-download')).toHaveCount(0);
     await expect(card(page, 0).getByTestId('measured-route')).toHaveText('seçtiğin dosya');
+    // ADR-030: every number of "Ayrıntılar" in Turkish form (the time taken used to read "1.2 s").
+    await expect(card(page, 0).getByTestId('measured-elapsed')).toHaveText(/^\d+,\d sn$/);
+    await expect(card(page, 0).getByTestId('measured-size')).not.toHaveText(/\d\.\d/);
     // Only the picked file: no temporary copy is left in OPFS.
     const files = await opfsFiles(page);
     expect(Object.keys(files)).toEqual(['saved-sample-24s_00-02-00-06.mp4']);
@@ -339,7 +342,7 @@ test.describe('kesit list: mark, add, play, download', () => {
     await expect(page.getByTestId('strip-zoom-value')).toContainText('×2');
     // 24 s video: at most 10 s across the strip, ×2.4.
     await page.getByTestId('strip-zoom-in').click();
-    await expect(page.getByTestId('strip-zoom-value')).toContainText('×2.4');
+    await expect(page.getByTestId('strip-zoom-value')).toContainText('×2,4');
     await expect(page.getByTestId('strip-zoom-in')).toBeDisabled();
 
     // End: the strip scrolls so the playhead stays visible.

@@ -38,6 +38,18 @@ function dialog(page: Page) {
   return page.getByRole('dialog', { name: 'Sessizlikleri bul' });
 }
 
+/**
+ * ADR-030: Turkish numbers read with a decimal comma. Everything the dialog
+ * shows right now, minus clock positions ("00:04.500" keeps its milliseconds),
+ * must hold no dotted decimal — and must hold at least one with a comma, so
+ * the check cannot pass on an empty dialog.
+ */
+async function expectDecimalComma(page: Page) {
+  const text = (await dialog(page).innerText()).replace(/\d{1,2}:\d{2}(:\d{2})?\.\d{3}/g, '');
+  expect(text.match(/\d+\.\d+/g) ?? [], 'dotted decimals in the silence dialog').toEqual([]);
+  expect(text).toMatch(/\d,\d/);
+}
+
 /** Opens the dialog from Diğer (⋯) and waits for the analysis to finish. */
 async function findSilences(page: Page) {
   await openMore(page);
@@ -133,6 +145,9 @@ test.describe('silence suggestions', () => {
       await expect(page.getByTestId('silence-apply')).toBeDisabled();
       await check.check();
       await expect(page.getByTestId('silence-apply')).toBeEnabled();
+      // The list as it stands: the suggestion's length ("0,9 sn") and the slider value ("0,7").
+      await expect(page.getByTestId('silence-suggestion').locator('.silence-length')).toHaveText('0,9 sn');
+      await expectDecimalComma(page);
 
       // A longer minimum pause (1.5 s) makes the 1.2 s gap disappear at once
       // (cached envelope, no new analysis); defaults bring it back.
@@ -140,6 +155,8 @@ test.describe('silence suggestions', () => {
       await min.focus();
       for (let step = 0; step < 8; step += 1) await page.keyboard.press('ArrowRight');
       await expect(min).toHaveValue('1.5');
+      // The slider's own value is a number for the browser; what is shown next to it is Turkish.
+      await expect(page.getByTestId('silence-min-value')).toHaveText('1,5');
       await expect(page.getByTestId('silence-suggestion')).toHaveCount(0);
       await expect(page.getByTestId('silence-note')).toHaveText('Bu kesitte ayarlara uyan uzun sessizlik yok.');
       await expect(page.getByTestId('silence-running')).toHaveCount(0);
@@ -153,7 +170,9 @@ test.describe('silence suggestions', () => {
       await expect(page.getByTestId('silence-report')).toBeVisible();
       await expect(page.getByTestId('silence-report-moments')).toHaveText('1 → 2');
       await expect(page.getByTestId('silence-report-dropped')).toHaveText('0');
-      await expect(page.getByTestId('silence-report-removed')).toHaveText(/^0\.9 sn$/);
+      // ADR-030: a decimal comma in Turkish ("0,9 sn", not "0.9 sn").
+      await expect(page.getByTestId('silence-report-removed')).toHaveText('0,9 sn');
+      await expectDecimalComma(page);
       await page.getByTestId('silence-done').click();
       await expect(dialog(page)).toHaveCount(0);
       await expect(page.getByTestId('moment-count')).toHaveText('(2)');
@@ -295,7 +314,7 @@ test.describe('silence suggestions', () => {
     await page.getByTestId('find-silences').click();
     await expect(page.getByTestId('silence-running')).toBeVisible();
     // Progress counts seconds of audio really decoded, out of the moment's 290 s.
-    await expect(page.getByTestId('silence-progress')).toHaveText(/^%\d+ · \d+\.\d \/ 290\.0 sn ses$/, {
+    await expect(page.getByTestId('silence-progress')).toHaveText(/^%\d+ · \d+,\d \/ 290,0 sn ses$/, {
       timeout: 15_000,
     });
     await page.getByTestId('silence-cancel').click();
