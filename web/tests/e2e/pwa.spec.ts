@@ -19,6 +19,7 @@ import {
   sharedFiles,
   stubShare,
 } from './kesitFlow';
+import { expectStylesApplied } from './stylesReady';
 
 /**
  * The phone flow (ADR-031): share the finished video (Web Share API), the
@@ -32,6 +33,7 @@ const OTHER = join(process.cwd(), 'tests', 'media', 'other-8s.mp4');
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
 
 async function axe(page: Page) {
+  await expectStylesApplied(page, 'pwa');
   const result = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
   return result.violations.map((violation) => `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(', ')}`);
 }

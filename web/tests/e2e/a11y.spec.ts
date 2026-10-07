@@ -7,6 +7,7 @@ import { tr } from '../../src/i18n/messages';
 import { browserDecodesHevc, hevcFixture } from './hevc-media';
 import { closeSheet, noSavePicker, openMore, openSettings, installSavePicker, stubShare } from './kesitFlow';
 import { silenceFixture } from './silence-media';
+import { expectStylesApplied } from './stylesReady';
 import { timelineFixture } from './timeline-media';
 import { wizardFixture } from './wizard-media';
 
@@ -41,6 +42,8 @@ interface Finding {
  * the next state's, so the whole walk always runs and reports everything.
  */
 async function audit(page: Page, state: string, testInfo: TestInfo): Promise<void> {
+  // An audit of a page whose stylesheet has not arrived reports contrast findings that are not there.
+  await expectStylesApplied(page, state, testInfo);
   const result = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
   const findings: Finding[] = result.violations.map((violation) => ({
     rule: violation.id,
@@ -1030,6 +1033,42 @@ async function auditDikey(page: Page, prefix: string, testInfo: TestInfo) {
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await audit(page, `${prefix}-wizard-saved`, testInfo);
 }
+
+// The guard itself (5 Oct 2026, CI): an audit must not run on a page whose stylesheet did not arrive.
+test.describe('a11y: the audit refuses a page without its styles', () => {
+  test.use({ storageState: { cookies: [], origins: [] }, reducedMotion: 'reduce' });
+
+  test('the opening screen without home.css: the 23 contrast "findings" of the CI run, named as a missing stylesheet', async ({ page }) => {
+    // The page's own sheet is the second link (globals.css is the first).
+    const html = await (await page.request.get('/')).text();
+    const sheets = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map((match) => match[1] ?? '');
+    expect(sheets.length, 'the opening screen links two stylesheets').toBe(2);
+    await page.route(`**${sheets[1]}`, (route) => route.abort('connectionreset'));
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ne yapmak istiyorsun?');
+
+    // What the failed run reported: axe sees contrast failures on the links and the controls.
+    const result = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
+    const contrast = result.violations.find((violation) => violation.id === 'color-contrast');
+    expect(contrast?.nodes.length ?? 0, 'every link and control of the page (23 in the CI run of 5 Oct 2026)').toBeGreaterThan(20);
+    expect(contrast?.nodes.slice(0, 2).map((node) => node.target.join(' '))).toEqual(['.home-editor-link', '#finder-input']);
+
+    // What the guard says instead, before axe is asked.
+    const refusal = await expectStylesApplied(page, 'home-without-its-sheet').then(
+      () => null,
+      (error: Error) => error.message,
+    );
+    expect(refusal).toContain('was about to be audited without its styles');
+    expect(refusal).toContain(`stylesheet not applied: ${sheets[1]} (status 0`);
+  });
+
+  test('with every stylesheet in place the guard passes at once', async ({ page }) => {
+    for (const path of ['/', '/editor', '/yap/dikey', '/gizlilik']) {
+      await page.goto(path);
+      await expectStylesApplied(page, path);
+    }
+  });
+});
 
 test.describe('a11y: opening screen and wizards, axe audit', () => {
   test.use({ storageState: { cookies: [], origins: [] }, reducedMotion: 'reduce' });
