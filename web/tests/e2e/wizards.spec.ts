@@ -5,7 +5,10 @@ import { expect, test, type Page } from '@playwright/test';
 import { browserDecodesHevc, hevcFixture } from './hevc-media';
 import {
   addKesit,
+  closeSheet,
+  frameGray,
   installSavePicker,
+  meanAbsDiff,
   noSavePicker,
   openSettings,
   opfsFiles,
@@ -622,6 +625,155 @@ test.describe('Sesini al', () => {
     await expect(page.getByTestId('export-download')).toBeVisible({ timeout: 120_000 });
     await expect(title(page)).toHaveText('Ses dosyan hazır');
     await expect(page.getByTestId('export-download')).toHaveAttribute('download', 'other-8s_ses.m4a');
+    await context.close();
+  });
+});
+
+// ------------------------------------------------------------------ Sesi kapat
+
+/**
+ * Plays a saved file in the page itself (the browser's own player, not
+ * ffmpeg): how far it got, whether it decoded any sound, any error.
+ */
+function playSaved(page: Page, name: string) {
+  return page.evaluate(async (fileName) => {
+    const root = await navigator.storage.getDirectory();
+    const file = await (await root.getFileHandle(fileName)).getFile();
+    const video = document.createElement('video');
+    video.muted = true;
+    video.src = URL.createObjectURL(file);
+    document.body.append(video);
+    try {
+      await video.play();
+      await new Promise<void>((resolve) => {
+        const started = Date.now();
+        const tick = () => (video.currentTime >= 1 || video.error || Date.now() - started > 15_000 ? resolve() : setTimeout(tick, 50));
+        tick();
+      });
+      const withBytes = video as HTMLVideoElement & { webkitAudioDecodedByteCount?: number; webkitVideoDecodedByteCount?: number };
+      return {
+        playedS: video.currentTime,
+        durationS: video.duration,
+        error: video.error ? video.error.message || String(video.error.code) : null,
+        audioBytes: withBytes.webkitAudioDecodedByteCount ?? -1,
+        videoBytes: withBytes.webkitVideoDecodedByteCount ?? -1,
+        size: [video.videoWidth, video.videoHeight],
+      };
+    } finally {
+      video.pause();
+      URL.revokeObjectURL(video.src);
+      video.remove();
+    }
+  }, name);
+}
+
+test.describe('Sesi kapat', () => {
+  test('no decision: İndir saves the same video with no audio track; the pictures are copied, not re-encoded', async ({
+    page,
+  }, testInfo) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await startTask(page, 'sustur', SAMPLE);
+    await expect(page.getByTestId('sustur-info')).toBeVisible({ timeout: 60_000 });
+    await expect(title(page)).toHaveText('Videonun sesini kapatalım');
+    await expect(page.getByTestId('sustur-info')).toContainText('Aynı video, sesi olmadan kaydedilir.');
+    await expect(page.getByTestId('wizard-step')).toContainText('Adım 2 / 3');
+    // No choice on this step, and the preview already is what will be saved: silent.
+    await expect(page.getByRole('radio')).toHaveCount(0);
+    expect(await page.getByTestId('wizard-video').evaluate((video: HTMLVideoElement) => video.muted)).toBe(true);
+    await expect(page.getByTestId('wizard-download')).toBeEnabled();
+
+    await download(page);
+    expect(await pickerCalls(page)).toEqual(['sample-24s_sessiz.mp4']);
+    await expect(page.getByTestId('download-saved')).toHaveText('Kaydedildi: saved-sample-24s_sessiz.mp4');
+    const saved = await readSaved(page, testInfo, 'saved-sample-24s_sessiz.mp4');
+
+    // The file, by ffprobe: one stream, the picture. No audio track at all — not a track of silence.
+    const probe = probeStreams(saved);
+    expect(probe.streams.map((stream) => `${stream.type}:${stream.codec}`)).toEqual(['video:h264']);
+    expect(probe.durationS).toBeCloseTo(24, 1);
+    const picture = probeMp4(saved);
+    expect([picture.width, picture.height]).toEqual([1280, 720]);
+    expect(picture.audioCodec).toBeNull();
+    // The same pictures: the fast cut copied them (ADR-027), and the result says so.
+    await expect(page.getByTestId('export-method')).toHaveAttribute('data-method', 'copy');
+    await expect(page.getByTestId('export-method')).toContainText('görüntü yeniden kodlanmadı');
+    for (const atS of [0.5, 11, 23]) {
+      expect(meanAbsDiff(frameGray(saved, atS), frameGray(SAMPLE, atS)), `frame at ${atS} s`).toBeLessThan(1);
+    }
+    await expect(page.getByTestId('measured-codecs')).toHaveText('avc · ses yok');
+    // Smaller than the original by about its sound, never larger.
+    expect(fileBytes(saved)).toBeLessThan(fileBytes(SAMPLE));
+
+    // And it plays in the browser's own player: pictures decoded, no sound decoded, no error.
+    const played = await playSaved(page, 'saved-sample-24s_sessiz.mp4');
+    expect(played.error).toBeNull();
+    expect(played.playedS).toBeGreaterThanOrEqual(1);
+    expect(played.durationS).toBeCloseTo(24, 1);
+    expect(played.size).toEqual([1280, 720]);
+    expect(played.videoBytes).toBeGreaterThan(0);
+    expect(played.audioBytes).toBe(0);
+
+    await page.waitForTimeout(1200);
+    expect(await storedProjects(page)).toBe(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('a video that has to be re-encoded (WebM) is saved as MP4 without sound, and says it was re-processed', async ({
+    page,
+  }, testInfo) => {
+    await startTask(page, 'sustur', wizardFixture('webm'));
+    await expect(page.getByTestId('sustur-info')).toBeVisible({ timeout: 60_000 });
+    await download(page);
+    const saved = await readSaved(page, testInfo, 'saved-tarayici-kaydi_sessiz.mp4');
+    const probe = probeStreams(saved);
+    expect(probe.streams.map((stream) => `${stream.type}:${stream.codec}`)).toEqual(['video:h264']);
+    expect(probe.durationS).toBeCloseTo(2, 1);
+    await expect(page.getByTestId('export-method')).toHaveAttribute('data-method', 'encode');
+    const played = await playSaved(page, 'saved-tarayici-kaydi_sessiz.mp4');
+    expect(played.error).toBeNull();
+    expect(played.audioBytes).toBe(0);
+  });
+
+  test('a video that has no sound: said on the step, İndir stays off, no save dialog, nothing written', async ({ page }) => {
+    await startTask(page, 'sustur', wizardFixture('noAudio'));
+    await expect(page.getByTestId('sustur-info')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId('wizard-blocked')).toHaveText('Bu videoda zaten ses yok; kapatılacak bir şey yok.');
+    await expect(page.getByTestId('wizard-download')).toBeDisabled();
+    expect(await pickerCalls(page)).toEqual([]);
+    expect(Object.keys(await opfsFiles(page)).filter((name) => name.startsWith('saved-'))).toEqual([]);
+  });
+
+  test('“Daha fazla ayar → editörde aç”: the same video, its sound off, no kesit; “Videoyu indir” there saves no sound either', async ({
+    page,
+  }, testInfo) => {
+    await startTask(page, 'sustur', OTHER);
+    await expect(page.getByTestId('sustur-info')).toBeVisible({ timeout: 60_000 });
+    await page.getByTestId('wizard-open-editor').click();
+    await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId('kesit-card')).toHaveCount(0);
+    await expect(page.getByTestId('save-state-off')).toBeVisible();
+    await openSettings(page, 'audio');
+    await expect(page.getByTestId('clip-mute')).toHaveAttribute('aria-pressed', 'true');
+    await closeSheet(page);
+    await page.getByTestId('download-all').click();
+    await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
+    const name = (await pickerCalls(page)).at(-1) as string;
+    const probe = probeStreams(await readSaved(page, testInfo, `saved-${name}`));
+    expect(probe.streams.map((stream) => `${stream.type}:${stream.codec}`)).toEqual(['video:h264']);
+    expect(probe.durationS).toBeCloseTo(8, 1);
+  });
+
+  test('without a save dialog: “Videon hazır”, the download is named _sessiz.mp4', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const page = await context.newPage();
+    await noSavePicker(page);
+    await startTask(page, 'sustur', OTHER);
+    await expect(page.getByTestId('sustur-info')).toBeVisible({ timeout: 60_000 });
+    await page.getByTestId('wizard-download').click();
+    await expect(page.getByTestId('export-download')).toBeVisible({ timeout: 120_000 });
+    await expect(title(page)).toHaveText('Videon hazır');
+    await expect(page.getByTestId('export-download')).toHaveAttribute('download', 'other-8s_sessiz.mp4');
     await context.close();
   });
 });

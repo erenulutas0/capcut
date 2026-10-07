@@ -20,6 +20,7 @@ import {
   ownSizeRecipe,
   shortEdgeForSource,
   silenceParamsFor,
+  soundlessRecipe,
   taggedFileName,
   withMusicDefaults,
 } from '@/application/taskRecipes';
@@ -190,6 +191,39 @@ describe('Müzik ekle', () => {
     expect(next.music).toBeUndefined();
     expect(next.clips).toHaveLength(0);
     expect(next.export.shortEdge).toBe(720);
+  });
+});
+
+describe('Sesi kapat', () => {
+  const muted = { ...DEFAULT_KESIT_SETTINGS, muted: true };
+
+  it('the whole video at its own size, with nothing left that makes a sound', () => {
+    const small = opened(video({ displayWidth: 1280, displayHeight: 720 }));
+    const recipe = soundlessRecipe(small);
+    expect(recipe.clips).toHaveLength(0);
+    expect(recipe.music).toBeUndefined();
+    expect(recipe.export.shortEdge).toBe(720);
+    // Music picked somewhere else does not come along.
+    const withMusic = soundlessRecipe(setMusicAsset(small, music(30)));
+    expect(withMusic.music).toBeUndefined();
+    expect(withMusic.assets.map((asset) => asset.kind)).toEqual(['video']);
+    expectExportable(withMusic, muted);
+  });
+
+  it('with the sound switched off the download asks for no sound at all: the file gets no audio track', () => {
+    const download = downloadRecipe(soundlessRecipe(opened()), { kind: 'all' }, muted);
+    if (!download) throw new Error('nothing to download');
+    expect(download.clips).toHaveLength(1);
+    expect(download.clips[0]).toMatchObject({ sourceInUs: 0, sourceOutUs: 20 * S, muted: true });
+    const plan = compileRenderPlan(download, WEB_LOCAL_POLICY);
+    if (!plan.ok) throw new Error('recipe refused');
+    // Neither the video's own sound nor music: the export worker writes a video-only MP4.
+    expect(plan.plan.audio.wantsSourceAudio).toBe(false);
+    expect(plan.plan.audio.music).toBeNull();
+    // With the sound left on, the same recipe would keep it — the wizard waits for the switch.
+    const loud = downloadRecipe(soundlessRecipe(opened()), { kind: 'all' }, DEFAULT_KESIT_SETTINGS);
+    const loudPlan = loud ? compileRenderPlan(loud, WEB_LOCAL_POLICY) : null;
+    expect(loudPlan?.ok && loudPlan.plan.audio.wantsSourceAudio).toBe(true);
   });
 });
 

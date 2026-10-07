@@ -19,12 +19,17 @@ export function taskHref(task: Pick<TaskDefinition, 'id'>): string {
 }
 
 /**
- * Columns of the card grid on a wide screen: four when that fills the rows
- * (8 cards → 4 + 4, 7 → 4 + 3), otherwise three (5 → 3 + 2, 6 → 3 + 3), so
- * no card is left alone on a row.
+ * Columns of the card grid on a wide screen, chosen so that no card is left
+ * alone on the last row when that can be helped: rows that fill first
+ * (8 cards → 4 + 4, 9 → 3 + 3 + 3, 6 → 3 + 3), then the fullest last row
+ * (7 → 4 + 3, 11 → 4 + 4 + 3, 5 → 3 + 2, 10 → 4 + 4 + 2).
  */
 export function wideColumns(count: number): 3 | 4 {
-  return count % 4 === 0 || count % 4 === 3 ? 4 : 3;
+  if (count % 4 === 0) return 4;
+  if (count % 3 === 0) return 3;
+  if (count % 4 === 3) return 4;
+  if (count % 3 === 2) return 3;
+  return count % 4 === 2 ? 4 : 3;
 }
 
 function fill(template: string, values: Record<string, string>): string {

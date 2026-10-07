@@ -11,7 +11,7 @@ import { downloadDurationUs, fittedMusicEndUs } from '@/domain/musicFit';
 import { DEFAULT_SILENCE_PARAMS, SILENCE_PARAM_LIMITS, type SilenceParams } from '@/domain/silence';
 import type { Micros } from '@/domain/time';
 import { totalOutputDurationUs } from '@/domain/timeline';
-import { primaryVideoAsset, setExportShortEdge } from './commands';
+import { primaryVideoAsset, removeMusic, setExportShortEdge } from './commands';
 
 // ------------------------------------------------------------ file names
 
@@ -107,6 +107,19 @@ export function shortEdgeForSource(displayWidth: number | undefined, displayHeig
 export function ownSizeRecipe(project: Project): Project {
   const asset = primaryVideoAsset(project);
   return setExportShortEdge(project, shortEdgeForSource(asset?.displayWidth, asset?.displayHeight));
+}
+
+// ------------------------------------------------------------ Sesi kapat
+
+/**
+ * Opening a video in "Sesi kapat": the video at its own size and nothing
+ * that makes a sound — no music left over from elsewhere. The video's own
+ * sound is switched off by the wizard's sound setting (`KesitSettings.muted`,
+ * the editor's "Sesi kapat" switch), which the whole-video download reads;
+ * with every range muted and no music the export writes NO audio track.
+ */
+export function soundlessRecipe(project: Project): Project {
+  return removeMusic(ownSizeRecipe(project));
 }
 
 // ------------------------------------------------------------ Her yerde açılsın

@@ -43,6 +43,10 @@ const PATHS = {
   taskText: 'M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM7 15h4M15 15h2M7 11h2M13 11h4',
   taskMusic: 'M9 18V5l12-2v13M3 18a3 3 0 1 0 6 0a3 3 0 1 0-6 0M15 16a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
   taskSound: 'M11 5L6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7',
+  // "Sesi kapat": the same speaker, crossed out.
+  taskMute: 'M11 5L6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6',
+  // Asked for, not possible yet (search results only): a clock.
+  taskLater: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 7v5l3 2',
   taskConvert: 'M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5',
 } as const;
 

@@ -1010,11 +1010,15 @@ async function auditHome(page: Page, prefix: string, testInfo: TestInfo) {
   await expect(page.getByRole('option')).toHaveCount(2);
   await audit(page, `${prefix}-home-results`, testInfo);
   await finderBox(page).fill('altyazı ekle');
-  // Every task works since ADR-036: "altyazı ekle" now finds "Yazıya dök" and can start it.
-  // (The "Bu henüz yok" answer is still in the code for the next announced task; with no such
-  // task it cannot be reached in the app, so it is not audited here — unit-tested in taskSearch.test.ts.)
+  // Every task works since ADR-036: "altyazı ekle" finds "Yazıya dök" and can start it.
   await expect(page.getByTestId('result-yazi').getByTestId('result-start')).toBeVisible();
   await audit(page, `${prefix}-home-yazi-result`, testInfo);
+  // A request the app cannot serve yet: the row that says so, with no button (7 Oct 2026).
+  await finderBox(page).fill('gife çevir');
+  await expect(page.getByTestId('result-gif').getByTestId('result-unavailable')).toHaveText('Bunu henüz yapamıyoruz.');
+  await expect(page.getByTestId('result-start')).toHaveCount(0);
+  await audit(page, `${prefix}-home-cannot-yet`, testInfo);
+  expect(await horizontalOverflow(page), `${prefix} home, cannot yet`).toBe(0);
   await finderBox(page).fill('pizza siparişi');
   await expect(page.getByTestId('finder-none')).toBeVisible();
   await audit(page, `${prefix}-home-none`, testInfo);
@@ -1452,4 +1456,149 @@ test.describe('a11y: “Küçült” and “Sesini al” (ADR-035), axe audit an
     await expect(page.getByTestId('download-status')).toContainText('Ses dosyası kaydedildi: saved-other-8s_ses.m4a');
     expect(unmarked, 'stops without a visible focus indicator').toEqual([]);
   });
+});
+
+// ------------------------------------------------------------ "Sesi kapat"
+// The ninth card and its wizard (7 Oct 2026), and the opening screen's new
+// answer for requests that cannot be served yet.
+
+test.describe('a11y: “Sesi kapat” and “Bunu henüz yapamıyoruz.”, axe audit and keyboard', () => {
+  test.use({ storageState: { cookies: [], origins: [] }, reducedMotion: 'reduce' });
+  test.describe.configure({ timeout: 300_000 });
+
+  test.beforeEach(async ({ page }) => {
+    await installSavePicker(page);
+  });
+
+  for (const size of [
+    { name: 'phone-360', width: 360, height: 780 },
+    { name: 'phone-390', width: 390, height: 844 },
+    { name: 'desktop-1440', width: 1440, height: 900 },
+  ]) {
+    test(`${size.name}: the nine cards, both answers of the search, every step of the wizard — no axe finding, nothing scrolls sideways`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize({ width: size.width, height: size.height });
+
+      // The opening screen with nine cards; "Sesi kapat" found; a request that cannot be served.
+      await page.goto('/');
+      await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(9);
+      await audit(page, `${size.name}-home-nine-cards`, testInfo);
+      expect(await horizontalOverflow(page), 'home').toBe(0);
+      await finderBox(page).fill('sesini kapat');
+      await expect(page.getByTestId('result-sustur').getByTestId('result-start')).toBeVisible();
+      await audit(page, `${size.name}-home-sustur-result`, testInfo);
+      await finderBox(page).fill('tiktok logosunu kaldır');
+      await expect(page.getByTestId('result-filigran')).toHaveAttribute('aria-disabled', 'true');
+      await expect(page.getByRole('option')).toHaveCount(1);
+      await audit(page, `${size.name}-home-cannot-yet`, testInfo);
+      expect(await horizontalOverflow(page), 'home, cannot yet').toBe(0);
+
+      // The wizard: pick, the one-line explanation, the saved result, and the video without sound.
+      await page.goto('/yap/sustur');
+      await expect(page.getByTestId('pick-video')).toBeEnabled();
+      await audit(page, `${size.name}-sustur-pick`, testInfo);
+      expect(await horizontalOverflow(page), 'sustur pick').toBe(0);
+      await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+      await expect(page.getByTestId('sustur-info')).toBeVisible({ timeout: 60_000 });
+      await audit(page, `${size.name}-sustur-info`, testInfo);
+      expect(await horizontalOverflow(page), 'sustur info').toBe(0);
+      await page.getByTestId('wizard-download').click();
+      await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await audit(page, `${size.name}-sustur-saved`, testInfo);
+      expect(await horizontalOverflow(page), 'sustur saved').toBe(0);
+      await page.goto('/yap/sustur');
+      await page.getByTestId('video-input').setInputFiles(wizardFixture('noAudio'));
+      await expect(page.getByTestId('wizard-blocked')).toBeVisible({ timeout: 60_000 });
+      await audit(page, `${size.name}-sustur-no-sound`, testInfo);
+      expect(await horizontalOverflow(page), 'sustur no sound').toBe(0);
+    });
+  }
+
+  test('keyboard only: type, hear the honest answer, find “Sesi kapat”, pick the video, İndir — focus visible at every stop', async ({
+    page,
+  }) => {
+    catchFileChoosers(page);
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    const unmarked: string[] = [];
+    await page.goto('/');
+    await tabTo(page, byTestId('finder-input'), unmarked, 'the search box');
+
+    // A request that cannot be served: announced as such; Enter starts nothing; Escape clears.
+    await page.keyboard.type('videoyu döndür');
+    await expect(page.getByTestId('finder-status')).toHaveText('1 sonuç. İlki: Döndür. Bunu henüz yapamıyoruz.');
+    await expect(finderBox(page)).toHaveAttribute('aria-activedescendant', 'finder-option-dondur');
+    await expect(page.getByTestId('result-dondur')).toHaveAttribute('aria-disabled', 'true');
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/$/);
+    await page.keyboard.press('Escape');
+    await expect(finderBox(page)).toHaveValue('');
+    await expect(page.getByTestId('task-grid')).toBeVisible();
+
+    // What does work: typed, announced, started with Enter.
+    await page.keyboard.type('sesini kapat');
+    await expect(page.getByTestId('finder-status')).toHaveText(/^\d sonuç\. İlki: Sesi kapat\.$/);
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/yap\/sustur$/);
+
+    await expect(page.getByTestId('pick-video')).toBeEnabled();
+    await tabTo(page, byTestId('pick-video'), unmarked, 'Video seç');
+    const chooser = page.waitForEvent('filechooser', { timeout: 15_000 });
+    await page.keyboard.press('Enter');
+    await (await chooser).setFiles(OTHER_VIDEO);
+
+    // No choice on this step: after the heading and the video row comes İndir.
+    await expect(page.getByTestId('sustur-info')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId('wizard-title')).toBeFocused();
+    await tabTo(page, byTestId('wizard-download'), unmarked, 'İndir');
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'result');
+    await expect(page.getByTestId('wizard-title')).toBeFocused();
+    await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByTestId('download-status')).toHaveAttribute('role', 'status');
+    await expect(page.getByTestId('download-status')).toContainText('Kaydedildi: saved-other-8s_sessiz.mp4');
+
+    // Back home, and the new card by Tab and Enter.
+    await tabTo(page, byTestId('wizard-home'), unmarked, 'Ana ekrana dön');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ne yapmak istiyorsun?');
+    await tabTo(page, byTestId('task-sustur'), unmarked, 'the Sesi kapat card');
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/yap\/sustur$/);
+
+    expect(unmarked, 'stops without a visible focus indicator').toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  for (const width of [320, 640]) {
+    test(`reflow at ${width} px: the nine cards, the honest answer and the wizard never scroll sideways; nothing clips with wider text spacing`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 720 });
+      await page.goto('/');
+      await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(9);
+      expect(await horizontalOverflow(page), 'home').toBe(0);
+      await finderBox(page).fill('arka planı bulanıklaştır');
+      await expect(page.getByTestId('result-arkaplan')).toBeVisible();
+      expect(await horizontalOverflow(page), 'home, cannot yet').toBe(0);
+      await applyTextSpacing(page);
+      expect(await clippedControls(page), 'home, cannot yet, text spacing').toEqual([]);
+      expect(await horizontalOverflow(page), 'home, cannot yet, text spacing').toBe(0);
+
+      await page.goto('/yap/sustur');
+      await expect(page.getByTestId('pick-video')).toBeEnabled();
+      expect(await horizontalOverflow(page), 'sustur pick').toBe(0);
+      await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+      await expect(page.getByTestId('sustur-info')).toBeVisible({ timeout: 60_000 });
+      expect(await horizontalOverflow(page), 'sustur info').toBe(0);
+      await applyTextSpacing(page);
+      expect(await clippedControls(page), 'sustur info, text spacing').toEqual([]);
+      expect(await horizontalOverflow(page), 'sustur info, text spacing').toBe(0);
+      await page.getByTestId('wizard-download').click();
+      await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
+      expect(await horizontalOverflow(page), 'sustur saved').toBe(0);
+    });
+  }
 });
