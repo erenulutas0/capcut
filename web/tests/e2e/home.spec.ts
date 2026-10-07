@@ -39,7 +39,7 @@ test.describe('opening screen', () => {
 
     // The cards, in the registry's order: exactly the tasks that work today.
     const cards = page.getByTestId('task-grid').getByRole('link');
-    await expect(cards).toHaveCount(8);
+    await expect(cards).toHaveCount(9);
     expect(await cards.evaluateAll((links) => links.map((link) => link.getAttribute('href')))).toEqual(
       availableTasks().map((task) => `/yap/${task.id}`),
     );
@@ -84,7 +84,7 @@ test.describe('opening screen', () => {
           return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
         }),
       );
-      expect(boxes).toHaveLength(8);
+      expect(boxes).toHaveLength(9);
       for (const rect of boxes) {
         expect(rect.width).toBeGreaterThanOrEqual(120);
         expect(rect.height).toBeGreaterThanOrEqual(120);
@@ -94,9 +94,10 @@ test.describe('opening screen', () => {
       // Reading order = registry order: rows top to bottom, left to right.
       const sorted = [...boxes].sort((a, b) => a.y - b.y || a.x - b.x);
       expect(boxes).toEqual(sorted);
-      // Two columns on a phone; three from 700 px; four from 1000 px (eight cards: 4 + 4).
+      // Two columns on a phone; three from 700 px. From 1000 px four when that fills the rows; nine cards
+      // (ADR-037 added İyileştir) are 3 + 3 + 3, so no card is left alone on a row.
       const columns = new Set(boxes.map((rect) => Math.round(rect.x))).size;
-      expect(columns).toBe(size.width >= 1000 ? 4 : size.width >= 700 ? 3 : 2);
+      expect(columns).toBe(size.width >= 700 ? 3 : 2);
 
       // Every other control is at least 44 px tall.
       for (const testId of ['home-editor-link', 'finder-input', 'finder-example']) {

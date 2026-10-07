@@ -324,7 +324,7 @@ test.describe('captions', () => {
     await expect(page.getByTestId('caption-size-large')).toBeChecked();
   });
 
-  test('an older v1 backup opens with no captions and is saved as v3', async ({ page }) => {
+  test('an older v1 backup opens with no captions and is saved as v4', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto('/editor');
@@ -378,7 +378,7 @@ test.describe('captions', () => {
         },
         { timeout: 15_000 },
       )
-      .toBe('3:0');
+      .toBe('4:0');
     expect(errors).toEqual([]);
   });
 

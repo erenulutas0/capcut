@@ -386,7 +386,7 @@ const APP_PATH = [
   /^\/editor$/,
   /^\/gizlilik(\/en)?$/,
   // The task wizards (ADR-034).
-  /^\/yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|cevir)$/,
+  /^\/yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|cevir|iyilestir)$/,
   /^\/_next\/static\/[^?]+$/,
   /^\/fonts\/caption\/inter-latin(-ext)?-700-normal\.woff2$/,
   /^\/icons\/(icon-192|icon-512|maskable-512)\.png$/,
