@@ -1071,6 +1071,32 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       );
     }
 
+    if (want.toneWindows) {
+      // The tone at several places of the file: as loud in each "audible"
+      // window as in the others, and far below them in each "silent" one.
+      const { frequency, audible, silent = [], maxSpreadDb, minMarginDb } = want.toneWindows;
+      const level = ([start, duration]) => bandRmsDb(artefactPath, frequency, { start, duration });
+      const loud = audible.map(level);
+      const quiet = silent.map(level);
+      measured.toneWindows = {
+        audible: loud.map((value) => Number(value.toFixed(1))),
+        silent: quiet.map((value) => (Number.isFinite(value) ? Number(value.toFixed(1)) : '-inf')),
+      };
+      const shown = (values) => values.map((value) => `${Number.isFinite(value) ? value.toFixed(1) : '-inf'} dB`).join(', ');
+      add(
+        `${frequency} Hz ${audible.map(([start]) => `${start} sn`).join(', ')} çevresinde aynı seviyede duyuluyor`,
+        loud.every(Number.isFinite) && Math.max(...loud) - Math.min(...loud) <= maxSpreadDb,
+        shown(loud),
+      );
+      if (quiet.length > 0) {
+        add(
+          `${frequency} Hz ${silent.map(([start]) => `${start} sn`).join(', ')} çevresinde yok (müzik bitti, döngü yok)`,
+          quiet.every((value) => Math.min(...loud) - value >= minMarginDb),
+          shown(quiet),
+        );
+      }
+    }
+
     if (want.boundaryContinuity) {
       const { frequency, atSeconds, windowSeconds, maxDipDb } = want.boundaryContinuity;
       const atBoundary = bandRmsDb(artefactPath, frequency, {

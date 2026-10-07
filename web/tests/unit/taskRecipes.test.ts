@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { createEmptyProject, setFraming, setMusicAsset, setVideoAsset, setVideoMuted } from '@/application/commands';
+import {
+  createEmptyProject,
+  setFraming,
+  setMusicAsset,
+  setVideoAsset,
+  withWholeKesit,
+} from '@/application/commands';
 import {
   MUSIC_ALONE_DB,
   MUSIC_BEHIND_DB,
@@ -10,15 +16,15 @@ import {
   lengthsAfterCut,
   musicLengthUs,
   musicOutlastsVideo,
-  musicUnderWholeVideo,
+  musicUnderVideo,
   ownSizeRecipe,
   shortEdgeForSource,
   silenceParamsFor,
   taggedFileName,
-  wholeVideoAsKesit,
   withMusicDefaults,
 } from '@/application/taskRecipes';
 import type { AssetV1, Project } from '@/domain/edl';
+import { DEFAULT_KESIT_SETTINGS, downloadRecipe } from '@/domain/kesit';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import { compileRenderPlan } from '@/domain/renderPlan';
 import { DEFAULT_SILENCE_PARAMS, SILENCE_PARAM_LIMITS } from '@/domain/silence';
@@ -37,10 +43,24 @@ function music(durationS: number): AssetV1 {
 
 const opened = (asset = video()): Project => setVideoAsset(createEmptyProject(), asset);
 
-/** Every recipe a wizard hands to the export must be one the compiler accepts. */
-function expectExportable(project: Project) {
-  expect(validateProject(project)).toMatchObject({ ok: true, issues: [] });
-  expect(compileRenderPlan(project, WEB_LOCAL_POLICY).ok).toBe(true);
+/** The whole video as one kesit (the wizards that cut or frame work on one). */
+function wholeVideoAsKesit(project: Project): Project {
+  if (project.clips.length > 0) return project;
+  const result = withWholeKesit(project);
+  return result.ok ? result.project : project;
+}
+
+/**
+ * Every recipe a wizard hands to the export must be one the compiler accepts.
+ * A recipe with no kesit is downloaded as the whole video (`downloadRecipe`),
+ * with the sound setting the wizard holds.
+ */
+function expectExportable(project: Project, settings = DEFAULT_KESIT_SETTINGS) {
+  const recipe = downloadRecipe(project, { kind: 'all' }, settings);
+  expect(recipe).not.toBeNull();
+  if (!recipe) return;
+  expect(validateProject(recipe)).toMatchObject({ ok: true, issues: [] });
+  expect(compileRenderPlan(recipe, WEB_LOCAL_POLICY).ok).toBe(true);
 }
 
 describe('taggedFileName', () => {
@@ -77,18 +97,19 @@ describe('the video’s own size', () => {
 });
 
 describe('Müzik ekle', () => {
-  it('the whole video becomes the one kesit, once', () => {
-    const whole = wholeVideoAsKesit(opened());
-    expect(whole.clips).toHaveLength(1);
-    expect(whole.clips[0]).toMatchObject({ sourceInUs: 0, sourceOutUs: 20 * S, muted: false });
-    expect(wholeVideoAsKesit(whole)).toBe(whole);
-    // No video: nothing to do, nothing thrown.
-    const empty = createEmptyProject();
-    expect(wholeVideoAsKesit(empty)).toBe(empty);
+  it('the recipe keeps no kesit: the download is the whole video, as in the editor', () => {
+    const recipe = musicUnderVideo(opened());
+    expect(recipe.clips).toHaveLength(0);
+    expect(downloadRecipe(recipe, { kind: 'all' }, DEFAULT_KESIT_SETTINGS)?.clips[0]).toMatchObject({
+      sourceInUs: 0,
+      sourceOutUs: 20 * S,
+      muted: false,
+    });
   });
 
   it('music longer than the video: as long as the video, quietly behind it, fading out at the end', () => {
-    const base = setMusicAsset(wholeVideoAsKesit(opened()), music(60));
+    const base = setMusicAsset(opened(), music(60));
+    expect(base.clips).toHaveLength(0);
     expect(musicOutlastsVideo(base)).toBe(true);
     expect(musicLengthUs(base)).toBe(20 * S);
     const behind = withMusicDefaults(base, true);
@@ -102,15 +123,16 @@ describe('Müzik ekle', () => {
       muted: false,
     });
     expectExportable(behind);
-    // The video's sound off: the music alone, at full level.
-    const alone = withMusicDefaults(setVideoMuted(base, true), false);
+    // The video's sound off (the wizard's setting, applied to the whole video): the music alone, at full level.
+    const alone = withMusicDefaults(base, false);
     expect(alone.music?.gainDb).toBe(MUSIC_ALONE_DB);
-    expect(alone.clips[0]?.muted).toBe(true);
-    expectExportable(alone);
+    const muted = { ...DEFAULT_KESIT_SETTINGS, muted: true };
+    expect(downloadRecipe(alone, { kind: 'all' }, muted)?.clips[0]?.muted).toBe(true);
+    expectExportable(alone, muted);
   });
 
   it('music shorter than the video ends by itself: no fade, and its real length is said', () => {
-    const base = withMusicDefaults(setMusicAsset(wholeVideoAsKesit(opened()), music(8)), true);
+    const base = withMusicDefaults(setMusicAsset(opened(), music(8)), true);
     expect(musicOutlastsVideo(base)).toBe(false);
     expect(musicLengthUs(base)).toBe(8 * S);
     expect(base.music?.fadeOutUs).toBe(0);
@@ -119,13 +141,13 @@ describe('Müzik ekle', () => {
 
   it('the fade never takes more than half of a very short piece of music', () => {
     const short = opened(video({ durationUs: 2 * S }));
-    const base = withMusicDefaults(setMusicAsset(wholeVideoAsKesit(short), music(30)), true);
+    const base = withMusicDefaults(setMusicAsset(short, music(30)), true);
     expect(base.music?.fadeOutUs).toBe(1 * S);
     expectExportable(base);
   });
 
   it('without music the defaults change nothing', () => {
-    const base = wholeVideoAsKesit(opened());
+    const base = opened();
     expect(withMusicDefaults(base, true)).toBe(base);
     expect(musicOutlastsVideo(base)).toBe(false);
     expect(musicLengthUs(base)).toBe(0);
@@ -133,32 +155,41 @@ describe('Müzik ekle', () => {
 
   it('opening another video keeps the picked music and lays it under the new one', () => {
     // Music picked for a 20 s video with the video's sound off…
-    const first = withMusicDefaults(setVideoMuted(setMusicAsset(wholeVideoAsKesit(opened()), music(60)), true), false);
+    const first = withMusicDefaults(setMusicAsset(opened(), music(60)), false);
     expect(first.music?.sourceOutUs).toBe(20 * S);
-    // …then a 45 s 720p video is opened instead (setVideoAsset drops the old kesit).
-    const next = musicUnderWholeVideo(
+    // …then a 45 s 720p video is opened instead.
+    const next = musicUnderVideo(
       setVideoAsset(first, video({ assetId: 'a_video_002', durationUs: 45 * S, displayWidth: 1280, displayHeight: 720 })),
     );
-    expect(next.clips).toHaveLength(1);
-    expect(next.clips[0]).toMatchObject({ sourceInUs: 0, sourceOutUs: 45 * S, muted: false });
+    expect(next.clips).toHaveLength(0);
     expect(next.export.shortEdge).toBe(720);
-    // The new kesit's own sound is on, so the music is behind it again.
+    // A newly opened video's own sound is on, so the music is behind it again.
     expect(next.music).toMatchObject({ sourceInUs: 0, sourceOutUs: 45 * S, gainDb: MUSIC_BEHIND_DB, fadeOutUs: MUSIC_FADE_OUT_US });
+    expectExportable(next);
+  });
+
+  it('a shorter video after a longer one: the music is cut back to it', () => {
+    const first = withMusicDefaults(setMusicAsset(opened(video({ durationUs: 45 * S })), music(60)), true);
+    expect(first.music?.sourceOutUs).toBe(45 * S);
+    const next = musicUnderVideo(setVideoAsset(first, video({ assetId: 'a_video_002', durationUs: 6 * S })));
+    expect(next.music).toMatchObject({ sourceInUs: 0, sourceOutUs: 6 * S, fadeOutUs: MUSIC_FADE_OUT_US });
     expectExportable(next);
   });
 
   it('a video with no sound of its own gets the music alone', () => {
     const silent = setMusicAsset(opened(video({ hasAudio: false })), music(60));
-    const next = musicUnderWholeVideo(silent);
+    const next = musicUnderVideo(silent);
     expect(next.music?.gainDb).toBe(MUSIC_ALONE_DB);
     expect(next.music?.sourceOutUs).toBe(20 * S);
     expectExportable(next);
   });
 
-  it('with no music yet, opening the video only makes the whole-video kesit', () => {
-    const next = musicUnderWholeVideo(opened());
+  it('with no music yet, opening the video only sets the download size', () => {
+    const small = opened(video({ displayWidth: 1280, displayHeight: 720 }));
+    const next = musicUnderVideo(small);
     expect(next.music).toBeUndefined();
-    expect(next.clips).toHaveLength(1);
+    expect(next.clips).toHaveLength(0);
+    expect(next.export.shortEdge).toBe(720);
   });
 });
 

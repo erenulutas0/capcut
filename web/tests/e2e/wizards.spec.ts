@@ -346,12 +346,26 @@ test.describe('Müzik ekle', () => {
     expect([probe.width, probe.height]).toEqual([1280, 720]);
     // The video's own sound is off, so what is heard is the music: clearly not silence.
     expect(meanVolumeDb(saved)).toBeGreaterThan(-40);
+    // …and it is heard to the end: in each of the eight seconds (the last one fades out), not only at the start.
+    const sound = decodeMono(saved);
+    const levels = Array.from({ length: 8 }, (_, second) => {
+      const from = second * 48_000 + 4_800;
+      let energy = 0;
+      for (let i = from; i < from + 24_000; i += 1) energy += (sound[i] ?? 0) ** 2;
+      return Math.sqrt(energy / 24_000);
+    });
+    expect(levels.map((level) => level > 0.01), `music level per second: ${levels.map((level) => level.toFixed(3)).join(' ')}`).toEqual(
+      Array.from({ length: 8 }, () => true),
+    );
     expect(await storedProjects(page)).toBe(0);
 
-    // The hand-off keeps both files and the choice.
+    // The hand-off keeps both files and the choice. No kesit was made on the way: the editor has
+    // the whole video ("Videoyu indir") with the music under all of it (8 s of the 30 s file).
     await page.getByTestId('wizard-open-editor').click();
-    await expect(page.getByTestId('kesit-card')).toHaveCount(1);
+    await expect(page.getByTestId('kesit-card')).toHaveCount(0);
+    await expect(page.getByTestId('download-all')).toHaveText('Videoyu indir');
     await openSettings(page, 'audio');
+    await expect(page.getByTestId('music-out')).toHaveValue('00:08.000');
     await expect(page.getByTestId('music-file-name')).toContainText('tone-30s.m4a');
     await expect(page.getByTestId('clip-mute')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('music-gain')).toHaveValue('0');

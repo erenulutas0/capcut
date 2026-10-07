@@ -14,7 +14,7 @@ import {
   musicOutlastsVideo,
   ownSizeRecipe,
   silenceParamsFor,
-  musicUnderWholeVideo,
+  musicUnderVideo,
   withMusicDefaults,
   type GapChoice,
 } from '@/application/taskRecipes';
@@ -393,7 +393,7 @@ function MuzikWizard(host: WizardHostProps) {
       audioFile={audio?.file ?? null}
       blockedText={ready ? null : t('wizard.muzik.first')}
       openVideo={async (file) => {
-        const outcome = await state.importVideo(file, musicUnderWholeVideo);
+        const outcome = await state.importVideo(file, musicUnderVideo);
         if (outcome.kind !== 'opened') return false;
         // The video's own frame: a shape between the frames gets bars, nothing is cut off.
         state.changeFraming({ fit: 'contain', zoom: 1 });
