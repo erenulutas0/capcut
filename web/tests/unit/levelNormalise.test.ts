@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_LEVEL, LevelNormaliser, atFullLevel, normaliseLevel } from '@/domain/levelNormalise';
+import { DEFAULT_LEVEL, LevelNormaliser, normaliseLevel } from '@/domain/levelNormalise';
 
 const RATE = 16_000;
 const fromDb = (db: number) => 10 ** (db / 20);
@@ -145,29 +145,5 @@ describe('level normalisation in front of the speech detector', () => {
     for (let i = RATE + 1; i < RATE * 5; i += 1) worst = Math.max(worst, Math.abs((out[i] as number) - (out[i - 1] as number)));
     // The whole climb (×100) spread over at least one 50 ms block: under 0.1 / 800 per sample.
     expect(worst).toBeLessThan(0.1 / 700);
-  });
-});
-
-describe('one speech span at full level for the recogniser', () => {
-  it('turns a quiet span up so that its loudest moment is at the target', () => {
-    const quiet = talk(3, -50);
-    const out = atFullLevel(quiet, RATE);
-    expect(loudestDb(out, 0, 3)).toBeCloseTo(DEFAULT_LEVEL.targetDb, 0);
-  });
-
-  it('gives a loud span back untouched (the same array) and never turns anything down', () => {
-    const loud = talk(2, -6);
-    expect(atFullLevel(loud, RATE)).toBe(loud);
-  });
-
-  it('gives silence back as it is and stays inside the cap and inside ±1', () => {
-    const silence = new Float32Array(RATE);
-    expect(atFullLevel(silence, RATE)).toBe(silence);
-    const faint = talk(2, -95, -200);
-    const out = atFullLevel(faint, RATE);
-    expect(loudestDb(out, 0, 2) - loudestDb(faint, 0, 2)).toBeCloseTo(DEFAULT_LEVEL.maxGainDb, 0);
-    const click = talk(2, -40);
-    click[100] = 0.9;
-    expect(Math.max(...Array.from(atFullLevel(click, RATE), Math.abs))).toBeLessThanOrEqual(1);
   });
 });

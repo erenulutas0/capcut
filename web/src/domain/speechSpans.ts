@@ -37,6 +37,26 @@ export const DEFAULT_VAD: VadParams = {
   padS: 0.2,
 };
 
+/**
+ * The settings in force since 7 Oct 2026 (ADR-036, "Gerçekçi küme"): the
+ * same thresholds, but a pause has to last 1.2 s before it ends a span, and
+ * 0.4 s is kept on both sides.
+ *
+ * Why: people talking to each other speak in short bursts ("yeah", "okay —
+ * so…"). With the published 0.5 s every burst became a span of its own, and
+ * a one-second span is exactly what the recogniser is least sure of: the
+ * guard dropped it. Joined across short pauses, the recogniser hears a
+ * sentence with its context. Chosen on the development half of the realistic
+ * set against 0.5 / 0.2 (the defaults), 0.8 / 0.3 and 2.0 / 0.4, frozen, then
+ * run once on the validation half. 2.0 s wrote more by the clock but lost
+ * words INSIDE long spans without saying so, and was not taken.
+ */
+export const CONVERSATION_VAD: VadParams = {
+  ...DEFAULT_VAD,
+  minSilenceS: 1.2,
+  padS: 0.4,
+};
+
 /** Silero v5 at 16 kHz: 512 new samples per step, the last 64 of the previous step in front. */
 export const VAD_SAMPLE_RATE = 16_000;
 export const VAD_HOP = 512;

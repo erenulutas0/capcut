@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DEFAULT_LEVEL } from '@/domain/levelNormalise';
-import { DEFAULT_VAD } from '@/domain/speechSpans';
+import { CONVERSATION_VAD, DEFAULT_VAD } from '@/domain/speechSpans';
 import { COVERAGE_NOTE_FROM, transcriptCoverage } from '@/domain/transcript';
 import { RECOMMENDED_MODEL, downloadBytes, preselectedModel } from '@/domain/transcriptModels';
 import { ENGINE_SETTINGS, ENGINE_SETTINGS_2026_10_05, settingsFromProbe } from '@/domain/transcriptSettings';
@@ -61,7 +61,17 @@ describe('which model is selected to begin with', () => {
 
 describe('the recogniser\'s settings: what shipped on 5 Oct, and today', () => {
   it('keeps the 5 Oct set exactly as it shipped (the "before" of every before/after table)', () => {
-    expect(ENGINE_SETTINGS_2026_10_05).toEqual({ level: null, vad: DEFAULT_VAD, spanLevel: false, secondLook: null });
+    expect(ENGINE_SETTINGS_2026_10_05).toEqual({ level: null, vad: DEFAULT_VAD, secondLook: null });
+  });
+
+  it('runs today what was frozen on the development set on 7 Oct (a change here needs a new measurement)', () => {
+    expect(ENGINE_SETTINGS).toEqual({
+      level: { blockS: 0.05, backS: 0.3, aheadS: 1.5, targetDb: -20, maxGainDb: 40, minContrastDb: 20 },
+      vad: { threshold: 0.5, negThreshold: 0.35, minSpeechS: 0.25, minSilenceS: 1.2, padS: 0.4 },
+      secondLook: { splitMinS: 2, maxDepth: 2 },
+    });
+    expect(ENGINE_SETTINGS.level).toEqual(DEFAULT_LEVEL);
+    expect(ENGINE_SETTINGS.vad).toEqual(CONVERSATION_VAD);
   });
 
   it('runs the shipped set unless a measuring script asks otherwise, and ignores anything malformed', () => {

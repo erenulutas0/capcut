@@ -34,7 +34,7 @@ import {
   splitLongSpans,
   type SpeechSpan,
 } from '@/domain/speechSpans';
-import { LevelNormaliser, atFullLevel } from '@/domain/levelNormalise';
+import { LevelNormaliser } from '@/domain/levelNormalise';
 import { buildSegment, spanVerdict, type RecognisedChunk, type SpanEvidence, type TranscriptSegment } from '@/domain/transcript';
 import { settingsFromProbe, type EngineProbe } from '@/domain/transcriptSettings';
 import {
@@ -345,7 +345,7 @@ export async function transcribeFile(
       list.push(recorder);
       let out: WhisperOutput;
       try {
-        out = await speaker(settings.spanLevel ? atFullLevel(samples, VAD_SAMPLE_RATE) : samples, {
+        out = await speaker(samples, {
           language: 'en',
           task: 'transcribe',
           return_timestamps: 'word',

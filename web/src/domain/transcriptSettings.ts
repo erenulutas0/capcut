@@ -14,7 +14,7 @@
  */
 
 import { DEFAULT_LEVEL, type LevelParams } from './levelNormalise';
-import { DEFAULT_VAD, type VadParams } from './speechSpans';
+import { CONVERSATION_VAD, DEFAULT_VAD, type VadParams } from './speechSpans';
 
 export interface EngineSettings {
   /**
@@ -23,13 +23,6 @@ export interface EngineSettings {
    */
   level: LevelParams | null;
   vad: VadParams;
-  /**
-   * Bring each speech span to full level before the recogniser hears it.
-   * Whisper's own input scaling keeps only ~80 dB below the loudest moment
-   * of a span and has a fixed floor: very quiet speech loses its detail to
-   * that floor unless it is turned up first.
-   */
-  spanLevel: boolean;
   /** A second attempt for a span the guard dropped; null = none. */
   secondLook: SecondLookParams | null;
 }
@@ -47,26 +40,26 @@ export interface SecondLookParams {
 export const ENGINE_SETTINGS_2026_10_05: EngineSettings = {
   level: null,
   vad: DEFAULT_VAD,
-  spanLevel: false,
   secondLook: null,
 };
 
+/**
+ * Frozen on 7 Oct 2026 on the development half of the realistic set, before
+ * the validation half was built (ADR-036 has both tables):
+ * level normalisation in front of the detector, spans joined across pauses
+ * under 1.2 s, and a second look that cuts a dropped span of 2 s or more in
+ * two (and each unclear half once more).
+ */
 export const ENGINE_SETTINGS: EngineSettings = {
   level: DEFAULT_LEVEL,
-  vad: DEFAULT_VAD,
-  spanLevel: false,
+  vad: CONVERSATION_VAD,
   secondLook: { splitMinS: 2, maxDepth: 2 },
 };
 
-export const NAMED_ENGINE_SETTINGS = {
-  current: ENGINE_SETTINGS,
-  '2026-10-05': ENGINE_SETTINGS_2026_10_05,
-} as const;
-
 /** What a measuring script may ask the worker for. Never set in normal use. */
 export interface EngineProbe {
-  /** One of the named sets, then individual fields over it. */
-  base?: keyof typeof NAMED_ENGINE_SETTINGS;
+  /** `2026-10-05`: start from the set that shipped that day; then individual fields over it. */
+  base?: '2026-10-05';
   settings?: Partial<EngineSettings>;
   /** Also return what the guard saw for every span (text, log-probability, tokens). */
   trace?: boolean;
@@ -88,7 +81,6 @@ export function settingsFromProbe(probe: EngineProbe | undefined): EngineSetting
   return {
     level: over.level === undefined ? named.level : over.level === null ? null : { ...DEFAULT_LEVEL, ...over.level },
     vad: { ...named.vad, ...(isRecord(over.vad) ? over.vad : {}) },
-    spanLevel: typeof over.spanLevel === 'boolean' ? over.spanLevel : named.spanLevel,
     secondLook: over.secondLook === undefined ? named.secondLook : over.secondLook,
   };
 }

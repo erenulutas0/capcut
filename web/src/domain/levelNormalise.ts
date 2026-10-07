@@ -177,36 +177,6 @@ export class LevelNormaliser {
   }
 }
 
-/**
- * One speech span at full level for the recogniser: turned up (never down)
- * so that its loudest block reaches `targetDb`, by at most `maxGainDb`.
- * A span is short (≤ 30 s) and is one voice at one distance, so one gain
- * for the whole span is enough and nothing pumps.
- */
-export function atFullLevel(
-  samples: Float32Array,
-  sampleRate: number,
-  params: Pick<LevelParams, 'blockS' | 'targetDb' | 'maxGainDb'> = DEFAULT_LEVEL,
-): Float32Array {
-  const block = Math.max(1, Math.round(params.blockS * sampleRate));
-  let loudest = 0;
-  for (let at = 0; at + block <= samples.length; at += block) {
-    let sum = 0;
-    for (let i = at; i < at + block; i += 1) sum += (samples[i] as number) * (samples[i] as number);
-    const level = Math.sqrt(sum / block);
-    if (level > loudest) loudest = level;
-  }
-  if (loudest <= 0) return samples;
-  const gain = Math.min(fromDb(Math.max(0, params.maxGainDb)), Math.max(1, fromDb(params.targetDb) / loudest));
-  if (gain === 1) return samples;
-  const out = new Float32Array(samples.length);
-  for (let i = 0; i < samples.length; i += 1) {
-    const value = (samples[i] as number) * gain;
-    out[i] = value > 1 ? 1 : value < -1 ? -1 : value;
-  }
-  return out;
-}
-
 /** The whole of a sound at once (tests, measurement scripts). */
 export function normaliseLevel(samples: Float32Array, sampleRate: number, params: Partial<LevelParams> = {}): Float32Array {
   const normaliser = new LevelNormaliser(sampleRate, params);
