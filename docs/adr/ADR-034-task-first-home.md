@@ -331,3 +331,54 @@ düzeltmesi) ölçüm kilidi altında çalıştırıldı:
   Politika sayfa yüklenirken uygulanır ve geçerliliğini korur; test artık sihirbazın kendi
   HTML'ini yükleyip onun politikasını denetliyor. Düzeltmeden sonra **4/4**.
 
+## Güncelleme — 7 Ekim 2026: Sesi kapat, yapılamayan istekler, müzik uzunluğu
+
+**Sesi kapat ve arama.** Yukarıda ilgili yerlere işlendi: kart ve sihirbaz ("Sihirbazlar"), kayıt
+tablosu, kural 5 ve 7, üçüncü ölçüm tablosu. İlk bakışta doğru iş: ayarlanan tablo 74 / 74 →
+139 / 139; eski bağımsız tablo 55 / 56 → 55 / 56 (aynı tek kaçak: "sadece bir bölümünü al"); yeni
+bağımsız tablo 13 / 95 (eski kayıt) → 69 / 95 (ilk koşu) → 95 / 95 (düzeltmeden sonra).
+
+**Müzik, indirilen videonun tamamının altında** (`web/src/domain/musicFit.ts`; şema değişmedi).
+
+- *Kök neden.* `setMusicAsset` müziği eklendiği andaki birleşik kesit uzunluğu kadar seçiyordu
+  (`max(0,1 sn, çıktı)`) ve bir daha dokunmuyordu. Kesit yokken çıktı 0 → 0,1 sn. "Videoyu indir"
+  (kesitsiz tarif = bütün video) o 0,1 sn'lik seçimle kodluyordu.
+- *Kanıt (kaydedilen dosya, ffmpeg ile çözülüp ölçüldü; 12 sn'lik video — sesi saniye başlarında
+  2 ms'lik tık —, 220 Hz'lik müzik −12 dB):* düzeltmeden önce ton RMS'i ilk 0,1 sn'de 0,022,
+  0,11 sn'den sonra ve sonraki 12 saniyenin her birinde 0,000; editördeki "Bitiş" alanı
+  `00:00.100`. Düzeltmeden sonra 12 saniyenin 12'sinde 0,022; alan `00:12.000`.
+- *Kural.* Müzik eklenince indirmenin tamamına **yayılır**: kesit yoksa bütün video, varsa birleşik
+  kesitler; müzik dosyası kısaysa kendi sonunda biter (döngü yok; belge 15: müzik dosyası en çok
+  10 dakika / 100 MiB, açılırken denetlenir). Sonu indirmenin sonunda olan müzik "yayılmış"tır ve
+  kesitleri ya da videoyu değiştiren her komutta (`commands.ts` → `bump`) yeniden yayılır — aynı
+  komutun içinde, yani **tek geri alma adımı**. Elle verilen aralık (sonu başka yerde) yayılmış
+  değildir, dokunulmaz; kullanıcı sonu yeniden indirmenin sonuna koyarsa yine izler. Yayılmış
+  müziğin yalnızca başlangıcı taşınırsa ("şarkı 0:30'dan başlasın", "5. saniyede girsin") sonu da
+  taşınır (eskiden ilki "aralık ters" diye reddediliyordu). Kısalan seçime sığmayan geçişler
+  kısaltılır.
+- *Eski projeler.* Şema ve doğrulama aynı; kayıtlar ve yedekler aynen yüklenir, hiçbir şey
+  dönüştürülmez. Eski kuralın bıraktığı 0,1 sn'lik seçim (kesit yok, baştan, 0,1 sn) "seçilmemiş"
+  sayılır: açılırken (`healLegacyMusic`) ve ilk kesit değişikliğinde yayılır. **Dürüst not:**
+  kesiti olmayan bir kayıt bugün zaten yüklenmiyor (boş kesit listesi kayıt doğrulamasından
+  geçmiyor — bu işte bulunan ayrı bir hata, ayrı iş olarak işaretlendi), dolayısıyla açılıştaki
+  onarım o hata giderilince işe yarar. Kesitli eski projede müzik aralığı olduğu gibi kalır;
+  yalnızca tam indirmenin sonunda bitiyorsa sonraki kesit değişikliğinde izlemeye başlar.
+- *Sihirbaz.* "Müzik ekle"nin bütün videoyu tek kesit yapan dolanması kaldırıldı
+  (`musicUnderVideo`): sihirbaz da kesitsiz tarifle indiriyor; editöre geçince kesit listesi boş.
+- *Testler.* `musicFit.test.ts` (23), `taskRecipes.test.ts`; e2e `music-length.spec.ts` (kaydedilen
+  dosyada saniye saniye ton: kesitsiz 12 / 12; iki kesit 7 / 7 ve tek geri alma adımı; elle aralık
+  korunur: 9 saniyenin yalnız ilk 2'si); `wizards.spec.ts` müziği 8 saniyenin 8'inde arıyor; matris
+  satırı **M16b** (12 sn sessiz video + 10 sn WAV, kesit yok: 0,5 / 4,5 / 8,5. sn'de aynı seviye,
+  10,8. sn'de yok).
+
+**Doğrulama (7 Ekim 2026, masaüstü, ölçüm kilidi altında; gerçekten çalıştırılanlar).** `npx tsc
+--noEmit -p .` ve `npx eslint .` temiz; `npx vitest run` **948 / 948** (58 dosya); tam e2e
+(`CLIP_TEST_HOOKS=1` derlemesi, `E2E_PORT=3351`, Playwright Chromium) **287 geçti, 4 atlandı, 0
+başarısız**, 16,4 dk (atlananlar: 2 isteğe bağlı sessizlik ekran görüntüsü, 2 gerçek model testi
+— model dosyaları bu klasörde yok); Pages duman testi (CI'ın ortam değişkenleriyle statik derleme,
+port 3104) **4 geçti, 2 atlandı** (ikisi de model dosyası istiyor: **koşulmadı**); matris
+(`run-matrix.mjs`, olağan derleme, sunucu 3353'te — 3100 başka işlerle paylaşıldığı için)
+Chromium **29/29**, Chrome **29/29**, Edge **29/29** PASS. Ekran görüntüleri: `shots/01-home-*` … `05-*` yenilendi, `75-sesi-kapat-*` eklendi
+(360 / 390 / 1440). **Koşulmayanlar:** telefon (adb kullanılmadı), gerçek kayıt koşucusu
+(`run-real-media.mjs`), Firefox / WebKit matrisi (eski sonuçlar duruyor), gerçek model testleri.
+
