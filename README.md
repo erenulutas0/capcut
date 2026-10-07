@@ -5,7 +5,7 @@
 [![CI](https://github.com/erenulutas0/capcut/actions/workflows/ci.yml/badge.svg)](https://github.com/erenulutas0/capcut/actions/workflows/ci.yml)
 
 > Durum: görev öncelikli açılış ekranı ("Ne yapmak istiyorsun?": iş kartları + yazarak
-> bulma, beş sihirbaz; [ADR-034](docs/adr/ADR-034-task-first-home.md)),
+> bulma, dokuz sihirbaz; [ADR-034](docs/adr/ADR-034-task-first-home.md)),
 > kesit listesi editörü (işaretle, ekle, kartından indir; ADR-026),
 > kaydetme penceresiyle doğrudan dosyaya indirme, gerçek MP4 çıktısı, yerel kayıt,
 > altyazı (elle, SRT/VTT, görüntüye bağlı, videoya işleme) ve yerel sessizlik
@@ -21,8 +21,11 @@ kısa bir sihirbazdır: video seç → en fazla bir karar → İndir. Bugün ça
 **Boşlukları at**, **Dikey yap**, **Küçült** (WhatsApp, e-posta ya da paylaşım sınırına
 sığdırır), **Yazıya dök** (İngilizce konuşmayı bu cihazda zaman damgalı yazıya ve altyazıya
 çevirir; [ADR-036](docs/adr/ADR-036-on-device-transcript.md)), **Müzik ekle**, **Sesini al**
-(videonun sesi M4A olarak), **Her yerde açılsın**. Editör "Kendim düzenleyeceğim" bağlantısıyla
-bir dokunuş ötededir.
+(videonun sesi M4A olarak), **Sesi kapat** (aynı video, ses izi olmadan), **Her yerde açılsın**.
+Henüz yapılamayan bir şey yazılırsa (döndür, hızlandır, videoları birleştir, GIF, filigran sil,
+filtre, arka plan, tersten oynat, videodan fotoğraf, titremeyi düzelt) arama başka bir kart
+önermez, "Bunu henüz yapamıyoruz." der. Editör "Kendim düzenleyeceğim" bağlantısıyla bir
+dokunuş ötededir.
 
 Editörde kullanıcı kendi videosunda tutmak istediği aralıkları işaretler; her aralık
 "Kesitler" listesine düşer. Her kesit kendi ⬇ düğmesiyle ayrı indirilir ya da
@@ -40,7 +43,8 @@ cd web && npm install && npm run dev
 ```
 
 Ardından tarayıcıda **http://localhost:3000** (açılış ekranı) → sihirbazlar: **/yap/kes**,
-**/yap/bosluk**, **/yap/dikey**, **/yap/muzik**, **/yap/cevir** → editör: **/editor**
+**/yap/bosluk**, **/yap/dikey**, **/yap/kucult**, **/yap/yazi**, **/yap/muzik**, **/yap/ses**,
+**/yap/sustur**, **/yap/cevir** → editör: **/editor**
 
 Üretim derlemesi:
 
@@ -171,12 +175,16 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
   yazarak bulma (cihazda, kelime listesiyle; yapay zekâ ve ağ isteği yok). Sihirbazlar: Kes
   (kesit editörünü seçilen videoyla açar), Boşlukları at (sessiz yerleri bulur, "N sessiz yer
   bulundu, videon kısalacak: X → Y", 20 parça sınırını söyler), Dikey yap (1080 × 1920;
-  "Doldur" / "Sığdır", canlı önizleme), Müzik ekle (videonun sesi kalsın / kapansın), Her yerde
-  açılsın (H.264/AAC MP4; zaten uygunsa söyler ve görüntüyü kopyalar). Her sihirbazda "Daha
+  "Doldur" / "Sığdır", canlı önizleme), Müzik ekle (videonun sesi kalsın / kapansın), Sesi kapat
+  (aynı video ses izi olmadan; uygunsa görüntü kopyalanır), Her yerde açılsın (H.264/AAC MP4;
+  zaten uygunsa söyler ve görüntüyü kopyalar). Yapılamayan on istek aramada "Bunu henüz
+  yapamıyoruz." yanıtını alır (kartı ve sayfası yoktur). Her sihirbazda "Daha
   fazla ayar → editörde aç": aynı video ve ayarlarla, dosya yeniden seçilmeden. Sihirbazdan
   başlayan çalışma tarayıcıya kaydedilmez.
 - 9:16 / 16:9 / 1:1 oranları, doldur/sığdır ve merkezden yakınlaştırma.
-- Kendi ses dosyasını ekleme; bölüm, çıktı başlangıcı, seviye ve fade ayarları.
+- Kendi ses dosyasını ekleme; bölüm, çıktı başlangıcı, seviye ve fade ayarları. Müzik, eklendiği
+  anda indirilecek videonun tamamına yayılır (kesit yoksa bütün video) ve kesitler değiştikçe
+  onu izler; elle verilen aralığa dokunulmaz (`web/src/domain/musicFit.ts`).
 - Domain değişikliklerinde undo/redo (son 100 adım).
 - **Otomatik yerel kayıt:** düzenleme tarifi 500 ms gecikmeyle bu tarayıcıya
   yazılır. "Kaydedildi" yalnızca yazma gerçekten tamamlandıysa gösterilir;
