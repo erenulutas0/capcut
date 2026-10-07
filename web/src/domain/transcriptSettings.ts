@@ -55,7 +55,7 @@ export const ENGINE_SETTINGS: EngineSettings = {
   level: DEFAULT_LEVEL,
   vad: DEFAULT_VAD,
   spanLevel: false,
-  secondLook: null,
+  secondLook: { splitMinS: 2, maxDepth: 2 },
 };
 
 export const NAMED_ENGINE_SETTINGS = {

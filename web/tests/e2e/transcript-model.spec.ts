@@ -102,10 +102,11 @@ test.describe('Yazıya dök: the recommended model', () => {
     await expect(page.getByTestId('transcribe-start')).toBeVisible({ timeout: 60_000 });
     await expect(page.getByTestId('option-model-base')).toBeChecked();
     await expect(page.getByTestId('model-download')).toHaveCount(0);
-    // The recommended model is still there to choose, labelled as such; choosing it shows what is LEFT to download…
+    // The recommended model is still there to choose, labelled as such; choosing it shows what is LEFT to download
+    // (the runtime and the speech detector are shared and already here)…
     await expect(page.getByTestId('transcribe-quality').locator('.wizard-option').nth(0).locator('.wizard-option-label')).toContainText('Önerilen: büyük model');
     await page.getByTestId('option-model-turbo').check();
-    await expect(page.getByTestId('model-download')).toHaveText('Modeli indir (≈900 KB, bir kez)');
+    await expect(page.getByTestId('model-download')).toHaveText('İndirmeye devam et (kalan ≈900 KB)');
     // …and nothing was fetched by looking.
     expect(server.requests.length).toBe(fetched);
 
@@ -135,7 +136,7 @@ test.describe('Yazıya dök: how much was understood', () => {
 
     // One step back: the recommended model selected, its size on the button, nothing fetched yet; the old lines are gone.
     await expect(page.getByTestId('option-model-turbo')).toBeChecked();
-    await expect(page.getByTestId('model-download')).toHaveText('Modeli indir (≈900 KB, bir kez)');
+    await expect(page.getByTestId('model-download')).toHaveText('İndirmeye devam et (kalan ≈900 KB)');
     await expect(page.getByTestId('transcript-panel')).toHaveCount(0);
     expect(server.requests.length).toBe(before);
 
@@ -191,9 +192,10 @@ test.describe('Yazıya dök: how much was understood', () => {
     const before = server.requests.length;
     await page.getByTestId('transcribe-try-larger').click();
     await expect(page.getByTestId('option-model-turbo')).toBeChecked();
-    await expect(page.getByTestId('model-download')).toHaveText('Modeli indir (≈900 KB, bir kez)');
-    // It says that the lines written a moment ago would be replaced.
-    await expect(page.getByTestId('transcribe-replace-note')).toBeVisible();
+    await expect(page.getByTestId('model-download')).toHaveText('İndirmeye devam et (kalan ≈900 KB)');
     expect(server.requests.length).toBe(before);
+    // Once the model is here the step says that the lines written a moment ago will be replaced.
+    await page.getByTestId('model-download').click();
+    await expect(page.getByTestId('transcribe-replace-note')).toBeVisible({ timeout: 120_000 });
   });
 });

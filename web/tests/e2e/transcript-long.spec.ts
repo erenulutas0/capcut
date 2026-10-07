@@ -90,9 +90,16 @@ test.describe('Yazı panel: a long transcript', () => {
         };
       });
     expect(await semantics()).toEqual({ tag: 'UL', labelled: 'yazi-transcript-title', onlyItems: true, sizes: [String(LINES)], placesMatch: true, inOrder: true, first: 1 });
-    // The accessibility tree itself carries the numbers (not only the attributes).
-    const snapshot = await page.accessibility.snapshot({ root: (await list(page).elementHandle())!, interestingOnly: false });
-    expect(snapshot?.role).toBe('list');
+    // The browser's accessibility tree: a named list whose items are exactly the drawn rows (the pinned one included).
+    // (Chrome's protocol does not print posinset/setsize; they are checked as attributes above.)
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('Accessibility.enable');
+    const { nodes } = (await cdp.send('Accessibility.getFullAXTree')) as {
+      nodes: { role?: { value?: string }; name?: { value?: string }; properties?: { name: string; value: { value?: unknown } }[] }[];
+    };
+    const items = nodes.filter((node) => node.role?.value === 'listitem');
+    expect(items.length).toBe(drawn);
+    expect(nodes.some((node) => node.role?.value === 'list' && node.name?.value?.startsWith('Yazı'))).toBe(true);
 
     // The scroll bar is that of the whole list: far taller than what is drawn.
     const heights = await list(page).evaluate((box) => ({ scroll: box.scrollHeight, client: box.clientHeight }));
@@ -308,7 +315,6 @@ test.describe('Yazı panel: a long transcript', () => {
     await expect(page.getByTestId('side-tab-kesit')).toHaveText('Kesitler (0)');
 
     // The keyboard does the same: Space ticks, Shift+arrow extends.
-    await row(page, 4).getByTestId('transcript-check').focus().catch(() => undefined);
     await page.getByTestId('transcript-search-input').fill('Line 5,');
     await page.keyboard.press('Enter');
     await row(page, 4).getByTestId('transcript-check').focus();

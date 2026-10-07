@@ -208,14 +208,38 @@ for (const clip of clips) {
     } else {
       // What the user is actually shown: the panel's rows.
       await page.waitForSelector('[data-testid="transcript-panel"]', { timeout: 30_000 });
-      row.lines = await page.evaluate(() =>
-        Array.from(document.querySelectorAll('[data-testid="transcript-row"]')).map((element) => ({
-          kind: element.getAttribute('data-kind'),
-          time: element.querySelector('.transcript-time')?.textContent ?? '',
-          text: element.querySelector('.transcript-text')?.textContent ?? '',
-        })),
-      );
-      // How heavy the (unvirtualised) panel is with this many rows: its DOM size and the frame times while it scrolls.
+      // A long transcript is drawn a window at a time: the rows are read the way a person sees them, by scrolling
+      // the list from top to bottom (every row says its place, `data-index`).
+      row.lines = await page.evaluate(async () => {
+        const list = document.querySelector('[data-testid="transcript-list"]');
+        const seen = new Map();
+        const collect = () => {
+          for (const element of document.querySelectorAll('[data-testid="transcript-row"]')) {
+            seen.set(Number(element.getAttribute('data-index')), {
+              kind: element.getAttribute('data-kind'),
+              time: element.querySelector('.transcript-time')?.textContent ?? '',
+              text: element.querySelector('.transcript-text')?.textContent ?? '',
+            });
+          }
+        };
+        const settle = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        collect();
+        if (list && document.querySelector('[data-testid="transcript-panel"][data-windowed]')) {
+          for (let guard = 0; guard < 20_000; guard += 1) {
+            const before = list.scrollTop;
+            list.scrollTop = before + Math.max(50, list.clientHeight * 0.7);
+            await settle();
+            collect();
+            if (list.scrollTop <= before) break;
+          }
+          list.scrollTop = 0;
+          await settle();
+        }
+        return [...seen.entries()].sort((a, b) => a[0] - b[0]).map(([, line]) => line);
+      });
+      const expected = Number((await page.locator('[data-testid="transcript-count"]').innerText()).replace(/[^0-9]/g, ''));
+      if (row.lines.length !== expected) throw new Error(`read ${row.lines.length} rows of ${expected}`);
+      // How heavy the panel is with this many rows: its DOM size and the frame times while it scrolls.
       row.panel = await page.evaluate(async () => {
         const panel = document.querySelector('[data-testid="transcript-panel"]');
         let scroller = panel;
