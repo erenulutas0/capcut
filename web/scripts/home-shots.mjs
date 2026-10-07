@@ -21,7 +21,7 @@ const outDir = join(root, '..', 'docs', 'ux', '2026-10-03-home', 'shots');
 const sample = join(root, 'tests', 'media', 'sample-24s.mp4');
 const music = join(root, 'tests', 'media', 'tone-30s.m4a');
 const baseURL = process.env.SHOT_URL ?? 'http://127.0.0.1:3100';
-/** `--only=kucult,ses`: only those wizards' shots (the rest are left as they are). */
+/** `--only=home,kucult,ses,sustur`: only those shots (the rest are left as they are). */
 const only = (process.argv.find((a) => a.startsWith('--only=')) ?? '--only=').slice(7).split(',').filter(Boolean);
 
 mkdirSync(outDir, { recursive: true });
@@ -114,19 +114,22 @@ for (const size of SIZES) {
     await page.getByTestId('download-saved').waitFor({ timeout: 180_000 });
   };
 
-  if (only.length === 0) {
-  // ---- the opening screen and the search
-  await open('/');
-  await shot('01-home');
-  await page.getByTestId('finder-input').fill('tiktok için dikey');
-  await shot('02-search-results');
-  await page.getByTestId('finder-input').fill('sesi kes');
-  await shot('03-search-two-results');
-  await page.getByTestId('finder-input').fill('altyazı ekle');
-  await shot('04-search-unavailable');
-  await page.getByTestId('finder-input').fill('pizza siparişi');
-  await shot('05-search-none');
+  // ---- the opening screen and the search (`--only=home`)
+  if (only.length === 0 || only.includes('home')) {
+    await open('/');
+    await shot('01-home');
+    await page.getByTestId('finder-input').fill('tiktok için dikey');
+    await shot('02-search-results');
+    await page.getByTestId('finder-input').fill('sesi kes');
+    await shot('03-search-two-results');
+    // A request the app cannot serve yet: "Bunu henüz yapamıyoruz.", no button.
+    await page.getByTestId('finder-input').fill('gife çevir');
+    await shot('04-search-unavailable');
+    await page.getByTestId('finder-input').fill('pizza siparişi');
+    await shot('05-search-none');
+  }
 
+  if (only.length === 0) {
   // ---- Kes: pick → the editor, first-run hint showing
   await open('/yap/kes');
   await shot('10-kes-1-pick');
@@ -197,6 +200,20 @@ for (const size of SIZES) {
     await shot('70-ses-2-info');
     await saved();
     await shot('71-ses-3-saved');
+  }
+
+  // ---- Sesi kapat (7 Oct 2026): found by typing, the one-line step, the saved result
+  if (only.length === 0 || only.includes('sustur')) {
+    await open('/');
+    await page.getByTestId('finder-input').fill('sesini kapat');
+    await shot('75-sesi-kapat-0-search');
+    await open('/yap/sustur');
+    await shot('75-sesi-kapat-1-pick');
+    await pick(sample);
+    await page.getByTestId('sustur-info').waitFor();
+    await shot('75-sesi-kapat-2-info');
+    await saved();
+    await shot('75-sesi-kapat-3-saved');
   }
 
   // ---- Yazıya dök (ADR-036): the real model on a real sentence (tests/media/SPEECH_SOURCE.md).

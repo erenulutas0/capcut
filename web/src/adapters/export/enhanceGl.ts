@@ -34,6 +34,9 @@ import {
   type PictureRect,
 } from '@/domain/enhance';
 
+/** A number as a GLSL float literal (always with a decimal point or an exponent). */
+const glsl = (value: number): string => (Number.isInteger(value) ? `${value}.0` : String(value));
+
 const VERTEX = `#version 300 es
 void main() {
   // One triangle that covers the whole target.
@@ -74,7 +77,7 @@ const DENOISE = `${HEADER}
 uniform float uFalloff;
 const int TAPS = ${DENOISE_TAPS.length};
 const ivec2 OFFSETS[TAPS] = ivec2[TAPS](${DENOISE_TAPS.map((tap) => `ivec2(${tap.dx}, ${tap.dy})`).join(', ')});
-const float WEIGHTS[TAPS] = float[TAPS](${DENOISE_TAPS.map((tap) => tap.weight.toFixed(8)).join(', ')});
+const float WEIGHTS[TAPS] = float[TAPS](${DENOISE_TAPS.map((tap) => glsl(tap.weight)).join(', ')});
 void main() {
   ivec2 p = here();
   if (keptAsIs(p)) return;
@@ -100,7 +103,7 @@ uniform float uShoulder;
 uniform vec3 uBalance;
 uniform float uVibrance;
 uniform int uTonal;
-const float KNEE = ${SHOULDER_KNEE.toFixed(4)};
+const float KNEE = ${glsl(SHOULDER_KNEE)};
 vec3 decode(vec3 code) {
   vec3 c = clamp(code, 0.0, 1.0);
   return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));

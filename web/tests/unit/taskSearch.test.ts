@@ -102,6 +102,77 @@ export const PHRASES: ReadonlyArray<readonly [string, TaskId]> = [
   ['add subtitles', 'yazi'],
   ['captions', 'yazi'],
   ['transcribe', 'yazi'],
+  // Sesi kapat (7 Oct 2026): the sound is switched off — not taken out as a file ("Sesini al").
+  ['sesi kapat', 'sustur'],
+  ['sesini kapat', 'sustur'],
+  ['sessiz yap', 'sustur'],
+  ['sessize al', 'sustur'],
+  ['sesi sil', 'sustur'],
+  ['mute', 'sustur'],
+  ['remove audio', 'sustur'],
+  ['no sound', 'sustur'],
+  // …and its neighbour stays what it was.
+  ['sesini al', 'ses'],
+  ['sesini çıkar', 'ses'],
+  ['audio only', 'ses'],
+  // Asked for, not possible yet: found, so that the answer is "Bunu henüz yapamıyoruz."
+  ['döndür', 'dondur'],
+  ['sağa döndür', 'dondur'],
+  ['ters çevir', 'dondur'],
+  ['rotate', 'dondur'],
+  ['rotate 90', 'dondur'],
+  ['flip horizontally', 'dondur'],
+  ['hızlandır', 'hiz'],
+  ['videoyu yavaşlat', 'hiz'],
+  ['hızını değiştir', 'hiz'],
+  ['speed up', 'hiz'],
+  ['slow down', 'hiz'],
+  ['fast forward', 'hiz'],
+  ['birleştir', 'birlestir'],
+  ['videoları birleştir', 'birlestir'],
+  ['uç uca ekle', 'birlestir'],
+  ['merge', 'birlestir'],
+  ['combine two videos', 'birlestir'],
+  ['join videos', 'birlestir'],
+  ['gif', 'gif'],
+  ['gif oluştur', 'gif'],
+  ['gif e dönüştür', 'gif'],
+  ['convert to gif', 'gif'],
+  ['animated gif', 'gif'],
+  ['filigran', 'filigran'],
+  ['filigran sil', 'filigran'],
+  ['logoyu kaldır', 'filigran'],
+  ['watermark', 'filigran'],
+  ['remove logo', 'filigran'],
+  // A look laid over the picture is not possible yet; light and colour are "İyileştir" (ADR-037).
+  ['filtre', 'efekt'],
+  ['efekt ekle', 'efekt'],
+  ['siyah beyaz', 'efekt'],
+  ['filter', 'efekt'],
+  ['sepia', 'efekt'],
+  ['black and white', 'efekt'],
+  ['renk ayarı', 'iyilestir'],
+  ['brightness', 'iyilestir'],
+  ['arka planı kaldır', 'arkaplan'],
+  ['arka plan değiştir', 'arkaplan'],
+  ['arkaplan sil', 'arkaplan'],
+  ['background remove', 'arkaplan'],
+  ['blur the background', 'arkaplan'],
+  ['tersten', 'ters'],
+  ['videoyu ters oynat', 'ters'],
+  ['geriye doğru oynat', 'ters'],
+  ['reverse', 'ters'],
+  ['backwards', 'ters'],
+  ['fotoğraf çıkar', 'foto'],
+  ['videodan kare al', 'foto'],
+  ['ekran görüntüsü', 'foto'],
+  ['screenshot', 'foto'],
+  ['save a frame', 'foto'],
+  ['titreme', 'stabil'],
+  ['titreyen video', 'stabil'],
+  ['sarsıntı', 'stabil'],
+  ['stabilize video', 'stabil'],
+  ['shaky', 'stabil'],
   // İyileştir (ADR-037) — including what it cannot do: those words lead to the card and its honest line.
   ['videoyu iyileştir', 'iyilestir'],
   ['görüntüyü netleştir', 'iyilestir'],
@@ -171,7 +242,7 @@ describe('searchTasks: rules', () => {
   it('says so when no task knows the words', () => {
     expect(top('pizza siparişi')).toBe('none');
     expect(top('qwertyuiop')).toBe('none');
-    expect(top('3d efekt')).toBe('none');
+    expect(top('kahve tarifi')).toBe('none');
   });
 
   it('finds tasks while the word is still being typed', () => {
@@ -225,9 +296,54 @@ describe('searchTasks: rules', () => {
     expect(top('eessiz')).toBe('none');
   });
 
+  it('“Sesini al” and “Sesi kapat” are told apart by what is done to the sound', () => {
+    // Taking the sound out as a file…
+    for (const phrase of ['sesini al', 'sesini mp3 yap', 'extract audio', 'sadece ses', 'videodan müzik çıkar']) {
+      expect(top(phrase), phrase).toBe('ses');
+    }
+    // …or switching it off in the video.
+    for (const phrase of ['sesini kapat', 'sesini sil', 'sessize al', 'remove audio', 'mute', 'no sound']) {
+      expect(top(phrase), phrase).toBe('sustur');
+    }
+    // Where one word is shared ("sesini", "audio"), the other task is still on the list, second.
+    expect(ids('sesini sil')).toEqual(['sustur', 'ses']);
+    expect(ids('remove audio')).toEqual(['sustur', 'ses']);
+    // Typing "sess…" is still about the silent parts, not about muting.
+    expect(ids('sess')).toEqual(['bosluk']);
+    expect(ids('sessiz')).toEqual(['bosluk']);
+    expect(ids('sessiz yerleri sil')).toEqual(['bosluk']);
+  });
+
+  it('a request the app cannot serve yet is answered as such, and no card that does another job is offered under it', () => {
+    // Until 7 Oct 2026 these found a card with a "Başla" button: Her yerde açılsın, Dikey yap, Kes, Müzik ekle.
+    for (const [phrase, id] of [
+      ['gife çevir', 'gif'],
+      ['tiktok logosunu kaldır', 'filigran'],
+      ['logo sil', 'filigran'],
+      ['arka planı sil', 'arkaplan'],
+      ['hızlı oynat', 'hiz'],
+      ['90 derece çevir', 'dondur'],
+    ] as const) {
+      const result = searchTasks(phrase);
+      expect(result.kind, phrase).toBe('results');
+      if (result.kind !== 'results') continue;
+      expect(result.matches[0]?.task.id, phrase).toBe(id);
+      expect(result.matches[0]?.task.available, phrase).toBe(false);
+      // Rule 7: nothing startable under it.
+      expect(result.matches.filter((match) => match.task.available).map((match) => match.task.id), phrase).toEqual([]);
+    }
+    // Two wishes in one sentence, one possible: both are shown, the honest one included.
+    expect(ids('döndür ve kes').sort()).toEqual(['dondur', 'kes']);
+    // A task that works is not pushed out by an entry that only shares a weak word.
+    expect(ids('arka plana müzik')).toEqual(['muzik']);
+    expect(ids('background song')).toEqual(['muzik']);
+    expect(ids('formatını değiştir')).toEqual(['cevir']);
+    expect(ids('mov dosyasını çevir')).toEqual(['cevir']);
+    expect(ids('video yan duruyor dik olsun')[0]).toBe('dikey');
+  });
+
   it('reports tasks that are not available as such, never hiding them', () => {
-    // Every task works today (ADR-036 enabled the last one); the rule is kept
-    // for the next task that is announced before it is built.
+    // The mechanism, shown on a task that works: switched off, it is still found and says so.
     const withOneOff = TASKS.map((task) => (task.id === 'yazi' ? { ...task, available: false } : task));
     const result = searchTasks('altyazı ekle', withOneOff);
     expect(result.kind).toBe('results');
@@ -251,14 +367,27 @@ describe('searchTasks: rules', () => {
 });
 
 describe('task registry', () => {
-  it('lists the nine tasks in card order with unique ids', () => {
-    expect(TASKS.map((task) => task.id)).toEqual(['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'cevir', 'iyilestir']);
+  const CARDS = ['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'sustur', 'cevir', 'iyilestir'];
+  const CANNOT_YET = ['dondur', 'hiz', 'birlestir', 'gif', 'filigran', 'efekt', 'arkaplan', 'ters', 'foto', 'stabil'];
+
+  it('lists the ten tasks in card order — Kes first, Sesi kapat next to Sesini al — then what cannot be done yet', () => {
+    expect(TASKS.map((task) => task.id)).toEqual([...CARDS, ...CANNOT_YET]);
     expect(new Set(TASKS.map((task) => task.id)).size).toBe(TASKS.length);
   });
 
   it('offers exactly the tasks the engine can do today', () => {
-    expect(availableTasks().map((task) => task.id)).toEqual(['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'cevir', 'iyilestir']);
-    expect(TASKS.filter((task) => !task.available).map((task) => task.id)).toEqual([]);
+    expect(availableTasks().map((task) => task.id)).toEqual(CARDS);
+    expect(TASKS.filter((task) => !task.available).map((task) => task.id)).toEqual(CANNOT_YET);
+  });
+
+  it('what cannot be done yet has one icon, a name to say, and no wizard of its own', () => {
+    for (const task of TASKS.filter((item) => !item.available)) {
+      expect(task.icon, task.id).toBe('taskLater');
+      expect(tr[task.labelKey], task.id).toBeTruthy();
+      expect(task.generic, task.id).toBeUndefined();
+    }
+    expect(tr['home.results.unavailable']).toBe('Bunu henüz yapamıyoruz.');
+    expect(en['home.results.unavailable']).toBe('We cannot do this yet.');
   });
 
   it('keeps every word folded, so the search compares like with like', () => {

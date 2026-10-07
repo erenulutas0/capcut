@@ -6,6 +6,9 @@
 > [ADR-030](ADR-030-kesit-flow-v2.md) (kesit editörü) aynen duruyor ve "Kes" işinin kendisi;
 > [ADR-031](ADR-031-phone-share-install-offline.md)'in manifest başlangıç adresi değişti.
 > Şema (EDL v2) ve politika (`2026-09-24.v6`) **değişmedi**; dışa aktarma motoru değişmedi.
+> **Güncelleme 7 Ekim 2026:** dokuzuncu kart "Sesi kapat"; yapılamayan on istek aramada dürüst
+> yanıt alıyor; arama kuralları 5 ve 7; müzik artık indirmenin tamamına yayılıyor (aşağıda
+> ilgili yerler güncellendi, sonda "Güncelleme — 7 Ekim 2026"). Aynı gün onuncu kart "İyileştir" geldi ([ADR-037](ADR-037-enhance.md)).
 
 ## Neden
 
@@ -37,8 +40,9 @@ arama olmadan çalışıyor; göreve göre düzenlenmiş gezinme özelliğe gör
 3. **Her iş bir sihirbaz**, kendi adresinde (`/yap/<id>/`): (1) "Videonu seç", (2) en fazla
    **bir** karar — varsayılanı seçili —, (3) "İndir" → ilerleme → "Kaydedildi" + "Paylaş".
    Sihirbazlar editörün kendi tarifini ve kendi indirme yolunu kullanır; yeni bir motor yok.
-4. **Henüz yapılmamış iş sahte gösterilmez:** kartı yoktur, sayfası yoktur; arama onu
-   kastederse "Bu henüz yok, üzerinde çalışıyoruz." yazar ve düğme çizmez.
+4. **Yapılamayan iş sahte gösterilmez:** kartı yoktur, sayfası yoktur; arama onu
+   kastederse "Bunu henüz yapamıyoruz." yazar ve düğme çizmez (7 Ekim 2026'ya kadar cümle "Bu
+   henüz yok, üzerinde çalışıyoruz." idi; söz vermediğimiz işler için söz veren cümle kaldırıldı).
 5. **Editör `/editor`'de aynen durur**; logosu açılış ekranına götürür.
 
 ## Açılış ekranı
@@ -47,8 +51,9 @@ arama olmadan çalışıyor; göreve göre düzenlenmiş gezinme özelliğe gör
 |---|---|
 | Kutu | `role="combobox"`, `aria-controls` ile sonuç listesine (`role="listbox"`), `aria-activedescendant` ile vurgulu sonuca bağlı; odak hep kutuda. ↑/↓ sonuçta gezer (başa sarar), Enter vurgulu sonucu başlatır, Esc kutuyu boşaltır, × de. Sonuç sayısı `role="status"` ile duyurulur ("2 sonuç. İlki: Dikey yap."). |
 | Örnek cümleler | "sessiz yerleri sil", "TikTok için dikey", "başını kes", "müzik koy": dokununca kutuya yazılır. Hepsi bugün çalışan bir işe götürür (birim testi). |
-| Kartlar | Kayıttaki sırayla, yalnızca `available: true` işler: Kes (dolu, öne çıkan kart), Boşlukları at, Dikey yap, Küçült, Yazıya dök, Müzik ekle, Sesini al, Her yerde açılsın, İyileştir (Küçült ve Sesini al [ADR-035](ADR-035-target-size-and-audio-only.md), Yazıya dök [ADR-036](ADR-036-on-device-transcript.md), İyileştir [ADR-037](ADR-037-enhance.md) ile açıldı; bugün dokuz kart → geniş ekranda 3 + 3 + 3). Kart bir bağlantıdır (JavaScript olmadan da çalışır), en az 126 px yüksek. Telefonda 2 sütun; 700 px'ten itibaren 3; 1000 px'ten itibaren satırları dolduruyorsa 4 (8 kart → 4 + 4; bugünkü 7 kart → 4 + 3; 5 kart → 3 + 2, tek kalan kart olmasın diye). Hiçbir kart gizlenmez. |
+| Kartlar | Kayıttaki sırayla, yalnızca `available: true` işler — bugün on: Kes (dolu, öne çıkan kart), Boşlukları at, Dikey yap, Küçült, Yazıya dök, Müzik ekle, Sesini al, **Sesi kapat**, Her yerde açılsın, **İyileştir** ([ADR-037](ADR-037-enhance.md)) (Küçült ve Sesini al [ADR-035](ADR-035-target-size-and-audio-only.md), Yazıya dök [ADR-036](ADR-036-on-device-transcript.md), Sesi kapat 7 Ekim 2026). Kart bir bağlantıdır (JavaScript olmadan da çalışır), en az 126 px yüksek. Telefonda 2 sütun; 700 px'ten itibaren 3; 1000 px'ten itibaren, son satırda tek kart kalmayacak biçimde 3 ya da 4 (`wideColumns`: önce satırları tam dolduran — 8 → 4 + 4, 9 → 3 + 3 + 3, 6 → 3 + 3 —, sonra son satırı en dolu olan — 7 → 4 + 3, 10 → 4 + 4 + 2, 5 → 3 + 2). Hiçbir kart gizlenmez. |
 | Yazınca | Kartlar ve örnekler yerini "Bunu mu demek istedin?" listesine bırakır (en fazla 3 satır; her satırda "Başla"). Kutuyu boşaltmak ya da "Tüm işleri gör" kartları geri getirir. Tek harf ya da yalnızca "video" yazmak henüz bir şey söylememektir: kartlar durur. |
+| Yapılamayan istek | Kayıtta `available: false` olan on giriş (döndür, hızlandır / yavaşlat, videoları birleştir, GIF, filigran ya da logo sil, filtre ve renk, arka plan, tersten oynat, videodan fotoğraf, titremeyi düzelt): satırda işin adı ve **"Bunu henüz yapamıyoruz."**, düğme yok, `aria-disabled`; Enter ve dokunma hiçbir şey başlatmaz; duyuru "1 sonuç. İlki: Döndür. Bunu henüz yapamıyoruz." Altında başka iş yapan bir kart önerilmez (kural 7). |
 | Bulunamadı | "Bunu bulamadım. Başka kelimelerle dene ya da bütün işlere bak." + "Tüm işleri gör". |
 | Yük | Açılış ekranı dışa aktarma motorunu (mediabunny) yüklemez, worker başlatmaz, başka kökene istek yapmaz (e2e). |
 
@@ -69,11 +74,17 @@ Girdi → sıralı işler; tamamı `searchTasks()` içinde, saf fonksiyon:
 4. **Puan:** güçlü kelime tam 3, kök/ön ek/yazım hatası 2; zayıf kelime ("ekle", "sil",
    "baş") tam 1, kök 0,75, yazım hatasıyla hiç.
 5. **Deyim:** birkaç sözcük sırayla geçiyorsa +4 ("her yerde", "sessiz yer", "make it
-   vertical"); deyimlerde atılan sözcükler de sayılır.
+   vertical"); deyimlerde atılan sözcükler de sayılır. İkinciden sonraki her sözcük +1: uzun
+   deyim daha özeldir ("arka plan değiştir" arka planla ilgilidir; yalnız "arka plan" müzik
+   isterken söylenir). Bir işin yalnızca en uzun deyimi sayılır. *(7 Ekim 2026)*
 6. **Sıralama:** puana göre; eşitlikte daha özel iş öne (herkesin her iş için söylediği
    "kes / cut / sil" genel işi geri çeker: "cut the pauses" → Boşlukları at), sonra kayıt
    sırası. En fazla üç sonuç, yalnızca en iyinin %40'ı ve üstü (tek bir zayıf kelime ikinci
    satır açmaz: "altyazı ekle" yalnızca Yazıya dök).
+7. **Yapılamayan iş birinciyse** ("gife çevir", "tiktok logosunu kaldır") yanıt "Bunu henüz
+   yapamıyoruz."dur ve isteğin yalnızca bir kelimesini taşıyan çalışan iş ("çevir" → Her yerde
+   açılsın, "tiktok" → Dikey yap) altında gösterilmez: çalışan bir işin satırı ancak puanı
+   birincinin %80'i ve üstüyse kalır ("döndür ve kes": ikisi de). *(7 Ekim 2026)*
 
 Kelime listeleri iş kaydındadır (`web/src/domain/tasks.ts`): her iş için güçlü kelimeler,
 zayıf kelimeler ve deyimler, Türkçe ve İngilizce.
@@ -91,10 +102,21 @@ zayıf kelimeler ve deyimler, Türkçe ve İngilizce.
   %86'dır, düzeltmeden sonraki sayı değil, çünkü tablo artık görülmüş bir tablodur.
   Test, oranın %80'in altına düşmesini engeller.
 
+- `tests/unit/taskSearchHeldOut2.test.ts` *(7 Ekim 2026)* — "Sesi kapat" ve yapılamayan istekler
+  için 95 cümle, o girişlerin listelerinden **önce** yazıldı. Üç ölçüm: eski kayıtla 13 / 95
+  (yalnızca zaten var olan işlerin 13 cümlesi; kalan 82'nin **44'ü başka iş yapan, "Başla"
+  düğmeli bir karta** gitti — 14 ses kapatma isteğinin 13'ü, yapılamayan 68 isteğin 31'i —,
+  38'i "Bunu bulamadım"a); yeni girişlerle ilk koşu **69 / 95 (%73)**, yapılamayan 68 isteğin
+  12'si hâlâ yanlış karta; kaçanlar listelerde düzeltildikten sonra 95 / 95, yanlış kart 0.
+  Dürüst tahmin %73'tür. Bu tablo ile listeleri aynı kişi aynı oturumda yazdı: "görülmemiş"
+  burada "listeler tabloya bakılmadan yazıldı" demektir, "kör" değil.
+
 Bilinen sınır: listede olmayan bir söyleyiş bulunmaz ("Bunu bulamadım" der, kartlar bir
-dokunuş ötededir); "sesini kapat" gibi karşılığı bir iş olmayan istekler yanlış işe
-(Sesini al) gidebilir. Gerçek kullanıcı cümleleri kullanıcı testlerinde toplanıp tabloya
-eklenmeli (docs/beta/USER_TEST_KIT.md, Görev 0).
+dokunuş ötededir). "Sesini kapat" artık "Sesi kapat"ı buluyor (7 Ekim 2026); yapılamayan on
+istek kendi dürüst satırını alıyor. Listelenmemiş bir yapılamayan istek (ör. "yüzleri
+bulanıklaştır", "videoya yazı ekle", "sesi değiştir", "çeviri altyazı") hâlâ ya bulunamaz ya
+da bir kelimesi tutan çalışan bir işe gider. Gerçek kullanıcı cümleleri kullanıcı testlerinde
+toplanıp tabloya eklenmeli (docs/beta/USER_TEST_KIT.md, Görev 0).
 
 ## İş kaydı ve sihirbaz çatısı
 
@@ -108,11 +130,13 @@ buradan okur.
 | Boşlukları at (`bosluk`) | evet | video → karar → indir | "Uzun boşluklar" (varsayılan) / "Kısa duraksamalar da" |
 | Dikey yap (`dikey`) | evet | video → karar → indir | "Doldur" (varsayılan) / "Sığdır" |
 | Küçült (`kucult`) | evet (ADR-035) | video → karar → indir | Nereye sığsın: "Paylaşmak için (52 MB altı)" (varsayılan) / "E-posta (25 MB altı)" / "WhatsApp (16 MB altı)"; her seçenek sonucu baştan söyler ("≈ 15,4 MB · 720p", "Videon zaten bunun altında", "Bu video buna sığmaz: en az … gerekir") |
-| Yazıya dök (`yazi`) | evet (ADR-036) | video → karar → indir | Model indirme + "Yazıya dök"; sonuç yazı paneli (ayrıntı ADR-036) |
+| Yazıya dök (`yazi`) | evet (ADR-036) | video → karar → indir | (model indirme ve yazıya dökme; ayrıntı ADR-036) |
 | Müzik ekle (`muzik`) | evet | video → karar → indir | Videonun sesi "Kalsın" (varsayılan) / "Kapansın" |
 | Sesini al (`ses`) | evet (ADR-035) | video → indir | — (ses M4A olarak kaydedilir; sessiz videoda İndir kapalı ve sebebi yazılı) |
+| Sesi kapat (`sustur`) | evet (7 Ekim 2026) | video → indir | — (aynı video, ses izi olmadan; sesi olmayan videoda İndir kapalı ve sebebi yazılı) |
 | Her yerde açılsın (`cevir`) | evet | video → indir | — |
 | İyileştir (`iyilestir`) | evet (ADR-037) | video → karar → indir | Ne kadar: "Hafif" / "Otomatik" (varsayılan) / "Güçlü"; videonun gerçek bir karesinin öncesi ve sonrası (dışa aktarmanın kendi koduyla), ne yapılacağı sözle; değişecek bir şey yoksa İndir kapalı ve sebebi yazılı |
+| Döndür (`dondur`), Hızlandır ya da yavaşlat (`hiz`), Videoları birleştir (`birlestir`), GIF yap (`gif`), Filigran ya da logo sil (`filigran`), Filtre ve renk (`efekt`), Arka planı değiştir (`arkaplan`), Tersten oynat (`ters`), Videodan fotoğraf al (`foto`), Titremeyi düzelt (`stabil`) | **hayır** (7 Ekim 2026) | — | Motoru yok. Kartı, sayfası, sihirbazı yok; yalnızca aramanın "Bunu henüz yapamıyoruz." demesi için kayıttalar. |
 
 **Bir işi açmak:** `tasks.ts`'te `available: true` (tek satır) + `components/wizard/wizards.tsx`
 içinde sihirbaz bileşeni ve `WIZARDS` tablosunda satırı. Tablo `Record<AvailableTaskId, …>`
@@ -180,11 +204,28 @@ geri alma adımı).
 (dışa aktarmanın yaptığı orta kırpma / kenar boşluğuyla aynı geometri). Zaten 9:16 olan video
 için karar yok: "Bu video zaten dikey: görüntü aynı kalır, 1080 × 1920 olarak kaydedilir."
 
+**Sesi kapat** *(7 Ekim 2026)*. Karar yok. "Aynı video, sesi olmadan kaydedilir." Tarif kesitsizdir
+(bütün video), videonun sesi kapalıdır (editördeki "Sesi kapat" anahtarı), müzik yoktur; çıktıda
+**ses izi yoktur** — sessizlik izi değil. Neden: (1) her oynatıcı ve paylaşım uygulaması ses izi
+olmayan MP4'ü "sessiz video" olarak gösterir, sessizlik izi ise "sesi var ama duyulmuyor"
+görünür; (2) sessizlik izi boşuna bayt harcar (128 kbit/s AAC ≈ dakikada 1 MB) ve ADR-032'nin
+kodlayıcı gecikmesi / düzenleme listesi inceliklerini hiçbir şey için taşır; (3) motor bu dosyayı
+sesi olmayan kaynaklar için zaten yazıyor ve testler onu zaten ölçüyor — yeni bir yol açılmadı.
+Hızlı kesim (ADR-027) izin veriyorsa görüntü kopyalanır (sonuçtaki yöntem satırı: "Hızlı kesim —
+görüntü yeniden kodlanmadı, orijinal kalite"); değilse yeniden işlenir ve satır onu söyler.
+Önizleme sessiz oynar. Sesi olmayan videoda "Bu videoda zaten ses yok; kapatılacak bir şey yok."
+— İndir kapalı. Ölçülen (Playwright Chromium, 24 sn'lik 720p H.264 + AAC): kaydedilen dosyada tek
+akış `video:h264`, 24 sn, 1280 × 720, kareler kaynağın aynısı (0,5 / 11 / 23. sn'de fark < 1 / 255),
+dosya kaynaktan küçük; tarayıcının kendi oynatıcısı oynatıyor, çözdüğü ses baytı 0. **Denenmedi:**
+telefon, iOS / Safari, WhatsApp ve Instagram'ın ses izi olmayan videoyu nasıl gösterdiği.
+
 **Müzik ekle.** Kullanıcı kendi müzik dosyasını seçer (dosya seçmek karar sayılmaz). Karar:
 videonun kendi sesi "Kalsın" (müzik arkada, −12 dB) / "Kapansın" (yalnızca müzik, 0 dB). Müzik
 videodan uzunsa videonun sonunda 1,5 sn'de kısılır; kısaysa kendi sonunda biter ve söylenir
 ("Müzik videodan kısa: … sonra biter."). Sesi olmayan videoda soru sorulmaz, müzik tam seviyede.
-Müzik seçilmeden "İndir" kapalıdır ve nedenini söyler.
+Müzik seçilmeden "İndir" kapalıdır ve nedenini söyler. *(7 Ekim 2026: sihirbaz artık bütün videoyu
+tek kesit yapmıyor; müzik kesitsiz tarifte de indirmenin tamamına yayılıyor —
+`web/src/domain/musicFit.ts`. Editöre geçince kesit listesi boştur, üstte "Videoyu indir".)*
 
 **Her yerde açılsın.** Karar yok. "iPhone, HEVC ya da HDR videolar her cihazda açılan MP4
 olur." Çıktı H.264 + AAC MP4, videonun kendi çerçevesinde. Kaynak zaten öyleyse (H.264, AAC ya
@@ -200,9 +241,9 @@ değişmedi.
 
 ## Bilerek gösterilmeyenler
 
-- **Yazıya dök'ün kartı.** Çalışmayan bir işe kart koymak, basınca "henüz yok" demek olurdu.
-  Arama kastederse dürüst satır var; kart yok. (Küçült ve Sesini al, motorları gelince
-  ADR-035 ile kart oldu.)
+- **Yapılamayan işlerin kartı.** Çalışmayan bir işe kart koymak, basınca "yapamıyoruz" demek
+  olurdu. Arama kastederse dürüst satır var; kart yok. (Küçült ve Sesini al ADR-035, Yazıya dök
+  ADR-036 ile motorları gelince kart oldu; bugün kartsız on giriş yukarıdaki tabloda.)
 - **Editörün ayarları** (kare oranı, yakınlaştırma, kalite, ses seviyeleri, müzik aralığı ve
   geçişleri, altyazı, sessizliklerin tek tek listesi ve "Dinle"). Sihirbazda tek karar var;
   gerisi "Daha fazla ayar → editörde aç".
@@ -252,9 +293,10 @@ Koşu sayıları: bu belgenin sonundaki "Doğrulama".
   Playwright'ın Chromium'uyla. Kullanıcı testi kiti açılış ekranından başlayacak şekilde güncellendi.
 - Sihirbazda müzikle videonun birlikte dinlenmesi yok (müzik ve video ayrı ayrı oynatılır);
   birlikte önizleme editörde.
-- Editörde (ADR-026'dan beri var olan) bir durum: kesit yokken eklenen müzik yalnızca en kısa
-  kesit uzunluğu kadar seçilir. Sihirbaz bunu videonun tamamını tek kesit yaparak aşar; editörün
-  kendi davranışına dokunulmadı.
+- ~~Editörde kesit yokken eklenen müzik yalnızca en kısa kesit uzunluğu kadar (0,1 sn) seçilir;
+  sihirbaz bunu videonun tamamını tek kesit yaparak aşar.~~ **Düzeltildi (7 Ekim 2026):** kaydedilen
+  dosyada ölçüldü (12 sn'lik video, müzik yalnızca ilk 0,1 sn'de), kök neden komutta giderildi,
+  sihirbazın dolanması kaldırıldı. Ayrıntı sondaki güncellemede.
 - Arama yalnızca Türkçe ve İngilizce kelime bilir; arayüz dili Türkçe (EN çevirileri
   `messages.ts`'te hazır, dil seçimi yok).
 
@@ -290,4 +332,55 @@ düzeltmesi) ölçüm kilidi altında çalıştırıldı:
   değiştiriyor ve test "politika etiketi charset'ten hemen sonra" sırasını o anda arıyordu.
   Politika sayfa yüklenirken uygulanır ve geçerliliğini korur; test artık sihirbazın kendi
   HTML'ini yükleyip onun politikasını denetliyor. Düzeltmeden sonra **4/4**.
+
+## Güncelleme — 7 Ekim 2026: Sesi kapat, yapılamayan istekler, müzik uzunluğu
+
+**Sesi kapat ve arama.** Yukarıda ilgili yerlere işlendi: kart ve sihirbaz ("Sihirbazlar"), kayıt
+tablosu, kural 5 ve 7, üçüncü ölçüm tablosu. İlk bakışta doğru iş: ayarlanan tablo 74 / 74 →
+139 / 139; eski bağımsız tablo 55 / 56 → 55 / 56 (aynı tek kaçak: "sadece bir bölümünü al"); yeni
+bağımsız tablo 13 / 95 (eski kayıt) → 69 / 95 (ilk koşu) → 95 / 95 (düzeltmeden sonra).
+
+**Müzik, indirilen videonun tamamının altında** (`web/src/domain/musicFit.ts`; şema değişmedi).
+
+- *Kök neden.* `setMusicAsset` müziği eklendiği andaki birleşik kesit uzunluğu kadar seçiyordu
+  (`max(0,1 sn, çıktı)`) ve bir daha dokunmuyordu. Kesit yokken çıktı 0 → 0,1 sn. "Videoyu indir"
+  (kesitsiz tarif = bütün video) o 0,1 sn'lik seçimle kodluyordu.
+- *Kanıt (kaydedilen dosya, ffmpeg ile çözülüp ölçüldü; 12 sn'lik video — sesi saniye başlarında
+  2 ms'lik tık —, 220 Hz'lik müzik −12 dB):* düzeltmeden önce ton RMS'i ilk 0,1 sn'de 0,022,
+  0,11 sn'den sonra ve sonraki 12 saniyenin her birinde 0,000; editördeki "Bitiş" alanı
+  `00:00.100`. Düzeltmeden sonra 12 saniyenin 12'sinde 0,022; alan `00:12.000`.
+- *Kural.* Müzik eklenince indirmenin tamamına **yayılır**: kesit yoksa bütün video, varsa birleşik
+  kesitler; müzik dosyası kısaysa kendi sonunda biter (döngü yok; belge 15: müzik dosyası en çok
+  10 dakika / 100 MiB, açılırken denetlenir). Sonu indirmenin sonunda olan müzik "yayılmış"tır ve
+  kesitleri ya da videoyu değiştiren her komutta (`commands.ts` → `bump`) yeniden yayılır — aynı
+  komutun içinde, yani **tek geri alma adımı**. Elle verilen aralık (sonu başka yerde) yayılmış
+  değildir, dokunulmaz; kullanıcı sonu yeniden indirmenin sonuna koyarsa yine izler. Yayılmış
+  müziğin yalnızca başlangıcı taşınırsa ("şarkı 0:30'dan başlasın", "5. saniyede girsin") sonu da
+  taşınır (eskiden ilki "aralık ters" diye reddediliyordu). Kısalan seçime sığmayan geçişler
+  kısaltılır.
+- *Eski projeler.* Şema ve doğrulama aynı; kayıtlar ve yedekler aynen yüklenir, hiçbir şey
+  dönüştürülmez. Eski kuralın bıraktığı 0,1 sn'lik seçim (kesit yok, baştan, 0,1 sn) "seçilmemiş"
+  sayılır: açılırken (`healLegacyMusic`) ve ilk kesit değişikliğinde yayılır. **Dürüst not:**
+  kesiti olmayan bir kayıt bugün zaten yüklenmiyor (boş kesit listesi kayıt doğrulamasından
+  geçmiyor — bu işte bulunan ayrı bir hata, ayrı iş olarak işaretlendi), dolayısıyla açılıştaki
+  onarım o hata giderilince işe yarar. Kesitli eski projede müzik aralığı olduğu gibi kalır;
+  yalnızca tam indirmenin sonunda bitiyorsa sonraki kesit değişikliğinde izlemeye başlar.
+- *Sihirbaz.* "Müzik ekle"nin bütün videoyu tek kesit yapan dolanması kaldırıldı
+  (`musicUnderVideo`): sihirbaz da kesitsiz tarifle indiriyor; editöre geçince kesit listesi boş.
+- *Testler.* `musicFit.test.ts` (23), `taskRecipes.test.ts`; e2e `music-length.spec.ts` (kaydedilen
+  dosyada saniye saniye ton: kesitsiz 12 / 12; iki kesit 7 / 7 ve tek geri alma adımı; elle aralık
+  korunur: 9 saniyenin yalnız ilk 2'si); `wizards.spec.ts` müziği 8 saniyenin 8'inde arıyor; matris
+  satırı **M16b** (12 sn sessiz video + 10 sn WAV, kesit yok: 0,5 / 4,5 / 8,5. sn'de aynı seviye,
+  10,8. sn'de yok).
+
+**Doğrulama (7 Ekim 2026, masaüstü, ölçüm kilidi altında; gerçekten çalıştırılanlar).** `npx tsc
+--noEmit -p .` ve `npx eslint .` temiz; `npx vitest run` **948 / 948** (58 dosya); tam e2e
+(`CLIP_TEST_HOOKS=1` derlemesi, `E2E_PORT=3351`, Playwright Chromium) **287 geçti, 4 atlandı, 0
+başarısız**, 16,4 dk (atlananlar: 2 isteğe bağlı sessizlik ekran görüntüsü, 2 gerçek model testi
+— model dosyaları bu klasörde yok); Pages duman testi (CI'ın ortam değişkenleriyle statik derleme,
+port 3104) **4 geçti, 2 atlandı** (ikisi de model dosyası istiyor: **koşulmadı**); matris
+(`run-matrix.mjs`, olağan derleme, sunucu 3353'te — 3100 başka işlerle paylaşıldığı için)
+Chromium **29/29**, Chrome **29/29**, Edge **29/29** PASS. Ekran görüntüleri: `shots/01-home-*` … `05-*` yenilendi, `75-sesi-kapat-*` eklendi
+(360 / 390 / 1440). **Koşulmayanlar:** telefon (adb kullanılmadı), gerçek kayıt koşucusu
+(`run-real-media.mjs`), Firefox / WebKit matrisi (eski sonuçlar duruyor), gerçek model testleri.
 

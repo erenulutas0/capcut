@@ -22,9 +22,14 @@ Kurulum ve komutlar için depo kökündeki [README](../README.md) dosyasına bak
   kelimeleri). Arama: `src/domain/taskSearch.ts` (cihazda, kelime listesiyle; ağ yok).
 - Sihirbaz çatısı: `src/components/wizard/` — `TaskWizard` (sayfa; editörün durum kancası,
   proje saklamadan), `WizardFlow` (video seç → karar → indir), `useWizardExport`
-  (dışa aktarmaya giden tek yol; ek seçenekler `extras`), `wizards.tsx` (beş sihirbaz).
+  (dışa aktarmaya giden tek yol; ek seçenekler `extras`), `wizards.tsx` (dokuz sihirbaz).
 - **Yeni bir işi açmak:** `tasks.ts`'te `available: true` + `wizards.tsx`'te bileşeni ve
   `WIZARDS` tablosundaki satırı. Bileşen eksikse `npm run typecheck` derlemez.
+- **Yapılamayan bir isteği dürüstçe yanıtlamak:** `tasks.ts`'te `available: false` bir giriş
+  (simgesi `taskLater`, kelimeleri, `task.<id>.label` / `.sub` mesajları). Kartı, sayfası ve
+  sihirbazı olmaz; arama "Bunu henüz yapamıyoruz." der. Cümleleri önce
+  `tests/unit/taskSearchHeldOut2.test.ts`'e (listelere dokunmadan ölç), sonra
+  `taskSearch.test.ts`'e ekle.
 - Ekran görüntüleri: `node scripts/home-shots.mjs` → `docs/ux/2026-10-03-home/shots/`.
 
 ## Fixture'lar

@@ -70,6 +70,7 @@ import type {
   Project,
 } from '@/domain/edl';
 import { DEFAULT_KESIT_SETTINGS, type KesitSettings } from '@/domain/kesit';
+import { healLegacyMusic } from '@/domain/musicFit';
 import { WEB_LOCAL_POLICY, exceedsTotalSourceBytes } from '@/domain/policy';
 import {
   bindingFor,
@@ -315,7 +316,8 @@ export function useEditorState() {
    * session's state would be meaningless.
    */
   const restoreFromRecord = useCallback((record: ProjectRecord) => {
-    setHistory(initHistory(record.edl));
+    // A recipe stored with the old 0.1 s music stub (no kesit) gets its music under the whole video.
+    setHistory(initHistory(healLegacyMusic(record.edl)));
     setTitle(record.title);
     setBindings(record.bindings);
     setSelectedClipId(null);

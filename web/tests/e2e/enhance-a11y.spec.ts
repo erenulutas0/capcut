@@ -4,6 +4,7 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
 import { enhanceFixture } from './enhance-media';
 import { installSavePicker, openSettings } from './kesitFlow';
+import { expectStylesApplied } from './stylesReady';
 
 /**
  * Accessibility of "İyileştir" (ADR-037): the card, the wizard's steps with
@@ -19,6 +20,8 @@ const SAMPLE = join(process.cwd(), 'tests', 'media', 'sample-24s.mp4');
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
 
 async function audit(page: Page, state: string, testInfo: TestInfo): Promise<void> {
+  // An audit of a page whose stylesheet has not arrived says nothing (stylesReady.ts).
+  await expectStylesApplied(page, state, testInfo);
   const result = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
   const findings = result.violations.map((violation) => ({
     rule: violation.id,

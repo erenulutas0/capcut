@@ -8,7 +8,7 @@ import type { TargetSizeShortfall } from '@/domain/exportEvents';
 import { formatStorageBytes } from '@/domain/outputStorage';
 import { formatByteLimit, formatBytes, formatBytesAgainstLimit } from '@/domain/policy';
 import { CHROMIUM_SHARE_MAX_BYTES } from '@/domain/share';
-import { formatTimecode } from '@/domain/time';
+import { formatDecimal, formatTimecode } from '@/domain/time';
 import type { MessageKey } from '@/i18n/messages';
 import { overLimitText } from './outputLimitText';
 import type { DownloadEntry } from './useDownloads';
@@ -326,7 +326,9 @@ function Details({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase: 's
         ) : null}
         <li>
           <span className="meta-key">{t('export.elapsed')}</span>
-          <span className="meta-value">{(result.elapsedMs / 1000).toFixed(1)} s</span>
+          <span className="meta-value" data-testid="measured-elapsed">
+            {formatDecimal(result.elapsedMs / 1000, 1, t('time.decimalMark'))} {t('time.secondShort')}
+          </span>
         </li>
       </ul>
     </details>

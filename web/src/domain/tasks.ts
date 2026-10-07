@@ -12,7 +12,28 @@
  * check refuses an available task without a wizard (`AvailableTaskId`).
  */
 
-export type TaskId = 'kes' | 'bosluk' | 'dikey' | 'kucult' | 'yazi' | 'muzik' | 'ses' | 'cevir' | 'iyilestir';
+export type TaskId =
+  | 'kes'
+  | 'bosluk'
+  | 'dikey'
+  | 'kucult'
+  | 'yazi'
+  | 'muzik'
+  | 'ses'
+  | 'sustur'
+  | 'cevir'
+  | 'iyilestir'
+  // Asked for, not possible yet: no card, no page, an honest answer in the search (see below).
+  | 'dondur'
+  | 'hiz'
+  | 'birlestir'
+  | 'gif'
+  | 'filigran'
+  | 'efekt'
+  | 'arkaplan'
+  | 'ters'
+  | 'foto'
+  | 'stabil';
 
 /** Names of the task icons in `components/Icon.tsx`. */
 export type TaskIcon =
@@ -23,8 +44,11 @@ export type TaskIcon =
   | 'taskText'
   | 'taskMusic'
   | 'taskSound'
+  | 'taskMute'
   | 'taskConvert'
-  | 'taskEnhance';
+  | 'taskEnhance'
+  /** The one icon of everything that cannot be done yet. */
+  | 'taskLater';
 
 /**
  * A wizard's screens, in order. Every wizard starts with `pick` (the video)
@@ -52,9 +76,9 @@ export interface TaskDefinition {
   labelKey: `task.${TaskId}.label`;
   subKey: `task.${TaskId}.sub`;
   /**
-   * False: no card, no route; a search that means it answers "Bu henüz yok,
-   * üzerinde çalışıyoruz" with no button (founder rule: no success message
-   * for something that does not work).
+   * False: no card, no route; a search that means it answers "Bunu henüz
+   * yapamıyoruz." with no button (founder rule: no success message for
+   * something that does not work, and never a card that does another job).
    */
   available: boolean;
   steps: readonly WizardStep[];
@@ -200,6 +224,31 @@ const REGISTRY = [
     },
   },
   {
+    // "Sesi kapat": the same video with no sound. Its words must not be the
+    // words of "Sesini al" (which takes the sound OUT as a file): no "ses",
+    // "sesini" or "audio" here — the phrases say what is done to the sound
+    // ("sesini kapat", "remove audio"), and a phrase outweighs a single word.
+    // No "sessize" either: "sess…" while typing must stay Boşlukları at.
+    id: 'sustur',
+    icon: 'taskMute',
+    labelKey: 'task.sustur.label',
+    subKey: 'task.sustur.sub',
+    available: true,
+    steps: ['pick', 'download'],
+    words: {
+      strong: ['kapat', 'kapatmak', 'kapansin', 'sustur', 'susturmak', 'mute', 'muted', 'soundless'],
+      // No bare "sil" / "kaldır" / "remove": alone they are Kes's words ("ilk 10 saniyeyi sil").
+      weak: ['kis', 'kismak', 'olmasin', 'yok', 'off', 'without'],
+      phrases: [
+        'sesi kapat', 'sesini kapat', 'sesi sil', 'sesini sil', 'sesi kaldir', 'sesini kaldir', 'sesi kis',
+        'sesini kis', 'sessiz yap', 'sessiz olsun', 'sessiz video', 'sessize al', 'ses olmasin', 'ses yok',
+        'sesi yok', 'remove audio', 'remove sound', 'remove the audio', 'remove the sound', 'delete audio',
+        'delete sound', 'delete the audio', 'no sound', 'no audio', 'without sound', 'without audio', 'sound off',
+        'audio off', 'turn off', 'sesleri sil', 'sesleri kapat', 'sesleri kaldir', 'sesi tamamen kis', 'sesini tamamen kis',
+      ],
+    },
+  },
+  {
     id: 'cevir',
     icon: 'taskConvert',
     labelKey: 'task.cevir.label',
@@ -235,18 +284,192 @@ const REGISTRY = [
       strong: [
         'iyilestir', 'iyilestirme', 'guzellestir', 'toparla', 'netlestir', 'netlik', 'net', 'keskin', 'keskinlestir',
         'keskinlik', 'bulanik', 'bulaniklik', 'bulanikligi', 'flu', 'karanlik', 'aydinlat', 'aydinlik', 'parlak',
-        'parlaklik', 'isik', 'isigi', 'isigini', 'renk', 'renkler', 'renkleri', 'renkli', 'soluk', 'kalite', 'kaliteyi',
-        'kalitesini', 'kaliteli', 'kalitesiz', 'kumlu', 'kumlanma', 'grenli', 'piksel', 'pikselli', 'cozunurluk',
-        '4k', 'hd', 'enhance', 'enhancer', 'improve', 'sharpen', 'sharper', 'sharp', 'brighten', 'brighter', 'bright',
-        'dark', 'blurry', 'blur', 'unblur', 'deblur', 'quality', 'upscale', 'upscaler', 'clearer', 'color', 'colors',
-        'colour', 'colours', 'denoise', 'grainy', 'noisy', 'lighting',
+        'parlaklik', 'isik', 'isigi', 'isigini', 'renk', 'renkler', 'renkleri', 'rengi', 'renkli', 'soluk', 'kontrast',
+        'doygunluk', 'canli', 'kalite', 'kaliteyi', 'kalitesini', 'kaliteli', 'kalitesiz', 'kumlu', 'kumlanma',
+        'grenli', 'piksel', 'pikselli', 'cozunurluk', '4k', 'hd', 'enhance', 'enhancer', 'improve', 'sharpen',
+        'sharper', 'sharp', 'brighten', 'brighter', 'bright', 'brightness', 'dark', 'blurry', 'blur', 'unblur',
+        'deblur', 'quality', 'upscale', 'upscaler', 'clearer', 'color', 'colors', 'colour', 'colours', 'contrast',
+        'saturation', 'denoise', 'grainy', 'noisy', 'lighting',
       ],
       weak: ['yukselt', 'artir', 'duzelt', 'gorunsun', 'goruntu', 'goruntuyu', 'better', 'fix', 'look', 'clear', 'light'],
       phrases: [
         'kaliteyi yukselt', 'kalitesini yukselt', 'kaliteyi artir', 'kalitesini artir', 'daha net', 'daha iyi gorunsun',
         '4k yap', 'hd yap', 'bulanikligi sil', 'bulanikligi gider', 'bulanikligi al', 'goruntuyu duzelt', 'cok karanlik',
-        'make it sharper', 'make it brighter', 'improve quality', 'better quality', 'fix lighting', 'too dark',
+        'renk ayari', 'renkleri duzelt', 'color correction', 'make it sharper', 'make it brighter', 'improve quality',
+        'better quality', 'fix lighting', 'too dark',
       ],
+    },
+  },
+  // ------------------------------------------------------------------
+  // Asked for, not possible yet (7 Oct 2026). These have no card and no page.
+  // They exist so that the search can answer "Bunu henüz yapamıyoruz."
+  // instead of offering a card that does something else ("gife çevir" used
+  // to find "Her yerde açılsın", "logo sil" found "Kes"). When one of them is
+  // built: `available: true`, its place among the cards, its wizard.
+  {
+    id: 'dondur',
+    icon: 'taskLater',
+    labelKey: 'task.dondur.label',
+    subKey: 'task.dondur.sub',
+    available: false,
+    steps: ['pick', 'download'],
+    words: {
+      strong: ['dondur', 'dondurmek', 'rotate', 'rotation', 'flip', 'mirror', 'ayna', 'aynala', 'derece'],
+      weak: ['ters', 'yan', 'saga', 'sola', 'duz', 'duzelt', 'egik', 'sideways', 'degrees', 'upside'],
+      phrases: [
+        'ters cevir', 'yan cevir', 'saga cevir', 'sola cevir', 'duz cevir', 'derece cevir', 'ters duruyor',
+        'bas asagi', 'yan cekmis', 'yan cekilmis', 'upside down', 'ayna goruntusu',
+      ],
+    },
+  },
+  {
+    id: 'hiz',
+    icon: 'taskLater',
+    labelKey: 'task.hiz.label',
+    subKey: 'task.hiz.sub',
+    available: false,
+    steps: ['pick', 'download'],
+    words: {
+      strong: [
+        'hiz', 'hizlandir', 'hizlandirmak', 'hizli', 'yavas', 'yavaslat', 'yavaslatmak', 'speed', 'slow', 'slowmo',
+        'slower', 'fast', 'faster', 'timelapse', '2x', 'x2',
+      ],
+      weak: ['agir', 'cekim', 'motion', 'tempo', 'forward'],
+      phrases: [
+        'agir cekim', 'slow motion', 'speed up', 'slow down', 'hizli oynat', 'yavas oynat', 'hizli cekim',
+        'fast forward', 'time lapse', 'iki kat',
+      ],
+    },
+  },
+  {
+    id: 'birlestir',
+    icon: 'taskLater',
+    labelKey: 'task.birlestir.label',
+    subKey: 'task.birlestir.sub',
+    available: false,
+    steps: ['pick', 'download'],
+    words: {
+      strong: ['birlestir', 'birlestirmek', 'merge', 'combine', 'join', 'concat', 'kolaj', 'collage'],
+      weak: ['iki', 'birkac', 'two', 'several', 'together'],
+      phrases: [
+        'arka arkaya', 'uc uca', 'tek video', 'iki video', 'video ekle', 'baska video', 'two videos', 'two clips',
+        'one video', 'put together',
+      ],
+    },
+  },
+  {
+    id: 'gif',
+    icon: 'taskLater',
+    labelKey: 'task.gif.label',
+    subKey: 'task.gif.sub',
+    available: false,
+    steps: ['pick', 'download'],
+    words: {
+      strong: ['gif', 'gife', 'gifi', 'animasyon', 'animated', 'sticker', 'cikartma'],
+      weak: ['hareketli'],
+      phrases: ['gif e', 'gife cevir', 'gife donustur', 'gif yap', 'to gif', 'hareketli resim', 'hareketli foto'],
+    },
+  },
+  {
+    id: 'filigran',
+    icon: 'taskLater',
+    labelKey: 'task.filigran.label',
+    subKey: 'task.filigran.sub',
+    available: false,
+    steps: ['pick', 'download'],
+    words: {
+      strong: ['filigran', 'watermark', 'logo', 'damga', 'damgayi'],
+      weak: ['kose', 'kosedeki', 'erase'],
+      phrases: [
+        'logosunu sil', 'logosunu kaldir', 'logoyu sil', 'logoyu kaldir', 'yaziyi sil', 'yaziyi kaldir',
+        'yazisini sil', 'yazisini kaldir', 'tiktok logosu', 'tiktok yazisi', 'remove logo', 'remove text',
+        'remove the logo', 'remove the text',
+      ],
+    },
+  },
+  {
+    id: 'efekt',
+    icon: 'taskLater',
+    labelKey: 'task.efekt.label',
+    subKey: 'task.efekt.sub',
+    available: false,
+    steps: ['pick', 'download'],
+    words: {
+      // Light, colour, contrast and sharpness are "İyileştir" (ADR-037) since 7 Oct 2026: those
+      // words live there. What stays here is a look laid over the picture, which nothing does yet.
+      strong: [
+        'filtre', 'filtresi', 'efekt', 'efekti', 'filter', 'filters', 'effect', 'effects', 'grayscale', 'sepia',
+        'vintage', 'nostaljik', 'lut',
+      ],
+      weak: ['siyah', 'beyaz', 'black', 'white', 'retro', 'sinematik', 'cinematic'],
+      phrases: ['siyah beyaz', 'black and white', 'color grading', 'renk filtresi', 'eski film'],
+    },
+  },
+  {
+    id: 'arkaplan',
+    icon: 'taskLater',
+    labelKey: 'task.arkaplan.label',
+    subKey: 'task.arkaplan.sub',
+    available: false,
+    steps: ['pick', 'download'],
+    words: {
+      // "plani": "arka planı sil" is about the background; music is asked
+      // for with "arka plana" / "arka planda" / "arka plan müziği".
+      // "bulanık" / "blur" by themselves are a blurry VIDEO ("İyileştir", ADR-037); here they
+      // only support a request that names the background.
+      strong: ['arkaplan', 'arkaplani', 'plani', 'bulaniklastir', 'greenscreen', 'chroma'],
+      weak: ['arka', 'plan', 'arkayi', 'background', 'bulanik', 'blur', 'flu'],
+      phrases: [
+        'arka plani', 'arkayi degistir', 'arkayi sil', 'yesil perde', 'yesil ekran', 'green screen',
+        'remove background', 'remove the background', 'blur background', 'blur the background',
+        'change background', 'change the background', 'background remove', 'background blur', 'arka plan degistir',
+        'arka plan sil', 'arka plan kaldir', 'arka plan bulanik',
+      ],
+    },
+  },
+  {
+    id: 'ters',
+    icon: 'taskLater',
+    labelKey: 'task.ters.label',
+    subKey: 'task.ters.sub',
+    available: false,
+    steps: ['pick', 'download'],
+    words: {
+      strong: ['tersten', 'geriye', 'reverse', 'reversed', 'backwards', 'backward', 'rewind'],
+      weak: ['ters', 'geri', 'sondan'],
+      phrases: ['tersten oynat', 'ters oynat', 'geri sar', 'geriye sar', 'geriye dogru', 'sondan basa', 'in reverse'],
+    },
+  },
+  {
+    id: 'foto',
+    icon: 'taskLater',
+    labelKey: 'task.foto.label',
+    subKey: 'task.foto.sub',
+    available: false,
+    steps: ['pick', 'download'],
+    words: {
+      strong: [
+        'fotograf', 'foto', 'resim', 'resmi', 'screenshot', 'snapshot', 'thumbnail', 'kapak', 'frame', 'photo',
+        'picture', 'image', 'jpg', 'jpeg', 'png',
+      ],
+      weak: ['kare', 'ekran', 'yakala', 'goruntusu', 'still', 'capture'],
+      phrases: [
+        'ekran goruntusu', 'kare al', 'kare yakala', 'kareyi kaydet', 'fotograf al', 'fotograf cek',
+        'resim olarak', 'extract a frame', 'save a frame', 'screen shot', 'still image',
+      ],
+    },
+  },
+  {
+    id: 'stabil',
+    icon: 'taskLater',
+    labelKey: 'task.stabil.label',
+    subKey: 'task.stabil.sub',
+    available: false,
+    steps: ['pick', 'download'],
+    words: {
+      strong: ['titre', 'titreme', 'sarsinti', 'sallan', 'sallaniyor', 'stabil', 'stabilize', 'shaky', 'shake', 'shaking', 'steady', 'sabitle'],
+      weak: ['duzelt', 'gider', 'smooth'],
+      phrases: ['titremeyi duzelt', 'titremeyi gider', 'sarsintiyi gider', 'el titremesi'],
     },
   },
 ] as const satisfies readonly TaskDefinition[];

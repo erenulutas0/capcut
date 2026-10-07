@@ -33,11 +33,22 @@ yazdı, "Kendim düzenleyeceğim"e mi gitti — hangisini neden seçtiği not al
      büyüyecek — `web/tests/unit/taskSearchHeldOut.test.ts`.)
    - "Doldur" ile "Sığdır" arasındaki farkı önizlemeden anladı mı?
    - "Kaydedildi"den sonra ne yaptı: "Paylaş", "Başka bir video", "Ana ekrana dön"?
-   - Aradığı iş yoksa ("Bu henüz yok, üzerinde çalışıyoruz." ya da "Bunu bulamadım.") ne yaptı?
+   - Aradığı iş yoksa ("Bunu henüz yapamıyoruz." ya da "Bunu bulamadım.") ne yaptı? Yanıtı
+     anladı mı, başka kelimeyle mi denedi, bıraktı mı?
 0b. **Serbest istek:** "Bu videoyla yapmak istediğin başka bir şey var mı? Dene." Yazdığı ya da
-   aradığı şey ve sonucu not alınır (bulundu / henüz yok / bulunamadı / yanlış iş çıktı).
-   Sihirbazı olan diğer işler: "Boşlukları at" (3 dokunuş), "Müzik ekle" (4), "Her yerde
-   açılsın" (3).
+   aradığı şey ve sonucu not alınır (bulundu / yapamıyoruz / bulunamadı / yanlış iş çıktı).
+   Sihirbazı olan diğer işler: "Boşlukları at" (3 dokunuş), "Müzik ekle" (4), "Sesini al" (3),
+   "Sesi kapat" (3), "Küçült" (3–4), "Her yerde açılsın" (3). **"Yanlış iş çıktı" en önemli
+   sonuçtur:** yazdığı cümleyi ve çıkan kartı aynen not al. 7 Ekim 2026'dan beri yapılamayan on
+   istek (döndür, hızlandır / yavaşlat, videoları birleştir, GIF, filigran ya da logo sil, filtre
+   ve renk, arka plan, tersten oynat, videodan fotoğraf, titremeyi düzelt) "Bunu henüz
+   yapamıyoruz." yanıtını alıyor; bunların dışında bir istek yanlış karta giderse o da yeni bir
+   satırdır (`web/tests/unit/taskSearchHeldOut2.test.ts`).
+0c. **Sesi kapat (yeni, 7 Ekim 2026):** "Bu videonun sesini kapatıp kaydet." Beklenen yol:
+   "Sesi kapat" kartı (ya da "sesini kapat" yazmak) → "Video seç" → "İndir" (3 dokunuş). Not
+   al: "Sesini al" ile karıştırdı mı; kaydedilen dosyayı kendi oynatıcısında açınca sessiz
+   olduğunu gördü mü; paylaştığı uygulama (WhatsApp, Instagram…) sessiz videoyu nasıl gösterdi
+   (bu **ölçülmedi**: dosyada ses izi yok, sessizlik izi değil).
 1. **Klip:** "Videondan en sevdiğin iki bölümü seç, 30–45 saniyelik dikey bir video
    hazırla ve bilgisayarına indir."
    Beklenen başlangıç: açılış ekranında **"Kes"** kartı → "Video seç" → kesit editörü aynı
@@ -163,7 +174,8 @@ Video: süre ≈   kaynak (telefon marka/model, katılımcı biliyorsa):
 
 Görev 0  başarı: E/Y/B   aktif süre:   yol: kart / yazarak / editör   kutuya yazdığı (aynen):
          "Doldur/Sığdır" anlaşıldı: E/H   kaydetme penceresi: sorunsuz/şaşırttı   sonra: Paylaş / başka video / ana ekran
-Görev 0b istediği (aynen):   sonuç: bulundu / henüz yok / bulunamadı / yanlış iş
+Görev 0b istediği (aynen):   sonuç: bulundu / yapamıyoruz / bulunamadı / yanlış iş (çıkan kart:      )
+Görev 0c başarı: E/Y/B   yol: kart / yazarak (yazdığı:      )   "Sesini al"a gitti mi: E/H   dosya sessiz: E/H   paylaşılan uygulamada:
 Görev 1  başlangıç: Kes kartı / Kendim düzenleyeceğim / yazarak
 Görev 1  başarı: E/Y/B   aktif süre:   export süresi:   takıldığı yer:
          kart "İndir" / "Hepsini birleştirip indir" farkı anlaşıldı: E/H   kaydetme penceresi: sorunsuz/şaşırttı

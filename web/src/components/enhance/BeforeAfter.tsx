@@ -114,7 +114,7 @@ export function BeforeAfter({ t, state, onOtherFrame, onRetry, disabled = false,
           // The frame keeps the video's own shape, never taller than about 60 % of the screen.
           style={{
             aspectRatio: `${picture.width} / ${picture.height}`,
-            maxWidth: `calc(${compact ? 34 : 58}vh * ${(picture.width / picture.height).toFixed(4)})`,
+            maxWidth: `calc(${compact ? 34 : 58}vh * ${Math.round((picture.width / picture.height) * 10000) / 10000})`,
             ['--ba-split' as string]: `${split}%`,
           }}
           data-testid="enhance-frame"

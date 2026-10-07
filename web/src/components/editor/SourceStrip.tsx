@@ -13,7 +13,7 @@ import {
 import { Icon } from '@/components/Icon';
 import type { VideoCue } from '@/domain/captions';
 import { formatPosition } from '@/domain/kesit';
-import { formatSpokenTime, US_PER_SECOND, type Micros } from '@/domain/time';
+import { formatDecimal, formatSpokenTime, US_PER_SECOND, type Micros } from '@/domain/time';
 import {
   ZOOM_STEP,
   clampScroll,
@@ -414,7 +414,7 @@ export function SourceStrip({
           </button>
           <span className="vstrip-zoom-value" data-testid="strip-zoom-value">
             <span className="visually-hidden">{t('strip.zoomValue')} </span>
-            {`×${view.zoom < 10 ? view.zoom.toFixed(1).replace(/\.0$/, '') : Math.round(view.zoom)}`}
+            {`×${formatDecimal(view.zoom, view.zoom < 10 ? 1 : 0, t('time.decimalMark'), { trimZeros: true })}`}
           </span>
           <button
             type="button"

@@ -39,7 +39,7 @@ test.describe('opening screen', () => {
 
     // The cards, in the registry's order: exactly the tasks that work today.
     const cards = page.getByTestId('task-grid').getByRole('link');
-    await expect(cards).toHaveCount(9);
+    await expect(cards).toHaveCount(10);
     expect(await cards.evaluateAll((links) => links.map((link) => link.getAttribute('href')))).toEqual(
       availableTasks().map((task) => `/yap/${task.id}`),
     );
@@ -53,8 +53,15 @@ test.describe('opening screen', () => {
     await expect(page.getByTestId('task-yazi')).toContainText('Altyazı ve metin');
     await expect(page.getByTestId('task-muzik')).toContainText('Müzik ekle');
     await expect(page.getByTestId('task-ses')).toContainText('Sesini al');
+    await expect(page.getByTestId('task-sustur')).toContainText('Sesi kapat');
+    await expect(page.getByTestId('task-sustur')).toContainText('Videoyu sessiz yap');
     await expect(page.getByTestId('task-cevir')).toContainText('Her yerde açılsın');
-    // Not built yet: no card, no mention on the screen.
+    // Kes is first (the lead card); "Sesi kapat" sits right after "Sesini al".
+    const order = await cards.evaluateAll((links) => links.map((link) => link.getAttribute('data-testid')));
+    expect(order[0]).toBe('task-kes');
+    expect(order.indexOf('task-sustur')).toBe(order.indexOf('task-ses') + 1);
+    // What cannot be done yet (ten entries the search knows): no card, no mention on the screen.
+    expect(TASKS.filter((item) => !item.available)).toHaveLength(10);
     for (const task of TASKS.filter((item) => !item.available)) {
       await expect(page.getByTestId(`task-${task.id}`)).toHaveCount(0);
       await expect(page.getByText(tr[task.labelKey], { exact: true })).toHaveCount(0);
@@ -84,7 +91,7 @@ test.describe('opening screen', () => {
           return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
         }),
       );
-      expect(boxes).toHaveLength(9);
+      expect(boxes).toHaveLength(10);
       for (const rect of boxes) {
         expect(rect.width).toBeGreaterThanOrEqual(120);
         expect(rect.height).toBeGreaterThanOrEqual(120);
@@ -94,10 +101,14 @@ test.describe('opening screen', () => {
       // Reading order = registry order: rows top to bottom, left to right.
       const sorted = [...boxes].sort((a, b) => a.y - b.y || a.x - b.x);
       expect(boxes).toEqual(sorted);
-      // Two columns on a phone; three from 700 px. From 1000 px four when that fills the rows; nine cards
-      // (ADR-037 added İyileştir) are 3 + 3 + 3, so no card is left alone on a row.
+      // Two columns on a phone; from 700 px three; from 1000 px four when that leaves no card
+      // alone — ten cards ("İyileştir" is the tenth, ADR-037) are 4 + 4 + 2 on a desktop.
       const columns = new Set(boxes.map((rect) => Math.round(rect.x))).size;
-      expect(columns).toBe(size.width >= 700 ? 3 : 2);
+      expect(columns).toBe(size.width >= 1000 ? 4 : size.width >= 700 ? 3 : 2);
+      const rows = new Map<number, number>();
+      for (const rect of boxes) rows.set(Math.round(rect.y), (rows.get(Math.round(rect.y)) ?? 0) + 1);
+      // No card alone on a row: 4 + 4 + 2 on a desktop, five rows of two on a phone.
+      expect([...rows.values()]).toEqual(size.width >= 1000 ? [4, 4, 2] : [2, 2, 2, 2, 2]);
 
       // Every other control is at least 44 px tall.
       for (const testId of ['home-editor-link', 'finder-input', 'finder-example']) {
@@ -295,11 +306,69 @@ test.describe('type to find', () => {
     await expect(page).toHaveURL(/\/yap\/yazi\/?$/);
     await expect(page.getByTestId('wizard')).toHaveAttribute('data-task', 'yazi');
     await expect(page.getByTestId('wizard-title')).toHaveText('Videonu seç');
-    // Every task in the registry has its page.
+    // Every task that works has its page; what cannot be done yet has none.
     for (const task of TASKS) {
       const response = await page.request.get(`/yap/${task.id}`);
-      expect(response.status(), task.id).toBe(200);
+      expect(response.status(), task.id).toBe(task.available ? 200 : 404);
     }
+  });
+
+  test('“Sesi kapat” is found by what people type and starts; “Sesini al” stays what it was', async ({ page }) => {
+    await page.goto('/');
+    // The example of the ADR-034 report: this used to offer “Sesini al”.
+    for (const phrase of ['sesini kapat', 'sessiz yap', 'mute', 'remove audio']) {
+      await box(page).fill(phrase);
+      await expect(results(page).first(), phrase).toHaveAttribute('data-testid', 'result-sustur');
+      await expect(results(page).first().getByTestId('result-start')).toBeVisible();
+    }
+    await expect(page.getByTestId('finder-status')).toHaveText(/İlki: Sesi kapat\.$/);
+    for (const phrase of ['sesini al', 'sesini mp3 yap', 'extract audio']) {
+      await box(page).fill(phrase);
+      await expect(results(page).first(), phrase).toHaveAttribute('data-testid', 'result-ses');
+    }
+    await box(page).fill('sesini kapat');
+    await box(page).press('Enter');
+    await expect(page).toHaveURL(/\/yap\/sustur\/?$/);
+    await expect(page.getByTestId('wizard')).toHaveAttribute('data-task', 'sustur');
+  });
+
+  test('a request the app cannot serve yet is answered “Bunu henüz yapamıyoruz.” — no button, no other card, Enter does nothing', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    // Each of these used to find a card that does something else (or nothing at all).
+    for (const [phrase, id, label] of [
+      ['videoyu döndür', 'dondur', 'Döndür'],
+      ['hızlandır', 'hiz', 'Hızlandır ya da yavaşlat'],
+      ['iki videoyu birleştir', 'birlestir', 'Videoları birleştir'],
+      ['gife çevir', 'gif', 'GIF yap'],
+      ['tiktok logosunu kaldır', 'filigran', 'Filigran ya da logo sil'],
+      ['filtre ekle', 'efekt', 'Filtre ve renk'],
+      ['arka planı sil', 'arkaplan', 'Arka planı değiştir'],
+      ['tersten oynat', 'ters', 'Tersten oynat'],
+      ['ekran görüntüsü al', 'foto', 'Videodan fotoğraf al'],
+      ['titremeyi düzelt', 'stabil', 'Titremeyi düzelt'],
+    ] as const) {
+      await box(page).fill(phrase);
+      const row = page.getByTestId(`result-${id}`);
+      await expect(row, phrase).toBeVisible();
+      await expect(results(page), phrase).toHaveCount(1);
+      await expect(row).toContainText(label);
+      await expect(row.getByTestId('result-unavailable')).toHaveText('Bunu henüz yapamıyoruz.');
+      await expect(row).toHaveAttribute('aria-disabled', 'true');
+      // No “Başla” anywhere on the screen.
+      await expect(page.getByTestId('result-start')).toHaveCount(0);
+      await expect(page.getByTestId('finder-status')).toHaveText(`1 sonuç. İlki: ${label}. Bunu henüz yapamıyoruz.`);
+    }
+    // Enter and a click start nothing; the way to everything that does work is one press away.
+    await box(page).press('Enter');
+    await page.getByTestId('result-stabil').click({ force: true });
+    await expect(page).toHaveURL(/\/$/);
+    await page.getByTestId('finder-show-all').click();
+    await expect(page.getByTestId('task-grid')).toBeVisible();
+    // Words nobody listed still say so, as before.
+    await box(page).fill('pizza siparişi');
+    await expect(page.getByTestId('finder-none')).toBeVisible();
   });
 
   test('“Küçült” and “Sesini al” are found by what people type, and start (ADR-035)', async ({ page }) => {
