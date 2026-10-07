@@ -4,6 +4,7 @@ import { join, relative } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 import { expectPolicy, watchCsp } from '../e2e/cspWatch';
+import { enhanceFixture, frameLumas } from '../e2e/enhance-media';
 import { addKesit, closeSheet, openMore, openSettings, installSavePicker, probeMp4, readSaved } from '../e2e/kesitFlow';
 import { availableTasks } from '../../src/domain/tasks';
 
@@ -441,6 +442,52 @@ test('Yazıya dök under /capcut/ with the real model: download from this site, 
   await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 240_000 });
   const saved = probeMp4(await readSaved(page, testInfo, 'saved-speech-fleurs-en-01_altyazili.mp4'));
   expect(saved.videoCodec).toBe('h264');
+
+  expect(watch.violations).toEqual([]);
+  expect(seen.failures).toEqual([]);
+  expect(seen.outside).toEqual([]);
+});
+
+/**
+ * ADR-037 under the sub-path: the card, the wizard page, the before/after made by the export
+ * worker (WebGL shaders compiled from strings, or the reference renderer), the download. The
+ * published build has no test hook for the engine; whichever engine this browser gets must work
+ * with the policy the site ships and without one request leaving it.
+ */
+test('İyileştir under /capcut/: before/after from the export worker, download, the policy holds', async ({
+  page,
+  context,
+}, testInfo) => {
+  test.setTimeout(300_000);
+  const seen = watchRequests(page);
+  const watch = await watchCsp(context);
+  await watch.attach(page);
+  await installSavePicker(page);
+  const source = enhanceFixture('dark');
+
+  await page.goto('./');
+  await expect(page.getByTestId('task-iyilestir')).toHaveAttribute('href', '/capcut/yap/iyilestir/');
+  await page.getByTestId('finder-input').fill('kaliteyi yükselt');
+  await expect(page.getByTestId('result-iyilestir')).toContainText('Çok bulanık bir videoyu netleştiremez.');
+  // Loaded as a document (not a soft navigation), so the page's own policy tag can be read.
+  await page.goto('yap/iyilestir/');
+  await expectPolicy(page);
+  await page.getByTestId('video-input').setInputFiles(source);
+  await expect(page.getByTestId('enhance-preview')).toHaveAttribute('data-status', 'ready', { timeout: 120_000 });
+  expect(['webgl2', 'cpu']).toContain(await page.getByTestId('enhance-preview').getAttribute('data-engine'));
+  await expect(page.getByTestId('iyilestir-summary')).toHaveAttribute('data-light', 'much');
+
+  await page.getByTestId('wizard-download').click();
+  await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 240_000 });
+  await expect(page.getByTestId('export-method')).toHaveAttribute('data-fallback', 'enhance');
+  await expect(page.getByTestId('export-enhance')).toHaveAttribute('data-enhanced-frames', '90');
+  const savedPath = await readSaved(page, testInfo, 'saved-karanlik_iyilestirilmis.mp4');
+  const saved = probeMp4(savedPath);
+  expect(saved.videoCodec).toBe('h264');
+  expect(saved.frames).toBe(90);
+  const before = frameLumas(source);
+  const after = frameLumas(savedPath);
+  expect((after[45] ?? 0) - (before[45] ?? 0)).toBeGreaterThan(15);
 
   expect(watch.violations).toEqual([]);
   expect(seen.failures).toEqual([]);

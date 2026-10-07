@@ -1892,14 +1892,27 @@ async function runEnhancePreview(
 
   const time = sourceTimeForFrame(segment, frame, plan.fpsNum, plan.fpsDen);
   const sink = new VideoSampleSink(track);
+  // ADR-033: as in the export, the decoder stays open until the frame is drawn, and a frame
+  // whose decoder closed under it is not shown as if it were the real picture.
+  let hold: DecoderHold;
+  try {
+    hold = holdDecoder(sink);
+  } catch {
+    throw new PreviewRefusal('internal_error');
+  }
   let drawn = false;
-  for await (const picked of pickFrames(sink.samples(time, time + 0.001), [time], plan.fpsDen / plan.fpsNum)) {
-    checkCanceled(requestId);
-    if (!picked.frame) continue;
-    frameContext.fillStyle = plan.background;
-    frameContext.fillRect(0, 0, plan.width, plan.height);
-    drawSegmentFrame(frameContext, picked.frame, segment, plan);
-    drawn = true;
+  try {
+    const usable = () => !hold.decoderClosed();
+    for await (const picked of pickFrames(sink.samples(time, time + 0.001), [time], plan.fpsDen / plan.fpsNum, usable)) {
+      checkCanceled(requestId);
+      if (!picked.frame || picked.missing) continue;
+      frameContext.fillStyle = plan.background;
+      frameContext.fillRect(0, 0, plan.width, plan.height);
+      drawSegmentFrame(frameContext, picked.frame, segment, plan);
+      drawn = true;
+    }
+  } finally {
+    hold.release();
   }
   if (!drawn) throw new PreviewRefusal('no_frame');
   if (hdrContext) {

@@ -54,6 +54,11 @@ Ekran görüntüleri (çalışan uygulamadan, Playwright; `web/scripts/home-shot
 `80`–`87` gerçek modelle (Whisper `base`, bu makinede) ve gerçek bir cümleyle çekildi
 (`web/tests/media/speech-fleurs-en-01.mp4`, FLEURS, CC BY 4.0); görüntü siyahtır çünkü test
 videosunun görüntüsü siyahtır. Üretim: `node scripts/home-shots.mjs --only=yazi`.
+| `90-iyilestir-0-home`, `91-iyilestir-0-search-honest` | İyileştir (ADR-037): dokuz kartlı açılış ekranı; arama "4K yap" → İyileştir, dürüst satırıyla ("Çok bulanık bir videoyu netleştiremez.") |
+| `92-iyilestir-2-choice`, `93-iyilestir-2-strong` | Videonun gerçek bir karesinin öncesi ve sonrası (çizgi ortada; "Güçlü"de çizgi sola çekilmiş), "Yapılacaklar: …", Hafif / Otomatik / Güçlü |
+| `94-iyilestir-3-saved` | Kaydedildi: "Görüntü yeniden işlendi (iyileştirme her kareyi değiştiriyor)" ve "İyileştirildi (Otomatik): …" |
+| `95-iyilestir-editor-setting` | Editörde Ayarlar → Görüntü → "Görüntüyü iyileştir" ve aynı öncesi/sonrası |
+| `96-iyilestir-2-nothing` | Düzeltilecek bir şeyi olmayan video (test deseni): "değiştirilecek bir şey bulunamadı", İndir kapalı ve sebebi yazılı |
 | `05-search-none` | Arama: "Bunu bulamadım" |
 | `10-kes-1-pick`, `11-kes-2-editor` | Kes: video seç → kesit editörü (ilk açılış ipucuyla) |
 | `20-bosluk-2-choice`, `21-bosluk-3-saved` | Boşlukları at: bulunanlar ve karar → kaydedildi |
@@ -61,4 +66,7 @@ videosunun görüntüsü siyahtır. Üretim: `node scripts/home-shots.mjs --only
 | `40-muzik-2-no-music`, `41-muzik-2-choice`, `42-muzik-3-saved` | Müzik ekle: müzik seçilmeden, seçilince, kaydedildi |
 | `50-cevir-2-info`, `51-cevir-3-saved` | Her yerde açılsın: açıklama ("zaten uygun" notuyla), kaydedildi |
 
-Görüntülerdeki videolar ffmpeg ile üretilmiş test desenleridir; gerçek çekim yok.
+Görüntülerdeki videolar ffmpeg ile üretilmiş test desenleridir; gerçek çekim yok. `90`–`96`
+için karanlık, kamera görüntüsü gibi ölçülen bir sahne yine ffmpeg ile üretildi (renk geçişleri
+üstünde fraktal gürültü; `web/tests/e2e/enhance-media.ts`); üretim:
+`node scripts/home-shots.mjs --only=iyilestir`.

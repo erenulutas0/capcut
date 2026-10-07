@@ -160,8 +160,8 @@ export const ENHANCE_TUNING: EnhanceTuning = {
   medianTarget: 0.4,
   goodHigh: 0.8,
   darkHigh: 0.7,
-  goodLow: 0.1,
-  liftedLow: 0.16,
+  goodLow: 0.12,
+  liftedLow: 0.24,
   brightLow: 0.3,
   brightestLow: 0.42,
   graphicFlat: 0.4,
@@ -233,8 +233,13 @@ const NOISE_BLOCK = 8;
 /** The share of blocks (flattest first) whose noise is read, and the factor that undoes picking the lowest. */
 const NOISE_PERCENTILE = 0.2;
 const NOISE_BIAS = 1.18;
-/** Mean squared gradient (8-bit levels²) a tile needs before its sharpness is judged. */
+/**
+ * Mean squared gradient (8-bit levels²) a tile of a full-contrast picture
+ * needs before its sharpness is judged; for a dark or flat picture the bar is
+ * lower in proportion (its edges are as much smaller as its whole range is).
+ */
 const MIN_STRUCTURE = 6;
+const FULL_CONTRAST = 0.9;
 
 const DECODE_8 = (() => {
   const table = new Float32Array(256);
@@ -287,7 +292,7 @@ export function measureFrame(
 ): FrameStats {
   const area = clampRect(rect, width, height);
   const tonal = measureTone(rgba, width, area, tuning);
-  const detail = measureDetail(rgba, width, area);
+  const detail = measureDetail(rgba, width, area, tonal.high - tonal.low);
   return { ...tonal, ...detail };
 }
 
@@ -382,6 +387,8 @@ function measureDetail(
   rgba: Uint8ClampedArray | Uint8Array,
   width: number,
   area: PictureRect,
+  /** The picture's range, bright end minus dark end, in code values 0..1. */
+  contrast: number,
 ): Pick<FrameStats, 'noise' | 'sharpness'> {
   const tileWidth = Math.min(DETAIL_TILE, area.width & ~1);
   const tileHeight = Math.min(DETAIL_TILE, area.height & ~1);
@@ -456,11 +463,13 @@ function measureDetail(
 
   const noise = blockNoise.length >= 8 ? sortedPercentile(blockNoise, NOISE_PERCENTILE) * NOISE_BIAS : 0;
   const variance = noise * noise;
+  const share = Math.min(1, Math.max(0.1, contrast / FULL_CONTRAST));
+  const structure = MIN_STRUCTURE * share * share;
   const scores: number[] = [];
   for (const tile of tiles) {
     // White noise adds its variance to the full-resolution energy and a quarter of it at half resolution.
     const coarse = tile.coarse - variance / 4;
-    if (coarse < MIN_STRUCTURE) continue;
+    if (coarse < structure) continue;
     const ratio = Math.max(0, tile.fine - variance) / coarse;
     scores.push(Math.min(2, Math.sqrt(2 * ratio)));
   }

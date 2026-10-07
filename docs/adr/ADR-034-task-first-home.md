@@ -47,7 +47,7 @@ arama olmadan çalışıyor; göreve göre düzenlenmiş gezinme özelliğe gör
 |---|---|
 | Kutu | `role="combobox"`, `aria-controls` ile sonuç listesine (`role="listbox"`), `aria-activedescendant` ile vurgulu sonuca bağlı; odak hep kutuda. ↑/↓ sonuçta gezer (başa sarar), Enter vurgulu sonucu başlatır, Esc kutuyu boşaltır, × de. Sonuç sayısı `role="status"` ile duyurulur ("2 sonuç. İlki: Dikey yap."). |
 | Örnek cümleler | "sessiz yerleri sil", "TikTok için dikey", "başını kes", "müzik koy": dokununca kutuya yazılır. Hepsi bugün çalışan bir işe götürür (birim testi). |
-| Kartlar | Kayıttaki sırayla, yalnızca `available: true` işler: Kes (dolu, öne çıkan kart), Boşlukları at, Dikey yap, Küçült, Müzik ekle, Sesini al, Her yerde açılsın (Küçült ve Sesini al [ADR-035](ADR-035-target-size-and-audio-only.md) ile açıldı). Kart bir bağlantıdır (JavaScript olmadan da çalışır), en az 126 px yüksek. Telefonda 2 sütun; 700 px'ten itibaren 3; 1000 px'ten itibaren satırları dolduruyorsa 4 (8 kart → 4 + 4; bugünkü 7 kart → 4 + 3; 5 kart → 3 + 2, tek kalan kart olmasın diye). Hiçbir kart gizlenmez. |
+| Kartlar | Kayıttaki sırayla, yalnızca `available: true` işler: Kes (dolu, öne çıkan kart), Boşlukları at, Dikey yap, Küçült, Yazıya dök, Müzik ekle, Sesini al, Her yerde açılsın, İyileştir (Küçült ve Sesini al [ADR-035](ADR-035-target-size-and-audio-only.md), Yazıya dök [ADR-036](ADR-036-on-device-transcript.md), İyileştir [ADR-037](ADR-037-enhance.md) ile açıldı; bugün dokuz kart → geniş ekranda 3 + 3 + 3). Kart bir bağlantıdır (JavaScript olmadan da çalışır), en az 126 px yüksek. Telefonda 2 sütun; 700 px'ten itibaren 3; 1000 px'ten itibaren satırları dolduruyorsa 4 (8 kart → 4 + 4; bugünkü 7 kart → 4 + 3; 5 kart → 3 + 2, tek kalan kart olmasın diye). Hiçbir kart gizlenmez. |
 | Yazınca | Kartlar ve örnekler yerini "Bunu mu demek istedin?" listesine bırakır (en fazla 3 satır; her satırda "Başla"). Kutuyu boşaltmak ya da "Tüm işleri gör" kartları geri getirir. Tek harf ya da yalnızca "video" yazmak henüz bir şey söylememektir: kartlar durur. |
 | Bulunamadı | "Bunu bulamadım. Başka kelimelerle dene ya da bütün işlere bak." + "Tüm işleri gör". |
 | Yük | Açılış ekranı dışa aktarma motorunu (mediabunny) yüklemez, worker başlatmaz, başka kökene istek yapmaz (e2e). |
@@ -108,10 +108,11 @@ buradan okur.
 | Boşlukları at (`bosluk`) | evet | video → karar → indir | "Uzun boşluklar" (varsayılan) / "Kısa duraksamalar da" |
 | Dikey yap (`dikey`) | evet | video → karar → indir | "Doldur" (varsayılan) / "Sığdır" |
 | Küçült (`kucult`) | evet (ADR-035) | video → karar → indir | Nereye sığsın: "Paylaşmak için (52 MB altı)" (varsayılan) / "E-posta (25 MB altı)" / "WhatsApp (16 MB altı)"; her seçenek sonucu baştan söyler ("≈ 15,4 MB · 720p", "Videon zaten bunun altında", "Bu video buna sığmaz: en az … gerekir") |
-| Yazıya dök (`yazi`) | **hayır** | — | (cihazda transkript denemesi sürüyor) |
+| Yazıya dök (`yazi`) | evet (ADR-036) | video → karar → indir | Model indirme + "Yazıya dök"; sonuç yazı paneli (ayrıntı ADR-036) |
 | Müzik ekle (`muzik`) | evet | video → karar → indir | Videonun sesi "Kalsın" (varsayılan) / "Kapansın" |
 | Sesini al (`ses`) | evet (ADR-035) | video → indir | — (ses M4A olarak kaydedilir; sessiz videoda İndir kapalı ve sebebi yazılı) |
 | Her yerde açılsın (`cevir`) | evet | video → indir | — |
+| İyileştir (`iyilestir`) | evet (ADR-037) | video → karar → indir | Ne kadar: "Hafif" / "Otomatik" (varsayılan) / "Güçlü"; videonun gerçek bir karesinin öncesi ve sonrası (dışa aktarmanın kendi koduyla), ne yapılacağı sözle; değişecek bir şey yoksa İndir kapalı ve sebebi yazılı |
 
 **Bir işi açmak:** `tasks.ts`'te `available: true` (tek satır) + `components/wizard/wizards.tsx`
 içinde sihirbaz bileşeni ve `WIZARDS` tablosunda satırı. Tablo `Record<AvailableTaskId, …>`
@@ -159,6 +160,7 @@ geçer (yaz + Enter).
 | Dikey yap | kart → Video seç → İndir | 3 ("Sığdır" ile 4) |
 | Müzik ekle | kart → Video seç → Müzik seç → İndir | 4 ("Kapansın" ile 5) |
 | Her yerde açılsın | kart → Video seç → İndir | 3 |
+| İyileştir (ADR-037) | kart → Video seç → İndir | 3 (başka bir güçle 4) |
 
 **Kes.** Video seçilince kesit editörü aynı videoyla açılır (ilk açılış ipucu "Nasıl kesilir?
 Üç adım" dahil). Kesit editörü bu işin kendisidir; ayrı bir kesme sihirbazı yazılmadı.

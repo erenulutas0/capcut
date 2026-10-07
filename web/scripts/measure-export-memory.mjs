@@ -21,6 +21,14 @@
  *   --aspect=9-16    pick this output frame after import (e.g. a landscape
  *                    source into 9:16 is the crop case); default: automatic
  *
+ * ADR-037 options ("İyileştir"):
+ *   --enhance=auto   switch "Görüntüyü iyileştir" on in Ayarlar → Görüntü (light / auto /
+ *                    strong) before the download; the row then also says what was done,
+ *                    on which engine, and how long looking at the video took
+ *   --enhance-engine=cpu
+ *                    enhance with the reference renderer instead of WebGL2
+ *                    (`window.__clipEnhanceEngine`, a test hook)
+ *
  * ADR-029 options (where the memory is held; need --persistent):
  *   every sample also splits the process tree by Chromium process type
  *   (browser, renderer, gpu-process, utility/<service>; `renderer-max` is
@@ -95,6 +103,8 @@ const profile = args.includes('--profile');
 const browserArgs = argValue('browser-args', '').split(',').filter(Boolean);
 const aspect = argValue('aspect', '');
 const forceEncode = argValue('mode', 'auto') === 'encode';
+const enhance = argValue('enhance', '');
+const enhanceCpu = argValue('enhance-engine', '') === 'cpu';
 const heapSamplingTarget = args.includes('--heap-sampling') ? 'worker' : argValue('heap-sampling', '');
 const heapSampling = heapSamplingTarget === 'worker' || heapSamplingTarget === 'page';
 const heap =
@@ -281,6 +291,11 @@ for (const seconds of whole ? [0] : durations) {
       window.__clipExportMode = 'encode';
     });
   }
+  if (enhanceCpu) {
+    await page.addInitScript(() => {
+      window.__clipEnhanceEngine = 'cpu';
+    });
+  }
   await page.goto(`${baseURL}/editor`);
   // ADR-029: the second CDP connection must be there before the export
   // worker starts (it is created when the video is opened).
@@ -326,6 +341,14 @@ for (const seconds of whole ? [0] : durations) {
 
   if (aspect) await setAspect(page, aspect);
   await setQuality(page, quality);
+  if (enhance) {
+    // ADR-037: the editor's own setting. The drawer is closed again at once, so its
+    // before/after preview does not look at the video on the side of this measurement.
+    await page.getByTestId('open-settings').click();
+    await page.getByTestId('inspector-tab-frame').click();
+    await page.getByTestId('enhance-strength').selectOption(enhance);
+    await page.keyboard.press('Escape');
+  }
 
   // The capability gate runs in the background once the video is open;
   // give it time to finish, as the old dialog waited for it.
@@ -533,6 +556,20 @@ for (const seconds of whole ? [0] : durations) {
     row.route = ((await page.getByTestId('measured-route').textContent().catch(() => '')) ?? '').trim();
     // ADR-027: which way the file was made ('copy' / 'smart' / 'encode').
     row.method = await page.getByTestId('export-method').first().getAttribute('data-method').catch(() => null);
+    // ADR-037: what "İyileştir" did, as the app reports it.
+    const enhanceLine = page.getByTestId('export-enhance').first();
+    if ((await enhanceLine.count()) > 0) {
+      row.enhance = {
+        strength: await enhanceLine.getAttribute('data-strength'),
+        engine: await enhanceLine.getAttribute('data-engine'),
+        light: await enhanceLine.getAttribute('data-light'),
+        colour: (await enhanceLine.getAttribute('data-colour')) === 'true',
+        sharpen: (await enhanceLine.getAttribute('data-sharpen')) === 'true',
+        denoise: (await enhanceLine.getAttribute('data-denoise')) === 'true',
+        analysedFrames: Number(await enhanceLine.getAttribute('data-analysed-frames')),
+        enhancedFrames: Number(await enhanceLine.getAttribute('data-enhanced-frames')),
+      };
+    }
     // The finished file sits in OPFS while the dialog offers it.
     row.exportFilesWhileOffered = await page.evaluate(async () => {
       const root = await navigator.storage.getDirectory();
@@ -589,6 +626,14 @@ for (const seconds of whole ? [0] : durations) {
       `kalan geçici dosya ${row.leftoverExportFiles}` +
       (row.failure ? ` — ${row.failure}` : ''),
   );
+  if (row.enhance) {
+    const did = ['colour', 'sharpen', 'denoise'].filter((name) => row.enhance[name]).join('+');
+    console.log(
+      `  iyileştirme: ${row.enhance.strength}, ${row.enhance.engine}, ışık ${row.enhance.light}${did ? `, ${did}` : ''}; ` +
+        `bakılan kare ${row.enhance.analysedFrames}, iyileştirilen kare ${row.enhance.enhancedFrames}` +
+        (row.profile?.enhance ? `, bakma ${(row.profile.enhance.analyseMs / 1000).toFixed(1)} s` : ''),
+    );
+  }
   if (types.length > 0) {
     const order = ['renderer-max', 'renderer', 'gpu-process', 'browser'];
     const shown = [...order.filter((t) => types.includes(t)), ...types.filter((t) => !order.includes(t))];

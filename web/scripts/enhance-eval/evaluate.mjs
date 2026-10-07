@@ -112,7 +112,7 @@ if (args.brief) {
 const summary = [];
 for (const strength of args.brief ? [] : strengths) {
   console.log(`\n### ${strength}\n`);
-  console.log('| degradation | PSNR before | PSNR after | Δ | SSIM before | SSIM after | Δ | worse (SSIM) | sharpness ×| noise before → after |');
+  console.log('| degradation | PSNR before | PSNR after | Δ dB | SSIM before | SSIM after | Δ | frames worse (SSIM / PSNR) | sharpness × | noise before → after |');
   console.log('|---|---|---|---|---|---|---|---|---|---|');
   for (const variant of variants) {
     const set = rows.filter((row) => row.variant === variant && row.strength === strength);
@@ -132,14 +132,26 @@ for (const strength of args.brief ? [] : strengths) {
       noiseAfter: mean(set.map((row) => row.after.noise)),
       minChangedSsim: Math.min(...set.map((row) => row.changed.ssim)),
     };
+    if (variant === 'clean') {
+      // A clean frame equals its reference: PSNR is defined only for the frames that were changed.
+      const touched = set.filter((row) => Number.isFinite(row.after.psnr));
+      item.touched = touched.length;
+      item.psnrAfter = touched.length ? mean(touched.map((row) => row.after.psnr)) : Infinity;
+      item.psnrWorst = touched.length ? Math.min(...touched.map((row) => row.after.psnr)) : Infinity;
+      summary.push(item);
+      console.log(
+        `| clean (${touched.length} of ${set.length} frames changed) | ∞ | ${touched.length ? `${round(item.psnrAfter)} (worst ${round(item.psnrWorst)})` : '∞'} | — | 1 | ${round(item.ssimAfter, 4)} | ${round(item.ssimAfter - item.ssimBefore, 4)} | ${item.worse}/${item.frames} / ${touched.length}/${item.frames} | ${round(item.sharpnessRatio)} | ${round(item.noiseBefore)} → ${round(item.noiseAfter)} |`,
+      );
+      continue;
+    }
     summary.push(item);
     console.log(
-      `| ${variant} | ${round(item.psnrBefore)} | ${round(item.psnrAfter)} | ${round(item.psnrAfter - item.psnrBefore)} | ${round(item.ssimBefore, 4)} | ${round(item.ssimAfter, 4)} | ${round(item.ssimAfter - item.ssimBefore, 4)} | ${item.worse}/${item.frames} | ${round(item.sharpnessRatio)} | ${round(item.noiseBefore)} → ${round(item.noiseAfter)} |`,
+      `| ${variant} | ${round(item.psnrBefore)} | ${round(item.psnrAfter)} | ${round(item.psnrAfter - item.psnrBefore)} | ${round(item.ssimBefore, 4)} | ${round(item.ssimAfter, 4)} | ${round(item.ssimAfter - item.ssimBefore, 4)} | ${item.worse}/${item.frames} / ${item.worsePsnr}/${item.frames} | ${round(item.sharpnessRatio)} | ${round(item.noiseBefore)} → ${round(item.noiseAfter)} |`,
     );
   }
-  const all = summary.filter((item) => item.strength === strength);
+  const all = summary.filter((item) => item.strength === strength && item.variant !== 'clean');
   console.log(
-    `\nmean ΔPSNR ${round(mean(all.map((i) => i.psnrAfter - i.psnrBefore)))} dB, mean ΔSSIM ${round(mean(all.map((i) => i.ssimAfter - i.ssimBefore)), 4)}`,
+    `\nover the ${all.length} degradations: mean ΔPSNR ${round(mean(all.map((i) => i.psnrAfter - i.psnrBefore)))} dB, mean ΔSSIM ${round(mean(all.map((i) => i.ssimAfter - i.ssimBefore)), 4)}`,
   );
 }
 

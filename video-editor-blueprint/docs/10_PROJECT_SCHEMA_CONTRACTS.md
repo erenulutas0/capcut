@@ -166,9 +166,33 @@ tariftir; fixture'lar `web/fixtures/edl/legacy-v2/`.
   Gerekçe ve ölçülen bedel: ADR-036 "Satır sınırı".
 - Kelime zamanları saklanmaz; transkript, satırlarından ve `unclear` aralıklarından ibarettir.
 
+## EDL v4 — görüntü iyileştirme ayarı (2026-10-07, kurucu kararı; ADR-037)
+
+v4, v3'ün aynısıdır; tarife **isteğe bağlı tek bir ana alan** gelir. Hiçbir v3 alanı değişmez ya
+da kalkmaz, bu yüzden v3 tarif kayıpsız okunur: yalnızca `schemaVersion` 4 yapılır (v1 ve v2 önce
+kendi kurallarıyla yükselir). Geçerli her v3 tarif, numarası değişince iyileştirmesi **kapalı**
+geçerli bir v4 tariftir; fixture'lar `web/fixtures/edl/legacy-v3/`. Eski sürüm numarası taşıyıp
+bu alanı içeren bir dosyayı hiçbir derleme yazmadı: yükseltilmez, doğrulayıcı reddeder.
+
+```json
+"enhance": { "strength": "auto" }
+```
+
+- **`enhance`** (isteğe bağlı): "İyileştir" her indirmeye uygulanır. Alan yoksa kapalıdır
+  (varsayılan); kapatmak alanı kaldırır, tarif ayarın hiç olmadığı hâline döner.
+- `strength`: `light` | `auto` | `strong` (arayüzde Hafif / Otomatik / Güçlü). Başka değer
+  `enhance_invalid`; nesne değilse `not_an_object`; başka alan `unknown_field`.
+- Tarif yalnızca **isteği** taşır. Her karede ne yapılacağı (ışık, renk, keskinlik, kumlanma
+  ölçüleri) tarifte saklanmaz: indirme sırasında videonun kendisine bakılarak hesaplanır
+  (`web/src/domain/enhance.ts`), böylece aynı tarif başka bir videoyla da doğru çalışır ve
+  motorun ölçüleri değişince eski projeler kendiliğinden yenisini kullanır.
+- Render planına `enhance: { strength } | null` olarak geçer ve parmak izine **yalnızca açıkken**
+  girer (motor sürümüyle birlikte): iyileştirmesi kapalı bir tarifin parmak izi v3'teki ile
+  aynıdır. Açıkken hızlı kesim (ADR-027) uygulanmaz: iyileştirilmiş video kopya olamaz.
+
 ## Doğrulama kuralları
 
-`schemaVersion=3` (v1 ve v2 okunurken yukarıdaki geçişlerle yükseltilir); bilinmeyen ana alanlar ilk sürümde hata verir. Alan genişletme ihtiyacı değişiklik kaydıyla ele alınır. `projectId/assetId/clipId` sınırlı uzunlukta opaque kimliktir. Her `assetId` tekil; klipte referans verilen asset `video`; müzik asset'i `audio` olmalıdır. Tüm sayılar finite; NaN/Infinity kabul edilmez.
+`schemaVersion=4` (v1, v2 ve v3 okunurken yukarıdaki geçişlerle yükseltilir); bilinmeyen ana alanlar ilk sürümde hata verir. Alan genişletme ihtiyacı değişiklik kaydıyla ele alınır. `projectId/assetId/clipId` sınırlı uzunlukta opaque kimliktir. Her `assetId` tekil; klipte referans verilen asset `video`; müzik asset'i `audio` olmalıdır. Tüm sayılar finite; NaN/Infinity kabul edilmez.
 
 Zamanlar güvenli integer ve ≥0; JSON'da stringe çevrilmez. JavaScript safe-integer sınırı korunur. `0 ≤ in < out ≤ probedDuration`; her klip ≥100.000 µs. Düzenlemede tekrarlanan/örtüşen kaynak aralıkları geçerlidir; örneğin aynı sahnenin tekrar gösterilmesi mümkündür. Çıktı timeline'ında klipler ardışık ve boşluksuzdur; konum dizi sırasından türetilir.
 

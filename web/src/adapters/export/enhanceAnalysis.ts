@@ -23,6 +23,7 @@ import {
   type PictureRect,
 } from '@/domain/enhance';
 import { segmentDrawRect, sourceTimeForFrame, type RenderPlan, type RenderSegment } from '@/domain/renderPlan';
+import { holdDecoder } from './decoderHold';
 import { pickFrames } from './framePicker';
 import { createHdrContext, softClippedImage } from './hdrCanvas';
 
@@ -172,12 +173,20 @@ export async function analyseForEnhance(options: AnalyseOptions): Promise<Analys
       const first = times[0] ?? 0;
       const last = times[times.length - 1] ?? first;
       let at = 0;
-      for await (const picked of pickFrames(sink.samples(first, last + 0.001), times, plan.fpsDen / plan.fpsNum)) {
-        checkCanceled();
-        const frame = frames[at];
-        at += 1;
-        // The picker owns the frame and closes it.
-        if (picked.frame && !picked.missing && frame !== undefined && !measure(picked.frame, segment, frame)) return null;
+      // One pass like the export's own, decoder held until its last frame is drawn (ADR-033).
+      const passSink = new VideoSampleSink(track);
+      const hold = holdDecoder(passSink);
+      try {
+        const usable = () => !hold.decoderClosed();
+        for await (const picked of pickFrames(passSink.samples(first, last + 0.001), times, plan.fpsDen / plan.fpsNum, usable)) {
+          checkCanceled();
+          const frame = frames[at];
+          at += 1;
+          // The picker owns the frame and closes it.
+          if (picked.frame && !picked.missing && frame !== undefined && !measure(picked.frame, segment, frame)) return null;
+        }
+      } finally {
+        hold.release();
       }
     }
   }
