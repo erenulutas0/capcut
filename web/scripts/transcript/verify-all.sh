@@ -4,7 +4,8 @@
 # FINISHES (a later session can read what was done). A step already logged as
 # "ok" is skipped; delete its line (or the log) to run it again.
 #
-#   bash scripts/transcript/verify-all.sh [step …]      (default: all, in order)
+#   bash scripts/transcript/verify-all.sh [step …]      (default: all, in order; name the build too:
+#                                                        "build-prod matrix", "build-e2e e2e")
 #
 # Ports: 3331 (e2e build), 3100 (production build: matrix, screenshots),
 # 3104 (static export). Heavy steps take the machine-wide measure lock.

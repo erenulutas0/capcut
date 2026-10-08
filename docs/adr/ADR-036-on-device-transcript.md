@@ -717,7 +717,31 @@ sonra** yalnızca görünen satırlar ve iki yanında 600 piksellik pay sayfadad
   yazar: "Uzun yazıda tarayıcının 'sayfada bul'u (Ctrl+F) yalnızca ekrandaki satırları görür; bu
   kutu bütün satırlarda arar."
 
-«PANEL ÖLÇÜMÜ»
+**Ölçüm** (`scripts/transcript/panel-perf.mjs`; e2e derlemesi, test ikiziyle **3000 satır**, editördeki
+"Yazı" sekmesi, başsız Chromium 153, kilit altında; "×4" = işlemci Chrome DevTools ile 4 kat
+yavaşlatılmış; önce = `18bc282`'nin paneli):
+
+| 1440 px | Önce | Sonra | Önce ×4 | Sonra ×4 |
+|---|---|---|---|---|
+| Paneldeki DOM öğesi (satır) | 24 011 (3000) | **177** (19) | 24 011 | 177 |
+| Paneli açma (sekmeye tıklama → iki kare) | 380 ms | **48 ms** | 2 368 ms | **147 ms** |
+| Satıra tıklama → kare | 88 ms | 28 ms | 405 ms | 86 ms |
+| Ok tuşu → odak sonraki satırda | 20 ms | 9 ms | 114 ms | 35 ms |
+| Baştan sona 120 adımda kaydırma, kare: ortanca / p95 / en uzun | 16,6 / 17,8 / 22,9 ms | 16,7 / 18,4 / 19,7 ms | 55,6 / 78,0 / 91,4 ms | 66,9 / 83,2 / 128,6 ms |
+
+| 390 px (telefon düzeni) | Önce | Sonra | Önce ×4 | Sonra ×4 |
+|---|---|---|---|---|
+| Paneldeki DOM öğesi | 24 011 | **185** | 24 011 | 185 |
+| Paneli açma | 231 ms | **48 ms** | 1 804 ms | **153 ms** |
+| Satıra tıklama → kare | 80 ms | 31 ms | 392 ms | 76 ms |
+| Ok tuşu | 26 ms | 7 ms | 96 ms | 35 ms |
+| Kaydırma karesi: ortanca / p95 / en uzun | 16,6 / 18,6 / 27,1 ms | 16,6 / 18,4 / 20,2 ms | 40,5 / 51,8 / 62,3 ms | 63,8 / 79,1 / 126,0 ms |
+
+Açma 8–16 kat, tıklama ve klavye 3–5 kat hızlandı; DOM 135 kat küçüldü. **Bir yerde daha iyi
+değil:** yavaşlatılmış işlemcide bu sınamanın kaydırması (her adım listenin 1/120'si kadar
+*atlar* — yaklaşık bir buçuk ekran) adım başına 64–67 ms, önce 41–56 ms idi: pencereli liste her
+atlamada yeni satırları kurar, eskisi yalnızca boyardı. Normal hızda fark yok (16,6 ms). Parmakla
+sürekli kaydırma ayrıca ölçülmedi; telefonda hiç ölçülmedi.
 
 ### Hız ve bellek (tek başına, kilit altında)
 
@@ -753,6 +777,43 @@ tek başına koşuldu (üretim derlemesi, Chromium 153):
   aralıklara aldı ama kelimelerin %9'u metinde yok (WER %14,0; `turbo` %1,6).
 - **Uzun çağrıda `turbo` da %11 WER'de** (sayılar, özel adlar, şirket terimleri).
 - Türkçe, telefon, Safari, konuşmacı ayrımı, noktalama kalitesi: bu çalışmada da ölçülmedi.
+
+### Testler (8 Ekim 2026, `main` `ef6c345` birleştirilmiş ağaçta; `scripts/transcript/verify-all.sh`)
+
+- `npx tsc --noEmit -p .` ve `npx eslint .` temiz.
+- **Birim (vitest): 1090 / 1090** (64 dosya). Yeni: `levelNormalise` (10), `virtualList` (8),
+  `slidingAudio` (4), `transcriptQuality` (12: "ne kadarı yazıldı", ön seçim kuralı, dondurulan
+  ayarlar ve 5 Ekim seti).
+- **e2e (Playwright Chromium, `CLIP_TEST_HOOKS=1` derlemesi, port 3331, kilit altında): 329 test —
+  326 geçti, 2 atlandı (eskiden beri atlanan sessizlik ekran görüntüleri), 1 başarısız.**
+  Başarısız olan bu işin testi değil: `enhance.spec.ts:358` ("İyileştir": pozlama eşiği 6,
+  ölçülen 6,29). Tek başına 5 kez yinelendi: **5 / 5 yine başarısız**
+  (6,28–6,29) — rastlantı değil, bu ağaçta ve bu makinede kararlı. Bu çalışmanın dokunduğu hiçbir
+  dosya iyileştirme yolunda değil (motor, panel, model seçimi, metinler); testin kendisine
+  dokunulmadı. "Tam koşu temiz geçti" denemez; ana oturumun `main`'de bakması gerekir.
+  - Yeni: `transcript-long.spec.ts` 11 (600 satır: pencere, `aria-posinset` / `aria-setsize` ve
+    erişilebilirlik ağacı, oynarken izleme ve tıkla-git, yalnız klavye — ↑ ↓ Home End Enter, odak
+    kaybolmaz —, uzaktaki satırı yerinde düzeltme, "Yazıda ara", editörde 349 satırlık aralık
+    seçimi ve tek geri alma, **axe 360 / 390 / 1440: 0 bulgu**, 320 px'te yana kayma yok, kısa
+    yazı tümüyle çizilir), `transcript-model.spec.ts` 7 (önerilen model ön seçili ve boyutuyla,
+    kendiliğinden indirme yok, yalnız küçük model varken küçük model, "ne kadarı yazıldı" ve
+    "Önerilen modelle yeniden yaz", editör penceresi). Önceki 26 transkript testi değişmeden geçti.
+  - **Gerçek modelle koşan testler: 2 / 2 koştu ve geçti** (`transcript-real.spec.ts`; modeller
+    `public/models`'taydı).
+- **Pages duman testi (statik dışa aktarma, PowerShell'de CI değişkenleriyle, `/capcut/`, port
+  3104): 7 / 7**; ikisi gerçek modelle (dosyaların baytı ve sha256'sı; sihirbaz `base` ile).
+  Statik dışa aktarma test kancasıyla derlemeyi yine reddediyor.
+- **Matris (Chromium, üretim derlemesi, port 3100):** **30 / 30** (M23 dahil; 0 desteklenmiyor,
+  0 hata). Chrome / Edge / Firefox matris sütunları yeniden koşulmadı.
+- Gerçekçi küme ve negatifler: yukarıdaki tablolar (Chromium, Chrome, Edge, Firefox).
+- Ekran görüntüleri: `docs/ux/2026-10-03-home/shots/80…87-yazi-*` yeniden çekildi (gerçek model);
+  yeni `88-yazi-model-onerilen`, `89-yazi-ne-kadari-yazildi`, `8a-yazi-uzun-arama`,
+  `8b-yazi-editor-uzun` (360 / 390 / 1440; bunlar test ikiziyle — düğmelerdeki KB boyutları ve
+  satır metinleri ikizindir, arayüz gerçektir).
+- **Bu derlemeyle ölçülmeyen:** doğruluk tabloları dondurulan `e4fb8e1` / `4e28583` derlemesiyle
+  koşuldu; sonraki değişiklikler motorun davranışına dokunmuyor (iz çıktısında sayı yuvarlama,
+  `main` birleştirmeleri) ama tablolar son ağaçla yeniden koşulmadı. Telefon, dizüstü, Safari,
+  gerçek ekran okuyucu: ölçülmedi.
 
 ## Telefon (Galaxy S23)
 

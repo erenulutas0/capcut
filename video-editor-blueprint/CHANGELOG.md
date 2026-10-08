@@ -3,6 +3,26 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Yazıya dök: gerçek konuşmada kalite, önerilen model, uzun yazı — 7–8 Ekim 2026 (ADR-036 eki; politika ve şema değişmedi)
+
+Kurucu canlı sitede denedi (5 Ekim): kısa, temiz videoda çoğunlukla çalıştı; 52 dakikalık gerçek bir videoda konuşmanın büyük kısmını yazmadı. Karar: bulut yolu sonra; ücretsiz cihaz üstü yol dürüstçe olabildiği kadar iyi olsun. Ses cihazdan çıkmaz, ücretli API yok — değişmedi.
+
+**Önce ölçüldü.** Okunmuş konuşma yerine gerçekçi bir küme kuruldu (AMI toplantıları CC BY 4.0, Earnings-22 çağrıları CC BY-SA 4.0 — biri 51 dakika —, tek dosyada 48 dB'ye kadar seviye basamakları, konuşmanın altında ve bitişiğinde müzik, 20 yeni negatif; kaynak ve lisanslar `web/tests/media/SPEECH_SOURCE.md`; medya git'te değil). 5 Ekim'de yayınlanan ayarlarla, küçük modelle konuşma süresinin yalnızca **%59–62'si** yazılıyordu: **%22–28'i konuşma bulucuya hiç takılmıyor** (yüksek sesten sonra gelen kısık konuşma), **%13–16'sını koruma atıyordu** (kısa, bağlamsız parçalar).
+
+**Değişen (motor; koruma eşiği aynı):** konuşma bulucudan önce **seviye eşitleme** (yalnız bulucunun dinlediği kopyada; duraklamada kazancı tutan karşıtlık kuralıyla); aralıklar **1,2 s'den kısa duraklamada bölünmüyor**, iki yana 0,4 s pay; korumanın attığı aralığa **ikinci bakış** (ikiye böl, her yarıyı aynı korumayla yargıla). Ayarlar geliştirme yarısında seçilip donduruldu, doğrulama yarısı sonra üretildi ve bir kez koşuldu.
+
+**Sonuç (doğrulama yarısı, 116 dakika, Chromium):** yazılan konuşma payı `base` **%62,1 → %89,8** (hiç duyulmayan %21,9 → %3,9; atılan %16,1 → %6,3), `turbo` **%76,2 → %95,6**; normalize WER `base` %28,3 → %19,6, `turbo` %19,0 → %14,3; Hint aksanlı çağrıda `base` %30,7 → %15,7; denemenin stres dosyası `base` %72,0 → %9,8. **Uydurma metin: 45 negatif klipte 0** (`base`: Chromium, Chrome, Edge, Firefox; `turbo`: Chromium); müzik boşluklarına yazılan kelime 0. Daha yavaş değil: 14 dakikalık toplantı 0,43 → 0,35 (süre / ses süresi); 51 dakikalık çağrı bu masaüstünde 18 dakika, bellek 1,15 GiB.
+
+**Önerilen model:** WebGPU + `shader-f16` olan tarayıcıda `large-v3-turbo` artık **"Önerilen: büyük model (≈595,6 MB, bir kez iner)"** olarak ilk sırada ve ön seçili; `base` "Küçük model (≈108,8 MB)". Tarayıcıda yalnızca küçük model varsa küçük model ön seçili kalır (596 MB'lık indirme kendiliğinden gündeme gelmez); başka tarayıcıda tek model. Hiçbir indirme düğmesiz başlamaz.
+
+**Dürüst geri bildirim:** bulunan konuşmanın onda biri ya da fazlası yazılamadıysa sonuç sayıyla söyler — "Bulunan konuşmanın yaklaşık yüzde 62 kadarı yazıldı; 14 yer anlaşılamadı." — ve küçük modelle yazıldıysa, büyük model burada çalışıyorsa "Önerilen modelle yeniden yaz" önerir.
+
+**Uzun yazı:** "Yazı" paneli 200 satırdan sonra pencereli çiziliyor (3000 satırda DOM 24 011 → 177 öğe; paneli açma 380 → 48 ms, 4 kat yavaşlatılmış işlemcide 2 368 → 147 ms). Tıkla-git, oynarken izleme, klavye (↑ ↓ Home End Enter), aralık seçip kesit yapma, yerinde düzeltme çizilmemiş satırlarda da çalışır; her satır yerini söyler (`aria-posinset` / `aria-setsize`); odak hiç kaybolmaz. Tarayıcının "sayfada bul"u uzun yazıda yalnızca ekrandaki satırları görür — bu yüzden panelin kendi **"Yazıda ara"** kutusu var (12 satırdan itibaren; bütün satırlarda arar). Dürüst not: yavaşlatılmış işlemcide büyük atlamalarla kaydırma adım başına biraz daha uzun sürüyor (56 → 67 ms).
+
+**Testler (8 Ekim, `main` ef6c345 birleştirilmiş ağaçta):** birim 1090/1090; e2e 329 testte 326 geçti / 2 atlandı / 1 başarısız (bu işin dışında: `enhance.spec.ts:358`; ayrıntı ADR-036); yeni 18 e2e (uzun yazı 11 — axe 360/390/1440 0 bulgu, 320 px —, model ve geri bildirim 7); gerçek modelli 2 test koştu ve geçti; Pages duman testi 7/7; matris ADR-036'da.
+
+**Hâlâ zayıf (bulut yolunun karşılaması gereken):** üst üste konuşma ve konuşmacı ayrımı (en iyi durumda WER %21–22); müzik altında ve uzak mikrofonda küçük model (WER %34–55); WebGPU'suz her cihaz (telefonlar, Firefox, Safari) küçük modelde kalır; uzun çağrıda `turbo` da %11. **Ölçülmeyen:** telefon, dizüstü, Safari, gerçek ekran okuyucu, Türkçe. Mevcut kullanıcı haklarına etkisi: yok (fiyat, kota, şema, gizlilik metni değişmedi).
+
 ## İyileştir: cihaz üstü, tek dokunuşla görüntü iyileştirme — 7–8 Ekim 2026 (ADR-037; politika `2026-10-07.v8`, şema EDL v4)
 
 Kurucu kararı (7 Ekim 2026): planlanan son ücretsiz kart yapılsın — tek dokunuş, cihazda, **klasik görüntü işleme**. Yapay zekâ, büyütme (upscaling) ya da bulanıklık giderme değildir ve hiçbir yerde böyle söylenmez; bunlar sonraki ücretli bulut aşamasına bırakıldı.
