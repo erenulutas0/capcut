@@ -23,6 +23,30 @@ Kurucu canlı sitede denedi (5 Ekim): kısa, temiz videoda çoğunlukla çalış
 
 **Hâlâ zayıf (bulut yolunun karşılaması gereken):** üst üste konuşma ve konuşmacı ayrımı (en iyi durumda WER %21–22); müzik altında ve uzak mikrofonda küçük model (WER %34–55); WebGPU'suz her cihaz (telefonlar, Firefox, Safari) küçük modelde kalır; uzun çağrıda `turbo` da %11. **Ölçülmeyen:** telefon, dizüstü, Safari, gerçek ekran okuyucu, Türkçe. Mevcut kullanıcı haklarına etkisi: yok (fiyat, kota, şema, gizlilik metni değişmedi).
 
+## İyileştir: plan eşikte açılıp kapanmıyor, test videoları her üretimde aynı, GPU'suz cihaza süre uyarısı — 8 Ekim 2026 (ADR-037 güncellemesi; politika ve şema değişmedi, motor sürümü 2)
+
+**Bulgu:** aynı tariften iki çalışma kopyasında üretilen "değişen ışık" test videosunda iyi pozlanmış bölüm birinde 3,22, diğerinde 6,28 seviye aydınlanıyordu (e2e sınırı 6; ikincide test kalıyordu). Aynı görünen iki videoya gözle görülür biçimde farklı davranan bir plan demekti.
+
+**Neden (uygulama):** zaman yumuşatması iyi pozlanmış bölüme, önündeki aydınlanan bölümün kazancından yaklaşık onda bir taşıyordu; ölü bant ise tam o büyüklükte bir basamaktı ("kazanç 1,10'dan küçükse hiç"). Hangi yana düşeceğini resmin ayrıntısı belirliyordu. İstatistik olarak 40 farklı kum deseniyle denendiğinde eski plan o bölüme 40 desenin 40'ında dokunuyordu.
+
+**Düzeltilen — plan:** ölü bantlar basamak değil, eşikten sonra yavaşça açılır (eğim en çok 2); yumuşatma bir kareyi kendi istediğinden en çok yarım "fark edilir adım" uzaklaştırır; tek aykırı kare komşularının ortancasını alır; sık bakılan yerler ortalamada fazla sayılmaz; hiçbir yerde görünür olmayan düzeltme türü plandan çıkar (söylenen ile yapılan aynı). Sonuç, tarayıcıda, e2e'nin ölçüsüyle: eski iki dosyada **3,22 → 1,40** ve **6,28 → 1,44**; yeni sabit dosyada 1,44. On iki farklı sahnede (referans işleyici) bölüm 0 … +1,66 yerine +0,02 … +0,05 seviye oynuyor. **Testin `< 6` sınırı değiştirilmedi.**
+
+**Kazançlar korundu (aynı küme, önce → sonra):** Otomatik ortalama +4,22 → **+4,29 dB**, SSIM +0,0757 → +0,0757; temiz karelerde dokunuş azaldı (ortalama 45,5 → 48,1 dB; 9 karenin 8'i yine bir miktar değişiyor); soluk renkte artık zarar yok (−0,27 → −0,01 dB); kum +3,84 → +4,42 dB. **Bedeli:** küçük renk sapması düzeltmesi azaldı (soğuk +0,86 → +0,53 dB) ve titreme ölçüsü biraz arttı (12 sahne ortalaması 0,172 → 0,194 seviye; kaynak 0,138, kare başına düzeltme 0,31–0,38 olurdu). Gerçek kayıtlarda ortalamalar aynı; tek tek karelerde iki yönde küçük farklar.
+
+**Düzeltilen — test videoları:** ffmpeg'in `perlin` kaynağı `random_seed`'i yalnızca `random_mode=seed` ile kullanıyor; her üretim başka bir sahneydi. Artık aynı baytlar: beş video × üç üretim aynı sha256 (`scripts/enhance-eval/fixture-determinism.mjs`), e2e'nin kendi ürettikleri de aynı. Dosyalar yeni klasörde (`tests/media/enhance/e2e-v2`).
+
+**Yeni birim testleri (video dosyası olmadan):** yarım 8-bit seviyelik ölçüm farkı düzeltmeyi yarım adımdan az oynatır; 40 farklı kum deseninde iyi pozlanmış bölüm tam olarak dokunulmadan kalır ve hiçbir kare bir desenden ötekine bir adımdan fazla farklı işlenmez.
+
+**Eklenen — süre uyarısı:** ekran kartı hızlandırması yoksa (işlemci yolu ya da WebGL'in yazılım işleyicisi: SwiftShader, llvmpipe, Microsoft Basic Render Driver) sihirbaz ve Ayarlar → Görüntü bunu **indirmeden önce** söyler: "Bu cihazda ekran kartı hızlandırması yok. İyileştirme yine çalışır ama yavaştır: 5 dakikalık bir video yarım saatten uzun sürebilir." — tahmin iki dakikayı geçiyorsa "bu video yaklaşık N dakika sürebilir" (kare başına 0,25 sn × piksel oranı; tek bir bilgisayarın ölçümünden, "yaklaşık" diye). 7 Ekim'in bilinen eksiği kapandı.
+
+**Değişen — "Güçlü":** kaldı (kurucunun sözü olmadan kaldırılmaz); alt yazısı artık açıkça "Bazı videolarda Otomatik'ten kötü görünür: kumlanma ve sıkıştırma izleri belirginleşir, renkler abartılı olabilir." diyor.
+
+**Testler (8 Ekim 2026, main 2292e16 birleştirilmiş ağaç, ölçüm kilidi altında):** `tsc` ve `eslint` temiz; birim **1101 / 1101** (65 dosya); e2e **327 geçti, 2 atlandı, 0 başarısız**; matris Chromium / Chrome / Edge **30 / 30**; gerçek kayıtlar (Chrome) **15 / 15**; Pages duman testi **7 / 7**.
+
+**Ölçülmeyen:** hız ve bellek yeniden ölçülmedi (kare başına iş değişmedi); uyarı gerçek bir GPU'suz kullanıcı cihazında denenmedi; titreme için gözle karşılaştırma yok.
+
+Mevcut kullanıcı haklarına etkisi: yok. İyileştirme açıkken indirilen videoların pikselleri değişti (motor sürümü 2); kapalıyken hiçbir şey değişmedi.
+
 ## İyileştir: cihaz üstü, tek dokunuşla görüntü iyileştirme — 7–8 Ekim 2026 (ADR-037; politika `2026-10-07.v8`, şema EDL v4)
 
 Kurucu kararı (7 Ekim 2026): planlanan son ücretsiz kart yapılsın — tek dokunuş, cihazda, **klasik görüntü işleme**. Yapay zekâ, büyütme (upscaling) ya da bulanıklık giderme değildir ve hiçbir yerde böyle söylenmez; bunlar sonraki ücretli bulut aşamasına bırakıldı.

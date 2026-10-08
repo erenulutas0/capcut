@@ -12,7 +12,8 @@
  * stretch (frames 135..165) moves, and how much the dark stretches are
  * lifted. A planner on a knife edge shows as a spread in the first column.
  */
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -23,6 +24,8 @@ const scenes = Number(args.scenes ?? 10);
 const enhance = await loadEnhance();
 const work = join(webRoot, 'tests', 'media', 'enhance', 'scenes');
 mkdirSync(work, { recursive: true });
+// The recipe's transpiled copies live outside the project: a linter running meanwhile must not find them.
+const recipes = mkdtempSync(join(tmpdir(), 'clip-enhance-scenes-'));
 
 const ts = (await import('typescript')).default;
 const source = readFileSync(join(webRoot, 'tests', 'e2e', 'enhance-media.ts'), 'utf8');
@@ -38,7 +41,7 @@ for (let scene = 1; scene <= scenes; scene += 1) {
     const { outputText } = ts.transpileModule(source.replaceAll('random_seed=7', `random_seed=${100 + scene}`), {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
     });
-    const modulePath = join(work, `recipe-${scene}.mjs`);
+    const modulePath = join(recipes, `recipe-${scene}.mjs`);
     writeFileSync(modulePath, outputText);
     (await import(pathToFileURL(modulePath).href)).makeEnhanceFixture('changing', file);
     rmSync(modulePath, { force: true });
@@ -80,5 +83,6 @@ for (const strength of ['light', 'auto', 'strong']) {
   const values = rows.map((row) => Math.abs(row[strength].wellExposed));
   console.log(`${strength}: well-exposed stretch, |change| over ${rows.length} scenes: least ${round(Math.min(...values), 2)}, most ${round(Math.max(...values), 2)} levels`);
 }
+rmSync(recipes, { recursive: true, force: true });
 mkdirSync(resultsDir, { recursive: true });
 writeFileSync(join(resultsDir, `many-scenes-${args.tag ?? 'default'}.json`), `${JSON.stringify(rows, null, 1)}\n`);

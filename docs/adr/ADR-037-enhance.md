@@ -1,6 +1,6 @@
 # ADR-037 — "İyileştir": cihaz üstü, tek dokunuşla görüntü iyileştirme (klasik görüntü işleme)
 
-> Tarih: 7 Ekim 2026 · Durum: UYGULANDI (web) · Politika `2026-10-07.v8` · Şema EDL v4
+> Tarih: 7 Ekim 2026 (güncelleme: 8 Ekim 2026, sonda) · Durum: UYGULANDI (web) · Politika `2026-10-07.v8` · Şema EDL v4
 > İlgili: [ADR-034](ADR-034-task-first-home.md) (kartlar), [ADR-027](ADR-027-fast-cut.md) (hızlı kesim),
 > [ADR-029](ADR-029-export-memory.md) (dışa aktarma belleği), `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md`.
 > Bu belgedeki her sayı aşağıda adı geçen betikle, bu makinede ölçüldü. Ölçülmeyen şeyler
@@ -46,7 +46,8 @@ en sakin bloklardan), keskinlik (kontrasta göre eşiklenmiş gradyan enerjisi).
 - **Bakış (renk, keskinlik, kum) video için tektir** — tipik (ortanca) ölçülerden seçilir; kareden
   kareye değişmez, bu yüzden titremez.
 - **Işık (kazanç, siyah, gama) noktadan noktaya değişebilir** ama zamanda yumuşatılır (2 sn'lik,
-  parlaklık farkına duyarlı ortanca / iki yanlı yumuşatma) ve kareler arasında doğrusal
+  parlaklık farkına duyarlı yumuşatma; 8 Ekim'den beri bir kareyi kendi istediğinden en çok yarım
+  "fark edilir adım" uzaklaştırır — sondaki güncelleme) ve kareler arasında doğrusal
   aradeğerlenir. Ardışık iki bakış arasında ışık birden değişiyorsa (sahne değişimi, pozlama
   sıçraması) araya yeni bakışlar eklenir (en çok 96) ve değişim **bitişik iki kareye** kadar
   daraltılır; düzeltme o iki kare arasında değişir, öncesine ve sonrasına taşmaz.
@@ -60,7 +61,7 @@ en sakin bloklardan), keskinlik (kontrasta göre eşiklenmiş gradyan enerjisi).
 | Siyah düzeyi yalnız siyahlar kalkıksa | %0,5 dilimi 0,12'de başlar, 0,24'te tam | bilerek açık tonlu (sisli, yüksek anahtar) görüntüyü ezmeyi |
 | Yüksek anahtar koruması | ortanca 0,3–0,42 üstünde siyah düzeltmesi söner | açık tonlu sahneleri karartmayı |
 | Grafik / ekran kaydı koruması | düz alan payı ≥ 0,4 ya da doygunluk 0,5→0,65 ise ışık ve renk kapanır | ekran kaydı, sunum, çizim renklerini bozmayı |
-| Ölü bantlar | kazanç 0,1 · siyah 0,004 · gama 0,04 · renk sapması 0,02 · canlılık 0,05 | ölçüm gürültüsünden doğan anlamsız küçük değişiklikleri |
+| Ölü bantlar | kazanç 0,1 · siyah 0,004 · gama 0,04 · renk sapması 0,02 · canlılık 0,05 — 8 Ekim'den beri basamak değil, eşikten sonra yavaşça açılır (sondaki güncelleme) | ölçüm gürültüsünden doğan anlamsız küçük değişiklikleri |
 | Beyaz dengesi | gri-dünya ve beyaz-yama **aynı yönü** gösteriyorsa; Otomatik'te sapmanın yarısı, kanal başına en çok %6 | gökyüzü / deniz / orman gibi tek renkli sahneyi "renk sapması" sanmayı |
 | Canlılık | doygunluk 0,35'in altındaysa; Otomatik'te en çok 0,15 | zaten canlı rengi bağırtmayı |
 | Keskinleştirme | keskinlik < 1,05 ise (tam güç 0,8'de) | zaten keskin görüntüde sıkıştırma izlerini büyütmeyi |
@@ -93,8 +94,9 @@ düzeltmesi 1,18. Tek kaynak: `ENHANCE_TUNING` (`web/src/domain/enhance.ts`); mo
 - **Çalışma anı denetimi** (`frameEnhancer.ts`): her dışa aktarmanın başında bir sınama resmi
   hem WebGL hem referansla işlenir. En büyük fark ≤ 2 seviye ve ortalama ≤ 0,4 değilse (ya da
   WebGL2 yoksa / bağlam düşerse) **işlemci yoluna** geçilir — yavaş ama aynı resim. Bu durumda
-  sihirbaz önceden "Bu cihazda grafik hızlandırma kullanılamıyor…" der ve sonuç satırı "Grafik
-  hızlandırma olmadan yapıldı." yazar.
+  (ve 8 Ekim'den beri WebGL bir yazılım işleyicisinde çalışıyorsa da) sihirbaz **indirmeden önce**
+  "Bu cihazda ekran kartı hızlandırması yok…" der, uzun videoda yaklaşık süreyi söyler ve sonuç
+  satırı "Ekran kartı hızlandırması olmadan yapıldı." yazar (sondaki güncelleme).
 - İyileştirme bir karede başarısız olursa dışa aktarma **durur** (`enhance_failed`); iyileştirilmemiş
   kare sessizce yazılmaz.
 
@@ -323,8 +325,8 @@ Okunuşu:
   bakış önizleme için zaten yapıldığından indirme sırasında yeniden yapılmaz.
 - **GPU yoksa** (yazılım WebGL ya da işlemci yolu) kare başına 0,1–0,3 sn: 5 dakikalık 1080p
   kumlu video **36 dakika** sürdü. İşlemci yolu kullanılacaksa sihirbaz bunu önceden söyler;
-  yazılım WebGL (SwiftShader) durumunda **söylemez** — denetim yalnızca doğruluğa bakar, hıza
-  değil. Bu bilinen bir eksiktir (aşağıda).
+  yazılım WebGL (SwiftShader) durumunda 7 Ekim'de **söylemiyordu** — 8 Ekim'de eklendi (sondaki
+  güncelleme).
 - **Bellek:** tepe değer düz kodlamaya göre +14 … +101 MiB (5 dakika) arasında; GPU'lu tarayıcılarda
   renderer ve GPU süreçlerinin tepe değeri ilk yarıda yükselip sonra yatay kalıyor (sürekli
   büyüme görülmedi; 5 dakikadan uzun süre ölçülmedi). 10 saniyelik kumlu satırdaki
@@ -408,8 +410,8 @@ referanssız) **ölçülmedi**.
 - Kalite kümesi küçük: 4 sahneden 9 kare. Gece çekimi, yüz yakın planı, iç mekân ve çok hareketli
   sahne yok; ek açık lisanslı görüntü indirilmedi (indirme için ayrı onay gerekir).
 - Hız satırları tek koşudur.
-- **Bilinen eksik:** yazılım WebGL (SwiftShader) kullanan tarayıcıda uzun süre önceden söylenmiyor
-  (yalnız işlemci yolunda söyleniyor).
+- ~~Bilinen eksik: yazılım WebGL (SwiftShader) kullanan tarayıcıda uzun süre önceden söylenmiyor.~~
+  8 Ekim'de kapandı (sondaki güncelleme).
 - **Bilinen eksik:** oynatıcı iyileştirilmiş görüntüyü canlı göstermez; önizleme tek karedir
   (arayüz bunu söyler).
 
@@ -419,3 +421,236 @@ referanssız) **ölçülmedi**.
    hiç dokunma" isteniyorsa ölü bantlar genişletilebilir; bedeli hafif sapmaların da düzelmemesi.
 2. GPU'suz cihazda uzun videoya süre tahmini / uyarı eklensin mi?
 3. "Güçlü" kalsın mı? Ölçümde bulanık, soluk ve sıkıştırılmış görüntüde Otomatik'ten kötü.
+
+## Güncelleme — 8 Ekim 2026: plan bir eşiğin üstünde duruyordu (bulgu, neden, düzeltme, yeni sayılar)
+
+Bu bölüm yukarıdaki 7 Ekim metnini **düzeltir**; çeliştiği yerde bu bölüm geçerlidir. Motor
+sürümü 2 oldu (`ENHANCE_ENGINE_VERSION`; aynı tarif artık başka pikseller verir, parmak izi değişir).
+
+### Bulgu
+
+`enhance.spec.ts` › "the correction follows a changing exposure without flicker" testinin son
+ölçütü ("iyi pozlanmış bölüm olduğu gibi kalır": 135–165. karelerin ortalama parlaklığı en çok 6
+seviye değişir) ana çalışma kopyasında üretilen `degisen-isik.mp4` ile **3,22**, başka bir çalışma
+kopyasında üretilenle **6,28** ölçtü (ikincide test kalıyordu; dosya ana kopyaya taşınınca aynı
+derlemede yine 6,28). Aynı tarif, iki farklı dosya; ve — asıl önemlisi — neredeyse aynı görünen iki
+videoya gözle görülür biçimde farklı davranan bir plan.
+
+### Neden — iki ayrı hata
+
+**1. Plan (uygulamanın hatası).** `scripts/enhance-eval/explain-plan.mjs` iki dosya için planı
+kare kare yazdırdı. İyi pozlanmış bölümdeki her kare **kendi başına** "hiçbir şey" istiyordu
+(kazanç 1). Ama:
+
+- zaman yumuşatması bir karenin düzeltmesini, ortancası benzeyen bütün komşularıyla **sınırsız**
+  ortalıyordu; iyi pozlanmış bölüm, önündeki yavaşça aydınlanan bölümün kazancından bir pay
+  alıyordu: 135. karede 1,117 / 1,119, 150. karede **1,09… / 1,109**;
+- ölü bant bir **basamaktı**: "kazanç 1,10'dan küçükse hiç uygulanmaz". 150. karede bir dosya
+  basamağın altında kaldı (kazanç 1), diğeri üstünde (kazanç 1,109).
+
+Yani iki hatanın çarpımı: taşan kazanç tam basamağın büyüklüğündeydi ve hangi yana düşeceğini
+resmin ayrıntısı belirliyordu. Aynı senaryo istatistik olarak (video dosyası olmadan) 40 farklı
+kum deseniyle koşturulunca **eski plan iyi pozlanmış bölüme 40 desenin 40'ında dokunuyordu**
+(Otomatik ve Güçlü; kazanç 1,14'e kadar), iki desen arasındaki en büyük fark 0,95 "fark edilir
+adım"dı. On iki farklı sahnede eski plan bölümü 10 sahnede ~0, 2 sahnede **+1,5 / +1,7** seviye
+oynatıyordu (`many-scenes.mjs`, referans işleyici, 320 px).
+
+**2. Test videoları (test düzeneğinin hatası).** Tarifte tohumlar sabitti ama ffmpeg'in `perlin`
+kaynağı `random_seed`'i yalnızca `random_mode=seed` ile kullanır; varsayılan kipte her
+çalıştırmada yeni bir desen çizer. Her çalışma kopyası **başka bir sahne** üretmişti (dosya
+boyutları 21,2–27,1 MB arasında). İlk şüphe (`noise=…:allf=t` ve iş parçacıkları) ölçümle çürüdü:
+o süzgeç bu ffmpeg'de çok iş parçacığıyla da aynı çıktıyı veriyor.
+
+### Düzeltme
+
+Plan (`web/src/domain/enhance.ts`):
+
+| Ne | Önce | Şimdi |
+|---|---|---|
+| Ölü bantlar (kazanç, siyah düzeyi, gama, renk sapması, canlılık, keskinleştirme, kum süzgeci) | basamak: eşiğin altında 0, üstünde tam değer | sürekli (`fadeIn`): eşiğe kadar 0, üstünde `değer − eşik·e^(−(değer−eşik)/eşik)`; eğim en çok 2; eşiğin iki katında eksik kalan eşiğin üçte biri, dört katında yirmide biri |
+| Zaman yumuşatması | benzer görünen komşularla sınırsız ortalama | (1) tek aykırı kare komşularının ortancasını alır (üçün ortası); (2) benzer görünen komşularla ortalama; (3) sonuç, karenin **kendi istediğinden en çok yarım "fark edilir adım"** uzaklaşabilir (kazançta ≈ %6, siyahta 0,004, gamada 0,02) — taşma böylece ölü bandın içinde kalır ve sıfırlanır |
+| Sık bakılan yerler | her bakılan kare eşit sayılır | her kare, temsil ettiği süreyle tartılır (ani değişimin çevresine eklenen yakın bakışlar ortalamayı kendine çekmez; kaç tane oldukları kum desenine bağlıydı) |
+| Görünmeyecek kadar küçük düzeltme türü | yapılır ve "ışık düzeltildi" denir | videonun hiçbir yerinde görünür düzeye çıkmayan tür (ışık: orta gride %2 / siyah 0,002; renk: %0,5 / canlılık 0,02) plandan çıkar — söylenen ile yapılan aynıdır |
+| Kum süzgeci açıkken keskinleştirme eşiği | süzgeç açılınca birden 0,6 × kum | süzgecin gücüyle birlikte kayar |
+
+Ölü bant eşiklerinin kendisi değişmedi (kazanç 1,10 · siyah 0,004 · gama 0,04 · renk 0,02 ·
+canlılık 0,05); değişen, eşiğin hemen üstünde olanlardır: artık orada düzeltme tam değerinde değil,
+yeni başlamış hâldedir. Bedeli aşağıdaki tabloda: küçük renk sapması düzeltmesi yarıya indi.
+
+Test videoları (`web/tests/e2e/enhance-media.ts`): `perlin=…:random_mode=seed:random_seed=7`;
+ayrıca süzgeçler ve kodlayıcı tek iş parçacığında, `+bitexact`, üst veri yok. Dosyalar yeni bir
+klasöre yazılır (`tests/media/enhance/e2e-v2`) — eski, makineden makineye değişen dosyalar bir daha
+kullanılmaz. **Kanıt:** `node scripts/enhance-eval/fixture-determinism.mjs --runs=3` → beş videonun
+beşi üç üretimde de aynı sha256; e2e koşusunun kendi ürettiği dört dosya da (dördüncü, bağımsız
+üretim) aynı özetleri verdi (`degisen-isik.mp4`: `aba22c6f65a084a0…`, 26 245 101 bayt). Sınırı:
+aynı ffmpeg sürümüyle kanıtlandı (9.0.1); başka bir sürüm başka baytlar üretebilir — bu yüzden
+test, sağlamlığını videonun bayt bayt aynı olmasından değil, planın kendisinden alır (aşağıda).
+
+### `< 6` sınırı değiştirilmedi
+
+Testin sınırı aynı kaldı; geçmesini sağlayan plandır. Yeni planla iyi pozlanmış bölümde ışık
+düzeltmesi **tam olarak sıfırdır**; geriye renk kalır:
+
+| 135–165. kareler, ortalama parlaklık farkı (seviye) | Eski plan | Yeni plan |
+|---|---|---|
+| Tarayıcıda, e2e'nin ölçtüğü gibi — "3,22" veren eski dosya | 3,22 | **1,40** |
+| Tarayıcıda, e2e'nin ölçtüğü gibi — "6,28" veren eski dosya | 6,28 | **1,44** |
+| Tarayıcıda — yeni, sabit test videosu | — | **1,44** |
+| Referans işleyici (320 px), 12 farklı sahne — Otomatik | 0 … **+1,66** | **+0,02 … +0,05** |
+| Referans işleyici, 12 farklı sahne — Güçlü | −0,14 … **+1,55** | −0,14 … −0,28 |
+| Referans işleyici, 12 farklı sahne — Hafif | 0 | 0 |
+
+Tarayıcı satırları: Playwright Chromium 153, normal derleme, sihirbaz, Otomatik; kaydedilen dosya
+testin kendi ölçüsüyle ölçüldü (`frameLumas`). Üç dosya artık aynı sonucu veriyor (1,40 / 1,44 /
+1,44). Bu ~1,4 seviyenin ışık düzeltmesiyle ilgisi yok (referans işleyicide ışık payı tam 0, renk
+payı +0,03…+0,05): geri kalanı dışa aktarmanın kendi tabanıdır (yeniden kodlama ve renk aralığı
+dönüşümü). 6'lık sınırın altında, geniş payla; sınırı daraltmak için tek bir tarayıcı ölçümü
+yeterli dayanak değil, o yüzden o da değiştirilmedi. Aynı testte ek bir ölçüt var artık: yavaş
+yükselişin iyi pozlanmış son bölümü (105–135. kareler) de 6 seviyeden az değişir (ölçülen 1,33–1,35).
+Karanlık bölümler eskisi gibi aydınlatılıyor (referans işleyici, 12 sahne: ilk saniye +46, karanlık
+basamak +45 seviye; eski planda +41 / +45 — yumuşatma artık ilk saniyenin kazancını aşağı çekmiyor;
+tarayıcıda +48 / +47).
+
+### Bu sınıf hata artık video dosyası olmadan yakalanıyor
+
+`web/tests/unit/enhanceSensitivity.test.ts` (8 test):
+
+- `fadeIn`: bandın içinde 0, kenarında sürekli, eğim ≤ 2, uzakta değerin kendisi.
+- `chooseTone`: kamera görüntüsüne benzeyen bütün histogramlarda (on binlerce birleşim × üç güç)
+  bir ölçümün **yarım 8-bit seviye** oynaması düzeltmeyi yarım "fark edilir adım"dan az oynatır
+  (eski basamaklarla: 0,84 — %10 kazanç birden — ve 1).
+- `chooseLook`: doygunluk, kum, keskinlik ya da renk sapmasındaki küçük değişiklik beyaz dengesini
+  < 0,005, canlılığı < 0,005, kum süzgecini < 0,25 seviye, keskinleştirmeyi < 0,1 oynatır.
+- Plan: bulgunun videosu istatistik olarak, worker'ın baktığı gibi (yarım saniye + yakın
+  bakışlar), **40 farklı kum deseniyle**: iyi pozlanmış bölüm üç güçte de **tam olarak nötr**;
+  hiçbir kare bir desenden ötekine bir "fark edilir adım"dan fazla farklı işlenmez (ölçülen: Hafif
+  0,23 · Otomatik 0,56 · Güçlü 0,52; eski plan 0,90 / 0,95 / 0,96); kum iki katına çıkınca fark en
+  çok 2,5 katına çıkar (yakında uçurum yok).
+
+Aynı senaryo eski planla koşturulduğunda ilk plan testi 40 desenin 40'ında kalıyor
+(`.scratch` betiğiyle doğrulandı; eski dosya `git show ef6c345:web/src/domain/enhance.ts`).
+
+### Kazançlar korundu mu — önce / sonra
+
+**Kalite (12 bozulma × 9 kare; Δ dB / Δ SSIM; aynı küme, aynı betik):**
+
+| Bozulma | Hafif önce → sonra | Otomatik önce → sonra | Güçlü önce → sonra |
+|---|---|---|---|
+| temiz: değişen kare · ort. PSNR (en kötü) | 2/9 · 53,6 (41,7) → 2/9 · **56,6 (46,8)** | 8/9 · 45,5 (37,2) → 8/9 · **48,1 (38,4)** | 9/9 · 38,7 (31,2) → 9/9 · 39,4 (31,2) |
+| az pozlama ×0,5 | +3,95 → +3,66 | +12,66 → +12,77 | +11,31 → +11,24 |
+| az pozlama ×0,25 | +1,65 → +1,58 | +11,16 → +11,17 | +18,43 → +18,44 |
+| düşük kontrast | +1,05 → +1,09 | +0,90 → +0,84 | +1,50 → +1,30 |
+| sıcak renk sapması | −0,06 → −0,01 | +0,31 → +0,23 | +2,09 → +2,16 |
+| soğuk renk sapması | −0,03 → −0,01 | +0,86 → **+0,53** | +4,48 → +4,56 |
+| soluk renk | −0,01 → −0,02 | **−0,27 → −0,01** | −1,26 → −1,19 |
+| bulanık σ1 | +0,26 → +0,28 | +0,30 → +0,36 | −0,62 → −0,62 |
+| bulanık σ2 | +0,10 → +0,11 | +0,02 → +0,04 | −0,55 → −0,55 |
+| kum σ5 | +4,51 → +4,57 | +3,84 → **+4,42** | +0,62 → +0,72 |
+| kum σ10 | +6,09 → +6,09 | +6,65 → +6,84 | +5,46 → +5,51 |
+| karanlık + kumlu | +2,02 → +1,93 | +14,42 → +14,45 | +14,33 → +14,17 |
+| sıkıştırılmış | −0,02 → −0,01 | −0,17 → −0,13 | −0,80 → −0,80 |
+| **ortalama ΔPSNR / ΔSSIM** | +1,63 / 0,0435 → +1,60 / 0,0429 | **+4,22 / 0,0757 → +4,29 / 0,0757** | +4,58 / 0,0790 → +4,58 / 0,0789 |
+
+Okunuşu: kazançlar yerinde (Otomatik ortalaması +4,22 → +4,29 dB). İyileşenler: temiz karelerde
+daha az dokunuş (+2,6 dB), soluk renkte artık zarar yok, kumda +0,6 dB. Kötüleşen: küçük renk
+sapması düzeltmesi azaldı (soğuk +0,86 → +0,53 dB) — sapma düzeltmesi ölü bandın hemen üstünde
+olduğu için artık tam değerinde uygulanmıyor. Hafif'te karanlık görüntü kazancı biraz düştü
+(+3,95 → +3,66).
+
+**"Zaten iyi olan videoya dokunmaz" iddiası ne kadar doğru?** Hâlâ tam doğru değil, ama daha
+doğru: temiz 9 karenin 8'inde Otomatik yine bir şey değiştiriyor; değişikliğin büyüklüğü küçüldü
+(ortalama PSNR 45,5 → 48,1 dB, yani ortalama karesel hata yarıya yakın azaldı; en kötü kare 37,2 →
+38,4 dB). Hafif'te 9 karenin 7'sine hiç dokunulmuyor, dokunulan ikisinde en kötü 41,7 → 46,8 dB.
+Arayüzdeki cümle iddiayı zaten bu kadar ileri götürmüyor ("…değiştirilecek bir şey bulunamadı"
+yalnızca gerçekten hiçbir şey yapılmayacaksa söylenir).
+
+**Gerçek kayıtlar (13 SDR kayıt, kayıt başına 40 kare — 7 Ekim tablosu 8 kareyleydi; iki plan da
+aynı 40 kareyle; girdiye en düşük / ortalama SSIM):**
+
+| Kayıt | Otomatik, eski plan | Otomatik, yeni plan | Güçlü, eski → yeni (en düşük) |
+|---|---|---|---|
+| R01 | ışık + renk + keskinlik · 0,9957 / 0,9991 | aynı · 0,9957 / 0,9992 | 0,990 → 0,9865 |
+| R02 | renk + keskinlik · 0,9984 / 0,9988 | aynı · 0,9985 / 0,9989 | 0,8419 → 0,8497 |
+| R03 | çok ışık + renk + keskinlik · 0,8357 / 0,8429 | aynı · 0,8350 / 0,8421 | 0,6349 → 0,6338 |
+| R04 | renk + keskinlik · 0,9992 / 0,9993 | aynı · 0,9992 / 0,9993 | 0,9535 → 0,9538 |
+| R05 | **hiçbir şey** | **hiçbir şey** | hiçbir şey |
+| R06 | ışık · 0,9910 / 0,9987 | ışık · **0,9792** / 0,9984 | 0,9766 → 0,9556 |
+| R07 | çok ışık + renk · 0,9348 / 0,9942 | aynı · 0,9393 / 0,9952 | 0,8254 → 0,8223 |
+| R08 | renk + keskinlik · 0,9998 / 0,9999 | aynı · 0,9998 / 0,9999 | 0,9732 → 0,9692 |
+| R10 | ışık + renk · 0,9991 / 0,9999 | **yalnız renk** · 0,9999 / 1,0000 | 0,9937 → **0,9997** |
+| R12 | **hiçbir şey** | **hiçbir şey** | 0,9927 → **0,9999** |
+| R13 | ışık + renk · 0,9989 / 0,9995 | aynı · 0,9992 / 0,9997 | 0,9959 → 0,9868 |
+| R14 | renk + keskinlik · 0,9996 / 0,9998 | aynı · 0,9996 / 0,9998 | 0,9991 → 0,9991 |
+| R15 | renk · 0,9999 / 1,0000 | renk · 1,0000 / 1,0000 | 0,9805 → **0,9531** |
+
+Okunuşu: ortalamalar aynı (üçüncü ondalıkta). Tek tek karelerde iki yönde küçük farklar var: bir
+kare artık komşularının ortalamasına değil kendi ihtiyacına daha yakın düzeltiliyor — R06'nın en
+çok değişen karesi biraz daha çok değişiyor (0,991 → 0,979), R10 ve R12 daha az. Güçlü'de R15'in
+bir karesi belirgin biçimde daha çok değişiyor (0,9805 → 0,9531). Bu bir "zarar" ölçümü değildir
+(referans yok); "ne kadar değişti" ölçümüdür.
+
+**Titreme (ortalama parlaklığın ikinci farkı, seviye; referans işleyici):**
+
+| | Kaynak | Her kare kendi başına | Eski plan | Yeni plan |
+|---|---|---|---|---|
+| Yeni, sabit test videosu — Otomatik | 0,162 | 0,31–0,38 | 0,196 | **0,222** |
+| Yeni, sabit test videosu — Güçlü | 0,162 | — | 0,200 | 0,231 |
+| 12 farklı sahne, ortalama (en az – en çok) — Otomatik | 0,138 | — | 0,172 (0,154–0,20) | **0,194** (0,175–0,22) |
+| 12 farklı sahne, ortalama — Güçlü | 0,138 | — | 0,176 | 0,199 |
+| Ani değişim çevresinde taşma, 12 sahnenin en kötüsü — Otomatik | 2,1 | — | 3,8 | 3,5 |
+
+Okunuşu: düzeltmenin bir bedeli var ve gizlenmiyor — titreme ölçüsü 0,172 → 0,194'e çıktı
+(+0,02 seviye; kaynağın kendi değeri 0,138, kare başına düzeltme 0,31–0,38 olurdu). Yumuşatma
+artık bir kareyi kendi isteğinden yarım adımdan fazla uzaklaştıramadığı için daha az düzleştiriyor.
+Fark, bir 8-bit seviyenin ellide biri düzeyindedir; e2e'deki titreme ölçütü (kaynağınkinden en çok
+0,35 fazla) değişmeden geçiyor. Ani değişimde taşma artmadı.
+
+### Ekran kartı olmayan cihaza süre uyarısı (7 Ekim'in "bilinen eksiği" kapandı)
+
+Worker artık WebGL işleyicisinin adına bakar (`WEBGL_debug_renderer_info`): SwiftShader, llvmpipe,
+"Microsoft Basic Render Driver", WARP gibi **yazılım** işleyicileri ile işlemci yolu "ekran kartı
+hızlandırması yok" sayılır (`isSoftwareRenderer`; tarayıcı adı söylemiyorsa uyarı **gösterilmez** —
+kanıt olmadan uyarı yok). Bu durumda sihirbazda ve Ayarlar → Görüntü'de, **indirmeden önce**:
+
+- "Bu cihazda ekran kartı hızlandırması yok. İyileştirme yine çalışır ama yavaştır: 5 dakikalık bir
+  video yarım saatten uzun sürebilir." (ölçüm: 5 dakikalık 1080p → 36 dakika);
+- tahmin iki dakikayı geçiyorsa bu video için: "…bu video yaklaşık **N dakika** sürebilir." (iki
+  saatten sonra "N saat").
+
+Tahmin = kare sayısı × 0,25 sn × (çıktı pikseli / 1080p pikseli). 0,25 sn/kare, 7 Ekim ölçümlerinin
+ortasıdır (yazılım WebGL, üç geçiş: 0,22–0,24; işlemci yolu: 0,28–0,34; kum süzgeci yokken
+0,09–0,10) ve **tek bir bilgisayarın** ölçümüdür; ölçülen 5 dakikalık koşuyu %4 farkla verir
+(tahmin 2250 sn, ölçülen 2162 sn), kum süzgeci çalışmayan videoda yaklaşık 2,5 kat fazla söyler.
+Metin bu yüzden "yaklaşık … sürebilir" der. 720p için ayrı ölçüm yok (alan oranıyla ölçeklendi).
+İndirme bitince sonuç satırı aynı durumda "Ekran kartı hızlandırması olmadan yapıldı." yazar.
+
+### "Güçlü" kaldı; alt yazısı açık konuşuyor
+
+Kurucunun sözü olmadan kaldırılmadı. Alt yazısı: "Daha çok aydınlatır ve keskinleştirir. Bazı
+videolarda Otomatik'ten kötü görünür: kumlanma ve sıkıştırma izleri belirginleşir, renkler abartılı
+olabilir." (ölçüm: soluk −1,19 dB, bulanık −0,6 dB, sıkıştırılmış −0,8 dB.)
+
+### Testler (8 Ekim 2026, birleştirilmiş ağaç — main 2292e16 dahil; ölçüm kilidi altında)
+
+Tek betik (`web/.scratch/verify.sh`, depo dışı), her adım kendi günlüğüne (`web/enhance-results/verify-*.log`):
+
+- `tsc --noEmit` temiz; `eslint .` temiz (ilk koşuda, aynı anda çalışan bir ölçüm betiğinin geçici
+  dosyası yüzünden ESLint ENOENT ile durdu; betik geçici dosyasını artık proje dışına yazıyor,
+  yeniden koşuda temiz).
+- **Birim: 1101 / 1101** (65 dosya; yeni: `enhanceSensitivity.test.ts` 8 test, `enhance.test.ts`'e
+  yazılım işleyicisi adları ve süre tahmini için 3 test).
+- **e2e (Playwright Chromium, `CLIP_TEST_HOOKS=1` derlemesi, E2E_PORT=3341): 327 geçti, 2 atlandı
+  (isteğe bağlı iki ekran görüntüsü testi), 0 başarısız.**
+- **Matris:** Chromium 153, Chrome 154, Edge 154 → **30 / 30 PASS** (M23 dahil), üçünde de.
+- **Gerçek kayıtlar (Chrome):** 15 / 15 PASS.
+- **Pages duman testi** (statik derleme, CI ortam değişkenleriyle, `/capcut` altında): 7 / 7.
+- Test videolarının aynılığı: 5 video × 3 üretim aynı sha256; e2e'nin kendi ürettikleri de aynı.
+
+### Bu güncellemede ölçülmeyen
+
+- Hız ve bellek yeniden ölçülmedi (kare başına yapılan iş değişmedi; plan hesabı kare başına
+  değil, video başına bir kezdir). 7 Ekim sayıları motor sürümü 1 içindir.
+- Eski iki dosyanın tarayıcı ölçümü yalnız Playwright Chromium'da yinelendi (Chrome ve Edge'de değil).
+- Uyarının metni gerçek bir GPU'suz kullanıcı cihazında denenmedi; yazılım işleyicisi adları
+  listesi bilinen adlardan oluşur, eksik olabilir.
+- Titreme için insan gözüyle karşılaştırma yapılmadı.
