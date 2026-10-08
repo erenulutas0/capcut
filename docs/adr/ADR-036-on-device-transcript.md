@@ -10,6 +10,11 @@
 > Bu belgedeki her sayı `web/transcript-results/` altındaki ham dosyalardan
 > (`node scripts/transcript/score.mjs`) ya da adı verilen testten gelir; tahmin yoktur.
 > Ölçülmeyenler "Ölçülmeyen / yapılmayan" bölümündedir.
+>
+> **7–8 Ekim 2026 güncellemesi:** gerçek kullanımda uzun, sohbet türü videolarda konuşmanın büyük
+> kısmı yazılmıyordu. Ölçüm, sebep, değişen ayarlar, önerilen model ve pencereli panel aşağıda
+> "7 Ekim 2026 — gerçek kullanımdan sonra" bölümündedir; o bölüm, çeliştiği yerde aşağıdaki
+> 4–5 Ekim metninin yerini alır (bulucu ayarları, model seçimi metni, panelin çizimi).
 
 ## Kurucu kararları (4 Ekim 2026) ve ne yapıldığı
 
@@ -157,7 +162,8 @@ uzunluğu, süre, üst üste binmeme, uygulamanın metin kuralları ve üç çer
    ve sesin hiçbir yere gönderilmez." — her zaman, başlamadan önce.
    - Model yoksa: neden gerektiği + **"Modeli indir (≈108,8 MB, bir kez)"**; ilerleme bayt
      olarak ("34,2 MB / 108,8 MB"), "Durdur" (inen kısım saklanır), hata ve yeniden deneme.
-   - WebGPU + `shader-f16` varsa model seçimi: "Küçük ve hızlı" / "Daha iyi kalite".
+   - WebGPU + `shader-f16` varsa model seçimi: "Önerilen: büyük model" (ön seçili) / "Küçük model"
+     (7 Ekim; 4–5 Ekim'de "Küçük ve hızlı" / "Daha iyi kalite" idi ve küçük model ön seçiliydi).
    - Model varsa: **"Yazıya dök"**; ilerleme gerçek sayılarla, geçen süre, "Durdur".
 3. Sonuç: video + **yazı paneli** + "Altyazılı videoyu indir" (sihirbazın indirmesi; mevcut
    altyazı stili, varsayılan kutu/alt/orta), "Metni indir (TXT)", "SRT indir", "VTT indir",
@@ -440,7 +446,7 @@ zaten ikili aramaydı (ADR-015). Ön denetimin gerçek yazı tipiyle tarayıcıd
 120 dakikalık ölçümde sihirbazın sonuç ekranındaki panel 2491 satır ve 17 443 DOM düğümüyle
 çizildi; baştan sona 60 adımda kaydırılırken kare süresi ortanca 16,8 ms, en uzun 18,1 ms
 (başsız Chromium, masaüstü). Telefonda ve editördeki panelde bu uzunlukta ölçülmedi; yavaş
-cihazda sorun çıkarsa sanallaştırma eklenir.
+cihazda sorun çıkarsa sanallaştırma eklenir. **(7 Ekim: eklendi — "Uzun yazı: panel pencereli çiziliyor".)**
 
 ### Paket boyutu (önce: `24cb564`; sonra: bu çalışma; statik dışa aktarma, `bundle-sizes.mjs`)
 
@@ -467,6 +473,286 @@ Sayfanın HTML'inin adını verdiği betikler (tarayıcının sayfayı açarken 
 - onnxruntime-web'in 26,9 MB'lık `.wasm`'ı ve 118 KB'lık kendi `.mjs` paketi (paketleyici
   `_next/static/media/`'ya kopyalar) çevrimdışı listesinde yok ve statik dışa aktarmadan silinir.
 - Yayınlanan dışa aktarma: modelsiz 3 132 102 bayt; iki modelle **678 457 253 bayt**, 140 dosya.
+
+## 7 Ekim 2026 — gerçek kullanımdan sonra: gerçekçi küme, seviye eşitleme, önerilen model, pencereli panel
+
+**Neden.** Kurucu canlı sitede denedi (5 Ekim): 4 dakikalık temiz bir röportaj "çoğunlukla işe
+yaradı", 52 dakikalık gerçek bir video (sohbet, arka plan sesi, değişen ses seviyesi) "çok kötü
+davrandı, her konuşmayı algılamıyor". Karar: bulut yolu sonra; şimdilik ücretsiz cihaz üstü yol
+dürüstçe olabildiği kadar iyi olsun. Hiçbir şey cihazdan çıkmaz, ücretli API yok.
+
+Bu bölümdeki her sayı `web/transcript-results/` altındaki ham dosyalardan
+`node scripts/transcript/score-real.mjs <etiket>` ile üretildi (etiketler tabloların altında).
+Tarayıcı Chromium 153.0.8010.12; makine yukarıdakiyle aynı ve yine boş değildi (iki başka ajan).
+
+### Ölçüm kümesi: okunmuş konuşma değil
+
+4–5 Ekim'in bütün kümeleri okunmuş konuşmaydı (sesli kitap, okunmuş cümle); kurucunun sorunu
+orada görünmüyordu. Yeni küme (`scripts/transcript/prepare-realistic.mjs`; kaynak ve lisanslar
+`web/tests/media/SPEECH_SOURCE.md`; medya git'te değil; kurucunun kendi dosyaları okunmadı):
+
+- **AMI Meeting Corpus** (CC BY 4.0): dört kişilik gerçek toplantılar — üst üste konuşma, "hı hı",
+  gülme; elle yazılmış, kelime zamanlı referans. İki ses: yaka mikrofonlarının karışımı ve masadaki
+  **tek uzak mikrofon** (odanın öbür ucundaki kamera gibi: kısık, yankılı).
+- **Earnings-22** (CC BY-SA 4.0): gerçek kazanç çağrıları (hazırlanmış konuşma + soru-cevap, telefon
+  sesi, aksan), baştan sona; biri **51 dakika** — sorunu gösteren videonun uzunluğu. Referansta
+  kelime zamanı yok.
+- **Sentetik, temiz konuşmadan:** tek dosya içinde **seviye basamakları** (0 … −48 dB; okunmuş
+  konuşma ve toplantı), toplantının altında **müzik** (SNR 10 dB), konuşmaya **bitişik** müzik ve
+  gündelik sesler (arada sessizlik yok; boşluğa kelime yazılmamalı).
+- **Negatifler (doğru çıktı boş), seviye eşitlemeyi hedefleyen:** çok kısık müzik (−50 … −56 dBFS),
+  yüksek müzikten sonra 38–40 dB kısılan aynı müzik, kısık gürültü, gerçek kayıtlar (alkış, klavye,
+  dalga, süpürge aracı). 4 Ekim'in 25 negatifiyle birlikte **45 klip**.
+
+**İki yarı, iki ayrı zamanda.** Geliştirme yarısı (`rdev` 7 klip, 72 dk; `rneg` 10) önce üretildi ve
+her ayar onun üstünde seçildi. Ayarlar donduruldu (`e4fb8e1`); doğrulama yarısı (`rval` 8 klip,
+116 dk; `rnegv` 10 — başka toplantı ve başka site, başka çağrılar, başka okuyucular, başka müzik
+ve sesler) **ondan sonra** tanımlandı (`4e28583`) ve bir kez koşuldu. Denemenin yaptığı gibi.
+
+**Ölçüler.** WER iki ölçüyle yan yana: *normalize* (konuşma dili için alışılmış ölçü: OpenAI'nin
+`EnglishTextNormalizer`'ı iki tarafa — "um", "uh", "mm-hmm" gibi dolgular atılır, sayılar rakama)
+ve ADR-017'nin *katı* ölçüsü. Toplantı referansı hiçbir tanıyıcının yazmadığı dolgularla dolu
+olduğu için ve üst üste konuşmanın yalnızca biri yazılabildiği için bu WER'ler okunmuş
+konuşmanınkilerle karşılaştırılmaz. Asıl yeni ölçü: referans kelimelerinin **kendi süreleri**
+(konuşma süresi) nereye düştü —
+
+- **yazıldı:** metni gösterilen bir aralığın içinde;
+- **koruma attı:** "(anlaşılamadı)" olarak gösterilen bir aralığın içinde;
+- **hiç duyulmadı:** konuşma bulucunun (VAD) çıkardığı hiçbir aralığın içinde değil — panelde
+  hiçbir satırı yok.
+
+### Sorun ölçüldü (5 Ekim'de yayınlanan ayarlar, aynı derlemeyle)
+
+| Küme, model | WER normalize (katı) | Konuşma süresinin yazılan payı | Koruma attı | Hiç duyulmadı (VAD) | Negatifte uydurma |
+|---|---|---|---|---|---|
+| Geliştirme `rdev`, `base` | %37,5 (%40,0) | **%58,9** | %13,4 | **%27,7** | 0 / 35 |
+| Geliştirme `rdev`, `turbo` | %27,3 (%30,1) | %70,6 | %1,7 | %27,7 | 0 / 35 |
+| Doğrulama `rval`, `base` | %28,3 (%32,3) | **%62,1** | %16,1 | **%21,9** | 0 / 10 |
+| Doğrulama `rval`, `turbo` | %19,0 (%23,3) | %76,2 | %1,9 | %21,9 | 0 / 10 |
+
+(Paylar kelime zamanlı kliplerde; Earnings çağrılarında kelime zamanı yok.) Kurucunun gördüğü
+buydu: küçük modelle gerçek konuşmanın **beşte ikisi** yazılmıyordu. İki ayrı sebep:
+
+1. **Konuşmanın dörtte biri tanıyıcıya hiç gitmiyordu** (model fark etmez). Seviye basamaklı
+   kliplerde konuşmanın %41–73'ü, uzak mikrofonda %30'u, müzik altında %22–56'sı, denemenin stres
+   dosyasında (60 kayıt kendi seviyeleriyle) 567 s'nin 391 s'si. Konuşma bulucu, yüksek sesten sonra
+   gelen kısık konuşmaya "konuşma yok" diyor — denemenin "ölçülmedi" diye bıraktığı bulgu.
+2. **`base` kısa, bağlamsız aralıklardan emin olamıyor ve koruma onları atıyor** (%13–16; `turbo`
+   %2). Sohbet kısa parçalardan oluşur ("yeah", "okay, so…"); yarım saniyelik duraklamada bölünen
+   her parça tek başına bir aralık oluyordu. Hintli konuşmacıların çağrısında (4481221) `base`
+   209 aralığın 75'ini attı.
+
+Temiz, tek seviyeli çağrıda sorun yok (4475604: `base` %9,9, 172 aralıktan 9'u atıldı) — 4 dakikalık
+röportajın "çoğunlukla çalışması" bununla uyumlu.
+
+### Ne değişti (üçü de motor; koruma eşiği DEĞİŞMEDİ)
+
+`domain/transcriptSettings.ts`: 5 Ekim seti (`ENGINE_SETTINGS_2026_10_05`) ve bugünkü set
+(`ENGINE_SETTINGS`) yan yana durur; ölçüm betiği aynı derlemede ikisini de koşabilir (önce/sonra
+sütunları böyle üretildi). Uygulama her zaman bugünkü seti koşar.
+
+1. **Konuşma bulucudan önce seviye eşitleme** (`domain/levelNormalise.ts`, yalnızca bulucunun
+   dinlediği kopyada; tanıyıcıya verilen ses çözüldüğü hâliyle kesilir). Ses 50 ms'lik bloklara
+   bölünür; her blok, yakınındaki (0,3 s geri, 1,5 s ileri) en yüksek blok −20 dBFS'e gelecek kadar
+   **açılır**, en çok +40 dB, hiçbir zaman kısılmaz; kazanç blok boyunca kayarak değişir.
+   **Karşıtlık kuralı:** kazanç yalnızca yakınındaki seste en yüksek ile en kısık blok arasında
+   en az 20 dB fark varsa değişir (konuşmada hece ile hece arası her zaman bu kadar ayrışır);
+   yoksa son değerinde **tutulur**. Kural olmadan duraklamadaki oda gürültüsü +40 dB'ye
+   tırmanıyor ve bulucuyu yine sağırlaştırıyordu: uzak mikrofonda bulunan konuşma %75,6'dan
+   %71,7'ye **düştü**; kuralla %81,2'ye çıktı (yalnız bulucu, WAV; `scripts/transcript/vad-lab.mjs`).
+2. **Aralıklar kısa duraklamalarda bölünmez** (`CONVERSATION_VAD`): duraklama 0,5 s yerine
+   **1,2 s** sürünce aralık biter, iki yana 0,2 s yerine **0,4 s** pay. Eşikler (0,5 / 0,35)
+   yayınlanmış değerlerinde kaldı. Tanıyıcı cümleyi bağlamıyla duyar; aralık sayısı azaldığı için
+   iş de kısalır.
+3. **Atılan aralığa ikinci bakış:** korumanın attığı 2 s'den uzun aralık en sessiz yerinden ikiye
+   bölünür, her yarı **tek başına** tanınır ve **aynı korumayla** (ortalama log-olasılık ≥ −0,75,
+   zlib ≤ 2,4) yargılanır; geçen yarı yazılır, geçmeyen "(anlaşılamadı)" kalır (bir kez daha
+   bölünür, o kadar). Hiçbir şey ilk denemeninkinden zayıf bir sınamayla kabul edilmez.
+
+Geliştirme kümesinde denenen bileşimler (`base`; hepsi seviye eşitleme + ikinci bakışla):
+
+| Duraklama / pay | Yazılan | Koruma attı | Hiç duyulmadı | WER normalize | Stres dosyası WER | Not |
+|---|---|---|---|---|---|---|
+| 5 Ekim (eşitleme yok; 0,5 s / 0,2 s) | %58,9 | %13,4 | %27,7 | %37,5 | %72,0 | |
+| 0,5 s / 0,2 s | %71,7 | %16,1 | %12,2 | %30,3 | %9,9 | bulunan kısık konuşma kısa parçalar hâlinde atılıyor |
+| 0,8 s / 0,3 s | %78,8 | %10,9 | %10,3 | %27,6 | %10,9 | |
+| **1,2 s / 0,4 s (seçilen)** | **%82,2** | **%9,0** | **%8,8** | **%26,5** | **%9,8** | |
+| 2,0 s / 0,4 s | %87,2 | %5,8 | %7,1 | %26,5 | %16,7 | **alınmadı** |
+
+2,0 s saat olarak daha çok "yazıyor" ama WER aynı kalıyor ve çok konuşmacılı stres dosyasında
+bozuluyor (silinen kelime %1,5 → %8,1; seviye basamaklı okumada %1,9 → %13,8): uzun aralığın
+içindeki kelimeler **söylenmeden** kayboluyor. "(anlaşılamadı)" demeden kaybetmek, bu özelliğin
+kaçındığı şeyin ta kendisi; alınmadı.
+
+### Sonuç: önce / sonra
+
+Geliştirme yarısı (ayarlar bunun üstünde seçildi; `dev-before-*`, `dev-C-*` — e2e derlemesinde,
+bugünkü ayarlar ölçüm kancasıyla verilerek; motor kodu aynı):
+
+| Klip | `base` WER n. önce → sonra | `base` yazılan / atılan / duyulmayan önce → sonra | `turbo` WER n. önce → sonra | `turbo` yazılan önce → sonra |
+|---|---|---|---|---|
+| Toplantı, yaka mikrofonları (17 dk) | %32,8 → %27,0 | %76,5 / 10,0 / 13,5 → **%88,5** / 4,5 / 7,1 | %24,0 → %20,5 | %84,8 → %92,5 |
+| Aynı toplantı, uzak mikrofon | %57,9 → %46,9 | %48,7 / 21,5 / 29,8 → **%70,0** / 16,5 / 13,6 | %38,7 → %31,7 | %68,1 → %84,6 |
+| Çağrı 4475604 (21 dk) | %9,9 → %7,9 | atılan aralık 9 / 172 → 0 / 81 | %4,9 → %4,2 | 1 / 172 → 0 / 81 |
+| Seviye basamakları, okuma | %48,0 → %7,1 | %56,0 / 3,4 / 40,6 → **%98,5** / 1,5 / 0 | %43,2 → %2,1 | %58,8 → %100 |
+| Seviye basamakları, toplantı | %70,3 → %28,8 | %32,0 / 4,7 / 63,2 → **%92,6** / 3,9 / 3,5 | %67,4 → %19,1 | %34,8 → %95,5 |
+| Toplantı + müzik (SNR 10 dB) | %45,3 → %36,0 | %61,8 / 16,1 / 22,2 → **%77,6** / 10,6 / 11,9 | %28,8 → %25,5 | %76,9 → %86,7 |
+| Konuşmaya bitişik müzik | %6,9 → %7,6 | %100 → %100; boşluğa yazılan kelime 0 → 0 | %3,1 → %3,1 | boşluğa 0 → 0 |
+| **Hepsi (`rdev`)** | **%37,5 → %26,5** | **%58,9 / 13,4 / 27,7 → %82,2 / 9,0 / 8,8** | **%27,3 → %18,1** | **%70,6 → %90,1** (atılan 1,7 → 1,1; duyulmayan 27,7 → 8,8) |
+| Stres (60 kayıt kendi seviyesinde) | %72,0 → %9,8 | bulunan konuşma 176 s → 504 s | %69,2 → %3,9 | |
+
+**Doğrulama yarısı** (ayarlar dondurulduktan sonra üretildi, bir kez koşuldu; üretim derlemesi;
+`val-before-*`, `val-after-*`):
+
+| Klip | `base` WER n. önce → sonra | `base` yazılan / atılan / duyulmayan önce → sonra | `turbo` WER n. önce → sonra | `turbo` yazılan / atılan / duyulmayan önce → sonra |
+|---|---|---|---|---|
+| Toplantı IS1009a, yaka mikrofonları (14 dk) | %29,3 → %25,5 | %89,7 / 8,0 / 2,3 → **%96,6** / 2,8 / 0,6 | %21,6 → %21,9 | %96,3 / 1,5 / 2,3 → %99,4 / 0 / 0,6 |
+| Aynı toplantı, uzak mikrofon | %48,6 → %34,2 | %64,6 / 29,7 / 5,7 → **%89,9** / 6,2 / 3,8 | %27,0 → %25,8 | %91,3 / 3,0 / 5,7 → %95,5 / 0,7 / 3,8 |
+| Çağrı 4474229 (**51 dk**) | %15,3 → %14,7 | atılan aralık 19 / 180 (41 s) → 4 / 148 (6 s) | %11,0 → %11,1 | 6 / 180 → 2 / 148 |
+| Çağrı 4481221 (Hint aksanı, 21 dk) | **%30,7 → %15,7** | atılan aralık 75 / 209 (250 s) → 5 / 78 (21 s) | %11,3 → %10,9 | 7 / 209 → 1 / 78 |
+| Seviye basamakları, okuma | %54,9 → %14,0 | %47,0 / 0 / 53,0 → **%100** / 0 / 0 | %51,8 → %1,6 | %47,0 → %100 |
+| Seviye basamakları, toplantı | %79,5 → %32,1 | %18,0 / 9,3 / 72,7 → **%81,4** / 10,2 / 8,4 | %71,9 → %22,1 | %26,8 → %90,1 |
+| Toplantı + müzik (SNR 10 dB) | %85,4 → %54,8 | %12,6 / 31,6 / 55,8 → %43,8 / 34,9 / 21,3 | %57,1 → %22,4 | %37,3 → %78,1 |
+| Konuşmaya bitişik müzik ve sesler | %13,7 → %2,9 | %88,4 → %100; boşluğa 0 → 0 | %2,0 → %2,0 | boşluğa 0 → 0 |
+| **Hepsi (`rval`)** | **%28,3 → %19,6** (katı %32,3 → %24,1) | **%62,1 / 16,1 / 21,9 → %89,8 / 6,3 / 3,9** | **%19,0 → %14,3** (katı %23,3 → %19,2) | **%76,2 / 1,9 / 21,9 → %95,6 / 0,5 / 3,9** |
+
+Doğrulama, geliştirmede görüleni tutuyor: yazılmayan konuşma `base`'de %38'den **%10**'a,
+`turbo`'da %24'ten **%4**'e indi.
+
+**Uydurma metin: 0.** Bugünkü ayarlarla, doğru çıktısı boş olan **45 klip** (4 Ekim'in 25'i + `rneg`
+10 + `rnegv` 10): `base` 0 / 45, `turbo` 0 / 45 (Chromium; `val-after-*`). Duraklamalı kliplerde
+(pause-01/02) ve iki "bitişik müzik" klibinde boşluğa yazılan kelime: 0. İkinci bakışın negatif
+kliplerde ya da işaretli boşluklarda yazdığı aralık: 0 (`scripts/transcript/lab-report.mjs`).
+Seviye eşitleme gürültüyü "konuşma" yapmadı: bulucunun negatiflerde geçirdiği süre (yalnız bulucu,
+WAV, aynı bulucu ayarlarıyla) eşitlemesiz 47,2 s, eşitlemeyle 51,0 s (1 183 s'lik 35 klipte); geçen her
+aralığı koruma attı.
+
+Diğer tarayıcılar, bugünkü ayarlar, `base` (üretim derlemesi, tek tek, kilit altında; 45 negatif +
+duraklamalı iki klip + iki "bitişik müzik" klibi + seviye basamaklı okuma):
+
+| Tarayıcı | Uydurma metin | Boşluğa yazılan kelime | Seviye basamaklı okuma WER n. |
+|---|---|---|---|
+| Chrome 154.0.8037.98 | **0 / 45** | 0 | %14,0 |
+| Edge 154.0.4258.62 | **0 / 45** | 0 | %14,0 |
+| Firefox 155.0 | **0 / 45** | 0 | %13,5 |
+
+Chrome ve Edge, Chromium'la kelimesi kelimesine aynı çıktıyı verdi. `turbo` yalnızca Chromium'da
+koşuldu; gerçekçi kümenin konuşma klipleri Chrome / Edge / Firefox'ta koşulmadı.
+
+**Eski kümeye bedeli.** Okunmuş, duraklamalı kliplerde (pause) `base` WER %6,6 → %7,4; 244 kelimenin
+yazılan payı %100 → %98,3 (bir kelime artık müzikle aynı aralığa düşüyor ve o aralık atılıyor).
+Bedel bu; boşluğa yazılan kelime yine 0.
+
+### Denenip alınmayanlar
+
+- **Bağlamla ikinci deneme** (atılan aralığı iki yanından 1 s sesle yeniden tanımak): yalnızca
+  kayıt altına alındı, kullanılmadı. Geliştirme kümesinde ikiye bölmeden az kurtarıyordu (329 s
+  atılan konuşmanın 32 s'si; bölme 45 s) ve komşu konuşmanın yüksek güveni müzik aralığındaki
+  uydurmayı da geçirebilir (denemenin "paketleme" bulgusu); koruma yerelliğini bozmadan yapmak
+  kelime başına güven gerektirir. Yapılmadı.
+- **Bulucu eşiğini düşürmek** (0,4 / 0,3): bulunan konuşma +1–3 puan, negatiflerde geçen süre
+  15 s → 22–28 s. Alınmadı.
+- **Bulucuyu iki kopyada çalıştırıp birleştirmek** (ham + eşitlenmiş): karşıtlık kuralından +1
+  puan, iki kat dinleme süresi. Alınmadı.
+- **Kazanç tavanını düşürmek** (+20 / +30 dB): uzak mikrofonu düzeltiyor ama 40 dB'lik düşüşü
+  kaçırıyor (toplantı basamaklarında %93 → %85). Karşıtlık kuralı ikisini birlikte çözdü.
+- **Atılan aralığı öbür modelle yeniden denemek:** yapılmadı. İki model birden belleğe sığmaz
+  (`turbo` 4,4 GiB); `turbo` indirilmişse zaten onunla yazılır.
+- **Koruma eşiğini gevşetmek:** hiç denenmedi; uydurma metin ölçütü pazarlık konusu değil.
+
+### Önerilen model
+
+Ölçüm açık: gerçek konuşmada `turbo` hem daha çok yazıyor (%95,6'ya karşı %89,8) hem çok daha az
+yer atıyor (%0,5'e karşı %6,3; aksanlı çağrıda WER %10,9'a karşı %15,7). Bu yüzden
+(`domain/transcriptModels.ts`, `preselectedModel`):
+
+- WebGPU + `shader-f16` olan tarayıcıda `large-v3-turbo` **"Önerilen"** seçenektir, listede ilk
+  sıradadır ve **ön seçilidir**: "Önerilen: büyük model (≈595,6 MB, bir kez iner)"; `base`
+  "Küçük model (≈108,8 MB)" olarak kalır. İpuçları ölçüleni söyler (küçük model: "sohbette,
+  gürültüde ve kısık seste çok hata yapar, birçok yeri de anlayamaz").
+- **Tarayıcıda yalnızca `base` varsa `base` ön seçilidir:** "Yazıya dök" hemen çalışır; 596 MB'lık
+  indirme kullanıcının kendi kararı olarak kalır (büyük model yine "Önerilen" diye görünür).
+  İkisi de varsa ya da hiçbiri yoksa `turbo` ön seçilidir.
+- WebGPU'suz tarayıcıda tek model vardır, seçim gösterilmez.
+- Hiçbir indirme kendiliğinden başlamaz: düğme, basılmadan önce indireceği baytı söyler.
+  Tarayıcıya sormak (ekran kartı, saklı modeller) bitmeden hiçbir düğme çizilmez — düğmede önce bir
+  modelin, sonra ötekinin boyutu görünmez.
+
+### Dürüst geri bildirim
+
+Koşunun sonunda, bulunan konuşmanın en az onda biri yazılamadıysa (`transcriptCoverage`; koşunun
+gerçek süreleri, aşağı yuvarlanır) sonuç bunu sayıyla söyler: **"Bulunan konuşmanın yaklaşık yüzde
+62 kadarı yazıldı; 14 yer anlaşılamadı."** "Bulunan" kelimesi bilerek: bulucunun hiç duymadığı
+konuşmayı uygulama sayamaz. Bunu küçük model yazdıysa ve büyük model burada çalışabiliyorsa:
+"Bu, küçük modelle yazıldı. Önerilen büyük model anlaşılamayan yerlerin çoğunu yazabilir." ve
+**"Önerilen modelle yeniden yaz"** — bir adım geri götürür, büyük modeli seçer; indirme yine
+düğmeyle. (Ölçülen dayanak: doğrulama kümesinde `base`'in attığı konuşma süresi %6,3, `turbo`'nunki
+%0,5.) WebGPU'suz tarayıcıda yalnızca sayı söylenir; izlenemeyecek tavsiye verilmez.
+
+### Uzun yazı: panel pencereli çiziliyor
+
+120 dakikalık ölçümde panel 2491 satırı 17 443 DOM düğümüyle çiziyordu. Artık **200 satırdan
+sonra** yalnızca görünen satırlar ve iki yanında 600 piksellik pay sayfadadır
+(`domain/virtualList.ts`, `TranscriptPanel.tsx`; yeni bağımlılık yok). 200 satıra kadar (yaklaşık
+10 dakikalık konuşma) liste eskisi gibi tümüyle çizilir.
+
+- Satır yükseklikleri farklıdır (bir–üç satır yazı, düzeltilen satır daha uzun): her çizilen satır
+  ölçülür (`ResizeObserver`), ölçülmeyenler için ilk ölçümlerin ortalaması kullanılır; görünen
+  alanın üstündeki bir satır tahmininden farklı çıkarsa kaydırma konumu düzeltilir (okunan yer
+  kıpırdamaz).
+- **Ekran okuyucu:** liste yine `ul`/`li`'dir; her satır yerini söyler (`aria-posinset`,
+  `aria-setsize` = bütün satır sayısı) — "40'ın 12'si" değil "2491'in 12'si". e2e niteliği ve
+  tarayıcının erişilebilirlik ağacındaki liste / öğe rollerini sınar; **gerçek bir ekran
+  okuyucuyla dinlenmedi**.
+- **Odak hiç kaybolmaz:** odağı tutan satır ve düzeltilmekte olan satır, liste başka yere
+  kaydırılsa da sayfada kalır (kendi yerinde). ↑ ↓ Home End çizilmemiş satıra da gider (önce
+  çizilir, sonra odaklanır); liste tek sekme durağıdır.
+- Tıkla-git, oynarken izleme, Shift ile aralık seçme ("Bunlardan kesit yap"), yerinde düzeltme
+  çizilmemiş satırlarda da aynı çalışır (satır sırasıyla, DOM'la değil).
+- **Sayfada bul (Ctrl+F) dürüstçe:** tarayıcının araması yalnızca çizilen satırları görür. Bu
+  yüzden panelin kendi kutusu var — **"Yazıda ara"** (12 satırdan itibaren): bütün satırlarda arar
+  (büyük/küçük harf, aksan ve Türkçe i/ı ayrımı gözetmeden), kaç satırda bulduğunu söyler, Enter /
+  Shift+Enter ve iki düğmeyle sonuçlar arasında gezer, bulunan satırı listede gösterir ve listenin
+  sekme durağı yapar; "(anlaşılamadı)" yerleri de aranabilir. Liste pencereliyken kutunun altında
+  yazar: "Uzun yazıda tarayıcının 'sayfada bul'u (Ctrl+F) yalnızca ekrandaki satırları görür; bu
+  kutu bütün satırlarda arar."
+
+«PANEL ÖLÇÜMÜ»
+
+### Hız ve bellek (tek başına, kilit altında)
+
+Doğruluk tabloları yan yana dört (ya da iki) tarayıcıyla koşuldu; hız onlardan okunmaz. Aşağıdakiler
+tek başına koşuldu (üretim derlemesi, Chromium 153):
+
+| Klip, model, ayar | Toplam süre / ses süresi | Dinleme geçişi | Aralık (ikinci bakış) | Bellek taban → tepe | Makine doluluğu |
+|---|---|---|---|---|---|
+| Toplantı IS1009a (14 dk), `base`, 5 Ekim | **0,43** (359 s) | 14,8 s | 93 (0) | 290 → 1 086 MiB | %45 |
+| Aynı, `base`, bugün | **0,35** (291 s) | 15,5 s | 46 (24) | 294 → 1 073 MiB | %36 |
+| Aynı, `turbo`, bugün | **0,21** (179 s) | 27,0 s | 46 (0) | 1 016 → 4 008 MiB | %69 |
+| Çağrı 4474229 (**51 dk**), `base`, bugün | **0,35** (17,9 dk) | 53 s | 148 (0) | 309 → 1 147 MiB | %55 |
+
+- Bugünkü ayarlar **daha yavaş değil, biraz daha hızlı**: aralık sayısı yarıya indi (her aralık
+  30 s'lik bir encoder geçişidir); ikinci bakışın 24 çağrısı bunu geri almıyor. Seviye eşitlemenin
+  dinleme geçişine bedeli ölçüm gürültüsünün içinde (14,8 → 15,5 s).
+- 51 dakikalık çağrı bu masaüstünde **18 dakikada** bitti; bellek dosya uzunluğuyla büyümedi
+  (1,15 GiB); CSP ihlali 0, site dışı istek 0. Sonuç 1 033 satır: panel 223 DOM düğümüyle çizildi,
+  ölçüm betiği satırları listeyi kaydırarak okudu.
+- Telefonda ve dizüstünde bugün de ölçülmedi.
+
+### Hâlâ zayıf olan (bulut yolunun karşılaması gereken)
+
+- **Üst üste konuşma ve çok kişili sohbet:** en iyi durumda bile (`turbo`, yaka mikrofonları)
+  normalize WER %21–22; aynı anda konuşan iki kişiden biri yazılır, kim konuştuğu hiç yazılmaz
+  (konuşmacı ayrımı yok).
+- **Müzik altında konuşma, küçük modelle:** doğrulamada konuşmanın %35'i atıldı, %21'i hiç
+  duyulmadı (WER %54,8); `turbo` %22,4.
+- **Uzak mikrofon, küçük modelle:** WER %34–47.
+- **WebGPU'suz her cihaz (telefonlar, Firefox, Safari) küçük modelde kalır** — yani en zayıf
+  sonuçlar en zayıf cihazlarda.
+- **Çok kısık konuşmada sessiz kayıp:** seviye basamaklı okumada `base` bütün konuşmayı "yazılmış"
+  aralıklara aldı ama kelimelerin %9'u metinde yok (WER %14,0; `turbo` %1,6).
+- **Uzun çağrıda `turbo` da %11 WER'de** (sayılar, özel adlar, şirket terimleri).
+- Türkçe, telefon, Safari, konuşmacı ayrımı, noktalama kalitesi: bu çalışmada da ölçülmedi.
 
 ## Telefon (Galaxy S23)
 
@@ -544,10 +830,10 @@ Hepsi 4–5 Ekim 2026'da bu makinede, son kaynakla koşuldu.
   eşiklerini geçmeden eklenmez.
 - **Dizüstü ve boş makine.** Bütün hızlar dolu bir masaüstündendir.
 - **Safari / WebKit / iOS.** Hiç denenmedi (CSP'nin worker'a uygulanıp uygulanmadığı dahil).
-- **Vokalli müzik, kendiliğinden konuşma, üst üste konuşma, aksan, gerçek telefon mikrofonu:**
-  veri denemeninkiyle aynı (okunmuş kitap ve okunmuş cümle).
-- **VAD öncesi seviye eşitleme** (denemenin stres bulgusu: tek dosyada 40 dB düşüşte kısık
-  bölümler konuşma sayılmıyor): yapılmadı; `long-fleurs-raw` uygulama yolunda koşulmadı.
+- **Vokalli müzik, gerçek telefon mikrofonu:** ölçülmedi. Kendiliğinden konuşma, üst üste konuşma,
+  aksan ve uzak mikrofon 7 Ekim'de ölçüldü (gerçekçi küme).
+- ~~**VAD öncesi seviye eşitleme**~~: 7 Ekim'de yapıldı ve ölçüldü (stres dosyası `base` WER %72,0 →
+  %9,8).
 - **`turbo`** Chrome/Edge'de ve uzun dosyada; **`base` WebGPU'da** (gönderilmiyor).
 - **Yazıya dökerken sekmenin arka plana alınması**, pil ve ısınma.
 - **İnsan değerlendirmesi:** altyazı satırlarının okunabilirliği, "(anlaşılamadı)"nın
@@ -565,7 +851,8 @@ Hepsi 4–5 Ekim 2026'da bu makinede, son kaynakla koşuldu.
    `web/tests/media/SPEECH_SOURCE.md`).
 2. **`'wasm-unsafe-eval'`:** onaylanmıştı, gerekmediği için eklenmedi. Safari desteklenecekse
    ya da başlık gönderebilen bir barındırıcıya geçilirse yeniden gündeme gelir.
-3. **`base` varsayılan olarak kabul mü?** Uydurma metin yok, ama doğruluk eşiğin çevresinde
+3. ~~**`base` varsayılan olarak kabul mü?**~~ (7 Ekim'de karara bağlandı: WebGPU'lu tarayıcıda `turbo`
+   önerilen ve ön seçili; başka yerde `base` tek seçenek.) Eski soru: Uydurma metin yok, ama doğruluk eşiğin çevresinde
    (temiz konuşmada %4,9–12,4) ve gürültüde zayıf; hız konuşma süresinin yaklaşık yarısı.
    Seçenekler: olduğu gibi (taslak etiketiyle), ya da WebGPU'lu cihazda `turbo`'yu varsayılan
    önermek (596 MB indirme, 4,4 GiB bellek).
