@@ -6,6 +6,7 @@ import { ENHANCE_STRENGTHS_V4, type EnhanceStrengthV4, type Project } from '@/do
 import type { KesitSettings } from '@/domain/kesit';
 import type { MessageKey } from '@/i18n/messages';
 import { BeforeAfter, enhanceItems } from './BeforeAfter';
+import { EnhanceSlowNotice } from './SlowNotice';
 import { useEnhancePreview } from './useEnhancePreview';
 
 interface Props {
@@ -77,6 +78,7 @@ export function EnhanceSetting({ t, project, settings, videoFile, active, onChan
                 : `${t('enhance.will.title')} ${enhanceItems(t, picture.summary, 'will').join(', ')}.`}
             </p>
           ) : null}
+          <EnhanceSlowNotice t={t} picture={picture} className="hint-small" testId="enhance-setting-slow" />
         </>
       ) : null}
     </div>

@@ -1671,6 +1671,7 @@ async function produceOutput(
             enhance: {
               strength: plan.enhance.strength,
               engine: enhancer.engine,
+              accelerated: enhancer.accelerated,
               summary: summarize(enhancement.timeline),
               analysedFrames: enhancement.analysedFrames,
               enhancedFrames,
@@ -1945,6 +1946,7 @@ async function runEnhancePreview(
     summary: summarize(timeline),
     params,
     engine: enhancer.engine,
+    accelerated: enhancer.accelerated,
   };
 }
 

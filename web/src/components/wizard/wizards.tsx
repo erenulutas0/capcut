@@ -21,6 +21,7 @@ import {
   type GapChoice,
 } from '@/application/taskRecipes';
 import { BeforeAfter, enhanceItems } from '@/components/enhance/BeforeAfter';
+import { EnhanceSlowNotice } from '@/components/enhance/SlowNotice';
 import { useEnhancePreview } from '@/components/enhance/useEnhancePreview';
 import { Icon } from '@/components/Icon';
 import { TranscribeSteps } from '@/components/transcript/TranscribeSteps';
@@ -1009,11 +1010,7 @@ function IyilestirWizard(host: WizardHostProps) {
                 <span>{nothing ? t('wizard.iyilestir.nothing') : `${t('enhance.will.title')} ${items.join(', ')}.`}</span>
               </p>
             ) : null}
-            {picture?.engine === 'cpu' ? (
-              <p className="wizard-hint" data-testid="iyilestir-slow">
-                {t('wizard.iyilestir.slow')}
-              </p>
-            ) : null}
+            <EnhanceSlowNotice t={t} picture={picture} className="wizard-hint" testId="iyilestir-slow" />
           </div>
           <fieldset className="wizard-choice" data-testid="iyilestir-choice">
             <legend>{t('wizard.iyilestir.choice')}</legend>

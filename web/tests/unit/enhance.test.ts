@@ -10,6 +10,9 @@ import {
   NEUTRAL_TONE,
   SHOULDER_KNEE,
   analysisFrames,
+  isSoftwareRenderer,
+  slowEnhanceNotice,
+  slowEnhanceSeconds,
   applyTone,
   cameraShare,
   chooseLook,
@@ -677,6 +680,44 @@ describe('frameToRefine: looking closer where the light changes', () => {
     expect(frameToRefine(points, new Set([15]))).toBeNull();
     // Frames next to each other have nothing in between.
     expect(frameToRefine([{ frame: 10, stats: dark }, { frame: 11, stats: bright }])).toBeNull();
+  });
+});
+
+describe('a device without a graphics card is told so', () => {
+  it('knows the software rasterisers by name', () => {
+    expect(isSoftwareRenderer('ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)')).toBe(true);
+    expect(isSoftwareRenderer('llvmpipe (LLVM 15.0.7, 256 bits)')).toBe(true);
+    expect(isSoftwareRenderer('ANGLE (Microsoft, Microsoft Basic Render Driver Direct3D11 vs_5_0 ps_5_0, D3D11)')).toBe(true);
+    expect(isSoftwareRenderer('Google SwiftShader')).toBe(true);
+    expect(isSoftwareRenderer('ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 Ti (0x00002482) Direct3D11 vs_5_0 ps_5_0, D3D11)')).toBe(false);
+    expect(isSoftwareRenderer('ANGLE (Intel, Intel(R) UHD Graphics 620 Direct3D11 vs_5_0 ps_5_0, D3D11)')).toBe(false);
+    expect(isSoftwareRenderer('Adreno (TM) 740')).toBe(false);
+    expect(isSoftwareRenderer('Apple M2')).toBe(false);
+    // The browser does not say: no warning without evidence.
+    expect(isSoftwareRenderer(null)).toBe(false);
+    expect(isSoftwareRenderer('')).toBe(false);
+  });
+
+  it('estimates from the measured cost per frame: five minutes of 1080p is more than half an hour', () => {
+    // Measured (ADR-037): 9001 frames of 1080p took 2162 s on software WebGL.
+    const estimate = slowEnhanceSeconds(9001, 1920, 1080);
+    expect(estimate).toBeGreaterThan(30 * 60);
+    expect(estimate).toBeLessThan(45 * 60);
+    expect(Math.abs(estimate - 2162) / 2162).toBeLessThan(0.1);
+    // Fewer pixels, less time, in proportion; nothing for nothing.
+    expect(slowEnhanceSeconds(9001, 1280, 720)).toBeCloseTo(estimate * (1280 * 720) / (1920 * 1080), 6);
+    expect(slowEnhanceSeconds(0, 1920, 1080)).toBe(0);
+  });
+
+  it('says how long only when it is long enough to matter, in minutes and then in hours', () => {
+    expect(slowEnhanceNotice(0)).toEqual({ kind: 'general' });
+    expect(slowEnhanceNotice(60)).toEqual({ kind: 'general' });
+    expect(slowEnhanceNotice(61)).toEqual({ kind: 'minutes', n: 2 });
+    expect(slowEnhanceNotice(slowEnhanceSeconds(9001, 1920, 1080))).toEqual({ kind: 'minutes', n: 38 });
+    expect(slowEnhanceNotice(119 * 60)).toEqual({ kind: 'minutes', n: 119 });
+    expect(slowEnhanceNotice(120 * 60)).toEqual({ kind: 'hours', n: 2 });
+    // An hour of 1080p at 30 frames a second.
+    expect(slowEnhanceNotice(slowEnhanceSeconds(108_000, 1920, 1080))).toEqual({ kind: 'hours', n: 8 });
   });
 });
 

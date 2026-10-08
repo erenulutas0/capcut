@@ -235,6 +235,8 @@ export class GlEnhancer {
   readonly canvas: OffscreenCanvas;
   /** Whether intermediate pictures keep more than 8 bits. */
   readonly halfFloat: boolean;
+  /** The renderer's own name where the browser tells it (a graphics card, or a software rasteriser), else null. */
+  readonly renderer: string | null;
   private lost = false;
 
   private constructor(
@@ -250,6 +252,15 @@ export class GlEnhancer {
   ) {
     this.canvas = canvas;
     this.halfFloat = halfFloat;
+    let renderer: string | null = null;
+    try {
+      const info = gl.getExtension('WEBGL_debug_renderer_info');
+      const name: unknown = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+      renderer = typeof name === 'string' && name ? name : null;
+    } catch {
+      renderer = null;
+    }
+    this.renderer = renderer;
     canvas.addEventListener('webglcontextlost', () => {
       this.lost = true;
     });

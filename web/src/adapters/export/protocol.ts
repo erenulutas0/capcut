@@ -103,6 +103,8 @@ export type EnhancePreviewResult =
       /** What was applied to this frame. */
       params: EnhanceParams;
       engine: 'webgl2' | 'cpu';
+      /** Whether a graphics card does the work (see `FrameEnhancer.accelerated`). */
+      accelerated: boolean;
     }
   | { ok: false; reason: EnhancePreviewFailure };
 

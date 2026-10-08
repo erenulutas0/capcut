@@ -35,7 +35,7 @@ export function isEnhanceStrength(value: unknown): value is EnhanceStrength {
 }
 
 /** Bumped whenever the same recipe would give different pixels (part of the plan's fingerprint). */
-export const ENHANCE_ENGINE_VERSION = 1;
+export const ENHANCE_ENGINE_VERSION = 2;
 
 /** The picture's place inside the output frame, in pixels (bars around it are left alone). */
 export interface PictureRect {
@@ -124,7 +124,12 @@ export interface EnhanceTuning {
   graphicFlat: number;
   vividPicture: number;
   graphicSaturation: number;
-  /** Corrections smaller than these are not made at all ("does no harm"). */
+  /**
+   * Corrections smaller than these are not made at all ("does no harm"), and
+   * from there they fade in (`fadeIn`). Never a
+   * step — a correction that switched on at a threshold would treat two
+   * videos that look the same differently (ADR-037, 8 Oct 2026).
+   */
   deadGain: number;
   deadBlack: number;
   deadGamma: number;
@@ -145,8 +150,14 @@ export interface EnhanceTuning {
   thresholdFloor: number;
   /** Noise (8-bit levels, after the filter) at which sharpening is switched off entirely. */
   noSharpenNoise: number;
-  /** Time constant (seconds) and luminance tolerance of the smoothing between analysed frames. */
+  /**
+   * Smoothing between analysed frames (`planEnhancement`): the time constant
+   * (seconds); how far it may move a frame from the correction it asks for
+   * itself, in units of "just noticeable" (`toneGap`); and how alike two
+   * frames' medians must be (code values) to be averaged.
+   */
   smoothSeconds: number;
+  smoothTone: number;
   smoothLuma: number;
   strengths: Record<EnhanceStrength, StrengthTuning>;
 }
@@ -182,6 +193,7 @@ export const ENHANCE_TUNING: EnhanceTuning = {
   thresholdFloor: 0,
   noSharpenNoise: 4.6,
   smoothSeconds: 2,
+  smoothTone: 0.5,
   smoothLuma: 0.08,
   strengths: {
     light: { maxGain: 1.5, gainShare: 0.75, maxBlack: 0.03, blackShare: 0.4, minGamma: 1, whiteBalance: 0, maxCast: 0, vibrance: 0.06, sharpen: 0.7, denoise: 1.3 },
@@ -189,6 +201,45 @@ export const ENHANCE_TUNING: EnhanceTuning = {
     strong: { maxGain: 4, gainShare: 1, maxBlack: 0.1, blackShare: 1, minGamma: 0.8, whiteBalance: 0.8, maxCast: 0.15, vibrance: 0.3, sharpen: 2.5, denoise: 2.9 },
   },
 };
+
+/* -------------------------------------------------------------------- speed */
+
+/**
+ * Whether a WebGL renderer name (`WEBGL_debug_renderer_info`) is a software
+ * rasteriser: WebGL works there and gives the right picture, but on the
+ * processor — measured about as slow as the reference renderer. Null (the
+ * browser does not tell) counts as hardware: no warning without evidence.
+ */
+export function isSoftwareRenderer(name: string | null): boolean {
+  if (!name) return false;
+  return /swiftshader|llvmpipe|softpipe|software|basic render|warp\b/i.test(name);
+}
+
+/**
+ * Seconds per 1080p frame where no graphics card does the work. Measured
+ * (ADR-037, 7 Oct 2026, one computer): 0.22–0.24 s on software WebGL with all
+ * three passes, 0.28–0.34 s on the reference renderer; 0.09–0.10 s without
+ * the noise filter. One middle value, for an honest "about".
+ */
+export const SLOW_SECONDS_PER_1080P_FRAME = 0.25;
+
+/** About how long enhancing takes without a graphics card, in seconds: by frames and picture size. */
+export function slowEnhanceSeconds(frames: number, width: number, height: number): number {
+  return Math.max(0, frames) * SLOW_SECONDS_PER_1080P_FRAME * ((width * height) / (1920 * 1080));
+}
+
+/**
+ * What to tell someone whose device has no graphics card, before the
+ * download: under two minutes only that it is slow (with the measured
+ * example), from two minutes on about how many minutes, from two hours on
+ * about how many hours.
+ */
+export function slowEnhanceNotice(seconds: number): { kind: 'general' } | { kind: 'minutes' | 'hours'; n: number } {
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes >= 120) return { kind: 'hours', n: Math.round(minutes / 60) };
+  if (minutes >= 2) return { kind: 'minutes', n: minutes };
+  return { kind: 'general' };
+}
 
 /* ------------------------------------------------------------ measurement */
 
@@ -548,6 +599,20 @@ function clamp(value: number, low: number, high: number): number {
   return Math.min(high, Math.max(low, value));
 }
 
+/**
+ * A dead band without a step: nothing up to `dead`; above it the value
+ * itself less a remainder that dies away (a third of `dead` is still missing
+ * at twice `dead`, a twentieth at four times). Continuous and never steeper
+ * than 2, so a slightly different measurement gives a slightly different
+ * correction — a plain "below this, nothing" switches a tenth more light on
+ * or off for a difference nobody can see.
+ */
+export function fadeIn(value: number, dead: number): number {
+  if (dead <= 0) return Math.max(0, value);
+  if (value <= dead) return 0;
+  return value - dead * Math.exp(-(value - dead) / dead);
+}
+
 /** Where the shoulder of the tone curve starts, in linear light: below it a gain is a plain gain. */
 export const SHOULDER_KNEE = 0.5;
 
@@ -575,14 +640,20 @@ export function cameraShare(stats: FrameStats, tuning: EnhanceTuning = ENHANCE_T
  * - Mid-tones: if the median is still dark after that, it is lifted towards
  *   `medianTarget`, within the limit.
  *
- * Corrections smaller than the dead bands are dropped, so a picture that is
- * already fine is not touched ("does no harm").
+ * Corrections inside the dead bands are dropped and just above them they
+ * fade in (`settleTone`), so a picture that is already fine is not touched
+ * ("does no harm") and nothing switches on at a threshold.
  */
 export function chooseTone(
   stats: FrameStats,
   strength: EnhanceStrength,
   tuning: EnhanceTuning = ENHANCE_TUNING,
 ): ToneParams {
+  return settleTone(wantedTone(stats, strength, tuning), tuning);
+}
+
+/** The correction the histogram asks for, before the dead bands (what the plan averages over time). */
+function wantedTone(stats: FrameStats, strength: EnhanceStrength, tuning: EnhanceTuning): ToneParams {
   const limits = tuning.strengths[strength];
   const lowLight = srgbToLinear(stats.low);
   const highLight = srgbToLinear(stats.high);
@@ -600,31 +671,59 @@ export function chooseTone(
   let black =
     clamp((lowLight - srgbToLinear(tuning.lowTarget)) * limits.blackShare, 0, limits.maxBlack) * lifted * camera;
   black = Math.min(black, lowLight);
-  if (black < tuning.deadBlack) black = 0;
+  // The gain below is worked out for the black level that will really be removed.
+  const removed = fadeIn(black, tuning.deadBlack);
 
   // Gain: what brings the bright end up to its target, but never past what
   // would make the median brighter than a normal picture's. A picture whose
   // brightest part is grey (a desk, fog) is not dark for that reason alone.
-  const after = (light: number): number => Math.max(0, light - black) / (1 - black);
+  const after = (light: number): number => Math.max(0, light - removed) / (1 - removed);
   const top = after(highLight);
   const middle = after(medianLight);
   const byHigh = top > 0 ? srgbToLinear(tuning.highTarget) / top : 1;
   const byMedian = middle > 0 ? srgbToLinear(tuning.medianCeiling) / middle : 1;
   // ... and only where the bright end is clearly short of white.
   const dark = clamp((tuning.goodHigh - stats.high) / (tuning.goodHigh - tuning.darkHigh), 0, 1);
-  let gain = Math.pow(clamp(Math.min(byHigh, byMedian), 1, limits.maxGain), limits.gainShare * dark * camera);
-  if (gain < 1 + tuning.deadGain) gain = 1;
+  const gain = Math.pow(clamp(Math.min(byHigh, byMedian), 1, limits.maxGain), limits.gainShare * dark * camera);
 
   // Mid-tones: a median still dark after the gain (a bright window, a dark room) is lifted, within the limit.
-  const median = Math.min(1, gain * middle);
+  const median = Math.min(1, settledGain(gain, tuning) * middle);
   const target = srgbToLinear(tuning.medianTarget);
   let gamma = 1;
   if (median > 0 && median < target && camera > 0) {
     gamma = 1 + (clamp(Math.log(target) / Math.log(median), limits.minGamma, 1) - 1) * camera;
-    if (gamma > 1 - tuning.deadGamma) gamma = 1;
   }
   return { black, gain, gamma };
 }
+
+function settledGain(gain: number, tuning: EnhanceTuning): number {
+  return Math.exp(fadeIn(Math.log(Math.max(1, gain)), Math.log(1 + tuning.deadGain)));
+}
+
+/** The dead bands of the light correction: nothing inside them, fading in above (`fadeIn`). */
+function settleTone(tone: ToneParams, tuning: EnhanceTuning): ToneParams {
+  return {
+    black: fadeIn(tone.black, tuning.deadBlack),
+    gain: settledGain(tone.gain, tuning),
+    gamma: 1 - fadeIn(1 - tone.gamma, tuning.deadGamma),
+  };
+}
+
+/**
+ * How differently two light corrections look, in units of "just
+ * noticeable": below 1 one can be blended into the other without anyone
+ * seeing it.
+ */
+export function toneGap(first: ToneParams, second: ToneParams): number {
+  return Math.max(
+    Math.abs(Math.log(first.gain / second.gain)) / TONE_STEP.logGain,
+    Math.abs(first.black - second.black) / TONE_STEP.black,
+    Math.abs(first.gamma - second.gamma) / TONE_STEP.gamma,
+  );
+}
+
+/** One just noticeable step of each part of the light correction. */
+const TONE_STEP = { logGain: Math.log(1.12), black: 0.008, gamma: 0.04 } as const;
 
 /** The middle value of each measurement over the analysed frames. */
 export function typicalStats(frames: readonly FrameStats[]): FrameStats | null {
@@ -671,6 +770,10 @@ export function measuredCast(stats: FrameStats, maxCast: number): [number, numbe
   return cast;
 }
 
+/** The dead bands of the noise filter's range (8-bit levels) and of the sharpening amount (see `fadeIn`). */
+const MIN_DENOISE_SIGMA = 0.5;
+const MIN_SHARPEN = 0.05;
+
 /** Colour and detail for the whole download, from the typical frame. */
 export function chooseLook(
   stats: FrameStats,
@@ -682,13 +785,13 @@ export function chooseLook(
 
   // White balance: gains that undo the agreed cast, scaled so grey keeps its luminance.
   // What is removed is the measured cast times the strength's share; a removal too small to see is not made.
-  const cast = measuredCast(stats, limits.maxCast).map((value) => value * camera * limits.whiteBalance) as [
-    number,
-    number,
-    number,
-  ];
+  const wanted = measuredCast(stats, limits.maxCast).map((value) => value * camera * limits.whiteBalance);
+  const largest = Math.max(Math.abs(wanted[0] ?? 0), Math.abs(wanted[1] ?? 0), Math.abs(wanted[2] ?? 0));
+  // ... and just above that it fades in (`fadeIn`), all three channels together.
+  const share = largest > 0 ? fadeIn(largest, tuning.deadCast) / largest : 0;
+  const cast = wanted.map((value) => value * share) as [number, number, number];
   let whiteBalance: [number, number, number] = [1, 1, 1];
-  if (Math.max(Math.abs(cast[0]), Math.abs(cast[1]), Math.abs(cast[2])) >= tuning.deadCast) {
+  if (share > 0) {
     const gains = cast.map((value) => 1 / (1 + value)) as [number, number, number];
     const light = LUMA_R * gains[0] + LUMA_G * gains[1] + LUMA_B * gains[2];
     whiteBalance = [gains[0] / light, gains[1] / light, gains[2] / light];
@@ -696,22 +799,25 @@ export function chooseLook(
 
   // Colour lift: only for dull pictures, fading out as the picture is more saturated already.
   const dull = clamp(1 - stats.saturation / tuning.vividSaturation, 0, 1) * camera;
-  const vibrance = limits.vibrance * dull < tuning.deadVibrance ? 0 : limits.vibrance * dull;
+  const vibrance = fadeIn(limits.vibrance * dull, tuning.deadVibrance);
 
   // Noise filter: off below the floor; its range follows the measured noise.
   const noisy = clamp((stats.noise - tuning.noiseFloor) / (tuning.noiseFull - tuning.noiseFloor), 0, 1);
-  const sigma = noisy > 0 ? Math.min(tuning.maxDenoiseSigma, limits.denoise * stats.noise) * noisy : 0;
-  const denoise = sigma < 0.5 ? 0 : sigma / 255;
+  const sigma = fadeIn(
+    noisy > 0 ? Math.min(tuning.maxDenoiseSigma, limits.denoise * stats.noise) * noisy : 0,
+    MIN_DENOISE_SIGMA,
+  );
+  const denoise = sigma / 255;
 
-  // Sharpening: by how soft the edges are; less on a noisy picture (what the filter leaves is still noise).
-  const left = denoise > 0 ? stats.noise * 0.6 : stats.noise;
+  // Sharpening: by how soft the edges are; less on a noisy picture (what the filter leaves is still
+  // noise: about 0.6 of it once the filter is fully on).
+  const left = stats.noise * (1 - 0.4 * clamp(sigma / (2 * MIN_DENOISE_SIGMA), 0, 1));
   const softness =
     stats.sharpness === null
       ? 0
       : clamp((tuning.sharpEnough - stats.sharpness) / (tuning.sharpEnough - tuning.softest), 0, 1);
   const calm = clamp(1 - left / tuning.noSharpenNoise, 0, 1);
-  const amount = limits.sharpen * softness * calm;
-  const sharpen = amount < 0.05 ? 0 : amount;
+  const sharpen = fadeIn(limits.sharpen * softness * calm, MIN_SHARPEN);
   const sharpenThreshold = sharpen > 0 ? (tuning.thresholdFloor + tuning.thresholdPerNoise * left) / 255 : 0;
 
   return { whiteBalance, vibrance, denoise, sharpen, sharpenThreshold };
@@ -778,13 +884,7 @@ export const REFINE_BUDGET = 96;
  * the video serves all three.
  */
 export function toneDistance(a: FrameStats, b: FrameStats, tuning: EnhanceTuning = ENHANCE_TUNING): number {
-  const first = chooseTone(a, 'strong', tuning);
-  const second = chooseTone(b, 'strong', tuning);
-  return Math.max(
-    Math.abs(Math.log(first.gain / second.gain)) / Math.log(1.12),
-    Math.abs(first.black - second.black) / 0.008,
-    Math.abs(first.gamma - second.gamma) / 0.04,
-  );
+  return toneGap(chooseTone(a, 'strong', tuning), chooseTone(b, 'strong', tuning));
 }
 
 /**
@@ -832,12 +932,22 @@ export function frameToRefine(
  * Colour and detail are decided once, from the typical analysed frame: they
  * cannot change from frame to frame. Light follows the video (a dark room
  * and a sunny street in one video each get their own correction) but each
- * analysed frame's correction is first averaged with its neighbours in time
- * that look alike (within `smoothLuma` of its median), so a single odd frame
- * cannot make the brightness jump, and between analysed frames the
- * correction is interpolated. Where the light really changes at once, the
- * analysis has put two analysed frames next to each other (`frameToRefine`),
- * and the correction switches between those two frames.
+ * analysed frame's correction is first calmed (see the three steps in the
+ * code): a single odd frame takes its neighbours' correction, the rest is
+ * averaged with the frames around it that look alike — but only within half
+ * a just noticeable step of what the frame asks for itself. Until 8 Oct 2026
+ * that average had no such limit: a well-exposed stretch inherited about a
+ * tenth of gain from the brightening stretch before it, which was exactly
+ * the size of the (then abrupt) dead band — so it was lifted or left alone
+ * depending on the grain. Between analysed frames the correction is
+ * interpolated. Where the light really changes at once, the analysis has
+ * put two analysed frames next to each other (`frameToRefine`), and the
+ * correction switches between those two.
+ *
+ * The dead bands are applied after the averaging, once, and they fade in
+ * (`settleTone`). A whole kind of correction that would be too small to see
+ * anywhere in the video is not made at all (`dropInvisible`), so what the
+ * summary says is exactly what is done.
  */
 export function planEnhancement(
   points: readonly AnalysisPoint[],
@@ -849,44 +959,96 @@ export function planEnhancement(
   const typical = typicalStats(sorted.map((point) => point.stats));
   if (!typical) return { strength, look: { ...NEUTRAL_LOOK }, tones: [], typical: null };
 
-  const raw = sorted.map((point) => chooseTone(point.stats, strength, tuning));
+  const raw = sorted.map((point) => wantedTone(point.stats, strength, tuning));
   const reach = tuning.smoothSeconds * fps;
+  // Each analysed frame stands for the stretch of video around it. Where the light changes the
+  // analysis looks closer (`frameToRefine`), so there the frames are dense: counted one by one they
+  // would outvote the rest of the video, and how many there are depends on the grain.
+  const spans = sorted.map((point, index) => {
+    const before = sorted[index - 1];
+    const after = sorted[index + 1];
+    const left = before ? (point.frame - before.frame) / 2 : 0;
+    const right = after ? (after.frame - point.frame) / 2 : 0;
+    return Math.max(0.5, left + right);
+  });
+  // 1. One odd frame (a glint, something dark passing) is replaced by what the frames on either
+  //    side of it ask for: the middle of three. A change that lasts, slow or sudden, passes as it is.
+  const middleOf = (a: number, b: number, c: number): number => Math.max(Math.min(a, b), Math.min(Math.max(a, b), c));
+  const steady = raw.map((own, index) => {
+    const before = raw[index - 1];
+    const after = raw[index + 1];
+    if (!before || !after) return own;
+    return {
+      black: middleOf(before.black, own.black, after.black),
+      gain: middleOf(before.gain, own.gain, after.gain),
+      gamma: middleOf(before.gamma, own.gamma, after.gamma),
+    };
+  });
+  // 2. The average with the neighbours in time that look alike takes the remaining unrest out ...
   const tones = sorted.map((point, index) => {
+    const own = steady[index] ?? NEUTRAL_TONE;
     let weightSum = 0;
     let black = 0;
     let logGain = 0;
     let gamma = 0;
     for (let other = 0; other < sorted.length; other += 1) {
       const neighbour = sorted[other];
-      const tone = raw[other];
+      const tone = steady[other];
       if (!neighbour || !tone) continue;
       const time = (neighbour.frame - point.frame) / reach;
       if (Math.abs(time) > 3) continue;
       const look = (neighbour.stats.median - point.stats.median) / tuning.smoothLuma;
-      const weight = Math.exp(-0.5 * (time * time + look * look));
+      const weight = (spans[other] ?? 1) * Math.exp(-0.5 * (time * time + look * look));
       weightSum += weight;
       black += weight * tone.black;
       logGain += weight * Math.log(tone.gain);
       gamma += weight * tone.gamma;
     }
-    const own = raw[index] ?? NEUTRAL_TONE;
-    const smoothed: ToneParams =
-      weightSum > 0
-        ? { black: black / weightSum, gain: Math.exp(logGain / weightSum), gamma: gamma / weightSum }
-        : own;
+    if (weightSum <= 0) return { frame: point.frame, tone: settleTone(own, tuning) };
+    // 3. ... but never moves a frame further from what it asks for itself than `smoothTone` of a
+    //    just noticeable step: unrest is smaller than that, and what is larger is not unrest. A
+    //    well-exposed stretch beside a brightening one therefore keeps its own "nothing".
+    const within = (value: number, wish: number, step: number): number =>
+      clamp(value, wish - tuning.smoothTone * step, wish + tuning.smoothTone * step);
+    const smoothed: ToneParams = {
+      black: within(black / weightSum, own.black, TONE_STEP.black),
+      gain: Math.exp(within(logGain / weightSum, Math.log(own.gain), TONE_STEP.logGain)),
+      gamma: within(gamma / weightSum, own.gamma, TONE_STEP.gamma),
+    };
     return { frame: point.frame, tone: settleTone(smoothed, tuning) };
   });
 
-  return { strength, look: chooseLook(typical, strength, tuning), tones, typical };
+  return dropInvisible({ strength, look: chooseLook(typical, strength, tuning), tones, typical });
 }
 
-/** Averaging can leave a correction just above nothing; the dead bands apply to the result as well. */
-function settleTone(tone: ToneParams, tuning: EnhanceTuning): ToneParams {
-  return {
-    black: tone.black < tuning.deadBlack ? 0 : tone.black,
-    gain: tone.gain < 1 + tuning.deadGain ? 1 : tone.gain,
-    gamma: tone.gamma > 1 - tuning.deadGamma ? 1 : tone.gamma,
-  };
+/** Below these a correction cannot be seen: about one 8-bit level in the mid-tones. */
+const VISIBLE_LIFT = 0.02;
+const VISIBLE_BLACK = 0.002;
+const VISIBLE_CAST = 0.005;
+const VISIBLE_VIBRANCE = 0.02;
+
+function lightIsVisible(tones: readonly { tone: ToneParams }[]): boolean {
+  return tones.some(({ tone }) => Math.abs(toneLift(tone) - 1) >= VISIBLE_LIFT || tone.black >= VISIBLE_BLACK);
+}
+
+function colourIsVisible(look: LookParams): boolean {
+  return look.whiteBalance.some((gain) => Math.abs(gain - 1) >= VISIBLE_CAST) || look.vibrance >= VISIBLE_VIBRANCE;
+}
+
+/**
+ * A kind of correction that nowhere in the video reaches what can be seen is
+ * taken out of the plan. The dead bands fade in, so just above them a
+ * correction is a fraction of a level; doing that — re-touching every pixel
+ * and reporting "light corrected" — for nothing visible would be dishonest.
+ */
+function dropInvisible(timeline: EnhanceTimeline): EnhanceTimeline {
+  const tones = lightIsVisible(timeline.tones)
+    ? timeline.tones
+    : timeline.tones.map(({ frame }) => ({ frame, tone: { ...NEUTRAL_TONE } }));
+  const look = colourIsVisible(timeline.look)
+    ? timeline.look
+    : { ...timeline.look, whiteBalance: [1, 1, 1] as [number, number, number], vibrance: 0 };
+  return { ...timeline, tones, look };
 }
 
 /** The light correction at an output frame: interpolated between the analysed frames around it. */

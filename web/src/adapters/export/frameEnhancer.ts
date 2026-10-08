@@ -19,6 +19,7 @@ import {
   NEUTRAL_PARAMS,
   lookIsNeutral,
   renderEnhanced,
+  isSoftwareRenderer,
   toneIsNeutral,
   type EnhanceParams,
   type EnhanceScratch,
@@ -38,6 +39,8 @@ export class EnhanceFailed extends Error {
 
 export interface FrameEnhancer {
   readonly engine: EnhanceEngine;
+  /** A graphics card does the work. False on the reference renderer and on software WebGL: correct, but slow. */
+  readonly accelerated: boolean;
   /** Enhances the picture on the context's canvas, in place. Throws `EnhanceFailed`. */
   apply(context: OffscreenCanvasRenderingContext2D, params: EnhanceParams, rect: PictureRect): void;
   close(): void;
@@ -49,7 +52,10 @@ function nothingToDo(params: EnhanceParams): boolean {
 
 class GlFrameEnhancer implements FrameEnhancer {
   readonly engine = 'webgl2' as const;
-  constructor(private readonly gl: GlEnhancer) {}
+  readonly accelerated: boolean;
+  constructor(private readonly gl: GlEnhancer) {
+    this.accelerated = !isSoftwareRenderer(gl.renderer);
+  }
 
   apply(context: OffscreenCanvasRenderingContext2D, params: EnhanceParams, rect: PictureRect): void {
     if (nothingToDo(params)) return;
@@ -64,6 +70,7 @@ class GlFrameEnhancer implements FrameEnhancer {
 
 class CpuFrameEnhancer implements FrameEnhancer {
   readonly engine = 'cpu' as const;
+  readonly accelerated = false;
   private scratch: EnhanceScratch | null = null;
 
   apply(context: OffscreenCanvasRenderingContext2D, params: EnhanceParams, rect: PictureRect): void {

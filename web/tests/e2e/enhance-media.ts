@@ -14,7 +14,8 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
-export const ENHANCE_MEDIA_DIR = join(process.cwd(), 'tests', 'media', 'enhance', 'e2e');
+// "e2e-v2": the files made before 8 Oct 2026 (folder "e2e") differ from machine to machine; they are not used any more.
+export const ENHANCE_MEDIA_DIR = join(process.cwd(), 'tests', 'media', 'enhance', 'e2e-v2');
 
 const SIZE = '1280x720';
 
@@ -22,7 +23,7 @@ const SIZE = '1280x720';
 function scene(seconds: number): { inputs: string[]; graph: string } {
   return {
     inputs: [
-      '-f', 'lavfi', '-i', `perlin=s=${SIZE}:r=30:octaves=6:persistence=0.65:xscale=6:yscale=6:tscale=0.4:random_seed=7`,
+      '-f', 'lavfi', '-i', `perlin=s=${SIZE}:r=30:octaves=6:persistence=0.65:xscale=6:yscale=6:tscale=0.4:random_mode=seed:random_seed=7`,
       '-f', 'lavfi', '-i', `gradients=s=${SIZE}:r=30:c0=0x5a6f8f:c1=0xc9b89a:c2=0x6f8f6a:c3=0x9a7070:n=4:speed=0.01:seed=3`,
       '-f', 'lavfi', '-i', `sine=frequency=440:sample_rate=48000:duration=${seconds}`,
     ],
@@ -69,6 +70,37 @@ const SPECS = {
 
 export type EnhanceFixture = keyof typeof SPECS;
 
+export const ENHANCE_FIXTURES = Object.keys(SPECS) as EnhanceFixture[];
+
+/**
+ * The same bytes on every run with the same ffmpeg (checked by
+ * `scripts/enhance-eval/fixture-determinism.mjs`).
+ *
+ * Found 8 Oct 2026: two worktrees made two different `degisen-isik.mp4` from
+ * this recipe, and one of them failed a test. The cause was the `perlin`
+ * source: its `random_seed` is only used with `random_mode=seed`; in the
+ * default mode ffmpeg draws a new pattern on every run, so every checkout had
+ * another scene. Now `random_mode=seed`. The rest is belt and braces: filters
+ * and encoder on one thread, and nothing run-dependent written into the file.
+ */
+const DETERMINISTIC_IN = ['-filter_complex_threads', '1', '-filter_threads', '1'];
+const DETERMINISTIC_OUT = ['-threads', '1', '-fflags', '+bitexact', '-flags:v', '+bitexact', '-flags:a', '+bitexact', '-map_metadata', '-1'];
+
+/** Writes fixture `name` to `file` (overwriting). */
+export function makeEnhanceFixture(name: EnhanceFixture, file: string): void {
+  const spec = SPECS[name];
+  const { inputs, graph } = scene(spec.seconds);
+  const filter = `${graph}${spec.filter ? `,${spec.filter}` : ''},scale=out_color_matrix=bt709:out_range=tv,format=yuv420p[v]`;
+  execFileSync(
+    'ffmpeg',
+    [
+      '-hide_banner', '-loglevel', 'error', '-y', ...DETERMINISTIC_IN, ...inputs, '-filter_complex', filter,
+      '-map', '[v]', '-map', '2:a', '-t', String(spec.seconds), ...ENCODE, ...DETERMINISTIC_OUT, '-f', 'mp4', file,
+    ],
+    { stdio: 'pipe' },
+  );
+}
+
 export function enhanceFixture(name: EnhanceFixture): string {
   const spec = SPECS[name];
   const file = join(ENHANCE_MEDIA_DIR, spec.name);
@@ -76,13 +108,7 @@ export function enhanceFixture(name: EnhanceFixture): string {
   mkdirSync(ENHANCE_MEDIA_DIR, { recursive: true });
   const partial = `${file}.part.mp4`;
   rmSync(partial, { force: true });
-  const { inputs, graph } = scene(spec.seconds);
-  const filter = `${graph}${spec.filter ? `,${spec.filter}` : ''},scale=out_color_matrix=bt709:out_range=tv,format=yuv420p[v]`;
-  execFileSync(
-    'ffmpeg',
-    ['-hide_banner', '-loglevel', 'error', '-y', ...inputs, '-filter_complex', filter, '-map', '[v]', '-map', '2:a', '-t', String(spec.seconds), ...ENCODE, partial],
-    { stdio: 'pipe' },
-  );
+  makeEnhanceFixture(name, partial);
   // Rename only when complete: an interrupted run never leaves half a fixture.
   renameSync(partial, file);
   return file;

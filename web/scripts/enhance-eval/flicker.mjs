@@ -5,7 +5,7 @@
  *
  * Default file: the e2e fixture whose exposure rises slowly for four seconds,
  * holds, drops suddenly at 6 s and returns at 8 s
- * (tests/media/enhance/e2e/degisen-isik.mp4, made by tests/e2e/enhance-media.ts;
+ * (tests/media/enhance/e2e-v2/degisen-isik.mp4, made by tests/e2e/enhance-media.ts;
  * run the e2e spec or `enhanceFixture('changing')` once to create it).
  *
  * Every frame is decoded (320 × 180) and enhanced by the app's reference
@@ -24,9 +24,10 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { decodeFrames, ffprobeVideo, loadEnhance, meanLuma, parseArgs, resultsDir, round, webRoot } from './lib.mjs';
+import { tuningWith } from './tuning.mjs';
 
 const args = parseArgs();
-const file = args.file ? String(args.file) : join(webRoot, 'tests', 'media', 'enhance', 'e2e', 'degisen-isik.mp4');
+const file = args.file ? String(args.file) : join(webRoot, 'tests', 'media', 'enhance', 'e2e-v2', 'degisen-isik.mp4');
 const strength = String(args.strength ?? 'auto');
 const TAG = args.tag ?? 'default';
 if (!existsSync(file)) {
@@ -34,6 +35,7 @@ if (!existsSync(file)) {
   process.exit(1);
 }
 const enhance = await loadEnhance();
+const tuning = tuningWith(enhance.ENHANCE_TUNING, args.set);
 const info = ffprobeVideo(file);
 const width = 320;
 const height = Math.round((320 * info.height) / info.width / 2) * 2;
@@ -54,14 +56,14 @@ const refined = [...base];
 let looked = 0;
 for (;;) {
   refined.sort((a, b) => a.frame - b.frame);
-  const frame = enhance.frameToRefine(refined);
+  const frame = enhance.frameToRefine(refined, new Set(), tuning);
   if (frame === null || looked >= enhance.REFINE_BUDGET) break;
   refined.push({ frame, stats: measure(frame) });
   looked += 1;
 }
 
-const plan = enhance.planEnhancement(refined, strength, fps);
-const blended = enhance.planEnhancement(base, strength, fps);
+const plan = enhance.planEnhancement(refined, strength, fps, tuning);
+const blended = enhance.planEnhancement(base, strength, fps, tuning);
 
 const series = { source: [], eachFrame: [], blended: [], plan: [] };
 let scratch = null;
@@ -73,7 +75,7 @@ const render = (frame, params) => {
 };
 for (let frame = 0; frame < frames.length; frame += 1) {
   series.source.push(meanLuma(frames[frame], width, height));
-  const own = enhance.planEnhancement([{ frame, stats: measure(frame) }], strength, fps);
+  const own = enhance.planEnhancement([{ frame, stats: measure(frame) }], strength, fps, tuning);
   series.eachFrame.push(render(frame, enhance.paramsAtFrame(own, frame)));
   series.blended.push(render(frame, enhance.paramsAtFrame(blended, frame)));
   series.plan.push(render(frame, enhance.paramsAtFrame(plan, frame)));

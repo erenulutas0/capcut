@@ -117,6 +117,8 @@ export interface EnhanceOutcome {
   strength: EnhanceStrength;
   /** `webgl2`: on the GPU; `cpu`: the reference renderer (slower, same picture). */
   engine: 'webgl2' | 'cpu';
+  /** Whether a graphics card did the work; false on `cpu` and on software WebGL (correct, but slow). */
+  accelerated: boolean;
   /** What the plan changed: light, colour, sharpness, noise — or nothing. */
   summary: EnhanceSummary;
   /** Frames of the video that were looked at to decide. */

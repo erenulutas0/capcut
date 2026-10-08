@@ -21,6 +21,10 @@ export interface EnhancePreviewPicture {
   summary: EnhanceSummary;
   params: EnhanceParams;
   engine: 'webgl2' | 'cpu';
+  /** Whether a graphics card does the work; false means the download will be slow. */
+  accelerated: boolean;
+  /** Frames of the download this picture was made for (for the "about how long" of a slow device). */
+  totalFrames: number;
   /** The plan this picture belongs to. */
   fingerprint: string;
 }
@@ -126,6 +130,8 @@ export function useEnhancePreview({ project, settings, videoFile, shot, enabled 
           summary: result.summary,
           params: result.params,
           engine: result.engine,
+          accelerated: result.accelerated,
+          totalFrames: current.totalFrames,
           fingerprint: current.fingerprint,
         };
         const old = pictureRef.current;

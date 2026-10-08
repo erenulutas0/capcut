@@ -103,6 +103,7 @@ export function BeforeAfter({ t, state, onOtherFrame, onRetry, disabled = false,
       data-testid="enhance-preview"
       data-status={state.status}
       data-engine={picture?.engine}
+      data-accelerated={picture ? String(picture.accelerated) : undefined}
       data-frame={picture?.frame}
     >
       {picture ? (

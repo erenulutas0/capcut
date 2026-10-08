@@ -250,6 +250,7 @@ function EnhanceLine({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase
       data-testid="export-enhance"
       data-strength={outcome.strength}
       data-engine={outcome.engine}
+      data-accelerated={String(outcome.accelerated)}
       data-nothing={outcome.summary.nothing}
       data-light={outcome.summary.light}
       data-colour={outcome.summary.colour}
@@ -259,7 +260,7 @@ function EnhanceLine({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase
       data-enhanced-frames={outcome.enhancedFrames}
     >
       {text}
-      {outcome.engine === 'cpu' ? ` ${t('enhance.did.cpu')}` : ''}
+      {outcome.accelerated ? '' : ` ${t('enhance.did.cpu')}`}
     </span>
   );
 }

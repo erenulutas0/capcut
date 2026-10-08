@@ -28,7 +28,8 @@ export function realMediaDir() {
 }
 
 /** The app's enhancement module, transpiled from its TypeScript source. */
-export async function loadEnhance(sourcePath = join(webRoot, 'src', 'domain', 'enhance.ts')) {
+export async function loadEnhance(sourcePath = process.env.ENHANCE_SOURCE || join(webRoot, 'src', 'domain', 'enhance.ts')) {
+  // ENHANCE_SOURCE: another version of the file (e.g. `git show <commit>:web/src/domain/enhance.ts`), for before/after tables.
   const ts = (await import('typescript')).default;
   const source = readFileSync(sourcePath, 'utf8');
   const { outputText } = ts.transpileModule(source, {

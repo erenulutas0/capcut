@@ -133,6 +133,11 @@ test.describe('İyileştir: the wizard', () => {
     await previewReady(page);
     await expect(page.getByTestId('iyilestir-summary')).toHaveAttribute('data-light', 'much');
     await expect(page.getByTestId('iyilestir-summary')).toContainText('video belirgin biçimde aydınlatılır');
+    // The slowness warning is there exactly when no graphics card does the work (this browser may
+    // run WebGL on a software rasteriser — bundled Chromium does — or on a real GPU).
+    const accelerated = await preview(page).getAttribute('data-accelerated');
+    expect(['true', 'false']).toContain(accelerated);
+    await expect(page.getByTestId('iyilestir-slow')).toHaveCount(accelerated === 'true' ? 0 : 1);
     const before = await canvasLuma(page, 'enhance-before');
     const after = await canvasLuma(page, 'enhance-after');
     // The picture is the export's size (720p for this 720p video), not a thumbnail.
@@ -359,6 +364,11 @@ test.describe('İyileştir: the wizard', () => {
     const source = enhanceFixture('changing');
     await startTask(page, source);
     await previewReady(page);
+    // Where no graphics card does the work this is said before the download (ten seconds of 720p: under two minutes, so
+    // the general sentence; the "about N minutes" wording is unit-tested, `slowEnhanceNotice`).
+    if ((await preview(page).getAttribute('data-accelerated')) === 'false') {
+      await expect(page.getByTestId('iyilestir-slow')).toHaveAttribute('data-kind', 'general');
+    }
     await download(page);
     const saved = await readSaved(page, testInfo, 'saved-degisen-isik_iyilestirilmis.mp4');
     expect(probeMp4(saved).frames).toBe(300);
@@ -391,8 +401,12 @@ test.describe('İyileştir: the wizard', () => {
     const mean = (values: number[], from: number, to: number) => values.slice(from, to).reduce((sum, value) => sum + value, 0) / (to - from);
     expect(mean(output, 0, 30)).toBeGreaterThan(mean(input, 0, 30) + 15);
     expect(mean(output, 195, 225)).toBeGreaterThan(mean(input, 195, 225) + 15);
-    // The well-exposed stretch is left as it was.
+    // The well-exposed stretch is left as it was. (This limit was not changed when the test failed on
+    // another checkout's fixture, 8 Oct 2026: the plan was — see ADR-037 and enhanceSensitivity.test.ts.
+    // The light correction there is now exactly nothing; what is left is colour and the encoder.)
     expect(Math.abs(mean(output, 135, 165) - mean(input, 135, 165))).toBeLessThan(6);
+    // ... and so is the end of the slow rise, which is well exposed already.
+    expect(Math.abs(mean(output, 105, 135) - mean(input, 105, 135))).toBeLessThan(6);
   });
 
   test('without graphics acceleration the same picture is made by the reference renderer, and the result says so', async ({
@@ -414,10 +428,15 @@ test.describe('İyileştir: the wizard', () => {
     await startTask(page, source);
     await previewReady(page);
     await expect(preview(page)).toHaveAttribute('data-engine', 'cpu');
-    await expect(page.getByTestId('iyilestir-slow')).toContainText('grafik hızlandırma kullanılamıyor');
+    // Said before the download, not after: this device will be slow (a 3-second video: the general sentence).
+    await expect(preview(page)).toHaveAttribute('data-accelerated', 'false');
+    await expect(page.getByTestId('iyilestir-slow')).toHaveText(
+      'Bu cihazda ekran kartı hızlandırması yok. İyileştirme yine çalışır ama yavaştır: 5 dakikalık bir video yarım saatten uzun sürebilir.',
+    );
     await download(page);
     await expect(page.getByTestId('export-enhance')).toHaveAttribute('data-engine', 'cpu');
-    await expect(page.getByTestId('export-enhance')).toContainText('Grafik hızlandırma olmadan yapıldı.');
+    await expect(page.getByTestId('export-enhance')).toHaveAttribute('data-accelerated', 'false');
+    await expect(page.getByTestId('export-enhance')).toContainText('Ekran kartı hızlandırması olmadan yapıldı.');
     const cpu = await readSaved(page, testInfo, 'saved-karanlik_iyilestirilmis.mp4');
     expect(probeMp4(cpu).frames).toBe(90);
     const cpuRgb = frameRgb(cpu, 1.5, 320, 180);
