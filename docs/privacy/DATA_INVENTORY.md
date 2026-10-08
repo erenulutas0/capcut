@@ -204,6 +204,11 @@ Yeni saklanan veri **yok**.
   revizyon değişirse eski revizyonun dosyaları bir sonraki indirmede silinir (`pruneStale`).
   İndirme sırasında `navigator.storage.persist()` istenir (tarayıcı depolama baskısında dosyaları
   kendiliğinden atmasın diye; Firefox bunu kullanıcıya sorar).
+- **"İyileştir" (ADR-037):** yeni saklanan veri yok. Videonun kareleri worker'da çözülür,
+  ölçülür (histogram, renk dengesi, kumlanma, keskinlik: birkaç sayı) ve işlenir; ölçümler
+  yalnızca açık sekmenin belleğindedir ve sekme kapanınca gider, hiçbir yere gönderilmez.
+  Editörde ayar açılırsa tarifte yalnızca `enhance: { strength }` saklanır (EDL v4): hangi güç
+  seçildiği; görüntüden türetilmiş hiçbir şey değil. Sihirbaz proje saklamaz.
 - **Transkript metni:** altyazı izi olarak proje tarifinin içindedir (`captionTracks[0]`,
   `origin: 'transcript'`, EDL v3). Editörde (`/editor`) diğer altyazı satırları gibi IndexedDB'ye
   saklanır ve proje yedeğine girer (§2.1); sihirbazda (`/yap/yazi`) hiçbir şey saklanmaz (§2.7).

@@ -107,7 +107,7 @@ export interface ShareOffer {
 export type DownloadState =
   | {
       phase: 'running';
-      step: 'waiting' | 'preparing' | 'encoding' | 'finalizing' | 'verifying';
+      step: 'waiting' | 'preparing' | 'analysing' | 'encoding' | 'finalizing' | 'verifying';
       progress: number | null;
       framesDone: number;
       totalFrames: number;
@@ -674,6 +674,10 @@ export function useDownloads({
             case 'preparing':
               running('preparing', null, 0);
               if (cancelRequestedRef.current) client().cancel();
+              break;
+            case 'analysing':
+              // ADR-037: frames of the video are being looked at; a real share, no frame is encoded yet.
+              running('analysing', event.progress, 0);
               break;
             case 'encoding':
               running('encoding', event.progress, event.framesDone, event.pass ?? 1);

@@ -1,5 +1,6 @@
 'use client';
 
+import { enhanceItems } from '@/components/enhance/BeforeAfter';
 import { Icon } from '@/components/Icon';
 import { environmentPasses } from '@/adapters/exportCapability';
 import type { DownloadKind } from '@/domain/kesit';
@@ -231,6 +232,38 @@ function MethodLine({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase:
   );
 }
 
+/**
+ * ADR-037: what "İyileştir" really did in this download — or that it found
+ * nothing to change — with the numbers tests and the matrix read back.
+ */
+function EnhanceLine({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase: 'saved' | 'ready' }> }) {
+  const outcome = entry.result.enhance;
+  if (!outcome) return null;
+  const items = enhanceItems(t, outcome.summary, 'did');
+  const strength = t(`wizard.iyilestir.${outcome.strength}` as MessageKey);
+  const text = outcome.summary.nothing
+    ? t('enhance.did.nothing')
+    : `${t('enhance.did.title').replace('{strength}', strength)} ${items.join(', ')}.`;
+  return (
+    <span
+      className="dl-sub"
+      data-testid="export-enhance"
+      data-strength={outcome.strength}
+      data-engine={outcome.engine}
+      data-nothing={outcome.summary.nothing}
+      data-light={outcome.summary.light}
+      data-colour={outcome.summary.colour}
+      data-sharpen={outcome.summary.sharpen}
+      data-denoise={outcome.summary.denoise}
+      data-analysed-frames={outcome.analysedFrames}
+      data-enhanced-frames={outcome.enhancedFrames}
+    >
+      {text}
+      {outcome.engine === 'cpu' ? ` ${t('enhance.did.cpu')}` : ''}
+    </span>
+  );
+}
+
 /** Measured from the produced file, never copied from the plan. */
 function Details({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase: 'saved' | 'ready' }> }) {
   const { result } = entry;
@@ -380,6 +413,7 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
             </span>
             <TargetSizeLine t={t} entry={entry} />
             <MethodLine t={t} entry={entry} />
+            <EnhanceLine t={t} entry={entry} />
             {entry.hdr ? (
               <span className="dl-sub" data-testid="export-hdr-note">
                 {t('export.hdrNote')}
@@ -410,6 +444,7 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
             <span data-testid="download-ready-title">{title}</span>
             <TargetSizeLine t={t} entry={entry} />
             <MethodLine t={t} entry={entry} />
+            <EnhanceLine t={t} entry={entry} />
             {entry.hdr ? (
               <span className="dl-sub" data-testid="export-hdr-note">
                 {t('export.hdrNote')}

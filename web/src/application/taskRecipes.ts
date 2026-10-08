@@ -5,13 +5,13 @@
  * would have downloaded.
  */
 
-import type { MusicV1, Project } from '@/domain/edl';
+import type { EnhanceStrengthV4, MusicV1, Project } from '@/domain/edl';
 import { fileBaseName } from '@/domain/kesit';
 import { downloadDurationUs, fittedMusicEndUs } from '@/domain/musicFit';
 import { DEFAULT_SILENCE_PARAMS, SILENCE_PARAM_LIMITS, type SilenceParams } from '@/domain/silence';
 import type { Micros } from '@/domain/time';
 import { totalOutputDurationUs } from '@/domain/timeline';
-import { primaryVideoAsset, removeMusic, setExportShortEdge } from './commands';
+import { primaryVideoAsset, removeMusic, setEnhance, setExportShortEdge } from './commands';
 
 // ------------------------------------------------------------ file names
 
@@ -107,6 +107,29 @@ export function shortEdgeForSource(displayWidth: number | undefined, displayHeig
 export function ownSizeRecipe(project: Project): Project {
   const asset = primaryVideoAsset(project);
   return setExportShortEdge(project, shortEdgeForSource(asset?.displayWidth, asset?.displayHeight));
+}
+
+// ------------------------------------------------------------ İyileştir
+
+/** The strength "İyileştir" starts with: the measured one (ADR-037). */
+export const DEFAULT_ENHANCE_STRENGTH: EnhanceStrengthV4 = 'auto';
+
+/**
+ * Opening a video in "İyileştir": the video at its own size, with the
+ * enhancement switched on. The same field the editor's setting writes, so
+ * "Daha fazla ayar → editörde aç" continues with it on.
+ */
+export function enhanceRecipe(project: Project, strength: EnhanceStrengthV4 = DEFAULT_ENHANCE_STRENGTH): Project {
+  return setEnhance(ownSizeRecipe(project), strength);
+}
+
+/** Where in the video the before/after frame is taken, as shares of its length; "Başka bir kare" steps through them. */
+export const ENHANCE_PREVIEW_SHARES: readonly number[] = [0.3, 0.6, 0.85, 0.1];
+
+/** The output frame the before/after preview shows for the `shot`-th press of "Başka bir kare". */
+export function enhancePreviewFrame(totalFrames: number, shot: number): number {
+  const share = ENHANCE_PREVIEW_SHARES[((shot % ENHANCE_PREVIEW_SHARES.length) + ENHANCE_PREVIEW_SHARES.length) % ENHANCE_PREVIEW_SHARES.length] ?? 0.3;
+  return Math.min(Math.max(0, totalFrames - 1), Math.max(0, Math.round((totalFrames - 1) * share)));
 }
 
 // ------------------------------------------------------------ Sesi kapat

@@ -617,6 +617,34 @@ export const CASES = [
       screenshot: { file: 'screenshots/caption-transcript-frame.png', variant: 'transkript', frame: 285 },
     }),
   },
+  {
+    // ADR-037: "İyileştir" switched on in Ayarlar → Görüntü. The same edit is downloaded twice,
+    // plain (a full encode) and enhanced, so that the enhanced file is judged against what this
+    // browser's own encoder makes of the unenhanced picture, not against a guess.
+    id: 'M23',
+    title: 'İyileştirilmiş çıktı: karanlık kamera görüntüsü, Otomatik, iki kesit',
+    expectation:
+      'Süre ve kare sayısı düz çıktıyla birebir; her kare düz çıktıdakinden aydınlık ve aynı resim; siyah ya da bozuk kare yok; ses ve renk etiketleri düz çıktıyla aynı; yöntem satırı görüntünün yeniden işlendiğini ve nedenini söylüyor',
+    setup: {
+      video: 'm23-dark-natural.mp4',
+      moments: [['00:00.500', '00:02.500'], ['00:03.000', '00:05.000']],
+      aspect: '16-9',
+      quality: '720',
+      enhance: 'auto',
+    },
+    expect: {
+      exports: true,
+      durationSeconds: 4,
+      frames: 120,
+      size: [1280, 720],
+      videoCodec: 'h264',
+      audioCodec: 'aac',
+      constantFrameRate: 30,
+      method: 'encode',
+      tonePresent: [TONE.source],
+      enhanced: { strength: 'auto', light: 'much', minLumaGain: 15, minCorrelation: 0.9 },
+    },
+  },
 ];
 
 /**

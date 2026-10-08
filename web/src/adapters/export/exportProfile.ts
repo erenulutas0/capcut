@@ -25,6 +25,10 @@ export type ExportStage =
   | 'hdrClip'
   /** HDR only: writing the 8-bit picture into the encoder's canvas. */
   | 'hdrWrite'
+  /** ADR-037: looking at frames of the video before the first one is encoded. */
+  | 'analyse'
+  /** ADR-037: light, colour, sharpening and noise filter of one frame. */
+  | 'enhance'
   /** Burning in the caption on top of the frame. */
   | 'captions'
   /** Snapshotting the picture into a `VideoFrame`. */

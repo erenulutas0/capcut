@@ -144,12 +144,15 @@ export const PHRASES: ReadonlyArray<readonly [string, TaskId]> = [
   ['logoyu kaldır', 'filigran'],
   ['watermark', 'filigran'],
   ['remove logo', 'filigran'],
+  // A look laid over the picture is not possible yet; light and colour are "İyileştir" (ADR-037).
   ['filtre', 'efekt'],
   ['efekt ekle', 'efekt'],
-  ['renk ayarı', 'efekt'],
   ['siyah beyaz', 'efekt'],
   ['filter', 'efekt'],
-  ['brightness', 'efekt'],
+  ['sepia', 'efekt'],
+  ['black and white', 'efekt'],
+  ['renk ayarı', 'iyilestir'],
+  ['brightness', 'iyilestir'],
   ['arka planı kaldır', 'arkaplan'],
   ['arka plan değiştir', 'arkaplan'],
   ['arkaplan sil', 'arkaplan'],
@@ -170,6 +173,21 @@ export const PHRASES: ReadonlyArray<readonly [string, TaskId]> = [
   ['sarsıntı', 'stabil'],
   ['stabilize video', 'stabil'],
   ['shaky', 'stabil'],
+  // İyileştir (ADR-037) — including what it cannot do: those words lead to the card and its honest line.
+  ['videoyu iyileştir', 'iyilestir'],
+  ['görüntüyü netleştir', 'iyilestir'],
+  ['video çok karanlık', 'iyilestir'],
+  ['karanlık videoyu aydınlat', 'iyilestir'],
+  ['renkleri düzelt', 'iyilestir'],
+  ['bulanık çıkmış', 'iyilestir'],
+  ['kaliteyi yükselt', 'iyilestir'],
+  ['4K yap', 'iyilestir'],
+  ['bulanıklığı sil', 'iyilestir'],
+  ['enhance my video', 'iyilestir'],
+  ['sharpen', 'iyilestir'],
+  ['brighten the video', 'iyilestir'],
+  ['improve quality', 'iyilestir'],
+  ['upscale to 4k', 'iyilestir'],
 ];
 
 describe('foldText', () => {
@@ -349,10 +367,10 @@ describe('searchTasks: rules', () => {
 });
 
 describe('task registry', () => {
-  const CARDS = ['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'sustur', 'cevir'];
+  const CARDS = ['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'sustur', 'cevir', 'iyilestir'];
   const CANNOT_YET = ['dondur', 'hiz', 'birlestir', 'gif', 'filigran', 'efekt', 'arkaplan', 'ters', 'foto', 'stabil'];
 
-  it('lists the nine tasks in card order — Kes first, Sesi kapat next to Sesini al — then what cannot be done yet', () => {
+  it('lists the ten tasks in card order — Kes first, Sesi kapat next to Sesini al — then what cannot be done yet', () => {
     expect(TASKS.map((task) => task.id)).toEqual([...CARDS, ...CANNOT_YET]);
     expect(new Set(TASKS.map((task) => task.id)).size).toBe(TASKS.length);
   });

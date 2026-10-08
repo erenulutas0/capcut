@@ -9,12 +9,14 @@
  * - failures carry an enum, never a raw path, stack or secret.
  */
 
+import type { EnhanceStrength, EnhanceSummary } from './enhance';
 import type { ExportMethod, FastCutFallbackReason } from './fastPath';
 import type { TargetSizeOutcome } from './targetSize';
 import type { Micros } from './time';
 
 export type ExportPhase =
   | 'preparing'
+  | 'analysing'
   | 'encoding'
   | 'finalizing'
   | 'verifying'
@@ -52,6 +54,8 @@ export type ExportFailureCode =
   /** Refused up front: the file picked in the save dialog could not be opened for writing (ADR-026). */
   | 'output_file_unavailable'
   | 'worker_unavailable'
+  /** ADR-037: the graphics context that enhances the frames was lost mid-export; no partial file is kept. */
+  | 'enhance_failed'
   | 'internal_error';
 
 /** What was actually measured in the file that was produced. */
@@ -104,6 +108,21 @@ export interface ExportResult {
   output?: 'video' | 'audio';
   /** ADR-035: set for a target-size download — what was planned and what the file really is. */
   targetSize?: TargetSizeOutcome;
+  /** ADR-037: set when the picture was enhanced — what was really done to it. */
+  enhance?: EnhanceOutcome;
+}
+
+/** What "İyileştir" did in one download (ADR-037). */
+export interface EnhanceOutcome {
+  strength: EnhanceStrength;
+  /** `webgl2`: on the GPU; `cpu`: the reference renderer (slower, same picture). */
+  engine: 'webgl2' | 'cpu';
+  /** What the plan changed: light, colour, sharpness, noise — or nothing. */
+  summary: EnhanceSummary;
+  /** Frames of the video that were looked at to decide. */
+  analysedFrames: number;
+  /** Output frames the enhancement was applied to. */
+  enhancedFrames: number;
 }
 
 /**
@@ -117,6 +136,8 @@ export function missingFramesAllowed(totalFrames: number): number {
 
 export type ExportEvent =
   | { type: 'preparing'; attemptId: string }
+  /** ADR-037: frames of the video are being looked at before the first one is encoded; a real share, 0..1. */
+  | { type: 'analysing'; attemptId: string; progress: number }
   | {
       type: 'encoding';
       attemptId: string;

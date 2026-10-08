@@ -41,6 +41,7 @@ import { Dialog, Sheet } from './Dialog';
 import { onTablistKeyDown } from './tablist';
 import { DownloadStatus } from './DownloadStatus';
 import { HelpDialog } from './HelpDialog';
+import { EnhanceSetting } from '@/components/enhance/EnhanceSetting';
 import { SettingsPanel, type InspectorTab } from './Inspector';
 import { CaptionsPanel } from './CaptionsPanel';
 import { KesitDock } from './KesitDock';
@@ -1141,6 +1142,16 @@ export function EditorView({ state, stored }: { state: EditorState; stored: bool
           onRemoveAudio={state.dropAudio}
           relinkNode={relinkAudioNode}
           captionsNode={captionsNode}
+          enhanceNode={
+            <EnhanceSetting
+              t={t}
+              project={project}
+              settings={state.settings}
+              videoFile={state.video?.file ?? null}
+              active={settingsOpen && settingsTab === 'frame'}
+              onChange={state.changeEnhance}
+            />
+          }
         />
       </Sheet>
 

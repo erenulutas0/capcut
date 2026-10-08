@@ -22,7 +22,7 @@ Kurulum ve komutlar için depo kökündeki [README](../README.md) dosyasına bak
   kelimeleri). Arama: `src/domain/taskSearch.ts` (cihazda, kelime listesiyle; ağ yok).
 - Sihirbaz çatısı: `src/components/wizard/` — `TaskWizard` (sayfa; editörün durum kancası,
   proje saklamadan), `WizardFlow` (video seç → karar → indir), `useWizardExport`
-  (dışa aktarmaya giden tek yol; ek seçenekler `extras`), `wizards.tsx` (dokuz sihirbaz).
+  (dışa aktarmaya giden tek yol; ek seçenekler `extras`), `wizards.tsx` (on sihirbaz).
 - **Yeni bir işi açmak:** `tasks.ts`'te `available: true` + `wizards.tsx`'te bileşeni ve
   `WIZARDS` tablosundaki satırı. Bileşen eksikse `npm run typecheck` derlemez.
 - **Yapılamayan bir isteği dürüstçe yanıtlamak:** `tasks.ts`'te `available: false` bir giriş

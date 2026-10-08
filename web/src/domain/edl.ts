@@ -1,10 +1,11 @@
 /**
- * EDL v3 — the canonical, portable editing recipe (doc 10).
+ * EDL v4 — the canonical, portable editing recipe (doc 10).
  *
  * v2 = v1 + `captionTracks` (ADR-015). v3 = v2 + caption tracks written by
  * the on-device transcript (ADR-036): `origin: 'transcript'`, the spans that
- * could not be written (`unclear`), and a higher line limit. Everything else
- * is unchanged, so v1 and v2 recipes are read through `migrateProject`
+ * could not be written (`unclear`), and a higher line limit. v4 = v3 + the
+ * optional `enhance` setting ("İyileştir", ADR-037). Everything else is
+ * unchanged, so v1, v2 and v3 recipes are read through `migrateProject`
  * (migration.ts) and never rejected.
  *
  * It carries asset *identities* and edit semantics only. Local URIs, blob URLs,
@@ -14,7 +15,7 @@
 
 import type { Micros } from './time';
 
-export const EDL_SCHEMA_VERSION = 3;
+export const EDL_SCHEMA_VERSION = 4;
 
 export type AssetKind = 'video' | 'audio';
 export type AspectRatio = '9:16' | '16:9' | '1:1';
@@ -143,13 +144,32 @@ export interface CaptionUnclearV3 {
   endUs: Micros;
 }
 
+/**
+ * "İyileştir" (ADR-037): the picture of every download is cleaned up on the
+ * device — light, colour, sharpness, noise — at this strength. Absent: off.
+ * What exactly is done is decided from the video itself at download time
+ * (`domain/enhance.ts`); the recipe only says that it is wanted and how strongly.
+ */
+export type EnhanceStrengthV4 = 'light' | 'auto' | 'strong';
+
+export interface EnhanceV4 {
+  strength: EnhanceStrengthV4;
+}
+
+export const ENHANCE_STRENGTHS_V4: readonly EnhanceStrengthV4[] = ['light', 'auto', 'strong'];
+
+/** The v3 recipe (ADR-036): the same shape, before `enhance` existed. */
+export interface LegacyProjectV3 extends Omit<Project, 'schemaVersion' | 'enhance'> {
+  schemaVersion: 3;
+}
+
 /** The v2 recipe (ADR-015/016): the same shape, before transcript tracks existed. */
-export interface LegacyProjectV2 extends Omit<Project, 'schemaVersion'> {
+export interface LegacyProjectV2 extends Omit<Project, 'schemaVersion' | 'enhance'> {
   schemaVersion: 2;
 }
 
 /** The v1 recipe as stored by older builds. Only migration.ts reads it. */
-export interface LegacyProjectV1 extends Omit<Project, 'schemaVersion' | 'captionTracks'> {
+export interface LegacyProjectV1 extends Omit<Project, 'schemaVersion' | 'captionTracks' | 'enhance'> {
   schemaVersion: 1;
 }
 
@@ -163,6 +183,8 @@ export interface Project {
   music?: MusicV1;
   export: ExportSpecV1;
   captionTracks: CaptionTrackV2[];
+  /** v4 (ADR-037). Absent: the picture is not enhanced. */
+  enhance?: EnhanceV4;
 }
 
 export const PROJECT_TOP_LEVEL_KEYS = [
@@ -175,6 +197,7 @@ export const PROJECT_TOP_LEVEL_KEYS = [
   'music',
   'export',
   'captionTracks',
+  'enhance',
 ] as const;
 
 export const ASPECT_RATIOS: readonly AspectRatio[] = ['9:16', '16:9', '1:1'];

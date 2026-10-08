@@ -48,6 +48,9 @@ const PATHS = {
   // Asked for, not possible yet (search results only): a clock.
   taskLater: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 7v5l3 2',
   taskConvert: 'M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5',
+  // "İyileştir" (ADR-037): light. A sun, not a sparkle: nothing here is AI.
+  taskEnhance:
+    'M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41',
 } as const;
 
 export type IconName = keyof typeof PATHS;

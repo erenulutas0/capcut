@@ -22,6 +22,7 @@ export type TaskId =
   | 'ses'
   | 'sustur'
   | 'cevir'
+  | 'iyilestir'
   // Asked for, not possible yet: no card, no page, an honest answer in the search (see below).
   | 'dondur'
   | 'hiz'
@@ -45,6 +46,7 @@ export type TaskIcon =
   | 'taskSound'
   | 'taskMute'
   | 'taskConvert'
+  | 'taskEnhance'
   /** The one icon of everything that cannot be done yet. */
   | 'taskLater';
 
@@ -81,6 +83,12 @@ export interface TaskDefinition {
   available: boolean;
   steps: readonly WizardStep[];
   words: TaskWords;
+  /**
+   * Shown under the label in the search results instead of `subKey`, where
+   * the short card line would promise too much: "İyileştir" is found by
+   * "4K yap" and "bulanıklığı sil" and must answer with what it really does.
+   */
+  resultKey?: 'task.iyilestir.result';
   /**
    * The task whose words people use about any job ("kes", "cut", "sil"):
    * when the search scores it level with another task, the other goes first.
@@ -260,6 +268,38 @@ const REGISTRY = [
       ],
     },
   },
+  {
+    // ADR-037. Classic picture processing on the device: light, colour,
+    // sharpness, noise. People also ask for what it cannot do ("4K yap",
+    // "bulanıklığı sil", "upscale"): those words lead here too, and the
+    // result line says honestly what it does (`resultKey`).
+    id: 'iyilestir',
+    icon: 'taskEnhance',
+    labelKey: 'task.iyilestir.label',
+    subKey: 'task.iyilestir.sub',
+    resultKey: 'task.iyilestir.result',
+    available: true,
+    steps: ['pick', 'choose', 'download'],
+    words: {
+      strong: [
+        'iyilestir', 'iyilestirme', 'guzellestir', 'toparla', 'netlestir', 'netlik', 'net', 'keskin', 'keskinlestir',
+        'keskinlik', 'bulanik', 'bulaniklik', 'bulanikligi', 'flu', 'karanlik', 'aydinlat', 'aydinlik', 'parlak',
+        'parlaklik', 'isik', 'isigi', 'isigini', 'renk', 'renkler', 'renkleri', 'rengi', 'renkli', 'soluk', 'kontrast',
+        'doygunluk', 'canli', 'kalite', 'kaliteyi', 'kalitesini', 'kaliteli', 'kalitesiz', 'kumlu', 'kumlanma',
+        'grenli', 'piksel', 'pikselli', 'cozunurluk', '4k', 'hd', 'enhance', 'enhancer', 'improve', 'sharpen',
+        'sharper', 'sharp', 'brighten', 'brighter', 'bright', 'brightness', 'dark', 'blurry', 'blur', 'unblur',
+        'deblur', 'quality', 'upscale', 'upscaler', 'clearer', 'color', 'colors', 'colour', 'colours', 'contrast',
+        'saturation', 'denoise', 'grainy', 'noisy', 'lighting',
+      ],
+      weak: ['yukselt', 'artir', 'duzelt', 'gorunsun', 'goruntu', 'goruntuyu', 'better', 'fix', 'look', 'clear', 'light'],
+      phrases: [
+        'kaliteyi yukselt', 'kalitesini yukselt', 'kaliteyi artir', 'kalitesini artir', 'daha net', 'daha iyi gorunsun',
+        '4k yap', 'hd yap', 'bulanikligi sil', 'bulanikligi gider', 'bulanikligi al', 'goruntuyu duzelt', 'cok karanlik',
+        'renk ayari', 'renkleri duzelt', 'color correction', 'make it sharper', 'make it brighter', 'improve quality',
+        'better quality', 'fix lighting', 'too dark',
+      ],
+    },
+  },
   // ------------------------------------------------------------------
   // Asked for, not possible yet (7 Oct 2026). These have no card and no page.
   // They exist so that the search can answer "Bunu henüz yapamıyoruz."
@@ -355,12 +395,14 @@ const REGISTRY = [
     available: false,
     steps: ['pick', 'download'],
     words: {
+      // Light, colour, contrast and sharpness are "İyileştir" (ADR-037) since 7 Oct 2026: those
+      // words live there. What stays here is a look laid over the picture, which nothing does yet.
       strong: [
-        'filtre', 'efekt', 'renk', 'renkleri', 'rengi', 'parlak', 'kontrast', 'doygunluk', 'filter', 'filters',
-        'effect', 'effects', 'color', 'colors', 'colour', 'brightness', 'contrast', 'saturation', 'grayscale', 'sepia',
+        'filtre', 'filtresi', 'efekt', 'efekti', 'filter', 'filters', 'effect', 'effects', 'grayscale', 'sepia',
+        'vintage', 'nostaljik', 'lut',
       ],
-      weak: ['siyah', 'beyaz', 'karanlik', 'aydinlat', 'canli', 'black', 'white', 'dark', 'bright', 'brighter'],
-      phrases: ['siyah beyaz', 'black and white', 'renk ayari', 'color correction', 'color grading'],
+      weak: ['siyah', 'beyaz', 'black', 'white', 'retro', 'sinematik', 'cinematic'],
+      phrases: ['siyah beyaz', 'black and white', 'color grading', 'renk filtresi', 'eski film'],
     },
   },
   {
@@ -373,8 +415,10 @@ const REGISTRY = [
     words: {
       // "plani": "arka planı sil" is about the background; music is asked
       // for with "arka plana" / "arka planda" / "arka plan müziği".
-      strong: ['arkaplan', 'arkaplani', 'plani', 'bulanik', 'bulaniklastir', 'blur', 'flu', 'greenscreen', 'chroma'],
-      weak: ['arka', 'plan', 'arkayi', 'background'],
+      // "bulanık" / "blur" by themselves are a blurry VIDEO ("İyileştir", ADR-037); here they
+      // only support a request that names the background.
+      strong: ['arkaplan', 'arkaplani', 'plani', 'bulaniklastir', 'greenscreen', 'chroma'],
+      weak: ['arka', 'plan', 'arkayi', 'background', 'bulanik', 'blur', 'flu'],
       phrases: [
         'arka plani', 'arkayi degistir', 'arkayi sil', 'yesil perde', 'yesil ekran', 'green screen',
         'remove background', 'remove the background', 'blur background', 'blur the background',

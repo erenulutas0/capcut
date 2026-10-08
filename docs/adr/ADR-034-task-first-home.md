@@ -8,7 +8,7 @@
 > Şema (EDL v2) ve politika (`2026-09-24.v6`) **değişmedi**; dışa aktarma motoru değişmedi.
 > **Güncelleme 7 Ekim 2026:** dokuzuncu kart "Sesi kapat"; yapılamayan on istek aramada dürüst
 > yanıt alıyor; arama kuralları 5 ve 7; müzik artık indirmenin tamamına yayılıyor (aşağıda
-> ilgili yerler güncellendi, sonda "Güncelleme — 7 Ekim 2026").
+> ilgili yerler güncellendi, sonda "Güncelleme — 7 Ekim 2026"). Aynı gün onuncu kart "İyileştir" geldi ([ADR-037](ADR-037-enhance.md)).
 
 ## Neden
 
@@ -51,7 +51,7 @@ arama olmadan çalışıyor; göreve göre düzenlenmiş gezinme özelliğe gör
 |---|---|
 | Kutu | `role="combobox"`, `aria-controls` ile sonuç listesine (`role="listbox"`), `aria-activedescendant` ile vurgulu sonuca bağlı; odak hep kutuda. ↑/↓ sonuçta gezer (başa sarar), Enter vurgulu sonucu başlatır, Esc kutuyu boşaltır, × de. Sonuç sayısı `role="status"` ile duyurulur ("2 sonuç. İlki: Dikey yap."). |
 | Örnek cümleler | "sessiz yerleri sil", "TikTok için dikey", "başını kes", "müzik koy": dokununca kutuya yazılır. Hepsi bugün çalışan bir işe götürür (birim testi). |
-| Kartlar | Kayıttaki sırayla, yalnızca `available: true` işler — bugün dokuz: Kes (dolu, öne çıkan kart), Boşlukları at, Dikey yap, Küçült, Yazıya dök, Müzik ekle, Sesini al, **Sesi kapat**, Her yerde açılsın (Küçült ve Sesini al [ADR-035](ADR-035-target-size-and-audio-only.md), Yazıya dök [ADR-036](ADR-036-on-device-transcript.md), Sesi kapat 7 Ekim 2026). Kart bir bağlantıdır (JavaScript olmadan da çalışır), en az 126 px yüksek. Telefonda 2 sütun; 700 px'ten itibaren 3; 1000 px'ten itibaren, son satırda tek kart kalmayacak biçimde 3 ya da 4 (`wideColumns`: önce satırları tam dolduran — 8 → 4 + 4, 9 → 3 + 3 + 3, 6 → 3 + 3 —, sonra son satırı en dolu olan — 7 → 4 + 3, 10 → 4 + 4 + 2, 5 → 3 + 2). Hiçbir kart gizlenmez. |
+| Kartlar | Kayıttaki sırayla, yalnızca `available: true` işler — bugün on: Kes (dolu, öne çıkan kart), Boşlukları at, Dikey yap, Küçült, Yazıya dök, Müzik ekle, Sesini al, **Sesi kapat**, Her yerde açılsın, **İyileştir** ([ADR-037](ADR-037-enhance.md)) (Küçült ve Sesini al [ADR-035](ADR-035-target-size-and-audio-only.md), Yazıya dök [ADR-036](ADR-036-on-device-transcript.md), Sesi kapat 7 Ekim 2026). Kart bir bağlantıdır (JavaScript olmadan da çalışır), en az 126 px yüksek. Telefonda 2 sütun; 700 px'ten itibaren 3; 1000 px'ten itibaren, son satırda tek kart kalmayacak biçimde 3 ya da 4 (`wideColumns`: önce satırları tam dolduran — 8 → 4 + 4, 9 → 3 + 3 + 3, 6 → 3 + 3 —, sonra son satırı en dolu olan — 7 → 4 + 3, 10 → 4 + 4 + 2, 5 → 3 + 2). Hiçbir kart gizlenmez. |
 | Yazınca | Kartlar ve örnekler yerini "Bunu mu demek istedin?" listesine bırakır (en fazla 3 satır; her satırda "Başla"). Kutuyu boşaltmak ya da "Tüm işleri gör" kartları geri getirir. Tek harf ya da yalnızca "video" yazmak henüz bir şey söylememektir: kartlar durur. |
 | Yapılamayan istek | Kayıtta `available: false` olan on giriş (döndür, hızlandır / yavaşlat, videoları birleştir, GIF, filigran ya da logo sil, filtre ve renk, arka plan, tersten oynat, videodan fotoğraf, titremeyi düzelt): satırda işin adı ve **"Bunu henüz yapamıyoruz."**, düğme yok, `aria-disabled`; Enter ve dokunma hiçbir şey başlatmaz; duyuru "1 sonuç. İlki: Döndür. Bunu henüz yapamıyoruz." Altında başka iş yapan bir kart önerilmez (kural 7). |
 | Bulunamadı | "Bunu bulamadım. Başka kelimelerle dene ya da bütün işlere bak." + "Tüm işleri gör". |
@@ -135,6 +135,7 @@ buradan okur.
 | Sesini al (`ses`) | evet (ADR-035) | video → indir | — (ses M4A olarak kaydedilir; sessiz videoda İndir kapalı ve sebebi yazılı) |
 | Sesi kapat (`sustur`) | evet (7 Ekim 2026) | video → indir | — (aynı video, ses izi olmadan; sesi olmayan videoda İndir kapalı ve sebebi yazılı) |
 | Her yerde açılsın (`cevir`) | evet | video → indir | — |
+| İyileştir (`iyilestir`) | evet (ADR-037) | video → karar → indir | Ne kadar: "Hafif" / "Otomatik" (varsayılan) / "Güçlü"; videonun gerçek bir karesinin öncesi ve sonrası (dışa aktarmanın kendi koduyla), ne yapılacağı sözle; değişecek bir şey yoksa İndir kapalı ve sebebi yazılı |
 | Döndür (`dondur`), Hızlandır ya da yavaşlat (`hiz`), Videoları birleştir (`birlestir`), GIF yap (`gif`), Filigran ya da logo sil (`filigran`), Filtre ve renk (`efekt`), Arka planı değiştir (`arkaplan`), Tersten oynat (`ters`), Videodan fotoğraf al (`foto`), Titremeyi düzelt (`stabil`) | **hayır** (7 Ekim 2026) | — | Motoru yok. Kartı, sayfası, sihirbazı yok; yalnızca aramanın "Bunu henüz yapamıyoruz." demesi için kayıttalar. |
 
 **Bir işi açmak:** `tasks.ts`'te `available: true` (tek satır) + `components/wizard/wizards.tsx`
@@ -183,6 +184,7 @@ geçer (yaz + Enter).
 | Dikey yap | kart → Video seç → İndir | 3 ("Sığdır" ile 4) |
 | Müzik ekle | kart → Video seç → Müzik seç → İndir | 4 ("Kapansın" ile 5) |
 | Her yerde açılsın | kart → Video seç → İndir | 3 |
+| İyileştir (ADR-037) | kart → Video seç → İndir | 3 (başka bir güçle 4) |
 
 **Kes.** Video seçilince kesit editörü aynı videoyla açılır (ilk açılış ipucu "Nasıl kesilir?
 Üç adım" dahil). Kesit editörü bu işin kendisidir; ayrı bir kesme sihirbazı yazılmadı.

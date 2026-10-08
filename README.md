@@ -5,14 +5,16 @@
 [![CI](https://github.com/erenulutas0/capcut/actions/workflows/ci.yml/badge.svg)](https://github.com/erenulutas0/capcut/actions/workflows/ci.yml)
 
 > Durum: görev öncelikli açılış ekranı ("Ne yapmak istiyorsun?": iş kartları + yazarak
-> bulma, dokuz sihirbaz; [ADR-034](docs/adr/ADR-034-task-first-home.md)),
+> bulma, on sihirbaz; [ADR-034](docs/adr/ADR-034-task-first-home.md)),
 > kesit listesi editörü (işaretle, ekle, kartından indir; ADR-026),
 > kaydetme penceresiyle doğrudan dosyaya indirme, gerçek MP4 çıktısı, yerel kayıt,
 > altyazı (elle, SRT/VTT, görüntüye bağlı, videoya işleme) ve yerel sessizlik
 > kesim önerisi çalışıyor. 15 gerçek kayıt ve 20 vakalık dosya matrisiyle ölçüldü:
 > [destek matrisi](docs/SUPPORT_MATRIX.md). Cihaz üstü **İngilizce** yazıya dökme ve otomatik
 > altyazı ("Yazıya dök") çalışıyor ([ADR-036](docs/adr/ADR-036-on-device-transcript.md));
-> Türkçe ve bulut transkript yok (ADR-017). "Clip" geçici çalışma adıdır; marka/alan adı araştırması
+> Türkçe ve bulut transkript yok (ADR-017). Cihaz üstü görüntü iyileştirme ("İyileştir": ışık,
+> renk, keskinlik, kumlanma; klasik görüntü işleme, yapay zekâ değil) çalışıyor
+> ([ADR-037](docs/adr/ADR-037-enhance.md)); yapay zekâyla büyütme ve bulanıklık giderme yok. "Clip" geçici çalışma adıdır; marka/alan adı araştırması
 > yapılmadı.
 
 Site **"Ne yapmak istiyorsun?"** ekranıyla açılır: kullanıcı bir iş kartına dokunur ya da
@@ -44,7 +46,7 @@ cd web && npm install && npm run dev
 
 Ardından tarayıcıda **http://localhost:3000** (açılış ekranı) → sihirbazlar: **/yap/kes**,
 **/yap/bosluk**, **/yap/dikey**, **/yap/kucult**, **/yap/yazi**, **/yap/muzik**, **/yap/ses**,
-**/yap/sustur**, **/yap/cevir** → editör: **/editor**
+**/yap/sustur**, **/yap/cevir**, **/yap/iyilestir** → editör: **/editor**
 
 Üretim derlemesi:
 
@@ -255,7 +257,8 @@ Ayrıntı: [ADR-008](docs/adr/ADR-008-web-w0-stack.md),
 [ADR-026 (kesit listesi, kaydetme penceresiyle doğrudan dosyaya indirme)](docs/adr/ADR-026-kesit-list.md),
 [ADR-031 (telefonda paylaş, uygulama olarak yükle, internetsiz aç)](docs/adr/ADR-031-phone-share-install-offline.md),
 [ADR-034 (görev öncelikli açılış ekranı: iş kartları, yazarak bulma, sihirbazlar)](docs/adr/ADR-034-task-first-home.md),
-[ADR-036 (Yazıya dök: cihaz üstü İngilizce transkript, otomatik altyazı, yazıdan kesit)](docs/adr/ADR-036-on-device-transcript.md).
+[ADR-036 (Yazıya dök: cihaz üstü İngilizce transkript, otomatik altyazı, yazıdan kesit)](docs/adr/ADR-036-on-device-transcript.md),
+[ADR-037 (İyileştir: cihaz üstü ışık, renk, keskinlik ve kumlanma; ölçümle seçilen ölçüler, "zarar verme" denetimi)](docs/adr/ADR-037-enhance.md).
 
 ## Sıradaki tek görev
 

@@ -39,7 +39,7 @@ test.describe('opening screen', () => {
 
     // The cards, in the registry's order: exactly the tasks that work today.
     const cards = page.getByTestId('task-grid').getByRole('link');
-    await expect(cards).toHaveCount(9);
+    await expect(cards).toHaveCount(10);
     expect(await cards.evaluateAll((links) => links.map((link) => link.getAttribute('href')))).toEqual(
       availableTasks().map((task) => `/yap/${task.id}`),
     );
@@ -91,7 +91,7 @@ test.describe('opening screen', () => {
           return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
         }),
       );
-      expect(boxes).toHaveLength(9);
+      expect(boxes).toHaveLength(10);
       for (const rect of boxes) {
         expect(rect.width).toBeGreaterThanOrEqual(120);
         expect(rect.height).toBeGreaterThanOrEqual(120);
@@ -102,13 +102,13 @@ test.describe('opening screen', () => {
       const sorted = [...boxes].sort((a, b) => a.y - b.y || a.x - b.x);
       expect(boxes).toEqual(sorted);
       // Two columns on a phone; from 700 px three; from 1000 px four when that leaves no card
-      // alone — nine cards are three rows of three at every wide size.
+      // alone — ten cards ("İyileştir" is the tenth, ADR-037) are 4 + 4 + 2 on a desktop.
       const columns = new Set(boxes.map((rect) => Math.round(rect.x))).size;
-      expect(columns).toBe(size.width >= 700 ? 3 : 2);
+      expect(columns).toBe(size.width >= 1000 ? 4 : size.width >= 700 ? 3 : 2);
       const rows = new Map<number, number>();
       for (const rect of boxes) rows.set(Math.round(rect.y), (rows.get(Math.round(rect.y)) ?? 0) + 1);
-      // No card alone on a row at a wide size (a phone's two columns leave the ninth by itself).
-      if (size.width >= 700) expect([...rows.values()]).toEqual([3, 3, 3]);
+      // No card alone on a row: 4 + 4 + 2 on a desktop, five rows of two on a phone.
+      expect([...rows.values()]).toEqual(size.width >= 1000 ? [4, 4, 2] : [2, 2, 2, 2, 2]);
 
       // Every other control is at least 44 px tall.
       for (const testId of ['home-editor-link', 'finder-input', 'finder-example']) {

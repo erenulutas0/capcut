@@ -104,6 +104,32 @@ yazdı, "Kendim düzenleyeceğim"e mi gitti — hangisini neden seçtiği not al
    buldu mu; bitişik satırların tek kesit olmasını bekledi mi; kesitin başı/sonu sözü kesiyor mu
    (zaman hatası: ölçümde p95 ~0,2–0,25 s).
 
+5. **İyileştir (yeni, 7 Ekim 2026 — [ADR-037](../adr/ADR-037-enhance.md)):** katılımcının kendi
+   telefonuyla çektiği, **karanlık, soluk ya da kumlu** bulduğu bir videoyla (yoksa görüşmeyi
+   yapan kişi loş ışıkta çekilmiş kısa bir video verir; bir de iyi çekilmiş bir video hazır
+   durur). "Bu videoyu daha iyi görünür hâle getir ve kaydet." Beklenen yol: "İyileştir" kartı
+   (ya da "karanlık", "netleştir", "kaliteyi yükselt" yazmak) → "Video seç" → öncesi/sonrası
+   resmi → "İndir" (3 dokunuş + dosya penceresi; başka bir güçle 4). Not al:
+   - Kartı mı buldu, kutuya mı yazdı? **Ne yazdı** (aynen)? "4K yap", "bulanıklığı sil" gibi
+     bu işin **yapamadığı** bir şey yazdıysa sonuç satırındaki cümleyi ("Çok bulanık bir videoyu
+     netleştiremez.") okudu mu; ne bekledi?
+   - Öncesi/sonrası resmindeki çizgiyi fark etti mi, sürükledi mi? Farkı gördü mü? "Bu, videonun
+     gerçek bir karesi" cümlesini okudu mu; "Başka bir kare göster"e bastı mı?
+   - "Yapılacaklar: …" cümlesini anladı mı (ör. "video belirgin biçimde aydınlatılır")?
+   - Hafif / Otomatik / Güçlü arasında gezdi mi; hangisinde kaldı, neden? "Güçlü"nün uyarısını
+     ("Kumlanma ve sıkıştırma izleri de daha çok görünebilir") okudu mu?
+   - Beklerken: "Videona bakılıyor…" ve ilerleme çubuğunu anladı mı; **süreyi yaz** (video
+     uzunluğu, bakma süresi, indirme süresi, cihaz). Masaüstü ölçümü ADR-037'de; telefon ölçülmedi.
+   - **İyi çekilmiş videoyla:** "değiştirilecek bir şey bulunamadı" cümlesini ve kapalı "İndir"i
+     nasıl karşıladı (rahatladı / hata sandı / yine de değişsin istedi)?
+   - Sonuç: "Bu hâlini paylaşır mıydın? Önceki hâlinden iyi mi?" (evet / hayır / aynı, neden —
+     fazla parlak, renkler yapay, kumlu, fark yok). **Daha iyi bulmadıysa hangi video olduğunu
+     yaz**: ölçülerin ayarı bu örneklerle düzeltilecek.
+5b. **Editörde:** "Aynı ayar, kestiğin her parçaya uygulansın." Beklenen yol: "Daha fazla ayar →
+   editörde aç" → "Ayarlar" → "Görüntü" → "Görüntüyü iyileştir". Not al: ayarı buldu mu;
+   oynatıcının videonun kendi hâlini gösterdiğini, altındaki resmin indirilecek hâli olduğunu
+   anladı mı; kapatmayı buldu mu.
+
 Rakip karşılaştırması (araştırma eki: iki doğrudan rakip) ikinci turda; ilk turda
 yalnızca kendi ürünümüzdeki tıkanmaları görüyoruz.
 
@@ -156,6 +182,9 @@ Görev 1  başarı: E/Y/B   aktif süre:   export süresi:   takıldığı yer:
 Görev 1b başarı: E/Y/B   takıldığı yer:
 Görev 2  başarı: E/Y/B   aktif süre:   takıldığı yer:
 Görev 3  başarı: E/Y/B   aktif süre:   takıldığı yer:
+Görev 5  yol: kart / yazarak (yazdığı aynen):   güç: Hafif / Otomatik / Güçlü   çizgiyi kullandı: E/H
+Görev 5  bakma süresi:   indirme süresi:   video uzunluğu:   cihaz:   sonucu daha iyi buldu: E/H/aynı (neden):
+Görev 5b başarı: E/Y/B   takıldığı yer:
 Hata/tanı dosyası: var/yok  kod:
 Anlaşılmayan metinler:
 Paylaşır mıydı: E/H, neden:

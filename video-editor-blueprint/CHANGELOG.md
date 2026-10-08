@@ -3,6 +3,26 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## İyileştir: cihaz üstü, tek dokunuşla görüntü iyileştirme — 7–8 Ekim 2026 (ADR-037; politika `2026-10-07.v8`, şema EDL v4)
+
+Kurucu kararı (7 Ekim 2026): planlanan son ücretsiz kart yapılsın — tek dokunuş, cihazda, **klasik görüntü işleme**. Yapay zekâ, büyütme (upscaling) ya da bulanıklık giderme değildir ve hiçbir yerde böyle söylenmez; bunlar sonraki ücretli bulut aşamasına bırakıldı.
+
+**Eklenen — onuncu kart "İyileştir"** (`/yap/iyilestir`): video seç → gerçek bir karenin **önce / sonra** resmi (çizgi sürüklenir, ok tuşlarıyla kayar) + tek seçim "Ne kadar?" (Hafif · **Otomatik** · Güçlü) → İndir → kaydedildi + paylaş. Açılış ekranından üç dokunuş. Dürüst cümle kartta ve sihirbazda aynı: "Işığı, rengi ve keskinliği toparlar. Çok bulanık bir videoyu netleştiremez." Sihirbaz ne yapacağını önceden söyler; değiştirilecek bir şey bulamazsa bunu söyler ve indirmeyi kapatır. "Daha fazla ayar → editörde aç" seçimi taşır; editörde **Ayarlar → Görüntü → "Görüntüyü iyileştir"** aynı ayardır.
+
+**Motor** (dışa aktarma worker'ında, WebGL2; yoksa ya da çalışma anı denetimi tutmazsa aynı resmi veren işlemci yolu): önce videoya bakılır (≥ 0,5 sn arayla en çok 240 kare), sonra üç geçiş — hafif kumlanma süzgeci, doğrusal ışıkta ışık / kontrast / yumuşak beyaz dengesi / küçük canlılık, hale yapmayan keskinleştirme. HDR yumuşak kırpmadan sonra, altyazıdan önce; siyah bantlara dokunmaz. Renk ve keskinlik ayarı video için tektir, ışık zamanda yumuşatılır (titreme yok). Önizleme dışa aktarmayla **aynı kodla** üretilir. İyileştirme açıkken görüntü her zaman yeniden kodlanır (hızlı kesim uygulanmaz; yöntem satırı nedenini söyler).
+
+**Arama:** "kaliteyi yükselt", "4K yap", "bulanıklığı sil", "netleştir", "renkleri düzelt", "brightness" bu karta gelir ve o dürüst cümleyle görünür. Gerçek filtre / efekt, titreme düzeltme ve arka plan istekleri "Bunu henüz yapamıyoruz." olarak kalır (renk / parlaklık / kontrast kelimeleri "filtre ve renk" girişinden bu karta taşındı).
+
+**Şema — EDL v4:** kökte isteğe bağlı `enhance: { strength }`. Göç v3 → v4 yalnız sürüm numarası; v1–v3 tarifler kayıpsız okunur; alan yokken çıktı ve parmak izi eskisiyle aynı.
+
+**Ölçüm (ayrıntı ve sınırlar ADR-037'de):** bilinen 12 bozulma × 9 açık lisanslı kare, Otomatik: ortalama **+4,22 dB PSNR / +0,076 SSIM**; karanlık +11…+13 dB, karanlık + kumlu +14,4 dB, kum +3,8…+6,7 dB; bulanık yalnız +0,02…+0,30 dB (bulanıklık giderilmez); **kötüleşenler:** soluk renk −0,27 dB, sıkıştırılmış −0,17 dB, temiz karelerde çok küçük değişiklik (ortalama 45,5 dB). Gerçek 13 SDR kayıtta Otomatik 2'sine hiç dokunmadı, 8'inde girdiye SSIM ≥ 0,997. Titreme: kaynak 0,152 → plan 0,183 seviye (kare başına düzeltme 0,388 olurdu); ani pozlama değişiminde taşma 2,6 seviye (kaynak 2,5). Hız, 5 dakikalık 1080p: Chrome 154 55,8 → 80,1 sn, Edge 154 54,5 → 76,9 sn (farkın tamamına yakını videoya bakma); **GPU'suz** Chromium 163,6 sn → **36 dakika**. Tepe bellek +14…+101 MiB. Kare sayısı, kare zamanları, ses ve renk etiketleri düz çıktıyla birebir (matris M23).
+
+**Testler (7–8 Ekim 2026, bu makine, ölçüm kilidi altında):** `tsc` ve `eslint` temiz; birim **1056 / 1056** (60 dosya); e2e (Playwright Chromium, `CLIP_TEST_HOOKS=1` derlemesi) **309 geçti, 2 atlandı, 0 başarısız** (yeni 20 test: sihirbaz uçtan uca, önce / sonra fare + klavye, editöre taşıma, erişilebilirlik 360 / 390 / 1440, 320 px, metin aralığı, yalnız klavye, azaltılmış hareket); matris Chromium / Chrome / Edge **30 / 30**; gerçek kayıtlar (Chrome) **15 / 15**; Pages duman testi **7 / 7**.
+
+**Ölçülmeyen:** telefon, Safari / Firefox, tümleşik GPU, HDR kaynakta kalite, 5 dakikadan uzun iyileştirilmiş çıktı, algısal (insan gözü) karşılaştırma. Bilinen eksik: yazılım WebGL kullanan cihazda uzun süre önceden söylenmiyor.
+
+Mevcut kullanıcı haklarına etkisi: yalnızca genişleme. İyileştirme kapalıyken (varsayılan) hiçbir indirme değişmedi; kayıtlı projeler aynen açılır.
+
 ## Sesi kapat, dürüst arama yanıtı, müzik uzunluğu, ondalık virgül, kararsız test — 7 Ekim 2026 (ADR-034 güncellemesi; politika ve şema değişmedi)
 
 Beş küçük, birbirinden bağımsız iş; her biri kendi testi ve kendi commit'iyle.

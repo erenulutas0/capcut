@@ -28,6 +28,8 @@ export type ExportMode = 'auto' | 'encode';
 export type FastCutFallbackReason =
   /** The caller asked for a full encode. */
   | 'requested_encode'
+  /** "İyileştir" (ADR-037) changes every picture: light, colour, sharpness. */
+  | 'enhance'
   /** Burned-in captions change every picture they cover. */
   | 'captions'
   /** HDR needs tone mapping to SDR (ADR-022): copying would keep HDR pictures. */
@@ -108,12 +110,14 @@ function isFullFrame(segment: RenderSegment, width: number, height: number): boo
  * are encoded to the chosen size, exactly as before.
  */
 export function fastCutEligibility(
-  plan: Pick<RenderPlan, 'width' | 'height' | 'captions' | 'segments'>,
+  plan: Pick<RenderPlan, 'width' | 'height' | 'captions' | 'segments'> & Partial<Pick<RenderPlan, 'enhance'>>,
   source: FastCutSourceFacts,
   mode: ExportMode,
 ): Eligibility {
   const refuse = (reason: FastCutFallbackReason): Eligibility => ({ ok: false, reason });
   if (mode === 'encode') return refuse('requested_encode');
+  // An enhanced video can never be a copy of the source's pictures.
+  if (plan.enhance) return refuse('enhance');
   if (plan.captions) return refuse('captions');
   if (source.hdr) return refuse('hdr');
   if (source.codec !== 'avc' || !source.isobmff) return refuse('codec');

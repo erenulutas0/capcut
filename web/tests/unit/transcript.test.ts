@@ -263,13 +263,13 @@ describe('schema v3: validation and old recipes', () => {
     const loaded = loadProject(v2);
     expect(loaded.ok).toBe(true);
     if (loaded.ok) {
-      expect(loaded.project.schemaVersion).toBe(3);
+      expect(loaded.project.schemaVersion).toBe(4);
       expect({ ...loaded.project, schemaVersion: 2 }).toEqual(v2);
     }
   });
 
   it('does not accept a later schema it cannot know', () => {
-    expect(issueCodes(loadProject({ ...baseProject(), schemaVersion: 4 }))).toContain('schema_version_unsupported');
+    expect(issueCodes(loadProject({ ...baseProject(), schemaVersion: 5 }))).toContain('schema_version_unsupported');
   });
 });
 

@@ -1475,15 +1475,15 @@ test.describe('a11y: “Sesi kapat” and “Bunu henüz yapamıyoruz.”, axe a
     { name: 'phone-390', width: 390, height: 844 },
     { name: 'desktop-1440', width: 1440, height: 900 },
   ]) {
-    test(`${size.name}: the nine cards, both answers of the search, every step of the wizard — no axe finding, nothing scrolls sideways`, async ({
+    test(`${size.name}: the ten cards, both answers of the search, every step of the wizard — no axe finding, nothing scrolls sideways`, async ({
       page,
     }, testInfo) => {
       await page.setViewportSize({ width: size.width, height: size.height });
 
-      // The opening screen with nine cards; "Sesi kapat" found; a request that cannot be served.
+      // The opening screen with ten cards; "Sesi kapat" found; a request that cannot be served.
       await page.goto('/');
-      await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(9);
-      await audit(page, `${size.name}-home-nine-cards`, testInfo);
+      await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(10);
+      await audit(page, `${size.name}-home-ten-cards`, testInfo);
       expect(await horizontalOverflow(page), 'home').toBe(0);
       await finderBox(page).fill('sesini kapat');
       await expect(page.getByTestId('result-sustur').getByTestId('result-start')).toBeVisible();
@@ -1573,12 +1573,12 @@ test.describe('a11y: “Sesi kapat” and “Bunu henüz yapamıyoruz.”, axe a
   });
 
   for (const width of [320, 640]) {
-    test(`reflow at ${width} px: the nine cards, the honest answer and the wizard never scroll sideways; nothing clips with wider text spacing`, async ({
+    test(`reflow at ${width} px: the ten cards, the honest answer and the wizard never scroll sideways; nothing clips with wider text spacing`, async ({
       page,
     }) => {
       await page.setViewportSize({ width, height: 720 });
       await page.goto('/');
-      await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(9);
+      await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(10);
       expect(await horizontalOverflow(page), 'home').toBe(0);
       await finderBox(page).fill('arka planı bulanıklaştır');
       await expect(page.getByTestId('result-arkaplan')).toBeVisible();

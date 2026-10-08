@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "valid": [
     {
       "file": "valid/single-clip.json"
@@ -47,6 +47,15 @@
     },
     {
       "file": "valid/caption-outline-top-en.json"
+    },
+    {
+      "file": "valid/enhance-auto.json"
+    },
+    {
+      "file": "valid/enhance-light-with-music.json"
+    },
+    {
+      "file": "valid/enhance-strong-with-captions.json"
     }
   ],
   "invalid": [
@@ -132,6 +141,24 @@
       "file": "invalid/future-schema.json",
       "expectedIssueCodes": [
         "schema_version_unsupported"
+      ]
+    },
+    {
+      "file": "invalid/enhance-unknown-strength.json",
+      "expectedIssueCodes": [
+        "enhance_invalid"
+      ]
+    },
+    {
+      "file": "invalid/enhance-unknown-field.json",
+      "expectedIssueCodes": [
+        "unknown_field"
+      ]
+    },
+    {
+      "file": "invalid/enhance-not-an-object.json",
+      "expectedIssueCodes": [
+        "not_an_object"
       ]
     },
     {
@@ -288,6 +315,22 @@
     },
     {
       "file": "legacy-v2/v2-without-captions.json",
+      "expect": "invalid"
+    },
+    {
+      "file": "legacy-v3/single-clip.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v3/doc10-example.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v3/caption-transcript-unclear.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v3/v3-with-enhance.json",
       "expect": "invalid"
     }
   ]

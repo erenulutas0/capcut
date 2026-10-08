@@ -24,13 +24,14 @@ function load(file: string): unknown {
   return JSON.parse(readFileSync(join(FIXTURE_ROOT, file), 'utf8'));
 }
 
-describe('EDL v3 shared fixtures', () => {
+describe('EDL v4 shared fixtures', () => {
   it('manifest covers every file on disk', () => {
     const onDisk = [
       ...readdirSync(join(FIXTURE_ROOT, 'valid')).map((f) => `valid/${f}`),
       ...readdirSync(join(FIXTURE_ROOT, 'invalid')).map((f) => `invalid/${f}`),
       ...readdirSync(join(FIXTURE_ROOT, 'legacy-v1')).map((f) => `legacy-v1/${f}`),
       ...readdirSync(join(FIXTURE_ROOT, 'legacy-v2')).map((f) => `legacy-v2/${f}`),
+      ...readdirSync(join(FIXTURE_ROOT, 'legacy-v3')).map((f) => `legacy-v3/${f}`),
     ].sort();
     const listed = [
       ...manifest.valid.map((entry) => entry.file),
@@ -82,7 +83,7 @@ describe('EDL v3 shared fixtures', () => {
       const result = loadProject(raw);
       expect(result.ok).toBe(verdict === 'valid');
       if (result.ok) {
-        expect(result.project.schemaVersion).toBe(3);
+        expect(result.project.schemaVersion).toBe(4);
         if (file.startsWith('legacy-v1/')) {
           // v1 never had captions: an empty list is added, nothing else changes.
           expect(result.project.captionTracks).toEqual([]);
@@ -90,7 +91,9 @@ describe('EDL v3 shared fixtures', () => {
           const { schemaVersion: _c, captionTracks: _d, ...after } = result.project as unknown as Record<string, unknown>;
           expect(after).toEqual(before);
         } else {
-          // v2 → v3 (ADR-036) is the number alone: captions, cues and all the rest are kept as they were.
+          // v2 → v3 (ADR-036) and v3 → v4 (ADR-037) are the number alone: captions, cues and all the
+          // rest are kept as they were, and no enhancement setting appears.
+          expect('enhance' in result.project).toBe(false);
           const { schemaVersion: _a, ...before } = raw as Record<string, unknown>;
           const { schemaVersion: _c, ...after } = result.project as unknown as Record<string, unknown>;
           expect(after).toEqual(before);
