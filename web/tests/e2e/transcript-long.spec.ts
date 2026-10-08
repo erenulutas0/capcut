@@ -300,11 +300,12 @@ test.describe('Yazı panel: a long transcript', () => {
     await expect(page.getByTestId('transcript-selected-count')).toHaveText('349 satır seçili');
     await expect(row(page, 349)).toHaveAttribute('data-selected', 'true');
     // A line in the middle, drawn only now, shows its tick.
-    await list(page).evaluate((box) => {
-      box.scrollTop = box.scrollHeight / 4;
-    });
-    await expect.poll(async () => Number(await rows(page).nth(3).getAttribute('data-index'))).toBeGreaterThan(100);
-    const middleIndex = Number(await rows(page).nth(5).getAttribute('data-index'));
+    await page.getByTestId('transcript-search-input').fill('Line 151,');
+    await page.keyboard.press('Enter');
+    // (Wait for the window to arrive there: until then the rows in the page are still those around line 351.)
+    const middleIndex = 150;
+    await expect(row(page, middleIndex)).toBeVisible();
+    await expect.poll(() => inListView(page, middleIndex)).toBe(true);
     await expect(row(page, middleIndex).getByTestId('transcript-check')).toBeChecked();
 
     // Neighbouring lines are one kesit: the whole range is a single one.
