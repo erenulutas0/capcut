@@ -70,7 +70,19 @@ jobs:
       - run: npm install -g npm@11.6.2
       - run: npm ci
       - name: Install ffmpeg (test media is generated, never downloaded)
-        run: choco install ffmpeg --no-progress -y
+        # The Chocolatey community feed sometimes fails for a few minutes; without
+        # ffmpeg 126 tests fail with ENOENT, which looks like a product bug.
+        run: |
+          for ($i = 1; $i -le 4; $i++) {
+            choco install ffmpeg --no-progress -y
+            if (Get-Command ffmpeg -ErrorAction SilentlyContinue) { break }
+            if ($env:ChocolateyInstall) { $env:Path += ";$env:ChocolateyInstallin" }
+            if (Get-Command ffmpeg -ErrorAction SilentlyContinue) { break }
+            Write-Host "ffmpeg not installed (attempt $i), retrying in $($i * 20) s"
+            Start-Sleep -Seconds ($i * 20)
+          }
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { throw 'ffmpeg could not be installed' }
+          ffmpeg -version | Select-Object -First 1
       - name: Install Playwright Chromium
         run: npx playwright install chromium
       # The speech model files of "Yazıya dök" (ADR-036) are not in git. They are fetched from
