@@ -76,7 +76,7 @@ jobs:
           for ($i = 1; $i -le 4; $i++) {
             choco install ffmpeg --no-progress -y
             if (Get-Command ffmpeg -ErrorAction SilentlyContinue) { break }
-            if ($env:ChocolateyInstall) { $env:Path += ";$env:ChocolateyInstallin" }
+            if ($env:ChocolateyInstall) { $env:Path += ';' + (Join-Path $env:ChocolateyInstall 'bin') }
             if (Get-Command ffmpeg -ErrorAction SilentlyContinue) { break }
             Write-Host "ffmpeg not installed (attempt $i), retrying in $($i * 20) s"
             Start-Sleep -Seconds ($i * 20)
