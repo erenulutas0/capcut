@@ -23,7 +23,7 @@
 |---|---|---|
 | Desteklenen OS/tarayıcı/codec matrisi gerçek testlerle yazıldı | ⚠️ | Windows'ta Chromium/Chrome/Edge 20/20, Firefox açık ret, 15 gerçek kayıt. **Eksik:** macOS, Safari, gerçek telefon tarayıcısı, düşük bellekli cihaz |
 | Türkçe metinler, hata açıklamaları ve erişilebilirlik test edildi | ⚠️ | Türkçe metinler ve hata kodları: e2e. Otomatik erişilebilirlik: axe (WCAG 2.2 A/AA) 32 ekran durumunda 233 → 0 ihlal; klavyeyle tam akış, odak tuzağı, hareket azaltma, %200 yakınlaştırma testlerle geçiyor (`docs/a11y/2026-09-22-audit.md`). **Gerçek ekran okuyucu (NVDA) testi yapılmadı**; 11 adımlık kontrol listesi raporda |
-| İsim/domain/iletişim bilgileri gerçek | ⚠️ | İletişim: GitHub Issues (kurucu kararı), "Sorun bildir"de bağlantı ve "herkese açık" uyarısı, Issue şablonu. Adres: https://erenulutas0.github.io/capcut/. **"Clip" geçici ad (K01) açık** |
+| İsim/domain/iletişim bilgileri gerçek | ⚠️ | İletişim: GitHub Issues (kurucu kararı), "Sorun bildir"de bağlantı ve "herkese açık" uyarısı, Issue şablonu. Adres: https://erenulutas0.github.io/capcut/. Ad: **LiloCut** (kurucu kararı, 10 Ekim 2026; ADR-038). **Eksik:** marka benzerliği ve alan adı incelemesi yapılmadı; site hâlâ `/capcut` yolunda (depo adı) |
 | Privacy/terms ve veri envanteri gerçek davranışla eşleşiyor | ⚠️ | Koddan çıkarılmış envanter (`docs/privacy/DATA_INVENTORY.md`) ve taslak `/gizlilik` sayfası (TR/EN). Tam oturumun dışarıya sıfır istek yaptığı ve çerez bırakmadığı e2e ile doğrulanıyor. **Veri sorumlusu (K02), barındırma sağlayıcısı ve hukuki inceleme eksik; sayfada görünür "belirlenmedi"** |
 | App Store/Play beyanları | — | Web-only; mağaza yok |
 | Hesap varsa silme akışları | — | Hesap yok. Yerel projeyi silme var (`persistence.spec.ts`) |

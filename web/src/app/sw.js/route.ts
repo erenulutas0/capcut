@@ -1,3 +1,5 @@
+import { APP_NAME } from '@/appIdentity';
+
 export const dynamic = 'force-static';
 
 /**
@@ -8,7 +10,7 @@ export const dynamic = 'force-static';
  * serves (`next dev`, where the worker is never registered) does nothing.
  */
 export function GET(): Response {
-  return new Response('// Clip service worker: written by scripts/build-sw.mjs after `next build`.\n', {
+  return new Response(`// ${APP_NAME} service worker: written by scripts/build-sw.mjs after 'next build'.\n`, {
     headers: { 'Content-Type': 'text/javascript; charset=utf-8' },
   });
 }

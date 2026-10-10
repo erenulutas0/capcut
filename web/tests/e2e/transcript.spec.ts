@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
+import { APP_NAME } from '../../src/appIdentity';
 import { watchCsp } from './cspWatch';
 import { installSavePicker, probeMp4, readSaved } from './kesitFlow';
 import {
@@ -132,7 +133,7 @@ test.describe('Yazıya dök: the wizard', () => {
     const txt = await savedText(page, 'transcript-save-txt');
     expect(txt.name).toBe('sample-24s_yazi.txt');
     expect(txt.text.split('\r\n')).toEqual([
-      'Clip ile bu cihazda otomatik yazıldı — yanlış olabilir.',
+      `${APP_NAME} ile bu cihazda otomatik yazıldı — yanlış olabilir.`,
       '',
       '[00:01] Hello and welcome to the show.',
       '[00:06] (anlaşılamadı)',

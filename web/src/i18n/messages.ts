@@ -3,14 +3,15 @@
  * (and later locales) can be added without touching components.
  */
 
+import { APP_NAME, BACKUP_FILE_SUFFIX } from '../appIdentity';
+
 export const tr = {
-  'app.name': 'clip',
-  'app.workingName': 'Clip geçici çalışma adıdır.',
+  'app.name': APP_NAME,
   'landing.note':
     'Bu bir deneme sürümüdür. İndirme en iyi Chrome ve Edge’de çalışır. Hesap, abonelik ve bulut yükleme yok; her şey cihazında çalışır.',
 
   // Names only assistive technology hears (landmarks, hidden labels).
-  'a11y.editorHeading': 'Clip editörü',
+  'a11y.editorHeading': `${APP_NAME} editörü`,
   'a11y.prototypeNotice': 'Sürüm notu',
   'a11y.preview': 'Önizleme',
   'a11y.previewVideo': 'Önizleme videosu',
@@ -72,7 +73,7 @@ export const tr = {
 
   'privacy.link': 'Gizlilik (taslak)',
   'privacy.linkNewTab': 'Gizlilik (taslak) — yeni sekmede açılır',
-  'privacy.metaTitle': 'Clip — gizlilik (taslak)',
+  'privacy.metaTitle': `${APP_NAME} — gizlilik (taslak)`,
   'privacy.metaDescription': 'Bu sürümün verini nasıl işlediği: neyin bu tarayıcıda kaldığı, neyin hiç toplanmadığı.',
   'privacy.eyebrow': 'Gizlilik',
   'privacy.heading': 'Bu sürüm verini nasıl işliyor',
@@ -156,7 +157,7 @@ export const tr = {
   'privacy.downloads.mp4':
     'İndirilen video (MP4): bir kesit, birleştirilmiş kesitler ya da videonun tamamı; müzik ve videoya yazılmış altyazılarla. Kaydetme penceresinde seçtiğin yere yazılır.',
   'privacy.downloads.backup':
-    'Proje yedeği (.clip.json): proje tarifinin tamamı; proje adı, altyazı metinleri ve kaynak dosya adları dahil. Video içermez.',
+    `Proje yedeği (${BACKUP_FILE_SUFFIX}): proje tarifinin tamamı; proje adı, altyazı metinleri ve kaynak dosya adları dahil. Video içermez.`,
   'privacy.downloads.subtitles': 'Altyazı dosyası (SRT veya VTT): altyazı satırların ve zamanları.',
   'privacy.downloads.share':
     '“Paylaş”: video, telefonunun (ya da bilgisayarının) paylaşma menüsüne verilir; nereye gideceğini orada sen seçersin. Uygulama bu sırada bir şey göndermez ya da saklamaz.',
@@ -1151,7 +1152,7 @@ export const tr = {
   'transcript.file.txt': 'Metni indir (TXT)',
   'transcript.file.srt': 'SRT indir',
   'transcript.file.vtt': 'VTT indir',
-  'transcript.file.header': 'Clip ile bu cihazda otomatik yazıldı — yanlış olabilir.',
+  'transcript.file.header': `${APP_NAME} ile bu cihazda otomatik yazıldı — yanlış olabilir.`,
   'transcript.tab.kesit': 'Kesitler',
   'transcript.tab.text': 'Yazı',
   'transcript.tabs': 'Kesitler ve yazı',
@@ -1171,13 +1172,12 @@ export const tr = {
 export type MessageKey = keyof typeof tr;
 
 export const en: Record<MessageKey, string> = {
-  'app.name': 'clip',
-  'app.workingName': 'Clip is a provisional working name.',
+  'app.name': APP_NAME,
   'landing.note':
     'This is a trial version. Downloading works best in Chrome and Edge. No account, subscription or cloud upload; everything runs on your device.',
 
   // Names only assistive technology hears (landmarks, hidden labels).
-  'a11y.editorHeading': 'Clip editor',
+  'a11y.editorHeading': `${APP_NAME} editor`,
   'a11y.prototypeNotice': 'Release note',
   'a11y.preview': 'Preview',
   'a11y.previewVideo': 'Preview video',
@@ -1239,7 +1239,7 @@ export const en: Record<MessageKey, string> = {
 
   'privacy.link': 'Privacy (draft)',
   'privacy.linkNewTab': 'Privacy (draft) — opens in a new tab',
-  'privacy.metaTitle': 'Clip — privacy (draft)',
+  'privacy.metaTitle': `${APP_NAME} — privacy (draft)`,
   'privacy.metaDescription': 'How this version handles your data: what stays in this browser and what is never collected.',
   'privacy.eyebrow': 'Privacy',
   'privacy.heading': 'How this version handles your data',
@@ -1323,7 +1323,7 @@ export const en: Record<MessageKey, string> = {
   'privacy.downloads.mp4':
     'Downloaded video (MP4): one clip, the clips joined, or the whole video; with music and burned-in captions. Written where you choose in the save dialog.',
   'privacy.downloads.backup':
-    'Project backup (.clip.json): the full project recipe, including the project name, caption text and source file names. It contains no video.',
+    `Project backup (${BACKUP_FILE_SUFFIX}): the full project recipe, including the project name, caption text and source file names. It contains no video.`,
   'privacy.downloads.subtitles': 'Subtitle file (SRT or VTT): your caption lines and their timing.',
   'privacy.downloads.share':
     '“Share”: the video is handed to your phone’s (or computer’s) share menu; you choose there where it goes. The app itself sends or keeps nothing while doing so.',
@@ -2310,7 +2310,7 @@ export const en: Record<MessageKey, string> = {
   'transcript.file.txt': 'Download the text (TXT)',
   'transcript.file.srt': 'Download SRT',
   'transcript.file.vtt': 'Download VTT',
-  'transcript.file.header': 'Written automatically on this device with Clip — it may be wrong.',
+  'transcript.file.header': `Written automatically on this device with ${APP_NAME} — it may be wrong.`,
   'transcript.tab.kesit': 'Clips',
   'transcript.tab.text': 'Text',
   'transcript.tabs': 'Clips and text',

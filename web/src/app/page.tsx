@@ -45,7 +45,7 @@ export default function HomePage() {
           {t('home.trust')}
         </p>
         <p className="home-note">
-          {t('landing.note')} {t('app.workingName')}{' '}
+          {t('landing.note')}{' '}
           <Link href="/gizlilik" prefetch={false} data-testid="footer-privacy">
             {t('privacy.link')}
           </Link>

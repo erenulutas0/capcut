@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 
+import { APP_SLUG } from '../../src/appIdentity';
 import { closeSheet, noSavePicker, openMore, openSettings } from './kesitFlow';
 
 /**
@@ -215,7 +216,7 @@ test.describe('report a problem', () => {
     const download = page.waitForEvent('download');
     await page.getByTestId('diag-download').click();
     const saved = await download;
-    expect(saved.suggestedFilename()).toMatch(/^clip-tani-\d{8}-\d{4}\.json$/);
+    expect(saved.suggestedFilename()).toMatch(new RegExp(`^${APP_SLUG}-tani-[0-9]{8}-[0-9]{4}[.]json$`));
     const content = readFileSync((await saved.path()) ?? '', 'utf8');
     expect(content).toBe(preview);
 
@@ -525,7 +526,7 @@ test.describe('nothing leaves the machine', () => {
     await openMore(page);
     download = page.waitForEvent('download');
     await page.getByTestId('backup-download').click();
-    expect((await download).suggestedFilename()).toMatch(/\.clip\.json$/);
+    expect((await download).suggestedFilename().endsWith(`.${APP_SLUG}.json`)).toBe(true);
     await closeSheet(page);
 
     // Diagnostics download.

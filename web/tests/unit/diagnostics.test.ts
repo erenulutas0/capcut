@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { APP_SLUG } from '@/appIdentity';
 import { addCaptionCue, addClip, createEmptyProject, setVideoAsset } from '@/application/commands';
 import {
   DIAGNOSTICS_KIND,
@@ -184,6 +185,6 @@ describe('buildDiagnostics', () => {
 describe('diagnosticsFileName', () => {
   it('names the file by date only', () => {
     const name = diagnosticsFileName(new Date(2026, 8, 22, 9, 5));
-    expect(name).toBe('clip-tani-20260922-0905.json');
+    expect(name).toBe(`${APP_SLUG}-tani-20260922-0905.json`);
   });
 });

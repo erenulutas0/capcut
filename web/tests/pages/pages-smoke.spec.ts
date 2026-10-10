@@ -6,6 +6,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { expectPolicy, watchCsp } from '../e2e/cspWatch';
 import { enhanceFixture, frameLumas } from '../e2e/enhance-media';
 import { addKesit, closeSheet, openMore, openSettings, installSavePicker, probeMp4, readSaved } from '../e2e/kesitFlow';
+import { APP_NAME } from '../../src/appIdentity';
 import { availableTasks } from '../../src/domain/tasks';
 
 /**
@@ -250,7 +251,7 @@ test('installable and offline under /capcut/: manifest, service worker, offline 
     start_url: '/capcut/',
     scope: '/capcut/',
     display: 'standalone',
-    name: 'Clip',
+    name: APP_NAME,
   });
   expect(manifest.icons.map((icon) => icon.src).sort()).toEqual([
     '/capcut/icons/icon-192.png',

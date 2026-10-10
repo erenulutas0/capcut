@@ -1,4 +1,4 @@
-# Clip — web video editörü
+# LiloCut — web video editörü
 
 **Canlı beta:** https://erenulutas0.github.io/capcut/ · Sorun bildirmek için [GitHub Issues](https://github.com/erenulutas0/capcut/issues) (herkese açıktır: video ya da kişisel bilgi ekleme).
 
@@ -14,8 +14,8 @@
 > altyazı ("Yazıya dök") çalışıyor ([ADR-036](docs/adr/ADR-036-on-device-transcript.md));
 > Türkçe ve bulut transkript yok (ADR-017). Cihaz üstü görüntü iyileştirme ("İyileştir": ışık,
 > renk, keskinlik, kumlanma; klasik görüntü işleme, yapay zekâ değil) çalışıyor
-> ([ADR-037](docs/adr/ADR-037-enhance.md)); yapay zekâyla büyütme ve bulanıklık giderme yok. "Clip" geçici çalışma adıdır; marka/alan adı araştırması
-> yapılmadı.
+> ([ADR-037](docs/adr/ADR-037-enhance.md)); yapay zekâyla büyütme ve bulanıklık giderme yok. Ürünün adı **LiloCut** (kurucu kararı, 10 Ekim 2026;
+> [ADR-038](docs/adr/ADR-038-product-name.md)); marka/alan adı araştırması yapılmadı, tescil ya da uygunluk iddiası yok.
 
 Site **"Ne yapmak istiyorsun?"** ekranıyla açılır: kullanıcı bir iş kartına dokunur ya da
 ne istediğini kendi sözleriyle yazar ("sessiz yerleri sil", "TikTok için dikey"). Her iş

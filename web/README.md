@@ -1,4 +1,4 @@
-# web — Clip W0 editörü
+# web — LiloCut web uygulaması
 
 Kurulum ve komutlar için depo kökündeki [README](../README.md) dosyasına bak.
 

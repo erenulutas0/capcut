@@ -13,6 +13,7 @@
  * the download button, and the dialog shows its full content first.
  */
 
+import { APP_SLUG } from '../appIdentity';
 import type { Project } from './edl';
 import { sanitizeExportLogEntry, type ExportLogEntry } from './exportLog';
 import { totalOutputDurationUs } from './timeline';
@@ -260,5 +261,5 @@ export function buildDiagnostics(input: DiagnosticsInput): DiagnosticsReport {
 /** A file name with the date only: never the project title or a source name. */
 export function diagnosticsFileName(now: Date): string {
   const pad = (value: number) => String(value).padStart(2, '0');
-  return `clip-tani-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.json`;
+  return `${APP_SLUG}-tani-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.json`;
 }

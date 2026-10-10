@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 
+import { pageTitle } from '@/appIdentity';
 import { EditorApp } from '@/components/editor/EditorApp';
 import '../editor.css';
 
 export const metadata: Metadata = {
-  title: 'Clip — editör',
+  title: pageTitle('editör'),
 };
 
 /**

@@ -24,7 +24,7 @@ Olasılık ifadeleri ölçülmüş istatistik değildir; ilk mühendislik öncel
 
 ## Açık kurucu kararları
 
-**K01 İsim ve marka:** Clip geçici isim. Domain, mağaza bulunabilirliği ve marka benzerlik incelemesi yapılmadan tescil/uygunluk iddiası yok.
+**K01 İsim ve marka — KARAR VERİLDİ (10 Ekim 2026):** ürünün adı **LiloCut** (kurucu kararı; depo kökündeki `docs/adr/ADR-038-product-name.md`). "Clip" o tarihe kadarki geçici çalışma adıydı. Kararın kapsamı addır: domain, mağaza bulunabilirliği ve marka benzerlik incelemesi **yapılmadı**; tescil/uygunluk iddiası yok ve bu inceleme yayın öncesi açık iş olarak kalır.
 
 **K02 Şirket ve tahsilat:** Veri sorumlusu/merchant hangi tüzel/gerçek kişi? Gerçek ülke, vergi ve payout onayı gerekir. Teknik spike bu kararı bekleyebilir; paid launch bekleyemez.
 

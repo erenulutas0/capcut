@@ -1,5 +1,5 @@
 /*
- * Clip service worker (ADR-031). Written to `<base>/sw.js` by
+ * The app's service worker (ADR-031). Written to `<base>/sw.js` by
  * scripts/build-sw.mjs after every build, with CONFIG filled in: the build's
  * own files, and nothing else. Edit this template, not the output.
  *

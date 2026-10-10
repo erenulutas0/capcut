@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { BACKUP_DEFAULT_BASENAME, BACKUP_FILE_SUFFIX } from '@/appIdentity';
 import { createIndexedDbStore, type StoreFailure } from '@/adapters/projectStore';
 import type { Project } from '@/domain/edl';
 import {
@@ -158,8 +159,8 @@ export function useProjectPersistence({ project, title, bindings, onRestore, ena
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    const safeTitle = (currentTitle || 'clip-projesi').replace(/[^\p{L}\p{N}\-_ ]/gu, '').trim();
-    anchor.download = `${safeTitle || 'clip-projesi'}.clip.json`;
+    const safeTitle = (currentTitle || BACKUP_DEFAULT_BASENAME).replace(/[^\p{L}\p{N}\-_ ]/gu, '').trim();
+    anchor.download = `${safeTitle || BACKUP_DEFAULT_BASENAME}${BACKUP_FILE_SUFFIX}`;
     anchor.click();
     URL.revokeObjectURL(url);
   }, []);
