@@ -653,13 +653,19 @@ export const tr = {
   'error.unreadable': 'Bu dosya okunamadı. Başka bir dosya dene.',
   'error.unsupported_preview':
     'Bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.',
-  'error.unknown_duration': 'Dosyanın süresi okunamadı; bu haliyle düzenlenemez.',
-  'error.timeout': 'Dosya okunurken zaman aşımı oldu.',
-  'error.file_too_large': 'Dosya {size}; bu sürümün sınırı {limit}.',
-  'error.total_too_large': 'Video ve müzik birlikte {size}; bu sürümde ikisinin toplam sınırı {limit}.',
-  'error.music_too_large': 'Müzik dosyası {size}; bu sürümün müzik sınırı {limit}.',
-  'error.music_too_long': 'Müzik bu sürümdeki 10 dakika sınırının üzerinde.',
-  'error.source_too_long': 'Video bu sürümdeki 120 dakika sınırının üzerinde.',
+  // Every refusal also says what to do next (10 Oct 2026): the numbers still come from the policy
+  // (tests/unit/policy.test.ts), the advice is what is true today — nothing here can shorten a file
+  // that cannot be opened, so it is "pick a smaller one, or split it elsewhere first".
+  'error.unknown_duration': 'Dosyanın süresi okunamadı; bu haliyle düzenlenemez. Başka bir video dene.',
+  'error.timeout': 'Dosya zamanında okunamadı. Tekrar dene; yine olmazsa başka bir video seç.',
+  'error.file_too_large':
+    'Dosya {size}; bu sürümün sınırı {limit}. Daha küçük bir video seç; ya da bu videoyu önce başka bir uygulamayla parçalara böl.',
+  'error.total_too_large':
+    'Video ve müzik birlikte {size}; bu sürümde ikisinin toplam sınırı {limit}. Daha küçük bir dosya seç.',
+  'error.music_too_large': 'Müzik dosyası {size}; bu sürümün müzik sınırı {limit}. Daha küçük bir müzik dosyası seç.',
+  'error.music_too_long': 'Müzik bu sürümdeki 10 dakika sınırının üzerinde. Daha kısa bir müzik seç.',
+  'error.source_too_long':
+    'Video bu sürümdeki 120 dakika sınırının üzerinde. Daha kısa bir video seç; ya da bu videoyu önce başka bir uygulamayla parçalara böl.',
   // ADR-040: a download or copy that stopped half way. Said when the file is picked, in every wizard and in the editor.
   'error.incomplete':
     'Bu video yarım kalmış görünüyor: {total} uzunluğunda olması gerekirken dosyada yalnızca ilk {readable} var. İnerken ya da kopyalanırken yarıda kesilmiş olabilir. Videoyu yeniden indir ya da yeniden kopyala, sonra tekrar dene.',
@@ -1843,13 +1849,16 @@ export const en: Record<MessageKey, string> = {
   'error.unreadable': 'This file could not be read. Try another one.',
   'error.unsupported_preview':
     'The browser could not open a preview for this file. It may be corrupt or in an unsupported format. Try another video; MP4 or MOV files from a phone usually open.',
-  'error.unknown_duration': 'The duration could not be read, so the file cannot be edited.',
-  'error.timeout': 'Reading the file timed out.',
-  'error.file_too_large': 'The file is {size}; the limit of this version is {limit}.',
-  'error.total_too_large': 'Video and music together are {size}; the combined limit of this version is {limit}.',
-  'error.music_too_large': 'The music file is {size}; the music limit of this version is {limit}.',
-  'error.music_too_long': 'The music is above the 10 minute limit of this version.',
-  'error.source_too_long': 'The video is above the 120 minute limit of this version.',
+  'error.unknown_duration': 'The duration could not be read, so the file cannot be edited. Try another video.',
+  'error.timeout': 'The file could not be read in time. Try again; if it still fails, pick another video.',
+  'error.file_too_large':
+    'The file is {size}; the limit of this version is {limit}. Pick a smaller video, or split this one into parts with another app first.',
+  'error.total_too_large':
+    'Video and music together are {size}; the combined limit of this version is {limit}. Pick a smaller file.',
+  'error.music_too_large': 'The music file is {size}; the music limit of this version is {limit}. Pick a smaller music file.',
+  'error.music_too_long': 'The music is above the 10 minute limit of this version. Pick a shorter one.',
+  'error.source_too_long':
+    'The video is above the 120 minute limit of this version. Pick a shorter video, or split this one into parts with another app first.',
   'error.incomplete':
     'This video looks incomplete: it should be {total} long, but only the first {readable} is in the file. The download or the copy may have stopped half way. Download or copy the video again, then retry.',
   'error.incompleteStart':

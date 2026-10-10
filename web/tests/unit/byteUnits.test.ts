@@ -141,17 +141,33 @@ describe('the refusal sentence', () => {
 
   it('names the size and the limit in the same unit', () => {
     expect(refusedFileText(t, { reason: 'file_too_large', name: 'tatil.mp4', bytes: 4_294_967_297 })).toBe(
-      '“tatil.mp4” açılamadı: dosya 4,3 GB; bu sürümün sınırı 4,29 GB.',
+      '“tatil.mp4” açılamadı: dosya 4,3 GB; bu sürümün sınırı 4,29 GB. Daha küçük bir video seç; ya da bu videoyu önce başka bir uygulamayla parçalara böl.',
     );
     expect(refusedFileText(e, { reason: 'file_too_large', name: 'trip.mp4', bytes: 5_000_000_000 })).toBe(
-      '“trip.mp4” could not be opened: the file is 5 GB; the limit of this version is 4.29 GB.',
+      '“trip.mp4” could not be opened: the file is 5 GB; the limit of this version is 4.29 GB. Pick a smaller video, or split this one into parts with another app first.',
     );
     expect(refusedFileText(t, { reason: 'total_too_large', name: 'muzik.mp3', bytes: 4_294_967_300 })).toBe(
-      '“muzik.mp3” açılamadı: video ve müzik birlikte 4,3 GB; bu sürümde ikisinin toplam sınırı 4,29 GB.',
+      '“muzik.mp3” açılamadı: video ve müzik birlikte 4,3 GB; bu sürümde ikisinin toplam sınırı 4,29 GB. Daha küçük bir dosya seç.',
     );
     expect(refusedFileText(t, { reason: 'music_too_large', name: 'uzun.wav', bytes: 104_857_601 })).toBe(
-      '“uzun.wav” açılamadı: müzik dosyası 104,9 MB; bu sürümün müzik sınırı 104,8 MB.',
+      '“uzun.wav” açılamadı: müzik dosyası 104,9 MB; bu sürümün müzik sınırı 104,8 MB. Daha küçük bir müzik dosyası seç.',
     );
+  });
+
+  it('every refusal of a picked file says what to do next, in both languages', () => {
+    // The same rule the quality report judges by (tests/quality/errors.spec.ts): an instruction, as a whole word.
+    const tells = {
+      tr: /(?<![\p{L}])(dene|seç|böl|indir|kopyala)(?![\p{L}])/iu,
+      en: /\b(try|pick|split|download|copy)\b/i,
+    };
+    const refusals = Object.keys(tr).filter(
+      (key) => /^error\.(unreadable|unsupported_preview|unknown_duration|timeout|file_too_large|total_too_large|source_too_long|music_too_large|music_too_long|incomplete|incompleteStart|music_incomplete|music_incompleteStart)$/.test(key),
+    ) as MessageKey[];
+    expect(refusals).toHaveLength(13);
+    for (const key of refusals) {
+      expect(tr[key], key).toMatch(tells.tr);
+      expect(en[key], key).toMatch(tells.en);
+    }
   });
 
   it('other refusals are unchanged', () => {

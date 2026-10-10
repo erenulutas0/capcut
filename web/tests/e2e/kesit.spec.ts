@@ -503,7 +503,7 @@ test.describe('limits per download (ADR-021 sentences, ADR-026)', () => {
     await page.getByTestId('video-input').setInputFiles(file);
     const error = page.getByTestId('media-error');
     await expect(error).toHaveText(
-      '“cok-uzun-video.mp4” açılamadı: video bu sürümdeki 120 dakika sınırının üzerinde. Açık olan videon değişmedi.',
+      '“cok-uzun-video.mp4” açılamadı: video bu sürümdeki 120 dakika sınırının üzerinde. Daha kısa bir video seç; ya da bu videoyu önce başka bir uygulamayla parçalara böl. Açık olan videon değişmedi.',
       { timeout: 60_000 },
     );
     await expect(error).toHaveAttribute('role', 'alert');
