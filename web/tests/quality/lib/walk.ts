@@ -1,0 +1,369 @@
+/**
+ * Task-completion walkthroughs: for each card of the opening screen, the
+ * scripted first-time user (novice.ts) goes from "Ne yapmak istiyorsun?" to
+ * a real file, and everything on the way is counted.
+ *
+ * The file is then measured with ffprobe / ffmpeg: a task counts as done
+ * only when the file is what the card promised.
+ */
+
+import { expect, type Page, type TestInfo } from '@playwright/test';
+
+import { enhanceFixture, frameRgb, rgbMeans } from '../../e2e/enhance-media';
+import { silenceFixture } from '../../e2e/silence-media';
+import { noisyLongFixture } from '../../e2e/targetsize-media';
+import { wizardFixture } from '../../e2e/wizard-media';
+import { MUSIC, OTHER, SAMPLE, isPhone, setupSaving, startsWith, t, takeDownloadedFile, takeSavedFile, waitForResult } from './app';
+import { probeFile, type FileInfo } from './media';
+import { Novice, VIDEO } from './novice';
+import { round } from './record';
+import { watchProblems } from './screen';
+import { shot, type VisualEntry } from './visual';
+
+export interface Check {
+  name: string;
+  ok: boolean;
+  value: string;
+}
+
+export interface Flow {
+  id: string;
+  /** What the video is, for the report. */
+  sourceNote: string;
+  source: () => string;
+  /** From "the video is picked" to "the download button can be pressed". */
+  middle: (novice: Novice, page: Page) => Promise<void>;
+  /** The download button: its name and, for a step that cannot be reached by name, its test id. */
+  download: { name: string; testId: string };
+  verify: (out: FileInfo, source: FileInfo, files: { out: string; source: string }) => Check[];
+  /** Name of this flow's screenshots when it is not the task id (the stand-in build's screens). */
+  shotId?: string;
+  /** Runs before the page loads (test doubles of the transcript section). */
+  prepare?: (page: Page) => Promise<void>;
+  /** Stops here on purpose and says why (a step this machine cannot take). */
+  stopBeforeDownload?: (page: Page) => Promise<string | null>;
+}
+
+export interface WalkResult {
+  id: string;
+  label: string;
+  project: string;
+  sourceNote: string;
+  completed: boolean;
+  /** True when the measuring script itself did not get to the end: the numbers of this row are not measurements. */
+  cutShort: boolean;
+  /** Why the task did not end with a file, when it did not. */
+  stopped: string | null;
+  clicks: number;
+  typedFields: number;
+  screens: number;
+  decisions: number;
+  wordsTotal: number;
+  wordsMax: number;
+  /** From the press on the card to the file being ready, by a script that never hesitates. */
+  timeToResultS: number | null;
+  /** From the press on the download button to the file being ready. */
+  exportS: number | null;
+  strongJargon: Array<{ screen: string; term: string; context: string }>;
+  mildJargon: Array<{ screen: string; term: string; context: string }>;
+  unreachable: string[];
+  perScreen: Array<{ label: string; title: string; words: number; choiceGroups: number; required: string[] }>;
+  steps: Array<{ kind: string; role: string; name: string; byName: boolean }>;
+  output: { file: string; bytes: number; durationS: number; streams: string[]; width: number | null; height: number | null } | null;
+  checks: Check[];
+  problems: { pageErrors: string[]; consoleErrors: string[] };
+}
+
+const near = (value: number, target: number, tolerance: number) => Math.abs(value - target) <= tolerance;
+const streamsOf = (info: FileInfo) => info.streams.map((stream) => `${stream.type}:${stream.codec}`);
+const lengthCheck = (out: FileInfo, expectedS: number, tolerance = 0.15): Check => ({
+  name: `süre ≈ ${expectedS} sn`,
+  ok: near(out.durationS, expectedS, tolerance),
+  value: `${round(out.durationS, 3)} sn`,
+});
+const codecCheck = (out: FileInfo, expected: string[]): Check => ({
+  name: `izler: ${expected.join(' + ')}`,
+  ok: JSON.stringify(streamsOf(out).sort()) === JSON.stringify([...expected].sort()),
+  value: streamsOf(out).join(' + ') || 'yok',
+});
+
+const wait = (page: Page, testId: string, timeout = 120_000) => expect(page.getByTestId(testId)).toBeVisible({ timeout });
+
+export const FLOWS: Flow[] = [
+  {
+    id: 'kes',
+    sourceNote: 'sample-24s.mp4 (1280 × 720, 24 sn); 2–5. saniyeler istenir',
+    source: () => SAMPLE,
+    middle: async (novice, page) => {
+      await wait(page, 'preview-video');
+      await novice.look('editör', ['başlangıç ve bitiş zamanı']);
+      await novice.type(t('range.start'), '2', 'range-start');
+      await novice.type(t('range.end'), '5', 'range-end');
+      await novice.press('button', startsWith(t('mark.add')), 'add-moment');
+      await expect(page.getByTestId('kesit-card')).toHaveCount(1);
+    },
+    download: { name: t('download.one'), testId: 'download-all' },
+    verify: (out) => [lengthCheck(out, 3), codecCheck(out, ['video:h264', 'audio:aac'])],
+  },
+  {
+    id: 'bosluk',
+    sourceNote: 'bursts.mp4 (4,5 sn, içinde 1,2 sn’lik bir sessizlik)',
+    source: () => silenceFixture('bursts').file,
+    middle: async (novice, page) => {
+      await wait(page, 'bosluk-summary');
+      await novice.look('seçim');
+    },
+    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    verify: (out, source) => [
+      lengthCheck(out, 3.6),
+      { name: 'kaynaktan kısa', ok: out.durationS < source.durationS - 0.5, value: `${round(source.durationS, 2)} → ${round(out.durationS, 2)} sn` },
+      codecCheck(out, ['video:h264', 'audio:aac']),
+    ],
+  },
+  {
+    id: 'dikey',
+    sourceNote: 'other-8s.mp4 (640 × 360 yatay, 8 sn)',
+    source: () => OTHER,
+    middle: async (novice, page) => {
+      await wait(page, 'dikey-choice');
+      await novice.look('seçim');
+    },
+    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    verify: (out) => [
+      { name: '1080 × 1920', ok: out.video?.width === 1080 && out.video?.height === 1920, value: `${out.video?.width} × ${out.video?.height}` },
+      lengthCheck(out, 8),
+      codecCheck(out, ['video:h264', 'audio:aac']),
+    ],
+  },
+  {
+    id: 'kucult',
+    sourceNote: 'noisy-720p30-14s.mp4 (yaklaşık 21 MB, 14 sn); seçim değiştirilmeden',
+    source: () => noisyLongFixture(),
+    middle: async (novice, page) => {
+      await wait(page, 'kucult-choice');
+      for (const id of ['share', 'email', 'whatsapp']) {
+        await expect(page.getByTestId(`size-hint-${id}`)).not.toHaveAttribute('data-state', 'pending', { timeout: 60_000 });
+      }
+      await novice.look('seçim');
+    },
+    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    verify: (out, source) => [
+      lengthCheck(out, 14),
+      codecCheck(out, ['video:h264', 'audio:aac']),
+      {
+        // The card says "Küçült — WhatsApp’a sığdır"; with the choice left as it is the target is 52 MB.
+        name: 'dosya kaynaktan küçük',
+        ok: out.bytes < source.bytes * 0.98,
+        value: `${source.bytes} → ${out.bytes} bayt`,
+      },
+      { name: 'WhatsApp sınırına (16 MB) sığıyor', ok: out.bytes <= 16_000_000, value: `${out.bytes} bayt` },
+    ],
+  },
+  {
+    id: 'muzik',
+    sourceNote: 'other-8s.mp4 + tone-30s.m4a',
+    source: () => OTHER,
+    middle: async (novice, page) => {
+      await wait(page, 'muzik-pick');
+      await novice.look('seçim', ['müzik dosyası']);
+      await novice.pickFile(startsWith(t('wizard.muzik.pick')), MUSIC, 'muzik-pick');
+      await wait(page, 'muzik-picked');
+    },
+    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    verify: (out) => [lengthCheck(out, 8), codecCheck(out, ['video:h264', 'audio:aac'])],
+  },
+  {
+    id: 'ses',
+    sourceNote: 'sample-24s.mp4',
+    source: () => SAMPLE,
+    middle: async (novice, page) => {
+      await wait(page, 'ses-info');
+      await novice.look('seçim');
+    },
+    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    verify: (out) => [lengthCheck(out, 24, 0.05), codecCheck(out, ['audio:aac'])],
+  },
+  {
+    id: 'sustur',
+    sourceNote: 'sample-24s.mp4',
+    source: () => SAMPLE,
+    middle: async (novice, page) => {
+      await wait(page, 'sustur-info');
+      await novice.look('seçim');
+    },
+    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    verify: (out) => [lengthCheck(out, 24), codecCheck(out, ['video:h264'])],
+  },
+  {
+    id: 'cevir',
+    sourceNote: 'tarayici-kaydi.webm (VP9 + Opus, 640 × 360, 2 sn)',
+    source: () => wizardFixture('webm'),
+    middle: async (novice, page) => {
+      await wait(page, 'cevir-info');
+      await novice.look('seçim');
+    },
+    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    verify: (out) => [lengthCheck(out, 2), codecCheck(out, ['video:h264', 'audio:aac']), { name: 'MP4', ok: /mp4/.test(out.format), value: out.format }],
+  },
+  {
+    id: 'iyilestir',
+    sourceNote: 'karanlik.mp4 (yaklaşık iki durak karanlık, 1280 × 720, 3 sn)',
+    source: () => enhanceFixture('dark'),
+    middle: async (novice, page) => {
+      await expect(page.getByTestId('enhance-preview')).toHaveAttribute('data-status', 'ready', { timeout: 180_000 });
+      await wait(page, 'iyilestir-summary');
+      await novice.look('seçim');
+    },
+    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    verify: (out, source, files) => {
+      const before = rgbMeans(frameRgb(files.source, 1.5, 320, 180)).luma;
+      const after = rgbMeans(frameRgb(files.out, 1.5, 320, 180)).luma;
+      return [
+        lengthCheck(out, 3),
+        codecCheck(out, ['video:h264', 'audio:aac']),
+        { name: 'görüntü aydınlandı (ortalama parlaklık en az +10)', ok: after - before >= 10, value: `${round(before, 1)} → ${round(after, 1)}` },
+        { name: 'boyut aynı', ok: out.video?.width === source.video?.width && out.video?.height === source.video?.height, value: `${out.video?.width} × ${out.video?.height}` },
+      ];
+    },
+  },
+];
+
+/** "Yazıya dök" on the build people get: as far as a first-time user gets before the model has to come down. */
+export const YAZI_PUBLISHED: Flow = {
+  id: 'yazi',
+  sourceNote: 'sample-24s.mp4; yayınlanan derleme, model dosyaları bu makinede yok',
+  source: () => SAMPLE,
+  middle: async (novice, page) => {
+    await wait(page, 'transcribe-steps');
+    await page.waitForSelector('[data-testid="model-download"], [data-testid="transcribe-start"]', { timeout: 60_000 });
+    await novice.look('model', ['model indirme (bir kez)']);
+  },
+  download: { name: t('wizard.yazi.downloadVideo'), testId: 'wizard-download' },
+  stopBeforeDownload: async (page) => {
+    const button = page.getByTestId('model-download');
+    const text = (await button.count()) > 0 ? ((await button.textContent()) ?? '').trim() : '';
+    return `“${text}” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi.`;
+  },
+  verify: () => [],
+};
+
+/** A task that has not been walked yet: what stays in the results when the script itself is cut short. */
+export function blankResult(testInfo: TestInfo, flow: Flow, stopped: string | null): WalkResult {
+  return {
+    id: flow.id,
+    label: t(`task.${flow.id}.label` as Parameters<typeof t>[0]),
+    project: testInfo.project.name,
+    sourceNote: flow.sourceNote,
+    completed: false,
+    stopped,
+    clicks: 0,
+    typedFields: 0,
+    screens: 0,
+    decisions: 0,
+    wordsTotal: 0,
+    wordsMax: 0,
+    timeToResultS: null,
+    exportS: null,
+    strongJargon: [],
+    mildJargon: [],
+    unreachable: [],
+    perScreen: [],
+    steps: [],
+    output: null,
+    checks: [],
+    problems: { pageErrors: [], consoleErrors: [] },
+    cutShort: stopped !== null,
+  };
+}
+
+export async function walk(page: Page, testInfo: TestInfo, flow: Flow, visual: VisualEntry[]): Promise<WalkResult> {
+  const phone = isPhone(testInfo);
+  const label = t(`task.${flow.id}.label` as Parameters<typeof t>[0]);
+  const novice = new Novice(page, phone);
+  const problems = await watchProblems(page);
+  await setupSaving(page, phone);
+  await flow.prepare?.(page);
+  const result: WalkResult = {
+    id: flow.id,
+    label,
+    project: testInfo.project.name,
+    sourceNote: flow.sourceNote,
+    cutShort: false,
+    completed: false,
+    stopped: null,
+    clicks: 0,
+    typedFields: 0,
+    screens: 0,
+    decisions: 0,
+    wordsTotal: 0,
+    wordsMax: 0,
+    timeToResultS: null,
+    exportS: null,
+    strongJargon: [],
+    mildJargon: [],
+    unreachable: [],
+    perScreen: [],
+    steps: [],
+    output: null,
+    checks: [],
+    problems: { pageErrors: [], consoleErrors: [] },
+  };
+  try {
+    const sourceFile = flow.source();
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await novice.look('ana ekran');
+    const started = Date.now();
+    await novice.press('link', startsWith(label), `task-${flow.id}`);
+    await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'pick');
+    await novice.look('video seç', [VIDEO]);
+    await shot(page, testInfo, visual, `yol-${flow.shotId ?? flow.id}-ilk`);
+    await novice.pickFile(startsWith(t('preview.pickVideo')), sourceFile, 'pick-video');
+    await flow.middle(novice, page);
+
+    const stop = await flow.stopBeforeDownload?.(page);
+    if (stop) {
+      result.stopped = stop;
+    } else {
+      const pressed = Date.now();
+      await novice.press('button', flow.download.name, flow.download.testId);
+      const phase = await waitForResult(page);
+      const ended = Date.now();
+      result.exportS = round((ended - pressed) / 1000, 2);
+      result.timeToResultS = round((ended - started) / 1000, 2);
+      await novice.look('sonuç');
+      if (phase !== 'saved' && phase !== 'ready') {
+        result.stopped = `indirme “${phase}” ile bitti`;
+      } else {
+        await shot(page, testInfo, visual, `yol-${flow.shotId ?? flow.id}-sonuc`);
+        const file =
+          phase === 'saved'
+            ? await takeSavedFile(page, testInfo, `yol-${flow.id}`)
+            : await takeDownloadedFile(page, testInfo, `yol-${flow.id}`, () =>
+                novice.press('link', startsWith(t(phone ? 'export.saveDevice' : 'export.save')), 'export-download'),
+              );
+        const out = probeFile(file);
+        const source = probeFile(sourceFile);
+        result.output = {
+          file,
+          bytes: out.bytes,
+          durationS: round(out.durationS, 3),
+          streams: streamsOf(out),
+          width: out.video?.width ?? null,
+          height: out.video?.height ?? null,
+        };
+        result.checks = [
+          { name: 'dosya boş değil', ok: out.bytes > 1000, value: `${out.bytes} bayt` },
+          ...flow.verify(out, source, { out: file, source: sourceFile }),
+        ];
+        result.completed = result.checks.every((check) => check.ok);
+        if (!result.completed) result.stopped = 'dosya kaydedildi ama kartın söz verdiği gibi değil (denetimlere bak)';
+      }
+    }
+  } catch (error) {
+    result.stopped = `betik ilerleyemedi: ${String((error as Error).message).split('\n')[0]?.slice(0, 240)}`;
+  }
+  Object.assign(result, novice.summary());
+  result.problems = { pageErrors: problems.pageErrors, consoleErrors: problems.consoleErrors };
+  return result;
+}

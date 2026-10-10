@@ -1,0 +1,75 @@
+{
+  "//": "What the e2e suite already proves about honesty. The report checks that each title still exists in its file; it does not run these tests.",
+  "honesty": [
+    {
+      "what": "İptal: kaydetme penceresinde seçilen adda dosya kalmaz",
+      "file": "tests/e2e/kesit.spec.ts",
+      "title": "cancel while encoding leaves no file under the chosen name"
+    },
+    {
+      "what": "İptal: kaydetme penceresi olmayan yolda geçici dosya kalmaz",
+      "file": "tests/e2e/editor.spec.ts",
+      "title": "a canceled download leaves no temporary file behind"
+    },
+    {
+      "what": "Sihirbazda iptal: çıkmadan önce sorar, “İptal et” durdurur, “Kaydedildi” görünmez",
+      "file": "tests/e2e/wizards.spec.ts",
+      "title": "leaving while the video is being prepared asks first; “İptal et” stops it and leaves no file"
+    },
+    {
+      "what": "Kaydetme penceresini kapatmak hiçbir şey yapmaz ve hiçbir şey söylemez",
+      "file": "tests/e2e/wizards.spec.ts",
+      "title": "closing the save dialog does nothing and says nothing"
+    },
+    {
+      "what": "Sığmayan hedef: indirme kapalı, hiçbir şey yazılmaz",
+      "file": "tests/e2e/wizards.spec.ts",
+      "title": "a video that cannot fit: the option says the smallest size, İndir stays off, nothing is written"
+    },
+    {
+      "what": "Uygulamanın söylediği boyut dosyanın gerçek boyutudur (Küçült)",
+      "file": "tests/e2e/wizards.spec.ts",
+      "title": "one choice, each option says its outcome first; WhatsApp: the saved file is under 16 MB and says its real size"
+    },
+    {
+      "what": "Sesi olmayan video: başarı yok, kaydetme penceresi yok, dosya yok",
+      "file": "tests/e2e/wizards.spec.ts",
+      "title": "a video without sound: said on the step, İndir stays off, no save dialog, nothing written"
+    },
+    {
+      "what": "Değiştirecek bir şey yoksa indirme sunulmaz (İyileştir)",
+      "file": "tests/e2e/enhance.spec.ts",
+      "title": "a video with nothing to fix is told so: no download that would change nothing, no save dialog"
+    },
+    {
+      "what": "Disk dolarsa dürüst hata; yarım dosya silinir",
+      "file": "tests/e2e/output-limits.spec.ts",
+      "title": "a disk that fills up mid-file ends in an honest failure; the partial file is deleted"
+    },
+    {
+      "what": "Seçilen dosya diski doldurursa: dürüst hata, o adda yarım dosya yok",
+      "file": "tests/e2e/output-limits.spec.ts",
+      "title": "the picked file fills the disk mid-file: an honest failure, no half file under its name"
+    },
+    {
+      "what": "Sınırı aşan çıktı, tek kare kodlanmadan reddedilir",
+      "file": "tests/e2e/kesit.spec.ts",
+      "title": "a kesit, the joined kesitler and the whole video over 60 minutes are refused before encoding"
+    },
+    {
+      "what": "Sessizlik aramasının ilerlemesi gerçektir ve durdurulabilir",
+      "file": "tests/e2e/silence.spec.ts",
+      "title": "a long analysis shows real progress and can be stopped"
+    },
+    {
+      "what": "Yazıya dökmeyi durdurmak geride hiçbir şey bırakmaz; hata söylenir",
+      "file": "tests/e2e/transcript.spec.ts",
+      "title": "stopping a transcription keeps nothing; a failure is said and can be retried"
+    },
+    {
+      "what": "Bozuk inen model dosyası reddedilir, silinir, kullanılmaz",
+      "file": "tests/e2e/transcript.spec.ts",
+      "title": "a damaged file is refused, deleted and never used; a clean retry works"
+    }
+  ]
+}
