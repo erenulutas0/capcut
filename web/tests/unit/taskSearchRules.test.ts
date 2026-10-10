@@ -26,7 +26,8 @@ describe('a word is its forms, not everything that starts like it', () => {
     expect(top('küçültebilir miyim')).toBe('kucult');
     expect(top('dikey yapmak istiyorum')).toBe('dikey');
     expect(top('yazıya dökmek istiyorum')).toBe('yazi');
-    expect(top('müziğini')).toBe('muzik');
+    // "müziğini": the video's OWN music — taking it out, not putting one in.
+    expect(top('müziğini')).toBe('ses');
   });
 
   it('another word is not a task: "kesinlikle" is not Kes, "dikkat" is not Dikey, "netflix" is not İyileştir', () => {

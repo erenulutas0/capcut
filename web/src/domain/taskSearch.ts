@@ -37,8 +37,9 @@
  *    kapat; "ses / müzik" + "al / kaydet / indir" is Sesini al; "müzik" +
  *    "ekle / koy / çalsın" is Müzik ekle). Either order, with their endings,
  *    next to each other once the words that carry no intent are set aside
- *    ("ses hiç olmasın"). Scores like a two-word phrase; phrase and pair do
- *    not add up.
+ *    ("ses hiç olmasın") — or, where the pair says so, with one word between
+ *    ("şarkı arkada çalsın"). Scores like a two-word phrase; phrase and pair
+ *    do not add up.
  * 8. Yielding words: "çevir", "dönüştür", "convert" say that something is to
  *    be turned into something else, not into what. Alone they are Her yerde
  *    açılsın; next to another task's own evidence ("mp3e çevir", "gife
@@ -47,11 +48,13 @@
  *    is Boşlukları at, not the generic Kes), then to registry order. Keep at
  *    most three, and only those within 40 % of the best — a stray weak word
  *    does not add a row.
- * 10. A floor: in a request of three words or more, a best match that rests
+ * 10. A floor: in a request of four words or more, a best match that rests
  *    on ONE supporting (weak) word and explains nothing else is not an
  *    answer; the user gets "Bunu bulamadım" rather than a card on a guess
  *    ("şu videoyu bilgisayara aktarıp telefona yollamak" is not Dikey yap
- *    because it says "telefon").
+ *    because it says "telefon"). One STRONG word still answers, however long
+ *    the sentence: measured on the first fresh batch, refusing those lost
+ *    three right answers for every wrong card it removed.
  * 11. When the best match is something the app cannot do yet ("gife çevir",
  *    "youtubedan video indir"), the answer is "Bunu henüz yapamıyoruz." and
  *    a task that only shares a word with the request is not offered under
@@ -107,6 +110,9 @@ const STOP_WORDS = new Set([
   'tane', 'kendi', 'kendim', 'bence', 'aslinda', 'mesela', 'merhaba', 'selam', 'tesekkurler', 'tesekkur', 'sagol',
   'yaparim', 'yapilir', 'yapiyorum', 'yapcam', 'napcam', 'napicam', 'nolur', 'lzm', 'pls', 'plz', 'acil', 'hemen',
   'bisey', 'birsey', 'seyi', 'olmuyor', 'olmadi', 'yardim', 'yardimci',
+  // Adverbs of degree and manner: they stand between a thing and what is done to it ("sesi komple kıs").
+  'komple', 'tamamiyla', 'tumden', 'butun', 'hepsini', 'hepsi', 'iyice', 'direkt', 'tam', 'surekli', 'devamli',
+  'kendiliginden', 'otomatik', 'ayri', 'ayrica', 'zahmet', 'bile', 'ise', 'yoksa', 'nedense', 'maalesef',
   // English
   'the', 'an', 'my', 'to', 'it', 'its', 'make', 'of', 'for', 'in', 'on', 'is', 'me', 'we', 'you', 'how', 'do', 'does',
   'can', 'want', 'need', 'please', 'this', 'that', 'from', 'into', 'with', 'and', 'file', 'movie',
@@ -157,17 +163,37 @@ export function editDistance(a: string, b: string, limit = 2): number {
 
 const TYPO_MIN_LENGTH = 5;
 
-/** One edit away from the word, with or without a real ending after it. Same first letter. */
-function isTypoOf(token: string, word: string): boolean {
-  if (token.length < TYPO_MIN_LENGTH || word.length < TYPO_MIN_LENGTH || token[0] !== word[0]) return false;
-  if (editDistance(token, word, 1) <= 1) return true;
+/** The same letters with two neighbours swapped ("dikye" / "dikey"). */
+function isSwap(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const at = [...a].findIndex((letter, index) => letter !== b[index]);
+  return at >= 0 && at + 1 < a.length && a[at] === b[at + 1] && a[at + 1] === b[at] && a.slice(at + 2) === b.slice(at + 2);
+}
+
+/**
+ * One slip of the finger apart: a letter missing, doubled or swapped with its neighbour at any length.
+ * One letter REPLACED counts only in a word of six letters or more — in a five-letter word it is as
+ * likely another word ("yarın" is not "yayın", "kaldı" is not "kaydı").
+ */
+function slipApart(typed: string, word: string): boolean {
+  if (editDistance(typed, word, 1) > 1) return false;
+  return typed.length !== word.length || typed.length > TYPO_MIN_LENGTH || isSwap(typed, word);
+}
+
+/**
+ * One edit away from the word, with or without a real ending after it. Same first letter.
+ * `minLength`: the shortest typed word that may be a typo at all.
+ */
+function isTypoOf(token: string, word: string, minLength = TYPO_MIN_LENGTH): boolean {
+  if (token.length < minLength || word.length < TYPO_MIN_LENGTH || token[0] !== word[0]) return false;
+  if (slipApart(token, word)) return true;
   if (token.length <= word.length) return false;
   // "titokta" = "titok" (one letter short of "tiktok") + "ta".
   return [word.length - 1, word.length, word.length + 1].some(
     (length) =>
       length >= TYPO_MIN_LENGTH &&
       length < token.length &&
-      editDistance(token.slice(0, length), word, 1) <= 1 &&
+      slipApart(token.slice(0, length), word) &&
       isTurkishEnding(token.slice(length)),
   );
 }
@@ -207,7 +233,7 @@ const PHRASE_SCORE = 4;
 const PHRASE_EXTRA_WORD_SCORE = 1;
 /** The shortest list word that may carry an ending by itself ("ses" → "sesini"); shorter ones need a phrase or a pair. */
 const FORM_MIN_LENGTH = 3;
-/** Rule 10: from this many intent words on, one supporting word alone is a guess. */
+/** Rule 10: from this many intent words on, one supporting (weak) word alone is a guess. */
 const FLOOR_MIN_TOKENS = 4;
 
 function partMatch(matched: number, strong: boolean, yielding: boolean): WordMatch {
@@ -248,35 +274,50 @@ function better(a: WordMatch | null, b: WordMatch): WordMatch {
   return a.yielding && !b.yielding ? b : a;
 }
 
-/** The token is the list word, or the list word with an ending. Short words ("al") count here: the context is the proof. */
+/**
+ * The token is the list word, the list word with an ending, or — for a word of five letters or more —
+ * a slip of the finger away from it ("sesiz video", "müzk ekle": inside a phrase or a pair a typed word
+ * of four letters may be one, the neighbour is the proof). Short words ("al") count here for the same reason.
+ */
 function tokenIs(token: string, word: string): boolean {
-  return token === word || (word.length >= 2 && token.length > word.length && isWordForm(token, word));
+  if (token === word) return true;
+  if (word.length >= 2 && token.length > word.length && isWordForm(token, word)) return true;
+  return isTypoOf(token, word, TYPO_MIN_LENGTH - 1);
 }
 
 /**
  * The phrase's words appear in order; a query word may carry an ending ("yerleri" for "yer", "almak"
- * for "al") or, for a word of three letters or more, simply go on ("bulanıklaştır" for "bulanık"):
- * inside a phrase the neighbour is the proof, so the looser reading is safe here and only here.
+ * for "al") or, for a word of five letters or more, simply go on ("bulanıklaştır" for "bulanık"):
+ * inside a phrase the neighbour is the proof, so the looser reading is safe here and only here. (Not
+ * for shorter words: "sesiz kısımları" is not the phrase "sesi kıs".)
  */
 function containsPhrase(tokens: readonly string[], phrase: string): boolean {
   const words = phrase.split(' ');
   for (let start = 0; start + words.length <= tokens.length; start += 1) {
     const hit = words.every((word, index) => {
       const token = tokens[start + index] ?? '';
-      return tokenIs(token, word) || (word.length >= 3 && token.startsWith(word));
+      return tokenIs(token, word) || (word.length >= 5 && token.startsWith(word));
     });
     if (hit) return true;
   }
   return false;
 }
 
-/** One of `things` next to one of `verbs`, either order, among the words that carry intent. */
-function containsPair(tokens: readonly string[], things: readonly string[], verbs: readonly string[]): boolean {
+/**
+ * One of `things` next to one of `verbs`, either order, among the words that carry intent — with at
+ * most `gap` other words between them.
+ */
+function containsPair(tokens: readonly string[], things: readonly string[], verbs: readonly string[], gap = 0): boolean {
   const isOne = (token: string, words: readonly string[]) => words.some((word) => tokenIs(token, word));
   for (let index = 0; index + 1 < tokens.length; index += 1) {
     const a = tokens[index] ?? '';
-    const b = tokens[index + 1] ?? '';
-    if ((isOne(a, things) && isOne(b, verbs)) || (isOne(a, verbs) && isOne(b, things))) return true;
+    const aIsThing = isOne(a, things);
+    const aIsVerb = isOne(a, verbs);
+    if (!aIsThing && !aIsVerb) continue;
+    for (let other = index + 1; other <= index + 1 + gap && other < tokens.length; other += 1) {
+      const b = tokens[other] ?? '';
+      if ((aIsThing && isOne(b, verbs)) || (aIsVerb && isOne(b, things))) return true;
+    }
   }
   return false;
 }
@@ -306,6 +347,8 @@ interface Tally {
   yieldWeak: number;
   /** The task has evidence no other task shares: a strong word of its own, a phrase, a pair, a verb that cannot. */
   specific: boolean;
+  /** A phrase or a pair was found: more than one word of the request stands behind the task. */
+  combined: boolean;
   /** How many of the query's intent words the task's single words account for. */
   explained: number;
 }
@@ -319,7 +362,7 @@ export function searchTasks(query: string, tasks: readonly TaskDefinition[] = TA
   const tally = (task: TaskDefinition): Tally => {
     let entry = tallies.get(task);
     if (!entry) {
-      entry = { own: 0, yieldStrong: 0, yieldWeak: 0, specific: false, explained: 0 };
+      entry = { own: 0, yieldStrong: 0, yieldWeak: 0, specific: false, combined: false, explained: 0 };
       tallies.set(task, entry);
     }
     return entry;
@@ -371,12 +414,13 @@ export function searchTasks(query: string, tasks: readonly TaskDefinition[] = TA
     const found = task.words.phrases
       .filter((phrase) => containsPhrase(raw, phrase))
       .map((phrase) => phrase.split(' ').length);
-    const paired = (task.words.pairs ?? []).some(([things, verbs]) => containsPair(tokens, things, verbs));
+    const paired = (task.words.pairs ?? []).some(([things, verbs, gap]) => containsPair(tokens, things, verbs, gap ?? 0));
     const longest = Math.max(paired ? 2 : 0, ...found);
     if (longest >= 2) {
       const entry = tally(task);
       entry.own += PHRASE_SCORE + (longest - 2) * PHRASE_EXTRA_WORD_SCORE;
       entry.specific = true;
+      entry.combined = true;
     }
   }
 
@@ -406,6 +450,7 @@ export function searchTasks(query: string, tasks: readonly TaskDefinition[] = TA
   if (
     topTally &&
     !topTally.specific &&
+    !topTally.combined &&
     topTally.yieldStrong === 0 &&
     topTally.explained <= 1 &&
     tokens.length >= FLOOR_MIN_TOKENS

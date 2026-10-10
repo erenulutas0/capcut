@@ -83,12 +83,13 @@ export interface TaskWords {
    */
   yielding?: readonly string[];
   /**
-   * What is done TO what: [things, verbs]. The task is meant when one of the
+   * What is done TO what: [things, verbs, gap?] (`gap`: other words allowed between them, default
+   * none — "şarkı arkada çalsın" needs one). The task is meant when one of the
    * things stands next to one of the verbs — either order, each with its
    * Turkish endings, words that carry no intent set aside ("ses hiç
    * olmasın", "müziğini almak istiyorum"). Counts like a two-word phrase.
    */
-  pairs?: ReadonlyArray<readonly [readonly string[], readonly string[]]>;
+  pairs?: ReadonlyArray<readonly [things: readonly string[], verbs: readonly string[], gap?: number]>;
   /**
    * Verb stems whose NEGATIVE form means the task, whatever the person and
    * tense: "aç" → "açamıyorum", "açılmıyor", "açılmadı" (Her yerde açılsın);
@@ -150,6 +151,8 @@ const REGISTRY = [
         'ilk', 'saniye', 'dakika', 'sn', 'dk', 'first', 'last', 'seconds', 'second', 'minute', 'minutes',
         // …and about how LONG the video is ("videom çok uzun").
         'uzun', 'kisa', 'long', 'short', 'shorter', 'gereksiz',
+        // "Keep only this, the rest can go."
+        'kalsin', 'gerisi', 'kalan', 'keep', 'rest',
       ],
       phrases: ['basini kes', 'sonunu kes', 'bir kismini', 'istedigim yer', 'istedigim kismi'],
     },
@@ -170,13 +173,18 @@ const REGISTRY = [
       weak: ['konusma', 'konusmadigim', 'hizli', 'sikici', 'dead', 'air', 'boring', 'bekle'],
       phrases: [
         'sessiz yer', 'bos yer', 'konusmadigim yer', 'konusmayan yer', 'dead air', 'remove silence', 'cut silence',
-        'bosluklari at', 'jump cut',
+        'bosluklari at', 'jump cut', 'olu an', 'olu zaman',
       ],
-      // A silent or empty PLACE in the video — whatever is then done to it ("sessiz kısımları kırp").
+      // A silent or empty PLACE in the video — whatever is then done to it ("sessiz kısımları kırp") —
+      // and the places where the speaker waits, stops or thinks ("beklediğim yerleri at").
       pairs: [
         [
-          ['sessiz', 'bos', 'silent', 'quiet', 'empty'],
-          ['yer', 'kisim', 'bolum', 'an', 'parca', 'ara', 'part', 'parts', 'bit', 'bits', 'moments', 'gaps'],
+          ['sessiz', 'bos', 'olu', 'silent', 'quiet', 'empty', 'dead'],
+          ['yer', 'kisim', 'bolum', 'an', 'parca', 'ara', 'aralik', 'part', 'parts', 'bit', 'bits', 'moments', 'gaps', 'spots'],
+        ],
+        [
+          ['bekledigim', 'durdugum', 'sustugum', 'konusmadigim', 'dusundugum', 'duraksadigim', 'takildigim'],
+          ['yer', 'kisim', 'bolum', 'an', 'ara'],
         ],
       ],
     },
@@ -206,10 +214,13 @@ const REGISTRY = [
     steps: ['pick', 'choose', 'download'],
     words: {
       strong: [
-        'kucult', 'kucuk', 'kucultmek', 'sikistir', 'sikistirmak', 'boyut', 'boyutu', 'boyutunu', 'mb', 'gb',
+        'kucult', 'kucuk', 'kucultmek', 'sikistir', 'sikistirmak', 'mb', 'gb',
         'whatsapp', 'wp', 'wpp', 'wapp', 'telegram', 'discord', 'sigmiyor', 'sigmadi', 'sigdir', 'gonderemiyorum', 'gonderilmiyor',
-        'gitmiyor', 'buyuk', 'eposta', 'mail', 'email', 'hafiflet', 'compress', 'smaller', 'shrink', 'size', 'reduce',
+        'gitmiyor', 'buyuk', 'eposta', 'mail', 'email', 'hafiflet', 'compress', 'smaller', 'shrink', 'reduce',
       ],
+      // "Size" is the file's weight here — and the frame's shape in "tiktoka uygun boyut": it steps
+      // back when another task has a word of its own.
+      yielding: ['boyut', 'boyutu', 'boyutunu', 'size'],
       weak: ['gonder', 'gondermek', 'yer', 'send', 'big', 'large', 'fit', 'limit', 'hafiza', 'depolama', 'storage', 'space'],
       phrases: ['cok buyuk', 'too big', 'too large', 'file size', 'dosya boyutu', 'yer kapliyor'],
       // "gönderemiyorum", "atamadım", "sığmıyor", "gitmiyor": it will not go where it has to.
@@ -229,7 +240,8 @@ const REGISTRY = [
         'caption', 'captions', 'transcript', 'transcribe', 'transcription', 'text', 'srt',
       ],
       weak: ['dok', 'yaz', 'soylenen', 'soylenenler', 'kelime', 'words', 'written', 'typed'],
-      phrases: ['yaziya dok', 'yaziya cevir', 'metne cevir', 'ne dedigini', 'speech to text'],
+      // "alt yazı" typed as two words is the subtitle, not "yazı ekle" (text laid over the picture).
+      phrases: ['yaziya dok', 'yaziya cevir', 'metne cevir', 'ne dedigini', 'speech to text', 'alt yazi', 'alt yazi ekle', 'alt yazi koy'],
     },
   },
   {
@@ -241,7 +253,9 @@ const REGISTRY = [
     steps: ['pick', 'choose', 'download'],
     words: {
       strong: ['muzik', 'sarki', 'fon', 'melodi', 'music', 'song', 'soundtrack', 'track'],
-      weak: ['ekle', 'koy', 'arka', 'plan', 'mp3', 'add', 'put', 'background'],
+      // No bare "ekle" / "koy" / "add" / "put": what is added says the task ("şifre koy" is not music);
+      // next to the music they are a pair (below).
+      weak: ['arka', 'plan', 'mp3', 'background', 'parca', 'parcami'],
       phrases: [
         'muzik ekle', 'muzik koy', 'sarki ekle', 'sarki koy', 'ses ekle', 'arka plan', 'fon muzigi', 'add music',
         'background music',
@@ -249,8 +263,9 @@ const REGISTRY = [
       // Music put IN: "şarkı eklemek istiyorum", "müzik çalsın", "put a song".
       pairs: [
         [
-          ['muzik', 'sarki', 'sarkimi', 'melodi', 'song', 'music', 'soundtrack', 'track'],
+          ['muzik', 'sarki', 'sarkimi', 'melodi', 'parcami', 'song', 'music', 'soundtrack', 'track'],
           ['ekle', 'koy', 'cal', 'yerlestir', 'add', 'put', 'insert'],
+          1,
         ],
       ],
     },
@@ -264,7 +279,8 @@ const REGISTRY = [
     steps: ['pick', 'download'],
     words: {
       // No "sesi": "sesiz" must stay a typo of "sessiz", not "sesi" + "z".
-      strong: ['mp3', 'sesini', 'ses', 'dinle', 'dinlemek', 'podcast', 'audio', 'wav', 'm4a'],
+      // "müziğini", "şarkısını": the video's OWN music — taking it out, not putting one in.
+      strong: ['mp3', 'sesini', 'ses', 'dinle', 'dinlemek', 'podcast', 'audio', 'wav', 'm4a', 'muzigini', 'sarkisini'],
       // No bare "al" (take): it is every task's verb. With the sound next to it, it is a pair (below).
       weak: ['ayir', 'cikar', 'extract', 'only', 'sound'],
       phrases: [
@@ -328,7 +344,7 @@ const REGISTRY = [
     words: {
       strong: [
         'acilmiyor', 'acilmadi', 'acmiyor', 'acamiyorum', 'oynat', 'oynamiyor', 'calismiyor', 'supported',
-        'gorunmuyor', 'mp4', 'format', 'formati', 'iphone', 'mov', 'hevc', 'h265', 'h264', 'hdr',
+        'gorunmuyor', 'mp4', 'format', 'formati', 'bicim', 'bicimi', 'iphone', 'mov', 'hevc', 'h265', 'h264', 'hdr',
         'uyumlu', 'uyumsuz', 'desteklenmiyor', 'compatible', 'compatibility', 'unsupported',
       ],
       // "Turn it into…" — into what is said by the word next to it: alone, a format every device opens.
@@ -393,7 +409,7 @@ const REGISTRY = [
       weak: ['ters', 'yan', 'saga', 'sola', 'duz', 'duzelt', 'egik', 'sideways', 'degrees', 'upside'],
       phrases: [
         'ters cevir', 'yan cevir', 'saga cevir', 'sola cevir', 'duz cevir', 'derece cevir', 'ters duruyor',
-        'bas asagi', 'yan cekmis', 'yan cekilmis', 'upside down', 'ayna goruntusu',
+        'bas asagi', 'yan cekmis', 'yan cekilmis', 'upside down', 'ayna goruntusu', 'yan duruyor', 'yan cikmis',
       ],
       // A direction next to "turn": "videoyu çevir yan duruyor", "sola döndürmek istiyorum".
       pairs: [[['yan', 'ters', 'saga', 'sola', 'duz', 'sideways'], ['cevir', 'dondur', 'donsun', 'turn']]],
@@ -460,7 +476,7 @@ const REGISTRY = [
       phrases: [
         'logosunu sil', 'logosunu kaldir', 'logoyu sil', 'logoyu kaldir', 'yaziyi sil', 'yaziyi kaldir',
         'yazisini sil', 'yazisini kaldir', 'tiktok logosu', 'tiktok yazisi', 'remove logo', 'remove text',
-        'remove the logo', 'remove the text',
+        'remove the logo', 'remove the text', 'remove watermark', 'remove the watermark', 'filigrani kaldir', 'filigrani sil',
       ],
     },
   },
@@ -574,6 +590,8 @@ const REGISTRY = [
         'ustune yaz', 'uzerine yaz', 'add text', 'put text', 'add a text', 'text on', 'write on', 'add title',
         'add a title', 'not dus', 'not ekle', 'not yaz', 'name on', 'add name', 'add my name',
       ],
+      // Writing ON the picture: "videonun üstüne ismimi yaz".
+      pairs: [[['ustune', 'uzerine', 'ustunde', 'uzerinde'], ['yaz', 'yazi', 'ekle', 'koy', 'write'], 1]],
     },
   },
   {
@@ -712,7 +730,8 @@ const REGISTRY = [
     words: {
       strong: ['webcam', 'recorder', 'kaydedici'],
       weak: ['kamera', 'camera', 'screen', 'record', 'recording', 'kayit', 'cekim'],
-      phrases: ['ekran kaydi', 'ekrani kaydet', 'ekran kaydet', 'screen recording', 'screen record', 'record screen', 'video cek'],
+      // No "video çek": "video çektim, çok karanlık" is about a video that exists.
+      phrases: ['ekran kaydi', 'ekrani kaydet', 'ekran kaydet', 'screen recording', 'screen record', 'record screen'],
       pairs: [
         [
           ['ekran', 'ekranim', 'screen', 'kamera', 'webcam', 'camera', 'mikrofon', 'microphone'],
