@@ -113,8 +113,8 @@ function place(from, to, link = !copyOnly) {
   }
 }
 
-const LICENSE_NOTE = `Speech model files served with Clip ("Yazıya dök", ADR-036)
-=============================================================
+const LICENSE_NOTE = `Speech model files served with this app ("Yazıya dök", ADR-036)
+=================================================================
 
 These files are application assets. They are downloaded to the browser only
 when the user presses "Modeli indir", and they run on the user's device.
@@ -126,9 +126,14 @@ Whisper (speech recognition)
   The files here are ONNX exports of those weights by the Transformers.js
   team: onnx-community/whisper-base_timestamped and
   onnx-community/whisper-large-v3-turbo_timestamped at the revisions named
-  in index.json. Those export repositories declare no licence of their own on
-  their cards; they are derived from the weights above and are redistributed
-  here under the upstream licences.
+  in index.json.
+  What is known: the upstream licences above, as declared by OpenAI.
+  What is not known: the two export repositories declared no licence of
+  their own on their model cards when they were pinned (checked 3 Oct 2026),
+  so the exporter has not stated terms for the converted files. We serve
+  them with the upstream licence texts and this attribution on the reading
+  that a format conversion carries the licence of the weights. That reading
+  is ours; it is not a statement by the exporter and not legal advice.
 
 Silero VAD (speech detector)
   MIT License, Copyright (c) 2020-present Silero Team.

@@ -93,6 +93,39 @@ Güncelleme gerekmedi; hiçbir sürüm değiştirilmedi. `npm ci` uyarıları: `
 "no longer supported" (yalnız geliştirme aracı), yerel Node 20.18.0 bazı geliştirme paketlerinin
 istediği `^20.19` altında (`EBADENGINE`, uyarı; CI `setup-node` 20'nin güncel alt sürümünü kurar).
 
+### 3.1 Yeniden tarama (2026-10-10)
+
+| Komut | Sonuç |
+|---|---|
+| `npm audit --omit=dev` | `found 0 vulnerabilities` (değişmedi; yayınlanan siteye ve derlemeye giren ağaç temiz) |
+| `npm audit` (dev dahil, 413 paket) | **5 high** — hepsi tek bir tavsiyenin zinciri, hepsi yalnız geliştirme aracı (lint) |
+
+Zincir: `eslint-config-next@16.3.8` → `@next/eslint-plugin-next@16.3.8` → `fast-glob@3.3.1` →
+`micromatch@4.0.8` → `braces@3.0.3`. Tavsiye: [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)
+— `braces`, çok derin iç içe `{…}` kalıbında yığın taşmasıyla hizmet dışı kalır; etkilenen aralık `<=3.0.3`.
+npm beş paketi (zincirin her halkasını) ayrı ayrı "high" sayar; açık tektir.
+
+**Çözülemedi; nedeni tam olarak şu:**
+
+- `braces`'in yayınlanmış en yeni sürümü **3.0.3**'tür ve tavsiye onu da kapsar: düzeltilmiş bir sürüm yok.
+  Bu yüzden ne yükseltme ne de `overrides` ile gidilecek temiz bir sürüm var.
+- `eslint-config-next`'in en yeni sürümü (16.4.0) ve canary'si (16.5.0-canary.7) hâlâ `fast-glob@3.3.1`'e bağlı;
+  Next'i yükseltmek zinciri değiştirmez.
+- npm'in önerdiği `npm audit fix --force`, `eslint-config-next`'i **14.2.35**'e indirir (eklentinin `fast-glob`
+  kullanmaya başlamasından önceki sürüm). Bu, Next 16 / ESLint 9 düz yapılandırmasıyla (`eslint.config.mjs`)
+  uyumlu olmayan iki ana sürüm geri gitmektir; uygulanmadı.
+- `fast-glob`'u API'si farklı başka bir paketle `overrides` üzerinden değiştirmek (eklenti `globSync` çağırıyor)
+  ya da Next'in lint kurallarını bırakmak lint'i sessizce zayıflatırdı; yapılmadı.
+
+**Gerçek risk (mühendislik değerlendirmesi):** açık, saldırganın verdiği bir glob kalıbının `braces`'e ulaşmasını
+gerektirir. Burada `fast-glob` yalnızca `@next/eslint-plugin-next` içinde, ESLint ayarındaki `rootDir` değerini
+açmak için çağrılır (`dist/utils/get-root-dirs.js`); kalıp bizim `eslint.config.mjs` dosyamızdan gelir (ayar
+verilmediği için varsayılan), kullanıcı girdisinden değil. Kod yalnız `npm run lint` sırasında, geliştirici
+makinesinde ve CI'da çalışır; tarayıcı paketine ve derleme çıktısına girmez. Olası etki: lint sürecinin çökmesi.
+
+**İzlenecek:** `braces` için düzeltilmiş sürüm ya da `@next/eslint-plugin-next`'in `fast-glob`'u bırakması;
+ikisinden biri çıkınca tam kilitli sürümler yükseltilir ve bu bölüm güncellenir.
+
 ## 4. Kaynak haritası ve kaynak dosyalar (belge 11 "private source map")
 
 - `productionBrowserSourceMaps` kapalı (varsayılan; `web/next.config.ts` içinde açıkça yazıldı).
@@ -116,15 +149,28 @@ istediği `^20.19` altında (`EBADENGINE`, uyarı; CI `setup-node` 20'nin günce
   sayfası/dosyası. Bu belge o dosyanın kaynağı olarak kullanılabilir; eklenip eklenmeyeceği
   metin/hukuk kararıdır, bu çalışmada eklenmedi.
 - **SIL OFL 1.1 (Inter):** yazı tipi dosyaları değiştirilmeden, lisans metniyle birlikte yayınlanıyor.
-- **Whisper ONNX dışa aktarımları (ADR-036) — kurucu/hukuk notu:** `onnx-community/whisper-base_timestamped`
-  ve `…-large-v3-turbo_timestamped` depolarının model kartlarında lisans alanı **boş**. Ağırlıkların
-  kaynağı olan `openai/whisper-base` (Apache-2.0) ve `openai/whisper-large-v3-turbo` (MIT) serbest
-  yeniden dağıtıma izin veriyor ve dışa aktarım bunların biçim dönüşümü; bu yüzden dosyaları üst
-  lisanslarla, atıf ve lisans metniyle (`models/LICENSES.txt`) kendi sitemizden yayınlıyoruz. Bu bir
-  mühendislik okumasıdır, hukuki görüş değil: dışa aktaranın (Transformers.js ekibi) ayrı bir koşul
-  koymadığı varsayılıyor. İstenirse (a) Hugging Face'te karta lisans eklenmesi istenir ya da (b)
-  ağırlıklar `openai/*` depolarından kendi ONNX dışa aktarımımızla üretilir (torch + optimum kurulumu
-  gerekir; yapılmadı).
+- **Whisper ONNX dışa aktarımları (ADR-036) — açık lisans sorusu (not 10 Ekim 2026'da yeniden yazıldı).**
+  Siteden yayınladığımız Whisper dosyaları OpenAI'nin kendi dosyaları değil, başkasının (Hugging Face'teki
+  `onnx-community` hesabı) ONNX biçimine çevirdiği kopyalardır.
+  - **Bilinen:** Whisper'ın kodu MIT lisanslıdır (github.com/openai/whisper `LICENSE`, © 2022 OpenAI).
+    Ağırlıkların OpenAI'ye ait kartlarında `openai/whisper-base` için Apache-2.0,
+    `openai/whisper-large-v3-turbo` için MIT yazar. Kullandığımız dosyalar
+    `onnx-community/whisper-base_timestamped` @ `608c49e6…` ve
+    `onnx-community/whisper-large-v3-turbo_timestamped` @ `b3f77bf9…` revizyonlarına sabitlidir
+    (sha256 ile, `modelManifest.json`); kartları üst model olarak `openai/whisper-*` depolarını gösterir.
+  - **Bilinmeyen:** bu iki dışa aktarım deposunun model kartında lisans alanı **boştu** (bakıldığı tarih:
+    3 Ekim 2026, `docs/spikes/2026-10-03-asr-on-device-english.md`; 10 Ekim'de yeniden **bakılmadı**).
+    Yani dışa aktaran, çevrilmiş dosyalar için bir koşul **beyan etmemiştir** — ne "üst lisans geçerlidir"
+    demiştir ne başka bir şey. Kartın sonradan değişip değişmediği, sabitlediğimiz revizyon için ne anlama
+    geleceği ve boş bir lisans alanının hukuken nasıl okunacağı bilinmiyor.
+  - **Bizim yaptığımız ve dayanağı:** dosyaları, biçim dönüşümünün ağırlıkların lisansını taşıdığı
+    okumasıyla, üst lisans metinleri ve atıfla birlikte (`models/LICENSES.txt`, aynı belirsizliği
+    İngilizce yazar) kendi sitemizden yayınlıyoruz. Bu bir mühendislik okumasıdır; dışa aktaranın beyanı
+    ya da hukuki görüş **değildir** ve bu belge dağıtımın lisansa uygun olduğunu iddia etmez.
+  - **Belirsizliği kaldırmanın yolları (yapılmadı; kurucu kararı):** (a) `onnx-community` depolarında
+    karta lisans eklenmesini istemek; (b) ağırlıkları `openai/*` depolarından kendi ONNX dışa
+    aktarımımızla üretmek (torch + optimum kurulumu; çıktının bugünkü dosyalarla aynı doğrulukta olduğu
+    yeniden ölçülmeli); (c) hukuki inceleme.
 - **Apache-2.0 (Transformers.js, tokenizers, flatbuffers, long):** NOTICE/atıf yükümlülüğü yukarıdaki
   "üçüncü taraf bildirimleri" sayfası kararının kapsamına girer.
 - **CC BY 4.0 (FLEURS, tek test kaydı):** atıf depoda; siteyle dağıtılmıyor.
