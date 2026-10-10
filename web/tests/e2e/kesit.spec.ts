@@ -1041,9 +1041,21 @@ test.describe('ADR-030: the phone bar (390 px, portrait video)', () => {
     });
     await expect(page.getByTestId('kesit-dock')).toBeVisible();
     expect(await page.evaluate(() => document.activeElement?.closest('header') !== null)).toBe(true);
+    // The bar shows on its render; its room at the bottom (scroll-padding)
+    // and its focus guard follow in an effect a task or more later, and
+    // Chromium runs key presses first. A Tab in that gap can land a control
+    // under the bar. Walk once they are in place.
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.style.scrollPaddingBottom))
+      .toMatch(/^\d+px$/);
     const covered: string[] = [];
+    const stops: string[] = [];
     let sawDock = 0;
-    for (let press = 0; press < 40; press += 1) {
+    let leftPage = false;
+    // One lap, top to bottom. Tabbing past the end leaves the page; coming
+    // back in at the top the bar reappears through the same gap, so a second
+    // lap would race it instead of checking the stops again.
+    for (let press = 0; press < 60 && !leftPage; press += 1) {
       await page.keyboard.press('Tab');
       const stop = await page.evaluate(() => {
         const active = document.activeElement as HTMLElement | null;
@@ -1055,12 +1067,18 @@ test.describe('ADR-030: the phone bar (390 px, portrait video)', () => {
         const b = active.getBoundingClientRect();
         return { name, covered: b.bottom > a.top && b.top < a.bottom, dockShown: true };
       });
-      if (!stop) continue;
+      if (!stop) {
+        leftPage = true;
+        continue;
+      }
+      stops.push(stop.name);
       if (stop.dockShown) sawDock += 1;
       if (stop.covered) covered.push(stop.name);
     }
-    // The walk really ran with the bar on screen for the controls above the list.
+    // The walk really ran with the bar on screen for the controls above the
+    // list, and reached every stop down to the end of the page.
     expect(sawDock).toBeGreaterThan(5);
+    expect(leftPage, `the walk never reached the end of the page: ${stops.join(' > ')}`).toBe(true);
     expect(covered).toEqual([]);
   });
 
