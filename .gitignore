@@ -64,3 +64,8 @@ web/tests/media/targetsize/
 web/tests/media/enhance/
 web/enhance-results/
 web/.scratch/
+
+# Cloud transcript route (ADR-039, draft): measurement reports and local Worker state
+cloud/harness/results/
+.wrangler/
+.dev.vars

@@ -1,0 +1,26 @@
+{
+  "name": "lilocut-cloud",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Cloud transcript route (ADR-039, draft): provider measurement harness and the Cloudflare Worker proxy. Self-contained: not part of the web app's dependency tree, not deployed by CI.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "harness": "node harness/run.mjs",
+    "test": "npm run test:harness && npm run test:worker",
+    "test:harness": "node --test harness/test/",
+    "test:worker": "vitest run --config worker/vitest.config.ts",
+    "typecheck": "tsc -p worker/tsconfig.json --noEmit",
+    "worker:dev": "wrangler dev --config worker/wrangler.jsonc",
+    "worker:deploy": "wrangler deploy --config worker/wrangler.jsonc"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.22.0",
+    "@cloudflare/workers-types": "5.20261010.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.9",
+    "wrangler": "4.124.0"
+  }
+}
