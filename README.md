@@ -25,7 +25,8 @@ sığdırır), **Yazıya dök** (İngilizce konuşmayı bu cihazda zaman damgal�
 çevirir; [ADR-036](docs/adr/ADR-036-on-device-transcript.md)), **Müzik ekle**, **Sesini al**
 (videonun sesi M4A olarak), **Sesi kapat** (aynı video, ses izi olmadan), **Her yerde açılsın**.
 Henüz yapılamayan bir şey yazılırsa (döndür, hızlandır, videoları birleştir, GIF, filigran sil,
-filtre, arka plan, tersten oynat, videodan fotoğraf, titremeyi düzelt) arama başka bir kart
+filtre, arka plan, tersten oynat, videodan fotoğraf, titremeyi düzelt, videoya yazı ekle, yüzü gizle,
+başka dile çevir, sesteki gürültüyü temizle) arama başka bir kart
 önermez, "Bunu henüz yapamıyoruz." der. Editör "Kendim düzenleyeceğim" bağlantısıyla bir
 dokunuş ötededir.
 

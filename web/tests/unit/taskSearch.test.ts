@@ -173,6 +173,31 @@ export const PHRASES: ReadonlyArray<readonly [string, TaskId]> = [
   ['sarsıntı', 'stabil'],
   ['stabilize video', 'stabil'],
   ['shaky', 'stabil'],
+  // Asked for, not possible yet (10 Oct 2026)
+  ['yazı ekle', 'yaziekle'],
+  ['videoya metin ekle', 'yaziekle'],
+  ['başlık koy', 'yaziekle'],
+  ['üzerine yazı yaz', 'yaziekle'],
+  ['add text', 'yaziekle'],
+  ['add a title', 'yaziekle'],
+  ['yüzü bulanıklaştır', 'yuz'],
+  ['yüzleri gizle', 'yuz'],
+  ['sansürle', 'yuz'],
+  ['plakayı gizle', 'yuz'],
+  ['blur the face', 'yuz'],
+  ['censor', 'yuz'],
+  ['tercüme', 'tercume'],
+  ['ingilizceye çevir', 'tercume'],
+  ['dublaj', 'tercume'],
+  ['dilini değiştir', 'tercume'],
+  ['translate', 'tercume'],
+  ['translate into turkish', 'tercume'],
+  ['gürültüyü azalt', 'gurultu'],
+  ['rüzgar sesi', 'gurultu'],
+  ['uğultu', 'gurultu'],
+  ['dip ses', 'gurultu'],
+  ['background noise', 'gurultu'],
+  ['remove noise', 'gurultu'],
   // İyileştir (ADR-037) — including what it cannot do: those words lead to the card and its honest line.
   ['videoyu iyileştir', 'iyilestir'],
   ['görüntüyü netleştir', 'iyilestir'],
@@ -342,6 +367,48 @@ describe('searchTasks: rules', () => {
     expect(ids('video yan duruyor dik olsun')[0]).toBe('dikey');
   });
 
+  it('text on the picture, a hidden face, another language, noisy sound: honest answers that take nothing from real tasks', () => {
+    // Until 10 Oct 2026 these found Yazıya dök, İyileştir, Her yerde açılsın and Sesi kapat.
+    for (const [phrase, id] of [
+      ['videoya yazı ekle', 'yaziekle'],
+      ['yüzleri bulanıklaştır', 'yuz'],
+      ['türkçeye çevir', 'tercume'],
+      ['rüzgar sesini sil', 'gurultu'],
+    ] as const) {
+      const result = searchTasks(phrase);
+      expect(result.kind, phrase).toBe('results');
+      if (result.kind !== 'results') continue;
+      expect(result.matches[0]?.task.id, phrase).toBe(id);
+      expect(result.matches[0]?.task.available, phrase).toBe(false);
+      expect(result.matches.filter((match) => match.task.available).map((match) => match.task.id), phrase).toEqual([]);
+    }
+    // The neighbours that work keep their words.
+    expect(top('altyazı ekle')).toBe('yazi');
+    expect(top('yazıya dök')).toBe('yazi');
+    expect(top('yazı')).toBe('yazi');
+    expect(top('text')).toBe('yazi');
+    expect(top('add subtitles')).toBe('yazi');
+    expect(top('bulanık')).toBe('iyilestir');
+    expect(top('blur')).toBe('iyilestir');
+    expect(top('video çok kumlu')).toBe('iyilestir');
+    expect(top('noisy video')).toBe('iyilestir');
+    expect(top('mp4 e çevir')).toBe('cevir');
+    expect(top('çevir')).toBe('cevir');
+    expect(top('sesi kapat')).toBe('sustur');
+    expect(top('sesini sil')).toBe('sustur');
+    expect(top('ses')).toBe('ses');
+    expect(ids('ses')).toEqual(['ses']);
+    expect(top('sesini al')).toBe('ses');
+    expect(top('müzik ekle')).toBe('muzik');
+    expect(top('yüzde 50 küçült')).toBe('kucult');
+    // The other "cannot do yet" entries keep theirs.
+    expect(top('arka planı bulanıklaştır')).toBe('arkaplan');
+    expect(top('köşedeki yazıyı sil')).toBe('filigran');
+    expect(top('ters çevir')).toBe('dondur');
+    // "Türkçe altyazı": writing the speech down exists (in English), Turkish does not — both rows, the honest one included.
+    expect(ids('türkçe altyazı').sort()).toEqual(['tercume', 'yazi']);
+  });
+
   it('reports tasks that are not available as such, never hiding them', () => {
     // The mechanism, shown on a task that works: switched off, it is still found and says so.
     const withOneOff = TASKS.map((task) => (task.id === 'yazi' ? { ...task, available: false } : task));
@@ -368,7 +435,11 @@ describe('searchTasks: rules', () => {
 
 describe('task registry', () => {
   const CARDS = ['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'sustur', 'cevir', 'iyilestir'];
-  const CANNOT_YET = ['dondur', 'hiz', 'birlestir', 'gif', 'filigran', 'efekt', 'arkaplan', 'ters', 'foto', 'stabil'];
+  const CANNOT_YET = [
+    'dondur', 'hiz', 'birlestir', 'gif', 'filigran', 'efekt', 'arkaplan', 'ters', 'foto', 'stabil',
+    // 10 Oct 2026
+    'yaziekle', 'yuz', 'tercume', 'gurultu',
+  ];
 
   it('lists the ten tasks in card order — Kes first, Sesi kapat next to Sesini al — then what cannot be done yet', () => {
     expect(TASKS.map((task) => task.id)).toEqual([...CARDS, ...CANNOT_YET]);

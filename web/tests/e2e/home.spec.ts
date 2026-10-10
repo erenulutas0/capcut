@@ -60,8 +60,8 @@ test.describe('opening screen', () => {
     const order = await cards.evaluateAll((links) => links.map((link) => link.getAttribute('data-testid')));
     expect(order[0]).toBe('task-kes');
     expect(order.indexOf('task-sustur')).toBe(order.indexOf('task-ses') + 1);
-    // What cannot be done yet (ten entries the search knows): no card, no mention on the screen.
-    expect(TASKS.filter((item) => !item.available)).toHaveLength(10);
+    // What cannot be done yet (fourteen entries the search knows): no card, no mention on the screen.
+    expect(TASKS.filter((item) => !item.available)).toHaveLength(14);
     for (const task of TASKS.filter((item) => !item.available)) {
       await expect(page.getByTestId(`task-${task.id}`)).toHaveCount(0);
       await expect(page.getByText(tr[task.labelKey], { exact: true })).toHaveCount(0);
@@ -348,6 +348,11 @@ test.describe('type to find', () => {
       ['tersten oynat', 'ters', 'Tersten oynat'],
       ['ekran görüntüsü al', 'foto', 'Videodan fotoğraf al'],
       ['titremeyi düzelt', 'stabil', 'Titremeyi düzelt'],
+      // 10 Oct 2026: these found Yazıya dök, nothing, Her yerde açılsın and Sesi kapat.
+      ['videoya yazı ekle', 'yaziekle', 'Videoya yazı ekle'],
+      ['yüzü gizle', 'yuz', 'Yüzü gizle'],
+      ['türkçeye çevir', 'tercume', 'Başka dile çevir'],
+      ['rüzgar sesini sil', 'gurultu', 'Sesteki gürültüyü temizle'],
     ] as const) {
       await box(page).fill(phrase);
       const row = page.getByTestId(`result-${id}`);
@@ -362,7 +367,8 @@ test.describe('type to find', () => {
     }
     // Enter and a click start nothing; the way to everything that does work is one press away.
     await box(page).press('Enter');
-    await page.getByTestId('result-stabil').click({ force: true });
+    // (The row of the last phrase typed above.)
+    await page.getByTestId('result-gurultu').click({ force: true });
     await expect(page).toHaveURL(/\/$/);
     await page.getByTestId('finder-show-all').click();
     await expect(page.getByTestId('task-grid')).toBeVisible();
