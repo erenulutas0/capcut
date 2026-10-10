@@ -113,3 +113,35 @@ sınıfı karşılığında bilerek kabul etti. Açık soru kapandı.
 
 Deney betikleri git dışında tutuldu (oturum not defteri); sonuç dosyaları
 `web/matrix-results/real-media-*.json`, `matrix-*.json`.
+
+## Ek — 10 Ekim 2026: yeniden işleme, kaynağın kendi bit hızıyla sınırlı
+
+**Bulgu (kalite raporu, 10 Ekim):** 24 saniyelik 1280 × 720'lik 0,47 MB'lık örnekten kesilen 3 saniye
+1920 × 1080 ve 1,5 MB olarak kaydedildi. İki ayrı neden vardı:
+
+1. **"Kes" sihirbazı videoyu editörün 1080p varsayılanıyla açıyordu** (`importVideo(file)`, öteki
+   sihirbazların kullandığı `ownSizeRecipe` olmadan). Boyut kaynağınkinden farklı olunca hızlı kesim
+   (ADR-027) `resolution` ile devre dışı kalıyor, her kare 1080p'ye büyütülüp yeniden kodlanıyordu.
+   Düzeltme: sihirbaz artık videonun kendi boyutuyla açar; aynı örnekte kesit `smart` / `copy` ile,
+   1280 × 720 olarak çıkar (`tests/e2e/wizards.spec.ts`, Kes).
+2. **Plan bit hızı kaynağa bakmıyordu.** Tablo (~0,09 bit/piksel) kamera görüntüsü için doğru; zaten küçük
+   bir kaynakta (ekran kaydı, slayt, sıkı sıkıştırılmış klip) o bitlerin gösterecek bir şeyi yok ve bu
+   kuralın 3 katı da üstüne biniyordu (1080p: 5,6 → 16,8 Mbit/s).
+
+**Karar (`web/src/domain/encoderBitrate.ts`, `sourceBoundedBitrate`):** olağan (hedefsiz) tam kodlamada
+kodlayıcıdan istenen bit hızı planınkidir, ama **kaynağın kendi bit hızının 2 katını aşmaz** (dosya baytı
+÷ süre: ses dahil, yani cömert yanda) ve 500 kbit/s'in altına inmez. **Bu ADR'nin 3 katı aynen geçerlidir
+ve bu değerin üstüne uygulanır**; kaynak bit hızı bilinmiyorsa (süre 3 saniyede okunamadıysa) plan
+değişmez. Kamera kayıtlarında (10–28 Mbit/s) sınır devreye girmez: R15 ölçümü ve yukarıdaki tablolar
+aynı kalır. "İyileştir" sınırın dışındadır (aydınlatma ve keskinleştirme, kaynağın bitlerinin taşımadığı
+ayrıntıyı ortaya çıkarır). Hedef boyut yolu (ADR-035) zaten kaynağın bit hızını tavan sayıyordu; hızlı
+kesim kopyası kaynağın kendi baytlarıdır.
+
+**Neden 2 kat:** tarayıcının gerçek zamanlı H.264 kodlayıcısı, dosyayı üreten kodlayıcıdan (telefonun
+HEVC'si, ekran kaydedicinin VP9'u, yavaş ön ayarlı x264) aynı resim için daha çok bit ister ve resim
+yolda büyütülmüş olabilir. 2 kat bu payı bırakır. **Bu sayı bir ölçümden değil, bu gerekçeden gelir:**
+düşük bit hızlı gerçek kayıtlarda SSIM ile ölçülmedi (aşağıda).
+
+**Ölçülmeyen:** düşük bit hızlı (≤ 2 Mbit/s) gerçek kayıtlarda 2 katın görüntü kalitesine etkisi; matris
+(`run-matrix.mjs`) ve gerçek kayıt koşucusu bu değişiklikten sonra yeniden koşulmadı. Kalite katmanının
+kamera benzeri kaynakları 16 Mbit/s'tir: orada sınır devreye girmez, o sayılar bu kuralı sınamaz.

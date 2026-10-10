@@ -102,11 +102,25 @@ Teknik terim listesi küçüktür ve tartışmaya açıktır: `web/tests/quality
 yazım hatalı, Türkçe harfsiz ("kucult"), argo, uzun cümle; uygulamanın yapamadığı işler; hiçbir kaydın
 tarif etmediği istekler; anlamsız yazı. Küme: `web/tests/quality/data/search-eval.ts`.
 
-**Ayar / ayrı tutma kuralı.** `HELD_OUT` ölçümdür; arama listeleri (`web/src/domain/tasks.ts`) onun
-üzerinde ayarlanmaz — kaçanlarına bakıp kelimeleri eklenmez. Bunu yapan, sayıyı bir daha
-kullanılamaz hâle getirir ve yeni bir küme yazmak zorunda kalır. Ayar için `DEV` kümesi vardır. Listelerin
-daha önce üzerinde ayarlandığı tablolardaki (`web/tests/unit/taskSearch*.test.ts`) ifadeler otomatik
-olarak sayım dışı bırakılır.
+**Ayar / ayrı tutma kuralı.** Ayrı küme ölçümdür; arama (`web/src/domain/taskSearch.ts`, `tasks.ts`) onun
+üzerinde ayarlanmaz — kaçanlarına bakıp kural ya da kelime eklenmez. Bunu yapan, sayıyı bir daha
+kullanılamaz hâle getirir ve yeni bir küme yazdırmak zorunda kalır. Ayar için `DEV` kümesi vardır. Ayar
+tablolarındaki (`web/tests/unit/taskSearch*.test.ts`) ve `DEV`'deki ifadeler otomatik olarak sayım dışı
+bırakılır.
+
+10 Ekim 2026'dan beri dört küme var ve rapor hangisinin ne olduğunu her seferinde yazar:
+
+| Küme | Dosya | Ne |
+|---|---|---|
+| **Yeni ayrı küme** — başlık ve bütçeler | `search-eval-fresh2.ts` | Aramanın kodunu, listelerini ve öteki ifadeleri GÖRMEYEN ayrı bir yazar (bir alt ajan) yazdı; aramanın son değişikliğinden sonra bir kez ölçüldü. Kaçanları raporda yazılı olduğu için bir sonraki arama çalışmasında bu da görülmüş sayılır. |
+| İlk yeni küme | `search-eval-fresh.ts` | Aynı biçimde yazıldı, bir kez ölçüldü, sonra kaçanları okunup arama ona göre değiştirildi: artık ayar kümesi. |
+| Eski ayrı küme | `search-eval.ts` → `HELD_OUT` | **Kirlenmiş:** kaçanları arama değiştirilmeden önce okundu. Yalnızca "önce → sonra" için. |
+| Geliştirme kümesi | `search-eval.ts` → `DEV` | Üzerinde ayar yapılır. |
+
+**Yeni bir ayrı küme nasıl yazdırılır:** yazan kişi (ya da ajan) `web/src/`, `web/tests/` ve `docs/` altını
+açmamalı, aramayı çalıştırmamalı; ona yalnızca on işin ne yaptığı, yapılamayanların listesi ve yazış
+biçimleri (Türkçe, harfsiz, yazım hatalı, argo, uzun cümle, İngilizce) verilir. Küme, arama değiştirilmeden
+ÖNCE ya da değişikliği görmeden yazılır ve değişiklikten sonra bir kez ölçülür.
 
 Sayılar: ilk sonuç doğru, ilk üçte var, **yanlış ama emin** (ilk sonuç başka iş yapan, "Başla" düğmeli
 bir kart — en pahalı hata), "Bunu henüz yapamıyoruz." için yakalama ve isabet. Kaçanlar tabloda:
