@@ -41,6 +41,71 @@ const range = (from: number, step: number, count: number) =>
   Array.from({ length: count }, (_, i) => Number((from + i * step).toFixed(6)));
 
 describe('pickFrames', () => {
+  it('a consumer that stops early leaves no frame open: neither the one on screen nor the next one taken', async () => {
+    // 15 fps source on a 30 fps grid: each frame serves two targets, so the picker is always holding
+    // the next frame while the current one is still being handed out.
+    for (const stopAfter of [1, 2, 3, 4, 7, 12]) {
+      const frames = makeFrames(range(0, 1 / 15, 30), 1 / 15);
+      let pulled = 0;
+      const counted = (async function* () {
+        for (const frame of frames) {
+          pulled += 1;
+          yield frame;
+        }
+      })();
+      let seen = 0;
+      for await (const picked of pickFrames(counted, range(0, 1 / 30, 60), OUTPUT_FRAME)) {
+        expect(picked.frame?.closed).toBe(false);
+        seen += 1;
+        if (seen === stopAfter) break; // what a cancel or a failure in the consumer does
+      }
+      const open = frames.slice(0, pulled).filter((frame) => !frame.closed);
+      expect(open.map((frame) => frame.id), `stopped after ${stopAfter}`).toEqual([]);
+    }
+  });
+
+  it('a consumer that throws leaves no frame open either, and a frame is never closed twice', async () => {
+    const frames = makeFrames(range(0, 1 / 15, 30), 1 / 15);
+    const closes = new Map<number, number>();
+    for (const frame of frames) {
+      frame.close = () => {
+        frame.closed = true;
+        closes.set(frame.id, (closes.get(frame.id) ?? 0) + 1);
+      };
+    }
+    let pulled = 0;
+    const counted = (async function* () {
+      for (const frame of frames) {
+        pulled += 1;
+        yield frame;
+      }
+    })();
+    let seen = 0;
+    await expect(
+      (async () => {
+        for await (const picked of pickFrames(counted, range(0, 1 / 30, 60), OUTPUT_FRAME)) {
+          void picked;
+          seen += 1;
+          if (seen === 5) throw new Error('canceled');
+        }
+      })(),
+    ).rejects.toThrow('canceled');
+    expect(frames.slice(0, pulled).every((frame) => frame.closed)).toBe(true);
+    expect([...closes.values()].every((count) => count === 1)).toBe(true);
+    // A whole pass closes every frame exactly once too.
+    const whole = makeFrames(range(0, 1 / 30, 30), 1 / 30);
+    const wholeCloses = new Map<number, number>();
+    for (const frame of whole) {
+      frame.close = () => {
+        frame.closed = true;
+        wholeCloses.set(frame.id, (wholeCloses.get(frame.id) ?? 0) + 1);
+      };
+    }
+    await pick(whole, range(0, 1 / 30, 30));
+    expect(whole.every((frame) => frame.closed)).toBe(true);
+    expect([...wholeCloses.values()].every((count) => count === 1)).toBe(true);
+  });
+
   it('maps a 60 fps source onto a 30 fps grid without gaps', async () => {
     const frames = makeFrames(range(0, 1 / 60, 60), 1 / 60);
     const out = await pick(frames, range(0, 1 / 30, 30));

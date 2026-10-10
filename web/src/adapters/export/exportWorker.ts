@@ -446,15 +446,20 @@ async function runSelfTest(
     // One second of silence at the target rate/channel count.
     const frameCount = config.sampleRate;
     const silence = new Float32Array(frameCount * config.channelCount);
-    await audioSource.add(
-      new AudioSample({
-        data: silence,
-        format: 'f32',
-        numberOfChannels: config.channelCount,
-        sampleRate: config.sampleRate,
-        timestamp: 0,
-      }),
-    );
+    // Ours to close: `add` copies it into the encoder (until 10 Oct 2026 it was left to the garbage
+    // collector, which is what "An AudioSample was garbage collected without first being closed" was).
+    const second = new AudioSample({
+      data: silence,
+      format: 'f32',
+      numberOfChannels: config.channelCount,
+      sampleRate: config.sampleRate,
+      timestamp: 0,
+    });
+    try {
+      await audioSource.add(second);
+    } finally {
+      second.close();
+    }
     audioSource.close();
 
     await output.finalize();
