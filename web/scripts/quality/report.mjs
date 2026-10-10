@@ -335,6 +335,8 @@ function sectionSearch(results, M) {
   const old = part.data.heldOut;
   // Until 10 Oct 2026 there was one held-out set; a result file from then has no `fresh`.
   const fresh = part.data.fresh ?? null;
+  /** The first fresh batch: a tuning set since its misses were read (10 Oct 2026). */
+  const firstFresh = part.data.firstFresh ?? null;
   const main = fresh ?? old;
   const dev = part.data.dev;
   const out = [];
@@ -380,10 +382,15 @@ function sectionSearch(results, M) {
 
   if (fresh) {
     out.push(
-      'Üç küme var ve hangisinin ne olduğu önemlidir:\n\n' +
-        `- **Yeni ayrı küme** (\`web/tests/quality/data/search-eval-fresh.ts\`, ${num(fresh.phrases, 0)} ifade; sayılan ${num(fresh.counted, 0)}): aramanın kodunu, kelime listelerini ve öteki ifadeleri ` +
-        'GÖRMEYEN bir yazar tarafından, arama değiştirilmeden önce yazıldı; arama değiştirildikten sonra BİR KEZ ölçüldü. **Başlık sayıları ve bütçeler bu kümedendir.** ' +
+      'Dört küme var ve hangisinin ne olduğu önemlidir:\n\n' +
+        `- **Yeni ayrı küme** (\`web/tests/quality/data/search-eval-fresh2.ts\`, ${num(fresh.phrases, 0)} ifade; sayılan ${num(fresh.counted, 0)}): aramanın kodunu, kelime listelerini ve öteki ifadeleri ` +
+        'GÖRMEYEN bir yazar tarafından yazıldı; aramanın son değişikliğinden sonra BİR KEZ ölçüldü. **Başlık sayıları ve bütçeler bu kümedendir.** ' +
         'Kaçanları aşağıda yazılı olduğu için bundan sonra bu küme de görülmüş sayılır: arama onun kaçanlarına bakılarak ayarlanırsa yeni bir küme yazılmalıdır.\n' +
+        (firstFresh
+          ? `- **İlk yeni küme** (\`search-eval-fresh.ts\`, ${num(firstFresh.phrases, 0)} ifade; sayılan ${num(firstFresh.counted, 0)}): aynı biçimde, görmeyen bir yazarca yazıldı ve ilk arama değişikliğinden sonra bir kez ölçüldü ` +
+            '(o ölçüm: ilk sonuç doğru %81,5, yanlış ama emin %12,2 — commit `9dae184`). Sonra kaçanları okundu ve arama onlara göre bir kez daha değiştirildi: **artık ayar kümesidir**, ' +
+            `bugünkü sayıları (ilk sonuç ${pct(firstFresh.firstHitPercent)}, yanlış ama emin ${pct(firstFresh.wrongConfidentPercent)}) bir tahmin değildir.\n`
+          : '') +
         `- **Eski ayrı küme** (\`search-eval.ts\` içindeki \`HELD_OUT\`, ${num(old.phrases, 0)} ifade; sayılan ${num(old.counted, 0)}): **KİRLENMİŞ.** 10 Ekim’deki arama çalışması bu kümenin kaçanları okunduktan sonra ` +
         'yapıldı (iş onların üzerine istendi). Sayıları bir tahmin değildir; yalnızca “önce → sonra” karşılaştırması için durur.\n' +
         `- **Geliştirme kümesi** (\`DEV\`, ${num(dev.phrases, 0)} ifade): üzerinde ayar yapıldı; ölçüm değildir.\n\n` +

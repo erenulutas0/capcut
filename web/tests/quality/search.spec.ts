@@ -5,6 +5,7 @@ import { test } from '@playwright/test';
 import { foldText, searchTasks } from '../../src/domain/taskSearch';
 import { DEV, HELD_OUT, type EvalPhrase } from './data/search-eval';
 import { FRESH_HELD_OUT } from './data/search-eval-fresh';
+import { FRESH_HELD_OUT_2 } from './data/search-eval-fresh2';
 import { round, writeResult } from './lib/record';
 import { t } from './lib/app';
 
@@ -165,21 +166,25 @@ function evaluate(phrases: readonly EvalPhrase[], seen: Set<string>) {
 }
 
 /**
- * Three sets since 10 Oct 2026 (the header of data/search-eval.ts has the rule):
- *  - `fresh`: data/search-eval-fresh.ts, written by a writer who saw neither the search nor the other
- *    phrases, and measured AFTER the search was reworked. The headline, and what the budgets judge.
- *  - `heldOut`: the first held-out set. CONTAMINATED: its misses were read before the search was
- *    reworked (the rework was asked for because of them). Reported next to the fresh one, never as the headline.
+ * Four sets since 10 Oct 2026 (the header of data/search-eval.ts has the rule):
+ *  - `fresh`: data/search-eval-fresh2.ts, written by a writer who saw neither the search nor any other
+ *    phrase, and measured ONCE, after the search's last change. The headline, and what the budgets judge.
+ *  - `firstFresh`: data/search-eval-fresh.ts, the first such batch. It was measured once (commit 9dae184
+ *    has those numbers); then its misses were read and the search was changed for them, so it is a
+ *    TUNING set now and its numbers here are not an estimate.
+ *  - `heldOut`: the original held-out set. CONTAMINATED: its misses were read before the search was
+ *    reworked (the rework was asked for because of them).
  *  - `dev`: tuned on. Not a measurement.
- * A phrase that is also in a tuned table or in DEV is left out of both held-out counts; one that is in
- * the old held-out set is left out of the fresh count.
+ * A phrase that is in a tuned table, in DEV, in the old held-out set or in the first fresh batch is left
+ * out of the fresh count.
  */
 test('search: held-out and dev phrases', async ({}, testInfo) => {
   const seen = seenPhrases();
   const tuned = new Set([...seen, ...folded(DEV)]);
   writeResult('search', testInfo.project.name, {
     tunedTablePhrases: seen.size,
-    fresh: evaluate(FRESH_HELD_OUT, new Set([...tuned, ...folded(HELD_OUT)])),
+    fresh: evaluate(FRESH_HELD_OUT_2, new Set([...tuned, ...folded(HELD_OUT), ...folded(FRESH_HELD_OUT)])),
+    firstFresh: evaluate(FRESH_HELD_OUT, new Set([...tuned, ...folded(HELD_OUT)])),
     heldOut: evaluate(HELD_OUT, tuned),
     dev: evaluate(DEV, seen),
   });

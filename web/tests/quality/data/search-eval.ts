@@ -17,6 +17,16 @@
  * all three are "seen" tables by now). search.spec.ts checks every phrase
  * here against them and leaves out of the numbers any that is already there.
  *
+ * 10 Oct 2026, later the same day — `HELD_OUT` IS CONTAMINATED. The report
+ * printed its misses, and the search was then reworked BECAUSE of them (a
+ * handful were quoted in the request for the work, and the "Küçült" block
+ * was seen by accident in a grep). Its numbers are kept for "before → after"
+ * only. The measurement is now a batch written by someone who saw neither
+ * the search nor these phrases: search-eval-fresh2.ts (search-eval-fresh.ts
+ * was the first such batch; it was measured once, then tuned on). Whoever
+ * tunes on a batch's misses has to have a new one written — by a writer who
+ * has not read the lists.
+ *
  * A caveat, said plainly: whoever wrote these phrases had read the word
  * lists. They were written as a child or a first-time user would type —
  * typos, no Turkish letters, slang, whole sentences — and not to hit or to
