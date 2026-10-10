@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { editDistance, foldText, searchTasks, searchTokens, MAX_RESULTS } from '@/domain/taskSearch';
 import { TASKS, TASK_EXAMPLES, availableTasks, taskById, type TaskId } from '@/domain/tasks';
-import { en, tr } from '@/i18n/messages';
+import { tr } from '@/i18n/messages';
+import { en } from '@/i18n/messages.en';
 
 /** The first result's id, or the kind when there is none. */
 function top(query: string): TaskId | 'empty' | 'none' {

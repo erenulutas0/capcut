@@ -1,6 +1,6 @@
 'use client';
 
-import { enhanceItems } from '@/components/enhance/BeforeAfter';
+import { enhanceItems } from '@/components/enhance/enhanceItems';
 import { Icon } from '@/components/Icon';
 import { isChromiumBrowser } from '@/adapters/browserKind';
 import { environmentPasses } from '@/adapters/exportCapability';

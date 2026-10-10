@@ -3,7 +3,8 @@ import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { formatDecimal, formatDurationShort } from '@/domain/time';
-import { en, tr } from '@/i18n/messages';
+import { tr } from '@/i18n/messages';
+import { en } from '@/i18n/messages.en';
 
 /**
  * ADR-030: Turkish reads numbers with a decimal comma ("0,9 sn"), English

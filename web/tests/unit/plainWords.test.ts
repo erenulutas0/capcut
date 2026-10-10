@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import type { FastCutFallbackReason } from '@/domain/fastPath';
-import { en, tr, type MessageKey } from '@/i18n/messages';
+import { tr, type MessageKey } from '@/i18n/messages';
+import { en } from '@/i18n/messages.en';
 
 import { strongJargon } from '../quality/lib/jargon';
 

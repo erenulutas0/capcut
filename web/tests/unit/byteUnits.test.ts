@@ -10,7 +10,8 @@ import {
   formatBytesAgainstLimit,
   shownBytes,
 } from '@/domain/policy';
-import { en, tr, type MessageKey } from '@/i18n/messages';
+import { tr, type MessageKey } from '@/i18n/messages';
+import { en } from '@/i18n/messages.en';
 
 /**
  * ADR-030: sizes read in decimal GB/MB, while the checks stay in bytes and

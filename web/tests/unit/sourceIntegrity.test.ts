@@ -17,7 +17,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { INCOMPLETE_TOLERANCE_US, sourceIntegrity, type IntegrityTools } from '@/adapters/sourceIntegrity';
 import { refusedFileText } from '@/components/editor/mediaErrorText';
-import { en, tr, type MessageKey } from '@/i18n/messages';
+import { tr, type MessageKey } from '@/i18n/messages';
+import { en } from '@/i18n/messages.en';
 
 /**
  * ADR-040: a download that stopped half way. The repository's sample (1280×720,

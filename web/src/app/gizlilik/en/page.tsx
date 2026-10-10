@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 
 import { PrivacyPage } from '@/components/PrivacyPage';
+import { EnglishMessages } from '@/i18n/EnglishMessages';
 import { translator } from '@/i18n/messages';
+// On the server too: the page is prerendered in English.
+import '@/i18n/messages.en';
 
 const t = translator('en');
 
@@ -13,5 +16,10 @@ export const metadata: Metadata = {
 
 /** The English rendering of the same page, from the same message keys. */
 export default function PrivacyPageEn() {
-  return <PrivacyPage locale="en" />;
+  return (
+    <>
+      <EnglishMessages />
+      <PrivacyPage locale="en" />
+    </>
+  );
 }

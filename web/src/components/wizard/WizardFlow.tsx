@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
@@ -8,7 +9,6 @@ import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
 import { Icon, Wordmark } from '@/components/Icon';
 import { DownloadStatus } from '@/components/editor/DownloadStatus';
 import { MediaErrorNotice } from '@/components/editor/MediaErrorNotice';
-import { ReportDialog } from '@/components/editor/ReportDialog';
 import type { ExportExtras, TargetSizePreview } from '@/components/editor/useDownloads';
 import type { EditorState } from '@/components/editor/useEditorState';
 import { useLayoutMode } from '@/components/editor/useLayoutMode';
@@ -22,6 +22,9 @@ import { translator, type MessageKey } from '@/i18n/messages';
 import { useWizardExport } from './useWizardExport';
 
 const t = translator('tr');
+
+/** "Sorun bildir": opened by a press after a failure, so its code comes with that press, not with the page. */
+const ReportDialog = dynamic(() => import('@/components/editor/ReportDialog').then((module) => module.ReportDialog), { ssr: false });
 
 export function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);

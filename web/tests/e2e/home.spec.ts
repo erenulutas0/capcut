@@ -61,7 +61,7 @@ test.describe('opening screen', () => {
     expect(order[0]).toBe('task-kes');
     expect(order.indexOf('task-sustur')).toBe(order.indexOf('task-ses') + 1);
     // What cannot be done yet (fourteen entries the search knows): no card, no mention on the screen.
-    expect(TASKS.filter((item) => !item.available)).toHaveLength(14);
+    expect(TASKS.filter((item) => !item.available)).toHaveLength(18);
     for (const task of TASKS.filter((item) => !item.available)) {
       await expect(page.getByTestId(`task-${task.id}`)).toHaveCount(0);
       await expect(page.getByText(tr[task.labelKey], { exact: true })).toHaveCount(0);
