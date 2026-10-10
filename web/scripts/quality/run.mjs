@@ -257,6 +257,7 @@ const outcome = writeReport({
   runSeconds: Math.round((Date.now() - started) / 1000),
   history: !flags.has('--no-history') && !flags.has('--report-only'),
   updatedBaselines: flags.has('--update-baselines'),
+  reportOnly: flags.has('--report-only'),
 });
 
 console.log(`\nquality: report written to ${outcome.markdown}`);

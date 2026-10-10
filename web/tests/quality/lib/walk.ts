@@ -77,7 +77,7 @@ export interface WalkResult {
 const near = (value: number, target: number, tolerance: number) => Math.abs(value - target) <= tolerance;
 const streamsOf = (info: FileInfo) => info.streams.map((stream) => `${stream.type}:${stream.codec}`);
 const lengthCheck = (out: FileInfo, expectedS: number, tolerance = 0.15): Check => ({
-  name: `süre ≈ ${expectedS} sn`,
+  name: `süre ≈ ${tr(expectedS)} sn`,
   ok: near(out.durationS, expectedS, tolerance),
   value: `${tr(out.durationS, 3)} sn`,
 });
@@ -137,7 +137,7 @@ export const FLOWS: Flow[] = [
   },
   {
     id: 'kucult',
-    sourceNote: 'noisy-720p30-14s.mp4 (yaklaşık 21 MB, 14 sn); seçim değiştirilmeden',
+    sourceNote: 'noisy-720p30-14s.mp4 (yaklaşık 25 MB, 14 sn); seçim değiştirilmeden',
     source: () => noisyLongFixture(),
     middle: async (novice, page) => {
       await wait(page, 'kucult-choice');

@@ -2,7 +2,7 @@ import { test, type Page } from '@playwright/test';
 
 import { installSavePicker, noSavePicker } from '../e2e/kesitFlow';
 import { isPhone } from './lib/app';
-import { BUILD, writeResult } from './lib/record';
+import { BUILD, tr, writeResult } from './lib/record';
 import { STATES } from './lib/states';
 
 /**
@@ -242,7 +242,7 @@ for (const state of STATES) {
         if (jumpExamples.length < 4) jumpExamples.push(`“${previous.name}” → “${now.name}”`);
       }
     }
-    const describe = (control: Control) => `${control.name || `(adsız ${control.tag})`} — ${control.width} × ${control.height} px`;
+    const describe = (control: Control) => `${control.name || `(adsız ${control.tag})`} — ${tr(control.width, 1)} × ${tr(control.height, 1)} px`;
     writeResult('a11y', `${testInfo.project.name}.${state.id}`, {
       id: state.id,
       label: state.label,
@@ -270,7 +270,7 @@ for (const state of STATES) {
         under14Samples: [...new Map(under14.map((item) => [`${item.px}|${item.sample}`, item])).values()]
           .sort((a, b) => a.px - b.px)
           .slice(0, 10)
-          .map((item) => `${item.px} px: ${item.sample}`),
+          .map((item) => `${tr(item.px, 1)} px: ${item.sample}`),
       },
       focus: {
         stops: stops.length,

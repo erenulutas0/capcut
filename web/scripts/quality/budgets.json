@@ -54,6 +54,7 @@
   "out.*.durationErrorMs": { "max": 50, "why": "bir görüntü karesi (33 ms) artı bir ses çerçevesi (21 ms)" },
   "out.*.avAddedMs": { "max": 25, "why": "sesin öne geçmesi 45 ms’de fark edilir (ITU-R BT.1359); payı yarısı" },
   "out.*.playableFailed": { "max": 0, "why": "her dosya her yerde açılmalı" },
+  "out.notFaststart": { "max": 0, "why": "ilke: dizin (moov) başta olmalı ki dosya inerken ve sayfaya gömülüyken oynasın" },
   "out.kes-goruntu.ssim": { "min": 0.99, "why": "kesmek görüntüyü bozmamalı (ölçülen 0,998)" },
   "out.kes-goruntu.vmaf": { "min": 95, "why": "kesmek görüntüyü bozmamalı (ölçülen 99)" },
   "out.kucult-goruntu.ssim": { "min": 0.94, "why": "ölçülen 0,966'nın az altı: 24 MB'tan 16 MB'a inerken" },

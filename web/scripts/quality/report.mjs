@@ -10,7 +10,7 @@
  * Nothing is ever filled in: a measure with no result file is `unmeasured`.
  *
  * The findings at the top of the report are written by a person (or an
- * agent that looked at the evidence) in docs/quality/findings.md; this
+ * agent that looked at the evidence) in docs/quality/bulgular.md; this
  * script only places them.
  */
 import { execSync } from 'node:child_process';
@@ -252,7 +252,7 @@ function sectionWalkthrough(results, M) {
     }
     for (const hit of task.mildJargon) mild.set(hit.term, (mild.get(hit.term) ?? 0) + 1);
   }
-  head.jargonSentences = jargon.size;
+  head.jargonSentences = new Set([...jargon.values()].map((entry) => entry.context)).size;
   out.push('\n**Varsayılan yolda görülen teknik terimler** (Ayarlar ve Ayrıntılar açılmadan; liste: `web/tests/quality/lib/jargon.ts`)\n');
   out.push(
     jargon.size === 0
@@ -336,7 +336,7 @@ function sectionSearch(results, M) {
   const dev = part.data.dev;
   const out = [];
   out.push(
-    `Ayrı tutulan küme: \`web/tests/quality/data/search-eval.ts\` içindeki \`HELD_OUT\` — ${num(held.phrases, 0)} ifade; bunların ${num(held.seenBefore, 0)}’i ` +
+    `Ayrı tutulan küme: \`web/tests/quality/data/search-eval.ts\` içindeki \`HELD_OUT\` — ${num(held.phrases, 0)} ifade; bunlardan ${num(held.seenBefore, 0)} tanesi ` +
       `arama listelerinin üzerinde ayarlandığı tablolarda (\`tests/unit/taskSearch*.test.ts\`) zaten bulunduğu için **sayılmadı**; sayılan ${num(held.counted, 0)}. ` +
       'Arama bu küme üzerinde ayarlanmadı ve bu çalışmada değiştirilmedi; kaçanlar aşağıda bulgu olarak duruyor.\n\n',
   );
@@ -351,7 +351,7 @@ function sectionSearch(results, M) {
         ['Yapılabilen işe “Bunu henüz yapamıyoruz.”', 'search.taskDenied', held.taskDeniedPercent, ''],
         ['“Bunu henüz yapamıyoruz.” — yakalama (recall)', 'search.cannotRecall', held.cannot.recallPercent, `${num(held.cannot.phrases, 0)} ifadede`],
         ['“Bunu henüz yapamıyoruz.” — isabet (precision)', 'search.cannotPrecision', held.cannot.precisionPercent, `${num(held.cannot.said, 0)} kez söylendi`],
-        ['Listede hiç olmayan isteğe dürüst cevap (yapamıyoruz ya da bulamadım)', 'search.outsideHonest', held.outside.honestPercent, `${num(held.outside.phrases, 0)} ifadede; ${num(held.outside.offeredWrongCard, 0)}’ine kart önerildi`],
+        ['Listede hiç olmayan isteğe dürüst cevap (yapamıyoruz ya da bulamadım)', 'search.outsideHonest', held.outside.honestPercent, `${num(held.outside.phrases, 0)} ifadede; ${num(held.outside.offeredWrongCard, 0)} tanesine kart önerildi`],
         ['Anlamsız yazı / sohbete kart önerilmedi', 'search.nothingQuiet', held.nothing.quietPercent, `${num(held.nothing.phrases, 0)} ifadede`],
       ].map(([label, id, value, extra]) => {
         const measure = M.add('search', id, label, value, { format: (v) => pct(v) });
@@ -680,7 +680,7 @@ function sectionOutput(results, M) {
         if (row.targetBytes) {
           const fits = M.cell('output', `${id}.fitsTarget`, `${row.label}: hedefe sığdı`, row.fitsTarget);
           const used = M.cell('output', `${id}.targetUsedPercent`, `${row.label}: hedefin kullanılan payı`, row.targetUsedPercent, { format: (v) => pct(v) });
-          target = `${mb(row.bytes)} / ${mb(row.targetBytes, 0)}: sığdı ${fits}, hedefin ${used}’i kullanıldı (kaynak ${mb(row.sourceBytes)})`;
+          target = `${mb(row.bytes)} / ${mb(row.targetBytes, 0)}: sığdı: ${fits}; hedefin kullanılan payı ${used} (kaynak ${mb(row.sourceBytes)})`;
           head.kucultFits = row.fitsTarget;
         }
         return [
@@ -720,7 +720,7 @@ function sectionOutput(results, M) {
     out.push(`_Ölçülemedi: ${enhance?.reason ?? 'sonuç dosyası yok'}._\n`);
     M.add('output', 'out.enhance.run', 'İyileştir ölçümleri', null, { note: enhance?.reason ?? 'sonuç dosyası yok' });
   } else {
-    const NAME = { dark: 'karanlık', soft: 'bulanık', noisy: 'kumlu', good: 'iyi (düzeltilecek bir şey yok)' };
+    const NAME = { dark: 'karanlık', soft: 'bulanık', noisy: 'kumlu', good: 'iyi (doğru pozlanmış, keskin)' };
     out.push(
       table(
         ['Video', 'Uygulamanın dediği', 'İndirme sunuldu', 'Parlaklık önce → sonra', 'Keskinlik önce → sonra', 'Eklenen en büyük parlaklık sıçraması', 'Kare'],
@@ -839,10 +839,16 @@ function sectionPerf(results, M, speeds) {
     const PROFILE = { masaustu: 'bu makine', 'mobil-kisitli': 'mobil kısıtlama (150 ms, 1,6 Mbit/s, 4× yavaş CPU)' };
     out.push(
       'Statik çıktı, gzip’li yerel sunucu (GitHub Pages gibi), her ölçüm yeni tarayıcı bağlamı ve boş önbellek, 3 koşunun ortancası. ' +
-        'Baytlar gerçekten aktarılan (sıkıştırılmış) baytlardır. Service worker kapalıydı: ilk ziyaret ölçülür, arka plandaki çevrimdışı indirmesi sayılmaz. ' +
+        'Baytlar gerçekten aktarılan (sıkıştırılmış) baytlardır. Ortancanın yanındaki parantez üç koşunun en az–en çok değeridir; TBT koşudan koşuya onlarca ms oynar. Service worker kapalıydı: ilk ziyaret ölçülür, arka plandaki çevrimdışı indirmesi sayılmaz. ' +
         '“Mobil kısıtlama” masaüstü işlemcide bir öykünmedir, telefon değildir. Yöntem `docs/perf/2026-09-30-load.md` ile aynı.\n\n',
     );
     const rows = [];
+    /** " (en az–en çok)" of the runs behind a median, when they differ. */
+    const spread = (runs, key) => {
+      const values = (runs ?? []).map((run) => run[key]);
+      if (values.length < 2 || Math.min(...values) === Math.max(...values)) return '';
+      return ` (${num(Math.min(...values), 0)}–${num(Math.max(...values), 0)})`;
+    };
     for (const page of parts.filter((part) => part.kind === 'load')) {
       if (page.measured === false) {
         for (const key of ['jsTransferred', 'lcp', 'tbt']) M.add('perf', `perf.${page.id}.masaustu.${key}`, `${page.id}: ${key}`, null, { note: page.reason });
@@ -859,8 +865,8 @@ function sectionPerf(results, M, speeds) {
           M.cell('perf', `${id}.jsTransferred`, `${where}: aktarılan JS`, m.jsTransferred, { format: (v) => `${kb(v)} (${num(m.jsFiles, 0)} dosya)`, budgetFormat: kb }),
           kb(m.totalTransferred),
           `${num(m.fcp, 0)} ms`,
-          M.cell('perf', `${id}.lcp`, `${where}: LCP`, m.lcp, { format: (v) => `${num(v, 0)} ms` }),
-          M.cell('perf', `${id}.tbt`, `${where}: TBT`, m.tbt, { format: (v) => `${num(v, 0)} ms` }),
+          M.cell('perf', `${id}.lcp`, `${where}: LCP`, m.lcp, { format: (v) => `${num(v, 0)} ms${spread(data.runs, 'lcp')}`, budgetFormat: (v) => `${num(v, 0)} ms` }),
+          M.cell('perf', `${id}.tbt`, `${where}: TBT`, m.tbt, { format: (v) => `${num(v, 0)} ms${spread(data.runs, 'tbt')}`, budgetFormat: (v) => `${num(v, 0)} ms` }),
           `${num(m.load, 0)} ms`,
           mb(m.heapAfterLoad),
           M.cell('perf', `${id}.outsideRequests`, `${where}: başka adrese istek`, m.outsideRequests, { format: (v) => num(v, 0) }),
@@ -1050,15 +1056,24 @@ function sectionA11y(results, M) {
       head[`${project}Unnamed`] = unnamed;
       head[`${project}FocusProblems`] = focusProblems;
       const details = [];
-      for (const state of states.filter((item) => item.measured)) {
-        if (project === 'phone' && state.tapTargets.list.length > 0) details.push(`- **${state.label}** — 44 px’ten küçük: ${state.tapTargets.list.join('; ')}`);
-        if (state.names.unnamedList.length > 0) details.push(`- **${state.label}** — adsız: ${state.names.unnamedList.join(', ')}`);
-        if (state.focus.unreachedList.length > 0) details.push(`- **${state.label}** — Tab ile ulaşılamayan: ${state.focus.unreachedList.join('; ')}`);
-        if (state.wizard && state.focus.jumpExamples.length > 0) details.push(`- **${state.label}** — odak geri sıçradı: ${state.focus.jumpExamples.join('; ')}`);
-        if (state.focus.withoutRingList.length > 0) details.push(`- **${state.label}** — odak halkası görünmeyen: ${state.focus.withoutRingList.join('; ')}`);
-        if (project === 'phone' && state.text.under14Samples.length > 0) details.push(`- **${state.label}** — küçük yazılar: ${state.text.under14Samples.slice(0, 5).join(' · ')}`);
-        if (project === 'phone' && state.names.iconOnlyList.length > 0) details.push(`- **${state.label}** — görünür yazısı olmayan (yalnız simge; adı var): ${state.names.iconOnlyList.join('; ')}`);
-        if (project === 'phone' && state.tapTargets.inlineLinks.length > 0) details.push(`- **${state.label}** — cümle içi bağlantı (hedef boyutu yargılanmadı): ${state.tapTargets.inlineLinks.join('; ')}`);
+      for (const item of states.filter((entry) => entry.measured)) {
+        const state = { ...item, plain: item.label };
+        if (project === 'phone' && state.tapTargets.list.length > 0) details.push(`- **${state.plain}** — 44 px’ten küçük: ${state.tapTargets.list.join('; ')}`);
+        if (state.names.unnamedList.length > 0) details.push(`- **${state.plain}** — adsız: ${state.names.unnamedList.join(', ')}`);
+        if (state.focus.unreachedList.length > 0) details.push(`- **${state.plain}** — Tab ile ulaşılamayan: ${state.focus.unreachedList.join('; ')}`);
+        if (state.wizard && state.focus.jumpExamples.length > 0) details.push(`- **${state.plain}** — odak geri sıçradı: ${state.focus.jumpExamples.join('; ')}`);
+        if (state.focus.withoutRingList.length > 0) details.push(`- **${state.plain}** — odak halkası görünmeyen: ${state.focus.withoutRingList.join('; ')}`);
+        if (project === 'phone' && state.tapTargets.inlineLinks.length > 0) details.push(`- **${state.plain}** — cümle içi bağlantı (hedef boyutu yargılanmadı): ${state.tapTargets.inlineLinks.join('; ')}`);
+      }
+      if (project === 'phone') {
+        // Said once for all screens: the same small texts and icon-only buttons come back on every one of them.
+        const measured = states.filter((item) => item.measured);
+        const small = new Map();
+        for (const state of measured) for (const sample of state.text.under14Samples) if (!small.has(sample)) small.set(sample, state.label);
+        const samples = [...small.keys()].sort((a, b) => parseFloat(a) - parseFloat(b)).slice(0, 14);
+        if (samples.length > 0) details.push(`- **14 px’ten küçük yazılardan örnekler** (bütün ekranlardan): ${samples.join(' · ')}`);
+        const icons = [...new Set(measured.flatMap((state) => state.names.iconOnlyList))];
+        if (icons.length > 0) details.push(`- **Görünür yazısı olmayan düğmeler** (yalnız simge; erişilebilir adı var): ${icons.join('; ')}`);
       }
       if (details.length > 0) out.push(`\n${details.join('\n')}\n\n`);
     }
@@ -1132,9 +1147,18 @@ const SECTION_RESULTS = {
   a11y: ['a11y', 'text'],
 };
 
-export function writeReport({ webDir, resultsDir, ran, failedSpecs, runSeconds, history, updatedBaselines }) {
+export function writeReport({ webDir, resultsDir, ran, failedSpecs, runSeconds, history, updatedBaselines, reportOnly = false }) {
   const repoDir = resolve(webDir, '..');
   const docsDir = join(repoDir, 'docs', 'quality');
+  // --report-only: nothing was measured now. The run the numbers come from keeps its date, length, commit and
+  // sections (read from the last latest.json), so rewriting the text does not make old numbers look new.
+  const previous = reportOnly ? loadJson(join(docsDir, 'latest.json'), null) : null;
+  const measuredRun = previous?.measuredRun ?? (previous ? { at: previous.generatedAt, commit: previous.commit, dirty: previous.dirty, runSeconds: previous.runSeconds, ran: previous.ran, failedSpecs: previous.failedSpecs } : null);
+  if (reportOnly && measuredRun) {
+    ran = measuredRun.ran ?? [];
+    failedSpecs = measuredRun.failedSpecs ?? [];
+    runSeconds = measuredRun.runSeconds ?? 0;
+  }
   const scratch = join(webDir, '.scratch', 'quality');
   mkdirSync(docsDir, { recursive: true });
   const budgets = loadJson(join(here, 'budgets.json'), {});
@@ -1221,9 +1245,12 @@ export function writeReport({ webDir, resultsDir, ran, failedSpecs, runSeconds, 
   const md = [];
   md.push(`# Kalite raporu — ${day(now)}\n\n`);
   md.push(
-    `> Üreten: \`npm run quality\` (\`web/scripts/quality/run.mjs\`). Commit \`${commit}\`${dirty ? ' + kaydedilmemiş değişiklikler' : ''}. ` +
-      `Rapor ${clock(now)}; bu koşu ${num(Math.round(runSeconds / 60), 0)} dk sürdü` +
-      `${ran.length > 0 ? ` ve şu bölümleri yeniden ölçtü: ${ran.join(', ')}` : ' ve hiçbir bölümü yeniden ölçmedi (yalnızca rapor yeniden yazıldı)'}.\n` +
+    `> Üreten: \`npm run quality\` (\`web/scripts/quality/run.mjs\`). ` +
+      (reportOnly && measuredRun
+        ? `Ölçüm koşusu: ${clock(measuredRun.at)}, commit \`${measuredRun.commit}\`${measuredRun.dirty ? ' + kaydedilmemiş değişiklikler' : ''}, ${num(Math.round(runSeconds / 60), 0)} dk; ` +
+          `ölçülen bölümler: ${ran.join(', ') || 'yok'}. Raporun metni ${clock(now)} tarihinde ölçüm yapılmadan yeniden yazıldı (\`--report-only\`).\n`
+        : `Commit \`${commit}\`${dirty ? ' + kaydedilmemiş değişiklikler' : ''}. Rapor ${clock(now)}; bu koşu ${num(Math.round(runSeconds / 60), 0)} dk sürdü` +
+          `${ran.length > 0 ? ` ve şu bölümleri yeniden ölçtü: ${ran.join(', ')}` : ' ve hiçbir bölümü yeniden ölçmedi'}.\n`) +
       `> Makine: ${osType()} ${osRelease()}, ${cpus()[0]?.model.trim() ?? 'bilinmeyen işlemci'} × ${cpus().length}, ${num(totalmem() / 1024 ** 3, 0)} GB bellek. ` +
       'Tarayıcı: Playwright’ın Chromium’u. Bütün medya üretilmiş (ffmpeg) ya da depodaki haklı örneklerdir; hiçbir şey makineden çıkmadı.\n' +
       '> Bu rapor bir kullanıcı testinin yerini TUTMAZ; neyi söylemediği en altta ve `docs/quality/README.md` içinde.\n\n',
@@ -1231,13 +1258,13 @@ export function writeReport({ webDir, resultsDir, ran, failedSpecs, runSeconds, 
   if (updatedBaselines) md.push('> **Bu koşu `--update-baselines` ile yapıldı:** ekranlar tabanlarıyla karşılaştırılmadı, tabanlar yeniden yazıldı.\n\n');
   if (failedSpecs.length > 0) md.push(`> **Yarıda kalan ölçüm betikleri:** ${failedSpecs.join('; ')}. İlgili ölçüler “ölçülemedi” olarak durur.\n\n`);
 
-  const findingsFile = join(docsDir, 'findings.md');
+  const findingsFile = join(docsDir, 'bulgular.md');
   md.push('## Öne çıkan bulgular\n\n');
   if (existsSync(findingsFile)) {
-    md.push('_Bu bölüm elle yazılır (`docs/quality/findings.md`); sayılar aşağıdaki tablolardan gelir. Rapor yeniden üretildiğinde olduğu gibi yerine konur — tarihine bakın._\n\n');
+    md.push('_Bu bölüm elle yazılır (`docs/quality/bulgular.md`); sayılar aşağıdaki tablolardan gelir. Rapor yeniden üretildiğinde olduğu gibi yerine konur — tarihine bakın._\n\n');
     md.push(`${readFileSync(findingsFile, 'utf8').trim()}\n\n`);
   } else {
-    md.push('_`docs/quality/findings.md` yok: bulgular henüz yazılmadı._\n\n');
+    md.push('_`docs/quality/bulgular.md` yok: bulgular henüz yazılmadı._\n\n');
   }
 
   md.push('## Özet\n\n');
@@ -1318,6 +1345,8 @@ export function writeReport({ webDir, resultsDir, ran, failedSpecs, runSeconds, 
 
   const json = {
     generatedAt: now,
+    // The run the numbers were measured in (differs from `generatedAt` after --report-only).
+    measuredRun: reportOnly && measuredRun ? measuredRun : { at: now, commit, dirty, runSeconds, ran, failedSpecs },
     commit,
     dirty,
     runSeconds,
