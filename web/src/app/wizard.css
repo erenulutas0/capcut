@@ -451,3 +451,40 @@
     min-height: 150px;
   }
 }
+
+/* ---------------------------------------------------------------- phone: readable text
+ *
+ * Quality report, 10 Oct 2026: 45–54 % of the words of a wizard screen were 12–13 px at phone width —
+ * among them the sentence under each option, which is what the choice is made by. At phone width
+ * everything that is read is 14 px or more (the option's own explanation 15 px). The classes of the
+ * shared download card and the before/after picture are raised only inside a wizard: the editor keeps
+ * its denser sizes for its own screens.
+ */
+@media (max-width: 699px) {
+  .wizard-step,
+  .wizard-footer,
+  .video-row-length,
+  .wizard .btn-compact,
+  .wizard .hint-small,
+  .wizard .dl-details summary,
+  .wizard .ba-tag,
+  .wizard .meta-list {
+    font-size: 14px;
+  }
+
+  .wizard-option-hint {
+    font-size: 15px;
+    line-height: 1.45;
+  }
+
+  /* A compact button grows with its text: still a full finger target. */
+  .wizard .btn-compact {
+    min-height: var(--tap);
+  }
+
+  .wizard .dl-details summary {
+    min-height: var(--tap);
+    display: flex;
+    align-items: center;
+  }
+}

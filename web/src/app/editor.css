@@ -1908,7 +1908,8 @@ input[type='range']:disabled::-webkit-slider-thumb {
   top: 5px;
   left: 4px;
   font-family: var(--font-time);
-  font-size: 11px;
+  /* 12 px is the floor for anything written (quality report, 10 Oct 2026: these were 11 px). */
+  font-size: 12px;
   color: var(--muted);
   white-space: nowrap;
 }
@@ -2315,7 +2316,7 @@ input[type='range']:disabled::-webkit-slider-thumb {
   border-radius: 5px;
   background: var(--kesit-color);
   color: var(--accent-ink);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 18px;
   text-align: center;
@@ -3288,4 +3289,103 @@ input[type='range'].ba-range:focus-visible + .ba-line .ba-handle {
 .ba[data-compact='true'] .ba-handle::before,
 .ba[data-compact='true'] .ba-handle::after {
   display: none;
+}
+
+/* ---------------------------------------------------------------- targets and text (quality report, 10 Oct 2026)
+ *
+ * Any width: nothing a pointer has to hit is under 24 px (WCAG 2.2, 2.5.8). The name in the banner is a
+ * link home; its box is as tall as the banner's line now.
+ */
+.prototype-banner a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  min-width: 24px;
+}
+
+/*
+ * Phone width: everything a finger has to hit is 44 × 44 px, and what is read is 14 px or more (the
+ * ruler's times and the numbers on the kesit chips stay 12 px: they label positions, they are not
+ * sentences). Where a control is drawn smaller than 44 px on purpose (the × of a message, the zoom
+ * buttons, the name in the banner), its BOX grows and a negative margin of the same size keeps the
+ * layout where it was: the finger gets the room, the screen does not move.
+ */
+@media (max-width: 699px) {
+  .prototype-banner,
+  .first-run-more,
+  .stage-meta,
+  .vstrip-title,
+  .vstrip-now,
+  .vstrip-zoom-value,
+  .time-field-label,
+  .notice-text,
+  .kesit-length,
+  .btn-compact,
+  .hint-small,
+  .dl-details summary {
+    font-size: 14px;
+  }
+
+  .prototype-banner a {
+    min-height: var(--tap);
+    min-width: var(--tap);
+    justify-content: center;
+    margin: -14px -4px;
+    padding: 0 4px;
+  }
+
+  /* The top bar is tightened so that four finger-wide buttons, the name and "İndir" fit side by side. */
+  .topbar {
+    gap: 6px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .topbar-actions {
+    gap: 4px;
+  }
+
+  .icon-btn-sm {
+    width: var(--tap);
+    height: var(--tap);
+    margin: -6px;
+    flex-shrink: 0;
+  }
+
+  /* The playhead is moved with the keyboard and by touching the strip; its own box is a finger wide all the same. */
+  .vstrip-playhead {
+    width: var(--tap);
+    margin-left: calc(var(--tap) / -2);
+  }
+
+  .vstrip-playhead-knob {
+    left: 15px;
+  }
+
+  .vstrip-playhead-line {
+    left: 21px;
+  }
+}
+
+/*
+ * From 360 px up (every phone sold today) the top bar's buttons keep a full 44 px width. Narrower than
+ * that — the 320 px reflow case of WCAG 1.4.10 — they may give a few pixels, as they always did, rather
+ * than push "İndir" off the screen.
+ */
+@media (min-width: 360px) and (max-width: 699px) {
+  /*
+   * With the user's own wider letter spacing (WCAG 1.4.12) the bar no longer fits on one line: it takes
+   * a second line then, instead of the buttons giving up their width or the page scrolling sideways.
+   */
+  .topbar-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .topbar .icon-btn,
+  .topbar .wordmark-link {
+    min-width: var(--tap);
+    flex-shrink: 0;
+    justify-content: center;
+  }
 }

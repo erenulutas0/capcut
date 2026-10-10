@@ -472,3 +472,27 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* ---------------------------------------------------------------- phone: readable text, finger-sized targets
+ *
+ * Quality report, 10 Oct 2026: at phone width 53–67 % of the words on this screen were set at 12–13 px,
+ * and the one link of the footer was 30 px tall. Everything a person has to READ is 14 px or more here,
+ * and everything a finger has to HIT is 44 px or more. Wider screens keep the sizes they had.
+ */
+@media (max-width: 699px) {
+  .home-label,
+  .home-trust,
+  .home-note,
+  .task-card-sub,
+  .result-sub {
+    font-size: 14px;
+  }
+
+  .home-note a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    min-width: var(--tap);
+    padding: 0 4px;
+  }
+}
