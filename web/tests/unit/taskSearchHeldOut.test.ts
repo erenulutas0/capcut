@@ -113,6 +113,13 @@ describe('searchTasks: held-out phrases', () => {
     expect(outcomes).toHaveLength(HELD_OUT.length);
   });
 
+  it('entries added later (10 Oct 2026) answer none of these phrases, and the count did not drop', () => {
+    const later = ['yaziekle', 'yuz', 'tercume', 'gurultu'];
+    expect(outcomes.filter((outcome) => later.includes(outcome.got)).map((outcome) => outcome.phrase)).toEqual([]);
+    // 69 of 70 before those entries existed, measured on 53b831e.
+    expect(hits.length).toBeGreaterThanOrEqual(69);
+  });
+
   it('puts the task first for at least four phrases in five', () => {
     expect(hits.length / outcomes.length).toBeGreaterThanOrEqual(0.8);
   });

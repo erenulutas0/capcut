@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 
-import { APP_NAME, APP_THEME } from '@/appIdentity';
+import { APP_NAME, APP_THEME, pageTitle } from '@/appIdentity';
 import { PwaClient } from '@/components/pwa/PwaClient';
 
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Clip — videonla ne yapmak istiyorsun?',
+  title: pageTitle('videonla ne yapmak istiyorsun?'),
   description:
     'Videonu kes, küçült, dikey yap, sesini al ya da yazıya dök. Birkaç dokunuşta; dosyalar cihazından çıkmaz.',
   // Links out (GitHub Issues, the host's privacy statement) carry no

@@ -33,7 +33,11 @@ export type TaskId =
   | 'arkaplan'
   | 'ters'
   | 'foto'
-  | 'stabil';
+  | 'stabil'
+  | 'yaziekle'
+  | 'yuz'
+  | 'tercume'
+  | 'gurultu';
 
 /** Names of the task icons in `components/Icon.tsx`. */
 export type TaskIcon =
@@ -470,6 +474,104 @@ const REGISTRY = [
       strong: ['titre', 'titreme', 'sarsinti', 'sallan', 'sallaniyor', 'stabil', 'stabilize', 'shaky', 'shake', 'shaking', 'steady', 'sabitle'],
       weak: ['duzelt', 'gider', 'smooth'],
       phrases: ['titremeyi duzelt', 'titremeyi gider', 'sarsintiyi gider', 'el titremesi'],
+    },
+  },
+  // ------------------------------------------------------------------
+  // Four more of the same kind (10 Oct 2026): asked for often, not possible.
+  {
+    // Words laid over the picture, typed by the user. NOT "Yazıya dök", which
+    // writes the SPEECH down: "yazı", "metin" and "text" stay that task's
+    // strong words and are only weak here — what names this entry is what is
+    // done with the text ("yazı ekle", "üstüne yaz", "add text") or a word of
+    // its own ("başlık", "emoji"). "altyazı ekle" stays "Yazıya dök".
+    id: 'yaziekle',
+    icon: 'taskLater',
+    labelKey: 'task.yaziekle.label',
+    subKey: 'task.yaziekle.sub',
+    available: false,
+    steps: ['pick', 'download'],
+    words: {
+      strong: ['baslik', 'basligi', 'emoji', 'overlay', 'title', 'titles', 'etiket', 'jenerik'],
+      weak: ['yazi', 'metin', 'text', 'isim', 'ustune', 'uzerine', 'ustunde', 'write', 'name'],
+      phrases: [
+        'yazi ekle', 'yazi koy', 'yazi yaz', 'metin ekle', 'metin koy', 'metin yaz', 'isim yaz', 'isim ekle',
+        'ustune yaz', 'uzerine yaz', 'add text', 'put text', 'add a text', 'text on', 'write on', 'add title',
+        'add a title', 'not dus', 'not ekle', 'not yaz', 'name on', 'add name', 'add my name',
+      ],
+    },
+  },
+  {
+    // Hiding a face, a number plate, a part of the picture. "bulanık" / "blur"
+    // alone stay a blurry VIDEO ("İyileştir"), and with "arka plan" the
+    // background entry; here they only support a request that names a face.
+    // No bare "yüz": it is also "yüz" (a hundred) and "yüzde" (per cent).
+    id: 'yuz',
+    icon: 'taskLater',
+    labelKey: 'task.yuz.label',
+    subKey: 'task.yuz.sub',
+    available: false,
+    steps: ['pick', 'download'],
+    words: {
+      strong: [
+        'yuzu', 'yuzler', 'yuzum', 'surat', 'plaka', 'sansur', 'sansurle', 'mozaik', 'buzla', 'buzlama', 'pikselle',
+        'piksellestir', 'gizle', 'gizlemek', 'face', 'faces', 'censor', 'censored', 'pixelate', 'pixelated', 'mosaic',
+        'anonymize',
+      ],
+      weak: ['bulanik', 'bulaniklastir', 'blur', 'kapat', 'gorunmesin', 'hide', 'plate', 'kisi', 'kisiyi'],
+      phrases: [
+        'yuzu bulanik', 'yuzler bulanik', 'yuzu gizle', 'yuzler gizle', 'yuzu kapat', 'yuzler kapat', 'blur face',
+        'blur faces', 'blur a face', 'blur the face', 'hide face', 'hide faces', 'license plate', 'number plate',
+        'plaka kapat', 'plaka gizle',
+      ],
+    },
+  },
+  {
+    // Another language: translated subtitles, dubbing. "Yazıya dök" writes
+    // down what is said, in the language it is said in (English only today).
+    // "çevir" alone is "Her yerde açılsın" (a format) and stays there: this
+    // entry is named by a language or by "tercüme" / "translate" / "dublaj".
+    id: 'tercume',
+    icon: 'taskLater',
+    labelKey: 'task.tercume.label',
+    subKey: 'task.tercume.sub',
+    available: false,
+    steps: ['pick', 'download'],
+    words: {
+      strong: [
+        'tercume', 'ceviri', 'cevirisi', 'cevirmen', 'translate', 'translation', 'translator', 'dublaj', 'dub',
+        'dubbing', 'seslendir', 'seslendirme', 'turkce', 'turkceye', 'ingilizce', 'ingilizceye', 'almanca', 'arapca',
+        'english', 'turkish', 'dile', 'dili', 'dilini', 'language', 'languages',
+      ],
+      weak: ['yabanci', 'baska'],
+      phrases: [
+        'turkceye cevir', 'ingilizceye cevir', 'dile cevir', 'baska dil', 'dilini degistir', 'turkce yap',
+        'ingilizce yap', 'translate to', 'translate into', 'translate subtitles', 'to english', 'to turkish',
+        'in english', 'in turkish',
+      ],
+    },
+  },
+  {
+    // Cleaning the SOUND: wind, hum, hiss. The picture's grain ("kumlu",
+    // "noisy", "denoise") is "İyileştir" and stays there; "sesi sil" is
+    // "Sesi kapat". "noise" is weak: it needs "background", "wind" or
+    // "reduction" beside it to mean the sound.
+    id: 'gurultu',
+    icon: 'taskLater',
+    labelKey: 'task.gurultu.label',
+    subKey: 'task.gurultu.sub',
+    available: false,
+    steps: ['pick', 'download'],
+    words: {
+      strong: ['gurultu', 'gurultuyu', 'gurultusu', 'ugultu', 'cizirti', 'cizirtili', 'parazit', 'hisirti', 'ruzgar', 'yanki', 'hiss', 'echo'],
+      // "ses" (weak): next to a word of this entry ("ses çok cızırtılı") it is about the sound's
+      // quality, not about taking the sound out as a file.
+      weak: ['temizle', 'temiz', 'arkadaki', 'noise', 'wind', 'clean', 'reduction', 'ses'],
+      phrases: [
+        'gurultu sil', 'gurultuyu sil', 'gurultu azalt', 'gurultuyu azalt', 'dip ses', 'ruzgar sesi', 'sesi temizle',
+        'sesini temizle', 'ses temizle', 'background noise', 'remove background noise', 'noise reduction',
+        'noise removal', 'remove noise', 'wind noise', 'clean audio', 'clean the audio', 'clean sound',
+        'clean up the audio', 'clean up the sound', 'clean up audio',
+      ],
     },
   },
 ] as const satisfies readonly TaskDefinition[];

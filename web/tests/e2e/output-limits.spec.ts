@@ -156,6 +156,50 @@ async function limitQuota(page: Page, bytes: number) {
   expect(free).toBeGreaterThan(bytes * 10);
 }
 
+const MIB = 1024 * 1024;
+/** What the export claims up front in the "fills up mid-file" tests (test hook `__clipStorageReserveBytes`). */
+const SMALL_CLAIM_BYTES = MIB;
+/** Room left above what the origin already holds in those tests: the claim fits, the 5:10 file does not. */
+const ROOM_FOR_PARTIAL_FILE_BYTES = 2 * MIB;
+
+/**
+ * A quota with exactly `roomBytes` of room left, whatever the origin already
+ * stores. The quota covers everything of the origin — the app's offline copy
+ * (Cache Storage, filled by the service worker after the first load) and the
+ * stored project — and that grows with every page the app gains: a fixed
+ * number here used to leave less room than the claim once the offline copy
+ * passed 2 MB (and would silently leave more than the file once it shrank).
+ * So: wait until the offline copy is complete and the usage stands still,
+ * then put the quota that far above it.
+ */
+async function limitRoom(page: Page, roomBytes: number): Promise<{ usage: number; quota: number }> {
+  // Without an offline copy in the build there is nothing to wait for; then the usage is simply small.
+  await page.evaluate(
+    () =>
+      Promise.race([
+        navigator.serviceWorker?.ready ?? Promise.resolve(null),
+        new Promise((resolve) => window.setTimeout(resolve, 15_000)),
+      ]),
+  );
+  const usageNow = () => page.evaluate(async () => (await navigator.storage.estimate()).usage ?? 0);
+  let usage = await usageNow();
+  await expect
+    .poll(
+      async () => {
+        const before = usage;
+        usage = await usageNow();
+        return usage === before;
+      },
+      { intervals: [750], timeout: 30_000, message: 'the storage usage of the origin never stood still' },
+    )
+    .toBe(true);
+  // Nothing of an earlier test is in the way (the temp files are the only thing that could be big).
+  expect(await exportFiles(page)).toEqual([]);
+  const quota = usage + roomBytes;
+  await limitQuota(page, quota);
+  return { usage, quota };
+}
+
 test.describe('real quota: the space is claimed before encoding (ADR-023)', () => {
   test('a disk without room refuses before the first frame, and says how much is needed', async ({ page }) => {
     test.setTimeout(180_000);
@@ -199,15 +243,16 @@ test.describe('real quota: the space is claimed before encoding (ADR-023)', () =
   test('a disk that fills up mid-file ends in an honest failure; the partial file is deleted', async ({ page }) => {
     test.setTimeout(240_000);
     await noSavePicker(page);
-    // Claim only 1 MiB up front (test hook), so the file must grow into a
-    // 4 MiB quota and the browser's own write refusal ends the export.
-    // (4, not 3: the quota also holds the app's offline copy, which grew past
-    // 2 MB with the wizard pages of ADR-034 and left less than the 1 MiB claim.)
-    await page.addInitScript(() => {
-      (window as unknown as { __clipStorageReserveBytes: number }).__clipStorageReserveBytes = 1024 * 1024;
-    });
+    // Claim only 1 MiB up front (test hook), so the file must grow past the
+    // 2 MiB of room that is left and the browser's own write refusal ends the
+    // export. The room is measured from what the origin holds now (limitRoom),
+    // not a fixed quota: the app's offline copy shares it and keeps growing.
+    await page.addInitScript((claim) => {
+      (window as unknown as { __clipStorageReserveBytes: number }).__clipStorageReserveBytes = claim;
+    }, SMALL_CLAIM_BYTES);
     const errors = await openEditor(page);
-    await limitQuota(page, 4 * 1024 * 1024);
+    expect(ROOM_FOR_PARTIAL_FILE_BYTES).toBeGreaterThan(SMALL_CLAIM_BYTES);
+    await limitRoom(page, ROOM_FOR_PARTIAL_FILE_BYTES);
     await openVideo(page, timelineFixture('long').file);
     await quality720(page);
     const run = await downloadUntilEnd(page);
@@ -226,15 +271,18 @@ test.describe('real quota: the space is claimed before encoding (ADR-023)', () =
   }) => {
     test.setTimeout(240_000);
     await installSavePicker(page);
-    await page.addInitScript(() => {
-      (window as unknown as { __clipStorageReserveBytes: number }).__clipStorageReserveBytes = 1024 * 1024;
-    });
+    await page.addInitScript((claim) => {
+      (window as unknown as { __clipStorageReserveBytes: number }).__clipStorageReserveBytes = claim;
+    }, SMALL_CLAIM_BYTES);
     const errors = await openEditor(page);
-    await limitQuota(page, 4 * 1024 * 1024);
+    // The claim fits in the room that is left; the file does not (see limitRoom).
+    expect(ROOM_FOR_PARTIAL_FILE_BYTES).toBeGreaterThan(SMALL_CLAIM_BYTES);
+    await limitRoom(page, ROOM_FOR_PARTIAL_FILE_BYTES);
     await openVideo(page, timelineFixture('long').file);
     await quality720(page);
     const run = await downloadUntilEnd(page);
     expect(run.end).toBe('failed');
+    // Encoding began, so the claim was granted: the refusal came from a later write.
     expect(run.sawEncoding).toBe(true);
     await expect(page.getByTestId('export-failed')).toContainText('diskte yer kalmadı');
     await expect(page.getByTestId('download-saved')).toHaveCount(0);

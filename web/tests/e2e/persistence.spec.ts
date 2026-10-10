@@ -1,18 +1,53 @@
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
+import { APP_SLUG } from '../../src/appIdentity';
 import { addKesit as addMoment, openEditor, openMore, openSettings, installSavePicker } from './kesitFlow';
 
 const SAMPLE_VIDEO = join(process.cwd(), 'tests', 'media', 'sample-24s.mp4');
 const OTHER_VIDEO = join(process.cwd(), 'tests', 'media', 'other-8s.mp4');
 const SAMPLE_AUDIO = join(process.cwd(), 'tests', 'media', 'tone-30s.m4a');
 
-/** Builds a two-kesit project and waits until it is really on disk. */
+interface StoredRecord {
+  edl: { clips: unknown[]; music?: { sourceInUs: number; sourceOutUs: number } };
+  bindings: Array<{ kind: string }>;
+}
+
+/** The project as the browser's store holds it right now (null: nothing stored). */
+async function storedRecord(page: Page): Promise<StoredRecord | null> {
+  return page.evaluate(
+    () =>
+      new Promise<StoredRecord | null>((resolve, reject) => {
+        const open = indexedDB.open('clip-editor');
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const db = open.result;
+          if (!db.objectStoreNames.contains('projects')) {
+            db.close();
+            resolve(null);
+            return;
+          }
+          const all = db.transaction('projects', 'readonly').objectStore('projects').getAll();
+          all.onerror = () => reject(all.error);
+          all.onsuccess = () => {
+            db.close();
+            resolve((all.result[0] as StoredRecord | undefined) ?? null);
+          };
+        };
+      }),
+  );
+}
+
+/**
+ * Builds a two-kesit project and waits until it is really on disk. The badge
+ * alone is not enough: it already reads "saklandı" for the video with no kesit.
+ */
 async function buildAndSave(page: Page) {
   await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
   await expect(page.getByTestId('preview-video')).toBeVisible();
   await addMoment(page, '00:00.000', '00:04.000');
   await addMoment(page, '00:08.000', '00:14.000');
+  await expect.poll(async () => (await storedRecord(page))?.edl.clips.length ?? 0, { timeout: 15_000 }).toBe(2);
   await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
 }
 
@@ -61,6 +96,68 @@ test.describe('local persistence', () => {
     await expect(page.getByTestId('relink-video')).toBeVisible();
     await expect(page.getByTestId('relink-filename')).toHaveText('sample-24s.mp4');
     await expect(page.getByTestId('preview-video')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  // ADR-026: a video is opened with no kesit. That project is stored, so it must come back.
+  test('a video with no kesit survives a reload and asks for the file back', async ({ page }) => {
+    const errors = await openEditor(page);
+    await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+    await expect(page.getByTestId('preview-video')).toBeVisible();
+    await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
+    await expect.poll(async () => (await storedRecord(page))?.bindings.length ?? 0, { timeout: 15_000 }).toBe(1);
+    expect((await storedRecord(page))?.edl.clips).toEqual([]);
+
+    await page.reload();
+
+    // What the header said before the reload is still true after it.
+    await expect(page.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId('relink-filename')).toHaveText('other-8s.mp4');
+    await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı');
+    await expect(page.getByTestId('moment-count')).toHaveText('(0)');
+    await expect(page.getByTestId('download-all')).toBeDisabled();
+
+    // The same file is recognised, and the whole video can be worked on again.
+    await page.getByTestId('relink-video-input').setInputFiles(OTHER_VIDEO);
+    await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('relink-video')).toHaveCount(0);
+    await expect(page.getByTestId('total-time')).toHaveText('00:08');
+    await expect(page.getByTestId('download-all')).toBeEnabled();
+    await addMoment(page, '00:01.000', '00:03.000');
+    await expect(page.getByTestId('moment-count')).toHaveText('(1)');
+    expect(errors).toEqual([]);
+  });
+
+  test('a video and its music with no kesit both ask for their files after a reload', async ({ page }) => {
+    const errors = await openEditor(page);
+    await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+    await expect(page.getByTestId('preview-video')).toBeVisible();
+    await page.getByTestId('audio-input').setInputFiles(SAMPLE_AUDIO);
+    await openSettings(page, 'audio');
+    await expect(page.getByTestId('music-file-name')).toHaveText('tone-30s.m4a', { timeout: 30_000 });
+    await page.keyboard.press('Escape');
+    // Both files are in the stored project, and it still has no kesit.
+    await expect.poll(async () => (await storedRecord(page))?.bindings.length ?? 0, { timeout: 15_000 }).toBe(2);
+    const stored = await storedRecord(page);
+    expect(stored?.edl.clips).toEqual([]);
+    // The music lies under the whole 8 s video (ADR-034), not a 0.1 s stub.
+    expect(stored?.edl.music).toMatchObject({ sourceInUs: 0, sourceOutUs: 8_000_000 });
+    await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
+
+    await page.reload();
+
+    await expect(page.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId('relink-filename')).toHaveText('other-8s.mp4');
+    await page.getByTestId('relink-video-input').setInputFiles(OTHER_VIDEO);
+    await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('moment-count')).toHaveText('(0)');
+
+    await openSettings(page, 'audio');
+    await expect(page.getByTestId('relink-audio')).toBeVisible();
+    await expect(page.getByTestId('relink-audio').getByTestId('relink-filename')).toHaveText('tone-30s.m4a');
+    await page.getByTestId('relink-audio-input').setInputFiles(SAMPLE_AUDIO);
+    await expect(page.getByTestId('music-file-name')).toHaveText('tone-30s.m4a', { timeout: 30_000 });
+    await expect(page.getByTestId('relink-audio')).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 
@@ -171,6 +268,10 @@ test.describe('local persistence', () => {
     await expect(page.getByTestId('moment-count')).toHaveText('(0)', { timeout: 30_000 });
     await expect(page.getByTestId('relink-video')).toHaveCount(0);
 
+    // Deleted means deleted: the autosave did not write it back on the way out.
+    await expect(page.getByTestId('save-state')).toContainText('Düzenleme henüz saklanmadı');
+    expect(await storedRecord(page)).toBeNull();
+
     // A fresh project can be started right away.
     await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
     await expect(page.getByTestId('preview-video')).toBeVisible();
@@ -217,7 +318,8 @@ test.describe('storage failures are shown, not hidden', () => {
     const download = page.waitForEvent('download');
     await page.getByTestId('backup-download').click();
     const saved = await download;
-    expect(saved.suggestedFilename()).toMatch(/\.clip\.json$/);
+    // No project name was typed: the file is named after the app (ADR-038).
+    expect(saved.suggestedFilename()).toBe(`${APP_SLUG}-projesi.${APP_SLUG}.json`);
 
     const stream = await saved.createReadStream();
     const chunks: Buffer[] = [];
@@ -232,5 +334,39 @@ test.describe('storage failures are shown, not hidden', () => {
     expect(text).not.toContain('blob:');
     expect(text).not.toContain('data:video');
     expect(text.length).toBeLessThan(20_000);
+  });
+
+  // The backup is read by the same check as the stored project.
+  test('a backup of a video with no kesit can be restored', async ({ page, browser }) => {
+    await openEditor(page);
+    await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+    await expect(page.getByTestId('preview-video')).toBeVisible();
+
+    await openMore(page);
+    const download = page.waitForEvent('download');
+    await page.getByTestId('backup-download').click();
+    const saved = await download;
+    const chunks: Buffer[] = [];
+    for await (const chunk of await saved.createReadStream()) chunks.push(chunk as Buffer);
+    const buffer = Buffer.concat(chunks);
+    expect(JSON.parse(buffer.toString('utf8')).edl.clips).toEqual([]);
+
+    // A browser with nothing stored: the backup file is all there is.
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const fresh = await context.newPage();
+    await openEditor(fresh);
+    await expect(fresh.getByTestId('save-state')).toContainText('Düzenleme henüz saklanmadı');
+    await expect(fresh.getByTestId('relink-video')).toHaveCount(0);
+
+    // Under the name an older build gave its backups: the reader looks at the content, not the name.
+    await fresh
+      .getByTestId('backup-input')
+      .setInputFiles({ name: 'yedek.clip.json', mimeType: 'application/json', buffer });
+
+    await expect(fresh.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
+    await expect(fresh.getByTestId('relink-filename')).toHaveText('other-8s.mp4');
+    await fresh.getByTestId('relink-video-input').setInputFiles(OTHER_VIDEO);
+    await expect(fresh.getByTestId('preview-video')).toBeVisible({ timeout: 30_000 });
+    await context.close();
   });
 });

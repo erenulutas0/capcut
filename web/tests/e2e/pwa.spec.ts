@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
+import { APP_NAME } from '../../src/appIdentity';
 import { availableTasks } from '../../src/domain/tasks';
 import {
   addKesit,
@@ -256,8 +257,8 @@ test.describe('install as an app', () => {
       icons: Array<{ src: string; sizes: string; type: string; purpose: string }>;
     };
     expect(manifest).toMatchObject({
-      name: 'Clip',
-      short_name: 'Clip',
+      name: APP_NAME,
+      short_name: APP_NAME,
       // The installed app starts at the opening screen (ADR-034), not in the editor.
       start_url: '/',
       scope: '/',

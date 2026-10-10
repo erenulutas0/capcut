@@ -5,13 +5,13 @@
  * and mechanical: a v1 recipe gets an empty caption list and nothing else
  * changes. v2 → v3 (ADR-036) and v3 → v4 (ADR-037) change nothing in an
  * existing recipe but the number. Everything that reads stored or imported
- * recipes goes through `loadProject`; `validateProject` itself only knows the
- * current schema.
+ * recipes goes through `loadProject` or, for a project record,
+ * `loadStoredProject`; `validateProject` itself only knows the current schema.
  */
 
 import { EDL_SCHEMA_VERSION } from './edl';
 import type { ExportPolicy } from './policy';
-import { validateProject, type ValidationResult } from './validation';
+import { validateProject, validateStoredProject, type ValidationResult } from './validation';
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -44,4 +44,12 @@ export function migrateProject(input: unknown): unknown {
 /** The single entry point for recipes from storage, backups and fixtures. */
 export function loadProject(input: unknown, policy?: ExportPolicy): ValidationResult {
   return validateProject(migrateProject(input), policy);
+}
+
+/**
+ * A recipe out of a project record (the browser's store, a backup file):
+ * upgraded the same way, and allowed to have no kesit yet (`validateStoredProject`).
+ */
+export function loadStoredProject(input: unknown, policy?: ExportPolicy): ValidationResult {
+  return validateStoredProject(migrateProject(input), policy);
 }

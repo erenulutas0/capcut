@@ -21,7 +21,7 @@ Kutular başlangıçta boş kalır; doküman hazırlanmasıyla işaretlenmez. He
 
 - [ ] Desteklenen OS/browser/codec matrisi gerçek testlerle yazıldı.
 - [ ] Türkçe temel metinler, hata açıklamaları ve erişilebilirlik test edildi.
-- [ ] İsim/domain/iletişim bilgileri gerçek; geçici Clip adı yanlış tescil iddiasıyla sunulmuyor.
+- [ ] İsim/domain/iletişim bilgileri gerçek; LiloCut adı (K01, 10 Ekim 2026) marka/alan adı incelemesi yapılmadan tescil iddiasıyla sunulmuyor.
 - [ ] Privacy/terms ve SDK veri envanteri gerçek davranışla eşleşiyor.
 - [ ] App Store/Play beyanları ve test koşulları güncel konsolda doğrulandı.
 - [ ] Hesap varsa silme akışları ve gerekli web yolu çalışıyor.

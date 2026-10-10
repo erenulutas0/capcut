@@ -1,9 +1,9 @@
-# Clip — Mobil ve Web Video Editörü | Proje El Kitabı
+# LiloCut — Mobil ve Web Video Editörü | Proje El Kitabı
 
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
-**Çalışma adı:** Clip. Bu isim için marka, alan adı veya mağaza uygunluğu araştırması yapılmadı; yayına çıkacak isim değildir.
+**Ad:** LiloCut (kurucu kararı, 10 Ekim 2026; belge 30 K01). 10 Ekim 2026'ya kadarki çalışma adı "Clip" idi; eski tarihli belgelerde ve ADR'lerde o ad geçer. Bu isim için marka, alan adı veya mağaza uygunluğu araştırması yapılmadı.
 
 **Ürün fikri:** Kullanıcı kendi videosunda saklamak istediği bölümleri işaretler, parçaları sıralar, görüntüyü yeniden çerçeveler, kendi ses dosyasını ekler ve kullanılabilir bir video çıkarır. Önce güvenilir, kolay bir klip oluşturucu; sonra düzenli üretim yapanlar için ücretli iş akışları.
 

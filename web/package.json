@@ -2,7 +2,7 @@
   "name": "clip-web",
   "version": "0.1.0",
   "private": true,
-  "description": "Clip — W0 web editor shell (no encoder, no cloud, no auth)",
+  "description": "LiloCut — local-first web video tool (no cloud, no auth)",
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build && node scripts/apply-csp.mjs && node scripts/build-sw.mjs",

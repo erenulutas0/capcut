@@ -493,12 +493,13 @@ function validateClips(
   raw: unknown,
   assets: Map<string, AssetV1>,
   policy: ExportPolicy,
+  allowNoClips: boolean,
 ): void {
   if (!Array.isArray(raw)) {
     bag.add('missing_field', 'clips', 'clips bir dizi olmalı.');
     return;
   }
-  if (raw.length === 0) {
+  if (raw.length === 0 && !allowNoClips) {
     bag.add('clips_empty', 'clips', 'En az bir an gerekli.');
   }
   if (raw.length > policy.maxClips) {
@@ -716,6 +717,27 @@ export function validateProject(
   input: unknown,
   policy: ExportPolicy = WEB_LOCAL_POLICY,
 ): ValidationResult {
+  return validate(input, policy, false);
+}
+
+/**
+ * The same rules for a project as it is STORED (ADR-012 "Ek, 10 Ekim 2026"),
+ * with one difference: `clips` may be empty. Since ADR-026 a video is opened
+ * with no kesit and stays a normal project in that state, so the browser's
+ * store and the backup file hold such recipes. This is not a recipe that can
+ * be encoded: a download goes through `downloadRecipe`, which gives it one
+ * clip over the whole video, and the render plan sees `validateProject`'s
+ * rules. The shared fixtures (`invalid/empty-clips.json`) describe
+ * `validateProject` and are unchanged.
+ */
+export function validateStoredProject(
+  input: unknown,
+  policy: ExportPolicy = WEB_LOCAL_POLICY,
+): ValidationResult {
+  return validate(input, policy, true);
+}
+
+function validate(input: unknown, policy: ExportPolicy, allowNoClips: boolean): ValidationResult {
   const bag = new IssueBag();
 
   if (!isPlainObject(input)) {
@@ -746,7 +768,7 @@ export function validateProject(
 
   const assets = validateAssets(bag, input.assets);
   validateCanvas(bag, input.canvas);
-  validateClips(bag, input.clips, assets, policy);
+  validateClips(bag, input.clips, assets, policy, allowNoClips);
   validateExportSpec(bag, input.export);
 
   // ADR-021: the recipe may be as long as the input limit. The OUTPUT limit

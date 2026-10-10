@@ -1,3 +1,5 @@
+import { APP_NAME } from '@/appIdentity';
+
 const PATHS = {
   scissors: 'M6 4l12 12M18 4L6 16M8 18.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Zm13 0a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z',
   undo: 'M4 9h11a5 5 0 0 1 0 10H8M4 9l4-4M4 9l4 4',
@@ -75,7 +77,7 @@ export function Wordmark() {
       <span className="wordmark-badge">
         <Icon name="scissors" />
       </span>
-      clip
+      {APP_NAME}
     </span>
   );
 }

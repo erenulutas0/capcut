@@ -206,6 +206,8 @@ Cloud, istemcinin `durationUs`, çözünürlük, MIME veya toplam süre beyanın
 
 `ProjectRecord`: EDL, schema version, revision, created/updated UTC, asset binding list, save state. `AssetBinding`: yerel opaque ID, platform URI/handle, permission state, boyut, isteğe bağlı yerel fingerprint, probe sonucu, erişim tarihi. `ExportAttempt`: attempt ID, recipe fingerprint, engine/version, route, state, sanitized failure, output binding.
 
+`ProjectRecord` içindeki EDL, yukarıdaki doğrulama kurallarından tek bir noktada ayrılır: `clips` boş olabilir. Kesit listesi akışında video açıldığında hiçbir kesit eklenmez ve bu durum kaydedilen olağan bir projedir; kayıt (ve yedek dosyası) bu yüzden boş `clips` ile okunur. Dışa aktarılan tarif için kural değişmez: boş `clips` geçersizdir (`clips_empty`, fixture `invalid/empty-clips.json`); indirme, videonun tamamını kapsayan tek kesitli tarifi kendisi üretir. Gerekçe: depo kökündeki `docs/adr/ADR-012-w3-local-persistence.md`, "Ek, 10 Ekim 2026".
+
 Proje JSON paylaşımı sonraki fazda sunulsa bile karşı tarafın kaynak medyaya sahip olması gerekir. “Aynı hesapla giriş yaptın, video diğer cihazda otomatik açıldı” davranışı MVP kapsamında yoktur.
 
 ## Motor portu

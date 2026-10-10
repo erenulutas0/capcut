@@ -3,7 +3,10 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import type { Project } from '@/domain/edl';
+import { loadProject, loadStoredProject } from '@/domain/migration';
+import { healLegacyMusic, isLegacyMusicStub } from '@/domain/musicFit';
 import { US_PER_SECOND } from '@/domain/time';
+import { issueCodes, validateProject, validateStoredProject } from '@/domain/validation';
 import {
   bindingFor,
   compareBinding,
@@ -146,8 +149,136 @@ describe('stored records', () => {
   });
 
   it('refuses a record whose EDL does not validate', () => {
-    const broken = createRecord('p_local_001', '', { ...edl, clips: [] }, []);
+    const reversed = { ...edl, clips: edl.clips.map((clip) => ({ ...clip, sourceOutUs: clip.sourceInUs })) };
+    const broken = createRecord('p_local_001', '', reversed, []);
     expect(parseRecord(JSON.parse(JSON.stringify(broken)))).toMatchObject({ reason: 'edl_invalid' });
+  });
+
+  // ADR-026: a video is opened with no kesit, and that project is saved (ADR-012 "Ek, 10 Ekim 2026").
+  describe('a project with no kesit yet', () => {
+    const videoOnly: Project = {
+      ...edl,
+      assets: edl.assets.filter((asset) => asset.kind === 'video'),
+      clips: [],
+      captionTracks: [],
+    };
+    delete videoOnly.music;
+
+    it('is not a recipe the export accepts, and the shared fixture still says so', () => {
+      expect(issueCodes(validateProject(videoOnly))).toEqual(['clips_empty']);
+      expect(issueCodes(loadProject(videoOnly))).toEqual(['clips_empty']);
+      const fixture = JSON.parse(
+        readFileSync(join(process.cwd(), 'fixtures', 'edl', 'invalid', 'empty-clips.json'), 'utf8'),
+      );
+      expect(issueCodes(validateProject(fixture))).toEqual(['clips_empty']);
+      expect(validateStoredProject(fixture).ok).toBe(true);
+    });
+
+    it('opens again from a record, with the binding that asks for the video', () => {
+      const record = createRecord('p_local_001', '', videoOnly, [makeBinding()]);
+      const parsed = parseRecord(JSON.parse(JSON.stringify(record)));
+      expect(parsed.ok).toBe(true);
+      if (!parsed.ok) return;
+      expect(parsed.record.edl.clips).toEqual([]);
+      expect(parsed.record.edl.schemaVersion).toBe(edl.schemaVersion);
+      expect(missingBindings(parsed.record, []).map((b) => b.assetId)).toEqual(['a_video_001']);
+    });
+
+    it('opens again with its music and its captions', () => {
+      const music = edl.music;
+      const audio = edl.assets.find((asset) => asset.kind === 'audio');
+      expect(music && audio).toBeTruthy();
+      if (!music || !audio) return;
+      const withMusic: Project = {
+        ...videoOnly,
+        assets: [...videoOnly.assets, audio],
+        // What an older build stored when music was added with no kesit: a 0.1 s selection.
+        music: { ...music, sourceInUs: 0, sourceOutUs: 100_000, timelineStartUs: 0, fadeInUs: 0, fadeOutUs: 0 },
+        captionTracks: [
+          {
+            trackId: 't_1',
+            origin: 'manual',
+            timeBase: 'source',
+            assetId: 'a_video_001',
+            language: 'tr',
+            style: { preset: 'box', position: 'bottom', size: 'medium' },
+            cues: [{ cueId: 'q_1', startUs: 0, endUs: US_PER_SECOND, text: 'Merhaba' }],
+          },
+        ],
+      };
+      const parsed = parseRecord(JSON.parse(JSON.stringify(createRecord('p', 'Tatil', withMusic, []))));
+      expect(parsed).toMatchObject({ ok: true });
+      if (!parsed.ok) return;
+      expect(parsed.record.edl.music?.sourceOutUs).toBe(100_000);
+      expect(parsed.record.edl.captionTracks[0]?.cues).toHaveLength(1);
+
+      // That record is the one the music repair was written for (ADR-034 "müzik
+      // videonun tamamının altında"); before this fix it never reached the repair,
+      // because the record itself was refused.
+      expect(isLegacyMusicStub(parsed.record.edl)).toBe(true);
+      const video = videoOnly.assets[0];
+      const healed = healLegacyMusic(parsed.record.edl);
+      expect(healed.music?.sourceInUs).toBe(0);
+      expect(healed.music?.sourceOutUs).toBe(Math.min(audio.durationUs, video?.durationUs ?? 0));
+      // And what the repair gives is itself a record that opens again.
+      expect(parseRecord(JSON.parse(JSON.stringify(createRecord('p', 'Tatil', healed, []))))).toMatchObject({ ok: true });
+    });
+
+    it('opens again when only the name was typed', () => {
+      const empty: Project = { ...videoOnly, assets: [] };
+      expect(parseRecord(JSON.parse(JSON.stringify(createRecord('p', 'Tatil', empty, []))))).toMatchObject({
+        ok: true,
+        record: { title: 'Tatil' },
+      });
+    });
+
+    it('is still refused for every other broken rule', () => {
+      const cases: Array<[unknown, string]> = [
+        [{ ...videoOnly, clips: undefined }, 'missing_field'],
+        [{ ...videoOnly, clips: 'none' }, 'missing_field'],
+        [{ ...videoOnly, extra: true }, 'unknown_field'],
+        [{ ...videoOnly, schemaVersion: 99 }, 'schema_version_unsupported'],
+        [{ ...videoOnly, music: { ...edl.music, assetId: 'a_missing' } }, 'asset_unknown'],
+        [{ ...videoOnly, assets: [{ ...videoOnly.assets[0], durationUs: 0 }] }, 'asset_duration_invalid'],
+        [{ ...videoOnly, enhance: { mode: 'everything' } }, 'enhance_invalid'],
+      ];
+      for (const [project, code] of cases) {
+        expect(issueCodes(validateStoredProject(project)), code).toContain(code);
+        const record = { ...createRecord('p', '', edl, []), edl: project };
+        expect(parseRecord(JSON.parse(JSON.stringify(record)))).toMatchObject({ reason: 'edl_invalid' });
+      }
+    });
+
+    it('differs from the export rules in nothing else', () => {
+      expect(validateStoredProject(edl)).toEqual(validateProject(edl));
+      const twice = { ...edl, clips: [edl.clips[0], { ...edl.clips[0], sourceOutUs: -1 }] };
+      expect(issueCodes(validateStoredProject(twice))).toEqual(issueCodes(validateProject(twice)));
+      expect(issueCodes(validateStoredProject(twice)).length).toBeGreaterThan(0);
+      // Every shared fixture gets the same verdict from both, except the one about empty clips.
+      const manifest = JSON.parse(readFileSync(join(process.cwd(), 'fixtures', 'edl', 'manifest.json'), 'utf8')) as {
+        valid: Array<{ file: string }>;
+        invalid: Array<{ file: string }>;
+      };
+      for (const { file } of [...manifest.valid, ...manifest.invalid]) {
+        const fixture = JSON.parse(readFileSync(join(process.cwd(), 'fixtures', 'edl', file), 'utf8'));
+        if (file === 'invalid/empty-clips.json') continue;
+        expect(issueCodes(validateStoredProject(fixture)), file).toEqual(issueCodes(validateProject(fixture)));
+      }
+    });
+
+    it('upgrades every older schema the same way', () => {
+      for (const schemaVersion of [2, 3]) {
+        const loaded = loadStoredProject({ ...videoOnly, schemaVersion });
+        expect(loaded.ok, `v${schemaVersion}`).toBe(true);
+        if (loaded.ok) expect(loaded.project.schemaVersion).toBe(edl.schemaVersion);
+      }
+      // v1 had no caption list at all.
+      const v1: Record<string, unknown> = { ...videoOnly, schemaVersion: 1 };
+      delete v1.captionTracks;
+      const loaded = loadStoredProject(v1);
+      expect(loaded.ok).toBe(true);
+      if (loaded.ok) expect(loaded.project).toMatchObject({ schemaVersion: edl.schemaVersion, clips: [], captionTracks: [] });
+    });
   });
 
   it('refuses a future record version rather than guessing', () => {

@@ -182,6 +182,13 @@ describe('searchTasks: the second held-out table (Sesi kapat, and what cannot be
     for (const [, expected] of HELD_OUT_2) expect(TASKS.some((task) => task.id === expected), expected).toBe(true);
   });
 
+  it('entries added later (10 Oct 2026) answer none of these phrases, and the count did not drop', () => {
+    const later = ['yaziekle', 'yuz', 'tercume', 'gurultu'];
+    expect(outcomes.filter((item) => later.includes(item.got)).map((item) => item.phrase)).toEqual([]);
+    // 92 of 95 before those entries existed, measured on 53b831e.
+    expect(hits.length).toBeGreaterThanOrEqual(92);
+  });
+
   it('puts the right entry first for at least four phrases in five', () => {
     expect(hits.length / outcomes.length).toBeGreaterThanOrEqual(0.8);
   });

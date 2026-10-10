@@ -2557,7 +2557,7 @@ input[type='range']:disabled::-webkit-slider-thumb {
   }
 }
 
-/* Phone top bar: the word "clip" folds into its badge and the icon buttons
+/* Phone top bar: the product name folds into its badge and the icon buttons
    are 40 px, so undo, redo, Diğer, Ayarlar and the download button fit. */
 .editor-root[data-mode='phone'] .wordmark {
   font-size: 0;

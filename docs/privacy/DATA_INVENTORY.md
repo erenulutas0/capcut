@@ -305,4 +305,7 @@ uygulama dosyası dışında bir şey girmesi ya da çalışırken ağ yanıtlar
 - Barındırma sağlayıcısı ve sunucu erişim kaydı saklama süresi.
 - Destek iletişim adresi (`NEXT_PUBLIC_SUPPORT_CONTACT`) ve kullanıcının gönderdiği tanı
   dosyalarının saklama süresi (belge 19 "en çok 7 gün" önerisi — onaylanmadı).
-- Uygulama adı (K01): sayfa ve dosya adları geçici "Clip" adını kullanır.
+- Uygulama adı (K01) kararlaştırıldı: **LiloCut** (10 Ekim 2026, ADR-038). Sayfa başlıkları, yüklenen uygulamanın adı
+  ve indirilen dosya adları (`lilocut-tani-…json`, `….lilocut.json`) bu adı kullanır. Tarayıcıda tutulanların adları
+  bilerek değişmedi (`clip-editor`, `clip-export-`, `clip-app-`, `clip-models-`, `clip.firstRunHint.dismissed`):
+  değişseydi kayıtlı projeler ve indirilmiş modeller sahipsiz kalırdı. Açık kalan: marka/alan adı incelemesi.
