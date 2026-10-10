@@ -22,3 +22,40 @@ export const SOFTWARE_ENCODER_BITRATE_FACTOR = 3;
 export function encoderVideoBitrate(planBitrate: number, kind: VideoEncoderKind): number {
   return kind === 'software' ? Math.round(planBitrate * SOFTWARE_ENCODER_BITRATE_FACTOR) : planBitrate;
 }
+
+/**
+ * A re-encode may spend this many times the source's own bitrate, and no
+ * more. Not 1: the browser's real-time H.264 encoder needs more bits than the
+ * encoder that made the file (a phone's HEVC, a screen recorder's VP9, x264
+ * at a slow preset) to show the same picture, and the picture may have been
+ * scaled up on the way. Twice the source leaves that room and still stops a
+ * small file from coming back many times its size.
+ */
+export const SOURCE_BITRATE_HEADROOM = 2;
+
+/** No re-encode is asked for less than this (the plan's own floor, `videoBitrateFor`). */
+export const MIN_REENCODE_BITRATE = 500_000;
+
+/**
+ * The plan's bitrate, held to what the source itself has (10 Oct 2026).
+ *
+ * The plan's table (~0.09 bit per pixel) is right for camera footage, which
+ * arrives with far more bits than that. A video that is small to begin with —
+ * a screen recording, a slide show, a clip that was already compressed hard —
+ * has nothing those bits could show: a 24-second 720p file of 0.5 MB came
+ * back as 1.5 MB for three seconds of it. So the bitrate asked of the encoder
+ * is the plan's, but never more than `SOURCE_BITRATE_HEADROOM` × the source's
+ * own (file bytes over length: sound included, so it errs on the generous
+ * side), and never under `MIN_REENCODE_BITRATE`.
+ *
+ * ADR-024 is untouched: the software encoder's 3× is put on top of THIS
+ * value (`encoderVideoBitrate`), exactly as before. A source whose bitrate is
+ * unknown keeps the plan's bitrate.
+ */
+export function sourceBoundedBitrate(planBitrate: number, sourceBitrate: number | null | undefined): number {
+  if (sourceBitrate === null || sourceBitrate === undefined || !Number.isFinite(sourceBitrate) || sourceBitrate <= 0) {
+    return planBitrate;
+  }
+  const ceiling = Math.max(MIN_REENCODE_BITRATE, Math.round(sourceBitrate * SOURCE_BITRATE_HEADROOM));
+  return Math.min(planBitrate, ceiling);
+}

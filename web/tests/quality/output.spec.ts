@@ -58,7 +58,11 @@ interface OutCase {
   kind: 'sync' | 'picture';
   /** Kes: the range asked for, in seconds. */
   range?: [number, number];
-  /** Küçült: the option to choose (the default is "share"). */
+  /**
+   * Küçült: the option to choose. Without one the choice is left as the app made it (WhatsApp); a video
+   * that already fits every size has nothing to download there, and the script then takes the way the
+   * step points at ("Daha da küçült").
+   */
   size?: 'whatsapp' | 'email' | 'share';
   /** The ffmpeg filter that makes the same picture (reference), given the source's size. */
   referenceFilter?: string;
@@ -70,7 +74,7 @@ const CASES: OutCase[] = [
   { id: 'dikey-senkron-mp4', task: 'dikey', label: 'Dikey yap, senkron klibi (zaten 9:16)', source: syncSource, kind: 'sync' },
   { id: 'cevir-senkron-mp4', task: 'cevir', label: 'Her yerde açılsın, senkron klibi (H.264 MP4)', source: syncSource, kind: 'sync' },
   { id: 'cevir-senkron-webm', task: 'cevir', label: 'Her yerde açılsın, senkron klibi (VP9 WebM)', source: async () => syncWebm(await syncSource()), kind: 'sync' },
-  { id: 'kucult-senkron-webm', task: 'kucult', label: 'Küçült (seçim değişmeden), senkron klibi (VP9 WebM)', source: async () => syncWebm(await syncSource()), kind: 'sync' },
+  { id: 'kucult-senkron-webm', task: 'kucult', label: 'Küçült (zaten sığan video: “Daha da küçült”), senkron klibi (VP9 WebM)', source: async () => syncWebm(await syncSource()), kind: 'sync' },
   { id: 'kes-goruntu', task: 'kes', label: 'Kes 2,5–5,5 sn, kamera benzeri 1080p', source: cameraLikeSource, kind: 'picture', range: [2.5, 5.5], referenceFilter: 'null' },
   { id: 'dikey-goruntu', task: 'dikey', label: 'Dikey yap (Doldur), kamera benzeri 1080p', source: cameraLikeSource, kind: 'picture', referenceFilter: 'crop=ih*9/16:ih' },
   { id: 'kucult-goruntu', task: 'kucult', label: 'Küçült → WhatsApp (16 MB), kamera benzeri 1080p, yaklaşık 24 MB', source: cameraLikeSource, kind: 'picture', size: 'whatsapp', referenceFilter: 'null' },
@@ -94,12 +98,25 @@ async function exportThrough(page: Page, item: OutCase, source: string): Promise
       await expect(page.getByTestId(`size-hint-${id}`)).not.toHaveAttribute('data-state', 'pending', { timeout: 60_000 });
     }
     if (item.size) await page.getByTestId(`option-${item.size}`).check();
+    else if ((await page.getByTestId('option-half').count()) > 0) {
+      // Already under every size: the app offers no download for the sizes it fits, and says so.
+      await expect(page.getByTestId('size-hint-half')).not.toHaveAttribute('data-state', 'pending', { timeout: 60_000 });
+      await page.getByTestId('option-half').check();
+    }
   } else if (item.task === 'dikey') {
     await page.waitForSelector('[data-testid="dikey-choice"], [data-testid="dikey-already"]', { timeout: 120_000 });
   } else {
     await expect(page.getByTestId('cevir-info')).toBeVisible({ timeout: 120_000 });
   }
-  await expect(button).toBeEnabled({ timeout: 60_000 });
+  // A step that offers no download (it says why next to the button) is a result, not a failed measurement.
+  const enabled = await expect(button)
+    .toBeEnabled({ timeout: 60_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!enabled) {
+    const said = await page.getByTestId('wizard-blocked').innerText({ timeout: 2000 }).catch(() => null);
+    return { phase: 'indirme sunulmadı', elapsedS: 0, method: null, fits: null, shown: said ? said.replace(/\s+/g, ' ').trim().slice(0, 240) : null };
+  }
   const pressed = Date.now();
   await button.click();
   const phase = await waitForResult(page, 180_000);

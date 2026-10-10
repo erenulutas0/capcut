@@ -92,6 +92,11 @@ function ChoiceOption({
 /**
  * "Kes": the kesit editor IS this task (ADR-026/030). The wizard only picks
  * the video; the editor opens over it at once, first-run hint included.
+ *
+ * The download keeps the video's own size, as every other wizard does
+ * (`ownSizeRecipe`): a 720p video is not blown up to the editor's 1080p
+ * default — which also made every cut a full re-encode, because the fast cut
+ * (ADR-027) only copies pictures at the source's own size.
  */
 function KesWizard(host: WizardHostProps) {
   const { state, onOpenEditor } = host;
@@ -103,7 +108,7 @@ function KesWizard(host: WizardHostProps) {
       recipe={null}
       working
       openVideo={async (file) => {
-        const outcome = await state.importVideo(file);
+        const outcome = await state.importVideo(file, ownSizeRecipe);
         if (outcome.kind !== 'opened') return false;
         onOpenEditor();
         return true;
@@ -545,40 +550,95 @@ function CevirWizard(host: WizardHostProps) {
 
 // ---------------------------------------------------------------- Küçült
 
-/** The order the choices are shown in: the roomiest first (it is the default). */
-const SIZE_CHOICES: readonly SizePresetId[] = ['share', 'email', 'whatsapp'];
+/**
+ * The order the choices are shown in: the smallest first. It is what the card
+ * promises ("WhatsApp’a sığdır") and so it is the default.
+ */
+const SIZE_CHOICES: readonly SizePresetId[] = ['whatsapp', 'email', 'share'];
 
-type SizePreviews = Partial<Record<SizePresetId, TargetSizePreview>>;
+/** The smallest of the ready-made sizes: a video already under it fits everywhere. */
+const SMALLEST_PRESET_BYTES = Math.min(...SIZE_PRESETS.map((preset) => preset.bytes));
 
 /**
- * What one size would give, said before anything is encoded (ADR-035):
- * "≈ 48 MB · 720p", "already fits", or the honest "does not fit" with the
- * smallest size that would.
+ * `half`: about half of what the video weighs now. Offered only to a video
+ * that is already under every ready-made size — the one way left to make it
+ * smaller, so "it already fits" is never a dead end.
  */
-function sizeHint(preview: TargetSizePreview | undefined, videoBytes: number, targetBytes: number): string {
-  const mark = t('time.decimalMark');
-  if (!preview) return t('wizard.kucult.calculating');
-  if (!preview.ok) {
-    return preview.reason === 'target_too_small'
-      ? fill(t('wizard.kucult.tooSmall'), { min: formatStorageBytes(preview.refusal.minBytes, 'up', mark) })
-      : t('wizard.kucult.calculating');
-  }
-  // The file itself is already under the limit: its pictures are kept where they can be.
-  if (videoBytes <= targetBytes) {
-    return fill(t('wizard.kucult.alreadyFits'), { size: formatBytes(videoBytes, mark) });
-  }
-  const { decision } = preview;
-  const values = {
-    size: formatBytes(decision.plannedBytes, mark),
-    height: String(decision.shortEdge),
-    seconds: String(preview.estimatedSeconds),
-  };
-  return fill(t(decision.mode === 'normal' ? 'wizard.kucult.planNormal' : 'wizard.kucult.plan'), values);
+type SizeChoiceId = SizePresetId | 'half';
+
+type SizePreviews = Partial<Record<SizeChoiceId, TargetSizePreview>>;
+
+/** What picking an option would do, known before anything is encoded. */
+type SizeState =
+  /** Still being worked out. */
+  | 'pending'
+  /** The video is already at or under this size: there is nothing to shrink. */
+  | 'already'
+  /** It cannot be made this small. */
+  | 'refused'
+  /** It will be made smaller. */
+  | 'shrinks';
+
+function halfTargetBytes(videoBytes: number): number {
+  return Math.max(1, Math.floor(videoBytes / 2));
+}
+
+function targetBytesOf(id: SizeChoiceId, videoBytes: number): number {
+  if (id === 'half') return halfTargetBytes(videoBytes);
+  return SIZE_PRESETS.find((preset) => preset.id === id)?.bytes ?? SMALLEST_PRESET_BYTES;
+}
+
+function sizeState(id: SizeChoiceId, preview: TargetSizePreview | undefined, videoBytes: number): SizeState {
+  // The file itself is already under the limit: no download would make it "fit" any better.
+  if (id !== 'half' && videoBytes <= targetBytesOf(id, videoBytes)) return 'already';
+  if (!preview) return 'pending';
+  if (!preview.ok) return preview.reason === 'target_too_small' ? 'refused' : 'pending';
+  return 'shrinks';
+}
+
+/** The options a video gets: the three places it may have to fit, and "half" when it already fits them all. */
+function sizeChoices(videoBytes: number): SizeChoiceId[] {
+  return videoBytes <= SMALLEST_PRESET_BYTES ? [...SIZE_CHOICES, 'half'] : [...SIZE_CHOICES];
 }
 
 /**
- * The size choice of "Küçült". The three previews are asked once per video
- * (the planner is pure arithmetic plus one question to the browser about its
+ * The option chosen before the user chooses: the smallest size the video can
+ * really be shrunk to — WhatsApp, as the card says, whenever that works. When
+ * nothing would shrink (it already fits, or cannot fit) WhatsApp stays chosen
+ * and the step says why there is nothing to download.
+ */
+function defaultSizeChoice(previews: SizePreviews, videoBytes: number): SizeChoiceId {
+  return SIZE_CHOICES.find((id) => sizeState(id, previews[id], videoBytes) === 'shrinks') ?? 'whatsapp';
+}
+
+/**
+ * What one size would give, said before anything is encoded (ADR-035), in
+ * plain words: about how large the file will be and what happens to the
+ * picture — "already fits", or the honest "does not fit" with the smallest
+ * size that would. The pixel size is in the result's "Ayrıntılar".
+ */
+function sizeHint(id: SizeChoiceId, preview: TargetSizePreview | undefined, videoBytes: number): string {
+  const mark = t('time.decimalMark');
+  const state = sizeState(id, preview, videoBytes);
+  if (state === 'already') return fill(t('wizard.kucult.alreadyFits'), { size: formatBytes(videoBytes, mark) });
+  if (state === 'pending' || !preview) return t('wizard.kucult.calculating');
+  if (!preview.ok) {
+    return preview.reason === 'target_too_small'
+      ? fill(t(id === 'half' ? 'wizard.kucult.halfTooSmall' : 'wizard.kucult.tooSmall'), {
+          min: formatStorageBytes(preview.refusal.minBytes, 'up', mark),
+        })
+      : t('wizard.kucult.calculating');
+  }
+  const { decision } = preview;
+  const values = { size: formatBytes(decision.plannedBytes, mark), seconds: String(preview.estimatedSeconds) };
+  if (decision.mode === 'normal') return fill(t('wizard.kucult.planNormal'), values);
+  // Honest about the picture: fewer bits always, and a smaller picture when the size had to drop too.
+  return fill(t(decision.shortEdge < preview.fullShortEdge ? 'wizard.kucult.planSmaller' : 'wizard.kucult.plan'), values);
+}
+
+/**
+ * The size choice of "Küçült". The previews are asked once per video (the
+ * planner is pure arithmetic plus one question to the browser about its
  * encoder), so every option says its outcome before the user picks.
  */
 function SizeChoice({
@@ -594,8 +654,8 @@ function SizeChoice({
   videoBytes: number;
   /** Changes when the video (and so the recipe) changes. */
   recipeKey: string;
-  choice: SizePresetId;
-  onChoice: (id: SizePresetId) => void;
+  choice: SizeChoiceId;
+  onChoice: (id: SizeChoiceId) => void;
   previews: SizePreviews;
   onPreviews: (key: string, previews: SizePreviews) => void;
 }) {
@@ -603,7 +663,9 @@ function SizeChoice({
   useEffect(() => {
     let live = true;
     void Promise.all(
-      SIZE_PRESETS.map(async (preset) => [preset.id, await previewSize({ targetBytes: preset.bytes })] as const),
+      sizeChoices(videoBytes).map(
+        async (id) => [id, await previewSize({ targetBytes: targetBytesOf(id, videoBytes) })] as const,
+      ),
     ).then((entries) => {
       if (live) onPreviews(recipeKey, Object.fromEntries(entries) as SizePreviews);
     });
@@ -611,15 +673,14 @@ function SizeChoice({
       live = false;
     };
     // `previewSize` follows the recipe; the key says when the video changed.
-  }, [previewSize, recipeKey, onPreviews]);
+  }, [previewSize, recipeKey, onPreviews, videoBytes]);
 
   return (
     <fieldset className="wizard-choice" data-testid="kucult-choice">
       <legend>{t('wizard.kucult.choice')}</legend>
-      {SIZE_CHOICES.map((id) => {
-        const preset = SIZE_PRESETS.find((item) => item.id === id);
-        if (!preset) return null;
+      {sizeChoices(videoBytes).map((id) => {
         const preview = previews[id];
+        const state = sizeState(id, preview, videoBytes);
         return (
           <label className="wizard-option" data-checked={choice === id} key={id}>
             <input
@@ -636,12 +697,12 @@ function SizeChoice({
               <span
                 className="wizard-option-hint"
                 data-testid={`size-hint-${id}`}
-                data-state={!preview ? 'pending' : preview.ok ? (videoBytes <= preset.bytes ? 'already' : preview.decision.mode) : 'refused'}
-                data-planned-bytes={preview?.ok ? preview.decision.plannedBytes : undefined}
-                data-short-edge={preview?.ok ? preview.decision.shortEdge : undefined}
+                data-state={state === 'shrinks' && preview?.ok ? preview.decision.mode : state === 'shrinks' ? 'pending' : state}
+                data-planned-bytes={state === 'shrinks' && preview?.ok ? preview.decision.plannedBytes : undefined}
+                data-short-edge={state === 'shrinks' && preview?.ok ? preview.decision.shortEdge : undefined}
                 data-min-bytes={preview && !preview.ok && preview.reason === 'target_too_small' ? preview.refusal.minBytes : undefined}
               >
-                {sizeHint(preview, videoBytes, preset.bytes)}
+                {sizeHint(id, preview, videoBytes)}
               </span>
             </span>
           </label>
@@ -652,50 +713,71 @@ function SizeChoice({
 }
 
 /**
- * "Küçült" (ADR-035): the whole video at or under a size. One choice — where
- * it has to fit (share sheet, e-mail, WhatsApp) — and every option says what
- * it would give before "İndir": the expected size and resolution, that the
- * video already fits, or that it cannot fit and what the smallest size is.
- * The result line then says what the saved file really weighs.
+ * "Küçült" (ADR-035, addendum of 10 Oct 2026): the whole video at or under a
+ * size. One choice — where it has to fit — with WhatsApp chosen, as the card
+ * says, and every option says what it would give before "İndir": about how
+ * large the file will be and what happens to the picture, that the video
+ * already fits, or that it cannot fit and what the smallest size is.
+ *
+ * A video that is already under the chosen size is NOT downloaded again: a
+ * copy of the same weight under a new name, announced as "Kaydedildi", is a
+ * shrink that shrank nothing. The step says so ("Bu video zaten 473 KB…") and
+ * points at a smaller option; a video under every ready-made size gets one
+ * more, "Daha da küçült" (about half). The result line then says what the
+ * saved file really weighs.
  */
 function KucultWizard(host: WizardHostProps) {
   const { state } = host;
   const { video } = state;
-  const [choice, setChoice] = useState<SizePresetId>('share');
+  /** The user's own pick; null while the default stands. */
+  const [picked, setPicked] = useState<SizeChoiceId | null>(null);
   const [previews, setPreviews] = useState<{ key: string; previews: SizePreviews }>({ key: '', previews: {} });
   const onPreviews = useCallback((key: string, next: SizePreviews) => setPreviews({ key, previews: next }), []);
   const recipeKey = video ? `${video.fileName}|${video.file.size}|${video.durationUs}|${state.project.export.shortEdge}` : '';
   const current = previews.key === recipeKey ? previews.previews : {};
-  const preset = SIZE_PRESETS.find((item) => item.id === choice) ?? SIZE_PRESETS[0];
+  const videoBytes = video?.file.size ?? 0;
+  const offered = sizeChoices(videoBytes);
+  const choice = picked !== null && offered.includes(picked) ? picked : defaultSizeChoice(current, videoBytes);
+  const targetBytes = targetBytesOf(choice, videoBytes);
   const selected = current[choice];
+  const selectedState = sizeState(choice, selected, videoBytes);
   const refused = selected && !selected.ok && selected.reason === 'target_too_small' ? selected.refusal : null;
-  const request: TargetSizeRequest | null = preset ? { targetBytes: preset.bytes } : null;
+  const request = useMemo<TargetSizeRequest>(() => ({ targetBytes }), [targetBytes]);
+  const extras = useMemo(() => ({ targetSize: request }), [request]);
   const mark = t('time.decimalMark');
+  /** Whether some other option would still make this video smaller. */
+  const smallerWay = offered.some((id) => id !== choice && sizeState(id, current[id], videoBytes) === 'shrinks');
+
+  const blockedText =
+    selectedState === 'already'
+      ? `${fill(t('wizard.kucult.alreadyBlocked'), { size: formatBytes(videoBytes, mark) })}${
+          smallerWay ? ` ${t(offered.includes('half') ? 'wizard.kucult.alreadyHalf' : 'wizard.kucult.alreadySmaller')}` : ''
+        }`
+      : selectedState === 'refused' && refused
+        ? fill(t(refused.maxDurationUs >= 1_000_000 ? 'wizard.kucult.blocked' : 'wizard.kucult.blockedNoFit'), {
+            target: formatByteLimit(targetBytes, mark),
+            min: formatStorageBytes(refused.minBytes, 'up', mark),
+            duration: formatTimecode(refused.maxDurationUs),
+          })
+        : null;
 
   return (
     <WizardFlow
       {...host}
       titleKey="wizard.kucult.title"
       fileTag="kucuk"
-      // Nothing to download while the size is not known to fit: an impossible
-      // target is refused here, before the save dialog.
-      recipe={video && selected?.ok ? state.project : null}
-      exportExtras={request ? { targetSize: request } : undefined}
-      blockedText={
-        refused && preset
-          ? fill(t(refused.maxDurationUs >= 1_000_000 ? 'wizard.kucult.blocked' : 'wizard.kucult.blockedNoFit'), {
-              target: formatByteLimit(preset.bytes, mark),
-              min: formatStorageBytes(refused.minBytes, 'up', mark),
-              duration: formatTimecode(refused.maxDurationUs),
-            })
-          : null
-      }
+      // Nothing to download unless the file would really come out smaller: an
+      // impossible target and a video that already fits are both said here,
+      // before the save dialog.
+      recipe={video && selectedState === 'shrinks' ? state.project : null}
+      exportExtras={extras}
+      blockedText={blockedText}
       openVideo={async (file) => {
         const outcome = await state.importVideo(file, ownSizeRecipe);
         if (outcome.kind !== 'opened') return false;
         // The video's own frame: nothing of the picture is cut off.
         state.changeFraming({ fit: 'contain', zoom: 1 });
-        setChoice('share');
+        setPicked(null);
         return true;
       }}
     >
@@ -704,10 +786,10 @@ function KucultWizard(host: WizardHostProps) {
           <>
             <SizeChoice
               info={info}
-              videoBytes={video.file.size}
+              videoBytes={videoBytes}
               recipeKey={recipeKey}
               choice={choice}
-              onChoice={setChoice}
+              onChoice={setPicked}
               previews={current}
               onPreviews={onPreviews}
             />

@@ -627,6 +627,12 @@ export interface TargetSizeOutcome {
   /** Encodes it took (1: no correction). 0 when the source's pictures were copied. */
   attempts: number;
   shortEdge: number;
+  /**
+   * The largest short edge this download could have had (the project's
+   * quality, or less for a small source): `shortEdge` below it means the
+   * picture itself was made smaller to fit.
+   */
+  fullShortEdge: number;
   videoBitrate: number;
   audioBitrate: number;
   encoderKind: VideoEncoderKind;

@@ -9,6 +9,7 @@ import { closeSheet, noSavePicker, openMore, openSettings, installSavePicker, st
 import { silenceFixture } from './silence-media';
 import { expectStylesApplied } from './stylesReady';
 import { timelineFixture } from './timeline-media';
+import { noisyLongFixture } from './targetsize-media';
 import { wizardFixture } from './wizard-media';
 
 /**
@@ -1390,16 +1391,25 @@ test.describe('a11y: “Küçült” and “Sesini al” (ADR-035), axe audit an
     test(`${size.name}: every step of both wizards, no axe finding, nothing scrolls sideways`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width: size.width, height: size.height });
 
-      // Küçült: pick, the choice with every option's outcome, the saved result with the real size.
+      // Küçült: pick, a video that already fits (four options, İndir off, the reason said) …
       await page.goto('/yap/kucult');
       await expect(page.getByTestId('pick-video')).toBeEnabled();
       await audit(page, `${size.name}-kucult-pick`, testInfo);
       await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
       await expect(page.getByTestId('kucult-choice')).toBeVisible({ timeout: 60_000 });
       await hintsReady(page);
+      await expect(page.getByTestId('wizard-blocked')).toContainText('Küçültmene gerek yok.');
+      await expect(page.getByTestId('wizard-download')).toBeDisabled();
+      await audit(page, `${size.name}-kucult-already`, testInfo);
+      expect(await horizontalOverflow(page), 'kucult already fits').toBe(0);
+      // … then one that is over WhatsApp's size: the choice with every option's outcome, the saved result with the real size.
+      await page.getByTestId('wizard-change-video').click();
+      await page.getByTestId('video-input').setInputFiles(noisyLongFixture());
+      await expect(page.getByTestId('wizard-video-name')).toHaveText('noisy-720p30-14s.mp4');
+      await hintsReady(page);
+      await expect(page.getByTestId('option-whatsapp')).toBeChecked();
       await audit(page, `${size.name}-kucult-choose`, testInfo);
       expect(await horizontalOverflow(page), 'kucult choose').toBe(0);
-      await page.getByTestId('option-whatsapp').check();
       await page.getByTestId('wizard-download').click();
       await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 180_000 });
       await expect(page.getByTestId('target-size-result')).toBeVisible();
@@ -1426,15 +1436,18 @@ test.describe('a11y: “Küçült” and “Sesini al” (ADR-035), axe audit an
   test('keyboard only: the size is chosen with the arrow keys, İndir with Enter, the result is announced', async ({ page }) => {
     const unmarked: string[] = [];
     await page.goto('/yap/kucult');
-    await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+    await page.getByTestId('video-input').setInputFiles(noisyLongFixture());
     await expect(page.getByTestId('kucult-choice')).toBeVisible({ timeout: 60_000 });
     await hintsReady(page);
     await expect(page.getByTestId('wizard-title')).toBeFocused();
-    // One radio group: Tab reaches the checked option, the arrows move the choice.
-    await tabTo(page, byTestId('option-share'), unmarked, 'the size choice');
+    // One radio group: Tab reaches the checked option (WhatsApp, the default), the arrows move the choice.
+    await tabTo(page, byTestId('option-whatsapp'), unmarked, 'the size choice');
     await page.keyboard.press('ArrowDown');
     await expect(page.getByTestId('option-email')).toBeChecked();
-    await page.keyboard.press('ArrowDown');
+    // A size the video already fits: İndir is off and says why; the reason is tied to the button.
+    await expect(page.getByTestId('wizard-download')).toBeDisabled();
+    await expect(page.getByTestId('wizard-download')).toHaveAttribute('aria-describedby', 'wizard-blocked');
+    await page.keyboard.press('ArrowUp');
     await expect(page.getByTestId('option-whatsapp')).toBeChecked();
     await expect(page.getByTestId('option-whatsapp')).toBeFocused();
     await tabTo(page, byTestId('wizard-download'), unmarked, 'İndir');

@@ -46,7 +46,7 @@ import type {
   StorageShortfall,
   TargetSizeShortfall,
 } from '@/domain/exportEvents';
-import { encoderVideoBitrate, type VideoEncoderKind } from '@/domain/encoderBitrate';
+import { encoderVideoBitrate, sourceBoundedBitrate, type VideoEncoderKind } from '@/domain/encoderBitrate';
 import { audioDurationWithinTolerance, durationWithinTolerance, missingFramesAllowed } from '@/domain/exportEvents';
 import type { ExportMode, FastCutFallbackReason } from '@/domain/fastPath';
 import {
@@ -608,11 +608,18 @@ async function videoEncoderKind(plan: RenderPlan): Promise<VideoEncoderKind> {
   }
 }
 
-/** The bitrate the encoder is configured with (ADR-024). */
-async function exportVideoBitrate(plan: RenderPlan): Promise<number> {
+/**
+ * The bitrate the encoder is configured with: the plan's, held to what the
+ * source itself has (`sourceBoundedBitrate`), then ADR-024's factor for a
+ * software encoder on top. An enhanced picture (ADR-037) is not held to the
+ * source: brightening and sharpening bring out detail the source's own bits
+ * did not have to carry.
+ */
+async function exportVideoBitrate(plan: RenderPlan, sourceBitrate: number | null): Promise<number> {
   const kind = await videoEncoderKind(plan);
-  const bitrate = encoderVideoBitrate(plan.videoBitrate, kind);
-  if (bitrate === plan.videoBitrate) return bitrate;
+  const planned = plan.enhance ? plan.videoBitrate : sourceBoundedBitrate(plan.videoBitrate, sourceBitrate);
+  const bitrate = encoderVideoBitrate(planned, kind);
+  if (bitrate === planned) return bitrate;
   // A software encoder that would refuse the higher bitrate keeps the plan's.
   const supported = await canEncodeVideo('avc', {
     width: plan.width,
@@ -620,8 +627,11 @@ async function exportVideoBitrate(plan: RenderPlan): Promise<number> {
     bitrate,
     frameRate: plan.fpsNum / plan.fpsDen,
   }).catch(() => false);
-  return supported ? bitrate : plan.videoBitrate;
+  return supported ? bitrate : planned;
 }
+
+/** How long the export waits to learn the source's length (for its bitrate) before going on without it. */
+const SOURCE_LENGTH_WAIT_MS = 3000;
 
 /* ------------------------------------------------------------------- export */
 
@@ -755,6 +765,8 @@ interface ExportSources {
   sourceAudioUsable: boolean;
   musicTrack: InputAudioTrack | null;
   wantsAudio: boolean;
+  /** The source file's own bitrate (bytes over length, sound included); null when its length is unknown. */
+  sourceBitrate: number | null;
   /** ADR-032: frames the AAC encoder puts in front of the audio (0 when there is no audio). */
   audioDelayFrames: number;
   /** Measurement only: how clearly the calibration marker came back, and how long measuring took. */
@@ -820,6 +832,13 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
   }
 
   const wantsAudio = sourceAudioUsable || musicTrack !== null;
+  // The file's own length: its bitrate bounds what a re-encode may spend. A
+  // container that has to be read through to know its length (a recording
+  // without an index) is not waited for: unknown keeps the plan's bitrate.
+  const sourceSeconds = await Promise.race([
+    videoInput.computeDuration().catch(() => 0),
+    new Promise<number>((resolve) => setTimeout(() => resolve(0), SOURCE_LENGTH_WAIT_MS)),
+  ]);
 
   // ADR-035: the size, bitrates and expected file size of a target-size
   // download, decided before anything is written — or refused here, with the
@@ -830,7 +849,6 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
     // are planned with: a bitrate the browser accepts but cannot align would
     // end in a refusal after the plan was made.
     // The source's own bitrate: no size is refused for needing more than that.
-    const sourceSeconds = await videoInput.computeDuration().catch(() => 0);
     const audioBitrates: number[] = [];
     if (wantsAudio) {
       for (const bitrate of TARGET_AUDIO_BITRATES) {
@@ -884,6 +902,7 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
     sourceAudioUsable,
     musicTrack,
     wantsAudio,
+    sourceBitrate: sourceSeconds > 0 ? (videoFile.size * 8) / sourceSeconds : null,
     audioDelayFrames: 0,
     audioDelayCorrelation: null,
     audioDelayMs: null,
@@ -1225,7 +1244,7 @@ async function produceOutput(
     ? Math.ceil((fastJob.videoBytes * 8) / Math.max(durationSeconds, 0.001))
     : target
       ? plan.videoBitrate
-      : await exportVideoBitrate(plan);
+      : await exportVideoBitrate(plan, sources.sourceBitrate);
 
   // ADR-035: the encoded video bytes, counted as the encoder hands them over.
   let videoBytes = fastJob ? fastJob.videoBytes : 0;
@@ -1689,6 +1708,7 @@ async function produceOutput(
               fits: collected.sizeBytes <= target.decision.targetBytes,
               attempts: fastJob ? 0 : target.decision.attempt,
               shortEdge: Math.min(probe.width, probe.height),
+              fullShortEdge: target.facts.maxShortEdge,
               videoBitrate,
               audioBitrate: wantsAudio ? plan.audioBitrate : 0,
               encoderKind: target.decision.encoderKind,

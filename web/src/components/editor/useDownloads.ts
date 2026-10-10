@@ -63,6 +63,8 @@ export type TargetSizePreview =
       ok: true;
       /** Resolution, bitrates and `plannedBytes` ("≈ 48 MB, 720p"). */
       decision: TargetSizeDecision;
+      /** The largest short edge the download could have: `decision.shortEdge` below it means a smaller picture. */
+      fullShortEdge: number;
       durationUs: number;
       /** A rough encode time in seconds on this kind of encoder (ADR-035 says how rough). */
       estimatedSeconds: number;
@@ -402,10 +404,11 @@ export function useDownloads({
       if (!compiled?.ok) return { ok: false, reason: 'unavailable' };
       const plan = compiled.plan;
       const lookup = await encoderKindLookup(plan.aspect, plan.fpsNum, plan.fpsDen);
+      const fullShortEdge = maxTargetShortEdge(project.export.shortEdge, nativeShortEdge(plan));
       const planned = planTargetSize(
         request,
         targetSizeFacts(plan, {
-          maxShortEdge: maxTargetShortEdge(project.export.shortEdge, nativeShortEdge(plan)),
+          maxShortEdge: fullShortEdge,
           hasAudio: planHasAudio(plan),
           encoderKind: lookup,
           sourceBitrate: sourceBitrate(),
@@ -415,6 +418,7 @@ export function useDownloads({
       return {
         ok: true,
         decision: planned,
+        fullShortEdge,
         durationUs: plan.expectedDurationUs,
         estimatedSeconds: estimateEncodeSeconds(planned, plan.totalFrames),
       };
