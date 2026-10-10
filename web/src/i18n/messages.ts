@@ -603,9 +603,15 @@ export const tr = {
   'export.fail.audio_encoder_unsupported': 'Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor.',
   'export.fail.audio_encoder_misaligned':
     'Bu tarayıcının ses kodlayıcısı sesi görüntüyle hizalı yazamadı; sesi kayık bir dosya kaydedilmedi.',
-  'export.fail.no_frames_decoded': 'Kaynaktan hiç kare çözülemedi.',
+  'export.fail.no_frames_decoded':
+    'Videonun görüntüsü okunamadı. Video bozuk olabilir: başka bir oynatıcıda oynuyor mu bak. Bozuksa videoyu yeniden indir ya da yeniden kopyala.',
   'export.fail.source_frames_missing':
-    'Bu tarayıcı videonun bazı karelerini çözemedi. Eksik karelerle bozuk bir dosya üretmek yerine durduruldu. Chrome veya Edge ile dene.',
+    'Videonun bazı bölümleri okunamadı; eksik karelerle bozuk bir dosya yapmak yerine durduruldu. Video bozuk olabilir: başka bir oynatıcıda sonuna kadar oynuyor mu bak. Bozuksa videoyu yeniden indir ya da yeniden kopyala.',
+  // ADR-040: the file is not all there. Never the browser's fault, so no browser is named.
+  'export.fail.source_incomplete':
+    'Bu video yarım kalmış görünüyor: sonu dosyada yok. İnerken ya da kopyalanırken yarıda kesilmiş olabilir. Videoyu yeniden indir ya da yeniden kopyala, sonra tekrar dene.',
+  // Only where the browser may really be the problem: shown outside Chrome / Edge, never inside them.
+  'export.fail.tryChromium': 'Video başka yerde sorunsuz oynuyorsa sorun bu tarayıcıda olabilir: Chrome ya da Edge ile dene.',
   'export.fail.source_reorder_unfixable':
     'Bu video kare sırasını olduğundan az bildiriyor ve bu tarayıcının çözücüsü bu yüzden kare atlıyor. Görüntüsü sesinden geri kalan bir dosya üretmek yerine durduruldu.',
   'export.fail.caption_font_unavailable':
@@ -654,6 +660,15 @@ export const tr = {
   'error.music_too_large': 'Müzik dosyası {size}; bu sürümün müzik sınırı {limit}.',
   'error.music_too_long': 'Müzik bu sürümdeki 10 dakika sınırının üzerinde.',
   'error.source_too_long': 'Video bu sürümdeki 120 dakika sınırının üzerinde.',
+  // ADR-040: a download or copy that stopped half way. Said when the file is picked, in every wizard and in the editor.
+  'error.incomplete':
+    'Bu video yarım kalmış görünüyor: {total} uzunluğunda olması gerekirken dosyada yalnızca ilk {readable} var. İnerken ya da kopyalanırken yarıda kesilmiş olabilir. Videoyu yeniden indir ya da yeniden kopyala, sonra tekrar dene.',
+  'error.incompleteStart':
+    'Bu video yarım kalmış görünüyor: {total} uzunluğunda olması gerekirken dosyada neredeyse hiçbiri yok. İnerken ya da kopyalanırken yarıda kesilmiş olabilir. Videoyu yeniden indir ya da yeniden kopyala, sonra tekrar dene.',
+  'error.music_incomplete':
+    'Bu müzik dosyası yarım kalmış görünüyor: {total} uzunluğunda olması gerekirken dosyada yalnızca ilk {readable} var. Dosyayı yeniden indir ya da yeniden kopyala, sonra tekrar dene.',
+  'error.music_incompleteStart':
+    'Bu müzik dosyası yarım kalmış görünüyor: {total} uzunluğunda olması gerekirken dosyada neredeyse hiçbiri yok. Dosyayı yeniden indir ya da yeniden kopyala, sonra tekrar dene.',
   'error.range_reversed': 'Bitiş zamanı başlangıçtan sonra olmalı.',
   'error.range_out_of_source': 'Seçilen aralık videonun dışında.',
   'error.clip_too_short': 'Bir kesit en az 0,1 saniye olmalı.',
@@ -1779,9 +1794,13 @@ export const en: Record<MessageKey, string> = {
     'AAC encoding is unsupported here with this configuration.',
   'export.fail.audio_encoder_misaligned':
     "This browser's audio encoder could not write the sound in sync with the picture; a file with shifted sound was not saved.",
-  'export.fail.no_frames_decoded': 'No frames could be decoded from the source.',
+  'export.fail.no_frames_decoded':
+    'The picture of the video could not be read. The video may be damaged: check whether it plays in another player. If it is damaged, download or copy the video again.',
   'export.fail.source_frames_missing':
-    'This browser could not decode some frames of the video. It stopped instead of producing a broken file. Try Chrome or Edge.',
+    'Parts of the video could not be read; it stopped instead of producing a broken file. The video may be damaged: check whether it plays to the end in another player. If it is damaged, download or copy the video again.',
+  'export.fail.source_incomplete':
+    'This video looks incomplete: its end is not in the file. The download or the copy may have stopped half way. Download or copy the video again, then retry.',
+  'export.fail.tryChromium': 'If the video plays fine elsewhere, the problem may be this browser: try Chrome or Edge.',
   'export.fail.source_reorder_unfixable':
     'This video understates its frame reordering, so this browser’s decoder skips frames. It stopped instead of producing a file whose picture lags behind its sound.',
   'export.fail.caption_font_unavailable':
@@ -1831,6 +1850,14 @@ export const en: Record<MessageKey, string> = {
   'error.music_too_large': 'The music file is {size}; the music limit of this version is {limit}.',
   'error.music_too_long': 'The music is above the 10 minute limit of this version.',
   'error.source_too_long': 'The video is above the 120 minute limit of this version.',
+  'error.incomplete':
+    'This video looks incomplete: it should be {total} long, but only the first {readable} is in the file. The download or the copy may have stopped half way. Download or copy the video again, then retry.',
+  'error.incompleteStart':
+    'This video looks incomplete: it should be {total} long, but almost none of it is in the file. The download or the copy may have stopped half way. Download or copy the video again, then retry.',
+  'error.music_incomplete':
+    'This music file looks incomplete: it should be {total} long, but only the first {readable} is in the file. Download or copy the file again, then retry.',
+  'error.music_incompleteStart':
+    'This music file looks incomplete: it should be {total} long, but almost none of it is in the file. Download or copy the file again, then retry.',
   'error.range_reversed': 'The end must come after the start.',
   'error.range_out_of_source': 'The selected range is outside the video.',
   'error.clip_too_short': 'A clip must be at least 0.1 seconds.',

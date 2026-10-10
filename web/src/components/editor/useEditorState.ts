@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   probeAudioFile,
   probeVideoFile,
+  type IncompleteExtent,
   type MediaHandle,
   type ProbeFailure,
   type ProbeHint,
@@ -96,6 +97,8 @@ export interface MediaError {
   bytes?: number;
   /** Extra context the probe found (HEVC without a decoder); shown after the reason. */
   hint?: ProbeHint;
+  /** With `incomplete` (ADR-040): the length the file declares and how far it really goes. */
+  extent?: IncompleteExtent;
 }
 
 /**
@@ -208,7 +211,7 @@ export function useEditorState() {
       setImporting(null);
 
       if (!outcome.ok) {
-        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen, hint: outcome.hint, bytes: file.size });
+        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen, hint: outcome.hint, bytes: file.size, extent: outcome.extent });
         return { kind: 'rejected' };
       }
 
@@ -276,7 +279,7 @@ export function useEditorState() {
     setImporting(null);
 
     if (!outcome.ok) {
-      setMediaError({ scope: 'audio', reason: outcome.reason, fileName: file.name, keptOpen, bytes: file.size });
+      setMediaError({ scope: 'audio', reason: outcome.reason, fileName: file.name, keptOpen, bytes: file.size, extent: outcome.extent });
       return;
     }
 
@@ -343,7 +346,7 @@ export function useEditorState() {
       const outcome = await probeVideoFile(file, VIDEO_LIMITS);
       setImporting(null);
       if (!outcome.ok) {
-        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen: false, hint: outcome.hint, bytes: file.size });
+        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen: false, hint: outcome.hint, bytes: file.size, extent: outcome.extent });
         return { ok: false, reason: outcome.reason };
       }
 
@@ -388,7 +391,7 @@ export function useEditorState() {
       const outcome = await probeAudioFile(file, AUDIO_LIMITS);
       setImporting(null);
       if (!outcome.ok) {
-        setMediaError({ scope: 'audio', reason: outcome.reason, fileName: file.name, keptOpen: false, bytes: file.size });
+        setMediaError({ scope: 'audio', reason: outcome.reason, fileName: file.name, keptOpen: false, bytes: file.size, extent: outcome.extent });
         return { ok: false, reason: outcome.reason };
       }
 

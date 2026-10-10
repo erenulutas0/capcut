@@ -5,7 +5,7 @@
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const WIZARD_MEDIA_DIR = join(process.cwd(), 'tests', 'media', 'wizard');
@@ -91,4 +91,29 @@ export function meanVolumeDb(file: string): number {
   const match = /mean_volume:\s*(-?[\d.]+|-inf) dB/.exec(result.stderr ?? '');
   if (!match || match[1] === '-inf') return Number.NEGATIVE_INFINITY;
   return Number(match[1]);
+}
+
+/**
+ * A download or a copy that stopped half way (ADR-040): `source` rewritten with its index at the start
+ * (what phones and most sites produce, so the file still opens and shows its full length), then cut off
+ * at `share` of its bytes. Handed to the page as a file payload; nothing is written but the rewritten copy.
+ */
+export function halfDownloaded(source: string, name: string, share: number): { name: string; mimeType: string; buffer: Buffer } {
+  const extension = source.slice(source.lastIndexOf('.'));
+  const whole = join(WIZARD_MEDIA_DIR, `${name}-dizin-basta${extension}`);
+  if (!existsSync(whole)) {
+    mkdirSync(WIZARD_MEDIA_DIR, { recursive: true });
+    const partial = `${whole}.part${extension}`;
+    rmSync(partial, { force: true });
+    execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', source, '-c', 'copy', '-movflags', '+faststart', partial], {
+      stdio: 'pipe',
+    });
+    renameSync(partial, whole);
+  }
+  const bytes = readFileSync(whole);
+  return {
+    name: `yarim-inmis${extension}`,
+    mimeType: extension === '.m4a' ? 'audio/mp4' : 'video/mp4',
+    buffer: bytes.subarray(0, Math.floor(bytes.length * share)),
+  };
 }

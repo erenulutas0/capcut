@@ -2,9 +2,10 @@
 
 import { enhanceItems } from '@/components/enhance/BeforeAfter';
 import { Icon } from '@/components/Icon';
+import { isChromiumBrowser } from '@/adapters/browserKind';
 import { environmentPasses } from '@/adapters/exportCapability';
 import type { DownloadKind } from '@/domain/kesit';
-import type { TargetSizeShortfall } from '@/domain/exportEvents';
+import type { ExportFailureCode, TargetSizeShortfall } from '@/domain/exportEvents';
 import { formatStorageBytes } from '@/domain/outputStorage';
 import { formatByteLimit, formatBytes, formatBytesAgainstLimit } from '@/domain/policy';
 import { CHROMIUM_SHARE_MAX_BYTES } from '@/domain/share';
@@ -14,6 +15,13 @@ import { overLimitText } from './outputLimitText';
 import type { DownloadEntry } from './useDownloads';
 
 type T = (key: MessageKey) => string;
+
+/**
+ * Failures a different browser might not have: frames its decoder did not
+ * deliver. A file that is not all there (`source_incomplete`) is not one of
+ * them — no browser can read bytes that are not in the file.
+ */
+const BROWSER_MAY_BE_THE_PROBLEM: ReadonlySet<ExportFailureCode> = new Set(['source_frames_missing', 'no_frames_decoded']);
 
 interface Props {
   t: T;
@@ -560,6 +568,12 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
         <span className="dl-text">
           <b>{t('export.failedTitle')}</b>
           <span data-testid="export-failed-reason">{t(`export.fail.${entry.code}` as MessageKey)}</span>
+          {/* "Try Chrome or Edge" only where the browser may really be the problem: never inside one of them. */}
+          {BROWSER_MAY_BE_THE_PROBLEM.has(entry.code) && !isChromiumBrowser() ? (
+            <span className="dl-sub" data-testid="export-failed-browser">
+              {t('export.fail.tryChromium')}
+            </span>
+          ) : null}
           {entry.overrun ? (
             <span className="dl-sub" data-testid="export-failed-over-limit">
               {overLimitText(t, entry.overrun, 'output.overLimit')}

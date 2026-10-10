@@ -23,6 +23,7 @@ import {
   EncodedAudioPacketSource,
   EncodedPacketSink,
   Input,
+  IsobmffInputFormat,
   Mp4OutputFormat,
   Output,
   VideoSample,
@@ -47,6 +48,7 @@ import type {
   TargetSizeShortfall,
 } from '@/domain/exportEvents';
 import { encoderVideoBitrate, sourceBoundedBitrate, type VideoEncoderKind } from '@/domain/encoderBitrate';
+import { sourceIntegrity } from '@/adapters/sourceIntegrity';
 import { audioDurationWithinTolerance, durationWithinTolerance, missingFramesAllowed } from '@/domain/exportEvents';
 import type { ExportMode, FastCutFallbackReason } from '@/domain/fastPath';
 import {
@@ -633,6 +635,22 @@ async function exportVideoBitrate(plan: RenderPlan, sourceBitrate: number | null
 /** How long the export waits to learn the source's length (for its bitrate) before going on without it. */
 const SOURCE_LENGTH_WAIT_MS = 3000;
 
+/**
+ * ADR-040: a file whose index lists more than it holds (a download or copy
+ * that stopped half way) is refused before anything is decoded or written.
+ * The page refuses such a file when it is picked; this is the same check on
+ * the export's own road, so no path — video, sound only, fast cut — can save
+ * a file whose end is missing and call it a success. `unknown` (not MP4/MOV,
+ * or no answer in time) goes on as before.
+ */
+async function refuseIncompleteSource(input: Input): Promise<void> {
+  const verdict = await sourceIntegrity(input, {
+    EncodedPacketSink,
+    isIndexed: (format) => format instanceof IsobmffInputFormat,
+  });
+  if (verdict.kind === 'incomplete') throw new ExportFailure('source_incomplete');
+}
+
 /* ------------------------------------------------------------------- export */
 
 interface ExportRequestOptions {
@@ -816,6 +834,7 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
   const videoInput = new Input({ formats: ALL_FORMATS, source: new BlobSource(videoFile) });
   const videoTrack = await videoInput.getPrimaryVideoTrack();
   if (!videoTrack) throw new ExportFailure('no_video_track');
+  await refuseIncompleteSource(videoInput);
   if (!(await videoTrack.canDecode())) throw new ExportFailure('source_undecodable');
   const hdrTransfer = await refuseUnverifiedHdr(videoTrack);
   const reorderFixed = await correctAvcReorder(videoTrack, plan.segments);
@@ -1069,6 +1088,8 @@ async function runAudioExport(options: ExportRequestOptions, startedAt: number):
 
   const videoInput = new Input({ formats: ALL_FORMATS, source: new BlobSource(videoFile) });
   const sourceAudioTrack = await videoInput.getPrimaryAudioTrack();
+  // Before anything else: half a file would give a sound file whose end is silence.
+  await refuseIncompleteSource(videoInput);
   const sourceAudioUsable =
     sourceAudioTrack !== null && plan.audio.wantsSourceAudio && (await sourceAudioTrack.canDecode());
 

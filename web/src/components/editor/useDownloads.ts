@@ -751,6 +751,9 @@ export function useDownloads({
               const cue = position >= 0 ? cues[position] : undefined;
               recordError('export', event.code);
               logAttempt({ outcome: 'failed', code: event.code });
+              // A refusal before anything was written (no sound, half a source file, ADR-040) leaves the
+              // file the save dialog created, still empty, under the name the user chose: take it back.
+              if (destination) await removeEmptyPick(destination);
               const memoryRefusal =
                 event.code === 'output_too_long_for_memory' ||
                 (event.code === 'output_storage_insufficient' && event.storage?.reason !== 'file_reservation');
@@ -772,6 +775,7 @@ export function useDownloads({
             }
             case 'canceled':
               logAttempt({ outcome: 'canceled' });
+              if (destination) await removeEmptyPick(destination);
               setEntry(key, { key, kind, fingerprint: plan.fingerprint,
                 revision, phase: 'canceled' });
               break;
