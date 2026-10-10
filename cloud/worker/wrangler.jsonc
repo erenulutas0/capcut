@@ -1,0 +1,42 @@
+// Cloud transcript proxy (ADR-039, draft). NOT deployed; the founder deploys it by hand
+// when the route is approved — see README.md in this folder.
+//
+// Everything here fits the Workers FREE plan: one Worker, one SQLite-backed Durable
+// Object (the only Durable Object kind the Free plan allows), no KV, no D1, no R2,
+// no Queues, no paid add-on.
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "lilocut-transcript-proxy",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "workers_dev": true,
+  // No request logs are kept by us (Cloudflare's own network processing is theirs).
+  "observability": { "enabled": false },
+  "durable_objects": {
+    "bindings": [{ "name": "LEDGER", "class_name": "Ledger" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Ledger"] }],
+  "vars": {
+    // KILL SWITCH. Anything other than "true" = the cloud route answers 503 and spends nothing.
+    "ENABLED": "false",
+    // Monthly hard cap in USD. 0 = cloud route OFF. The founder sets it (e.g. "1").
+    "MONTHLY_CAP_USD": "0",
+    // Universal-3.5 Pro $0.21/h + speaker labels $0.02/h (https://www.assemblyai.com/pricing, read 2026-10-10).
+    // Change it together with SPEECH_MODELS / SPEAKER_LABELS, or the cap counts the wrong money.
+    "PRICE_USD_PER_HOUR": "0.23",
+    "SPEECH_MODELS": "universal-3-5-pro",
+    "SPEAKER_LABELS": "true",
+    // "eu" → api.eu.assemblyai.com, "us" → api.assemblyai.com (founder decision, ADR-039).
+    "PROVIDER_REGION": "eu",
+    "ALLOWED_ORIGINS": "https://erenulutas0.github.io,http://localhost:3000,http://127.0.0.1:3000",
+    "MAX_JOB_MINUTES": "120",
+    // 8000 bytes/s = 64 kbit/s: the ceiling of what one second of accepted audio may weigh.
+    "MAX_BYTES_PER_SECOND": "8000",
+    "INVITE_MINUTES_DEFAULT": "60",
+    // Starts (and failed attempts) per IP address per hour.
+    "RATE_LIMIT_PER_HOUR": "10",
+    // A finished transcript the browser did not fetch is deleted at the provider after this long.
+    "RESULT_TTL_MINUTES": "60"
+  }
+  // Secrets (never in this file): ASSEMBLYAI_API_KEY, ADMIN_TOKEN — `npx wrangler secret put <NAME>`.
+}
