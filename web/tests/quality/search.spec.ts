@@ -4,6 +4,7 @@ import { test } from '@playwright/test';
 
 import { foldText, searchTasks } from '../../src/domain/taskSearch';
 import { DEV, HELD_OUT, type EvalPhrase } from './data/search-eval';
+import { FRESH_HELD_OUT } from './data/search-eval-fresh';
 import { round, writeResult } from './lib/record';
 import { t } from './lib/app';
 
@@ -27,12 +28,18 @@ import { t } from './lib/app';
 /** Phrases already in the tables the lists were tuned on: not counted here. */
 function seenPhrases(): Set<string> {
   const seen = new Set<string>();
-  for (const name of ['taskSearch.test.ts', 'taskSearchHeldOut.test.ts', 'taskSearchHeldOut2.test.ts']) {
+  for (const name of ['taskSearch.test.ts', 'taskSearchHeldOut.test.ts', 'taskSearchHeldOut2.test.ts', 'taskSearchHeldOut3.test.ts', 'taskSearchRules.test.ts']) {
     const source = readFileSync(join(process.cwd(), 'tests', 'unit', name), 'utf8');
     for (const match of source.matchAll(/\[\s*(['"`])((?:\\.|(?!\1).)+)\1\s*,/g)) seen.add(foldText(match[2] ?? ''));
+    // The rules table quotes its phrases one per line or as arguments, not as pairs.
+    if (name === 'taskSearchRules.test.ts') {
+      for (const match of source.matchAll(/(['"`])((?:\\.|(?!\1).)+)\1/g)) seen.add(foldText(match[2] ?? ''));
+    }
   }
   return seen;
 }
+
+const folded = (phrases: readonly EvalPhrase[]): string[] => phrases.map((phrase) => foldText(phrase.text));
 
 type Answer =
   | { kind: 'card'; first: string; shown: string[] }
@@ -157,11 +164,23 @@ function evaluate(phrases: readonly EvalPhrase[], seen: Set<string>) {
   };
 }
 
+/**
+ * Three sets since 10 Oct 2026 (the header of data/search-eval.ts has the rule):
+ *  - `fresh`: data/search-eval-fresh.ts, written by a writer who saw neither the search nor the other
+ *    phrases, and measured AFTER the search was reworked. The headline, and what the budgets judge.
+ *  - `heldOut`: the first held-out set. CONTAMINATED: its misses were read before the search was
+ *    reworked (the rework was asked for because of them). Reported next to the fresh one, never as the headline.
+ *  - `dev`: tuned on. Not a measurement.
+ * A phrase that is also in a tuned table or in DEV is left out of both held-out counts; one that is in
+ * the old held-out set is left out of the fresh count.
+ */
 test('search: held-out and dev phrases', async ({}, testInfo) => {
   const seen = seenPhrases();
+  const tuned = new Set([...seen, ...folded(DEV)]);
   writeResult('search', testInfo.project.name, {
     tunedTablePhrases: seen.size,
-    heldOut: evaluate(HELD_OUT, seen),
+    fresh: evaluate(FRESH_HELD_OUT, new Set([...tuned, ...folded(HELD_OUT)])),
+    heldOut: evaluate(HELD_OUT, tuned),
     dev: evaluate(DEV, seen),
   });
 });
