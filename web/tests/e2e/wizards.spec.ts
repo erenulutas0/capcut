@@ -415,7 +415,9 @@ test.describe('Her yerde açılsın', () => {
     await startTask(page, 'cevir', SAMPLE);
     await expect(page.getByTestId('cevir-info')).toBeVisible({ timeout: 60_000 });
     await expect(title(page)).toHaveText('Her yerde açılan bir video yapalım');
-    await expect(page.getByTestId('cevir-info')).toContainText('iPhone, HEVC ya da HDR videolar her cihazda açılan MP4 olur.');
+    await expect(page.getByTestId('cevir-info')).toContainText(
+      'iPhone’da çekilmiş ya da başka cihazlarda açılmayan videolar, her cihazda açılan bir MP4 olur.',
+    );
     // No choice on this step: no radio button, one primary button.
     await expect(page.getByRole('radio')).toHaveCount(0);
     await expect(page.getByTestId('cevir-already')).toContainText('Bu video zaten her cihazda açılan türde.', {
@@ -768,7 +770,8 @@ test.describe('Sesi kapat', () => {
     expect(picture.audioCodec).toBeNull();
     // The same pictures: the fast cut copied them (ADR-027), and the result says so.
     await expect(page.getByTestId('export-method')).toHaveAttribute('data-method', 'copy');
-    await expect(page.getByTestId('export-method')).toContainText('görüntü yeniden kodlanmadı');
+    await expect(page.getByTestId('export-method')).toHaveText('Görüntüye dokunulmadı; kalitesi videondakiyle aynı');
+    await expect(page.getByTestId('measured-method')).toContainText('görüntü yeniden kodlanmadı');
     for (const atS of [0.5, 11, 23]) {
       expect(meanAbsDiff(frameGray(saved, atS), frameGray(SAMPLE, atS)), `frame at ${atS} s`).toBeLessThan(1);
     }

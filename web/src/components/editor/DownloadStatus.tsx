@@ -111,9 +111,11 @@ function targetSizeText(t: T, entry: Finished): string | null {
     .replace('{size}', formatBytesAgainstLimit(outcome.actualBytes, outcome.targetBytes, mark))
     .replace('{target}', formatByteLimit(outcome.targetBytes, mark));
   const notes: string[] = [];
+  // What fitting cost the picture, in plain words and never less than the truth: detail was taken
+  // out, and the picture itself was made smaller when it is under the size it could have had.
   if (outcome.mode === 'copy') notes.push(t('download.targetCopy'));
   else if (outcome.mode === 'normal') notes.push(t('download.targetNormal'));
-  else notes.push(t('download.targetResolution').replace('{height}', String(outcome.shortEdge)));
+  else notes.push(t(outcome.shortEdge < outcome.fullShortEdge ? 'download.targetSmaller' : 'download.targetReduced'));
   if (outcome.attempts > 1) notes.push(t('download.targetAttempts').replace('{count}', String(outcome.attempts)));
   return `${head}. ${notes.join('; ')}.`;
 }
@@ -206,19 +208,31 @@ function readyTitle(t: T, entry: Extract<DownloadEntry, { phase: 'ready' }>, dev
  * How the file was made (ADR-027): the source's pictures kept (`copy`), kept
  * except the frames next to the cuts (`smart`), or every frame encoded — then
  * with the reason the fast cut was not used, when there was one.
+ *
+ * Two wordings of the same fact: `plain` for the line under "Kaydedildi"
+ * (what happened to the picture, in words a child reads — and always whether
+ * it was re-made), `detail` for "Ayrıntılar" (the engineering words).
  */
-function methodText(t: T, entry: Extract<DownloadEntry, { phase: 'saved' | 'ready' }>): string {
+function methodText(t: T, entry: Extract<DownloadEntry, { phase: 'saved' | 'ready' }>, wording: 'plain' | 'detail' = 'plain'): string {
   const { result } = entry;
-  if (result.output === 'audio') return t('export.method.audio');
+  const method = wording === 'plain' ? 'export.method' : 'export.methodDetail';
+  const reasons = wording === 'plain' ? 'export.why' : 'export.fallback';
+  if (result.output === 'audio') return t(`${method}.audio` as MessageKey);
   switch (result.method) {
     case 'copy':
-      return t('export.method.copy');
+      return t(`${method}.copy` as MessageKey);
     case 'smart':
-      return t('export.method.smart').replace('{count}', String(result.framesEncoded));
-    case 'encode':
-      return result.fallbackReason && result.fallbackReason !== 'requested_encode'
-        ? t('export.method.encodeWhy').replace('{reason}', t(`export.fallback.${result.fallbackReason}` as MessageKey))
-        : t('export.method.encode');
+      return t(`${method}.smart` as MessageKey).replace('{count}', String(result.framesEncoded));
+    case 'encode': {
+      const made =
+        result.fallbackReason && result.fallbackReason !== 'requested_encode'
+          ? t(`${method}.encodeWhy` as MessageKey).replace('{reason}', t(`${reasons}.${result.fallbackReason}` as MessageKey))
+          : t(`${method}.encode` as MessageKey);
+      // "Ayrıntılar" also carries the size a target-size download was encoded at.
+      return wording === 'detail' && result.targetSize && result.targetSize.mode !== 'copy'
+        ? `${made}; ${t('export.methodDetail.targetResolution').replace('{height}', String(result.targetSize.shortEdge))}`
+        : made;
+    }
   }
 }
 
@@ -304,6 +318,13 @@ function Details({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase: 's
           <span className="meta-key">{t('export.measuredCodecs')}</span>
           <span className="meta-value" data-testid="measured-codecs">
             {result.probe.videoCodec ?? '—'} · {result.probe.audioCodec ?? t('export.noAudioTrack')}
+          </span>
+        </li>
+        {/* The method in engineering words: the line above the details says it plainly. */}
+        <li>
+          <span className="meta-key">{t('export.method')}</span>
+          <span className="meta-value" data-testid="measured-method">
+            {methodText(t, entry, 'detail')}
           </span>
         </li>
         <li>
