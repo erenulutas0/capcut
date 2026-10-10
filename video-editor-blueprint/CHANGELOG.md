@@ -3,6 +3,20 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Ürünün adı LiloCut; kesitsiz proje kaybı, dürüst arama yanıtları, test sağlamlığı — 10 Ekim 2026 (ADR-038, ADR-012 eki; politika ve şema değişmedi)
+
+**Ad (kurucu kararı, K01):** ürünün adı **LiloCut**; "Clip" o güne kadarki geçici addı. Ad tek yerde yazılır (`web/src/appIdentity.ts`, `APP_NAME`); manifest, sekme başlıkları, logodaki yazı, TR/EN metinler, transkript dosyasının ilk satırı ve indirilen dosya adları (`lilocut-tani-…json`, `….lilocut.json`) ondan türer. Ana sayfadaki "Clip geçici çalışma adıdır." cümlesi kalktı. Bir koruma testi eski adın ürün adı olarak geri gelmesini yakalar. **Bilerek değişmeyen:** tarayıcıda tutulanların adları (`clip-editor`, `clip-export-`, `clip-app-`, `clip-models-`, `clip.firstRunHint.dismissed`) — değişseydi kayıtlı projeler ve indirilmiş modeller sahipsiz kalırdı —, `CLIP_TEST_HOOKS`, depo ve `/capcut` yolu. Eski `.clip.json` yedekleri aynı biçimde açılır. Önbellek sürümü elle artırılmadı: önbellek adı dosyaların baytlarından hesaplanır, yeni derleme yeni ad üretir. **Doğrulanmayan:** yüklenmiş uygulamanın simge altındaki adının telefonda ne zaman değiştiği; marka/alan adı incelemesi yapılmadı (K01'de açık iş).
+
+**Kesiti olmayan proje (ADR-012 eki):** video açılıp hiç kesit eklenmeden kaydedilen proje "Düzenleme saklandı" diyor ama yenilemede kayboluyordu (kayıt, dışa aktarmanın "en az bir kesit" kuralıyla okunuyordu); aynı projenin yedeği de geri yüklenemiyordu. Kayıt artık `validateStoredProject` ile okunur: tek fark boş `clips`; ortak fixture'lar ve dışa aktarma kuralı değişmedi. "Kayıtlı projeyi sil"den sonra otomatik kaydın projeyi geri yazabilmesi de kapatıldı. Kesit yokken eklenmiş müziğin 0,1 sn'lik eski kayıtları artık açılıp onarılıyor.
+
+**Arama:** "videoya yazı ekle", "yüzleri bulanıklaştır", "türkçeye çevir / dublaj", "rüzgar sesini sil" gibi yapılamayan dört istek için dürüst kayıt ("Bunu henüz yapamıyoruz.", düğme yok). Önce: 60 cümlelik yeni tabloda 16/60 ve 44 yeni istekten 26'sına başka iş yapan kart; ilk koşu 55/60 ve 4 yanlış kart; düzeltmeden sonra 60/60, 0. Eski tablolar aynı: 69/70 ve 92/95 (önce ve sonra). Tabloyu ve listeleri aynı kişi aynı oturumda yazdı.
+
+**Sunucu günlüğü:** `/yap/<olmayan>` isteklerinde `next start` günlüğüne düşen "NoFallbackError" kalktı (`dynamicParams = false` kaldırıldı; sayfa 404'ü kendi söyler). 404 yanıtı ve statik dışa aktarım (10 sihirbaz sayfası) aynı.
+
+**Testler:** telefon çubuğu odak testi çubuğun alt boşluğu yerleştikten sonra tek tur yürür ve sayfa sonuna vardığını doğrular (10/10). "Diskte yer kalmadı" testleri sabit 4 MiB kota yerine ölçülen kullanımın 2 MiB üstünü kullanır (çevrimdışı kopya büyüdükçe kırılıyordu). **Sayılar (10 Ekim, bu dal):** `tsc` ve `eslint` temiz; birim 1149/1149 (67 dosya); e2e 332 testte 328 geçti / 4 atlandı / 0 başarısız (atlananlar: 2 ekran görüntüsü testi, gerçek model dosyaları bu makinede olmadığı için 2 gerçek-model testi); statik dışa aktarım derlendi; Pages duman testi 7 testte 5 geçti / 2 atlandı (ikisi de model dosyası gerektirir — ÇALIŞTIRILMADI).
+
+**Bağımlılık ve lisans notları (`docs/security/DEPENDENCIES.md`):** `npm audit` 5 high = tek tavsiye (`braces` ≤ 3.0.3, yalnız lint zinciri); düzeltilmiş sürüm yayınlanmadığı için çözülemedi, nedeni yazıldı; `--omit=dev` 0. Whisper ONNX dışa aktarımlarının lisansı için bilinen/bilinmeyen ayrı yazıldı, hukuki iddia yok.
+
 ## Yazıya dök: gerçek konuşmada kalite, önerilen model, uzun yazı — 7–8 Ekim 2026 (ADR-036 eki; politika ve şema değişmedi)
 
 Kurucu canlı sitede denedi (5 Ekim): kısa, temiz videoda çoğunlukla çalıştı; 52 dakikalık gerçek bir videoda konuşmanın büyük kısmını yazmadı. Karar: bulut yolu sonra; ücretsiz cihaz üstü yol dürüstçe olabildiği kadar iyi olsun. Ses cihazdan çıkmaz, ücretli API yok — değişmedi.
