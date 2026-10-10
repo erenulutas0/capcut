@@ -433,10 +433,14 @@ async function measureCell(page: Page, testInfo: TestInfo, task: Task, item: Cas
       } else if (attempt.phase === 'timeout') {
         judged = { verdict: 'bozuk', why: 'indirme 150 sn içinde ne bitti ne hata verdi' };
       } else if (attempt.phase === 'saved' || attempt.phase === 'ready') {
-        const tail = attempt.savedTailDb === null ? '' : `; dosyanın son bölümünün ses düzeyi ${Number.isFinite(attempt.savedTailDb) ? `${round(attempt.savedTailDb, 1)} dB` : 'tam sessizlik'}`;
+        const tr = (value: number) => value.toLocaleString('tr-TR', { maximumFractionDigits: 1 });
+        const tail =
+          attempt.savedTailDb === null
+            ? ''
+            : `; dosyanın son bölümünün ses düzeyi ${Number.isFinite(attempt.savedTailDb) ? `${tr(attempt.savedTailDb)} dB` : 'tam sessizlik'}${attempt.savedTailDb < -70 ? ' (sessizlik)' : ''}`;
         judged = {
           verdict: 'belirsiz',
-          why: `yarım dosyadan uyarısız bir dosya kaydedildi (ekranda gösterilen süre ${attempt.shownLength ?? '—'}, kaydedilen ${attempt.savedDurationS ?? '—'} sn${tail})`,
+          why: `yarım dosyadan uyarısız bir dosya kaydedildi (ekranda gösterilen süre ${attempt.shownLength ?? '—'}, kaydedilen ${attempt.savedDurationS === null ? '—' : tr(attempt.savedDurationS)} sn${tail})`,
         };
       } else if (/chrome|edge|tarayıcı/iu.test(attempt.text)) {
         // The file is cut short; a sentence that points at the browser sends the user the wrong way.

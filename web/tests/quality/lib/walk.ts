@@ -16,7 +16,7 @@ import { wizardFixture } from '../../e2e/wizard-media';
 import { MUSIC, OTHER, SAMPLE, isPhone, setupSaving, startsWith, t, takeDownloadedFile, takeSavedFile, waitForResult } from './app';
 import { probeFile, type FileInfo } from './media';
 import { Novice, VIDEO } from './novice';
-import { round } from './record';
+import { round, tr } from './record';
 import { watchProblems } from './screen';
 import { shot, type VisualEntry } from './visual';
 
@@ -79,7 +79,7 @@ const streamsOf = (info: FileInfo) => info.streams.map((stream) => `${stream.typ
 const lengthCheck = (out: FileInfo, expectedS: number, tolerance = 0.15): Check => ({
   name: `süre ≈ ${expectedS} sn`,
   ok: near(out.durationS, expectedS, tolerance),
-  value: `${round(out.durationS, 3)} sn`,
+  value: `${tr(out.durationS, 3)} sn`,
 });
 const codecCheck = (out: FileInfo, expected: string[]): Check => ({
   name: `izler: ${expected.join(' + ')}`,
@@ -116,7 +116,7 @@ export const FLOWS: Flow[] = [
     download: { name: t('wizard.download'), testId: 'wizard-download' },
     verify: (out, source) => [
       lengthCheck(out, 3.6),
-      { name: 'kaynaktan kısa', ok: out.durationS < source.durationS - 0.5, value: `${round(source.durationS, 2)} → ${round(out.durationS, 2)} sn` },
+      { name: 'kaynaktan kısa', ok: out.durationS < source.durationS - 0.5, value: `${tr(source.durationS)} → ${tr(out.durationS)} sn` },
       codecCheck(out, ['video:h264', 'audio:aac']),
     ],
   },
@@ -154,9 +154,9 @@ export const FLOWS: Flow[] = [
         // The card says "Küçült — WhatsApp’a sığdır"; with the choice left as it is the target is 52 MB.
         name: 'dosya kaynaktan küçük',
         ok: out.bytes < source.bytes * 0.98,
-        value: `${source.bytes} → ${out.bytes} bayt`,
+        value: `${tr(source.bytes / 1_000_000)} MB → ${tr(out.bytes / 1_000_000)} MB`,
       },
-      { name: 'WhatsApp sınırına (16 MB) sığıyor', ok: out.bytes <= 16_000_000, value: `${out.bytes} bayt` },
+      { name: 'WhatsApp sınırına (16 MB) sığıyor', ok: out.bytes <= 16_000_000, value: `${tr(out.bytes / 1_000_000)} MB` },
     ],
   },
   {
@@ -221,7 +221,7 @@ export const FLOWS: Flow[] = [
       return [
         lengthCheck(out, 3),
         codecCheck(out, ['video:h264', 'audio:aac']),
-        { name: 'görüntü aydınlandı (ortalama parlaklık en az +10)', ok: after - before >= 10, value: `${round(before, 1)} → ${round(after, 1)}` },
+        { name: 'görüntü aydınlandı (ortalama parlaklık en az +10)', ok: after - before >= 10, value: `${tr(before, 1)} → ${tr(after, 1)}` },
         { name: 'boyut aynı', ok: out.video?.width === source.video?.width && out.video?.height === source.video?.height, value: `${out.video?.width} × ${out.video?.height}` },
       ];
     },
@@ -353,7 +353,7 @@ export async function walk(page: Page, testInfo: TestInfo, flow: Flow, visual: V
           height: out.video?.height ?? null,
         };
         result.checks = [
-          { name: 'dosya boş değil', ok: out.bytes > 1000, value: `${out.bytes} bayt` },
+          { name: 'dosya boş değil', ok: out.bytes > 1000, value: `${tr(out.bytes)} bayt` },
           ...flow.verify(out, source, { out: file, source: sourceFile }),
         ];
         result.completed = result.checks.every((check) => check.ok);

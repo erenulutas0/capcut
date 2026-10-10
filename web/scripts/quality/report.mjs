@@ -624,9 +624,11 @@ function sectionOutput(results, M) {
   }
   let worstSync = null;
   let worstDuration = null;
+  /** Every measured file, for the one "index first" count below. */
+  const files = [];
   out.push(
     table(
-      ['Durum', 'Yol', 'İstenen → çıkan süre', 'Süre hatası', 'Eşleşen olay', 'Sapma (ortanca; en az … en çok)', 'Eklenen sapma', 'Her yerde açılır'],
+      ['Durum', 'Yol', 'İstenen → çıkan süre', 'Süre hatası', 'Eşleşen olay', 'Sapma (ortanca; en az … en çok)', 'Eklenen sapma', 'Her yerde açılır (dizin yeri hariç)'],
       sync.map((row) => {
         const id = `out.${row.id}`;
         if (!row.measured) {
@@ -636,7 +638,8 @@ function sectionOutput(results, M) {
         const added = row.avSync.medianMs === null || row.avSyncSource.medianMs === null ? null : Math.abs(row.avSync.medianMs - row.avSyncSource.medianMs);
         if (added !== null) worstSync = Math.max(worstSync ?? 0, added);
         worstDuration = Math.max(worstDuration ?? 0, row.durationErrorMs);
-        const failed = row.playable.filter((check) => !check.ok);
+        const failed = row.playable.filter((check) => !check.ok && !check.name.startsWith('faststart'));
+        files.push({ label: row.label, faststart: row.playable.find((check) => check.name.startsWith('faststart'))?.ok === true });
         return [
           row.label,
           METHOD[row.method] ?? row.method ?? '—',
@@ -646,7 +649,7 @@ function sectionOutput(results, M) {
           row.avSync.medianMs === null ? 'eşleşen olay yok' : `${num(row.avSync.medianMs, 2)} ms (${num(row.avSync.minMs, 2)} … ${num(row.avSync.maxMs, 2)})`,
           M.cell('output', `${id}.avAddedMs`, `${row.label}: eklenen ses–görüntü sapması`, added, { format: (v) => `${num(v, 2)} ms`, note: 'çıktıda ya da kaynakta eşleşen olay yok' }),
           M.cell('output', `${id}.playableFailed`, `${row.label}: “her yerde açılır” denetimlerinden tutmayan`, failed.length, {
-            format: (v) => (v === 0 ? `${num(row.playable.length, 0)} denetimin hepsi tuttu` : `${num(v, 0)} tutmadı: ${failed.map((check) => `${check.name} (${check.value})`).join('; ')}`),
+            format: (v) => (v === 0 ? `${num(row.playable.length - 1, 0)} denetimin hepsi tuttu` : `${num(v, 0)} tutmadı: ${failed.map((check) => `${check.name} (${check.value})`).join('; ')}`),
             budgetFormat: (v) => `${num(v, 0)} tutmayan`,
           }),
         ];
@@ -660,7 +663,7 @@ function sectionOutput(results, M) {
   let worstVmaf = null;
   out.push(
     table(
-      ['Durum', 'Yol', 'Çıktı', 'Karşılaştırma boyutu', 'SSIM', 'PSNR', 'VMAF', 'Süre hatası', 'Hedef boyut', 'Her yerde açılır'],
+      ['Durum', 'Yol', 'Çıktı', 'Karşılaştırma boyutu', 'SSIM', 'PSNR', 'VMAF', 'Süre hatası', 'Hedef boyut', 'Her yerde açılır (dizin yeri hariç)'],
       picture.map((row) => {
         const id = `out.${row.id}`;
         if (!row.measured) {
@@ -671,7 +674,8 @@ function sectionOutput(results, M) {
         if (f?.ssim !== null && f?.ssim !== undefined) worstSsim = Math.min(worstSsim ?? 1, f.ssim);
         if (f?.vmaf !== null && f?.vmaf !== undefined) worstVmaf = Math.min(worstVmaf ?? 100, f.vmaf);
         worstDuration = Math.max(worstDuration ?? 0, row.durationErrorMs);
-        const failed = row.playable.filter((check) => !check.ok);
+        const failed = row.playable.filter((check) => !check.ok && !check.name.startsWith('faststart'));
+        files.push({ label: row.label, faststart: row.playable.find((check) => check.name.startsWith('faststart'))?.ok === true });
         let target = '—';
         if (row.targetBytes) {
           const fits = M.cell('output', `${id}.fitsTarget`, `${row.label}: hedefe sığdı`, row.fitsTarget);
@@ -690,13 +694,22 @@ function sectionOutput(results, M) {
           M.cell('output', `${id}.durationErrorMs`, `${row.label}: süre hatası`, row.durationErrorMs, { format: (v) => `${num(v, 0)} ms` }),
           target,
           M.cell('output', `${id}.playableFailed`, `${row.label}: “her yerde açılır” denetimlerinden tutmayan`, failed.length, {
-            format: (v) => (v === 0 ? `${num(row.playable.length, 0)} denetimin hepsi tuttu` : `${num(v, 0)} tutmadı: ${failed.map((check) => `${check.name} (${check.value})`).join('; ')}`),
+            format: (v) => (v === 0 ? `${num(row.playable.length - 1, 0)} denetimin hepsi tuttu` : `${num(v, 0)} tutmadı: ${failed.map((check) => `${check.name} (${check.value})`).join('; ')}`),
             budgetFormat: (v) => `${num(v, 0)} tutmayan`,
           }),
         ];
       }),
     ),
   );
+  if (files.length > 0) {
+    const without = files.filter((file) => !file.faststart);
+    const measure = M.add('output', 'out.notFaststart', 'Dizini (moov) sonda olan dosya — “faststart” değil', without.length, { format: (v) => `${num(v, 0)} / ${num(files.length, 0)}`, budgetFormat: (v) => num(v, 0) });
+    out.push(
+      `\n**Dizin başta mı (faststart)?** Dizini dosyanın sonunda olan: ${measure.shown} dosya (${STATUS_WORD[measure.status]}${measure.budget ? `, bütçe ${measure.budget}` : ''}). ` +
+        'Dizin sondaysa dosya indirilirken ya da bir sayfaya gömülüyken tamamı gelmeden oynatılamaz; yerel oynatmayı etkilemez. Yukarıdaki “her yerde açılır” sütunu bu denetimi saymaz.\n',
+    );
+    head.notFaststart = without.length;
+  }
   head.worstAvAddedMs = worstSync;
   head.worstDurationErrorMs = worstDuration;
   head.worstSsim = worstSsim;
@@ -839,17 +852,18 @@ function sectionPerf(results, M, speeds) {
       for (const [profile, data] of Object.entries(page.profiles)) {
         const id = `perf.${page.id}.${profile}`;
         const m = data.median;
+        const where = `${(PAGE[page.id] ?? page.id).replace(/ `.*$/, '')}, ${profile === 'masaustu' ? 'bu makine' : 'mobil kısıtlama'}`;
         rows.push([
           PAGE[page.id] ?? page.id,
           PROFILE[profile] ?? profile,
-          M.cell('perf', `${id}.jsTransferred`, `${page.id} (${profile}): aktarılan JS`, m.jsTransferred, { format: (v) => `${kb(v)} (${num(m.jsFiles, 0)} dosya)`, budgetFormat: kb }),
+          M.cell('perf', `${id}.jsTransferred`, `${where}: aktarılan JS`, m.jsTransferred, { format: (v) => `${kb(v)} (${num(m.jsFiles, 0)} dosya)`, budgetFormat: kb }),
           kb(m.totalTransferred),
           `${num(m.fcp, 0)} ms`,
-          M.cell('perf', `${id}.lcp`, `${page.id} (${profile}): LCP`, m.lcp, { format: (v) => `${num(v, 0)} ms` }),
-          M.cell('perf', `${id}.tbt`, `${page.id} (${profile}): TBT`, m.tbt, { format: (v) => `${num(v, 0)} ms` }),
+          M.cell('perf', `${id}.lcp`, `${where}: LCP`, m.lcp, { format: (v) => `${num(v, 0)} ms` }),
+          M.cell('perf', `${id}.tbt`, `${where}: TBT`, m.tbt, { format: (v) => `${num(v, 0)} ms` }),
           `${num(m.load, 0)} ms`,
           mb(m.heapAfterLoad),
-          M.cell('perf', `${id}.outsideRequests`, `${page.id} (${profile}): başka adrese istek`, m.outsideRequests, { format: (v) => num(v, 0) }),
+          M.cell('perf', `${id}.outsideRequests`, `${where}: başka adrese istek`, m.outsideRequests, { format: (v) => num(v, 0) }),
         ]);
         if (page.id === 'ana-ekran' && profile === 'mobil-kisitli') head.homeMobileLcp = m.lcp;
         if (page.id === 'ana-ekran' && profile === 'masaustu') head.homeJsKb = Math.round(m.jsTransferred / 1000);
@@ -998,11 +1012,13 @@ function sectionA11y(results, M) {
       let under44 = 0;
       let unnamed = 0;
       let focusProblems = 0;
-      for (const state of states) {
+      for (const original of states) {
+        // Measure labels say which view they belong to; the table's first column keeps the plain name.
+        const state = { ...original, plain: original.label, label: `${original.label} (${project === 'phone' ? 'telefon' : 'masaüstü'})` };
         const id = `a11y.${project}.${state.id}`;
         if (!state.measured) {
           M.add('a11y', `${id}.run`, `${state.label}`, null, { note: state.reason });
-          rows.push([state.label, 'ölçülemedi', '—', '—', '—', '—', '—', '—', '—']);
+          rows.push([state.plain, 'ölçülemedi', '—', '—', '—', '—', '—', '—', '—']);
           continue;
         }
         under44 += state.tapTargets.under44;
@@ -1010,7 +1026,7 @@ function sectionA11y(results, M) {
         focusProblems += state.focus.unreached + state.focus.withoutVisibleRing + (state.wizard ? state.focus.jumpsBack : 0);
         const share = state.text.words === 0 ? 0 : (state.text.wordsUnder14 / state.text.words) * 100;
         rows.push([
-          state.label,
+          state.plain,
           num(state.controls, 0),
           project === 'phone'
             ? M.cell('a11y', `${id}.under44`, `${state.label}: 44 px’ten küçük dokunma hedefi`, state.tapTargets.under44, { format: (v) => num(v, 0) })

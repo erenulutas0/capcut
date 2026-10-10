@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { STUB_SCRIPT, installTranscriptTest, serveModels, testModels } from '../e2e/transcriptKit';
 import { SAMPLE, startsWith, t } from './lib/app';
-import { BUILD, writeResult } from './lib/record';
+import { BUILD, tr, writeResult } from './lib/record';
 import { blankResult, walk, type Flow, type WalkResult } from './lib/walk';
 import type { VisualEntry } from './lib/visual';
 
@@ -43,7 +43,7 @@ const YAZI_STAND_IN: Flow = {
   },
   download: { name: t('wizard.yazi.downloadVideo'), testId: 'wizard-download' },
   verify: (out) => [
-    { name: 'süre ≈ 24 sn', ok: Math.abs(out.durationS - 24) <= 0.15, value: `${out.durationS} sn` },
+    { name: 'süre ≈ 24 sn', ok: Math.abs(out.durationS - 24) <= 0.15, value: `${tr(out.durationS, 3)} sn` },
     {
       name: 'izler: video:h264 + audio:aac',
       ok: out.video?.codec === 'h264' && out.audio?.codec === 'aac',

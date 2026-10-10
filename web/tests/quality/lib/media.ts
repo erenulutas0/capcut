@@ -8,7 +8,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { closeSync, existsSync, openSync, readSync, renameSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { SOURCES, ensureDir, round } from './record';
+import { SOURCES, ensureDir, round, tr } from './record';
 
 export interface StreamInfo {
   type: 'video' | 'audio' | string;
@@ -173,17 +173,17 @@ export function playableEverywhere(file: string, expectAudio: boolean): Playable
   const mdat = boxes.indexOf('mdat');
   add('faststart (moov, mdat’tan önce)', moov >= 0 && mdat >= 0 && moov < mdat, boxes.join(' '));
   const video = packetTimes(file, 'v:0');
-  add('görüntü 0’da başlıyor (≤ 0,05 sn)', video.firstPtsS !== null && Math.abs(video.firstPtsS) <= 0.05, `${video.firstPtsS} sn`);
+  add('görüntü 0’da başlıyor (≤ 0,05 sn)', video.firstPtsS !== null && Math.abs(video.firstPtsS) <= 0.05, `${video.firstPtsS === null ? '—' : tr(video.firstPtsS, 4)} sn`);
   add('görüntü zaman damgaları sıralı', video.dtsBackwards === 0 && video.duplicatePts === 0, `${video.dtsBackwards} geri, ${video.duplicatePts} çift`);
   const fps = info.video?.fps ?? 30;
-  add('kareler arasında boşluk yok (≤ 3 kare)', video.maxGapS !== null && video.maxGapS <= 3 / fps + 0.001, `en uzun ${video.maxGapS} sn`);
+  add('kareler arasında boşluk yok (≤ 3 kare)', video.maxGapS !== null && video.maxGapS <= 3 / fps + 0.001, `en uzun ${video.maxGapS === null ? '—' : tr(video.maxGapS, 4)} sn`);
   if (expectAudio && info.audio) {
     const audio = packetTimes(file, 'a:0');
     add('ses zaman damgaları sıralı', audio.dtsBackwards === 0, `${audio.dtsBackwards} geri`);
     const startGap = Math.abs((info.audio.startS ?? 0) - (info.video?.startS ?? 0));
-    add('ses ve görüntü birlikte başlıyor (≤ 0,05 sn)', startGap <= 0.05, `${round(startGap, 4)} sn fark`);
+    add('ses ve görüntü birlikte başlıyor (≤ 0,05 sn)', startGap <= 0.05, `${tr(startGap, 4)} sn fark`);
     const lengthGap = Math.abs((info.audio.durationS ?? 0) - (info.video?.durationS ?? 0));
-    add('ses ve görüntü birlikte bitiyor (≤ 0,1 sn)', lengthGap <= 0.1, `${round(lengthGap, 4)} sn fark`);
+    add('ses ve görüntü birlikte bitiyor (≤ 0,1 sn)', lengthGap <= 0.1, `${tr(lengthGap, 4)} sn fark`);
   }
   return checks;
 }

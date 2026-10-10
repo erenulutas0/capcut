@@ -39,6 +39,11 @@ export function median(values: readonly number[]): number | null {
   return sorted[Math.floor((sorted.length - 1) / 2)] ?? null;
 }
 
+/** A number as the Turkish report prints it: decimal comma, dots between thousands. */
+export function tr(value: number, digits = 2): string {
+  return value.toLocaleString('tr-TR', { maximumFractionDigits: digits });
+}
+
 export function round(value: number, digits = 2): number {
   const factor = 10 ** digits;
   return Math.round(value * factor) / factor;
