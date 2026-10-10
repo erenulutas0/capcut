@@ -1,0 +1,57 @@
+{
+  "//": "Numbers that were measured in earlier work and are NOT re-measured by `npm run quality`. The report prints them labelled as recorded, with where and when they come from. Change them only when the source document changes.",
+  "transcript": {
+    "source": "docs/adr/ADR-036-on-device-transcript.md — “Sonuç: önce / sonra” (gerçekçi küme, bugünkü ayarlar: “sonra” sütunları)",
+    "measuredOn": "2026-10-07 / 2026-10-08",
+    "commit": "2292e16",
+    "build": "gerçek modeller (base: WebAssembly, turbo: WebGPU), Chromium; doğrulama yarısı üretim derlemesinde, geliştirme yarısı e2e derlemesinde",
+    "rows": [
+      {
+        "id": "rval-base",
+        "set": "Doğrulama yarısı (rval: 8 klip, 116 dk), küçük model (base)",
+        "werNormalised": 19.6,
+        "werStrict": 24.1,
+        "writtenPercent": 89.8,
+        "droppedPercent": 6.3,
+        "unheardPercent": 3.9,
+        "invented": "0 / 45"
+      },
+      {
+        "id": "rval-turbo",
+        "set": "Doğrulama yarısı (rval), büyük model (turbo)",
+        "werNormalised": 14.3,
+        "werStrict": 19.2,
+        "writtenPercent": 95.6,
+        "droppedPercent": 0.5,
+        "unheardPercent": 3.9,
+        "invented": "0 / 45"
+      },
+      {
+        "id": "rdev-base",
+        "set": "Geliştirme yarısı (rdev: 7 klip, 72 dk; ayarlar bunun üstünde seçildi), küçük model (base)",
+        "werNormalised": 26.5,
+        "werStrict": null,
+        "writtenPercent": 82.2,
+        "droppedPercent": 9.0,
+        "unheardPercent": 8.8,
+        "invented": "0 / 45"
+      },
+      {
+        "id": "rdev-turbo",
+        "set": "Geliştirme yarısı (rdev), büyük model (turbo)",
+        "werNormalised": 18.1,
+        "werStrict": null,
+        "writtenPercent": 90.1,
+        "droppedPercent": 1.1,
+        "unheardPercent": 8.8,
+        "invented": "0 / 45"
+      }
+    ],
+    "notes": [
+      "Küme toplantı ve konferans görüşmesi kayıtlarıdır (dolgu sözleri, üst üste konuşma); bu WER’ler okunmuş konuşmanınkilerle karşılaştırılmaz. Aynı belgede temiz, okunmuş uzun dosyalarda küçük modelin katı WER’i %4,9–9,7 olarak kayıtlıdır (7 Ekim’deki ayar değişikliğinden önce ölçüldü).",
+      "“Negatifte uydurma metin”: doğru çıktısı boş olan 45 klipte yazılan metin; iki modelde de 0.",
+      "Yalnızca İngilizce. Türkçe uygulamada kapalıdır.",
+      "Gerçekçi kümenin medyası ve model dosyaları bu depoda yoktur; yeniden ölçmek saatler sürer: `web/scripts/transcript/run-app.mjs`, `run-parts.mjs`, `score-real.mjs` (ADR-036’daki komutlar)."
+    ]
+  }
+}
