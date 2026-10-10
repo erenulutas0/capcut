@@ -61,9 +61,12 @@ export function useProjectPersistence({ project, title, bindings, onRestore, ena
 
   const createdAtRef = useRef<string | null>(null);
   const restoredRef = useRef(false);
+  // Set by `forget`: the user deleted the stored project, so neither the
+  // autosave timer nor the flush on leaving the page may write it back.
+  const forgottenRef = useRef(false);
 
   const persist = useCallback(async (): Promise<void> => {
-    if (!enabled) return;
+    if (!enabled || forgottenRef.current) return;
     const { project: current, title: currentTitle, bindings: currentBindings } = latest.current;
     if (current.clips.length === 0 && currentBindings.length === 0 && currentTitle === '') {
       return;
@@ -184,8 +187,11 @@ export function useProjectPersistence({ project, title, bindings, onRestore, ena
 
   const forget = useCallback(async () => {
     if (!enabled) return;
-    await storeRef.current.remove(latest.current.project.projectId);
-    setSaveState({ kind: 'idle' });
+    forgottenRef.current = true;
+    const result = await storeRef.current.remove(latest.current.project.projectId);
+    // Not deleted: saving goes on, so the header keeps telling the truth.
+    if (!result.ok) forgottenRef.current = false;
+    else setSaveState({ kind: 'idle' });
   }, [enabled]);
 
   return { saveState, restored, loadFailure, downloadBackup, importBackup, forget, persist };

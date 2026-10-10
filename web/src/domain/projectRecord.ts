@@ -9,7 +9,7 @@
 
 import type { Project } from './edl';
 import type { Micros } from './time';
-import { loadProject } from './migration';
+import { loadStoredProject } from './migration';
 
 export const PROJECT_RECORD_VERSION = 1;
 
@@ -167,6 +167,10 @@ export type RecordResult =
  * Stored data is input like any other: it may be from an older build, a
  * hand-edited backup, or corrupted. A record whose EDL does not validate is
  * rejected rather than loaded into the editor.
+ *
+ * A record with no kesit is not one of those: a video that was opened and
+ * not cut yet is saved like any other project, so it has to open again
+ * (`validateStoredProject`). Every other rule is the export's rule.
  */
 export function parseRecord(input: unknown): RecordResult {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
@@ -179,7 +183,7 @@ export function parseRecord(input: unknown): RecordResult {
   }
 
   // Older builds stored v1 recipes; they are upgraded here, never refused.
-  const validation = loadProject(candidate.edl);
+  const validation = loadStoredProject(candidate.edl);
   if (!validation.ok) return { ok: false, reason: 'edl_invalid' };
 
   if (!Array.isArray(candidate.bindings)) return { ok: false, reason: 'bindings_invalid' };

@@ -73,10 +73,57 @@ bir yedek veya bozulmuş bir satır olabilir. Geçersiz kayıt yüklenmez,
 
 Aynı doğrulayıcı yedek dosyası içe aktarımında da kullanılıyor.
 
+### Ek, 10 Ekim 2026 — kesiti olmayan kayıt bozuk değildir
+
+**Hata.** [ADR-026](ADR-026-kesit-list.md)'dan beri video açılınca hiçbir kesit
+eklenmez; "Videoyu indir" o durumda videonun tamamını indirir. Otomatik kayıt bu
+projeyi yazıyor ve başlık "Düzenleme saklandı" diyordu. Ama `parseRecord` kaydın
+tarifini dışa aktarmanın kurallarıyla (`validateProject`) doğruluyordu ve o
+kurallar boş `clips` dizisini reddeder (`clips_empty`, ortak fixture
+`invalid/empty-clips.json`). Sonuç: sayfa yenilenince kayıt `corrupt` sayılıyor,
+editör boş açılıyor, başlık "Düzenleme henüz saklanmadı" diyordu — yenilemeden
+önce söylenen doğru değildi. Aynı projenin yedek dosyası da geri yüklenemiyordu
+("Yedek dosyası okunamadı…").
+
+**Karar.** Kayıttaki tarif için ayrı bir giriş var: `validateStoredProject`
+(`loadStoredProject` ile; eski şema sürümleri — v1, v2, v3 — aynı biçimde v4'e
+yükseltilerek). `validateProject` ile **tek farkı** boş `clips` dizisini kabul
+etmesidir; diğer bütün kurallar aynıdır (`clips` yoksa ya da dizi değilse,
+bilinmeyen alan, tanımsız kaynak, geçersiz `enhance`, sürüm… yine reddedilir).
+`parseRecord` bunu kullanır; tarayıcı deposu ve yedek dosyası aynı yoldan geçer.
+
+**Değişmeyen.** Belge 10'un tarif sözleşmesi ve ortak fixture'lar değişmedi:
+`validateProject` boş `clips`'i hâlâ `clips_empty` ile reddeder,
+`invalid/empty-clips.json` hâlâ geçersizdir; Dart ve Python uygulamaları için
+kural aynıdır. Bir birim testi ortak fixture'ların **hepsinde** iki doğrulayıcının
+aynı sonucu verdiğini (o tek fixture dışında) sınar. Kesiti olmayan tarif
+kodlanabilir bir tarif değildir ve kodlayıcıya hiç gitmez: indirme
+`downloadRecipe` → `wholeVideoRecipe` üzerinden videonun tamamını kapsayan tek
+kesitli tarifi üretir. İstisna yalnızca **kayıt** düzeyindedir (belge 10
+"Repository alanları"na not düşüldü).
+
+**Bununla çalışır hâle gelen.** Müziği kesit yokken eklenmiş eski kayıtlar 0,1 sn'lik
+müzik seçimiyle saklanmıştı; bunları onaran kod (`healLegacyMusic`, "müzik videonun
+tamamının altında") `main`'de vardı ama o kayıtlar hiç açılamadığı için onarıma
+ulaşamıyordu. Artık açılıyor ve onarılıyor (birim testi: kayıt → `parseRecord` →
+`healLegacyMusic` → yeniden kaydedilebilir).
+
+**Yanında düzeltilen.** "Kayıtlı projeyi sil"den sonra sayfa yenilenirken otomatik kayıt
+(500 ms zamanlayıcısı ya da sayfadan çıkıştaki son yazma) silinen projeyi geri
+yazabiliyordu (düzeltmeyi yazan oturumda e2e'de 7 koşuda 1 kez görüldü). `forget`
+artık silme başarılıysa o sekmede yazmayı durdurur; e2e testi silmeden sonra depoda
+kayıt kalmadığını da doğrular. Testlerdeki `buildAndSave` rozet yerine depodaki kaydı
+bekliyor: rozet, kesitsiz video kaydedildiği anda zaten "saklandı" der.
+
+**Kaynak.** Düzeltme 7 Ekim 2026'da ayrı bir oturumda yazılmış ve işlenmemiş
+kalmıştı (şema v3 üzerinde); 10 Ekim'de `main`'e (şema v4) taşındı ve yukarıdaki
+iki testle (bütün fixture'lar, eski müzik kaydı) genişletildi.
+
 ## Karar 6 — Yedek dosyası hem çıkış hem giriş
 
 Doc 10 yalnızca "EDL'yi dışa alma" kurtarma yolunu istiyor. Yalnızca dışa alım
-kullanıcı için çıkmaz sokak olacağı için içe alım da eklendi (`.clip.json`).
+kullanıcı için çıkmaz sokak olacağı için içe alım da eklendi (`.clip.json`;
+10 Ekim 2026'dan beri yeni yedekler `.lilocut.json` adıyla iner, eskiler aynı biçimde açılır — ADR-038).
 Dosya videoyu içermez; yalnızca tarifi taşır ve karşı tarafın aynı medyaya
 sahip olması gerekir (doc 10).
 
