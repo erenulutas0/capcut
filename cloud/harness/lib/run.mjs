@@ -182,7 +182,7 @@ export async function main(argv, deps = {}) {
   out('');
   out(`would upload (${plan.length} file${plan.length === 1 ? '' : 's'}):`);
   for (const item of plan) {
-    out(`  ${item.entry.id.padEnd(22)} ${minutes(item.durationS).padStart(7)}  ${item.estimatedBytes ? `~${(item.estimatedBytes / 1e6).toFixed(2)} MB` : 'size after encoding'}  ${formatUsd(item.estimatedUsd)}  lang=${item.language}${item.entry.private ? '  PRIVATE' : ''}  ${show(item.entry.file)}`);
+    out(`  ${item.entry.id.padEnd(22)} ${minutes(item.durationS).padStart(7)}  ${item.estimatedBytes ? `~${(item.estimatedBytes / 1e6).toFixed(2)} MB` : 'size after encoding'}  ${formatUsd(item.estimatedUsd)}  lang=${item.language}  ${item.entry.reference ? (item.entry.lang === 'ja' ? 'ref=yes (CER)' : 'ref=yes') : 'ref=NO (listening check only)'}${item.entry.private ? '  PRIVATE' : ''}  ${show(item.entry.file)}`);
   }
   if (skipped.length > 0) {
     out('');
@@ -378,6 +378,8 @@ export async function main(argv, deps = {}) {
   }
 }
 
+export const NO_REFERENCE = 'no reference — listening check only';
+
 export function renderMarkdown(report) {
   const lines = [
     `# Cloud transcript measurement — ${report.provider}`,
@@ -389,7 +391,7 @@ export function renderMarkdown(report) {
     `- Requests ${report.requests.requests}, retries ${report.requests.retries}`,
     `- Normalised English WER: ${report.normalisedMeasure}`,
     '',
-    'WER strict = the ADR-017 measure (web/spike/asr/metrics.mjs). "Speech written" = share of the reference words\' own time that falls inside a run of returned words (gaps ≤ 1.0 s, ±0.25 s) — the provider returns words, not spans, so this is the closest equivalent of the on-device column, not the same rule. Word timing: matched words only.',
+    'WER strict = the ADR-017 measure (web/spike/asr/metrics.mjs). "Speech written" = share of the reference words\' own time that falls inside a run of returned words (gaps ≤ 1.0 s, ±0.25 s) — the provider returns words, not spans, so this is the closest equivalent of the on-device column, not the same rule. Word timing: matched words only. Japanese is scored by characters (CER, after NFKC; kanji numerals against digits count as errors). Turkish has the strict measure only (no number or spelling normaliser). A file without a reference transcript gets no error rate at all.',
     '',
     '| File | Lang (detected) | Length | WER normalised | WER strict | Deleted words | Speech written | Start err. median / p95 (≤250 ms) | End err. median / p95 (≤250 ms) | Speakers found / expected | Wall time | × real time | Uploaded | Cost | Deleted |',
     '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
@@ -400,7 +402,7 @@ export function renderMarkdown(report) {
       continue;
     }
     const s = row.score ?? {};
-    const accuracy = s.cer ? `CER ${pct(s.cer.rate)}` : pct(s.strict?.wer);
+    const accuracy = s.hasReference === false ? NO_REFERENCE : s.cer ? `CER ${pct(s.cer.rate)}` : pct(s.strict?.wer);
     const timing = (t) => (t ? `${ms(t.medianAbsS)} / ${ms(t.p95AbsS)} (${pct(t.within)})` : '—');
     lines.push(
       `| ${row.id}${row.private ? ' (private)' : ''} | ${row.language} (${s.detectedLanguage ?? '—'}) | ${minutes(row.durationS)} | ${s.normalised ? pct(s.normalised.wer) : '—'} | ${accuracy} | ${pct(s.strict?.deletedShare)} | ${pct(s.coverage?.written)} | ${timing(s.timing?.start)} | ${timing(s.timing?.end)} | ${s.speakers ? `${s.speakers.found} / ${s.speakers.expected ?? '?'}` : '—'} | ${row.wallS?.toFixed(1) ?? '—'} s | ${row.realTimeFactor?.toFixed(3) ?? '—'} | ${(row.bytesUploaded / 1e6).toFixed(2)} MB | ${row.costUsd === undefined ? '—' : formatUsd(row.costUsd)} | ${row.deleted ? 'yes' : 'NO'} |`,

@@ -17,8 +17,8 @@ import { CODECS, extractArgs } from '../lib/audio.mjs';
 import { isPrivatePath, loadManifest, resolveEntry } from '../lib/manifest.mjs';
 import { PRICING, costUsd, hourlyRateUsd } from '../lib/pricing.mjs';
 import { PROVIDER_BASES, ProviderError, createProviderClient, transcriptParams } from '../lib/provider.mjs';
-import { DEFAULT_MAX_USD, EXIT, main, parseArgs } from '../lib/run.mjs';
-import { errors, scoreTranscript } from '../lib/score.mjs';
+import { DEFAULT_MAX_USD, EXIT, NO_REFERENCE, main, parseArgs } from '../lib/run.mjs';
+import { errors, japaneseChars, scoreTranscript } from '../lib/score.mjs';
 import { REDACTED, readKeyFromEnvFile, redact } from '../lib/secrets.mjs';
 import { startMockProvider } from '../mock/assemblyai-mock.mjs';
 
@@ -97,7 +97,19 @@ describe('manifest', () => {
       assert.ok(manifest.entries.some((entry) => entry.category === category), `no entry for "${category}"`);
     }
     const missing = manifest.entries.filter((entry) => entry.status === 'missing').map((entry) => entry.id);
-    assert.deepEqual(missing.sort(), ['japanese-conversation', 'japanese-read', 'turkish-conversation', 'two-speaker-overlap']);
+    assert.deepEqual(missing.sort(), ['japanese-conversation', 'turkish-conversation']);
+  });
+  test('every entry that can be run names its source, licence and measured length; a missing one says why', () => {
+    for (const entry of loadManifest().entries) {
+      if (entry.private) continue;
+      if (entry.status === 'missing') {
+        assert.ok(entry.howToGet?.length > 40, `${entry.id}: no reason`);
+        continue;
+      }
+      assert.ok(entry.source?.dataset && entry.source?.licence && entry.source?.from && entry.source?.fetchedOn, `${entry.id}: source incomplete`);
+      assert.ok(entry.durationS > 0 && entry.durationS === entry.approxDurationS, `${entry.id}: no measured length`);
+      assert.ok(entry.reference || entry.from, `${entry.id}: no reference`);
+    }
   });
   test('the private rule is by path, whatever the manifest says', () => {
     assert.equal(isPrivatePath(join('E:', 'capcut_better', 'web', 'tests', 'media', 'real', 'a.mp4')), true);
@@ -107,6 +119,19 @@ describe('manifest', () => {
     const bad = join(scratch, 'bad-manifest.json');
     writeFileSync(bad, JSON.stringify({ entries: [{ id: 'x', file: 'web/tests/media/real/x.mp4' }] }));
     assert.throws(() => loadManifest(bad), /not marked private/);
+  });
+  test('a clip of a generated set: file, reference, words and length come from the set; from.dir names the sub-folder', () => {
+    const setDir = join(scratch, 'set');
+    mkdirSync(join(setDir, 'clips'), { recursive: true });
+    writeFileSync(join(setDir, 'clips', 'a.wav'), 'x');
+    writeFileSync(join(setDir, 'set.json'), JSON.stringify({ clips: [{ id: 'a', file: 'a.wav', lang: 'tr', durationS: 12.5, reference: { raw: 'bir iki' }, words: [{ w: 'bir', s: 0, e: 1 }] }] }));
+    const flat = resolveEntry({ id: 'x', from: { manifest: join(setDir, 'set.json'), clipId: 'a' } });
+    assert.equal(flat.exists, false);
+    assert.equal(flat.status, 'missing-generate');
+    const entry = resolveEntry({ id: 'x', from: { manifest: join(setDir, 'set.json'), clipId: 'a', dir: 'clips' } });
+    assert.equal(entry.exists, true);
+    assert.equal(entry.file, join(setDir, 'clips', 'a.wav'));
+    assert.deepEqual({ reference: entry.reference, lang: entry.lang, approxDurationS: entry.approxDurationS, words: entry.words.length }, { reference: 'bir iki', lang: 'tr', approxDurationS: 12.5, words: 1 });
   });
   test('the committed smoke file exists and has a reference', () => {
     const entry = resolveEntry(loadManifest().entries.find((item) => item.id === 'smoke-fleurs-en'));
@@ -177,6 +202,37 @@ describe('scoring (same measures as the on-device tables)', () => {
     const score = scoreTranscript({ lang: 'ja', reference: 'こんにちは 世界', words: null }, { words: [{ text: 'こんにちは', start: 0, end: 500 }, { text: '世間', start: 500, end: 900 }] });
     assert.equal(score.cer.refChars, 7);
     assert.equal(score.cer.errors, 1);
+    assert.equal(score.strict, null, 'no word error rate for Japanese: it has no spaces');
+  });
+  test('Japanese: full-width and half-width forms are the same characters; punctuation and spaces do not count', () => {
+    assert.equal(japaneseChars('１９４０年、 ﾊﾞﾙｾﾛﾅ「ＡＢＣ」。'), '1940年バルセロナabc');
+    const score = scoreTranscript(
+      { lang: 'ja', reference: 'その長い顎には70本以上の鋭い歯が並び、口蓋には別の歯列があります。', words: null },
+      { words: [{ text: 'その長い顎には', start: 0, end: 900 }, { text: '７０本以上の', start: 900, end: 1500 }, { text: '鋭い歯が並び、', start: 1500, end: 2200 }, { text: '口蓋には別の歯列があります。', start: 2200, end: 3500 }] },
+    );
+    assert.equal(score.cer.errors, 0);
+    assert.equal(score.cer.refChars, 32);
+    // A kanji numeral against digits is NOT folded: it is counted (七十 for 70 → 2 substitutions).
+    const kanji = scoreTranscript({ lang: 'ja', reference: '70本', words: null }, { words: [{ text: '七十本', start: 0, end: 500 }] });
+    assert.equal(kanji.cer.errors, 2);
+  });
+  test('Turkish: dotted and dotless i by Turkish rules, apostrophes inside words kept on both sides', () => {
+    const score = scoreTranscript(
+      { lang: 'tr', reference: "ışık istanbul'da ırmak kenarında atatürk'le", words: null },
+      { words: ['IŞIK', "İstanbul'da", 'Irmak', 'kenarında,', 'Atatürk’le.'].map((text, index) => ({ text, start: index * 400, end: index * 400 + 300 })) },
+    );
+    assert.equal(score.strict.errors, 0);
+    assert.equal(score.strict.refWords, 5);
+    // What the strict measure does NOT forgive in Turkish (stated in cloud/README.md): a number written
+    // as digits against the same number in words, and a dropped apostrophe.
+    const harsh = scoreTranscript({ lang: 'tr', reference: 'covid ondokuz ayasofyayı', words: null }, { words: ['Covid', '19', "Ayasofya'yı"].map((text, index) => ({ text, start: index * 400, end: index * 400 + 300 })) });
+    assert.equal(harsh.strict.errors, 2);
+  });
+  test('an empty reference is no reference', () => {
+    const score = scoreTranscript({ lang: 'en', reference: '  ', words: null }, { words: [{ text: 'hi', start: 0, end: 100 }] });
+    assert.equal(score.hasReference, false);
+    assert.equal(score.strict, null);
+    assert.equal(score.cer, null);
   });
 });
 
@@ -306,8 +362,22 @@ describe('command line', () => {
     assert.equal(code, EXIT.ok);
     assert.ok(probed.every((file) => !isPrivatePath(file)), 'a private file was probed');
     assert.match(text, /founder-real-1\s+private/);
-    assert.match(text, /japanese-read\s+missing — needs a file/);
-    assert.match(text, /two-speaker-overlap\s+missing — needs a file/);
+    assert.match(text, /japanese-conversation\s+missing — needs a file/);
+    assert.match(text, /turkish-conversation\s+missing — needs a file/);
+  });
+
+  test('the dry run says for every file whether it has a reference, and that Japanese is scored by characters', async () => {
+    const manifest = join(scratch, 'refs-manifest.json');
+    writeFileSync(manifest, JSON.stringify({ entries: [
+      { id: 'with-ref', file: speechFile, lang: 'en', reference: 'some words' },
+      { id: 'ja-ref', file: speechFile, lang: 'ja', reference: '日本語' },
+      { id: 'no-ref', file: speechFile, lang: 'tr' },
+    ] }));
+    const { code, text } = await run([`--manifest=${manifest}`], { fetchImpl: noNetwork, probe: () => 9.6, hasAudio: () => true });
+    assert.equal(code, EXIT.ok);
+    assert.match(text, /with-ref .*ref=yes  /);
+    assert.match(text, /ja-ref .*ref=yes \(CER\)/);
+    assert.match(text, /no-ref .*ref=NO \(listening check only\)/);
   });
 
   test('the approval flag alone is not enough: a real run needs an explicit list', async () => {
@@ -408,6 +478,37 @@ describe('a whole run against the local mock (real ffmpeg, the committed 9.6 s c
       assert.match(markdown, /deleted at the provider afterwards: 1 of 1/);
       for (const blob of [text, markdown, JSON.stringify(report)]) assert.ok(!blob.includes(KEY), 'the key leaked');
       assert.equal(readdirSync(tmpdir()).filter((name) => name.startsWith('cloud-harness-') && !name.startsWith('cloud-harness-test-')).length, 0, 'temporary sound files were left behind');
+    } finally {
+      await mock.close();
+    }
+  });
+
+  test('report: Japanese shows a CER and no WER; a file without a reference shows no error rate at all', { skip: !ffmpeg && 'ffmpeg or the clip is not available' }, async () => {
+    const japanese = [{ text: '１９４０年、', start: 0, end: 800, speaker: 'A' }, { text: 'ﾊﾞﾙｾﾛﾅで', start: 800, end: 1600, speaker: 'B' }];
+    const mock = await startMockProvider({ apiKey: KEY, words: japanese, audioDurationS: 10 });
+    const outDir = join(scratch, 'report-ja');
+    const manifest = join(scratch, 'ja-manifest.json');
+    writeFileSync(manifest, JSON.stringify({ entries: [
+      { id: 'ja-x', file: speechFile, lang: 'ja', reference: '1940年バルセロナに', expectedSpeakers: 2 },
+      { id: 'noref-x', file: speechFile, lang: 'ja' },
+    ] }));
+    try {
+      const { code, text } = await run(['--i-have-founder-approval', `--base-url=${mock.url}`, `--env-file=${envFile}`, `--out=${outDir}`, `--manifest=${manifest}`, '--poll-interval-ms=1', 'ja-x', 'noref-x'], { normalise: () => null });
+      assert.equal(code, EXIT.ok, text);
+      const report = JSON.parse(readFileSync(join(outDir, 'report.json'), 'utf8'));
+      const [ja, none] = report.rows;
+      assert.equal(ja.score.strict, null);
+      assert.deepEqual({ refChars: ja.score.cer.refChars, errors: ja.score.cer.errors }, { refChars: 11, errors: 1 }); // に heard as で
+      assert.deepEqual(ja.score.speakers, { found: 2, expected: 2, matches: true });
+      assert.equal(none.score.hasReference, false);
+      assert.equal(none.score.strict, null);
+      assert.equal(none.score.cer, null);
+      const lines = readFileSync(join(outDir, 'report.md'), 'utf8').split('\n');
+      assert.match(lines.find((line) => line.startsWith('| ja-x')), /\| CER 9\.1% \|/);
+      const noRef = lines.find((line) => line.startsWith('| noref-x'));
+      assert.ok(noRef.includes(NO_REFERENCE));
+      assert.ok(!/\d%/.test(noRef), `a file without a reference must show no rate: ${noRef}`);
+      assert.equal(report.totals.deleted, 2);
     } finally {
       await mock.close();
     }

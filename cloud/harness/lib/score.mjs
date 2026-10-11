@@ -113,6 +113,11 @@ export function refTokens(entry) {
   return normalizeText(entry.reference ?? '', entry.lang).split(' ').filter(Boolean).map((w) => ({ w, s: null, e: null }));
 }
 
+/** Japanese text as the characters that are scored: NFKC, the strict normaliser (punctuation out), no spaces. */
+export function japaneseChars(text) {
+  return normalizeText((text ?? '').normalize('NFKC'), 'ja').split(' ').join('');
+}
+
 /** Runs of returned words → spans (see the note at the top). */
 export function hypSpans(tokens, joinS = COVERAGE_JOIN_S, padS = COVERAGE_PAD_S) {
   const spans = [];
@@ -131,7 +136,8 @@ export function hypSpans(tokens, joinS = COVERAGE_JOIN_S, padS = COVERAGE_PAD_S)
 export function scoreTranscript(entry, transcript) {
   const lang = entry.lang ?? 'en';
   const hyp = hypTokens(transcript, lang);
-  const out = { lang, hypWords: hyp.length, strict: null, cer: null, coverage: null, timing: null, gapWords: null, speakers: null, detectedLanguage: transcript.language_code ?? null };
+  const hasReference = typeof entry.reference === 'string' && entry.reference.trim() !== '';
+  const out = { lang, hasReference, hypWords: hyp.length, strict: null, cer: null, coverage: null, timing: null, gapWords: null, speakers: null, detectedLanguage: transcript.language_code ?? null };
 
   // Speakers: how many labels came back, against how many people are in the recording.
   const labels = new Set((transcript.utterances ?? []).map((utterance) => utterance.speaker).filter(Boolean));
@@ -143,13 +149,17 @@ export function scoreTranscript(entry, transcript) {
       matches: entry.expectedSpeakers ? labels.size === entry.expectedSpeakers : null,
     };
   }
-  if (entry.reference === null || entry.reference === undefined) return out;
+  // No reference transcript: no accuracy number of any kind (a listening check only).
+  if (!hasReference) return out;
 
   const ref = refTokens(entry);
   if (lang === 'ja') {
     // Japanese has no spaces between words: character error rate, as the September spike did (metrics.mjs charErrors).
-    const refChars = [...normalizeText(entry.reference, lang).replace(/\s+/g, '')];
-    const hypChars = [...hyp.map((token) => token.w).join('')];
+    // NFKC first, on both sides: full-width digits and Latin letters and half-width kana are the same
+    // characters written another way. Kanji numerals against digits and kana against kanji spellings
+    // are NOT folded — they count as errors; see cloud/README.md.
+    const refChars = [...japaneseChars(entry.reference)];
+    const hypChars = [...(transcript.words ?? []).map((word) => japaneseChars(word.text)).join('')];
     const e = errors(refChars, hypChars);
     out.cer = { refChars: refChars.length, hypChars: hypChars.length, errors: e.errors, sub: e.sub, del: e.del, ins: e.ins, rate: refChars.length ? e.errors / refChars.length : null };
     return out;

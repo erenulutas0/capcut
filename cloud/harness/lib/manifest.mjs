@@ -73,7 +73,8 @@ export function resolveEntry(entry, root = repoRoot) {
     const set = JSON.parse(readFileSync(setFile, 'utf8'));
     const clip = (set.clips ?? []).find((item) => item.id === entry.from.clipId);
     if (!clip) return { ...out, status: 'missing-generate' };
-    out.file = join(dirname(setFile), clip.file);
+    // `from.dir`: the September set (prepare-speech.mjs) lists bare file names and keeps the files in `clips/`.
+    out.file = join(dirname(setFile), entry.from.dir ?? '', clip.file);
     out.reference = typeof clip.reference === 'string' ? clip.reference : (clip.reference?.raw ?? null);
     out.words = clip.words ?? null;
     out.gaps = clip.gaps ?? null;

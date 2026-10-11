@@ -1,10 +1,12 @@
 {
-  "version": 1,
+  "version": 2,
   "about": "What the founder wants the cloud transcript provider measured on (ADR-039). Entries point at files that already exist in the repository's generated or committed test sets where one exists; where none exists the entry says so. Nothing here is uploaded unless the founder runs the harness with --i-have-founder-approval and names the entries.",
   "privateRule": "Every file under web/tests/media/real/ is the founder's own video: private: true, refused without --allow-private (the harness also enforces this by path, whatever this file says).",
+  "measured": "durationS is the length of the audio stream that ffprobe reports for the file on disk (the harness's own probeDurationS), measured on 2026-10-11 (approxDurationS repeats it: the harness uses it for the estimate when a file is not on the machine). expectedSpeakers is filled only where the dataset itself says how many people speak; expectedSpeakersNote says where the number comes from.",
   "generated": {
-    "web/tests/media/speech/manifest-real.json": "node web/spike/asr/prepare-english.mjs, then node web/scripts/transcript/prepare-realistic.mjs --set=dev and --set=val (downloads openly licensed sources: AMI CC BY 4.0, Earnings-22 CC BY-SA 4.0, LibriSpeech CC BY 4.0, Wikimedia Commons music; see web/tests/media/SPEECH_SOURCE.md)",
-    "web/tests/media/speech/manifest.json": "node web/spike/asr/prepare-speech.mjs (FLEURS, CC BY 4.0: 12 Turkish and 6 English read sentences)"
+    "web/tests/media/speech/manifest.json": "node web/spike/asr/prepare-speech.mjs (FLEURS, CC BY 4.0: 12 Turkish and 6 English read sentences; fetches the leading 26 MB + 16 MB of two tarballs)",
+    "web/tests/media/speech/manifest-real.json": "node web/spike/asr/prepare-english.mjs (LibriSpeech test-clean 347 MB + alignments 623 MB, CC BY 4.0), then node web/scripts/transcript/prepare-realistic.mjs --set=val (AMI CC BY 4.0, Earnings-22 CC BY-SA 4.0, Wikimedia Commons music and sounds; see web/tests/media/SPEECH_SOURCE.md). On Windows run both from PowerShell, not Git Bash: they call `tar`, which must be the Windows one.",
+    "web/tests/media/speech/manifest-cloud.json": "node cloud/harness/prepare-extra.mjs (FLEURS ja_jp CC BY 4.0: leading 16 MB; MediaSpeech Turkish, OpenSLR SLR108, CC BY 4.0: leading 80 MB; two LibriSpeech readers from the pool above)"
   },
   "entries": [
     {
@@ -16,111 +18,239 @@
       "expectedSpeakers": 1,
       "approxDurationS": 9.6,
       "reference": "It was ruled by the \"Vichy\" French. These were French people who had made peace with the Germans in 1940 and worked with the invaders instead of fighting them.",
-      "note": "FLEURS en_us sentence 1749, CC BY 4.0 (web/tests/media/SPEECH_SOURCE.md)"
+      "note": "FLEURS en_us sentence 1749, CC BY 4.0 (web/tests/media/SPEECH_SOURCE.md)",
+      "source": {
+        "dataset": "Google FLEURS, en_us, test split, sentence 1749, file 1054805305879816018.wav",
+        "licence": "CC BY 4.0",
+        "from": "https://huggingface.co/datasets/google/fleurs (revision 70bb2e84b976b7e960aa89f1c648e09c59f894dd); committed to this repository, see web/tests/media/SPEECH_SOURCE.md",
+        "fetchedOn": "committed file (September 2026 spike); not fetched again"
+      },
+      "durationS": 9.6
     },
     {
       "id": "long-conversation",
       "category": "long conversation",
-      "title": "Earnings-22 call 4474229, whole call, 51 minutes (prepared remarks + questions, telephone sound, accents)",
-      "from": { "manifest": "web/tests/media/speech/manifest-real.json", "clipId": "earn-4474229" },
+      "title": "Earnings-22 call 4474229, whole call (prepared remarks + questions, telephone sound, accents)",
+      "from": {
+        "manifest": "web/tests/media/speech/manifest-real.json",
+        "clipId": "earn-4474229"
+      },
       "lang": "en",
-      "expectedSpeakers": null,
-      "approxDurationS": 3060,
+      "expectedSpeakers": 4,
+      "expectedSpeakersNote": "distinct speaker ids in the dataset's own reference (.nlp speaker column; words per id — 1: 4413, 3: 3045, 2: 1066, 0: 541). Ids with very few words (an operator, a one-line question) may reasonably be merged by a provider.",
       "howToGet": "prepare-realistic.mjs --set=val",
-      "note": "On device (ADR-036, 7 Oct): WER normalised base 14.7 %, turbo 11.1 %. Reference has no word times and no speaker count."
+      "source": {
+        "dataset": "Earnings-22 (Rev.com), call 4474229: recording + reference transcript (.nlp)",
+        "licence": "CC BY-SA 4.0",
+        "from": "https://media.githubusercontent.com/media/revdotcom/speech-datasets/main/earnings22/media/4474229.mp3 (12332594 bytes, sha256 a14c75263707e033…); https://raw.githubusercontent.com/revdotcom/speech-datasets/main/earnings22/transcripts/nlp_references/4474229.nlp (175613 bytes, sha256 0c6f0a4468cc3dd9…)",
+        "fetchedOn": "2026-10-11"
+      },
+      "note": "On device (ADR-036, 7 Oct): WER normalised base 14.7 %, turbo 11.1 %. Reference has no word times.",
+      "durationS": 3082.824,
+      "approxDurationS": 3082.824
     },
     {
       "id": "meeting-overlap-4",
       "category": "overlapping speech, several speakers",
-      "title": "AMI IS1009a, headset mix, 14 minutes: four people, overlaps, fillers, laughter",
-      "from": { "manifest": "web/tests/media/speech/manifest-real.json", "clipId": "ami-is1009a" },
+      "title": "AMI IS1009a, headset mix: four people, overlaps, fillers, laughter",
+      "from": {
+        "manifest": "web/tests/media/speech/manifest-real.json",
+        "clipId": "ami-is1009a"
+      },
       "lang": "en",
       "expectedSpeakers": 4,
-      "approxDurationS": 840,
+      "expectedSpeakersNote": "four participants, each with a manual word file (words per participant — A: 1171, B: 176, C: 185, D: 423)",
       "howToGet": "prepare-realistic.mjs --set=val",
-      "note": "On device: WER normalised base 25.5 %, turbo 21.9 %; speech written 96.6 % / 99.4 %. Word times: manual (AMI)."
+      "source": {
+        "dataset": "AMI Meeting Corpus, meeting IS1009a, Mix-Headset + manual annotations 1.6.2 (words/*.words.xml)",
+        "licence": "CC BY 4.0",
+        "from": "https://groups.inf.ed.ac.uk/ami/AMICorpusMirror/amicorpus/IS1009a/audio/IS1009a.Mix-Headset.wav (26844093 bytes, sha256 6eb5a0ede0d9e727…); https://groups.inf.ed.ac.uk/ami/AMICorpusAnnotations/ami_public_manual_1.6.2.zip (22887865 bytes, sha256 b56e5babb2496b87…)",
+        "fetchedOn": "2026-10-11"
+      },
+      "note": "On device: WER normalised base 25.5 %, turbo 21.9 %; speech written 96.6 % / 99.4 %. Word times: manual (AMI).",
+      "durationS": 838.833,
+      "approxDurationS": 838.833
     },
     {
       "id": "far-field",
       "category": "far-field microphone",
       "title": "The same meeting (AMI IS1009a) from ONE far table microphone: quiet, reverberant",
-      "from": { "manifest": "web/tests/media/speech/manifest-real.json", "clipId": "ami-is1009a-far" },
+      "from": {
+        "manifest": "web/tests/media/speech/manifest-real.json",
+        "clipId": "ami-is1009a-far"
+      },
       "lang": "en",
       "expectedSpeakers": 4,
-      "approxDurationS": 840,
       "howToGet": "prepare-realistic.mjs --set=val",
-      "note": "On device: WER normalised base 34.2 %, turbo 25.8 %."
+      "source": {
+        "dataset": "AMI Meeting Corpus, meeting IS1009a, Array1-01 + manual annotations 1.6.2",
+        "licence": "CC BY 4.0",
+        "from": "https://groups.inf.ed.ac.uk/ami/AMICorpusMirror/amicorpus/IS1009a/audio/IS1009a.Array1-01.wav (26849383 bytes, sha256 23fd54fd6dbe2387…); https://groups.inf.ed.ac.uk/ami/AMICorpusAnnotations/ami_public_manual_1.6.2.zip (22887865 bytes, sha256 b56e5babb2496b87…)",
+        "fetchedOn": "2026-10-11"
+      },
+      "note": "On device: WER normalised base 34.2 %, turbo 25.8 %. The same sound as meeting-overlap-4 from another microphone: leaving one of the two out saves about 13 minutes.",
+      "durationS": 838.997,
+      "approxDurationS": 838.997
     },
     {
       "id": "speech-under-music",
       "category": "speech under music",
-      "title": "AMI TS3003a 11:00–16:00 with music under the talking at SNR 10 dB, 5 minutes",
-      "from": { "manifest": "web/tests/media/speech/manifest-real.json", "clipId": "bed-ami-v" },
+      "title": "AMI TS3003a 11:00–16:00 with music (\"Calmant\") under the talking at SNR 10 dB",
+      "from": {
+        "manifest": "web/tests/media/speech/manifest-real.json",
+        "clipId": "bed-ami-v"
+      },
       "lang": "en",
-      "expectedSpeakers": null,
-      "approxDurationS": 300,
+      "expectedSpeakers": 3,
+      "expectedSpeakersNote": "participants with at least one manually transcribed word inside 11:00–16:00 (words per participant — A: 109, B: 19, C: 0, D: 87)",
       "howToGet": "prepare-realistic.mjs --set=val",
-      "note": "On device: WER normalised base 54.8 %, turbo 22.4 %. The weakest on-device case. How many of the meeting's four people speak inside this stretch was not counted, so no expected speaker count."
+      "source": {
+        "dataset": "AMI Meeting Corpus, meeting TS3003a, Mix-Headset, 660–960 s + manual annotations 1.6.2; music: Kevin MacLeod \"Calmant\" (Wikimedia Commons)",
+        "licence": "CC BY 4.0 (AMI); CC BY 3.0 (music)",
+        "from": "https://groups.inf.ed.ac.uk/ami/AMICorpusMirror/amicorpus/TS3003a/audio/TS3003a.Mix-Headset.wav (48180608 bytes, sha256 b6ce59ff735c234a…); https://groups.inf.ed.ac.uk/ami/AMICorpusAnnotations/ami_public_manual_1.6.2.zip (22887865 bytes, sha256 b56e5babb2496b87…); https://upload.wikimedia.org/wikipedia/commons/3/3c/Kevin_MacLeod_-_Calmant.ogg (3836395 bytes, sha256 71568ce48eaf180d…)",
+        "fetchedOn": "2026-10-11"
+      },
+      "note": "On device: WER normalised base 54.8 %, turbo 22.4 %. The weakest on-device case.",
+      "durationS": 300,
+      "approxDurationS": 300
     },
     {
       "id": "music-next-to-speech",
       "category": "invented text",
       "title": "Clean speech with music and everyday sounds butted against it: nothing may be written inside the marked gaps",
-      "from": { "manifest": "web/tests/media/speech/manifest-real.json", "clipId": "next-music-v" },
+      "from": {
+        "manifest": "web/tests/media/speech/manifest-real.json",
+        "clipId": "next-music-v"
+      },
       "lang": "en",
       "expectedSpeakers": 1,
-      "approxDurationS": 120,
-      "howToGet": "prepare-realistic.mjs --set=val",
-      "note": "On device: 0 words in the gaps. approxDurationS is a guess (the generated manifest has the exact length); the cloud route must not be worse at inventing text."
+      "howToGet": "prepare-english.mjs, then prepare-realistic.mjs --set=val",
+      "source": {
+        "dataset": "LibriSpeech test-clean reader 5105 (5 utterances) + LibriSpeech Alignments; music and sounds from Wikimedia Commons (Kevin MacLeod \"Windswept\", \"Calmant\"; typing; surf)",
+        "licence": "CC BY 4.0 (speech, alignments); CC BY 3.0 / CC0 (music, sounds)",
+        "from": "https://www.openslr.org/resources/12/test-clean.tar.gz (346663984 bytes, md5 32fa31d27d2e1cad72775fee3f4849a9); https://zenodo.org/api/records/2619474/files/librispeech_alignments.zip/content (623023332 bytes, md5 2bab567d0ace651a4ba254e813629f46); https://upload.wikimedia.org/wikipedia/commons/2/23/Kevin_MacLeod_-_Windswept.ogg (4811499 bytes, sha256 392d4f79aad70e06…); https://upload.wikimedia.org/wikipedia/commons/3/3c/Kevin_MacLeod_-_Calmant.ogg (3836395 bytes, sha256 71568ce48eaf180d…); https://upload.wikimedia.org/wikipedia/commons/0/0a/Typing_-_Model_M_1986.ogg (168864 bytes, sha256 8065238fc0138883…); https://upload.wikimedia.org/wikipedia/commons/f/f1/Oceanwavescrushing.ogg (2849514 bytes, sha256 2a56648817264b6c…)",
+        "fetchedOn": "2026-10-11"
+      },
+      "note": "On device: 0 words in the gaps; the cloud route must not be worse at inventing text.",
+      "durationS": 98.83,
+      "approxDurationS": 98.83
     },
     {
       "id": "accent-call",
       "category": "long conversation (optional second)",
-      "title": "Earnings-22 call 4481221, Indian accent, 21 minutes",
-      "from": { "manifest": "web/tests/media/speech/manifest-real.json", "clipId": "earn-4481221" },
+      "title": "Earnings-22 call 4481221, Indian accent, whole call",
+      "from": {
+        "manifest": "web/tests/media/speech/manifest-real.json",
+        "clipId": "earn-4481221"
+      },
       "lang": "en",
-      "expectedSpeakers": null,
-      "approxDurationS": 1260,
+      "expectedSpeakers": 6,
+      "expectedSpeakersNote": "distinct speaker ids in the dataset's own reference (.nlp speaker column; words per id — 4: 717, 1: 415, 3: 407, 5: 332, 2: 252, 0: 198)",
       "howToGet": "prepare-realistic.mjs --set=val",
-      "note": "On device: WER normalised base 15.7 %, turbo 10.9 %. Optional: leave it out to stay well under the ceiling."
+      "source": {
+        "dataset": "Earnings-22 (Rev.com), call 4481221: recording + reference transcript (.nlp)",
+        "licence": "CC BY-SA 4.0",
+        "from": "https://media.githubusercontent.com/media/revdotcom/speech-datasets/main/earnings22/media/4481221.mp3 (4947744 bytes, sha256 626a68edf1fcedf9…); https://raw.githubusercontent.com/revdotcom/speech-datasets/main/earnings22/transcripts/nlp_references/4481221.nlp (45914 bytes, sha256 74d04b52875b4f1e…)",
+        "fetchedOn": "2026-10-11"
+      },
+      "note": "On device: WER normalised base 15.7 %, turbo 10.9 %.",
+      "durationS": 1236.576,
+      "approxDurationS": 1236.576
     },
     {
       "id": "turkish-read-01",
       "category": "Turkish",
       "title": "One read Turkish sentence (FLEURS tr_tr)",
-      "from": { "manifest": "web/tests/media/speech/manifest.json", "clipId": "tr-01" },
+      "from": {
+        "manifest": "web/tests/media/speech/manifest.json",
+        "clipId": "tr-01",
+        "dir": "clips"
+      },
       "lang": "tr",
       "expectedSpeakers": 1,
-      "approxDurationS": 12,
       "howToGet": "web/spike/asr/prepare-speech.mjs",
-      "note": "Read speech only. tr-02 … tr-12 exist in the same set and can be named on the command line by path. approxDurationS is a guess."
+      "source": {
+        "dataset": "Google FLEURS, tr_tr, test split, sentence 1684, file 10153339660659037735.wav",
+        "licence": "CC BY 4.0",
+        "from": "https://huggingface.co/datasets/google/fleurs/resolve/70bb2e84b976b7e960aa89f1c648e09c59f894dd/data/tr_tr/audio/test.tar.gz [bytes=0-25999999] (26000000 bytes); https://huggingface.co/datasets/google/fleurs/resolve/70bb2e84b976b7e960aa89f1c648e09c59f894dd/data/tr_tr/test.tsv (sha256 52adb452a258976a…)",
+        "fetchedOn": "2026-10-11"
+      },
+      "note": "Read speech only. tr-02 … tr-12 exist in the same set. Scored with the strict measure only (no Turkish number/spelling normaliser).",
+      "durationS": 10.2,
+      "approxDurationS": 10.2
     },
     {
       "id": "turkish-music-03",
       "category": "Turkish",
       "title": "A read Turkish sentence under synthetic music at SNR 5 dB (September spike clip noisy-03)",
-      "from": { "manifest": "web/tests/media/speech/manifest.json", "clipId": "noisy-03" },
+      "from": {
+        "manifest": "web/tests/media/speech/manifest.json",
+        "clipId": "noisy-03",
+        "dir": "clips"
+      },
       "lang": "tr",
       "expectedSpeakers": 1,
-      "approxDurationS": 12,
       "howToGet": "web/spike/asr/prepare-speech.mjs",
-      "note": "approxDurationS is a guess."
+      "source": {
+        "dataset": "Google FLEURS, tr_tr, test split, sentence 1718, file 10691448504216512855.wav; music synthesised with ffmpeg (no recording)",
+        "licence": "CC BY 4.0",
+        "from": "https://huggingface.co/datasets/google/fleurs/resolve/70bb2e84b976b7e960aa89f1c648e09c59f894dd/data/tr_tr/audio/test.tar.gz [bytes=0-25999999] (26000000 bytes)",
+        "fetchedOn": "2026-10-11"
+      },
+      "durationS": 9.54,
+      "approxDurationS": 9.54
+    },
+    {
+      "id": "turkish-media-speech",
+      "category": "Turkish",
+      "title": "Turkish media speech that is NOT read aloud: 20 manually transcribed segments of news and talk programmes (MediaSpeech), joined",
+      "from": {
+        "manifest": "web/tests/media/speech/manifest-cloud.json",
+        "clipId": "tr-media"
+      },
+      "lang": "tr",
+      "expectedSpeakers": null,
+      "expectedSpeakersNote": "not known: the dataset has no speaker labels; the segments come from different programmes, some hold two voices (interviewer and guest)",
+      "howToGet": "node cloud/harness/prepare-extra.mjs",
+      "source": {
+        "dataset": "MediaSpeech (OpenSLR SLR108), Turkish: the first 20 audio+transcript pairs (by file name) that are complete inside the fetched leading bytes of TR.tgz; file names in web/tests/media/speech/manifest-cloud.json",
+        "licence": "CC BY 4.0",
+        "from": "https://www.openslr.org/resources/108/TR.tgz [bytes=0-79999999] (80000000 bytes, sha256 0aeab388ce77b09c…)",
+        "fetchedOn": "2026-10-11"
+      },
+      "note": "The nearest open, login-free stand-in for spontaneous Turkish — NOT one two-way conversation (see turkish-conversation). The reference is lower case, without punctuation, numbers written as words (\"covid ondokuz\"): a provider that writes \"19\" is counted wrong by the strict measure, so read this WER as an upper bound.",
+      "durationS": 303.1,
+      "approxDurationS": 303.1
     },
     {
       "id": "turkish-conversation",
       "category": "Turkish",
-      "title": "Spontaneous Turkish conversation, 10–20 minutes, with a reference transcript",
+      "title": "Spontaneous two-way Turkish conversation, 10–20 minutes, with a reference transcript",
       "status": "missing",
       "lang": "tr",
-      "howToGet": "no openly licensed, transcribed conversational Turkish recording is in the repository's sets; needs a file (e.g. a recording the founder makes and transcribes, or an open corpus to be found and licence-checked)"
+      "howToGet": "no open, login-free source with a trustworthy reference chosen (11 Oct 2026). Considered from what is known of these corpora — only MediaSpeech was actually fetched and checked today: Common Voice (CC0, but read sentences and a login/terms click); VoxPopuli (no transcribed Turkish set); MediaSpeech (used as turkish-media-speech: unrelated ~15 s segments, not a conversation); YODAS (CC BY, YouTube with uploader subtitles — not a trustworthy reference); LDC/Babel/CALLHOME-style corpora (paid or licence-gated). What would work: a 10–20 minute recording the founder makes with a second person and transcribes (or corrects from the on-device transcript)."
     },
     {
       "id": "japanese-read",
       "category": "Japanese",
-      "title": "Read Japanese sentences (FLEURS ja_jp), scored by character error rate",
-      "status": "missing",
+      "title": "10 read Japanese sentences (FLEURS ja_jp), joined; scored by character error rate",
+      "from": {
+        "manifest": "web/tests/media/speech/manifest-cloud.json",
+        "clipId": "ja-read"
+      },
       "lang": "ja",
-      "howToGet": "not generated today: prepare-speech.mjs fetches only tr_tr and en_us; the same script with a ja_jp range would produce it (FLEURS, CC BY 4.0)"
+      "expectedSpeakers": null,
+      "expectedSpeakersNote": "not known exactly: FLEURS gives no speaker ids. 10 recordings (1 marked FEMALE, 9 MALE), so at least 2 and at most 10 voices",
+      "howToGet": "node cloud/harness/prepare-extra.mjs",
+      "source": {
+        "dataset": "Google FLEURS, ja_jp, test split, sentence ids 1828, 1834, 1813, 1869, 1744, 1731, 1910, 1771, 1764, 2003; files 10020345318418093976.wav, 10086073819084529371.wav, 10112379500600537933.wav, 10174984673310355687.wav, 10193386983118883224.wav, 10203675650837159328.wav, 10214476888438240131.wav, 10228875750894489453.wav, 10256418415643044307.wav, 10281646305484957883.wav",
+        "licence": "CC BY 4.0",
+        "from": "https://huggingface.co/datasets/google/fleurs/resolve/70bb2e84b976b7e960aa89f1c648e09c59f894dd/data/ja_jp/audio/test.tar.gz [bytes=0-15999999] (16000000 bytes, sha256 874d6f732fc9cc5b…); https://huggingface.co/datasets/google/fleurs/resolve/70bb2e84b976b7e960aa89f1c648e09c59f894dd/data/ja_jp/test.tsv (361174 bytes, sha256 5dd9643511437414…)",
+        "fetchedOn": "2026-10-11"
+      },
+      "note": "CER after NFKC, punctuation and spaces removed on both sides. Kanji numerals against digits and kana/kanji spelling choices are counted as errors (no Japanese text normaliser): read the CER as an upper bound.",
+      "durationS": 117.24,
+      "approxDurationS": 117.24
     },
     {
       "id": "japanese-conversation",
@@ -128,16 +258,28 @@
       "title": "Spontaneous Japanese conversation with a reference transcript",
       "status": "missing",
       "lang": "ja",
-      "howToGet": "needs a file; no source chosen"
+      "howToGet": "no open, login-free source with a trustworthy reference chosen (11 Oct 2026). Considered from what is known of these corpora — none was fetched today, so each should be re-checked before it is ruled out for good: CEJC and CSJ (paid / licence agreement); CALLHOME Japanese (TalkBank account or LDC); ReazonSpeech (TV recordings, access terms); TEDxJP-10K (CC BY-NC-ND, built from YouTube); YODAS (uploader subtitles — not a trustworthy reference); Common Voice (read, login). What would work: a recording the founder is allowed to use with a human-made transcript — or a listening check only, without an error rate."
     },
     {
       "id": "two-speaker-overlap",
       "category": "two-speaker overlap",
-      "title": "Exactly two people talking over each other, with word times and who-said-what",
-      "status": "missing",
+      "title": "Exactly two people (a man and a woman) taking turns and talking over each other at every change, with word times and who-said-what",
+      "from": {
+        "manifest": "web/tests/media/speech/manifest-cloud.json",
+        "clipId": "overlap-2"
+      },
       "lang": "en",
       "expectedSpeakers": 2,
-      "howToGet": "needs a file. Can be built rights-clean from two LibriSpeech readers mixed with a known overlap (word times and speaker of every word are then known exactly); prepare-realistic.mjs has the building blocks but no such clip today. Until then meeting-overlap-4 (four speakers) is the nearest case."
+      "howToGet": "prepare-english.mjs, then node cloud/harness/prepare-extra.mjs",
+      "source": {
+        "dataset": "LibriSpeech test-clean readers 1089 and 121 (utterances 1089-134686-0000, 121-121726-0000, 1089-134686-0001, 121-121726-0001, 1089-134686-0002, 121-121726-0002, 1089-134686-0003, 121-121726-0003, 1089-134686-0004, 121-121726-0004, 1089-134686-0005, 121-121726-0005, 1089-134686-0006, 121-121726-0006, 1089-134686-0007, 121-121726-0007, 1089-134686-0008, 121-121726-0008, 1089-134686-0009, 121-121726-0009) + LibriSpeech Alignments (word times); mixed here with 20 turns, each starting 1.5 s before the other stops",
+        "licence": "CC BY 4.0",
+        "from": "https://www.openslr.org/resources/12/test-clean.tar.gz (346663984 bytes, md5 32fa31d27d2e1cad72775fee3f4849a9); https://zenodo.org/api/records/2619474/files/librispeech_alignments.zip/content (623023332 bytes, md5 2bab567d0ace651a4ba254e813629f46)",
+        "fetchedOn": "2026-10-11"
+      },
+      "note": "Synthetic: two READ voices laid over each other, not a real conversation (meeting-overlap-4 is the real one). 95 of 264 reference words lie inside an overlap; there the reference order (by word start) is a convention, so a provider that writes the two voices one after the other is charged some word-order errors. The speaker count (2) is the clean check here.",
+      "durationS": 97.045,
+      "approxDurationS": 97.045
     },
     {
       "id": "founder-real-1",
