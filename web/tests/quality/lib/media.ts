@@ -8,6 +8,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { closeSync, existsSync, openSync, readSync, renameSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { enhanceFixture } from '../../e2e/enhance-media';
 import { SOURCES, ensureDir, round, tr } from './record';
 
 export interface StreamInfo {
@@ -346,6 +347,20 @@ export function smallSource(width: number, height: number): string {
     '-vf', 'lutyuv=y=val*0.4,noise=alls=18:allf=t,format=yuv420p',
     '-c:v', 'libx264', '-preset', 'veryfast', '-b:v', rate, '-minrate', rate, '-maxrate', rate, '-bufsize', rate, '-pix_fmt', 'yuv420p', '-g', '30',
     '-c:a', 'aac', '-b:a', '96k', '-shortest', '-movflags', '+faststart',
+  ]);
+}
+
+/**
+ * A small video "İyileştir" has work on: the underexposed, camera-like clip of ADR-037's own set
+ * (tests/e2e/enhance-media.ts, 1280 × 720, 3 s) at the given size. The test pattern of `smallSource`
+ * is judged "already looks good" — rightly — and is then offered no download to measure.
+ */
+export function smallDarkSource(width: number, height: number): string {
+  return make(`kucuk-karanlik-${width}x${height}-3s.mp4`, [
+    '-i', enhanceFixture('dark'),
+    '-vf', `scale=${width}:${height}:flags=bicubic,format=yuv420p`,
+    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-g', '30',
+    '-c:a', 'copy', '-movflags', '+faststart',
   ]);
 }
 

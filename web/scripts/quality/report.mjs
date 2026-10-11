@@ -363,7 +363,10 @@ function sectionSearch(results, M) {
               ],
               ['Yapılabilen işlerde sorma oranı', 'askedOnTasks', set.asked.onTasksPercent, `${num(set.taskPhrases, 0)} ifadede`],
               ['Sorduğunda doğru iş seçeneklerin arasında', 'askRightPresent', set.asked.rightPresentPercent, `${num(set.asked.onTasks, 0)} soruda; ${num(set.asked.rightAbsent, 0)} tanesinde yok`],
-              ['Açık yazılmış isteğe (“kolay”) doğrudan cevap yerine soru', 'clearAsked', set.clear.askedPercent, `${num(set.clear.phrases, 0)} ifadede`],
+              // Only the batch written on 11 Oct 2026 marks its plain phrases ("kolay"); the older sets have none to count.
+              ...(set.clear.phrases > 0
+                ? [['Açık yazılmış isteğe (“kolay”) doğrudan cevap yerine soru', 'clearAsked', set.clear.askedPercent, `${num(set.clear.phrases, 0)} ifadede`]]
+                : []),
               ['Doğrudan doğru: tek cevap ve doğru iş (yapılabilen işler)', 'direct', set.firstHitPercent, ''],
               ['Doğru işe yeniden yazmadan varıldı: doğrudan ya da seçeneklerden', 'reached', set.reachedPercent, ''],
             ]

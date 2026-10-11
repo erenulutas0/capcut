@@ -4,7 +4,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { enhanceFixture, frameLumas, frameRgb, laplacianVariance, rgbMeans } from '../e2e/enhance-media';
 import { addKesit, installSavePicker } from '../e2e/kesitFlow';
 import { MUSIC, takeSavedFile, waitForResult } from './lib/app';
-import { buildReference, cameraLikeSource, cameraLikeWebm, fidelity, hasVmaf, loadAvSync, playableEverywhere, probeFile, smallSource, smallWebm, syncSource, syncWebm, type Fidelity, syncHeavy } from './lib/media';
+import { buildReference, cameraLikeSource, cameraLikeWebm, fidelity, hasVmaf, loadAvSync, playableEverywhere, probeFile, smallDarkSource, smallSource, smallWebm, syncSource, syncWebm, type Fidelity, syncHeavy } from './lib/media';
 import { BUILD, SOURCES, ensureDir, round, writeResult } from './lib/record';
 import { watchProblems } from './lib/screen';
 
@@ -247,7 +247,7 @@ const SIZE_ROADS: ReadonlyArray<{ id: SizeRoad; label: string }> = [
   { id: 'muzik', label: 'Müzik ekle' },
   { id: 'sustur', label: 'Sesi kapat' },
   { id: 'cevir', label: 'Her yerde açılsın (WebM kaynak)' },
-  { id: 'iyilestir', label: 'İyileştir' },
+  { id: 'iyilestir', label: 'İyileştir (karanlık, kamera benzeri kaynak)' },
 ];
 
 const SIZE_SOURCES: ReadonlyArray<readonly [number, number]> = [
@@ -307,7 +307,7 @@ for (const road of SIZE_ROADS) {
     save(CUT_SHORT);
     await installSavePicker(page);
     for (const [width, height] of SIZE_SOURCES) {
-      const source = road.id === 'cevir' ? smallWebm(width, height) : smallSource(width, height);
+      const source = road.id === 'cevir' ? smallWebm(width, height) : road.id === 'iyilestir' ? smallDarkSource(width, height) : smallSource(width, height);
       const info = probeFile(source);
       const row: Record<string, unknown> = { sourceWidth: info.video?.width ?? width, sourceHeight: info.video?.height ?? height, measured: false };
       rows.push(row);
