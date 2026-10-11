@@ -616,13 +616,13 @@ export function useEditorState() {
   );
 
   /**
-   * Puts the on-device transcript in as the caption track (ADR-036): source
-   * lines, the unclear spans, English. Replaces the lines there were. One
-   * undo step.
+   * Puts the transcript in as the caption track (ADR-036): source lines, the
+   * unclear spans, its language (English unless the cloud route names
+   * another, ADR-039). Replaces the lines there were. One undo step.
    */
   const applyTranscript = useCallback(
-    (cues: readonly ImportedCueInput[], unclear: readonly CaptionUnclearV3[]): CaptionImportResult =>
-      runCommand((base) => applyTranscriptTrack(base, cues, unclear)),
+    (cues: readonly ImportedCueInput[], unclear: readonly CaptionUnclearV3[], language?: string): CaptionImportResult =>
+      runCommand((base) => applyTranscriptTrack(base, cues, unclear, language)),
     [runCommand],
   );
 

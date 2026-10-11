@@ -58,6 +58,10 @@ interface Props extends WizardHostProps {
   openVideo: (file: File) => Promise<boolean>;
   /** The choose step's heading ("Dikey yapalım"). */
   titleKey: MessageKey;
+  /** Said as the choose step's heading instead, while a screen of the step has its own question. */
+  chooseTitle?: string | null;
+  /** Said at the foot instead of "Videon cihazından çıkmaz." — where that sentence alone would mislead (ADR-039). */
+  footerText?: string | null;
   /** The end of the suggested file name: "tatil_dikey.mp4". */
   fileTag: string;
   /** The recipe "İndir" encodes, the choice applied; null while there is nothing to download. */
@@ -99,6 +103,8 @@ export function WizardFlow({
   onOpenEditor,
   openVideo,
   titleKey,
+  chooseTitle = null,
+  footerText = null,
   fileTag,
   recipe,
   audioFile = null,
@@ -211,7 +217,7 @@ export function WizardFlow({
     step === 'pick'
       ? t('wizard.pick.title')
       : step === 'choose' || !entry
-        ? t(titleKey)
+        ? (step === 'choose' && chooseTitle) || t(titleKey)
         : entry.phase === 'running'
           ? t('wizard.result.running')
           : entry.phase === 'saved'
@@ -373,7 +379,9 @@ export function WizardFlow({
         ) : null}
       </main>
 
-      <footer className="wizard-footer">{t('home.trust')}</footer>
+      <footer className="wizard-footer" data-testid="wizard-footer">
+        {footerText ?? t('home.trust')}
+      </footer>
 
       {/*
         Hidden picker: the user always starts the file dialog. Rendered only

@@ -158,6 +158,7 @@ function sectionWalkthrough(results, M) {
   const head = {};
   const parts = partsOf(results, 'walkthrough');
   const standIn = partsOf(results, 'walkthrough-yazi');
+  const fakeCloud = partsOf(results, 'walkthrough-yazi-bulut');
   if (parts.length === 0) {
     M.add('walkthrough', 'walk.run', 'Görev yürüyüşleri', null, { note: 'bu bölümün sonuç dosyası yok (koşulmadı)' });
     return { md: '_Bu bölüm koşulmadı._\n', head };
@@ -316,6 +317,54 @@ function sectionWalkthrough(results, M) {
       ),
     );
     const notes = standIn.flatMap((part) => part.data.tasks).flatMap((task) => [
+      ...(task.stopped ? [`- ${task.project}: ${task.stopped}`] : []),
+      ...task.strongJargon.map((hit) => `- ${task.project}: teknik terim (${hit.screen}) — ${hit.term}: “${hit.context}”`),
+      ...task.unreachable.map((item) => `- ${task.project}: adıyla bulunamadı: ${item}`),
+    ]);
+    if (notes.length > 0) out.push(`\n${[...new Set(notes)].join('\n')}\n`);
+  }
+
+  // The cloud transcript route (ADR-039): not in the published site; measured against a local fake of our proxy.
+  out.push('\n**Yazıya dök → İnternette, baştan sona — SAHTE SUNUCUYA KARŞI (bulut derlemesi; yayındaki sitede bu yol yok)**\n');
+  if (fakeCloud.length === 0) {
+    out.push('_Koşulmadı._\n');
+    M.add('walkthrough', 'walk.fakecloud.run', 'Yazıya dök → İnternette akışı (sahte sunucuya karşı)', null, { note: 'sonuç dosyası yok (koşulmadı)' });
+  } else {
+    out.push(
+      'Bu satırlar, vekil sunucumuzun **yerel bir sahtesine** (`cloud/fake-worker/`, 127.0.0.1) karşı, bulut yolunun açık olduğu test kancalı derlemede alındı. ' +
+        'Hiçbir dış hizmete istek atılmadı. Sahte sunucu konuşmayı DUYMAZ; betikte yazan kelimeleri döndürür. ' +
+        'Ölçülen şey rıza ekranının ve akışın kendisidir (tıklama, ekran, okunacak kelime, sade dil, dosyanın çıkması, giden şeyin yalnız ses olması). ' +
+        '**Yazının doğruluğu, hızı ya da gerçek sunucunun davranışı hakkında hiçbir şey söylemez.**\n\n',
+    );
+    out.push(
+      table(
+        ['Görünüm', 'Dosya çıktı', 'Tıklama', 'Yazılan alan', 'Karar ekranı', 'Ekran', 'En kalabalık ekran (kelime)', 'Teknik terim', 'Adıyla bulunamayan', 'Giden dosya', 'Sunucuda kalan'],
+        fakeCloud.flatMap((part) =>
+          part.data.tasks.map((task) => {
+            const id = `walk.fakecloud.${task.project}.yazi`;
+            const upload = part.data.upload;
+            return [
+              task.project === 'phone' ? 'telefon' : 'masaüstü',
+              M.cell('walkthrough', `${id}.completed`, 'Yazıya dök → İnternette (sahte sunucu): dosya çıktı', task.completed, { note: task.stopped ?? '' }),
+              M.cell('walkthrough', `${id}.clicks`, 'Yazıya dök → İnternette (sahte sunucu): tıklama', task.clicks, { format: (v) => num(v, 0) }),
+              num(task.typedFields, 0),
+              M.cell('walkthrough', `${id}.decisions`, 'Yazıya dök → İnternette (sahte sunucu): karar ekranı', task.decisions, { format: (v) => num(v, 0) }),
+              num(task.screens, 0),
+              M.cell('walkthrough', `${id}.wordsMax`, 'Yazıya dök → İnternette (sahte sunucu): en kalabalık ekran', task.wordsMax, { format: (v) => num(v, 0) }),
+              M.cell('walkthrough', `${id}.strongJargon`, 'Yazıya dök → İnternette (sahte sunucu): teknik terim', task.strongJargon.length, { format: (v) => num(v, 0) }),
+              M.cell('walkthrough', `${id}.unreachable`, 'Yazıya dök → İnternette (sahte sunucu): adıyla bulunamayan', task.unreachable.length, { format: (v) => num(v, 0) }),
+              M.cell('walkthrough', `${id}.audioOnlyUploads`, 'Yazıya dök → İnternette (sahte sunucu): giden ses dosyası sayısı', upload && String(upload.contentType).startsWith('audio/') ? (part.data.uploads ?? 0) : 0, {
+                format: (v) => (upload ? `${num(v, 0)} × ${upload.contentType}, ${kb(upload.bytes)}` : '0'),
+              }),
+              M.cell('walkthrough', `${id}.leftAtProvider`, 'Yazıya dök → İnternette (sahte sunucu): sunucuda kalan kayıt', part.data.leftAtProvider ?? null, { format: (v) => num(v, 0) }),
+            ];
+          }),
+        ),
+      ),
+    );
+    const perScreen = fakeCloud.flatMap((part) => part.data.tasks).flatMap((task) => task.perScreen.map((screen) => `- ${task.project === 'phone' ? 'telefon' : 'masaüstü'}: “${screen.title}” (${screen.label}) — ${num(screen.words, 0)} kelime`));
+    if (perScreen.length > 0) out.push(`\nEkran ekran okunacak kelime:\n\n${perScreen.join('\n')}\n`);
+    const notes = fakeCloud.flatMap((part) => part.data.tasks).flatMap((task) => [
       ...(task.stopped ? [`- ${task.project}: ${task.stopped}`] : []),
       ...task.strongJargon.map((hit) => `- ${task.project}: teknik terim (${hit.screen}) — ${hit.term}: “${hit.context}”`),
       ...task.unreachable.map((item) => `- ${task.project}: adıyla bulunamadı: ${item}`),
@@ -1289,7 +1338,7 @@ const SECTION_TITLES = [
 
 /** Which result files feed which report section (for "when was this measured"). */
 const SECTION_RESULTS = {
-  walkthrough: ['walkthrough', 'walkthrough-yazi'],
+  walkthrough: ['walkthrough', 'walkthrough-yazi', 'walkthrough-yazi-bulut'],
   search: ['search'],
   errors: ['errors'],
   honesty: ['honesty'],
@@ -1443,7 +1492,7 @@ export function writeReport({ webDir, resultsDir, ran, failedSpecs, runSeconds, 
       ['Bölüm', 'Ölçüm zamanı', 'Derleme', 'Bütçe içinde', 'Bütçe dışı', 'Ölçülemedi', 'Bütçesiz'],
       SECTION_TITLES.map(([id, title]) => {
         const meta = sectionMeta[id];
-        const BUILD = { static: 'statik çıktı', hooks: 'test kancalı', none: 'tarayıcısız', bilinmiyor: '?' };
+        const BUILD = { static: 'statik çıktı', hooks: 'test kancalı', cloud: 'bulut (sahte sunucu)', none: 'tarayıcısız', bilinmiyor: '?' };
         return [
           title,
           meta.measuredTo ? `${clock(meta.measuredTo)}${meta.ranNow ? '' : ' (bu koşuda yenilenmedi)'}` : 'koşulmadı',

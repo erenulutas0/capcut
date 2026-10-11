@@ -11,7 +11,7 @@ const HOST = 'provider.mock';
 export const MOCK_KEY = 'mock-worker-key-5d0c';
 
 const fresh = () => ({
-  config: { pollsUntilDone: 1, failUpload: 0, failCreate: 0, transcriptError: null, audioDurationS: null, bigResult: false },
+  config: { pollsUntilDone: 1, failUpload: 0, failCreate: 0, failStatus: 0, transcriptError: null, audioDurationS: null, bigResult: false },
   requests: [],
   leaks: [],
   uploads: new Map(),
@@ -69,6 +69,7 @@ export function createOutboundService(Response) {
     const transcript = match && state.transcripts.get(match[1]);
     if (transcript && request.method === 'GET') {
       if (transcript.deleted) return json(Response, { error: 'transcript deleted' }, 404);
+      if (state.config.failStatus) return json(Response, { error: 'SECRET PROVIDER TEXT status' }, state.config.failStatus);
       transcript.polls += 1;
       if (transcript.polls <= state.config.pollsUntilDone) return json(Response, { id: match[1], status: transcript.polls === 1 ? 'queued' : 'processing', words: null, audio_duration: null });
       if (state.config.transcriptError) return json(Response, { id: match[1], status: 'error', error: state.config.transcriptError });

@@ -117,7 +117,8 @@ cd web/spike/asr; python -m venv .venv; .venv\Scripts\pip install whisper-normal
 cd cloud
 npm ci
 npm run test:harness   # node:test, 39 sınama — yerel sahte sağlayıcı (127.0.0.1)
-npm run test:worker    # vitest + workerd, 22 sınama — sahte sağlayıcı, ağ yok
+npm run test:fake      # node:test, 23 sınama — yerel sahte Worker; 18'i gerçek Worker'la ORTAK sözleşme (contract/cases.mjs)
+npm run test:worker    # vitest + workerd, 43 sınama (25 + aynı 18 sözleşme) — sahte sağlayıcı, ağ yok
 npm run typecheck
 ```
 

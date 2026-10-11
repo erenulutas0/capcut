@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { NextConfig } from 'next';
 
+import { cloudOriginFromEnv } from './scripts/lib/cloudOrigin.mjs';
+
 /**
  * Build identity for the diagnostics file ("Sorun bildir"). Read once at
  * build time and inlined as public constants: the page never has to ask a
@@ -45,6 +47,15 @@ if (testHooks && staticExport) {
   throw new Error('CLIP_TEST_HOOKS=1 is for the e2e build only; the static export (the published site) must not contain test hooks.');
 }
 
+/**
+ * The cloud transcript route (ADR-039) exists only in a build that names our
+ * proxy Worker: `NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL=https://…`. Empty — the
+ * default, the published site, CI — and the route is not in the build: no
+ * choice screen, no request to another origin, `connect-src 'self'`.
+ * A value that is not one https origin stops the build (cloudOrigin.mjs).
+ */
+const cloudOrigin = cloudOriginFromEnv();
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Doc 11 "private source map": no browser source maps are built or
@@ -67,6 +78,10 @@ const nextConfig: NextConfig = {
     // so the code behind it is removed from every other build; a static
     // export (the published site) refuses the flag outright below.
     NEXT_PUBLIC_CLIP_TEST_HOOKS: testHooks ? '1' : '',
+    // Always defined: '' and '' when the route is off, so the code behind it is removed from the build
+    // (scripts/apply-csp.mjs looks at the export and stops if it is there anyway).
+    NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL: cloudOrigin,
+    NEXT_PUBLIC_CLOUD_TRANSCRIPT: cloudOrigin ? '1' : '',
   },
 };
 

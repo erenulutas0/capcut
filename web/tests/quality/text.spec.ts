@@ -1,5 +1,6 @@
 import { test } from '@playwright/test';
 
+import { cloudTr } from '../../src/i18n/cloudMessages';
 import { tr } from '../../src/i18n/messages';
 import { strongJargon } from './lib/jargon';
 import { median, round, writeResult } from './lib/record';
@@ -22,15 +23,20 @@ import { median, round, writeResult } from './lib/record';
  * "Default path" = what a first-time user meets without opening the editor's
  * settings: the opening screen, the cards, the wizards, transcript, download
  * and error texts.
+ *
+ * The words of the cloud transcript route (ADR-039; `cloudMessages.ts`) are
+ * measured too, although the published site does not carry them: its consent
+ * screen and its failure sentences are default-path text of that route (the
+ * longer explanations of its privacy section are counted with "all").
  */
 
-const DEFAULT_PATH = /^(home|task|wizard|transcript|download|error|export\.fail|export\.save|silence\.failed|enhance|landing|preview\.pickVideo)\b/;
+const DEFAULT_PATH = /^(home|task|wizard|transcript|download|error|export\.fail|export\.save|silence\.failed|enhance|landing|preview\.pickVideo|cloud\.(?!privacy))\b/;
 
 const VOWELS = /[aeıioöuüâîû]/giu;
 
 function measure(raw: string) {
   // Placeholders are filled with short values in the app: they are not words to read.
-  const text = raw.replace(/\{\w+\}/g, '').replace(/\s+/g, ' ').trim();
+  const text = raw.replace(/\{\w+\}/g, '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
   const words = text.match(/[\p{L}\p{N}]+(?:[’'][\p{L}]+)?/gu) ?? [];
   const sentences = text.split(/[.!?…;:]+(?:\s+|$)/u).filter((part) => /[\p{L}\p{N}]/u.test(part));
   const syllables = words.reduce((sum, word) => sum + Math.max(1, (word.match(VOWELS) ?? []).length), 0);
@@ -53,7 +59,7 @@ const band = (score: number): string =>
   score >= 90 ? 'çok kolay' : score >= 70 ? 'kolay' : score >= 50 ? 'orta' : score >= 30 ? 'zor' : 'çok zor';
 
 test('text: readability of the Turkish strings', async ({}, testInfo) => {
-  const all = Object.entries(tr as Record<string, string>).map(([key, text]) => ({ key, text, defaultPath: DEFAULT_PATH.test(key), ...measure(text) }));
+  const all = Object.entries({ ...tr, ...cloudTr } as Record<string, string>).map(([key, text]) => ({ key, text, defaultPath: DEFAULT_PATH.test(key), ...measure(text) }));
   const summarize = (rows: typeof all) => {
     // A score needs a sentence to stand on: strings of five words or more.
     const scored = rows.filter((row) => row.score !== null && row.words >= 5);

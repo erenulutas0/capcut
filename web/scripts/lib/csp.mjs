@@ -75,8 +75,16 @@ export function inlineHashes(html) {
  * - img-src data: blob: — thumbnails and frame grabs made in the page.
  * - media-src blob: — the selected file plays from an object URL.
  * - worker-src blob: — mediabunny starts small helper workers from blobs.
+ * - connect-src: 'self' and nothing else — unless this build was given the
+ *   origin of our transcript proxy (ADR-039, `NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL`,
+ *   empty by default). Then exactly that one origin is added: no wildcard, and
+ *   never the speech provider's own address (the browser does not talk to it).
+ *   `connectOrigin` arrives already checked by scripts/lib/cloudOrigin.mjs.
  */
-export function buildPolicy({ scripts, styles, hasStyleAttributes }) {
+export function buildPolicy({ scripts, styles, hasStyleAttributes }, { connectOrigin = '' } = {}) {
+  if (connectOrigin !== '' && !/^https?:\/\/[a-z0-9.-]+(:\d+)?$/.test(connectOrigin)) {
+    throw new Error(`csp: "${connectOrigin}" is not a bare origin`);
+  }
   const styleSrc = ["'self'", ...(hasStyleAttributes ? ["'unsafe-hashes'"] : []), ...styles];
   return [
     "default-src 'self'",
@@ -85,7 +93,7 @@ export function buildPolicy({ scripts, styles, hasStyleAttributes }) {
     "img-src 'self' data: blob:",
     "media-src 'self' blob:",
     "font-src 'self'",
-    "connect-src 'self'",
+    `connect-src ${["'self'", ...(connectOrigin ? [connectOrigin] : [])].join(' ')}`,
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     "frame-src 'none'",
@@ -96,8 +104,8 @@ export function buildPolicy({ scripts, styles, hasStyleAttributes }) {
 }
 
 /** Writes (or rewrites) the policy tag into one HTML document. */
-export function applyCsp(html) {
-  const policy = buildPolicy(inlineHashes(html));
+export function applyCsp(html, options = {}) {
+  const policy = buildPolicy(inlineHashes(html), options);
   const tag = `<meta http-equiv="Content-Security-Policy" ${CSP_META_MARKER}="" content="${policy}"/>`;
   const stripped = html.replace(META_RE, '');
   const charset = /<meta charSet="utf-8"\/>|<meta charset="utf-8"\/?>/i.exec(stripped);

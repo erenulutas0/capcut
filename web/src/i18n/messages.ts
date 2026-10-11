@@ -1208,6 +1208,7 @@ export const tr = {
   'transcript.failed.nothing_heard': 'Bu videoda konuşma bulunamadı; yazılacak bir şey çıkmadı.',
   'transcript.machine': 'Otomatik yazıldı — yanlış olabilir, düzeltebilirsin.',
   'transcript.unclear': '(anlaşılamadı)',
+  'transcript.speaker': '{n}. kişi',
   'transcript.unclearCount': '{n} yer anlaşılamadı; dinleyip elle yazabilirsin.',
   'transcript.coverage': 'Bulunan konuşmanın yaklaşık yüzde {pct} kadarı yazıldı; {n} yer anlaşılamadı.',
   'transcript.coverage.larger': 'Bu, küçük modelle yazıldı. Önerilen büyük model anlaşılamayan yerlerin çoğunu yazabilir.',

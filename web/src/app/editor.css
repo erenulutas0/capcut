@@ -3394,3 +3394,17 @@ input[type='range'].ba-range:focus-visible + .ba-line .ba-handle {
     justify-content: center;
   }
 }
+
+/* Who said it (ADR-039, the cloud route's result): shown where the voice changes. */
+.transcript-said {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.transcript-speaker {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
+}

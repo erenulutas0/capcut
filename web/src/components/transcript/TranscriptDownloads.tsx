@@ -8,8 +8,9 @@ import type { Project } from '@/domain/edl';
 import { fileBaseName, wholeVideoRecipe, type KesitSettings } from '@/domain/kesit';
 import { serializeSubtitles, type SubtitleFormat } from '@/domain/subtitleFormats';
 import { totalOutputDurationUs } from '@/domain/timeline';
-import { transcriptText, type TranscriptLine } from '@/domain/transcript';
+import { speakerTurns, transcriptText, type TranscriptLine } from '@/domain/transcript';
 import type { MessageKey } from '@/i18n/messages';
+import { fillText } from './TranscribeSteps';
 
 type T = (key: MessageKey) => string;
 
@@ -28,12 +29,18 @@ export function TranscriptDownloads({
   settings,
   lines,
   videoName,
+  header,
+  speakers,
 }: {
   t: T;
   project: Project;
   settings: KesitSettings;
   lines: readonly TranscriptLine[];
   videoName: string;
+  /** The first line of the text file, when it is not the on-device one (the cloud route says where it was written). */
+  header?: string;
+  /** Which voice said which line, when the transcript tells voices apart: named in the text file where the voice changes. */
+  speakers?: ReadonlyMap<string, number>;
 }) {
   const base = fileBaseName(videoName);
   const whole = wholeVideoRecipe({ ...project, clips: [] }, settings);
@@ -42,7 +49,9 @@ export function TranscriptDownloads({
 
   const saveText = () => {
     const name = subtitleFileName(`${base}_yazi`, 'srt').replace(/\.srt$/, '.txt');
-    saveTextFile(name, transcriptText(lines, t('transcript.unclear'), t('transcript.file.header')), TEXT_MIME.txt);
+    const turns = speakerTurns(lines, speakers);
+    const speakerLabel = (line: TranscriptLine) => (turns.has(line.key) ? fillText(t('transcript.speaker'), { n: String(turns.get(line.key)) }) : null);
+    saveTextFile(name, transcriptText(lines, t('transcript.unclear'), header ?? t('transcript.file.header'), speakerLabel), TEXT_MIME.txt);
   };
   const saveSubtitles = (format: SubtitleFormat) => {
     if (noLines) return;

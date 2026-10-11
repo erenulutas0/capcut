@@ -7,5 +7,9 @@ export interface InlineHashes {
   hasStyleAttributes: boolean;
 }
 export function inlineHashes(html: string): InlineHashes;
-export function buildPolicy(hashes: InlineHashes): string;
-export function applyCsp(html: string): { html: string; policy: string };
+export interface PolicyOptions {
+  /** The one extra origin `connect-src` allows (the transcript proxy, ADR-039); '' or absent: none. */
+  connectOrigin?: string;
+}
+export function buildPolicy(hashes: InlineHashes, options?: PolicyOptions): string;
+export function applyCsp(html: string, options?: PolicyOptions): { html: string; policy: string };

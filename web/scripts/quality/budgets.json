@@ -9,6 +9,16 @@
   "walk.standin.*.yazi.strongJargon": { "max": 0, "why": "varsayılan yolda teknik terim olmamalı" },
   "walk.standin.*.yazi.unreachable": { "max": 0, "why": "her adım adıyla bulunabilmeli" },
 
+  "walk.fakecloud.*.yazi.completed": { "equals": true, "why": "bulut yolu (sahte sunucuya karşı): akış bir dosyayla bitmeli" },
+  "walk.fakecloud.desktop.yazi.clicks": { "max": 5, "why": "ölçülen: kart, video, kodu kaydet, sesi gönder, indir (davet kodu bir kez yazılır; kayıtlıysa 4)" },
+  "walk.fakecloud.phone.yazi.clicks": { "max": 6, "why": "ölçülen + telefonda Kaydet" },
+  "walk.fakecloud.*.yazi.decisions": { "max": 2, "why": "ölçülen: 'Yazıyı nerede çıkaralım?' (kodsuz ve kodlu hâli tek ekran sayılır) ve yazı ekranı" },
+  "walk.fakecloud.*.yazi.wordsMax": { "max": 180, "why": "bir ekranda okunacak kelime: rıza ekranı dört olguyu da söylemek zorunda, ama Yazıya dök'ün öbür ekranlarından kalabalık olmamalı" },
+  "walk.fakecloud.*.yazi.strongJargon": { "max": 0, "why": "rıza ekranında ve bulut yolunda teknik terim olmamalı" },
+  "walk.fakecloud.*.yazi.unreachable": { "max": 0, "why": "her adım adıyla bulunabilmeli" },
+  "walk.fakecloud.*.yazi.audioOnlyUploads": { "equals": 1, "why": "ADR-039: tam bir dosya gider ve o bir ses dosyasıdır" },
+  "walk.fakecloud.*.yazi.leftAtProvider": { "max": 0, "why": "ADR-039: yazı gelince sunucuda kayıt kalmamalı" },
+
   "walk.*.*.completed": { "equals": true, "why": "kart ne söz verdiyse dosya o olmalı" },
   "walk.desktop.*.clicks": { "max": 4, "why": "ölçülen en çok: Kes ve Müzik ekle 4; ötekiler 3 (kart, video, indir)" },
   "walk.phone.*.clicks": { "max": 5, "why": "masaüstü + telefonda Kaydet" },

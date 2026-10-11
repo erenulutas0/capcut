@@ -34,5 +34,7 @@ export default defineConfig({
   ],
   test: {
     include: ['test/**/*.test.ts'],
+    // The faked provider is one object in this Node process, shared by every test file: one file at a time.
+    fileParallelism: false,
   },
 });

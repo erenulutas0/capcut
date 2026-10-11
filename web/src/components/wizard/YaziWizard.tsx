@@ -1,9 +1,12 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useCallback, useMemo, useRef, useState } from 'react';
+
 
 import { ownSizeRecipe } from '@/application/taskRecipes';
 import { Icon } from '@/components/Icon';
+import type { CloudApplied, CloudRouteProps } from '@/components/transcript/CloudRoute';
 import { TranscribeSteps } from '@/components/transcript/TranscribeSteps';
 import { TranscriptDownloads } from '@/components/transcript/TranscriptDownloads';
 import { TranscriptPanel } from '@/components/transcript/TranscriptPanel';
@@ -15,6 +18,22 @@ import { translator, type MessageKey } from '@/i18n/messages';
 import { VideoPreview, WizardFlow, fill, lengthText, type WizardHostProps } from './WizardFlow';
 
 const t = translator('tr');
+
+/**
+ * "Yazıyı nerede çıkaralım?" (ADR-039): the choice between this device and
+ * the internet, and the internet route itself. It exists only in a build
+ * that names our proxy (`NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL`); in every other
+ * build — the published site among them — this is `null`, the import below
+ * is removed with it, and the wizard is exactly what it was before.
+ *
+ * The comparison is written out here, against the literal the build inlines:
+ * a flag imported from another module is not folded before the bundler
+ * decides which chunks exist, and the route's chunk would be published
+ * (scripts/apply-csp.mjs stops such an export).
+ */
+const CloudRoute = process.env.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1'
+  ? dynamic<CloudRouteProps>(() => import('@/components/transcript/CloudRoute'), { ssr: false })
+  : null;
 
 /**
  * "Yazıya dök" (ADR-036): the video's English speech as time-stamped text,
@@ -32,11 +51,24 @@ export default function YaziWizard(host: WizardHostProps) {
   const transcription = useTranscription();
   const mediaRef = useRef<HTMLVideoElement | null>(null);
   const [timeUs, setTimeUs] = useState(0);
+  /** Cloud route only (ADR-039): what its screen asks the frame to say, and the words of a result it wrote. */
+  const [cloudView, setCloudView] = useState<{ title: string | null; footer: string | null }>({ title: null, footer: null });
+  const [cloud, setCloud] = useState<CloudApplied | null>(null);
   const track = primaryCaptionTrack(project);
   const transcript = track?.origin === 'transcript' ? track : undefined;
   const lines = useMemo(() => transcriptLines(transcript), [transcript]);
   const hasLines = (transcript?.cues.length ?? 0) > 0;
   const silent = video?.hasAudio === false;
+
+  const onCloudApplied = useCallback((result: CloudApplied) => {
+    // The second call of a result only adds the minutes left; it must not bring back a result that was replaced.
+    setCloud((current) => (result.update && current?.jobId !== result.jobId ? current : result));
+  }, []);
+  const startOnDevice = () => {
+    if (!video) return;
+    setCloud(null);
+    void transcription.start({ file: video.file, durationUs: video.durationUs, apply: state.applyTranscript });
+  };
 
   const seek = useCallback((us: number) => {
     const element = mediaRef.current;
@@ -48,16 +80,24 @@ export default function YaziWizard(host: WizardHostProps) {
     <WizardFlow
       {...host}
       titleKey="wizard.yazi.title"
+      chooseTitle={transcript ? null : cloudView.title}
+      footerText={transcript ? (cloud?.footer ?? null) : cloudView.footer}
       fileTag="altyazili"
       downloadLabelKey="wizard.yazi.downloadVideo"
       recipe={video && hasLines ? project : null}
       working={!transcript}
       blockedText={transcript && !hasLines ? t('wizard.yazi.noLines') : null}
       preview={
-        video ? <VideoPreview video={video} mediaRef={mediaRef} onTime={setTimeUs} label={t('wizard.video.label')} /> : undefined
+        // On "Yazıyı nerede çıkaralım?" the question and its two answers are the screen (the video's name stays).
+        !transcript && cloudView.title ? (
+          <></>
+        ) : video ? (
+          <VideoPreview video={video} mediaRef={mediaRef} onTime={setTimeUs} label={t('wizard.video.label')} />
+        ) : undefined
       }
       openVideo={async (file) => {
         transcription.reset();
+        setCloud(null);
         const outcome = await state.importVideo(file, ownSizeRecipe);
         if (outcome.kind !== 'opened') return false;
         // The video's own frame: nothing of the picture is cut off.
@@ -69,7 +109,13 @@ export default function YaziWizard(host: WizardHostProps) {
       {video ? (
         transcript ? (
           <>
-            {transcription.job.kind === 'done' ? (
+            {cloud ? (
+              <p className="wizard-note" role="status" data-testid="yazi-cloud-summary">
+                <Icon name="check" />
+                <span>{cloud.summary}</span>
+              </p>
+            ) : null}
+            {!cloud && transcription.job.kind === 'done' ? (
               <p className="wizard-note" role="status" data-testid="yazi-summary">
                 <Icon name="check" />
                 <span>
@@ -83,7 +129,7 @@ export default function YaziWizard(host: WizardHostProps) {
                 </span>
               </p>
             ) : null}
-            {transcription.job.kind === 'done' && transcription.job.coverage.worthSaying ? (
+            {!cloud && transcription.job.kind === 'done' && transcription.job.coverage.worthSaying ? (
               // Plainly: how much of the speech became text. Not a warning that the user did something wrong.
               <div className="wizard-panel" data-testid="yazi-coverage">
                 <p className="wizard-panel-title" role="status">
@@ -120,6 +166,8 @@ export default function YaziWizard(host: WizardHostProps) {
               timeUs={timeUs}
               videoDurationUs={video.durationUs}
               machineMade
+              machineNote={cloud?.machineNote}
+              speakers={cloud?.speakers}
               onSeek={seek}
               onEdit={(cueId, text) => {
                 const result = state.updateCaption(cueId, { text });
@@ -130,7 +178,15 @@ export default function YaziWizard(host: WizardHostProps) {
                 return result.ok ? { ok: true } : { ok: false, reason: t(`captions.error.${result.reason}` as MessageKey) };
               }}
             />
-            <TranscriptDownloads t={t} project={project} settings={state.settings} lines={lines} videoName={video.fileName} />
+            <TranscriptDownloads
+              t={t}
+              project={project}
+              settings={state.settings}
+              lines={lines}
+              videoName={video.fileName}
+              header={cloud?.fileHeader}
+              speakers={cloud?.speakers}
+            />
             <p className="wizard-hint">{t('wizard.yazi.editorHint')}</p>
           </>
         ) : silent ? (
@@ -138,18 +194,23 @@ export default function YaziWizard(host: WizardHostProps) {
             {t('transcript.failed.no_audio')}
           </p>
         ) : (
-          <TranscribeSteps
-            t={t}
-            transcription={transcription}
-            canStart
-            onStart={() =>
-              void transcription.start({
-                file: video.file,
-                durationUs: video.durationUs,
-                apply: state.applyTranscript,
-              })
-            }
-          />
+          (() => {
+            const steps = <TranscribeSteps t={t} transcription={transcription} canStart onStart={startOnDevice} />;
+            // Without the cloud route (every published build): the on-device steps, as before.
+            if (!CloudRoute) return steps;
+            return (
+              <CloudRoute
+                key={video.objectUrl}
+                video={video}
+                transcription={transcription}
+                apply={state.applyTranscript}
+                deviceSteps={steps}
+                startDevice={startOnDevice}
+                onView={setCloudView}
+                onApplied={onCloudApplied}
+              />
+            );
+          })()
         )
       ) : null}
     </WizardFlow>

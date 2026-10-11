@@ -1,6 +1,8 @@
 # ADR-039 — Bulut yazıya dökme yolu (isteğe bağlı, davetli): yalnız ses çıkar, anahtar bir Worker'da durur
 
 > Tarih: 10 Ekim 2026 · Durum: **ÖNERİ / TASLAK** — hiçbir şey yayında değil, politika değişmedi
+> · 11 Ekim 2026: ilk gerçek ölçüm (ek) · 11 Ekim 2026: **istemci yapıldı, KAPALI doğar** (ek, "İstemci yapıldı");
+> Worker yayınlanmadı, durum kurucu yayınlayana kadar taslak kalır
 > İlgili: [ADR-036](ADR-036-on-device-transcript.md) (cihaz üstü yazıya dökme ve "Hâlâ zayıf olan"),
 > `docs/spikes/2026-10-03-asr-on-device-english.md`, `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md`,
 > `docs/privacy/DATA_INVENTORY.md`, `docs/security/2026-09-30-static-site-hardening.md`.
@@ -145,6 +147,9 @@ Sağlayıcı belgelerinden (10 Ekim 2026):
 
 ## Rıza ekranı — ne söylenmeli (metin önerisi; arayüz yapılmadı)
 
+> **11 Ekim 2026:** aşağıdaki metin önerisinin yerini kurucunun seçtiği **B, "İki yol yan yana"**
+> ekranı aldı (bkz. "Ek, 11 Ekim 2026 — istemci yapıldı"). Kurallar aynen bağlayıcıdır ve sınanır.
+
 Kurallar: bulut yolu **her seferinde** kullanıcının açık eylemiyle başlar; ön seçili değildir;
 rıza ekranı geçilmeden tek bayt yollanmaz; "Hayır, cihazımda yaz" aynı büyüklükte bir düğmedir;
 metin çocuğun anlayacağı sadeliktedir; "güvenli", "şifreli", "anonim" gibi kanıtlayamayacağımız
@@ -288,6 +293,12 @@ konuşmacı etiketleri için şema eklemesi gerekir (bu çalışmada tasarlanmad
 
 ## Yayın anında değişecekler (şimdi DEĞİŞMEDİ)
 
+> **11 Ekim 2026:** tablonun ilk üç satırı **koşullu olarak** yapıldı — CSP, veri envanteri (§8) ve
+> gizlilik sayfası artık derleme ayarına bakıyor; ayar boşken (bugün) hiçbiri değişmez. Politika
+> (belge 15), veri sorumlusu, sağlayıcı sözleşmesi ve bağımlılık denetimi satırları **açık**. CI'ya
+> iki şey eklendi: Pages derlemesi ve duman sınaması `vars.CLOUD_TRANSCRIPT_URL` değişkenini okur
+> (tanımsız = kapalı), ve bulut istemcisi yerel sahte Worker'a karşı koşar (yayını durdurmaz).
+
 | Nerede | Ne değişir |
 |---|---|
 | `web/scripts/lib/csp.mjs` (+ `web/tests/unit/csp.test.ts`, `docs/security/2026-09-30-static-site-hardening.md`) | `connect-src 'self'` → `'self' https://<worker-adresi>`. Tek bir kesin köken; joker yok. Sağlayıcının adresi **eklenmez** (tarayıcı ona hiç gitmez). Güvenlik belgesindeki "Uygulama dışarıya istek atmaz" satırı ve "origin dışı istek 0" e2e/duman denetimleri bulut yolu için ayrılmalı (rıza verilmeden origin dışı istek 0 kalmalı — bu sınanmalı). |
@@ -341,7 +352,198 @@ Okuma:
 - Ölçülmeyenler: gerçek Türkçe ve Japonca sohbet, çeviri, `audio_end_at` faturalaması, Worker'ın
   gerçek Cloudflare'deki davranışı.
 
-## Doğrulanmayanlar
+## Ek, 11 Ekim 2026 — istemci yapıldı, KAPALI doğar
+
+> Bu çalışmada da AssemblyAI'ye, Cloudflare'e ya da başka bir dış hizmete **tek bir istek
+> gitmedi**; hiçbir şey yayınlanmadı; `cloud/.env` okunmadı. İstemci, vekil sunucunun **yerel bir
+> sahtesine** (`cloud/fake-worker/`, 127.0.0.1) karşı yazıldı ve sınandı. Gerçek Worker'ın,
+> gerçek sağlayıcının ve gerçek bir telefonun davranışı **doğrulanmadı** (en altta).
+
+### Kurucu kararı: rıza ekranı B, "İki yol yan yana"
+
+"Yazıya dök" sihirbazında, yazıya dökme başlamadan önce tek ekran — **"Yazıyı nerede
+çıkaralım?"** — ve eş ağırlıkta iki kart: **Cihazımda** ("Hiçbir şey gitmez. Daha yavaş, biraz
+daha az doğru. Kimin konuştuğunu ayırmaz." → "Cihazımda yaz") ve **İnternette** ("Daha doğru,
+çok daha hızlı. Kimin konuştuğunu da ayırır." + dört olgu + "Yaklaşık N dakika sürer · X dakika
+düşer, Y dakikan kalır" → "Sesi gönder ve yaz"). Altında gizlilik sayfası bağlantısı. Yukarıdaki
+"Rıza ekranı" bölümündeki metin önerisinin yerini bu aldı; kurallar aynen bağlayıcıdır. Taslak,
+taslaktan farklar ve ekran görüntüleri: `docs/ux/2026-10-11-cloud-consent/`.
+
+### Tek ayar, varsayılan boş
+
+`NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL` — vekil Worker'ın kökeni, **derleme anında**. Boşken (yayındaki
+site, CI, bugünkü her derleme):
+
+- seçim ekranı yoktur; sihirbaz eskisiyle aynıdır (model adımı → Yazıya dök);
+- `connect-src 'self'` aynen kalır; başka kökene `fetch`, XHR, beacon ve WebSocket tarayıcı
+  tarafından engellenir (sınandı: yanında dinleyen bir sunucu hiçbir şey almadı);
+- bulut yolunun **kodu derlemede yoktur** — "ulaşılamaz" değil, yok: `scripts/apply-csp.mjs`
+  ayarsız bir durağan çıktıda `/v1/jobs`, `/v1/quota` ya da `AssemblyAI` bulursa derlemeyi
+  durdurur; bulut cümleleri ayrı bir tabloda (`web/src/i18n/cloudMessages.ts`) durur ve sayfalara
+  girmez;
+- gizlilik sayfası bugünkü cümlelerini söyler ("hiçbir sunucuya gönderilmez").
+
+Verildiğinde: tek bir `https://…` kökeni olmalıdır (yol, sorgu, joker, kimlik bilgisi, `http`
+derlemeyi durdurur — `web/scripts/lib/cloudOrigin.mjs`); `connect-src` **yalnızca o kökeni**
+kazanır (sağlayıcının adresi hiç eklenmez); seçim ekranı ve gizlilik sayfasının bulut bölümü gelir.
+
+### Bu çalışmada verilen kararlar
+
+| Konu | Karar | Neden |
+|---|---|---|
+| Rızadan önce giden istek | Kayıtlı davet kodu **yoksa** ekran hiçbir istek atmaz. Varsa yalnızca kalan dakikayı sorar (`GET /v1/quota`, kod `Authorization` başlığında; adreste asla). Ses, "Sesi gönder ve yaz"a basılmadan çıkmaz. | Karttaki "X dakika düşer, Y dakikan kalır" satırı Worker'ın cevabıdır. Gizlilik sayfası bunu söyler. |
+| Seçimin hatırlanması | Hatırlanmaz; her videoda soru yeniden gelir, hiçbir kart işaretli değildir. Tarayıcıda tutulan tek şey davet kodudur. | Bağlayıcı kural. |
+| Davet kodu | `localStorage` → `clip.cloudInvite`. Yalnızca "Kodu kaydet"e basılınca **ve Worker kodu kabul edince** yazılır; biçime uymayan kod hiçbir yere gönderilmez. Kartların altında ve gizlilik sayfasında "Davet kodunu kaldır". Geri çekilmiş kod bir sonraki açılışta silinir ve söylenir. | Çocuk için tek seferlik giriş; kod bir sır olduğu için adreste taşınmaz. |
+| Ses dosyası | Videonun sesi, cihaz üstü tanıyıcının okuduğu aynı akıştan (16 kHz, tek kanal, videonun kendi saatinde) **yeniden kodlanır**: Opus, 24 kbit/s, WebM. Kaynak dosyadan hiçbir şey kopyalanmaz (görüntü, öbür izler, başlık/konum/cihaz/tarih etiketleri, dosya adı). Opus kodlayıcısı yoksa AAC 32 kbit/s, MP4; o da yoksa "bu tarayıcı hazırlayamıyor" denir. | Ölçümde gönderilen biçim; kelime zamanları doğrudan video zamanıdır. Worker'ın tür ve ilk bayt denetimi ikisini de kabul ediyor — Worker'da tür denetimi değişmedi. |
+| Boyut | Ölçülen: **≈ 0,21 MB/dakika** (24 sn'lik örnek 85 KB; 10 dakikalık sessiz ton 2,12 MB). 120 dakika ≈ **25,5 MB** (Worker sınırı 95 MB; hız sınırı 64 kbit/s, ölçülen ≈ 28 kbit/s). | Yukarıdaki 21,6 MB tahmini kapsayıcı yükünü saymıyordu (WebM, 20 ms'lik her Opus çerçevesine birkaç bayt ekler). Konuşmayla ölçülmedi. |
+| Satır kuralları | Sağlayıcının kelimeleri "kesim"lere ayrılır: **konuşmacı değişince** ya da kelimeler arasında **1,0 sn'den uzun** boşluk olunca yeni kesim (ölçüm düzeneğiyle aynı boşluk). Kesimin içinde cihaz üstü satır kuralları aynen uygulanır (`subtitleSegmentation.ts`: 2 × 32 karakter, cümle sonu, 0,5 sn duraklama, 6 sn). | Panel, arama, "Bunlardan kesit yap", altyazı ve SRT/VTT değişmeden çalışır; bir satır iki kişinin sözünü taşımaz. |
+| "(anlaşılamadı)" | Bulut sonucunda yoktur. | Sağlayıcı "duydum ama yazamadım" bilgisi vermiyor; uydurulmadı. |
+| Konuşmacı etiketleri ve şema | **EDL v4 değişmedi.** Konuşmacı tarife yazılmaz. Sonuç ekranında ses değiştiği satırda "1. kişi / 2. kişi" görünür, metin dosyasına da yazılır; bu bilgi açık sihirbazla birlikte yaşar. Editöre geçince ve sayfa yenilenince etiketler yoktur (satır sınırları kalır). | Şema v5, yol **kapalıyken** herkesin kayıtlı tarifini ve yedek dosyalarını değiştirirdi ("kapalı derleme bugünküyle aynı davranmalı"). Yol açılırken v5 (satıra `speaker`) önerilir — kurucu kararı. |
+| Dil | Worker'a dil gönderilmez (otomatik algılama); izin dili sağlayıcının söylediğidir (`tr`, `en-US`…). | Cihaz üstü yol yalnız İngilizce; bulut yolunun farkı. |
+| "İnternette yazıldı" etiketi | Sonuç ekranında ve metin dosyasının başlığında; tarife yazılmaz. Editörün "Yazı" paneli aynı izi "Otomatik yazıldı — yanlış olabilir" diye gösterir. | Şema değişmediği için. |
+| Süre tahmini | `20 sn + ses dakikası × 0,75 sn`, tam dakikaya yukarı: 11 Ekim ölçümündeki 12 koşunun hepsinin üstünde. 53 dakikaya kadar "Yaklaşık 1 dakika", 120 dakikada 2. | Sesin cihazda hazırlanması ve yavaş bağlantı dahil **değil** (ölçülmedi). |
+| Cihaz kartındaki süre | Sayı yok: "Konuşmanın süresinin yarısı kadar sürebilir; yavaş cihazda daha uzun." | Her cihaz için dürüst bir tahminimiz yok (ADR-036 cümlesi). |
+| Vazgeçme | 15 dakika (ya da tahminin on katı) sonuç gelmezse iş bırakılır ve silinir. Birkaç kayıp durum sorgusu affedilir (≈ 9 sn), sonra "ulaşamadık". | Takılı kalan bekleme olmaz. |
+| Editördeki "Videoyu yazıya dök" | Yalnız cihaz üstü; bulut yolu sihirbazdadır. | Kapsam: karar sihirbaz içindi. |
+| Politika | `15_PRICING_FREE_PRO.md` ve `policy.ts` **değişmedi**; `policy.test.ts` bir cümle istemedi. | Bulut dakikasının ücretli/ücretsiz olması açık kurucu kararı. |
+
+### Worker'da değişenler (`cloud/worker/`, yayınlanmadı)
+
+1. **`x-job-id`** (isteğe bağlı, UUID): tarayıcı işi kendisi adlandırır. Böylece yarıda kesilen
+   bir yüklemeyi ya da yanıtı kaybolan bir başlatmayı `DELETE /v1/jobs/:id` ile geri verebilir;
+   yoksa aynı davet 30 dakika (çalışan iş için 24 saate kadar) "başka iş sürüyor" derdi. Var olan
+   bir ad kimin olursa olsun reddedilir (`job_id_taken`); biçimsiz ad `bad_job_id`.
+2. **Yükleme sürerken silinen iş** için sağlayıcıda kayıt açılmaz (`409 job_canceled`). Son anda
+   silinen işin kaydı sağlayıcıda hemen silinir; silinemezse kimliği işte tutulur ve temizlik
+   alarmı siler (önceden bu kayıt sahipsiz kalabilirdi).
+3. **Silme, durum çağrısına bağlı değil:** sağlayıcının durumu okunamasa da `DELETE` kaydı siler
+   (önceden 502 ile bitiyordu).
+4. Tür denetimi, sınırlar, tavan, hız sınırı, defterde tutulanlar: **değişmedi.**
+
+**Sözleşme ve sahte sunucu.** `cloud/contract/cases.mjs` tarayıcıya bakan API'yi 18 durumla
+anlatır; aynı liste hem workerd içindeki **gerçek Worker koduna** (`worker/test/contract.test.ts`)
+hem web sınamalarının konuştuğu **sahte Worker'a** (`fake-worker/test/contract.test.mjs`) koşar.
+Worker'ın cevabı değişirse sahte de aynı durumda kırılır; web sınamaları var olmayan bir API'ye
+kayamaz.
+
+### Bilinen sınır: işi başlamamış yükleme bizim elimizle silinemiyor
+
+Sağlayıcının API'si yüklenen sesi yalnızca **kaydıyla birlikte** siliyor. Yükleme sırasında
+durdurulan (ya da bağlantısı kopan) bir işte kayıt açılmadığı için silecek bir şey yoktur; o ana
+kadar sağlayıcıya ulaşmış ses, sağlayıcının kendi kuralıyla silinir ("24 saatte başlar, en çok 48
+saat" — yukarıdaki belge alıntısı). Ekran bu durumda "silindi" demez; şunu söyler: "Yazma işi
+durduruldu. Gönderilen sesten orada kalan olduysa, AssemblyAI bunu en geç iki gün içinde
+sildiğini söylüyor." Karttaki "Yazı gelince oradaki ses ve yazı silinir" cümlesi olağan yol
+içindir ve o yolda doğrudur.
+
+### Hata iletileri (hepsi "Cihazımda yaz"ı bir basış uzakta bırakır)
+
+| Ne oldu | Ekranda |
+|---|---|
+| Vekile ulaşılamadı (kartta) | İnternetteki yazıcıya ulaşamadık. İnternet bağlantına bak; cihazında da yazabiliriz. + "Yeniden dene" |
+| Vekile ulaşılamadı (iş sürerken) | İnternetteki yazıcıya ulaşamadık. İnternet bağlantına bakıp yeniden dene ya da cihazında yaz. |
+| Kapalı / aylık tavan doldu | Şu an internette yazamıyoruz. Cihazında yazabiliriz. |
+| Davet kodu biçimsiz | Bu bir davet koduna benzemiyor. Kod, tireyle ayrılmış dört grup harf ve rakamdır. |
+| Davet kodu geçersiz (girerken) | Bu davet kodu geçmiyor. Kodu kontrol edip yeniden yaz. |
+| Kayıtlı kod geri çekilmiş | Kayıtlı davet kodun artık geçmiyor. Yeni bir kod yazabilirsin. |
+| Kod kontrol edilemedi | Kodu kontrol edemedik: internetteki yazıcıya ulaşamadık. İnternet bağlantına bakıp yeniden dene. |
+| Kod iş başlarken reddedildi | Davet kodun geçmiyor. Yeni bir kod yaz ya da cihazında yaz. |
+| Dakika yetmiyor (kartta) | Bu videonun sesi X dakika; Y dakikan kaldı. Yetmiyor. Cihazında yazabiliriz. |
+| Dakika yetmiyor (iş başlarken) | Dakikan bu video için yetmiyor. Cihazında yazabiliriz. |
+| Ses çok uzun (kartta) | Bu video çok uzun: internette en çok N dakikalık ses yazılabiliyor. Cihazında yazabiliriz. |
+| Ses çok uzun (iş başlarken) | Bu video internette yazmak için çok uzun. Cihazında yazabiliriz. |
+| Aynı davetle başka iş sürüyor | Bu davet koduyla başka bir yazma işi sürüyor. Bitince yeniden dene ya da cihazında yaz. |
+| Çok sık deneme | Çok sık denendi. Bir süre sonra yeniden dene ya da cihazında yaz. |
+| Yükleme yarıda kesildi | Gönderme yarıda kesildi; yazı çıkmadı. İnternet bağlantına bakıp yeniden dene ya da cihazında yaz. |
+| Sağlayıcı hata verdi (yükleme, başlatma, kayıt, durum, sonuç) | Olmadı: internetteki yazıcı bu sesi yazamadı. Yeniden dene ya da cihazında yaz. (Sağlayıcının metni ekrana geçmez.) |
+| Sonuç boş | Yazı boş geldi: bu seste yazıya dökülecek konuşma bulunamadı. İstersen cihazında dene. |
+| Çok uzun sürdü | Çok uzun sürdü, durdurduk; yazı çıkmadı. Yeniden dene ya da cihazında yaz. |
+| Tarayıcı sesi hazırlayamıyor | Bu tarayıcı videonun sesini gönderilecek hâle getiremiyor; hiçbir şey gönderilmedi. Cihazında yazabiliriz. |
+| Videonun sesi okunamadı | Bu videonun sesi okunamadı; hiçbir şey gönderilmedi. Cihazında deneyebilirsin. |
+| Beklenmeyen | Bir şey ters gitti; yazı çıkmadı. Yeniden dene ya da cihazında yaz. |
+| Kullanıcı durdurdu | Durduruldu; yazı çıkmadı. |
+
+Ses gönderilmişse iletinin altına ne olduğu da yazılır: "Gönderilen ses oradan silindi." (iş
+başlamıştı ve silme çağrısı başarılı) · yukarıdaki "Yazma işi durduruldu…" cümlesi (iş
+başlamamıştı) · "Gönderilen sesi şimdi silemedik; sunucumuz silmeyi kendiliğinden yeniden dener."
+(silme çağrısı yapılamadı). Vekilin kapısında reddedilen işte (davet, dakika, kapalı, tek iş, hız
+sınırı) hiçbir şey sağlayıcıya geçmediği için böyle bir cümle çıkmaz.
+
+### Sınamalar (11 Ekim 2026, bu çalışma ağacında koşuldu; hepsi yerel)
+
+| Ne | Sonuç |
+|---|---|
+| `cloud/harness` — `node --test harness/test/` | **39 / 39** |
+| `cloud/worker` — vitest + workerd, gerçek Durable Object | **43 / 43** (25 + 18 ortak sözleşme durumu); `tsc --noEmit` hatasız |
+| `cloud/fake-worker` — `node --test fake-worker/test/` | **23 / 23** (aynı 18 sözleşme durumu + sahteye özgü 5) |
+| Web: `tsc --noEmit`, `eslint .` | hatasız |
+| Web birim (vitest) | **1276 / 1276** (75 dosya; 39'u yeni: `cloudTranscript.test.ts`, `cloudBuild.test.ts`) |
+| Web e2e, olağan derleme (yol **kapalı**; `CLIP_TEST_HOOKS=1`) | Son kodda 362 sınama: **358 geçti, 4 atlandı, 0 başarısız** (atlananlar: 2 ekran görüntüsü, 2 gerçek-model sınaması — model dosyaları yok). Bir önceki tam koşuda 357 geçti / 1 başarısız: başarısız olan bu çalışmanın yeni sınamasıydı (`cloud-off.spec.ts`, `sendBeacon`'ın dönüş değerine bakıyordu; tarayıcı işareti kuyruğa alıp sonra engelliyor). Sınama, dinleyen sunucunun hiçbir şey almadığına bakacak biçimde düzeltildi; uygulama kodu iki koşu arasında değişmedi. |
+| Web e2e, bulut derlemesi, yerel sahte Worker'a karşı (`playwright.cloud.config.ts`) | **36 / 36** (+ tasarım kaydı için 4 ekran görüntüsü betiği) |
+| Durağan çıktı, varsayılan (`STATIC_EXPORT=1`, `/capcut`) | derlendi; 17 sayfanın hepsinde `connect-src 'self'`; çıktıda bulut kodu ve cümlesi yok (`pages-smoke.spec.ts`'in yeni sınaması geçti) |
+| Durağan çıktı, ayar verilmiş (`https://lilocut-transcript-proxy.example.workers.dev`, yer tutucu; istek atılmadı) | derlendi; 17 sayfanın hepsinde `connect-src 'self' https://lilocut-transcript-proxy.example.workers.dev`; sayfaların politikasında başka hiçbir köken yok; `pages-smoke.spec.ts`'in bulut sınaması aynı ayarla geçti |
+| Biçimsiz ayar (`http://…/v1`) | derleme durdu ("must be one origin…") |
+| Pages duman sınaması (varsayılan çıktı, model dosyaları olmadan) | 8 sınama: 4 geçti, 2 atlandı (model), **2 başarısız — ikisi de bu çalışmadan bağımsız**: biri "Dikey yap"tan hâlâ 1080 × 1920 bekliyor (ADR-041'den beri 640 × 1138), öbürü `NEXT_PUBLIC_SUPPORT_CONTACT` verilmeden derlenen çıktıda destek bağlantısını arıyor (CI bu değişkeni verir) |
+| `npm run quality` | 625 ölçü: **547 bütçe içinde, 9 dışında**, 5 ölçülemedi (model dosyaları yok), 64 bütçesiz. Dışındakilerin sekizi önceki koşudakilerdir (yedisi arama, biri dizinin sonda olması); **yenisi**: rıza ekranının kurucu onaylı "AssemblyAI adlı şirketin Avrupa'daki bilgisayarlarına gider." cümlesi okunabilirlikte "çok zor" çıkıyor (metne dokunulmadı, bütçe gevşetilmedi — `docs/quality/bulgular.md`). Var olan ekran tabanlarının hiçbiri değişmedi; bulut yürüyüşü için 10 yeni taban. Rapor: `docs/quality/latest.md` (bulut satırları "sahte sunucuya karşı" etiketli) |
+
+### Doğrulanmayanlar (bu ek için)
+
+- **Gerçek Worker.** CORS ön uçuşu, `x-job-id`, akıtılan gövde, istemcinin bağlantıyı kesmesinin
+  Worker'da nasıl göründüğü, 10 ms işlemci sınırı — hiçbiri gerçek Cloudflare'de çalışmadı.
+  Sözleşme workerd'de geçiyor; gerçek ağ geçmedi.
+- **Gerçek sağlayıcı bu dosyayla.** Ölçümde sağlayıcıya ffmpeg'in ürettiği Ogg/Opus gitti;
+  tarayıcının ürettiği **WebM/Opus** (ve AAC/MP4) dosyasını kabul ettiği, kelime zamanlarının
+  video zamanıyla örtüştüğü (Opus ön atlaması birkaç ms'dir) **sınanmadı**.
+- **Opus kodlayıcısı olmayan tarayıcılar.** Yedek yol (AAC, MP4) bu makinedeki Chromium'da
+  denenemedi: 16 kHz tek kanal AAC kodlayıcısı yok; sınama bunu görür ve "hazırlanamıyor" iletisini
+  doğrular. Safari ve Firefox'ta ses hazırlama hiç denenmedi.
+- **Gerçek telefon.** Sesin hazırlanma süresi, bellek, arka plana alınan sekme, mobil ağda yükleme
+  ilerlemesi, sekme kapanırken giden silme isteği (`keepalive`).
+- **Boyut ve süre, konuşmayla.** 0,21 MB/dakika sessiz bir tonla ve 24 sn'lik deneme sesiyle
+  ölçüldü. "Yaklaşık N dakika" sağlayıcının 11 Ekim'deki hızına dayanır; cihazdaki hazırlık ve
+  yükleme süresi eklenmedi.
+- **Uzun dosya.** 120 dakikalık bir videonun sesi tarayıcıda uçtan uca hazırlanmadı (en uzun
+  deneme 10 dakika).
+- **Kalite.** Sahte sunucu konuşmayı duymaz. Yazının doğruluğu için tek kaynak yukarıdaki 11 Ekim
+  ölçümüdür; bu çalışmanın hiçbir sayısı doğruluk hakkında bir şey söylemez.
+
+### Yayın için yapılacaklar (kurucu; sırayla)
+
+1. **Worker'ı yayınla** (`cloud/worker/README.md`; wrangler Node 22 ister): `wrangler deploy`,
+   `wrangler secret put ASSEMBLYAI_API_KEY`, `wrangler secret put ADMIN_TOKEN`. Değişkenler:
+   `ENABLED=true`, `MONTHLY_CAP_USD` (öneri 1), `ALLOWED_ORIGINS` içinde sitenin kökeni
+   (`https://erenulutas0.github.io` hazır), `PROVIDER_REGION=eu` (**ekran "Avrupa'daki
+   bilgisayarlar" diyor; `us` yapılırsa ekran ve gizlilik metni yalan söyler**).
+2. **Davet kodu üret:** `curl -X POST https://<worker>/admin/invites -H "Authorization: Bearer <ADMIN_TOKEN>" -d '{"label":"…","minutes":60}'`.
+3. **Siteye köken ver:** GitHub → depo → Settings → Secrets and variables → Actions →
+   **Variables** → `CLOUD_TRANSCRIPT_URL = https://<worker-kökeni>` (yol ve sondaki `/` olmadan).
+   `.github/workflows/ci.yml` bu değişkeni Pages derlemesine ve duman sınamasına
+   `NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL` olarak geçirir; değişken yokken boştur (yol kapalı).
+   Yerelde denemek için: `$env:NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL='https://…'; npm run build`.
+4. **Bak:** yayından sonra `/gizlilik` sayfasında "İnternette yazıya dökme" bölümü görünmeli;
+   sayfa kaynağındaki `connect-src` tam olarak `'self' https://<worker-kökeni>` olmalı.
+5. **Kapatmak:** değişkeni sil ve yeniden yayınla (ekran ve kod gider) — ya da hemen, yayın
+   beklemeden: `POST /admin/kill {"on":true}` (kart "Şu an internette yazamıyoruz" der).
+
+### Kurucu kararları gerekiyor (bu ek için)
+
+1. **Cihaz kartına eklenen "Şimdilik yalnızca İngilizce."** — onaylanan metinde yoktu; kalsın mı?
+2. **Konuşmacı etiketleri kalıcı olsun mu?** Evetse EDL v5 (satıra `speaker`), yol açılırken.
+   Bugün: yalnız açık sonuç ekranında ve metin dosyasında.
+3. **İşi başlamamış yükleme** (yukarıdaki sınır): ekranın söylediği cümle yeterli mi; yoksa
+   Worker durdurulan yükleme için kaydı açıp hemen silsin mi (sağlayıcının bunu nasıl
+   faturaladığı bilinmiyor)?
+4. **Bulut dakikası ücretsiz mi, ücretli mi, deneme mi** — politika belgesi 15 buna göre
+   yazılacak; bugün dokunulmadı.
+5. **Veri sorumlusu (K02).** Gizlilik sayfasının bulut bölümü "davetli deneme; veri sorumlusu
+   belirlenmedi" diyor. Belirlenmeden deneme dışına açılmamalı.
+6. **CI'da bulut sınaması:** bugün koşuyor ama yayını **durdurmuyor** (`continue-on-error`); yol
+   açıldığında durdurmalı mı?
+7. **Gerçek doğrulama sırası:** önce kurucunun kendi telefonunda, kendi davet koduyla, tek bir
+   kısa videoyla (bedeli < 0,01 $) uçtan uca deneme önerilir — yukarıdaki "Doğrulanmayanlar"ın
+   ilk dördünü kapatır.
+
+## Doğrulanmayanlar (10 Ekim taslağı)
 
 - **Sağlayıcının kendisi:** doğruluk, hız, gerçek hata metinleri, hız sınırı davranışı — hiçbiri
   ölçülmedi (istek atılmadı). Sahte sağlayıcı yalnız belgelenen şekilleri taklit eder.
@@ -354,7 +556,7 @@ Okuma:
 - Konuşmacı ayrımının Türkçe ve Japoncada desteklenip desteklenmediği (sayfa dil listesi vermiyor).
 - Saklama süresi belgeleri kendi içinde tutarsız (eski bir SSS "süresiz" diyor; güncel sayfa 30 gün).
 - Opus 24 kbit/s'in doğruluğa etkisi (sağlayıcı "özgün biçimde gönderin" öneriyor).
-- Tarayıcının yalnız-ses Opus dosyasını üretebilmesi (WebCodecs + `mediabunny`) — arayüz yapılmadı, denenmedi.
+- ~~Tarayıcının yalnız-ses Opus dosyasını üretebilmesi (WebCodecs + `mediabunny`)~~ — 11 Ekim: Chromium'da üretildi ve ffprobe ile doğrulandı (tek ses izi, Opus, tek kanal); başka tarayıcılar ve sağlayıcının bu dosyayı kabulü hâlâ doğrulanmadı (yukarıdaki ek).
 - Worker gerçek Cloudflare'de hiç çalışmadı: 10 ms işlemci sınırı, Free planda alarm, akıtılan
   gövde. `wrangler deploy --dry-run` da koşulamadı (bu makinede Node 20; wrangler 22 istiyor).
 - Cloudflare sınırları `developers.cloudflare.com` yerine belgelerin kaynak deposundan okundu

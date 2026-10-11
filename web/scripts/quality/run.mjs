@@ -1,9 +1,11 @@
 /**
  * `npm run quality` — the quality measurement layer (docs/quality/README.md).
  *
- * Builds what people get (the static export) and, for the one flow that
- * needs a stand-in recogniser, the test-hooks build; serves them on this
- * script's own port; runs the measurements of tests/quality under the
+ * Builds what people get (the static export), for the one flow that needs a
+ * stand-in recogniser the test-hooks build, and for the cloud transcript
+ * route (ADR-039; not in the published site) a build that names a LOCAL FAKE
+ * of our proxy; serves them on this script's own port; runs the measurements
+ * of tests/quality under the
  * machine-wide measure lock; judges the numbers against budgets.json; and
  * writes docs/quality/latest.md, latest.json and a line of history.jsonl.
  *
@@ -21,7 +23,7 @@
  * Nothing leaves the machine: local servers on 127.0.0.1, synthetic media.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, openSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -42,10 +44,15 @@ const option = (name) => {
 /**
  * Every section: which result files it owns, and what has to run for it.
  * `build`: 'static' = the export people get, 'hooks' = the CLIP_TEST_HOOKS=1
- * build (stand-in recogniser), 'none' = no browser page at all.
+ * build (stand-in recogniser), 'cloud' = the same with the cloud transcript
+ * route on, pointed at the local fake Worker of tests/cloud (never a real
+ * service), 'none' = no browser page at all.
  */
+/** Where the fake Worker of the cloud walkthrough listens (tests/cloud/cloudKit.ts): the cloud build is given this origin. */
+const FAKE_WORKER_ORIGIN = 'http://127.0.0.1:38197';
 export const SECTIONS = [
-  { id: 'walkthrough', results: ['walkthrough', 'walkthrough-yazi'], runs: [
+  { id: 'walkthrough', results: ['walkthrough', 'walkthrough-yazi', 'walkthrough-yazi-bulut'], runs: [
+    { build: 'cloud', spec: 'walkthrough-yazi-bulut.spec.ts', projects: ['desktop', 'phone'] },
     { build: 'hooks', spec: 'walkthrough-yazi.spec.ts', projects: ['desktop', 'phone'] },
     { build: 'static', spec: 'walkthrough.spec.ts', projects: ['desktop', 'phone'] },
   ] },
@@ -105,6 +112,26 @@ function freePort() {
     const out = spawnSync('lsof', ['-ti', `tcp:${PORT}`], { encoding: 'utf8' }).stdout ?? '';
     for (const pid of out.split(/\s+/).filter(Boolean)) spawnSync('kill', ['-9', pid]);
   }
+}
+
+/**
+ * .next/ holds ONE server build. Which one is written next to it after every build this script makes, so
+ * `--no-build` reuses it only when it is the build the measurement needs — a walkthrough of the cloud route
+ * against the ordinary build (or the other way round) would measure the wrong screens.
+ */
+const BUILD_MARK = join(webDir, '.next', 'quality-build.txt');
+function ensureServerBuild(build) {
+  const have = existsSync(BUILD_MARK) ? readFileSync(BUILD_MARK, 'utf8').trim() : null;
+  if (flags.has('--no-build') && have === build) return;
+  if (flags.has('--no-build')) console.log(`quality: .next/ holds ${have ? `the ${have} build` : 'a build this script did not make'}; the ${build} build is made now`);
+  if (build === 'cloud') {
+    console.log(`quality: building with the cloud transcript route ON, pointed at the local fake Worker (${FAKE_WORKER_ORIGIN}; never published, no real service)`);
+    if (npmRunBuild({ STATIC_EXPORT: '', NEXT_PUBLIC_BASE_PATH: '', CLIP_TEST_HOOKS: '1', NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL: FAKE_WORKER_ORIGIN }) !== 0) process.exit(1);
+  } else {
+    console.log('quality: building with test hooks (stand-in recogniser; never published)');
+    if (npmRunBuild({ STATIC_EXPORT: '', NEXT_PUBLIC_BASE_PATH: '', CLIP_TEST_HOOKS: '1', NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL: '' }) !== 0) process.exit(1);
+  }
+  writeFileSync(BUILD_MARK, `${build}\n`);
 }
 
 async function startServer(build) {
@@ -205,15 +232,12 @@ process.on('SIGINT', () => {
 if (!flags.has('--report-only')) {
   const builds = new Set(sections.flatMap((section) => section.runs.map((item) => item.build)));
   if (!flags.has('--no-build')) {
-    // The export first: it leaves out/ behind; the hooks build then owns .next/.
+    // The export first: it leaves out/ behind. The two server builds share .next/ and are made one after the
+    // other, each right before its own measurements (below).
     if (builds.has('static')) {
       console.log('quality: building the static export (what people get)');
       rmSync(join(webDir, 'out'), { recursive: true, force: true });
-      if (npmRunBuild({ STATIC_EXPORT: '1', NEXT_PUBLIC_BASE_PATH: '', CLIP_TEST_HOOKS: '' }) !== 0) process.exit(1);
-    }
-    if (builds.has('hooks')) {
-      console.log('quality: building with test hooks (stand-in recogniser; never published)');
-      if (npmRunBuild({ STATIC_EXPORT: '', NEXT_PUBLIC_BASE_PATH: '', CLIP_TEST_HOOKS: '1' }) !== 0) process.exit(1);
+      if (npmRunBuild({ STATIC_EXPORT: '1', NEXT_PUBLIC_BASE_PATH: '', CLIP_TEST_HOOKS: '', NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL: '' }) !== 0) process.exit(1);
     }
   }
   if (builds.has('static') && !existsSync(join(webDir, 'out', 'index.html'))) {
@@ -224,13 +248,15 @@ if (!flags.has('--report-only')) {
   if (!option('grep')) clearResults(sections);
 
   try {
-    if (builds.has('static') || builds.has('hooks')) {
+    if (builds.has('static') || builds.has('hooks') || builds.has('cloud')) {
       await acquire(`quality runner (${sections.map((section) => section.id).join(', ')})`);
       locked = true;
     }
-    for (const build of ['none', 'hooks', 'static']) {
+    // 'cloud' before 'hooks': .next/ is left holding the ordinary test-hooks build, as the e2e suite expects it.
+    for (const build of ['none', 'cloud', 'hooks', 'static']) {
       const jobs = sections.flatMap((section) => section.runs.filter((item) => item.build === build).map((item) => ({ section: section.id, ...item })));
       if (jobs.length === 0) continue;
+      if (build === 'cloud' || build === 'hooks') ensureServerBuild(build);
       if (build !== 'none') server = await startServer(build);
       try {
         for (const job of jobs) {

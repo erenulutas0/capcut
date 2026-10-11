@@ -273,10 +273,40 @@ export function lineClock(us: Micros): string {
  * are in the file too, in the reader's words — leaving them out would make
  * the text look complete when it is not.
  */
-export function transcriptText(lines: readonly TranscriptLine[], unclearLabel: string, header: string): string {
+export function transcriptText(
+  lines: readonly TranscriptLine[],
+  unclearLabel: string,
+  header: string,
+  /** "1. kişi" for a line where the voice changes (see `speakerTurns`); absent: no voices are named. */
+  speakerLabel?: (line: TranscriptLine) => string | null,
+): string {
   const body = lines.map((line) => {
     const text = line.kind === 'cue' ? line.text.split('\n').join(' ') : unclearLabel;
-    return `[${stamp(line.startUs)}] ${text}`;
+    const speaker = speakerLabel?.(line) ?? null;
+    return `[${stamp(line.startUs)}] ${speaker ? `${speaker}: ` : ''}${text}`;
   });
   return `${[header, '', ...body].join('\r\n')}\r\n`;
+}
+
+/**
+ * Where the voice changes (ADR-039): the lines at which a speaker's number is
+ * shown — the first line of every turn, nothing on the lines that follow it.
+ * Empty unless at least two voices are told apart: "1. kişi" on a video with
+ * one speaker says nothing.
+ */
+export function speakerTurns(
+  lines: readonly TranscriptLine[],
+  speakers: ReadonlyMap<string, number> | undefined,
+): Map<string, number> {
+  const turns = new Map<string, number>();
+  if (!speakers || new Set(speakers.values()).size < 2) return turns;
+  let previous: number | null = null;
+  for (const line of lines) {
+    if (line.kind !== 'cue') continue;
+    const speaker = speakers.get(line.cueId);
+    if (speaker === undefined || speaker === previous) continue;
+    turns.set(line.key, speaker);
+    previous = speaker;
+  }
+  return turns;
 }

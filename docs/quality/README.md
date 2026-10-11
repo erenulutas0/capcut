@@ -46,6 +46,18 @@ Gerekenler: Node 20, `npm ci`, Playwright'ın Chromium'u (`npx playwright instal
 ffprobe (yolda). VMAF yalnızca yerel ffmpeg libvmaf ile derlenmişse ölçülür; betik bunu sorar,
 varsaymaz.
 
+**Bulut yazıya dökme yolu (ADR-039; 11 Ekim 2026).** Yol yayındaki sitede yoktur; ama rıza ekranı
+ve akışı ölçülür: `walkthrough` bölümü, yolun açık olduğu test kancalı bir derlemeyi **yerel sahte
+Worker'a** (`cloud/fake-worker/`, 127.0.0.1:38197) karşı yürütür (`walkthrough-yazi-bulut.spec.ts`)
+ve ekranlarını tabanlarla karşılaştırır (`yol-yazi-bulut-*`). Rapor bu satırları **"sahte
+sunucuya karşı"** diye etiketler: akışı, okunacak kelimeyi, sade dili, giden şeyin tek bir ses
+dosyası olduğunu ve sunucuda kayıt kalmadığını ölçer; **yazının doğruluğu ya da gerçek sunucunun
+hızı hakkında hiçbir şey söylemez.** Bulut cümleleri (`cloudMessages.ts`) okunabilirlik ölçümüne
+de girer. Hiçbir dış hizmete istek atılmaz. `.next/` tek sunucu derlemesi tutar: betik önce bulut
+derlemesini, sonra olağan test kancalı derlemeyi yapar (koşu sonunda `.next/` olağan e2e
+derlemesidir) ve hangisinin durduğunu `.next/quality-build.txt`'ye yazar; `--no-build` yanlış
+derlemeyi kullanmaz, yeniden derler.
+
 **Süre** (bu makinede, 10 Ekim 2026; 12 çekirdek, 64 GB): iki derlemeyle birlikte toplam yaklaşık 9 dakika,
 kilit beklemesi hariç. En uzun bölümler çıktı kalitesi ve yükleme ölçümleri (ikişer dakika), sonra hata
 yolları (80 hücre) ve yürüyüşler (birer dakika). `search` ve `text` tarayıcı açmaz, birer saniye sürer.

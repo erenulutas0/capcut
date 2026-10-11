@@ -5,7 +5,9 @@
  * Worker and the Worker talks to the provider. Sound only: the browser sends
  * an audio file it made itself; the picture never reaches this code.
  *
- *   POST   /v1/jobs               start: the request body IS the audio (streamed through, never buffered)
+ *   POST   /v1/jobs               start: the request body IS the audio (streamed through, never buffered);
+ *                                 the browser may name the job itself (`x-job-id`, a random UUID), so it can
+ *                                 delete a job whose start it cancelled or whose answer never arrived
  *   GET    /v1/jobs/:id           status (no text)
  *   GET    /v1/jobs/:id/result    the transcript, passed through, then deleted at the provider
  *   DELETE /v1/jobs/:id           delete at the provider now
@@ -31,7 +33,7 @@ const AUDIO_TYPES: Record<string, (head: Uint8Array) => boolean> = {
   'audio/x-wav': (h) => ascii(h, 0, 'RIFF') && ascii(h, 8, 'WAVE'),
   'audio/mpeg': (h) => ascii(h, 0, 'ID3') || (h[0] === 0xff && (h[1] & 0xe0) === 0xe0),
 };
-const ALLOWED_HEADERS = 'authorization, content-type, x-audio-duration-s, x-language, x-speaker-labels';
+const ALLOWED_HEADERS = 'authorization, content-type, x-audio-duration-s, x-job-id, x-language, x-speaker-labels';
 const LANGUAGE = /^(auto|[a-z]{2,3}(_[a-z]{2})?)$/;
 const JOB_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -140,10 +142,13 @@ async function api(request: Request, url: URL, env: Env, ctx: ExecutionContext, 
     const language = (request.headers.get('x-language') ?? 'auto').toLowerCase();
     if (!LANGUAGE.test(language)) return json({ error: 'bad_language' }, 400, cors);
     const speakerLabels = config.speakerLabels && request.headers.get('x-speaker-labels') !== '0';
+    // The browser's own name for the job (optional): with it, a cancelled upload or a lost answer can still be deleted.
+    const wantedId = request.headers.get('x-job-id');
+    if (wantedId !== null && !JOB_ID.test(wantedId)) return json({ error: 'bad_job_id' }, 400, cors);
 
     const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
     const ipHash = (await sha256Hex(`ip:${env.ADMIN_TOKEN}:${ip}`)).slice(0, 32);
-    const reservation = await ledger.reserve({ inviteHash, ipHash, declaredS, bytes: length });
+    const reservation = await ledger.reserve({ inviteHash, ipHash, declaredS, bytes: length, ...(wantedId ? { jobId: wantedId } : {}) });
     if (!reservation.ok) {
       return json({ error: reservation.code }, reservation.status, { ...cors, ...(reservation.retryAfterS ? { 'retry-after': String(reservation.retryAfterS) } : {}) });
     }
@@ -169,6 +174,8 @@ async function api(request: Request, url: URL, env: Env, ctx: ExecutionContext, 
       pump.catch(() => {}); // a broken upload surfaces through uploadAudio below
       const uploadUrl = await uploadAudio(config.providerBase, key as string, readable);
       await pump;
+      // Deleted by the browser while the sound was still arriving (DELETE /v1/jobs/:id): nothing is started for it.
+      if (!(await ledger.isReserved(reservation.jobId))) return json({ error: 'job_canceled' }, 409, cors);
       transcriptId = await createTranscript(config.providerBase, key as string, {
         audioUrl: uploadUrl,
         speechModels: config.speechModels,
@@ -176,7 +183,16 @@ async function api(request: Request, url: URL, env: Env, ctx: ExecutionContext, 
         speakerLabels,
         audioEndAtMs: (reservation.reservedS + 1) * 1000,
       });
-      await ledger.attachTranscript(reservation.jobId, transcriptId);
+      if (!(await ledger.attachTranscript(reservation.jobId, transcriptId))) {
+        // Deleted in the last moment, after the provider accepted it: remove it there now. The id is kept on
+        // the (failed) job until that worked, so the clean-up alarm finishes what this call could not.
+        await ledger.rememberOrphan(reservation.jobId, transcriptId);
+        const orphan = transcriptId;
+        transcriptId = null;
+        await deleteTranscript(config.providerBase, key as string, orphan);
+        await ledger.markDeleted(reservation.jobId);
+        return json({ error: 'job_canceled' }, 409, cors);
+      }
     } catch (error) {
       await ledger.release(reservation.jobId);
       if (transcriptId) ctx.waitUntil(deleteTranscript(config.providerBase, key as string, transcriptId).catch(() => {}));
@@ -235,7 +251,13 @@ async function api(request: Request, url: URL, env: Env, ctx: ExecutionContext, 
     if (request.method === 'DELETE' && !match[2]) {
       if (job.state === 'running') {
         // Cancelled while the provider is still working: it may bill what it processed, so the reservation counts as spent.
-        const live = await refresh();
+        // The delete must not depend on the status call: when the provider's status cannot be read, it is deleted all the same.
+        let live: 'queued' | 'processing' | 'done' = 'processing';
+        try {
+          live = await refresh();
+        } catch {
+          // counted as still working
+        }
         if (live !== 'done') job = await ledger.settle(jobId, { status: 'completed', actualS: null });
       } else if (job.state === 'reserved') {
         await ledger.release(jobId);

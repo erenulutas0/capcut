@@ -16,11 +16,15 @@
 import { readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
+import { cloudOriginFromEnv } from './lib/cloudOrigin.mjs';
 import { applyCsp } from './lib/csp.mjs';
 
 const root = process.cwd();
 const staticExport = process.env.STATIC_EXPORT === '1';
 const dir = join(root, staticExport ? 'out' : join('.next', 'server', 'app'));
+// '' unless this build was given the transcript proxy's origin (ADR-039): then, and only then, one more
+// origin in connect-src. A malformed value stops the build here (and in next.config.ts before it).
+const connectOrigin = cloudOriginFromEnv();
 
 function walk(folder) {
   return readdirSync(folder).flatMap((name) => {
@@ -37,11 +41,12 @@ if (pages.length === 0) {
 }
 
 for (const file of pages) {
-  const { html, policy } = applyCsp(readFileSync(file, 'utf8'));
+  const { html, policy } = applyCsp(readFileSync(file, 'utf8'), { connectOrigin });
   writeFileSync(file, html);
   const hashes = (policy.match(/'sha256-/g) ?? []).length;
   console.log(`apply-csp: ${relative(root, file)} (${hashes} hashes)`);
 }
+console.log(connectOrigin ? `apply-csp: connect-src 'self' ${connectOrigin} (cloud transcript route ON in this build)` : "apply-csp: connect-src 'self' (no other origin)");
 
 if (staticExport) {
   // `.wasm` under _next/static/media: the bundler's copy of onnxruntime-web's
@@ -67,5 +72,19 @@ if (staticExport) {
   if (tainted.length > 0) {
     console.error(`apply-csp: the test stand-in engine is in the export (${tainted.map((f) => relative(root, f)).join(', ')})`);
     process.exit(1);
+  }
+
+  // The cloud transcript route (ADR-039) is OFF unless the build names the proxy. An export built without
+  // it must not carry the code that talks to the proxy at all: not "unreachable", absent.
+  if (!connectOrigin) {
+    const CLOUD_MARKERS = ['/v1/jobs', '/v1/quota', 'AssemblyAI'];
+    const carrying = scripts.filter((f) => {
+      const text = readFileSync(f, 'utf8');
+      return CLOUD_MARKERS.some((marker) => text.includes(marker));
+    });
+    if (carrying.length > 0) {
+      console.error(`apply-csp: the cloud transcript client is in an export built without NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL (${carrying.map((f) => relative(root, f)).join(', ')})`);
+      process.exit(1);
+    }
   }
 }
