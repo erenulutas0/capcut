@@ -390,7 +390,13 @@ export async function startFakeWorker({
         }
         if (request.method === 'DELETE' && !match[2]) {
           if (job.state === 'running') {
-            const live = refresh();
+            // As in the Worker: the delete does not depend on the status call.
+            let live = 'processing';
+            try {
+              live = refresh();
+            } catch {
+              // counted as still working
+            }
             if (live !== 'done') settle(job, { status: 'completed', actualS: null });
           } else if (job.state === 'reserved') {
             release(job.id);
@@ -438,6 +444,11 @@ export async function startFakeWorker({
       const code = `${text.slice(0, 5)}-${text.slice(5, 10)}-${text.slice(10, 15)}-${text.slice(15)}`;
       state.invites.set(hashOf(code), { quotaS: Math.round(minutes * 60), usedS: 0, revoked: false });
       return code;
+    },
+    /** Changes what an invite has left (as if other jobs had used it up meanwhile). */
+    setInviteMinutes(code, minutes) {
+      const invite = state.invites.get(hashOf(code));
+      if (invite) invite.quotaS = invite.usedS + Math.round(minutes * 60);
     },
     revokeInvite(code) {
       const invite = state.invites.get(hashOf(code));

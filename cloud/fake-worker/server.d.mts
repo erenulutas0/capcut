@@ -50,6 +50,7 @@ export interface FakeWorker {
   limits: { rateLimitPerHour: number; monthlyCapUsd: number; priceUsdPerHour: number };
   reset(): void;
   newInvite(minutes?: number): string;
+  setInviteMinutes(code: string, minutes: number): void;
   revokeInvite(code: string): void;
   kill(on: boolean): void;
   provider(config: FakeProviderConfig): void;

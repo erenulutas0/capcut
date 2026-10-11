@@ -19,7 +19,7 @@
  *   send(path, init)             → { status, headers: Headers, text }   (init: method, headers, body)
  *   newInvite(minutes)           → the invite code
  *   kill(on)                     the founder's emergency switch
- *   provider(config)             steer the faked provider: { pollsUntilDone, failUpload, failCreate, transcriptError, audioDurationS }
+ *   provider(config)             steer the faked provider: { pollsUntilDone, failUpload, failCreate, failStatus, transcriptError, audioDurationS }
  *   providerState()              → { transcripts: [{ deleted }], uploads }
  *   limits                       { rateLimitPerHour, monthlyCapUsd, priceUsdPerHour } the implementation was started with
  */
@@ -292,6 +292,22 @@ export const CONTRACT_CASES = [
       const result = await api.get(`/v1/jobs/${started.body.jobId}/result`);
       equal([result.status, result.body], [409, { error: 'no_result' }], 'result');
       equal((await api.get('/v1/quota')).body.remainingMinutes, 60, 'no minutes used');
+    },
+  },
+  {
+    name: 'the provider\'s status cannot be read: 502 naming the step — and a delete still deletes there',
+    run: async (driver) => {
+      const api = client(driver, await driver.newInvite(60));
+      const started = await api.start({ seconds: 120 });
+      await driver.provider({ failStatus: 500 });
+      const status = await api.get(`/v1/jobs/${started.body.jobId}`);
+      equal([status.status, status.body], [502, { error: 'provider_error', step: 'status' }], 'status');
+      const deleted = await api.del(`/v1/jobs/${started.body.jobId}`);
+      equal([deleted.status, deleted.body], [200, { deleted: true }], 'delete');
+      const state = await driver.providerState();
+      equal([state.transcripts[0].deleted, state.uploads], [true, 0], 'gone at the provider');
+      // Stopped while it may have been working: the reservation counts as used.
+      equal((await api.get('/v1/quota')).body.remainingMinutes, 58, 'quota');
     },
   },
   {

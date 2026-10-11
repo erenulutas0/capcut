@@ -251,7 +251,13 @@ async function api(request: Request, url: URL, env: Env, ctx: ExecutionContext, 
     if (request.method === 'DELETE' && !match[2]) {
       if (job.state === 'running') {
         // Cancelled while the provider is still working: it may bill what it processed, so the reservation counts as spent.
-        const live = await refresh();
+        // The delete must not depend on the status call: when the provider's status cannot be read, it is deleted all the same.
+        let live: 'queued' | 'processing' | 'done' = 'processing';
+        try {
+          live = await refresh();
+        } catch {
+          // counted as still working
+        }
         if (live !== 'done') job = await ledger.settle(jobId, { status: 'completed', actualS: null });
       } else if (job.state === 'reserved') {
         await ledger.release(jobId);
