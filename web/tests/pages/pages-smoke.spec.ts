@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
-import { expectPolicy, watchCsp } from '../e2e/cspWatch';
+import { expectPolicy, expectedConnectSrc, watchCsp } from '../e2e/cspWatch';
 import { enhanceFixture, frameLumas } from '../e2e/enhance-media';
 import { addKesit, closeSheet, openMore, openSettings, installSavePicker, probeMp4, readSaved } from '../e2e/kesitFlow';
 import { APP_NAME } from '../../src/appIdentity';
@@ -361,6 +361,42 @@ test('the export publishes compiled files only: no source maps, no TypeScript so
   const scripts = files.filter((f) => f.endsWith('.js'));
   expect(scripts.filter((f) => readFileSync(join(process.cwd(), f), 'utf8').includes('clip-transcript-stub-engine'))).toEqual([]);
   expect(scripts.filter((f) => readFileSync(join(process.cwd(), f), 'utf8').includes('__clipTranscriptTest'))).toEqual([]);
+});
+
+/**
+ * The cloud transcript route (ADR-039) is in the published site only when the
+ * build was given our proxy's origin — and then with exactly that origin in
+ * the policy. Without it (today's site): no other origin in any page's
+ * policy, none of the route's code, and no word about a service the site
+ * does not use.
+ */
+test('the cloud transcript route: absent from the export unless the build names the proxy; then one origin, exactly', () => {
+  const walk = (dir: string): string[] =>
+    readdirSync(dir).flatMap((name) => {
+      const path = join(dir, name);
+      return statSync(path).isDirectory() ? walk(path) : [path];
+    });
+  const out = join(process.cwd(), 'out');
+  const files = walk(out).filter((f) => !f.startsWith(join(out, 'models')));
+  const pages = files.filter((f) => f.endsWith('.html'));
+  expect(pages.length).toBeGreaterThan(5);
+  const expected = expectedConnectSrc();
+  for (const page of pages) {
+    const policy = /http-equiv="Content-Security-Policy"[^>]*content="([^"]*)"/.exec(readFileSync(page, 'utf8'))?.[1] ?? '';
+    expect(/connect-src ([^;]*);/.exec(policy.replace(/&#x27;/g, "'"))?.[1], relative(out, page)).toBe(expected);
+  }
+  const carrying = (markers: string[], kinds: RegExp) =>
+    files.filter((f) => kinds.test(f)).filter((f) => markers.some((marker) => readFileSync(f, 'utf8').includes(marker))).map((f) => relative(out, f));
+  if (expected === "'self'") {
+    expect(carrying(['/v1/jobs', '/v1/quota', 'clip.cloudInvite', 'clip-cloud-audio'], /\.js$/)).toEqual([]);
+    expect(carrying(['AssemblyAI', 'davet kodu', 'invite code'], /\.(js|html|txt)$/)).toEqual([]);
+    // (A bundled library names "Cloudflare-Workers" among the runtimes it can tell apart: pages only.)
+    expect(carrying(['Cloudflare'], /\.html$/)).toEqual([]);
+  } else {
+    // The route is on: its code and its privacy section are published, and the policy above names its one origin.
+    expect(carrying(['/v1/jobs'], /\.js$/).length).toBeGreaterThan(0);
+    expect(carrying(['AssemblyAI'], /gizlilik[\\/]index\.html$/).length).toBe(1);
+  }
 });
 
 // ------------------------------------------------------------ Yazıya dök (ADR-036)
