@@ -68,7 +68,7 @@ etiketi hidrasyonda yok sayar (e2e'de hidrasyon hatası yok). Layout'ta yalnızc
 | `img-src data: blob:` | Sayfada üretilen küçük resimler ve kare görüntüleri. |
 | `media-src blob:` | Seçilen dosya önizlemede `URL.createObjectURL` ile oynar. |
 | `worker-src 'self' blob:` | Dışa aktarma ve sessizlik worker'ları aynı origin'den (`turbopack-worker-*.js`); mediabunny küçük yardımcı worker'larını (zamanlayıcı, renk/alfa birleştirme) `blob:` ile başlatır. |
-| `connect-src 'self'` | Uygulama dışarıya istek atmaz. Next'in istemci gezinmesi aynı origin'den RSC yükü okur. GitHub Issues bağlantısı bir gezinmedir, istek değil. |
+| `connect-src 'self'` | Uygulama dışarıya istek atmaz. Next'in istemci gezinmesi aynı origin'den RSC yükü okur. GitHub Issues bağlantısı bir gezinmedir, istek değil. **11 Ekim 2026 (ADR-039):** derlemeye `NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL` verilirse — ve yalnızca o zaman — bu satır `'self' https://<vekil-kökeni>` olur: tek bir kesin köken (yol, joker, `http` derlemeyi durdurur: `scripts/lib/cloudOrigin.mjs`); sağlayıcının adresi eklenmez. Yayındaki derleme değişkeni vermez; satır aynen `'self'`dir. Sınama: `tests/unit/cloudBuild.test.ts`, `tests/e2e/cloud-off.spec.ts` (başka kökene fetch/XHR/beacon/WebSocket engelli), `tests/cloud/cloud-choice.spec.ts` (açık derlemede tam bir köken; üçüncü bir köken yine engelli). |
 | `form-action 'none'` | Tek `<form>` (altyazı kaydırma) `preventDefault` ile gönderilmez; hiçbir şey post edilmez. |
 
 Tarayıcı desteği: `'unsafe-hashes'` Chromium 69+, Firefox 111+, Safari 15.4+. Daha eski bir

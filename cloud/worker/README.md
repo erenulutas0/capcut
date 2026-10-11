@@ -179,16 +179,17 @@ Hızlıdan kesine doğru üç yol:
 3. **Kökten:** `npx wrangler delete --config worker/wrangler.jsonc` (Worker'ı kaldırır) ve/veya
    AssemblyAI panelinden API anahtarını iptal et. Anahtar iptal edilince hiçbir yol para harcayamaz.
 
-## Tarayıcının göndereceği istek (arayüz yapılırken)
+## Tarayıcının gönderdiği istek
 
 ```
 POST /v1/jobs
 Origin: https://erenulutas0.github.io
 Authorization: Bearer <davet kodu>
-Content-Type: audio/ogg            (ya da audio/webm, audio/mp4, audio/flac, audio/wav, audio/mpeg)
+Content-Type: audio/webm           (site bunu yollar; Opus yoksa audio/mp4. Kabul edilenler: ogg, opus, webm, mp4, x-m4a, flac, wav, mpeg)
 Content-Length: <bayt>
-X-Audio-Duration-S: 1234.5         (sesin gerçek süresi)
-X-Language: auto                   (ya da en, tr, ja …)
+X-Audio-Duration-S: 1235           (sesin gerçek süresi; site tam saniyeye yukarı yuvarlar)
+X-Job-Id: <UUID>                   (isteğe bağlı: tarayıcının iş için ürettiği rastgele ad)
+X-Language: auto                   (ya da en, tr, ja …; site göndermez → otomatik)
 X-Speaker-Labels: 1                (0 = istemiyorum)
 
 <ses baytları — yalnızca ses, görüntü yok>
@@ -196,18 +197,48 @@ X-Speaker-Labels: 1                (0 = istemiyorum)
 
 Yanıt `202 {"jobId":"…","status":"queued","reservedMinutes":20.58}`. Hata kodları: `cloud_off`
 (503), `monthly_cap_reached` (503), `invite_required` / `invite_invalid` (401),
-`invite_minutes_used_up` (402), `job_in_progress` (409), `too_long` / `too_large` (413),
-`not_audio` (415), `rate_limited` (429, `Retry-After` ile), `provider_error` (502; sağlayıcının
-metni asla geçirilmez).
+`invite_minutes_used_up` (402), `job_in_progress` (409), `job_id_taken` (409), `job_canceled` (409),
+`bad_job_id` (400), `too_long` / `too_large` (413), `not_audio` (415), `rate_limited` (429,
+`Retry-After` ile), `provider_error` (502; sağlayıcının metni asla geçirilmez).
 
-Sitenin CSP'si bugün `connect-src 'self'`; arayüz yapılırken Worker adresi oraya eklenmeden
-tarayıcı bu uçlara erişemez (ADR-039 "Yayın anında değişecekler").
+**`X-Job-Id` (11 Ekim 2026).** Tarayıcı işi kendisi adlandırırsa, yarıda kestiği bir yüklemeyi ya da
+yanıtı kaybolan bir başlatmayı `DELETE /v1/jobs/:id` ile geri verebilir; vermezse aynı davet
+30 dakika (çalışan iş için 24 saate kadar) `job_in_progress` alırdı. Kurallar: UUID biçiminde
+olmalı; var olan bir ad — kimin olursa olsun — `job_id_taken` ile reddedilir (başkasının işi
+hakkında hiçbir şey öğrenilmez: sorgu yine davete bağlıdır, 404). Yükleme sürerken silinen iş için
+sağlayıcıda kayıt açılmaz (`job_canceled`); son anda silinenin kaydı sağlayıcıda hemen silinir,
+silinemezse temizlik alarmı siler. `DELETE`, sağlayıcının durumu okunamasa da siler.
+
+`GET /v1/quota` (aynı başlıklarla, gövdesiz) → `{"on":true,"remainingMinutes":37,"maxJobMinutes":120}`:
+sitenin seçim ekranındaki "X dakika düşer, Y dakikan kalır" satırı buradan gelir. Hız sınırına
+sayılmaz.
+
+**Site tarafı (11 Ekim 2026: yazıldı, kapalı).** Sitenin CSP'si `connect-src 'self'`dir ve bulut
+istemcisi yayındaki derlemede yoktur. Site bu Worker'la ancak derlemeye
+`NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL=https://<bu Worker'ın kökeni>` verilirse konuşur (CI'da depo
+değişkeni `CLOUD_TRANSCRIPT_URL`); o zaman `connect-src` yalnızca bu kökeni kazanır. Sıra ve
+ayrıntı: ADR-039 "Yayın için yapılacaklar". `ALLOWED_ORIGINS` sitenin kökenini içermelidir;
+`PROVIDER_REGION` **`eu` kalmalıdır** — sitenin rıza ekranı "Avrupa'daki bilgisayarlar" der.
+
+## Sözleşme ve yerel sahte Worker
+
+Tarayıcıya bakan API, `cloud/contract/cases.mjs` içinde 18 durum olarak yazılıdır. Aynı liste iki
+uygulamaya koşar:
+
+- **gerçek Worker koduna**, workerd içinde, gerçek Durable Object ile (`worker/test/contract.test.ts`);
+- **yerel sahte Worker'a** (`cloud/fake-worker/server.mjs`) — bağımlılığı olmayan, 127.0.0.1'de
+  dinleyen, hiçbir yere bağlanmayan bir Node sunucusu; web uygulamasının sınamaları
+  (`web/tests/cloud/`, `npm run quality`'nin bulut yürüyüşü) onunla konuşur.
+
+Worker'ın bir cevabı değişirse sahte aynı durumda kırılır. Sahte sunucu konuşmayı duymaz; sınamanın
+verdiği kelimeleri döndürür. Bir yanıtı burada değiştiren, önce `cases.mjs`'i değiştirir.
 
 ## Sınamalar
 
 ```bash
 cd cloud
-npm run test:worker     # 22 sınama: gerçek Workers çalışma zamanı (workerd) + gerçek Durable Object, sahte sağlayıcı
+npm run test:worker     # 43 sınama (25 + 18 sözleşme): gerçek Workers çalışma zamanı (workerd) + gerçek Durable Object, sahte sağlayıcı
+npm run test:fake       # 23 sınama (aynı 18 sözleşme + 5): yerel sahte Worker
 npm run typecheck
 ```
 

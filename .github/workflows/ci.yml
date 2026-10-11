@@ -105,6 +105,19 @@ jobs:
         run: |
           npm run build
           npx playwright test
+      # The cloud transcript route (ADR-039) is NOT in the published site. Its client is tested here against a
+      # local fake of our proxy Worker (cloud/fake-worker, 127.0.0.1): no external service is contacted. The
+      # route needs its own build (it does not exist in the build above). While the route is off this step
+      # reports and does not stop the deploy; make it gating (remove continue-on-error) when the route is turned on.
+      - name: Cloud transcript route against the local fake Worker (does not gate the deploy while the route is off)
+        continue-on-error: true
+        env:
+          GIT_COMMIT: ${{ github.sha }}
+          CLIP_TEST_HOOKS: '1'
+          NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL: http://127.0.0.1:38197
+        run: |
+          npm run build
+          npx playwright test -c playwright.cloud.config.ts
       # `npm run build` also writes the Content-Security-Policy <meta> into
       # every page and drops source maps (scripts/apply-csp.mjs); the smoke
       # test below fails if either is missing.
@@ -116,6 +129,10 @@ jobs:
           NEXT_PUBLIC_SUPPORT_CONTACT: https://github.com/erenulutas0/capcut/issues
           NEXT_PUBLIC_HOSTING_PROVIDER: GitHub Pages (GitHub, Inc.)
           NEXT_PUBLIC_HOSTING_LOG_POLICY: https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement
+          # The cloud transcript route (ADR-039): OFF unless the repository variable CLOUD_TRANSCRIPT_URL names
+          # our proxy Worker's origin (Settings → Secrets and variables → Actions → Variables). Undefined = empty
+          # = the route is not in the site and connect-src stays 'self'.
+          NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL: ${{ vars.CLOUD_TRANSCRIPT_URL }}
         run: |
           if (Test-Path out) { Remove-Item -Recurse -Force out }
           npm run build
@@ -127,6 +144,9 @@ jobs:
           node scripts/fetch-models.mjs --models=base,turbo --dest=out/models --copy
           node scripts/fetch-models.mjs --models=base,turbo --dest=out/models --check
       - name: Smoke test the export under /capcut/
+        env:
+          # The same value the export was built with: the smoke test expects exactly that policy (connect-src).
+          NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL: ${{ vars.CLOUD_TRANSCRIPT_URL }}
         run: npx playwright test -c playwright.pages.config.ts
       - name: Keep the tested export for the deploy job
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

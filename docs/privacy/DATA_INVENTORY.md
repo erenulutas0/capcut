@@ -5,6 +5,12 @@
 > "Privacy/terms ve SDK veri envanteri gerçek davranışla eşleşiyor".
 > Veri sorumlusu, iletişim, hukuki dayanak ve barındırma sağlayıcısı **belirlenmedi** (belge 30 K02).
 
+> **11 Ekim 2026 — bulut yazıya dökme yolu (ADR-039): yazıldı, KAPALI.** Bu belgenin geri kalanı
+> **yayındaki derlemeyi** anlatır ve o derlemede hiçbir şey değişmedi: yol, yalnızca
+> `NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL` verilen bir derlemede vardır; yayındaki site ve CI onu
+> vermez. Yol açık bir derlemede neyin değiştiği **§8**'de yazılıdır; o derleme yayınlanırsa bu
+> belgenin §1, §2.4, §4.1 ve §6 satırları §8'e göre okunmalıdır.
+
 Bu belge "ne yapmayı planlıyoruz" değil, **kodun bugün ne yaptığıdır**. Her satır bir dosyaya
 dayanır; bir davranış değişirse önce bu belge ve `/gizlilik` sayfası (`web/src/components/PrivacyPage.tsx`,
 metinler `web/src/i18n/messages.ts` içindeki `privacy.*`) güncellenir. Ağ bölümü otomatik testle
@@ -21,7 +27,7 @@ doğrulanır (`web/tests/e2e/privacy.spec.ts` → "nothing leaves the machine").
 | Çerez, localStorage, sessionStorage? | Çerez ve sessionStorage kullanılmıyor. localStorage'da yalnızca ilk kullanım ipucunun kapatıldığı (`clip.firstRunHint.dismissed` = `1`) durur, o da yalnızca kullanıcı "Anladım"a basınca yazılır (§2.4). e2e testi ipucu kapatılmamış oturumun sonunda üçünün de boş olduğunu, kapatınca yalnızca o anahtarın yazıldığını doğrular. | `web/src/components/editor/FirstRunHint.tsx` + e2e testleri |
 | Cihaz parmak izi? | Yok. Tanı dosyasındaki tarayıcı bilgisi yalnızca kullanıcı indirirse oluşur ve kendiliğinden gönderilmez. | `web/src/adapters/diagnostics.ts` |
 | Model dosyası / AI? | Bu sürümde yok. | — |
-| Kendiliğinden gönderilen bir şey? | Yok. Uygulama kodunda `fetch`/XHR/WebSocket/beacon yok; tek `fetch` benzeri işlem tarayıcının yazı tipi yüklemesi (aynı origin; editör yüklendikten sonra, tarayıcı boştayken — `useCaptionFont.ts`). | `grep -rn "fetch(" web/src` boş; e2e testi |
+| Kendiliğinden gönderilen bir şey? | Yok. Yayındaki derlemenin kodunda başka bir adrese giden `fetch`/XHR/WebSocket/beacon yok: `fetch` yalnızca kendi origin'imizden okur (yazı tipi — `useCaptionFont.ts`; "Modeli indir"e basılınca model dosyaları — §2.8). Bulut yolunun istemcisi (`web/src/adapters/cloud/`) depoda durur ama yayındaki derlemeye **girmez** (§8.1). | e2e testleri; `scripts/apply-csp.mjs` (durağan çıktıda bulut kodu bulursa derlemeyi durdurur); `tests/e2e/cloud-off.spec.ts` |
 | Sayfa başka bir adrese bağlanabilir mi? | Tarayıcı engeller: her sayfada Content-Security-Policy (`default-src 'self'`, `connect-src 'self'`, script yalnız aynı origin + derleme anındaki satır içi betik hash'leri). Dışarı giden bağlantılar Referer taşımaz (`no-referrer`). | `web/scripts/apply-csp.mjs`, `docs/security/2026-09-30-static-site-hardening.md`, e2e `csp.spec.ts` |
 
 ## 2. Bu tarayıcıda kalıcı saklananlar
@@ -300,6 +306,8 @@ uygulama dosyası dışında bir şey girmesi ya da çalışırken ağ yanıtlar
 
 ## 7. Açık kurucu kararları (uygulama bunları uydurmaz)
 
+- Bulut yazıya dökme yolu için: §8.6.
+
 - Veri sorumlusu (kişi/şirket), faaliyet yeri, gizlilik iletişim adresi — belge 30 K02.
 - Hukuki dayanak ve başvuru/hak kullanma yolu — hukuki inceleme.
 - Barındırma sağlayıcısı ve sunucu erişim kaydı saklama süresi.
@@ -309,3 +317,84 @@ uygulama dosyası dışında bir şey girmesi ya da çalışırken ağ yanıtlar
   ve indirilen dosya adları (`lilocut-tani-…json`, `….lilocut.json`) bu adı kullanır. Tarayıcıda tutulanların adları
   bilerek değişmedi (`clip-editor`, `clip-export-`, `clip-app-`, `clip-models-`, `clip.firstRunHint.dismissed`):
   değişseydi kayıtlı projeler ve indirilmiş modeller sahipsiz kalırdı. Açık kalan: marka/alan adı incelemesi.
+
+## 8. Bulut yazıya dökme yolu (ADR-039) — yazıldı, KAPALI (2026-10-11)
+
+> Durum: istemci depoda, **yayındaki derlemede yok**. Vekil sunucu (Worker) yayınlanmadı. Bu
+> bölümdeki her şey vekilin **yerel bir sahtesine** karşı sınandı (`web/tests/cloud/`,
+> `cloud/fake-worker/`); gerçek Worker, gerçek sağlayıcı ve gerçek bir telefon doğrulanmadı
+> (ADR-039, "Doğrulanmayanlar"). Veri sorumlusu belirlenmedi (K02).
+
+### 8.1 Kapalıyken (yayındaki site, CI, ayarsız her derleme)
+
+| Soru | Cevap | Kanıt |
+|---|---|---|
+| Seçim ekranı var mı? | Yok. "Yazıya dök" doğrudan cihaz üstü adımlara gider. | `tests/e2e/cloud-off.spec.ts` |
+| Başka bir kökene istek atılabilir mi? | Hayır: `connect-src 'self'`. `fetch`, `fetch(no-cors)`, XHR, `sendBeacon` ve WebSocket denendi, hepsi engellendi; hedefte dinleyen sunucu hiçbir istek almadı. | `tests/e2e/cloud-off.spec.ts`, `tests/pages/pages-smoke.spec.ts` |
+| Bulut istemcisinin kodu sayfada mı? | Hayır. Yolu yükleyen iki yer (`YaziWizard.tsx`, `CloudInviteSlot.tsx`) derleme sabitini kendisi karşılaştırır; paketleyici dalı ve parçalarını atar. Durağan çıktıda `/v1/jobs`, `/v1/quota` ya da `AssemblyAI` bulunursa derleme durur. | `scripts/apply-csp.mjs`, `tests/unit/cloudBuild.test.ts`, `tests/e2e/cloud-off.spec.ts` |
+| Sayfalar sağlayıcıdan söz ediyor mu? | Hayır. Bulut cümleleri ayrı tabloda (`src/i18n/cloudMessages.ts`); `/gizlilik` bugünkü cümlelerini söyler. | `tests/e2e/cloud-off.spec.ts`, `tests/pages/pages-smoke.spec.ts` |
+| Tarifte (EDL) değişiklik? | Yok: şema v4, yeni alan yok. | `tests/unit/cloudTranscript.test.ts` |
+
+### 8.2 Açıkken cihazdan ne çıkar
+
+Yalnızca kullanıcı **"Sesi gönder ve yaz"** düğmesine bastığında, her seferinde:
+
+| Ne | Nereye | Nasıl |
+|---|---|---|
+| Videonun **sesi** (konuşma, arka plan sesi, müzik) | Bizim vekil Worker'ımıza (Cloudflare), oradan AssemblyAI'ye (AB bölgesi — Worker ayarı `PROVIDER_REGION=eu`) | Cihazda yeni bir dosya olarak kodlanır: Opus 24 kbit/s, tek kanal, 16 kHz, WebM (≈ 0,21 MB/dakika); Opus yoksa AAC 32 kbit/s, MP4. Kaynak dosyadan hiçbir şey kopyalanmaz. `POST /v1/jobs`, gövde = ses. — `src/adapters/cloud/cloudAudioWorker.ts`, `cloudClient.ts` |
+| Sesin süresi (tam saniye) | Worker | `x-audio-duration-s` başlığı |
+| İşin adı (tarayıcının ürettiği rastgele UUID) | Worker | `x-job-id` başlığı; işi sorgulamak ve silmek için |
+| Davet kodu | Worker (yalnız özeti saklanır) | `Authorization: Bearer …` başlığı. Adreste (URL, sorgu) **asla**. |
+| IP adresi, tarayıcı bilgisi | Cloudflare ağı (her istekte olduğu gibi) | Worker IP'nin tuzlanmış özetini en çok ~70 dk tutar (ADR-039 "Worker ne saklar") |
+
+**Çıkmayanlar:** görüntü; kaynak dosyanın adı, öbür izleri, başlık/konum/cihaz/tarih etiketleri;
+proje adı; altyazı metni; çerez (istekler `credentials: 'omit'`, `referrerPolicy: 'no-referrer'`).
+Kanıt: `tests/cloud/cloud-flow.spec.ts` → "the uploaded bytes are sound only" (sahte sunucunun
+aldığı baytlar ffprobe ile okunur: tam bir ses izi, video izi yok; `title`, `creation_time`,
+`location`, `make`, `model` etiketi yok; dosya adı ve kaynak kapsayıcının kutuları baytlarda yok).
+
+**Düğmeye basılmadan önce:** kayıtlı davet kodu **yoksa** ekran hiçbir istek atmaz. Varsa, ekran
+açılınca kalan dakikayı sorar (`GET /v1/quota`, kod başlıkta, gövde yok). Kanıt:
+`cloud-flow.spec.ts` → "not one byte of sound leaves before the button is pressed".
+
+### 8.3 Sağlayıcıda ne kalır, ne zaman silinir
+
+- Olağan yol: sonuç tarayıcıya geçince Worker kaydı (ve yüklenen sesi) sağlayıcıda siler; tarayıcı
+  ayrıca `DELETE /v1/jobs/:id` gönderir. Sınandı (sahte sağlayıcıda "kalan kayıt 0").
+- Hata, zaman aşımı, kullanıcının durdurması, sayfadan çıkma: tarayıcı silme isteğini gönderir
+  (sayfadan çıkarken `keepalive` ile). Silme isteği yapılamazsa ekran bunu söyler; Worker'ın
+  temizlik alarmı siler (sonuç hazır olduktan 60 dk sonra, her durumda en geç 24 saatte).
+- **Sınır:** yükleme sırasında durdurulan işte kayıt açılmaz; o ana kadar sağlayıcıya ulaşmış ses
+  bizim elimizle silinemez, sağlayıcının kendi kuralıyla silinir (belgesine göre 24–48 saat).
+  Ekran bu durumda "silindi" demez (ADR-039 "Bilinen sınır").
+- Yazı: sonuç geldikten sonra yalnızca bu tarayıcıdadır (tarif, §2.1 / §2.3; sihirbazda yalnızca
+  bellekte).
+
+### 8.4 Bu tarayıcıda saklanan (yalnız açık derlemede)
+
+| Ne | Nerede | Ne zaman yazılır | Nasıl silinir |
+|---|---|---|---|
+| Davet kodu | `localStorage` → `clip.cloudInvite` | Yalnızca "Kodu kaydet"e basılınca **ve** Worker kodu kabul edince. Biçime uymayan kod hiçbir yere gönderilmez ve yazılmaz. | "Davet kodunu kaldır" (seçim ekranında ve `/gizlilik` sayfasında); kod geri çekilmişse bir sonraki açılışta kendiliğinden; tarayıcı verisini temizleyince. |
+| Seçilen yol (cihaz / internet) | **saklanmaz** | — | Her videoda yeniden sorulur. |
+| Konuşmacı etiketleri | yalnızca açık sihirbazın belleği | Sonuç geldiğinde | Sayfa kapanınca; tarife yazılmaz. |
+
+Kanıt: `cloud-flow.spec.ts` → "never chosen for the user and never remembered" (localStorage'da
+yalnızca `clip.cloudInvite`; sessionStorage boş) ve "the invite code can be removed…".
+
+### 8.5 `/gizlilik` sayfası
+
+Koşulludur (`src/components/PrivacyPage.tsx`, `CLOUD_ON`): yol kapalıyken hiçbir cümle değişmez.
+Açıkken "hiçbir sunucuya gönderilmez", "Uygulama senin adına hiçbir şey göndermez" ve "bulutta
+çalışan bir yapay zekâ kullanılmaz" cümleleri doğru karşılıklarıyla değişir ve "İnternette yazıya
+dökme (isteğe bağlı, davetli deneme)" bölümü eklenir: ne gider, kime, nerede işlenir (AB), ne
+zaman silinir, başkalarının sesi, vekilin tuttuğu kayıt, dakika sorgusu, denemenin sınırı; ayrıca
+"Davet kodu" kartı ve kaldırma düğmesi. Kanıt: `tests/cloud/cloud-choice.spec.ts`,
+`tests/e2e/cloud-off.spec.ts`.
+
+### 8.6 Açık kurucu kararları
+
+- Veri sorumlusu ve hukuki dayanak (K02): bulut yolu kişisel veriyi (sesi) üçüncü tarafa aktaran
+  ilk özelliktir; belirlenmeden davetli deneme dışına açılmamalı.
+- Bölge AB kalacak mı (`PROVIDER_REGION`): ekran ve gizlilik metni "Avrupa" diyor.
+- Bulut dakikasının ücretli/ücretsiz/deneme oluşu (politika belgesi 15 — değişmedi).
+- Konuşmacı etiketlerinin kalıcı olması (EDL v5).

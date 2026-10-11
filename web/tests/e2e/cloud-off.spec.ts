@@ -102,7 +102,12 @@ test('no request to another origin is possible: the policy is same-origin, and a
         request.onerror = reject;
         request.send('x');
       }));
-      tries.beacon = navigator.sendBeacon(`${origin}/v1/jobs`, 'x') ? 'allowed' : 'blocked';
+      // A beacon is queued and refused later (its return value says nothing): it is sent, and the server is asked below.
+      try {
+        navigator.sendBeacon(`${origin}/v1/jobs`, 'x');
+      } catch {
+        // some browsers refuse it on the spot
+      }
       await attempt('websocket', () => new Promise((resolve, reject) => {
         const socket = new WebSocket(origin.replace('http', 'ws'));
         socket.onopen = resolve;
@@ -110,9 +115,10 @@ test('no request to another origin is possible: the policy is same-origin, and a
       }));
       return tries;
     }, FAKE_ORIGIN);
-    expect(outcome).toEqual({ fetch: 'blocked', 'fetch no-cors': 'blocked', xhr: 'blocked', beacon: 'blocked', websocket: 'blocked' });
+    expect(outcome).toEqual({ fetch: 'blocked', 'fetch no-cors': 'blocked', xhr: 'blocked', websocket: 'blocked' });
     await expect.poll(() => csp.violations.filter((violation) => violation.includes('connect-src')).length).toBeGreaterThan(0);
-    // The server next door was listening the whole time and received nothing.
+    // The server next door was listening the whole time and received nothing — not the fetches, not the beacon.
+    await page.waitForTimeout(1500);
     expect(fake.requests).toEqual([]);
   } finally {
     await fake.close();
