@@ -1,5 +1,19 @@
 **Yazıldığı koşu:** 11 Ekim 2026 öğleden sonra, dal `worktree-agent-a511c0275d7647e51` (önceki bulgular: aynı gün, `b8e355f`). O raporda açık kalan üç şey üzerinde çalışıldı: aramanın yanlış karta göndermesi, editörün her videoyu 1080p’ye büyütmesi, 720p’den küçük kaynakların büyütülmesi. Aşağıda her biri için aynı ölçünün önceki → şimdiki değeri var. Açık kalanlar en başta.
 
+### 11 Ekim akşamı — bulut yazıya dökme yolu eklendi (kapalı; dal `worktree-agent-a4ba1c069e813cc66`)
+
+Yayındaki sitede bir şey değişmedi; aşağıdakiler yalnızca yolun açık olduğu derlemeyle ilgilidir ve
+**yerel bir sahte sunucuya karşı** ölçüldü (bölüm 1, son tablo). Yazının doğruluğu hakkında bir şey söylemezler.
+
+- **Yeni bütçe dışı ölçü: rıza ekranındaki bir cümle “çok zor” çıkıyor** (`text.defaultPath.veryHard` 0 → 1).
+  Cümle kurucunun onayladığı metindir: “AssemblyAI adlı şirketin Avrupa’daki bilgisayarlarına gider.” (Ateşman 29,2;
+  uzun kelimeler: “bilgisayarlarına”, “Avrupa’daki”). Metne dokunulmadı, bütçe gevşetilmedi. Daha kolay bir
+  söyleyiş kurucu kararıdır — örneğin “AssemblyAI adlı bir şirkete gider. Bilgisayarları Avrupa’da.”
+- Rıza ekranı (kodsuz hâli) 109 kelime: ana ekranla (105) aynı düzeyde, bütçe (180) içinde. Akış masaüstünde 5,
+  telefonda 6 basış (davet kodu bir kez yazılır); teknik terim 0; adıyla bulunamayan düğme 0; giden tek dosya
+  85 KB’lık bir ses dosyası; sahte sunucuda kalan kayıt 0.
+- Bulut cümleleri okunabilirlik ölçümüne katıldı (bölüm 9): toplam dize sayısı bu yüzden arttı.
+
 ### Hâlâ açık
 
 1. **Arama beş istekten birinde doğru işi hiç göstermiyor.** Yeni kör kümede (aşağıda, madde 4) doğru iş ilk satırda %75,7, ilk üç satırda %80,4 (bütçeler ≥ %85 ve ≥ %90); yapılabilen işlerin %12,2’sine “Bunu bulamadım.” deniyor. Uzun, derdini anlatan cümlelerde doğrudan doğru cevap %35 (40 ifade); “Yazıya dök” isteyen 13 ifadenin 2’si doğrudan doğru. Madde 4’teki değişiklik **sıralamayı değiştirmedi**; yanlış karta göndermeyi azalttı, bulamamayı azaltmadı. Yedi arama bütçesi dışarıda: ilk satır, ilk üç, yapılabilen işe “yapamıyoruz” (%2), “yapamıyoruz” yakalama (%88) ve isabet (%88,2), listede olmayan isteğe dürüst cevap (%65: 20 ifadenin 3’üne hâlâ tek kart, 4’üne soru), anlamsız yazı (%88,9: 9 ifadenin 1’i). Kelime listesi + ek kuralıyla iki turda düzelmedi; gerçek kullanıcı cümleleri ya da cihazda küçük bir anlam modeli gerekir. Kanıt: bölüm 2.
