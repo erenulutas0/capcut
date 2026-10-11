@@ -103,7 +103,7 @@ export class Ledger extends DurableObject<Env> {
    * Atomic: rate limit → switches → invite → one job at a time → invite minutes → monthly cap → reserve.
    * Every attempt counts toward the IP's hourly limit, so guessing invite codes is slow.
    */
-  async reserve(input: { inviteHash: string; ipHash: string; declaredS: number; bytes: number }): Promise<Reservation | Refusal> {
+  async reserve(input: { inviteHash: string; ipHash: string; declaredS: number; bytes: number; jobId?: string }): Promise<Reservation | Refusal> {
     const config = readConfig(this.env);
     const now = Date.now();
     const window = Math.floor(now / HOUR_MS);
@@ -131,7 +131,9 @@ export class Ledger extends DurableObject<Env> {
       const cost = costMicro(reservedS, config.priceMicroPerHour);
       if (this.monthSpent(month) + this.monthReserved(month) + cost > config.capMicro) return { ok: false, status: 503, code: 'monthly_cap_reached' };
 
-      const jobId = crypto.randomUUID();
+      // The browser may name the job (a random UUID of its own). A name that exists — whoever owns it — is refused.
+      const jobId = input.jobId ?? crypto.randomUUID();
+      if (input.jobId && this.one<{ id: string }>('SELECT id FROM jobs WHERE id = ?', jobId)) return { ok: false, status: 409, code: 'job_id_taken' };
       this.sql.exec(
         "INSERT INTO jobs (id, invite_hash, month, state, declared_s, reserved_s, reserved_micro, bytes, created_at, updated_at) VALUES (?, ?, ?, 'reserved', ?, ?, ?, ?, ?, ?)",
         jobId, input.inviteHash, month, reservedS, reservedS, cost, input.bytes, now, now,
@@ -143,8 +145,21 @@ export class Ledger extends DurableObject<Env> {
   }
 
   /** The provider accepted the job: remember its id so status, result, delete and the clean-up can find it. */
-  async attachTranscript(jobId: string, transcriptId: string): Promise<void> {
-    this.sql.exec("UPDATE jobs SET state = 'running', transcript_id = ?, updated_at = ? WHERE id = ? AND state = 'reserved'", transcriptId, Date.now(), jobId);
+  async attachTranscript(jobId: string, transcriptId: string): Promise<boolean> {
+    const cursor = this.sql.exec("UPDATE jobs SET state = 'running', transcript_id = ?, updated_at = ? WHERE id = ? AND state = 'reserved'", transcriptId, Date.now(), jobId);
+    // False: the job was given back meanwhile (the browser deleted it during the upload) — the caller removes the transcript.
+    return cursor.rowsWritten > 0;
+  }
+
+  /** Still waiting for its upload (not deleted by the browser, not given back)? */
+  async isReserved(jobId: string): Promise<boolean> {
+    return this.one<{ state: string }>('SELECT state FROM jobs WHERE id = ?', jobId)?.state === 'reserved';
+  }
+
+  /** A transcript the provider started for a job that was deleted meanwhile: kept on the job so the clean-up alarm removes it. */
+  async rememberOrphan(jobId: string, transcriptId: string): Promise<void> {
+    this.sql.exec('UPDATE jobs SET transcript_id = ?, provider_deleted = 0 WHERE id = ?', transcriptId, jobId);
+    await this.ensureAlarm();
   }
 
   /** The start failed before the provider began (nothing billed there): give the reservation back. */

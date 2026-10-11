@@ -347,6 +347,86 @@ describe('cost control', () => {
   });
 });
 
+describe('cancelled by the browser', () => {
+  const JOB = '11111111-2222-4333-8444-555555555555';
+
+  it('a job named by the browser can be deleted while its sound is still arriving: nothing is started at the provider', async () => {
+    const invite = await newInvite(60);
+    const audio = ogg(40_000);
+    let release: () => void = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const body = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        controller.enqueue(audio.subarray(0, 10_000));
+        await held;
+        controller.enqueue(audio.subarray(10_000));
+        controller.close();
+      },
+    });
+    const pending = SELF.fetch(`${BASE}/v1/jobs`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${invite}`, origin: ORIGIN, 'content-type': 'audio/ogg', 'content-length': String(audio.length), 'x-audio-duration-s': '600', 'x-job-id': JOB, 'cf-connecting-ip': '203.0.113.7' },
+      body,
+      duplex: 'half',
+    } as RequestInit);
+    // The reservation exists as soon as the first bytes were looked at.
+    await until(async () => (await call(`/v1/jobs/${JOB}`, invite)).status, (status) => status === 200);
+    expect(await (await call(`/v1/jobs/${JOB}`, invite)).json()).toEqual({ status: 'uploading' });
+    expect(await (await call(`/v1/jobs/${JOB}`, invite, 'DELETE')).json()).toEqual({ deleted: true });
+    release();
+    const response = await pending;
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: 'job_canceled' });
+    const state = await mockState();
+    expect(state.transcripts).toEqual([]);
+    const totals = await spend();
+    expect(totals.reservedUsd).toBe(0);
+    expect(totals.spentUsd).toBe(0);
+    expect(totals.activeJobs).toBe(0);
+    expect(totals.transcriptsStillAtProvider).toBe(0);
+    await startOk({ invite, seconds: 60 }); // the invite is free again at once
+  });
+
+  it('deleted in the last moment, after the provider accepted it: the transcript is removed there and not counted', async () => {
+    const invite = await newInvite(60);
+    const jobId = await startOk({ invite, seconds: 600, headers: { 'x-job-id': JOB } });
+    expect(jobId).toBe(JOB);
+    // What the start handler meets when the browser's DELETE won the race: the job is no longer "reserved".
+    const transcriptId = (await mockState()).transcripts[0].id;
+    const attached = await runInDurableObject(ledger(), async (instance, state) => {
+      const row = instance as unknown as { release(id: string): Promise<void>; attachTranscript(id: string, transcript: string): Promise<boolean>; isReserved(id: string): Promise<boolean>; rememberOrphan(id: string, transcript: string): Promise<void> };
+      // As if the DELETE had arrived while the job was still "reserved": given back, no transcript known yet.
+      state.storage.sql.exec("UPDATE jobs SET state = 'reserved', transcript_id = NULL WHERE id = ?", JOB);
+      await row.release(JOB);
+      const answers = [await row.isReserved(JOB), await row.attachTranscript(JOB, transcriptId)];
+      await row.rememberOrphan(JOB, transcriptId);
+      return answers;
+    });
+    expect(attached).toEqual([false, false]);
+    expect((await spend()).transcriptsStillAtProvider).toBe(1);
+    // The id the provider gave stays on the failed job until it is deleted there: DELETE (or the alarm) removes it.
+    expect(await (await call(`/v1/jobs/${JOB}`, invite, 'DELETE')).json()).toEqual({ deleted: true });
+    expect((await mockState()).transcripts[0].deleted).toBe(true);
+    expect((await spend()).transcriptsStillAtProvider).toBe(0);
+  });
+
+  it('a job name that is not a UUID is refused; a name already used is refused', async () => {
+    const invite = await newInvite(60);
+    const bad = await start({ invite, seconds: 60, headers: { 'x-job-id': '../../admin' } });
+    expect(bad.status).toBe(400);
+    expect(await bad.json()).toEqual({ error: 'bad_job_id' });
+    await mockConfig({ pollsUntilDone: 0 });
+    await startOk({ invite, seconds: 60, headers: { 'x-job-id': JOB } });
+    await call(`/v1/jobs/${JOB}`, invite);
+    const other = await newInvite(60, 'other');
+    const taken = await start({ invite: other, seconds: 60, headers: { 'x-job-id': JOB } });
+    expect(taken.status).toBe(409);
+    expect(await taken.json()).toEqual({ error: 'job_id_taken' });
+    // The stranger learns nothing about the job and cannot touch it.
+    expect((await call(`/v1/jobs/${JOB}`, other)).status).toBe(404);
+  });
+});
+
 describe('privacy', () => {
   it('the ledger holds no audio, no text, no invite code, no IP address — and forgets the transcript id', async () => {
     const invite = await newInvite(60, 'p');
