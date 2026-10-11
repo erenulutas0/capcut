@@ -445,3 +445,114 @@ dedem de anlasın diye lazım") hiç iyileşmedi; onlar anahtar kelime taşımı
 **Kurucuya:** %5 hedefi için ya gerçek kullanıcı ifadeleriyle büyüyen bir ayar kümesi (bugünkü kümeleri
 yazanlar kullanıcı değil), ya da cihazda çalışan küçük bir anlam modeli gerekir; ikisi de bu işin dışında.
 Yeni kümenin kaçanları raporda yazılıdır: o küme de artık görülmüş sayılır.
+
+## Güncelleme — 11 Ekim 2026: emin değilken "Bunu mu demek istedin?" (kural 12)
+
+**Bulgu.** İki ayrı görmeyen kümede arama sekiz istekten birine başka iş yapan tek bir kart gösteriyordu
+(%12,2 ve %12,0); kelime listesi ve ek kuralları bunu aşağı çekemedi. **Karar (kurucu onayı, 11 Ekim):**
+kural yığmak yerine sunuş değişti. Sıralama aynı kaldı; arama artık ilk satırın **cevap** mı, yoksa
+**seçeneklerden biri** mi olduğunu ayrıca söylüyor.
+
+### Eminlik kuralı (`confidenceOf`, `web/src/domain/taskSearch.ts`)
+
+Arama, en iyi eşleşmenin arkasında ne durduğunu sayar (`SearchEvidence`): isteğin anlam taşıyan kaç
+kelimesini açıkladığı (kendi kelimeleri, deyimi, çifti), açıkta kalan kelimeler (başka bir işin bildiği
+ya da kimsenin bilmediği) ve sıradaki işin puanı. Cevap **emin** sayılır, yalnızca:
+
+- arkasında **iki ya da daha çok kelime** varsa ve sıradaki işin puanı onun %80'inin altındaysa — isteğin
+  iki ya da daha çok kelimesi açıkta kalıyorsa %50'sinin altındaysa; ya da
+- arkasında **tek kelime** varsa ve o kelime isteğin tamamıysa (güçlü bir kelime ya da yazılmakta olan
+  kelime; puan ≥ 2, sıradaki iş %80'in altında); ya da
+- arkasında tek kelime varsa, **yalnızca bir** kelime açıkta kalıyorsa, kelime işin kendi adıysa (puan 3)
+  ve sıradaki iş yarısının altındaysa.
+
+Öbür her durumda arama **sorar**. "Bunu henüz yapamıyoruz." cevabı hiçbir zaman soruya çevrilmez.
+Dayanak, görülmüş dört kümedeki sayım (DEV, HELD_OUT, iki eski "yeni" küme; 878 ifade): iki ya da daha çok
+kelimeye dayanan ilk satır yaklaşık 60'ta bir yanlış işti; tek kelimeye dayanıp başka kelimeleri açıkta
+bırakan ilk satır dörtte bir.
+
+### Ekran (`web/src/components/home/TaskFinder.tsx`)
+
+Yeni bir yerleşim yok; aynı sonuç satırları. Önce / sonra görüntüleri:
+[docs/ux/2026-10-11-did-you-mean](../ux/2026-10-11-did-you-mean/README.md).
+
+| | Emin (değişmedi) | Emin değil |
+|---|---|---|
+| İlk satır | seçili | **hiçbiri seçili değil** |
+| Başlığın altı | — | "Tam emin olamadım. Hangisini istiyorsan ona bas." |
+| Satırlar | en iyinin %40'ı ve üstü, en çok 3 | çalışan işler için %25'i ve üstü (daha çok seçenek), en çok 3; her satırda işin bir satırlık açıklaması |
+| Listenin altı | "Tüm işleri gör" | "Aradığın bunlardan biri değilse başka kelimelerle dene ya da bütün işlere bak." + "Tüm işleri gör" |
+
+**Enter ne yapar.** Emin cevapta ilk (seçili) satırı başlatır — eskisi gibi. Seçeneklerde **hiçbir şey
+başlatmaz**: odak ve yazı kutuda kalır, canlı bölge "Hiçbiri seçili değil. Önce aşağı okla birini seç."
+der, başlığın altındaki cümle vurgulanır. ↓ ilk seçeneği, ↑ son seçeneği seçer; seçildikten sonra Enter
+onu başlatır. Fareyle üzerine gelmek seçeneklerde satırı yalnızca aydınlatır, seçmez (Enter, fare listenin
+çıktığı yerde duruyor diye bir işi başlatmamalı); dokunmak ya da tıklamak satırı başlatır. Yazmaya devam
+edilince seçim sıfırlanır. Ekran okuyucu: kutu yine bir combobox, liste yine bir listbox; seçenek yokken
+`aria-activedescendant` yoktur ve durum cümlesi "Emin olamadım. 2 seçenek var. Aşağı okla birini seç, sonra
+Enter'a bas." olur. Telefonda klavyenin "git" tuşu Enter'dır: aynı davranış.
+
+**Tek aday.** Aday tek ise liste tek satırdır (soru yine sorulur, Enter yine başlatmaz). "2–3 seçenek"
+her zaman tutmaz; payı aşağıda.
+
+### Ölçüm
+
+**Temizlik.** Kural yalnızca görülmüş kümelerde ayarlandı ve `fd6ce81`'de donduruldu. Sonra, kendisine
+YALNIZCA işlerin listesi ve birer satırlık açıklamaları (ve yapılamayanların listesi) verilen bir yazar
+280 ifade yazdı (`search-eval-fresh3.ts`); kodu, kelime listelerini, eşikleri ve öteki ifadeleri görmedi.
+Çıktısı, yalnızca sayım basan bir betikle dosyaya çevrildi; ölçümden önce ifadeleri kimse okumadı. Ölçüm
+bir kez yapıldı ve ondan sonra arama koduna dokunulmadı. Daha eski bir kümede ya da ayar tablosunda
+bulunan 78 ifade sayılmadı (çoğu kısa, açık ifadeler: sayılan 202 ifade yazılandan zordur).
+
+| Ölçü (yeni kör küme, 202 ifade; 148'i yapılabilen iş) | Önce (`dd0301b`) | Sonra |
+|---|---|---|
+| **Yanlış ama emin** — tek cevap, yanlış iş (bütçe ≤ %5) | %12,4 (25 kart) | **%3,0** (6 kart) |
+| Tahmin etmek yerine sordu (bütün ifadelerde) | — | %25,2 (51 kez; 16'sında tek seçenek) |
+| Yapılabilen işlerde sorma oranı (bütçe ≤ %33) | — | %29,7 |
+| Sorduğunda doğru iş seçeneklerde (bütçe ≥ %80) | — | %88,6 (44 sorunun 39'u) |
+| Açık yazılmış isteğe ("kolay") soru (bütçe ≤ %15) | — | %5,6 (18 ifadeden 1'i) |
+| Doğrudan doğru (tek cevap ve doğru iş) | %75,7 | %54,1 |
+| Doğru işe yeniden yazmadan varıldı | %75,7 | %80,4 |
+| İlk satır doğru iş (bütçe ≥ %85) | %75,7 | %75,7 (sıralama değişmedi) |
+| İlk üç satırda var (bütçe ≥ %90) | %79,1 | %80,4 |
+| Yapılabilen işe "Bunu bulamadım." | %12,2 | %12,2 |
+| "Yapamıyoruz" yakalama / isabet (bütçe ≥ %95) | %88,0 / %88,2 | %88,0 / %88,2 |
+| Listede olmayan isteğe dürüst cevap (bütçe ≥ %80) | %65 | %65 (20 ifadenin 3'üne hâlâ tek kart, 4'üne soru) |
+
+**Kirlenmiş kümeler — başlık DEĞİL** (kural bunlara bakılarak ayarlandı): `search-eval-fresh2.ts` yanlış
+ama emin %12,0 → %1,0, sordu %27,8; `search-eval-fresh.ts` → %0, sordu %13,7; `HELD_OUT` %3,1 → %0,9, sordu
+%11,6; `DEV` (ayar tablolarında olmayan 85 ifade) → %0, yapılabilen işe soru %12,5.
+
+**Dürüst okuma.**
+
+- Bedel açık: doğrudan doğru cevap dörtte üçten yarının biraz üstüne indi. Kullanıcı yaklaşık dört
+  istekten birinde bir soruyla karşılaşıyor; sorulduğunda dokuz kez sekizinde doğru iş karşısında.
+  "Yeniden yazmadan doğru işe varma" %75,7'den %80,4'e çıktı; yanlış işe **gönderilme** dörtte bire indi.
+- **Arama hâlâ beş istekten birinde doğru işi hiç göstermiyor** (ilk üçte %80,4; %12,2'sine "Bunu
+  bulamadım"). Sunuş bunu düzeltmez; "ilk satır" ve "ilk üç" bütçeleri bu kümede de aşılıyor. Uzun
+  cümlelerde doğrudan doğru %35 (40 ifade), "Yazıya dök" isteklerinde %15 (13 ifadenin 2'si).
+- Üçüncü bağımsız kümede eski aramanın "yanlış ama emin" oranı yine %12 çıktı (%12,2, %12,0, %12,4):
+  o sayı sağlam bir ölçümdü.
+- Yeni dört bütçenin değerleri (≤ %33, ≥ %80, ≤ %15, DEV ≤ %15) ölçümle aynı oturumda yazıldı; ilkeden
+  seçildi ama ölçümü görmeden değil. `DEV` bütçesi önce bütün `DEV` ifadeleri üzerinden hesaplanan %8,9'a
+  göre ≤ %12 yazılmıştı; raporun saydığı (ayar tablolarında olmayan) 64 ifadede oran %12,5 çıktı ve bütçe
+  bu sayıya göre ≤ %15 olarak düzeltildi — yeni bir bütçenin ilk değeri, gevşetme değil; yine de söylenmeli.
+- Yapılabilen bir işi isteyen 55 "kolay" ifadenin 37'si daha önceki bir kümede ya da ayar tablosunda da
+  bulunduğu için sayılmadı: "açık isteğe soru" 18 ifadeye dayanıyor (bir ifade 5,6 puan).
+- Yeni kümenin kaçanları raporda yazılıdır: bir sonraki arama çalışması dördüncü bir küme yazdırmalı.
+
+**Testler.** Birim: `web/tests/unit/taskSearchConfidence.test.ts` (kanıt sayımı, kural, her kart adı ve
+örnek cümlenin emin cevap olması, "yapamıyoruz"un soruya dönmemesi). E2E: `home.spec.ts` (seçenek ekranı,
+Enter'ın başlatmaması, okla seçip başlatma, fare, tek seçenek, emin cevabın eskisi gibi kalması),
+`a11y.spec.ts` (seçenek ekranında axe, 320 / 640 px'te taşma yok, klavye yürüyüşü). Eski ayrı tabloların
+beklentilerine dokunulmadı (69–70 / 70, 92 / 95, 60 / 60: sıralama değişmedi).
+
+**Kurucuya.**
+
+1. Emin cevabın başlığı da "Bunu mu demek istedin?" (3 Ekim'den beri). İki durumu ayıran seçili satır ve
+   alttaki cümle. Emin durumda başlık "Bunu buldum" olursa ayrım güçlenir — "emin eşleşme bugünkü gibi
+   kalsın" dendiği için dokunulmadı.
+2. Dört istekten birine soru sormak çok mu? Eşikler `taskSearch.ts`'in sonunda beş sabit; gevşetmek yanlış
+   kartı, sıkılaştırmak soruyu artırır.
+3. Aramanın asıl eksiği artık "doğru işi hiç bulamamak" (beşte bir): kelime listesiyle iki turda
+   düzelmedi; gerçek kullanıcı cümleleri ya da cihazda küçük bir anlam modeli gerekir.
