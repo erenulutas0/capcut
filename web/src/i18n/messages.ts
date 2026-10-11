@@ -969,6 +969,11 @@ export const tr = {
   'home.results.status': '{n} sonuç. İlki: {first}.',
   'home.results.statusUnavailable': '{n} sonuç. İlki: {first}. Bunu henüz yapamıyoruz.',
   'home.results.statusNone': 'Sonuç yok. Bunu bulamadım.',
+  // Rule 12 (ADR-034, 11 Ekim 2026): the words do not settle it, so the rows are choices and none is started by Enter.
+  'home.results.ask.hint': 'Tam emin olamadım. Hangisini istiyorsan ona bas.',
+  'home.results.ask.other': 'Aradığın bunlardan biri değilse başka kelimelerle dene ya da bütün işlere bak.',
+  'home.results.statusAsk': 'Emin olamadım. {n} seçenek var. Aşağı okla birini seç, sonra Enter’a bas.',
+  'home.results.statusChoose': 'Hiçbiri seçili değil. Önce aşağı okla birini seç.',
   'home.editorLink': 'Kendim düzenleyeceğim',
   'home.trust': 'Videon cihazından çıkmaz. Hesap gerekmez.',
   'home.homeLink': 'Ana ekran',

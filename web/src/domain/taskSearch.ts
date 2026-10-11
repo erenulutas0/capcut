@@ -60,6 +60,14 @@
  *    a task that only shares a word with the request is not offered under
  *    it: rows of tasks that work stay only when they score nearly as much as
  *    the best (80 %), i.e. the words point at them just as much.
+ * 12. Sure, or asking (11 Oct 2026). The ranking above always has a first
+ *    row; whether that row is THE answer is a separate question, answered
+ *    from what stands behind it (`confidenceOf`): how many of the request's
+ *    words it accounts for, how many are left over, how close the next task
+ *    is. `sure`: the row is highlighted and Enter starts it. `ask`: the rows
+ *    are choices ("Bunu mu demek istedin?"), none is highlighted, and tasks
+ *    that work are listed down to 25 % of the best score instead of 40 %.
+ *    An answer of rule 11 ("Bunu henüz yapamıyoruz.") is never a question.
  */
 
 import { TASKS, type TaskDefinition } from './tasks';
