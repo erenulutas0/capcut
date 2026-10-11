@@ -121,9 +121,25 @@ function ModalShell({
       ((backwards ? items[items.length - 1] : items[0]) ?? container).focus();
     };
 
+    // A focused control that is removed or disabled (the "İptal" of a running
+    // analysis when it finishes) drops focus to <body> without any focus
+    // event. The dialog takes it back, so the next Tab starts inside it and a
+    // screen reader is not left on the page underneath.
+    const reclaim = new MutationObserver(() => {
+      if (!container || openModals[openModals.length - 1] !== container) return;
+      const active = document.activeElement;
+      if (active && active !== document.body && container.contains(active)) return;
+      if (active && active !== document.body && active !== document.documentElement) return;
+      container.focus();
+    });
+    if (container) {
+      reclaim.observe(container, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'hidden'] });
+    }
+
     document.addEventListener('keydown', onKeyDown, true);
     document.addEventListener('focusin', onFocusIn);
     return () => {
+      reclaim.disconnect();
       document.removeEventListener('keydown', onKeyDown, true);
       document.removeEventListener('focusin', onFocusIn);
       const at = container ? openModals.lastIndexOf(container) : -1;
