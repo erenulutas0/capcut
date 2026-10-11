@@ -354,6 +354,21 @@ export function syncWebm(syncMp4: string): string {
   ]);
 }
 
+/**
+ * The sync clip made heavy: the same flashes and chirps under moving noise at a constant 22 Mbit/s
+ * (about 33 MB for its 12 s), so "Küçült" has to shrink it and the sound-against-picture offset of a
+ * target-size encode can be measured. (The plain sync clip weighs a few hundred KB: since 10 Oct 2026
+ * "Küçült" rightly says there is nothing to shrink there.) The sound is copied untouched.
+ */
+export function syncHeavy(syncMp4: string): string {
+  return make('senkron-agir.mp4', [
+    '-i', syncMp4,
+    '-vf', 'noise=alls=40:allf=t+u',
+    '-c:v', 'libx264', '-preset', 'veryfast', '-b:v', '22M', '-minrate', '22M', '-maxrate', '22M', '-bufsize', '22M',
+    '-pix_fmt', 'yuv420p', '-g', '30', '-c:a', 'copy',
+  ]);
+}
+
 /** The A/V measurement of scripts/lib/av-sync.mjs (typed here: its .d.mts lists only what the unit tests use). */
 export interface AvSyncModule {
   writeSyncClip(path: string, options?: { fps?: number }): string;

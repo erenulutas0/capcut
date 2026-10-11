@@ -4,19 +4,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { enhanceFixture, frameLumas, frameRgb, laplacianVariance, rgbMeans } from '../e2e/enhance-media';
 import { addKesit, installSavePicker } from '../e2e/kesitFlow';
 import { takeSavedFile, waitForResult } from './lib/app';
-import {
-  buildReference,
-  cameraLikeSource,
-  cameraLikeWebm,
-  fidelity,
-  hasVmaf,
-  loadAvSync,
-  playableEverywhere,
-  probeFile,
-  syncSource,
-  syncWebm,
-  type Fidelity,
-} from './lib/media';
+import { buildReference, cameraLikeSource, cameraLikeWebm, fidelity, hasVmaf, loadAvSync, playableEverywhere, probeFile, syncSource, syncWebm, type Fidelity, syncHeavy } from './lib/media';
 import { BUILD, SOURCES, ensureDir, round, writeResult } from './lib/record';
 import { watchProblems } from './lib/screen';
 
@@ -74,7 +62,7 @@ const CASES: OutCase[] = [
   { id: 'dikey-senkron-mp4', task: 'dikey', label: 'Dikey yap, senkron klibi (zaten 9:16)', source: syncSource, kind: 'sync' },
   { id: 'cevir-senkron-mp4', task: 'cevir', label: 'Her yerde açılsın, senkron klibi (H.264 MP4)', source: syncSource, kind: 'sync' },
   { id: 'cevir-senkron-webm', task: 'cevir', label: 'Her yerde açılsın, senkron klibi (VP9 WebM)', source: async () => syncWebm(await syncSource()), kind: 'sync' },
-  { id: 'kucult-senkron-webm', task: 'kucult', label: 'Küçült (zaten sığan video: “Daha da küçült”), senkron klibi (VP9 WebM)', source: async () => syncWebm(await syncSource()), kind: 'sync' },
+  { id: 'kucult-senkron-agir', task: 'kucult', label: 'Küçült (seçim değişmeden: WhatsApp), ağır senkron klibi (H.264, yaklaşık 33 MB)', source: async () => syncHeavy(await syncSource()), kind: 'sync' },
   { id: 'kes-goruntu', task: 'kes', label: 'Kes 2,5–5,5 sn, kamera benzeri 1080p', source: cameraLikeSource, kind: 'picture', range: [2.5, 5.5], referenceFilter: 'null' },
   { id: 'dikey-goruntu', task: 'dikey', label: 'Dikey yap (Doldur), kamera benzeri 1080p', source: cameraLikeSource, kind: 'picture', referenceFilter: 'crop=ih*9/16:ih' },
   { id: 'kucult-goruntu', task: 'kucult', label: 'Küçült → WhatsApp (16 MB), kamera benzeri 1080p, yaklaşık 24 MB', source: cameraLikeSource, kind: 'picture', size: 'whatsapp', referenceFilter: 'null' },

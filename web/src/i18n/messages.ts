@@ -815,7 +815,7 @@ export const tr = {
   'download.share': 'Paylaş',
   'download.shareHint': 'Paylaşma menüsünü açar: videoyu bir uygulamaya ya da bir kişiye gönderebilirsin.',
   'download.shareFailed': 'Paylaşılamadı. Videoyu kaydet, sonra Dosyalar ya da galeri uygulamasından paylaş.',
-  'download.shareFailedSaved': 'Paylaşılamadı. Kaydedilen dosyayı klasöründen paylaşabilirsin.',
+  'download.shareFailedSaved': 'Paylaşılamadı. Dosyan kaydedildi; onu klasöründen paylaş.',
   'download.shareTooLarge':
     'Bu video ({size}) buradan paylaşmak için büyük: tarayıcı en fazla {limit} paylaşabiliyor. Videoyu kaydet, sonra Dosyalar ya da galeri uygulamasından paylaş.',
   'download.shareTooLargeSaved':

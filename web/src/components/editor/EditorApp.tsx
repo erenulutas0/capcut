@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -33,7 +34,6 @@ import { frameStepUs, type TrimEdge } from '@/domain/trim';
 import { translator, type MessageKey } from '@/i18n/messages';
 import { listenForUncaughtErrors, recordError } from '@/adapters/diagnostics';
 import { TranscribeSteps, fillText } from '@/components/transcript/TranscribeSteps';
-import { TranscriptPanel } from '@/components/transcript/TranscriptPanel';
 import { useTranscription } from '@/components/transcript/useTranscription';
 import { transcriptLines } from '@/domain/transcript';
 import { RECOMMENDED_MODEL } from '@/domain/transcriptModels';
@@ -50,9 +50,7 @@ import { MarkBar, type MarkTarget } from './MarkBar';
 import { MediaErrorNotice } from './MediaErrorNotice';
 import { PreviewStage } from './PreviewStage';
 import { RelinkPanel } from './RelinkPanel';
-import { ReportDialog } from './ReportDialog';
 import { SaveStateBadge } from './SaveStateBadge';
-import { SilenceDialog } from './SilenceDialog';
 import { SourceStrip, type EditableRange } from './SourceStrip';
 import type { TrimCommitInfo } from './TrimHandle';
 import { useCaptionFont } from './useCaptionFont';
@@ -66,6 +64,16 @@ import { useSilenceAnalysis } from './useSilenceAnalysis';
 import { useThumbnails } from './useThumbnails';
 
 const t = translator('tr');
+
+/*
+ * Three screens of the editor that exist only after a press — the transcript beside the video, the
+ * "Boşlukları bul" dialog and "Sorun bildir" — come with that press, not with the page (10 Oct 2026:
+ * the editor's main-thread work at load was over the 200 ms budget under phone throttling). The
+ * service worker holds their chunks like every other file of the build.
+ */
+const TranscriptPanel = dynamic(() => import('@/components/transcript/TranscriptPanel').then((module) => module.TranscriptPanel), { ssr: false });
+const ReportDialog = dynamic(() => import('./ReportDialog').then((module) => module.ReportDialog), { ssr: false });
+const SilenceDialog = dynamic(() => import('./SilenceDialog').then((module) => module.SilenceDialog), { ssr: false });
 
 const CANVAS_ASPECT_CSS: Record<string, string> = {
   '9:16': '9 / 16',

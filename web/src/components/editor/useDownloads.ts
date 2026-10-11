@@ -367,7 +367,12 @@ export function useDownloads({
   const { fpsNum, fpsDen } = project.export;
   const kindsRef = useRef<{ key: string; lookup: EncoderKindLookup } | null>(null);
   const kindsKey = `${aspect}|${fpsNum}/${fpsDen}`;
+  // Only once a video is open: the question loads the media library (about 120 KB of script), and a
+  // page that has no video yet has nothing to download (10 Oct 2026: every wizard and the editor were
+  // fetching it while still showing "Videonu seç").
+  const hasVideo = videoFile !== null;
   useEffect(() => {
+    if (!hasVideo) return undefined;
     let live = true;
     void encoderKindLookup(aspect, fpsNum, fpsDen).then((lookup) => {
       if (live) kindsRef.current = { key: kindsKey, lookup };
@@ -375,7 +380,7 @@ export function useDownloads({
     return () => {
       live = false;
     };
-  }, [aspect, fpsDen, fpsNum, kindsKey]);
+  }, [aspect, fpsDen, fpsNum, hasVideo, kindsKey]);
 
   /** ADR-035: the open video's own bitrate (bytes over length), for the target-size planner. */
   const sourceBitrate = useCallback((): number | undefined => {
