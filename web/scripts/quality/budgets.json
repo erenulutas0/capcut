@@ -66,9 +66,9 @@
 
   "transcript.live.wer": { "max": 12, "why": "tests/e2e/transcript-real.spec.ts ile aynı eşik (tek cümle)" },
 
-  "perf.ana-ekran.*.jsTransferred": { "max": 210000, "why": "ölçülen 193 KB'ın yaklaşık %8 üstü" },
-  "perf.sihirbaz.*.jsTransferred": { "max": 455000, "why": "ölçülen 422 KB'ın yaklaşık %8 üstü" },
-  "perf.editor.*.jsTransferred": { "max": 455000, "why": "ölçülen 421 KB'ın yaklaşık %8 üstü" },
+  "perf.ana-ekran.*.jsTransferred": { "max": 192000, "why": "ölçülen 177 KB'ın yaklaşık %8 üstü (11 Ekim; önce 193 KB)" },
+  "perf.sihirbaz.*.jsTransferred": { "max": 253000, "why": "ölçülen 234 KB'ın yaklaşık %8 üstü (11 Ekim; önce 422 KB)" },
+  "perf.editor.*.jsTransferred": { "max": 307000, "why": "ölçülen 284 KB'ın yaklaşık %8 üstü (11 Ekim; önce 421 KB)" },
   "perf.*.masaustu.lcp": { "max": 800, "why": "yerel sunucuda, kısıtlamasız" },
   "perf.*.mobil-kisitli.lcp": { "max": 2500, "why": "Web Vitals 'iyi' sınırı" },
   "perf.*.*.tbt": { "max": 200, "why": "Web Vitals 'iyi' sınırı" },
@@ -84,7 +84,7 @@
   "a11y.*.*.under24": { "max": 0, "why": "WCAG 2.2 AA 2.5.8: en az 24 × 24 px" },
   "a11y.*.*.unnamed": { "max": 0, "why": "her kontrolün adı olmalı" },
   "a11y.*.*.wordsUnder12": { "max": 0, "why": "12 px’ten küçük yazı olmamalı" },
-  "a11y.phone.*.under14Percent": { "max": 75, "why": "ölçülen en yüksek %74 (editör). Geriye gidiş kapısı; ilke değil — bulgulara bakın" },
+  "a11y.phone.*.under14Percent": { "max": 20, "why": "ölçülen en yüksek %17 (editör, video ve bir kesit: şeridin 12 px'lik zaman etiketleri); öbür ekranlar %0 (11 Ekim; önce en yüksek %74). Geriye gidiş kapısı" },
   "a11y.*.*.unreached": { "max": 0, "why": "her kontrole klavyeyle ulaşılmalı" },
   "a11y.*.*.jumpsBack": { "max": 0, "why": "sihirbazda odak yukarıdan aşağı ilerlemeli" },
   "a11y.*.*.noRing": { "max": 0, "why": "odak her durakta görünmeli" },

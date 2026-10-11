@@ -73,7 +73,10 @@ test.describe("fast cut", () => {
 
     const method = page.getByTestId("export-method");
     await expect(method).toHaveAttribute("data-method", "smart");
-    await expect(method).toContainText("Hızlı kesim");
+    // Plain words under "Kaydedildi"; the engineering words are in "Ayrıntılar".
+    await expect(method).toContainText("Görüntüye dokunulmadı; kalitesi videondakiyle aynı");
+    await expect(method).toContainText(/yalnızca kesim yerlerindeki \d+ kare yeniden işlendi/);
+    await expect(page.getByTestId("measured-method")).toContainText("Hızlı kesim");
     const encoded = Number(await method.getAttribute("data-frames-encoded"));
     // The heads up to the next IDR (27 + 15) and at most a B-frame group at the end.
     expect(encoded).toBeGreaterThanOrEqual(42);
@@ -108,6 +111,9 @@ test.describe("fast cut", () => {
     const method = page.getByTestId("export-method");
     await expect(method).toHaveAttribute("data-method", "copy");
     await expect(method).toHaveText(
+      "Görüntüye dokunulmadı; kalitesi videondakiyle aynı",
+    );
+    await expect(page.getByTestId("measured-method")).toHaveText(
       "Hızlı kesim — görüntü yeniden kodlanmadı, orijinal kalite",
     );
 
@@ -187,7 +193,10 @@ test.describe("fast cut", () => {
     await expect(method).toHaveAttribute("data-method", "encode");
     await expect(method).toHaveAttribute("data-fallback", "fps");
     await expect(method).toHaveText(
-      "Görüntü yeniden işlendi (kaynak saniyede 30 kareden hızlı, 30 kareye indirildi)",
+      "Görüntü yeniden işlendi (video saniyede 30 kareden hızlıydı, 30 kareye indirildi)",
+    );
+    await expect(page.getByTestId("measured-method")).toHaveText(
+      "Yeniden kodlandı (kaynak saniyede 30 kareden hızlı, 30 kareye indirildi)",
     );
     expect(probeFrames(await savedFile(page, testInfo)).frames).toBe(60);
     expect(errors).toEqual([]);

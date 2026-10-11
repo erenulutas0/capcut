@@ -1,9 +1,9 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useState, type ComponentType } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 
-import { EditorView } from '@/components/editor/EditorApp';
 import { useEditorState } from '@/components/editor/useEditorState';
 import { taskById, type TaskId } from '@/domain/tasks';
 import { translator } from '@/i18n/messages';
@@ -11,6 +11,29 @@ import type { WizardHostProps } from './WizardFlow';
 import { WIZARDS } from './wizards';
 
 const t = translator('tr');
+
+/** The editor's own chunk: asked for when it is about to be shown, never by a wizard's first screen. */
+const loadEditor = () => import('@/components/editor/EditorApp');
+
+/**
+ * The editor, over the wizard's state. Its code is not part of a wizard page (10 Oct 2026: every
+ * wizard page downloaded the whole editor — 422 KB of script against the opening screen's 193 KB —
+ * although nine of the ten wizards show it only after "Daha fazla ayar → editörde aç"). It is loaded
+ * when it is first wanted; the service worker holds the chunk like every other file of the build, so
+ * this works offline too. While it arrives the screen says so.
+ */
+const EditorView = dynamic(() => loadEditor().then((module) => module.EditorView), {
+  ssr: false,
+  loading: () => (
+    <div className="wizard" data-testid="editor-loading">
+      <main className="wizard-main">
+        <p className="wizard-panel-title" role="status">
+          {t('wizard.editorLoading')}
+        </p>
+      </main>
+    </div>
+  ),
+});
 
 /**
  * One task's wizard (`/yap/<id>/`, ADR-034).
@@ -28,6 +51,15 @@ export function TaskWizard({ taskId }: { taskId: TaskId }) {
   const [inEditor, setInEditor] = useState(false);
   const task = taskById(taskId);
   const Wizard = (WIZARDS as Partial<Record<TaskId, ComponentType<WizardHostProps>>>)[taskId];
+
+  // "Kes" IS the editor (its wizard only picks the video): its chunk is fetched while the user is
+  // still choosing a file, after the first screen has been drawn — so the editor opens at once.
+  const opensEditor = task?.steps.includes('editor') === true;
+  useEffect(() => {
+    if (!opensEditor) return undefined;
+    const idle = window.setTimeout(() => void loadEditor().catch(() => undefined), 300);
+    return () => window.clearTimeout(idle);
+  }, [opensEditor]);
 
   if (!task || !task.available || !Wizard) {
     // Not reachable from the app (no card, no route is built); an honest page all the same.

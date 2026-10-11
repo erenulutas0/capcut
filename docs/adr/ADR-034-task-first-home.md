@@ -384,3 +384,64 @@ Chromium **29/29**, Chrome **29/29**, Edge **29/29** PASS. Ekran görüntüleri:
 (360 / 390 / 1440). **Koşulmayanlar:** telefon (adb kullanılmadı), gerçek kayıt koşucusu
 (`run-real-media.mjs`), Firefox / WebKit matrisi (eski sonuçlar duruyor), gerçek model testleri.
 
+
+## Güncelleme — 10 Ekim 2026: arama kuralları (ekler, çiftler, olumsuz fiil), dürüst ölçüm
+
+**Bulgu (kalite raporu, 10 Ekim):** ayrı tutulan 240 ifadede on istekten birine başka iş yapan, "Başla"
+düğmeli bir kart öneriliyordu. En pahalıları ters işe götürenlerdi ("sesi kapa" → Sesini al).
+
+**Ne değişti (`web/src/domain/taskSearch.ts`, `turkishSuffix.ts`, `tasks.ts`).** Kelime listesi büyütmek
+yerine kurallar; "Yazarak bulma: eşleştirme kuralları" bölümündeki sıra dosyanın başında güncel hâliyle yazılı:
+
+- **Türkçe ekler.** Bir kelime, gerçek bir ekle uzadığında o kelimedir ("sesini" ← "ses", "kesebilir
+  miyim" ← "kes", "müziği" ← "müzik": sondaki k/p/t yumuşaması; "ekliyorum" ← "ekle": ünlü daralması).
+  Aynı harflerle başlayan başka kelime değildir: "kesinlikle" Kes, "dikkat" Dikey yap, "netflix" İyileştir
+  değildir. İki kalıp (isim: çoğul, iyelik, hâl; fiil: çatı, yeterlik, olumsuzluk, zaman + kişi ya da
+  fiilimsi); yapım ekleri (-lik, -li, -siz) bilerek yok. Bir çözümleyici değildir: "kal-i-te" gibi tesadüfleri
+  kabul eder.
+- **Yarım kelime yalnızca son kelimedir**; iki harfle arama yalnızca kutuda başka bir şey yokken başlar.
+- **Çiftler: neye ne yapıldığı.** "ses" + "kapa / olmasın / istemiyorum / yok" = Sesi kapat; "ses / müzik /
+  şarkı" + "al / kaydet / indir" = Sesini al; "müzik / şarkı" + "ekle / koy / çalsın" = Müzik ekle;
+  "sessiz / boş" + "yer / kısım / an" = Boşlukları at. İki yönde, ekleriyle, niyet taşımayan kelimeler
+  (zarflar, zamirler) aradan çıkarıldıktan sonra yan yana; olumsuzluk yanındaki kelimeye aittir ("sadece
+  sesi lazım, görüntü olmasın" Sesini al'dır).
+- **Olumsuz fiil.** "açamıyorum / açılmadı / oynamıyor / izleyemiyorum" = Her yerde açılsın;
+  "gönderemiyorum / atamadım / sığmadı / gitmiyor" = Küçült — kişi ve zaman tek tek listelenmeden.
+- **Geri çekilen kelime.** "çevir / dönüştür / convert" bir şeyin bir şeye çevrileceğini söyler, neye
+  olduğunu yanındaki kelime söyler: tek başına ya da "mp4" ile Her yerde açılsın; "mp3e çevir" Sesini al;
+  "gife", "Türkçeye", "sağa" ile yapılamayan iş. "boyut / size" da böyledir ("tiktoka uygun boyut" Dikey yap).
+- **Taban.** Dört ve daha çok kelimelik bir istekte tek bir destek kelimesine dayanan sonuç verilmez:
+  "Bunu bulamadım." Tek GÜÇLÜ kelimeye taban uygulanmaz (denendi: bir yanlış kartı kaldırmak için üç doğru
+  cevabı kaybediyordu).
+- **Yazım hatası** beş harfli kelimede yalnızca eksik / fazla / yer değiştirmiş harftir; harf DEĞİŞMESİ
+  altı harften itibaren sayılır ("yarın", "yayın" değildir).
+- **Yapılamayan dört iş için dürüst kayıt** (`available: false`): internetten video indirme, bir siteye
+  yükleme, ekranı ya da kamerayı kaydetme, canlı yayın. "youtubedan video indir" artık Dikey yap'ı değil
+  "Bunu henüz yapamıyoruz."u bulur. Çıplak "indir" bu kaydın kelimesi değildir: "İndir" uygulamanın kendi
+  düğmesidir.
+
+**Ölçüm disiplini ve sayılar.** Ayar yalnızca `DEV` kümesinde (127 yeni ifade, kurallardan önce yazıldı)
+ve görülmüş birim tablolarında yapıldı. Eski ayrı küme (`HELD_OUT`) **kirlenmiştir**: kaçanları bu işten önce
+okundu. Bu yüzden iki yeni küme, aramanın kodunu, listelerini ve öteki ifadeleri **görmeyen** ayrı bir
+yazara yazdırıldı; her biri bir kez ölçüldü:
+
+| Küme | Durum | Sayılan | İlk sonuç doğru | Yanlış ama emin |
+|---|---|---|---|---|
+| `search-eval-fresh2.ts` (243 ifade) | **ayrı, bir kez ölçüldü — başlık** | 209 | %75,0 → **%81,8** | %19,6 → **%12,0** |
+| `search-eval-fresh.ts` (178 ifade) | ilk turdan sonra bir kez ölçüldü (%77,2 → %81,5; %20,9 → %12,2), sonra kaçanları okundu: **artık ayar kümesi** | 139 | — | — |
+| `HELD_OUT` (282 ifade) | **kirlenmiş** | 225 | %89,0 → %92,4 | %7,1 → %3,1 |
+| `DEV` (175 ifade) | ayar kümesi | — | 135 → 167 / 175 | 37 → 7 kart |
+
+("önce" = d1edd82'deki arama, aynı ifadelerde.) Yeni kümede öteki ölçüler: ilk üçte %81,1 → %85,8;
+yapılabilen işe "yapamıyoruz" %4,1 → %2,0; "yapamıyoruz" yakalama %71,0 → %83,9, isabet %82,9 → %91,2;
+listede olmayan isteğe dürüst cevap %70 → %80; uzun cümlelerde ilk sonuç %67,5 → %67,5 (değişmedi).
+
+**Dürüst sonuç:** görmeyen bir yazarın ifadelerinde başka işe kart oranı beşte birden sekizde bire indi,
+ama bütçenin (≤ %5) iki katından fazla. İki tur aynı yerde durdu (%12,2 ve %12,0): kelime ve kural
+temelli aramanın bu tür ifadelerdeki sınırı buna yakın görünüyor. Uzun, hikâye anlatan cümleler ("…
+dedem de anlasın diye lazım") hiç iyileşmedi; onlar anahtar kelime taşımıyor. Görülmüş tablolar bozulmadı
+(70 / 70 — önce 69 —, 92 / 95, 60 / 60; beklentileri değişmedi).
+
+**Kurucuya:** %5 hedefi için ya gerçek kullanıcı ifadeleriyle büyüyen bir ayar kümesi (bugünkü kümeleri
+yazanlar kullanıcı değil), ya da cihazda çalışan küçük bir anlam modeli gerekir; ikisi de bu işin dışında.
+Yeni kümenin kaçanları raporda yazılıdır: o küme de artık görülmüş sayılır.

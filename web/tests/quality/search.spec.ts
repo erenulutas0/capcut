@@ -4,6 +4,8 @@ import { test } from '@playwright/test';
 
 import { foldText, searchTasks } from '../../src/domain/taskSearch';
 import { DEV, HELD_OUT, type EvalPhrase } from './data/search-eval';
+import { FRESH_HELD_OUT } from './data/search-eval-fresh';
+import { FRESH_HELD_OUT_2 } from './data/search-eval-fresh2';
 import { round, writeResult } from './lib/record';
 import { t } from './lib/app';
 
@@ -27,12 +29,18 @@ import { t } from './lib/app';
 /** Phrases already in the tables the lists were tuned on: not counted here. */
 function seenPhrases(): Set<string> {
   const seen = new Set<string>();
-  for (const name of ['taskSearch.test.ts', 'taskSearchHeldOut.test.ts', 'taskSearchHeldOut2.test.ts']) {
+  for (const name of ['taskSearch.test.ts', 'taskSearchHeldOut.test.ts', 'taskSearchHeldOut2.test.ts', 'taskSearchHeldOut3.test.ts', 'taskSearchRules.test.ts']) {
     const source = readFileSync(join(process.cwd(), 'tests', 'unit', name), 'utf8');
     for (const match of source.matchAll(/\[\s*(['"`])((?:\\.|(?!\1).)+)\1\s*,/g)) seen.add(foldText(match[2] ?? ''));
+    // The rules table quotes its phrases one per line or as arguments, not as pairs.
+    if (name === 'taskSearchRules.test.ts') {
+      for (const match of source.matchAll(/(['"`])((?:\\.|(?!\1).)+)\1/g)) seen.add(foldText(match[2] ?? ''));
+    }
   }
   return seen;
 }
+
+const folded = (phrases: readonly EvalPhrase[]): string[] => phrases.map((phrase) => foldText(phrase.text));
 
 type Answer =
   | { kind: 'card'; first: string; shown: string[] }
@@ -157,11 +165,27 @@ function evaluate(phrases: readonly EvalPhrase[], seen: Set<string>) {
   };
 }
 
+/**
+ * Four sets since 10 Oct 2026 (the header of data/search-eval.ts has the rule):
+ *  - `fresh`: data/search-eval-fresh2.ts, written by a writer who saw neither the search nor any other
+ *    phrase, and measured ONCE, after the search's last change. The headline, and what the budgets judge.
+ *  - `firstFresh`: data/search-eval-fresh.ts, the first such batch. It was measured once (commit 9dae184
+ *    has those numbers); then its misses were read and the search was changed for them, so it is a
+ *    TUNING set now and its numbers here are not an estimate.
+ *  - `heldOut`: the original held-out set. CONTAMINATED: its misses were read before the search was
+ *    reworked (the rework was asked for because of them).
+ *  - `dev`: tuned on. Not a measurement.
+ * A phrase that is in a tuned table, in DEV, in the old held-out set or in the first fresh batch is left
+ * out of the fresh count.
+ */
 test('search: held-out and dev phrases', async ({}, testInfo) => {
   const seen = seenPhrases();
+  const tuned = new Set([...seen, ...folded(DEV)]);
   writeResult('search', testInfo.project.name, {
     tunedTablePhrases: seen.size,
-    heldOut: evaluate(HELD_OUT, seen),
+    fresh: evaluate(FRESH_HELD_OUT_2, new Set([...tuned, ...folded(HELD_OUT), ...folded(FRESH_HELD_OUT)])),
+    firstFresh: evaluate(FRESH_HELD_OUT, new Set([...tuned, ...folded(HELD_OUT)])),
+    heldOut: evaluate(HELD_OUT, tuned),
     dev: evaluate(DEV, seen),
   });
 });

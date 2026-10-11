@@ -5,7 +5,8 @@ import { useState } from 'react';
 import { ENHANCE_STRENGTHS_V4, type EnhanceStrengthV4, type Project } from '@/domain/edl';
 import type { KesitSettings } from '@/domain/kesit';
 import type { MessageKey } from '@/i18n/messages';
-import { BeforeAfter, enhanceItems } from './BeforeAfter';
+import { BeforeAfter } from './BeforeAfter';
+import { enhanceItems } from './enhanceItems';
 import { EnhanceSlowNotice } from './SlowNotice';
 import { useEnhancePreview } from './useEnhancePreview';
 

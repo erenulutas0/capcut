@@ -103,7 +103,22 @@ export const FLOWS: Flow[] = [
       await expect(page.getByTestId('kesit-card')).toHaveCount(1);
     },
     download: { name: t('download.one'), testId: 'download-all' },
-    verify: (out) => [lengthCheck(out, 3), codecCheck(out, ['video:h264', 'audio:aac'])],
+    verify: (out, source) => [
+      lengthCheck(out, 3),
+      codecCheck(out, ['video:h264', 'audio:aac']),
+      {
+        // Cutting must not blow the picture up (10 Oct 2026: a 720p video came out as 1920 × 1080).
+        name: 'görüntü kaynaktan büyük değil',
+        ok: (out.video?.width ?? 0) <= (source.video?.width ?? 0) && (out.video?.height ?? 0) <= (source.video?.height ?? 0),
+        value: `${source.video?.width} × ${source.video?.height} → ${out.video?.width} × ${out.video?.height}`,
+      },
+      {
+        // Three seconds out of 24 cannot weigh more than the whole video.
+        name: 'kesit, videonun tamamından küçük',
+        ok: out.bytes < source.bytes,
+        value: `${tr(source.bytes / 1000)} KB → ${tr(out.bytes / 1000)} KB`,
+      },
+    ],
   },
   {
     id: 'bosluk',

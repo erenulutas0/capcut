@@ -18,7 +18,8 @@ import { CAPTION_LIMITS } from '@/domain/captions';
 import { formatClock, US_PER_SECOND } from '@/domain/time';
 import { downloadBytes } from '@/domain/transcriptModels';
 import { overLimitText } from '@/components/editor/outputLimitText';
-import { en, tr, type MessageKey } from '@/i18n/messages';
+import { tr, type MessageKey } from '@/i18n/messages';
+import { en } from '@/i18n/messages.en';
 
 const GIB = 1_073_741_824;
 const MIB = 1_048_576;

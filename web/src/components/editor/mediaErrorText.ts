@@ -1,4 +1,5 @@
 import { WEB_LOCAL_POLICY, formatByteLimit, formatBytesAgainstLimit, type ExportPolicy } from '@/domain/policy';
+import { formatDurationShort, type Micros } from '@/domain/time';
 import type { MessageKey } from '@/i18n/messages';
 
 type T = (key: MessageKey) => string;
@@ -10,6 +11,23 @@ export interface RefusedFile {
   name: string;
   /** For the size refusals: the bytes that were checked (the file, or video and music together). */
   bytes?: number;
+  /** For a file that is not all there (ADR-040): the length it declares and how far it really goes. */
+  extent?: { declaredUs: Micros; readableUs: Micros };
+}
+
+/** Under this much readable video the sentence does not name an amount: "almost none of it is in the file". */
+const NOTHING_READABLE_US: Micros = 1_000_000;
+
+/**
+ * The message key of a refusal. A file that is not all there (ADR-040) says
+ * how far it goes when that is worth saying, and "almost nothing" otherwise.
+ */
+function reasonKey(file: RefusedFile): MessageKey {
+  const incomplete = file.reason === 'incomplete' || file.reason === 'music_incomplete';
+  if (incomplete && (!file.extent || file.extent.readableUs < NOTHING_READABLE_US)) {
+    return `error.${file.reason}Start` as MessageKey;
+  }
+  return `error.${file.reason}` as MessageKey;
 }
 
 /** Which byte limit a size refusal was checked against. */
@@ -28,14 +46,23 @@ export function limitFor(reason: string, policy: Pick<ExportPolicy, 'maxTotalSou
 export function refusedFileText(t: T, file: RefusedFile, policy = WEB_LOCAL_POLICY): string {
   const mark = t('time.decimalMark');
   const limitBytes = limitFor(file.reason, policy);
-  const values: Record<string, string> =
-    limitBytes === null
+  const words = { minute: t('time.minuteShort'), second: t('time.secondShort'), decimalMark: mark };
+  const values: Record<string, string> = {
+    ...(limitBytes === null
       ? {}
       : {
           size: file.bytes === undefined ? '—' : formatBytesAgainstLimit(file.bytes, limitBytes, mark),
           limit: formatByteLimit(limitBytes, mark),
-        };
-  const reason = t(`error.${file.reason}` as MessageKey).replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
+        }),
+    ...(file.extent
+      ? {
+          total: formatDurationShort(file.extent.declaredUs, words),
+          // Rounded down by the formatter's tenth: never more than is really there.
+          readable: formatDurationShort(Math.max(0, file.extent.readableUs - 50_000), words),
+        }
+      : {}),
+  };
+  const reason = t(reasonKey(file)).replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
   const lowered = `${reason.charAt(0).toLocaleLowerCase('tr-TR')}${reason.slice(1)}`;
   return t('error.rejectedFile').replace(/\{(\w+)\}/g, (match, key: string) =>
     key === 'name' ? file.name : key === 'reason' ? lowered : match,

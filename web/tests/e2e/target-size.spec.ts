@@ -187,7 +187,7 @@ test.describe('target-size download (ADR-035)', () => {
     expect(result.mode).toBe('copy');
     expect(result.attempts).toBe(0);
     expect(result.savedBytes).toBeLessThanOrEqual(16_000_000);
-    expect(result.text).toContain('yeniden kodlanmadı');
+    expect(result.text).toContain('Görüntüye dokunulmadı; olduğu gibi sığdı');
     expect(errors).toEqual([]);
   });
 

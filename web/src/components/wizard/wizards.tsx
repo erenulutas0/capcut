@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 
 import { safeFileName } from '@/adapters/browserMedia';
@@ -9,7 +10,6 @@ import {
   MUSIC_ALONE_DB,
   MUSIC_BEHIND_DB,
   alreadyPlaysEverywhere,
-  enhanceRecipe,
   lengthsAfterCut,
   musicLengthUs,
   musicOutlastsVideo,
@@ -20,27 +20,17 @@ import {
   withMusicDefaults,
   type GapChoice,
 } from '@/application/taskRecipes';
-import { BeforeAfter, enhanceItems } from '@/components/enhance/BeforeAfter';
-import { EnhanceSlowNotice } from '@/components/enhance/SlowNotice';
-import { useEnhancePreview } from '@/components/enhance/useEnhancePreview';
 import { Icon } from '@/components/Icon';
-import { TranscribeSteps } from '@/components/transcript/TranscribeSteps';
-import { TranscriptDownloads } from '@/components/transcript/TranscriptDownloads';
-import { TranscriptPanel } from '@/components/transcript/TranscriptPanel';
-import { useTranscription } from '@/components/transcript/useTranscription';
-import { primaryCaptionTrack } from '@/domain/captions';
-import { transcriptLines } from '@/domain/transcript';
-import { RECOMMENDED_MODEL } from '@/domain/transcriptModels';
 import type { TargetSizePreview } from '@/components/editor/useDownloads';
 import { useSilenceAnalysis } from '@/components/editor/useSilenceAnalysis';
 import { useHydrated } from '@/components/useHydrated';
-import { ENHANCE_STRENGTHS_V4 } from '@/domain/edl';
 import { formatStorageBytes } from '@/domain/outputStorage';
 import { WEB_LOCAL_POLICY, formatByteLimit, formatBytes } from '@/domain/policy';
 import { SIZE_PRESETS, type SizePresetId, type TargetSizeRequest } from '@/domain/targetSize';
 import type { AvailableTaskId } from '@/domain/tasks';
 import { formatTimecode } from '@/domain/time';
 import { translator, type MessageKey } from '@/i18n/messages';
+import { ChoiceOption } from './ChoiceOption';
 import { VideoPreview, WizardFlow, fill, lengthText, type FlowInfo, type WizardHostProps } from './WizardFlow';
 
 const t = translator('tr');
@@ -50,48 +40,16 @@ function percentOf(done: number, total: number): number | null {
   return total > 0 ? Math.min(100, Math.round((done / total) * 100)) : null;
 }
 
-/** One of the two big options of a wizard's decision: a real radio button. */
-function ChoiceOption({
-  name,
-  value,
-  checked,
-  disabled,
-  onSelect,
-  label,
-  hint,
-}: {
-  name: string;
-  value: string;
-  checked: boolean;
-  disabled: boolean;
-  onSelect: () => void;
-  label: string;
-  hint: string;
-}) {
-  return (
-    <label className="wizard-option" data-checked={checked}>
-      <input
-        type="radio"
-        name={name}
-        value={value}
-        checked={checked}
-        disabled={disabled}
-        onChange={onSelect}
-        data-testid={`option-${value}`}
-      />
-      <span className="wizard-option-text">
-        <span className="wizard-option-label">{label}</span>
-        <span className="wizard-option-hint">{hint}</span>
-      </span>
-    </label>
-  );
-}
-
 // ---------------------------------------------------------------- Kes
 
 /**
  * "Kes": the kesit editor IS this task (ADR-026/030). The wizard only picks
  * the video; the editor opens over it at once, first-run hint included.
+ *
+ * The download keeps the video's own size, as every other wizard does
+ * (`ownSizeRecipe`): a 720p video is not blown up to the editor's 1080p
+ * default — which also made every cut a full re-encode, because the fast cut
+ * (ADR-027) only copies pictures at the source's own size.
  */
 function KesWizard(host: WizardHostProps) {
   const { state, onOpenEditor } = host;
@@ -103,7 +61,7 @@ function KesWizard(host: WizardHostProps) {
       recipe={null}
       working
       openVideo={async (file) => {
-        const outcome = await state.importVideo(file);
+        const outcome = await state.importVideo(file, ownSizeRecipe);
         if (outcome.kind !== 'opened') return false;
         onOpenEditor();
         return true;
@@ -545,40 +503,95 @@ function CevirWizard(host: WizardHostProps) {
 
 // ---------------------------------------------------------------- Küçült
 
-/** The order the choices are shown in: the roomiest first (it is the default). */
-const SIZE_CHOICES: readonly SizePresetId[] = ['share', 'email', 'whatsapp'];
+/**
+ * The order the choices are shown in: the smallest first. It is what the card
+ * promises ("WhatsApp’a sığdır") and so it is the default.
+ */
+const SIZE_CHOICES: readonly SizePresetId[] = ['whatsapp', 'email', 'share'];
 
-type SizePreviews = Partial<Record<SizePresetId, TargetSizePreview>>;
+/** The smallest of the ready-made sizes: a video already under it fits everywhere. */
+const SMALLEST_PRESET_BYTES = Math.min(...SIZE_PRESETS.map((preset) => preset.bytes));
 
 /**
- * What one size would give, said before anything is encoded (ADR-035):
- * "≈ 48 MB · 720p", "already fits", or the honest "does not fit" with the
- * smallest size that would.
+ * `half`: about half of what the video weighs now. Offered only to a video
+ * that is already under every ready-made size — the one way left to make it
+ * smaller, so "it already fits" is never a dead end.
  */
-function sizeHint(preview: TargetSizePreview | undefined, videoBytes: number, targetBytes: number): string {
-  const mark = t('time.decimalMark');
-  if (!preview) return t('wizard.kucult.calculating');
-  if (!preview.ok) {
-    return preview.reason === 'target_too_small'
-      ? fill(t('wizard.kucult.tooSmall'), { min: formatStorageBytes(preview.refusal.minBytes, 'up', mark) })
-      : t('wizard.kucult.calculating');
-  }
-  // The file itself is already under the limit: its pictures are kept where they can be.
-  if (videoBytes <= targetBytes) {
-    return fill(t('wizard.kucult.alreadyFits'), { size: formatBytes(videoBytes, mark) });
-  }
-  const { decision } = preview;
-  const values = {
-    size: formatBytes(decision.plannedBytes, mark),
-    height: String(decision.shortEdge),
-    seconds: String(preview.estimatedSeconds),
-  };
-  return fill(t(decision.mode === 'normal' ? 'wizard.kucult.planNormal' : 'wizard.kucult.plan'), values);
+type SizeChoiceId = SizePresetId | 'half';
+
+type SizePreviews = Partial<Record<SizeChoiceId, TargetSizePreview>>;
+
+/** What picking an option would do, known before anything is encoded. */
+type SizeState =
+  /** Still being worked out. */
+  | 'pending'
+  /** The video is already at or under this size: there is nothing to shrink. */
+  | 'already'
+  /** It cannot be made this small. */
+  | 'refused'
+  /** It will be made smaller. */
+  | 'shrinks';
+
+function halfTargetBytes(videoBytes: number): number {
+  return Math.max(1, Math.floor(videoBytes / 2));
+}
+
+function targetBytesOf(id: SizeChoiceId, videoBytes: number): number {
+  if (id === 'half') return halfTargetBytes(videoBytes);
+  return SIZE_PRESETS.find((preset) => preset.id === id)?.bytes ?? SMALLEST_PRESET_BYTES;
+}
+
+function sizeState(id: SizeChoiceId, preview: TargetSizePreview | undefined, videoBytes: number): SizeState {
+  // The file itself is already under the limit: no download would make it "fit" any better.
+  if (id !== 'half' && videoBytes <= targetBytesOf(id, videoBytes)) return 'already';
+  if (!preview) return 'pending';
+  if (!preview.ok) return preview.reason === 'target_too_small' ? 'refused' : 'pending';
+  return 'shrinks';
+}
+
+/** The options a video gets: the three places it may have to fit, and "half" when it already fits them all. */
+function sizeChoices(videoBytes: number): SizeChoiceId[] {
+  return videoBytes <= SMALLEST_PRESET_BYTES ? [...SIZE_CHOICES, 'half'] : [...SIZE_CHOICES];
 }
 
 /**
- * The size choice of "Küçült". The three previews are asked once per video
- * (the planner is pure arithmetic plus one question to the browser about its
+ * The option chosen before the user chooses: the smallest size the video can
+ * really be shrunk to — WhatsApp, as the card says, whenever that works. When
+ * nothing would shrink (it already fits, or cannot fit) WhatsApp stays chosen
+ * and the step says why there is nothing to download.
+ */
+function defaultSizeChoice(previews: SizePreviews, videoBytes: number): SizeChoiceId {
+  return SIZE_CHOICES.find((id) => sizeState(id, previews[id], videoBytes) === 'shrinks') ?? 'whatsapp';
+}
+
+/**
+ * What one size would give, said before anything is encoded (ADR-035), in
+ * plain words: about how large the file will be and what happens to the
+ * picture — "already fits", or the honest "does not fit" with the smallest
+ * size that would. The pixel size is in the result's "Ayrıntılar".
+ */
+function sizeHint(id: SizeChoiceId, preview: TargetSizePreview | undefined, videoBytes: number): string {
+  const mark = t('time.decimalMark');
+  const state = sizeState(id, preview, videoBytes);
+  if (state === 'already') return fill(t('wizard.kucult.alreadyFits'), { size: formatBytes(videoBytes, mark) });
+  if (state === 'pending' || !preview) return t('wizard.kucult.calculating');
+  if (!preview.ok) {
+    return preview.reason === 'target_too_small'
+      ? fill(t(id === 'half' ? 'wizard.kucult.halfTooSmall' : 'wizard.kucult.tooSmall'), {
+          min: formatStorageBytes(preview.refusal.minBytes, 'up', mark),
+        })
+      : t('wizard.kucult.calculating');
+  }
+  const { decision } = preview;
+  const values = { size: formatBytes(decision.plannedBytes, mark), seconds: String(preview.estimatedSeconds) };
+  if (decision.mode === 'normal') return fill(t('wizard.kucult.planNormal'), values);
+  // Honest about the picture: fewer bits always, and a smaller picture when the size had to drop too.
+  return fill(t(decision.shortEdge < preview.fullShortEdge ? 'wizard.kucult.planSmaller' : 'wizard.kucult.plan'), values);
+}
+
+/**
+ * The size choice of "Küçült". The previews are asked once per video (the
+ * planner is pure arithmetic plus one question to the browser about its
  * encoder), so every option says its outcome before the user picks.
  */
 function SizeChoice({
@@ -594,8 +607,8 @@ function SizeChoice({
   videoBytes: number;
   /** Changes when the video (and so the recipe) changes. */
   recipeKey: string;
-  choice: SizePresetId;
-  onChoice: (id: SizePresetId) => void;
+  choice: SizeChoiceId;
+  onChoice: (id: SizeChoiceId) => void;
   previews: SizePreviews;
   onPreviews: (key: string, previews: SizePreviews) => void;
 }) {
@@ -603,7 +616,9 @@ function SizeChoice({
   useEffect(() => {
     let live = true;
     void Promise.all(
-      SIZE_PRESETS.map(async (preset) => [preset.id, await previewSize({ targetBytes: preset.bytes })] as const),
+      sizeChoices(videoBytes).map(
+        async (id) => [id, await previewSize({ targetBytes: targetBytesOf(id, videoBytes) })] as const,
+      ),
     ).then((entries) => {
       if (live) onPreviews(recipeKey, Object.fromEntries(entries) as SizePreviews);
     });
@@ -611,15 +626,14 @@ function SizeChoice({
       live = false;
     };
     // `previewSize` follows the recipe; the key says when the video changed.
-  }, [previewSize, recipeKey, onPreviews]);
+  }, [previewSize, recipeKey, onPreviews, videoBytes]);
 
   return (
     <fieldset className="wizard-choice" data-testid="kucult-choice">
       <legend>{t('wizard.kucult.choice')}</legend>
-      {SIZE_CHOICES.map((id) => {
-        const preset = SIZE_PRESETS.find((item) => item.id === id);
-        if (!preset) return null;
+      {sizeChoices(videoBytes).map((id) => {
         const preview = previews[id];
+        const state = sizeState(id, preview, videoBytes);
         return (
           <label className="wizard-option" data-checked={choice === id} key={id}>
             <input
@@ -636,12 +650,12 @@ function SizeChoice({
               <span
                 className="wizard-option-hint"
                 data-testid={`size-hint-${id}`}
-                data-state={!preview ? 'pending' : preview.ok ? (videoBytes <= preset.bytes ? 'already' : preview.decision.mode) : 'refused'}
-                data-planned-bytes={preview?.ok ? preview.decision.plannedBytes : undefined}
-                data-short-edge={preview?.ok ? preview.decision.shortEdge : undefined}
+                data-state={state === 'shrinks' && preview?.ok ? preview.decision.mode : state === 'shrinks' ? 'pending' : state}
+                data-planned-bytes={state === 'shrinks' && preview?.ok ? preview.decision.plannedBytes : undefined}
+                data-short-edge={state === 'shrinks' && preview?.ok ? preview.decision.shortEdge : undefined}
                 data-min-bytes={preview && !preview.ok && preview.reason === 'target_too_small' ? preview.refusal.minBytes : undefined}
               >
-                {sizeHint(preview, videoBytes, preset.bytes)}
+                {sizeHint(id, preview, videoBytes)}
               </span>
             </span>
           </label>
@@ -652,50 +666,71 @@ function SizeChoice({
 }
 
 /**
- * "Küçült" (ADR-035): the whole video at or under a size. One choice — where
- * it has to fit (share sheet, e-mail, WhatsApp) — and every option says what
- * it would give before "İndir": the expected size and resolution, that the
- * video already fits, or that it cannot fit and what the smallest size is.
- * The result line then says what the saved file really weighs.
+ * "Küçült" (ADR-035, addendum of 10 Oct 2026): the whole video at or under a
+ * size. One choice — where it has to fit — with WhatsApp chosen, as the card
+ * says, and every option says what it would give before "İndir": about how
+ * large the file will be and what happens to the picture, that the video
+ * already fits, or that it cannot fit and what the smallest size is.
+ *
+ * A video that is already under the chosen size is NOT downloaded again: a
+ * copy of the same weight under a new name, announced as "Kaydedildi", is a
+ * shrink that shrank nothing. The step says so ("Bu video zaten 473 KB…") and
+ * points at a smaller option; a video under every ready-made size gets one
+ * more, "Daha da küçült" (about half). The result line then says what the
+ * saved file really weighs.
  */
 function KucultWizard(host: WizardHostProps) {
   const { state } = host;
   const { video } = state;
-  const [choice, setChoice] = useState<SizePresetId>('share');
+  /** The user's own pick; null while the default stands. */
+  const [picked, setPicked] = useState<SizeChoiceId | null>(null);
   const [previews, setPreviews] = useState<{ key: string; previews: SizePreviews }>({ key: '', previews: {} });
   const onPreviews = useCallback((key: string, next: SizePreviews) => setPreviews({ key, previews: next }), []);
   const recipeKey = video ? `${video.fileName}|${video.file.size}|${video.durationUs}|${state.project.export.shortEdge}` : '';
   const current = previews.key === recipeKey ? previews.previews : {};
-  const preset = SIZE_PRESETS.find((item) => item.id === choice) ?? SIZE_PRESETS[0];
+  const videoBytes = video?.file.size ?? 0;
+  const offered = sizeChoices(videoBytes);
+  const choice = picked !== null && offered.includes(picked) ? picked : defaultSizeChoice(current, videoBytes);
+  const targetBytes = targetBytesOf(choice, videoBytes);
   const selected = current[choice];
+  const selectedState = sizeState(choice, selected, videoBytes);
   const refused = selected && !selected.ok && selected.reason === 'target_too_small' ? selected.refusal : null;
-  const request: TargetSizeRequest | null = preset ? { targetBytes: preset.bytes } : null;
+  const request = useMemo<TargetSizeRequest>(() => ({ targetBytes }), [targetBytes]);
+  const extras = useMemo(() => ({ targetSize: request }), [request]);
   const mark = t('time.decimalMark');
+  /** Whether some other option would still make this video smaller. */
+  const smallerWay = offered.some((id) => id !== choice && sizeState(id, current[id], videoBytes) === 'shrinks');
+
+  const blockedText =
+    selectedState === 'already'
+      ? `${fill(t('wizard.kucult.alreadyBlocked'), { size: formatBytes(videoBytes, mark) })}${
+          smallerWay ? ` ${t(offered.includes('half') ? 'wizard.kucult.alreadyHalf' : 'wizard.kucult.alreadySmaller')}` : ''
+        }`
+      : selectedState === 'refused' && refused
+        ? fill(t(refused.maxDurationUs >= 1_000_000 ? 'wizard.kucult.blocked' : 'wizard.kucult.blockedNoFit'), {
+            target: formatByteLimit(targetBytes, mark),
+            min: formatStorageBytes(refused.minBytes, 'up', mark),
+            duration: formatTimecode(refused.maxDurationUs),
+          })
+        : null;
 
   return (
     <WizardFlow
       {...host}
       titleKey="wizard.kucult.title"
       fileTag="kucuk"
-      // Nothing to download while the size is not known to fit: an impossible
-      // target is refused here, before the save dialog.
-      recipe={video && selected?.ok ? state.project : null}
-      exportExtras={request ? { targetSize: request } : undefined}
-      blockedText={
-        refused && preset
-          ? fill(t(refused.maxDurationUs >= 1_000_000 ? 'wizard.kucult.blocked' : 'wizard.kucult.blockedNoFit'), {
-              target: formatByteLimit(preset.bytes, mark),
-              min: formatStorageBytes(refused.minBytes, 'up', mark),
-              duration: formatTimecode(refused.maxDurationUs),
-            })
-          : null
-      }
+      // Nothing to download unless the file would really come out smaller: an
+      // impossible target and a video that already fits are both said here,
+      // before the save dialog.
+      recipe={video && selectedState === 'shrinks' ? state.project : null}
+      exportExtras={extras}
+      blockedText={blockedText}
       openVideo={async (file) => {
         const outcome = await state.importVideo(file, ownSizeRecipe);
         if (outcome.kind !== 'opened') return false;
         // The video's own frame: nothing of the picture is cut off.
         state.changeFraming({ fit: 'contain', zoom: 1 });
-        setChoice('share');
+        setPicked(null);
         return true;
       }}
     >
@@ -704,10 +739,10 @@ function KucultWizard(host: WizardHostProps) {
           <>
             <SizeChoice
               info={info}
-              videoBytes={video.file.size}
+              videoBytes={videoBytes}
               recipeKey={recipeKey}
               choice={choice}
-              onChoice={setChoice}
+              onChoice={setPicked}
               previews={current}
               onPreviews={onPreviews}
             />
@@ -790,248 +825,15 @@ function SusturWizard(host: WizardHostProps) {
   );
 }
 
-// ---------------------------------------------------------------- Yazıya dök
-
 /**
- * "Yazıya dök" (ADR-036): the video's English speech as time-stamped text,
- * written on this device. The model is downloaded once, by an explicit
- * button that says its size; then "Yazıya dök" runs with real progress.
- *
- * The result is the transcript panel next to the video — click a line to
- * jump there, fix a wrong word in place — and four ways out: the video with
- * the lines burned in ("Altyazılı videoyu indir", the wizard's download),
- * the text, the SRT/VTT files, or the editor, where lines become kesitler.
+ * Two wizards bring a screen of their own that no other task needs — the transcript panel with its
+ * model steps ("Yazıya dök") and the before/after picture with the enhancement preview ("İyileştir").
+ * They are separate chunks, loaded with their own page only (10 Oct 2026: every wizard page was
+ * carrying both, and the whole editor). `next/dynamic` keeps them in the prerendered HTML and has the
+ * page ask for the chunk up front, so nothing appears later than before on those two pages.
  */
-function YaziWizard(host: WizardHostProps) {
-  const { state } = host;
-  const { video, project } = state;
-  const transcription = useTranscription();
-  const mediaRef = useRef<HTMLVideoElement | null>(null);
-  const [timeUs, setTimeUs] = useState(0);
-  const track = primaryCaptionTrack(project);
-  const transcript = track?.origin === 'transcript' ? track : undefined;
-  const lines = useMemo(() => transcriptLines(transcript), [transcript]);
-  const hasLines = (transcript?.cues.length ?? 0) > 0;
-  const silent = video?.hasAudio === false;
-
-  const seek = useCallback((us: number) => {
-    const element = mediaRef.current;
-    if (element) element.currentTime = us / 1_000_000;
-    setTimeUs(us);
-  }, []);
-
-  return (
-    <WizardFlow
-      {...host}
-      titleKey="wizard.yazi.title"
-      fileTag="altyazili"
-      downloadLabelKey="wizard.yazi.downloadVideo"
-      recipe={video && hasLines ? project : null}
-      working={!transcript}
-      blockedText={transcript && !hasLines ? t('wizard.yazi.noLines') : null}
-      preview={
-        video ? <VideoPreview video={video} mediaRef={mediaRef} onTime={setTimeUs} label={t('wizard.video.label')} /> : undefined
-      }
-      openVideo={async (file) => {
-        transcription.reset();
-        const outcome = await state.importVideo(file, ownSizeRecipe);
-        if (outcome.kind !== 'opened') return false;
-        // The video's own frame: nothing of the picture is cut off.
-        state.changeFraming({ fit: 'contain', zoom: 1 });
-        setTimeUs(0);
-        return true;
-      }}
-    >
-      {video ? (
-        transcript ? (
-          <>
-            {transcription.job.kind === 'done' ? (
-              <p className="wizard-note" role="status" data-testid="yazi-summary">
-                <Icon name="check" />
-                <span>
-                  {fill(t('wizard.yazi.done'), {
-                    lines: String(transcription.job.lines),
-                    time: lengthText(transcription.job.stats.totalMs * 1000),
-                  })}
-                  {transcription.job.skipped > 0
-                    ? ` ${fill(t('wizard.yazi.skipped'), { n: String(transcription.job.skipped) })}`
-                    : ''}
-                </span>
-              </p>
-            ) : null}
-            {transcription.job.kind === 'done' && transcription.job.coverage.worthSaying ? (
-              // Plainly: how much of the speech became text. Not a warning that the user did something wrong.
-              <div className="wizard-panel" data-testid="yazi-coverage">
-                <p className="wizard-panel-title" role="status">
-                  {fill(t('transcript.coverage'), {
-                    pct: String(transcription.job.coverage.writtenPercent),
-                    n: String(transcription.job.coverage.unclearCount),
-                  })}
-                </p>
-                {transcription.job.suggestLarger ? (
-                  <>
-                    <p className="wizard-hint">{t('transcript.coverage.larger')}</p>
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => {
-                        // Back to the step before, with the recommended model selected. Nothing downloads by
-                        // itself: the step shows "Modeli indir" with its size, or "Yazıya dök" when it is here.
-                        transcription.chooseModel(RECOMMENDED_MODEL);
-                        transcription.reset();
-                        state.undo();
-                      }}
-                      data-testid="yazi-try-larger"
-                    >
-                      {t('transcript.coverage.tryLarger')}
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            ) : null}
-            <TranscriptPanel
-              t={t}
-              headingId="yazi-transcript-title"
-              lines={lines}
-              timeUs={timeUs}
-              videoDurationUs={video.durationUs}
-              machineMade
-              onSeek={seek}
-              onEdit={(cueId, text) => {
-                const result = state.updateCaption(cueId, { text });
-                return result.ok ? { ok: true } : { ok: false, reason: t(`captions.error.${result.reason}` as MessageKey) };
-              }}
-              onWriteUnclear={(range, text) => {
-                const result = state.addCaption({ ...range, text });
-                return result.ok ? { ok: true } : { ok: false, reason: t(`captions.error.${result.reason}` as MessageKey) };
-              }}
-            />
-            <TranscriptDownloads t={t} project={project} settings={state.settings} lines={lines} videoName={video.fileName} />
-            <p className="wizard-hint">{t('wizard.yazi.editorHint')}</p>
-          </>
-        ) : silent ? (
-          <p className="wizard-blocked" role="alert" data-testid="yazi-no-sound">
-            {t('transcript.failed.no_audio')}
-          </p>
-        ) : (
-          <TranscribeSteps
-            t={t}
-            transcription={transcription}
-            canStart
-            onStart={() =>
-              void transcription.start({
-                file: video.file,
-                durationUs: video.durationUs,
-                apply: state.applyTranscript,
-              })
-            }
-          />
-        )
-      ) : null}
-    </WizardFlow>
-  );
-}
-
-// ---------------------------------------------------------------- İyileştir
-
-/**
- * "İyileştir" (ADR-037): light, colour, sharpness and noise of the whole
- * video, cleaned up on this device. One choice — how strongly, "Otomatik"
- * chosen — next to a before/after of a real frame of the user's video, made
- * by the export's own code. It says what it will do, and when there is
- * nothing to do it says so and does not offer a download that would change
- * nothing.
- *
- * The strength is written into the recipe (`enhance`), so "Daha fazla ayar →
- * editörde aç" continues with it switched on, where Ayarlar → Görüntü shows
- * the same setting.
- */
-function IyilestirWizard(host: WizardHostProps) {
-  const { state } = host;
-  const { video, project, settings } = state;
-  const [shot, setShot] = useState(0);
-  const strength = project.enhance?.strength ?? null;
-  const preview = useEnhancePreview({ project, settings, videoFile: video?.file ?? null, shot });
-  // The picture of the strength chosen now; while another strength is being prepared the old picture stays
-  // on screen, but its summary is not shown and nothing can be downloaded with it.
-  const picture = preview.current && preview.state.status === 'ready' ? preview.state.picture : null;
-  const shown =
-    preview.state.status === 'ready' ? true : preview.state.status === 'loading' ? preview.state.previous !== null : false;
-  const failed = preview.state.status === 'failed';
-  const nothing = picture?.summary.nothing === true;
-  const items = picture && !nothing ? enhanceItems(t, picture.summary, 'will') : [];
-  const extras = useMemo(() => (preview.analysis ? { enhanceAnalysis: preview.analysis } : undefined), [preview.analysis]);
-
-  return (
-    <WizardFlow
-      {...host}
-      titleKey="wizard.iyilestir.title"
-      fileTag="iyilestirilmis"
-      // Nothing to download until the video has been looked at, and nothing when nothing would change.
-      recipe={video && strength && picture && !nothing ? project : null}
-      exportExtras={extras}
-      // While the video is being looked at for the first time there is no "İndir" yet.
-      working={video !== null && !shown && !failed}
-      blockedText={nothing ? t('wizard.iyilestir.nothingBlocked') : null}
-      preview={
-        <BeforeAfter
-          t={t}
-          state={preview.state}
-          onOtherFrame={() => setShot((value) => value + 1)}
-          onRetry={preview.retry}
-        />
-      }
-      openVideo={async (file) => {
-        const outcome = await state.importVideo(file, enhanceRecipe);
-        if (outcome.kind !== 'opened') return false;
-        // The video's own frame: nothing of the picture is cut off.
-        state.changeFraming({ fit: 'contain', zoom: 1 });
-        setShot(0);
-        return true;
-      }}
-    >
-      {({ busy }) => (
-        <>
-          <div className="wizard-panel" data-testid="iyilestir-info">
-            <p className="wizard-panel-title">{t('wizard.iyilestir.body')}</p>
-            <p className="wizard-hint">{t('wizard.iyilestir.keeps')}</p>
-            {picture ? (
-              <p
-                className="wizard-note"
-                role="status"
-                data-testid="iyilestir-summary"
-                data-nothing={nothing}
-                data-light={picture.summary.light}
-                data-colour={picture.summary.colour}
-                data-sharpen={picture.summary.sharpen}
-                data-denoise={picture.summary.denoise}
-              >
-                <Icon name={nothing ? 'info' : 'check'} />
-                <span>{nothing ? t('wizard.iyilestir.nothing') : `${t('enhance.will.title')} ${items.join(', ')}.`}</span>
-              </p>
-            ) : null}
-            <EnhanceSlowNotice t={t} picture={picture} className="wizard-hint" testId="iyilestir-slow" />
-          </div>
-          <fieldset className="wizard-choice" data-testid="iyilestir-choice">
-            <legend>{t('wizard.iyilestir.choice')}</legend>
-            {ENHANCE_STRENGTHS_V4.map((value) => (
-              <ChoiceOption
-                key={value}
-                name="enhance-strength"
-                value={value}
-                checked={strength === value}
-                disabled={busy}
-                onSelect={() => state.changeEnhance(value)}
-                label={t(`wizard.iyilestir.${value}` as MessageKey)}
-                hint={t(`wizard.iyilestir.${value}Hint` as MessageKey)}
-              />
-            ))}
-          </fieldset>
-        </>
-      )}
-    </WizardFlow>
-  );
-}
+const YaziWizard = dynamic<WizardHostProps>(() => import('./YaziWizard'));
+const IyilestirWizard = dynamic<WizardHostProps>(() => import('./IyilestirWizard'));
 
 /**
  * The wizard of every task that works today. Enabling a task is one line in

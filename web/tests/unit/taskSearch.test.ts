@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { editDistance, foldText, searchTasks, searchTokens, MAX_RESULTS } from '@/domain/taskSearch';
 import { TASKS, TASK_EXAMPLES, availableTasks, taskById, type TaskId } from '@/domain/tasks';
-import { en, tr } from '@/i18n/messages';
+import { tr } from '@/i18n/messages';
+import { en } from '@/i18n/messages.en';
 
 /** The first result's id, or the kind when there is none. */
 function top(query: string): TaskId | 'empty' | 'none' {
@@ -198,6 +199,28 @@ export const PHRASES: ReadonlyArray<readonly [string, TaskId]> = [
   ['dip ses', 'gurultu'],
   ['background noise', 'gurultu'],
   ['remove noise', 'gurultu'],
+  // Asked of every video tool, not something this one does (10 Oct 2026, quality report)
+  ['youtubedan video indir', 'indir'],
+  ['instagramdan indir', 'indir'],
+  ['tiktok videosu indir', 'indir'],
+  ['linkten indir', 'indir'],
+  ['download from youtube', 'indir'],
+  ['youtube to mp3', 'indir'],
+  ['youtubea yükle', 'yukle'],
+  ['instagrama yüklemek istiyorum', 'yukle'],
+  ['kanalıma yükle', 'yukle'],
+  ['upload to youtube', 'yukle'],
+  ['post to tiktok', 'yukle'],
+  ['ekran kaydı', 'kayit'],
+  ['ekranımı kaydet', 'kayit'],
+  ['kameradan video çek', 'kayit'],
+  ['record my screen', 'kayit'],
+  ['screen recording', 'kayit'],
+  ['canlı yayın yap', 'yayin'],
+  ['yayın aç', 'yayin'],
+  ['canlı yayın', 'yayin'],
+  ['go live', 'yayin'],
+  ['live stream', 'yayin'],
   // İyileştir (ADR-037) — including what it cannot do: those words lead to the card and its honest line.
   ['videoyu iyileştir', 'iyilestir'],
   ['görüntüyü netleştir', 'iyilestir'],
@@ -439,6 +462,8 @@ describe('task registry', () => {
     'dondur', 'hiz', 'birlestir', 'gif', 'filigran', 'efekt', 'arkaplan', 'ters', 'foto', 'stabil',
     // 10 Oct 2026
     'yaziekle', 'yuz', 'tercume', 'gurultu',
+    // 10 Oct 2026, after the quality report
+    'indir', 'yukle', 'kayit', 'yayin',
   ];
 
   it('lists the ten tasks in card order — Kes first, Sesi kapat next to Sesini al — then what cannot be done yet', () => {

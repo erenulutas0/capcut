@@ -187,10 +187,13 @@ for (const size of SIZES) {
     await open('/yap/kucult');
     await pick(sample);
     await page.locator('[data-testid="size-hint-whatsapp"]:not([data-state="pending"])').waitFor({ timeout: 60_000 });
+    // The sample is under every size: the step says so and offers no download (ADR-035, addendum of
+    // 10 Oct 2026). The saved screen is shot only when a video that really shrinks was picked.
     await shot('60-kucult-2-choice');
-    await page.getByTestId('option-whatsapp').check();
-    await saved();
-    await shot('61-kucult-3-saved');
+    if (await page.getByTestId('wizard-download').isEnabled()) {
+      await saved();
+      await shot('61-kucult-3-saved');
+    }
   }
 
   // ---- Sesini al (ADR-035)

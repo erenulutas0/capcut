@@ -63,6 +63,8 @@ export type TargetSizePreview =
       ok: true;
       /** Resolution, bitrates and `plannedBytes` ("≈ 48 MB, 720p"). */
       decision: TargetSizeDecision;
+      /** The largest short edge the download could have: `decision.shortEdge` below it means a smaller picture. */
+      fullShortEdge: number;
       durationUs: number;
       /** A rough encode time in seconds on this kind of encoder (ADR-035 says how rough). */
       estimatedSeconds: number;
@@ -365,7 +367,12 @@ export function useDownloads({
   const { fpsNum, fpsDen } = project.export;
   const kindsRef = useRef<{ key: string; lookup: EncoderKindLookup } | null>(null);
   const kindsKey = `${aspect}|${fpsNum}/${fpsDen}`;
+  // Only once a video is open: the question loads the media library (about 120 KB of script), and a
+  // page that has no video yet has nothing to download (10 Oct 2026: every wizard and the editor were
+  // fetching it while still showing "Videonu seç").
+  const hasVideo = videoFile !== null;
   useEffect(() => {
+    if (!hasVideo) return undefined;
     let live = true;
     void encoderKindLookup(aspect, fpsNum, fpsDen).then((lookup) => {
       if (live) kindsRef.current = { key: kindsKey, lookup };
@@ -373,7 +380,7 @@ export function useDownloads({
     return () => {
       live = false;
     };
-  }, [aspect, fpsDen, fpsNum, kindsKey]);
+  }, [aspect, fpsDen, fpsNum, hasVideo, kindsKey]);
 
   /** ADR-035: the open video's own bitrate (bytes over length), for the target-size planner. */
   const sourceBitrate = useCallback((): number | undefined => {
@@ -402,10 +409,11 @@ export function useDownloads({
       if (!compiled?.ok) return { ok: false, reason: 'unavailable' };
       const plan = compiled.plan;
       const lookup = await encoderKindLookup(plan.aspect, plan.fpsNum, plan.fpsDen);
+      const fullShortEdge = maxTargetShortEdge(project.export.shortEdge, nativeShortEdge(plan));
       const planned = planTargetSize(
         request,
         targetSizeFacts(plan, {
-          maxShortEdge: maxTargetShortEdge(project.export.shortEdge, nativeShortEdge(plan)),
+          maxShortEdge: fullShortEdge,
           hasAudio: planHasAudio(plan),
           encoderKind: lookup,
           sourceBitrate: sourceBitrate(),
@@ -415,6 +423,7 @@ export function useDownloads({
       return {
         ok: true,
         decision: planned,
+        fullShortEdge,
         durationUs: plan.expectedDurationUs,
         estimatedSeconds: estimateEncodeSeconds(planned, plan.totalFrames),
       };
@@ -747,6 +756,9 @@ export function useDownloads({
               const cue = position >= 0 ? cues[position] : undefined;
               recordError('export', event.code);
               logAttempt({ outcome: 'failed', code: event.code });
+              // A refusal before anything was written (no sound, half a source file, ADR-040) leaves the
+              // file the save dialog created, still empty, under the name the user chose: take it back.
+              if (destination) await removeEmptyPick(destination);
               const memoryRefusal =
                 event.code === 'output_too_long_for_memory' ||
                 (event.code === 'output_storage_insufficient' && event.storage?.reason !== 'file_reservation');
@@ -768,6 +780,7 @@ export function useDownloads({
             }
             case 'canceled':
               logAttempt({ outcome: 'canceled' });
+              if (destination) await removeEmptyPick(destination);
               setEntry(key, { key, kind, fingerprint: plan.fingerprint,
                 revision, phase: 'canceled' });
               break;

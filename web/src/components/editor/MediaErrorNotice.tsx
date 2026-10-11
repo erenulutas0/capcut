@@ -25,6 +25,7 @@ export function MediaErrorNotice({
     reason: error.reason,
     name: safeFileName(error.fileName, 60),
     ...(error.bytes === undefined ? {} : { bytes: error.bytes }),
+    ...(error.extent === undefined ? {} : { extent: error.extent }),
   });
   const text = error.keptOpen ? `${main} ${t(error.scope === 'video' ? 'error.keptVideo' : 'error.keptAudio')}` : main;
   return (

@@ -9,6 +9,7 @@
 
 import { secondsToUs, type Micros } from '../domain/time';
 import type { ProbeResult } from '../domain/mediaEngine';
+import { sourceIntegrity, type SourceIntegrity } from './sourceIntegrity';
 
 export type ProbeFailure =
   | 'unreadable'
@@ -19,7 +20,16 @@ export type ProbeFailure =
   | 'total_too_large'
   | 'source_too_long'
   | 'music_too_large'
-  | 'music_too_long';
+  | 'music_too_long'
+  /** ADR-040: the file's index lists more than the file holds (a download or copy that stopped half way). */
+  | 'incomplete'
+  | 'music_incomplete';
+
+/** With `incomplete`: the length the file declares and how far it really goes. */
+export interface IncompleteExtent {
+  declaredUs: Micros;
+  readableUs: Micros;
+}
 
 export interface MediaHandle extends ProbeResult {
   kind: 'video' | 'audio';
@@ -43,7 +53,7 @@ export type ProbeHint = 'hevc_decoder_missing';
 
 export type ProbeOutcome =
   | { ok: true; handle: MediaHandle }
-  | { ok: false; reason: ProbeFailure; hint?: ProbeHint };
+  | { ok: false; reason: ProbeFailure; hint?: ProbeHint; extent?: IncompleteExtent };
 
 const PROBE_TIMEOUT_MS = 15_000;
 
@@ -141,11 +151,19 @@ async function probeFile(
     return result;
   }
 
-  if (result.handle.hasAudio === undefined) {
-    const fromContainer = await detectHasAudioFromContainer(file);
-    if (fromContainer !== undefined) {
-      result.handle.hasAudio = fromContainer;
-    }
+  // One look at the container: is everything its index lists really in the
+  // file (ADR-040), and — where the media element could not say — has it sound?
+  const container = await inspectContainer(file);
+  if (container.integrity.kind === 'incomplete') {
+    URL.revokeObjectURL(objectUrl);
+    return {
+      ok: false,
+      reason: kind === 'audio' ? 'music_incomplete' : 'incomplete',
+      extent: { declaredUs: container.integrity.declaredUs, readableUs: container.integrity.readableUs },
+    };
+  }
+  if (result.handle.hasAudio === undefined && container.hasAudio !== undefined) {
+    result.handle.hasAudio = container.hasAudio;
   }
   return result;
 }
@@ -178,18 +196,41 @@ function detectHasAudioFromElement(element: HTMLMediaElement): boolean | undefin
 }
 
 /**
- * Authoritative answer from the demuxer: it reads the container's track list
- * instead of guessing from a media element. Returns `undefined` only when the
- * file cannot be parsed here at all.
+ * What the demuxer says about the file, read from the container's index (no
+ * frame is decoded):
+ *
+ * - `hasAudio`: the authoritative answer, from the track list instead of a
+ *   guess from the media element; `undefined` only when the file cannot be
+ *   parsed here at all.
+ * - `integrity`: whether the bytes of everything the index lists are in the
+ *   file (`sourceIntegrity`, ADR-040). `unknown` is never a refusal.
  */
-async function detectHasAudioFromContainer(file: File): Promise<boolean | undefined> {
+async function inspectContainer(file: File): Promise<{ hasAudio: boolean | undefined; integrity: SourceIntegrity }> {
+  let input: { dispose(): void } | null = null;
   try {
-    const { ALL_FORMATS, BlobSource, Input } = await import('mediabunny');
-    const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(file) });
-    const audioTrack = await input.getPrimaryAudioTrack();
-    return audioTrack !== null;
+    const { ALL_FORMATS, BlobSource, EncodedPacketSink, Input, IsobmffInputFormat } = await import('mediabunny');
+    const opened = new Input({ formats: ALL_FORMATS, source: new BlobSource(file) });
+    input = opened;
+    let hasAudio: boolean | undefined;
+    try {
+      hasAudio = (await opened.getPrimaryAudioTrack()) !== null;
+    } catch {
+      hasAudio = undefined;
+    }
+    // Test hook only (`window.__clipSkipImportIntegrity`): lets a test hand the export a file that is not
+    // all there, to prove the export's own refusal (ADR-040). The app never sets it.
+    const skip = (globalThis as { __clipSkipImportIntegrity?: unknown }).__clipSkipImportIntegrity === true;
+    const integrity: SourceIntegrity = skip
+      ? { kind: 'unknown' }
+      : await sourceIntegrity(opened, {
+          EncodedPacketSink,
+          isIndexed: (format) => format instanceof IsobmffInputFormat,
+        });
+    return { hasAudio, integrity };
   } catch {
-    return undefined;
+    return { hasAudio: undefined, integrity: { kind: 'unknown' } };
+  } finally {
+    input?.dispose();
   }
 }
 

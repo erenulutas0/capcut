@@ -11,7 +11,12 @@
  *
  * Ownership: every yielded frame still belongs to the picker. The consumer
  * draws it and must not close it; the picker closes each frame once a later
- * one replaces it, and the last one when the pass ends.
+ * one replaces it, and the last one when the pass ends — however it ends. A
+ * consumer that stops early (a cancel, a failure) leaves the picker holding
+ * two frames: the one on screen and the NEXT one, already taken from the
+ * decoder to know when the first stops being shown. Both are closed (until
+ * 10 Oct 2026 the second was not: "A VideoSample was garbage collected
+ * without first being closed" after every canceled download).
  *
  * A delivered frame is not always a usable one: on Chrome for Android a frame
  * whose decoder was closed before it was drawn shows an older picture under
@@ -68,6 +73,8 @@ export async function* pickFrames<T extends TimedFrame>(
   usable: () => boolean = () => true,
 ): AsyncGenerator<PickedFrame<T>> {
   let current: T | null = null;
+  /** Taken from the decoder, not yet the frame on screen: also the picker's to close. */
+  let next: T | null = null;
   let index = 0;
   // Past the end reads as +Infinity, which ends every "before this frame" loop.
   const target = (): number => targets[index] ?? Number.POSITIVE_INFINITY;
@@ -78,6 +85,7 @@ export async function* pickFrames<T extends TimedFrame>(
 
   try {
     for await (const frame of frames) {
+      next = frame;
       if (current === null) {
         // Targets just before the very first frame are the start offset.
         while (index < targets.length && target() < frame.timestamp - EPSILON_S) {
@@ -99,6 +107,7 @@ export async function* pickFrames<T extends TimedFrame>(
         current.close();
       }
       current = frame;
+      next = null;
       if (index >= targets.length) break;
     }
 
@@ -107,6 +116,9 @@ export async function* pickFrames<T extends TimedFrame>(
       index += 1;
     }
   } finally {
-    (current as T | null)?.close();
+    const shown = current as T | null;
+    const ahead = next as T | null;
+    shown?.close();
+    if (ahead !== null && ahead !== shown) ahead.close();
   }
 }

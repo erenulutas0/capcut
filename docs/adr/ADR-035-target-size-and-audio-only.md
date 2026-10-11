@@ -463,3 +463,48 @@ Notlar:
   indirmeler telefonda planın söylediğinden büyük çıkıyor (ADR-023 tahmini %10 pay + 32 MiB ile bunu
   kısa videolarda karşılıyor; uzun videoda ölçülmedi). Sabit moda geçmek kalite/boyut dengesini
   değiştireceği için kurucu kararı gerektirir.
+
+## Ek — 10 Ekim 2026: "Küçült" varsayılanı WhatsApp; zaten sığan video yeniden kaydedilmez
+
+**Bulgu (kalite raporu, 10 Ekim):** kart "Küçült — WhatsApp'a sığdır" diyor, sihirbazda önceden seçili
+olan "Paylaşmak için (52 MB altı)" idi. Seçim değiştirilmeden "İndir"e basan biri 24,74 MB'lık videosunu
+24,73 MB olarak "kaydediyor", ekran "Kaydedildi" diyordu: hiçbir şey küçülmemişti ve dosya WhatsApp'ın
+16 MB sınırına sığmıyordu. Yukarıdaki "Kartlar ve sihirbazlar" bölümündeki iki cümle bu yüzden değişti.
+
+**Karar:**
+
+1. **Sıra ve varsayılan:** WhatsApp (16 MB) → E-posta (25 MB) → Paylaşmak için (52 MB). En küçük başta
+   ve seçilidir: kartın söylediği odur. WhatsApp'a indirilemeyen videoda (planlayıcı reddediyorsa)
+   varsayılan, **gerçekten küçültebilen en küçük boyuttur**; WhatsApp seçeneği nedenini söyler
+   ("Bu video buna sığmaz: en az 25,5 MB gerekir.").
+2. **Zaten sığan video yeniden kaydedilmez.** Video, seçilen boyutun zaten altındaysa "İndir" kapalıdır ve
+   yanında nedeni yazar: "Bu video zaten 473 KB; buraya sığıyor. Küçültmene gerek yok." Kaydetme penceresi
+   açılmaz, hiçbir şey yazılmaz. Aynı ağırlıkta bir kopyayı yeni adla kaydedip "Kaydedildi" demek,
+   küçültmeyen bir küçültmedir (kurucu kuralı: çalışmayan şeye başarı mesajı yok). Bu, yukarıdaki
+   "Görüntü, mümkünse yeniden işlenmeden olduğu gibi kopyalanır" davranışının yerini aldı; hızlı kesim
+   kopyası (`mode: 'copy'`) motorda duruyor (editörün test kancası ve matris M20c onu kullanır), sihirbaz
+   artık o yola girmiyor.
+3. **Çıkış yolu her zaman var.** Daha küçük bir hazır boyut küçültebiliyorsa cümle onu gösterir ("Daha da
+   küçülsün istersen daha küçük bir seçeneği seç."). Video üç hazır boyutun da altındaysa dördüncü bir
+   seçenek görünür: **"Daha da küçült (yaklaşık yarısı)"** — hedef, dosyanın bugünkü baytının yarısı
+   (`TargetSizeRequest` zaten herhangi bir bayt hedefini kabul ediyordu; motor değişmedi). Planlayıcı onu da
+   reddedebilir ("Bu video daha fazla küçülemiyor: en az … gerekir."): depodaki 473 KB'lık örnekte
+   olan budur (sesi tek başına yarısından ağır).
+4. **Seçenek cümleleri düz sözle:** "≈ 13,2 MB · 720p · yaklaşık 9 sn sürer" yerine "Yaklaşık 13,2 MB
+   olur. Görüntünün ayrıntısı biraz azalır. 9 sn kadar sürer."; çözünürlük basamağı düşüyorsa "Görüntü
+   küçülür, ayrıntısı azalır."; olağan indirme sığıyorsa "Görüntü neredeyse aynı kalır." Piksel boyutu
+   sonuç ekranının "Ayrıntılar"ındadır. Dürüstlük kuralı: sığdırmanın görüntüye bedeli (ayrıntı, boyut)
+   her zaman söylenir. Sonuç satırı için aynı kural: "720p olarak kodlandı" yerine "Sığması için
+   görüntünün ayrıntısı azaltıldı" / "… görüntü küçültüldü ve ayrıntısı azaltıldı"
+   (`TargetSizeOutcome.fullShortEdge`: indirmenin olabileceği en büyük kısa kenar).
+
+**Testler:** `tests/e2e/wizards.spec.ts` Küçült bloğu (4 test): varsayılan yolda — hiçbir seçim yapmadan —
+24,7 MB'lık gürültülü kaynak 14,0 MB olarak kaydedilir; zaten sığan seçenek seçilince İndir kapalı, cümle
+yerinde, kaydetme penceresi açılmamış; 473 KB'lık video: dört seçenek, hiçbir dosya; 11 MB'lık video "Daha
+da küçült" ile yarısının altına iner ya da dürüstçe "hedefin üstünde" der; WhatsApp'a sığmayan 5 dakikalık
+videoda varsayılan E-posta. `tests/e2e/a11y.spec.ts` ADR-035 bloğu: yeni "zaten sığıyor" durumu axe ile
+360 / 390 / 1440'ta denetlenir; klavye testi varsayılanın WhatsApp olduğunu ve kapalı düğmenin nedenine
+bağlı olduğunu (`aria-describedby`) doğrular.
+
+**Ölçülmeyen:** "yaklaşık yarısı" seçeneği yalnızca üretilmiş gürültülü videoda denendi; gerçek kayıtlarda
+ve telefonda denenmedi. Bir çocuğun "zaten sığıyor" cümlesini nasıl karşıladığı ölçülmedi.

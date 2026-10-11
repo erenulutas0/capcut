@@ -40,6 +40,12 @@ export type ExportFailureCode =
   | 'audio_encoder_misaligned'
   | 'no_frames_decoded'
   | 'source_frames_missing'
+  /**
+   * ADR-040: the file's index lists more than the file holds — a download or
+   * a copy that stopped half way. Refused before anything is written: no file
+   * whose end is missing or silent is ever reported as a success.
+   */
+  | 'source_incomplete'
   | 'source_reorder_unfixable'
   | 'caption_font_unavailable'
   | 'caption_does_not_fit'

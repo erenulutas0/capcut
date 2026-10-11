@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vitest';
 import manifest from '@/app/manifest';
 import { APP_NAME, APP_SLUG, BACKUP_DEFAULT_BASENAME, BACKUP_FILE_SUFFIX, pageTitle } from '@/appIdentity';
 import { diagnosticsFileName } from '@/domain/diagnostics';
-import { en, tr, type MessageKey } from '@/i18n/messages';
+import { tr, type MessageKey } from '@/i18n/messages';
+import { en } from '@/i18n/messages.en';
 
 /**
  * The product's name is written once, in `src/appIdentity.ts` (ADR-038).

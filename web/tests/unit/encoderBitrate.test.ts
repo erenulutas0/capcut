@@ -1,6 +1,53 @@
 import { describe, expect, it } from 'vitest';
 
-import { SOFTWARE_ENCODER_BITRATE_FACTOR, encoderVideoBitrate } from '@/domain/encoderBitrate';
+import {
+  MIN_REENCODE_BITRATE,
+  SOFTWARE_ENCODER_BITRATE_FACTOR,
+  SOURCE_BITRATE_HEADROOM,
+  encoderVideoBitrate,
+  sourceBoundedBitrate,
+} from '@/domain/encoderBitrate';
+
+describe('a re-encode is held to what the source itself has', () => {
+  const plan720 = 2_488_320;
+  const plan1080 = 5_598_720;
+
+  it('camera footage (far more bits than the plan) keeps the plan bitrate exactly', () => {
+    expect(sourceBoundedBitrate(plan720, 16_000_000)).toBe(plan720);
+    expect(sourceBoundedBitrate(plan1080, 28_000_000)).toBe(plan1080);
+    // Right at the edge: twice the source is the plan.
+    expect(sourceBoundedBitrate(plan720, plan720 / SOURCE_BITRATE_HEADROOM)).toBe(plan720);
+  });
+
+  it('a small source is not blown up: at most twice its own bitrate', () => {
+    // The finding: a 24 s 720p file of 0.47 MB is 157 kbit/s.
+    const tiny = (470_000 * 8) / 24;
+    expect(sourceBoundedBitrate(plan1080, tiny)).toBe(MIN_REENCODE_BITRATE);
+    expect(sourceBoundedBitrate(plan1080, 1_000_000)).toBe(2_000_000);
+    expect(sourceBoundedBitrate(plan720, 800_000)).toBe(1_600_000);
+  });
+
+  it('never goes under the floor and never over the plan', () => {
+    for (const source of [1, 1000, 100_000, 250_000, 1_000_000, 3_000_000, 50_000_000]) {
+      for (const plan of [MIN_REENCODE_BITRATE, plan720, plan1080, 12_000_000]) {
+        const bounded = sourceBoundedBitrate(plan, source);
+        expect(bounded).toBeLessThanOrEqual(plan);
+        expect(bounded).toBeGreaterThanOrEqual(Math.min(plan, MIN_REENCODE_BITRATE));
+      }
+    }
+  });
+
+  it('an unknown source bitrate keeps the plan', () => {
+    for (const unknown of [null, undefined, 0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(sourceBoundedBitrate(plan720, unknown)).toBe(plan720);
+    }
+  });
+
+  it('ADR-024 still applies on top: the software encoder gets 3× the bounded value', () => {
+    expect(encoderVideoBitrate(sourceBoundedBitrate(plan1080, 1_000_000), 'software')).toBe(6_000_000);
+    expect(encoderVideoBitrate(sourceBoundedBitrate(plan720, 16_000_000), 'software')).toBe(plan720 * 3);
+  });
+});
 
 describe('encoder bitrate by encoder kind (ADR-024)', () => {
   it('leaves a hardware encoder exactly at the plan bitrate', () => {

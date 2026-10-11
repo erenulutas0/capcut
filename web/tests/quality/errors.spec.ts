@@ -403,10 +403,14 @@ async function measureCell(page: Page, testInfo: TestInfo, task: Task, item: Cas
         judged = { verdict: 'bozuk', why: '25 sn içinde ne bir mesaj ne bir ilerleme' };
       } else if (item.expected === 'say-no-sound') {
         if (!NEEDS_SOUND.includes(task)) {
+          // "Küçült" on a video that is already small offers no download and SAYS so (10 Oct 2026): that is
+          // an answer about the file's size, not a silence about its missing sound. The sentence is kept in `why`.
           judged =
             seen.step === 'editor' || seen.downloadEnabled || task === 'muzik'
               ? { verdict: 'geçerli değil', why: 'bu iş videonun sesine ihtiyaç duymaz; video açıldı' }
-              : { verdict: 'belirsiz', why: 'video açıldı ama adım ilerlemiyor ve nedenini söylemiyor' };
+              : seen.messages.length > 0
+                ? { verdict: 'geçerli değil', why: `bu iş videonun sesine ihtiyaç duymaz; video açıldı, adım indirme sunmadı ve nedenini söyledi (“${seen.messages.join(' ').slice(0, 120)}”)` }
+                : { verdict: 'belirsiz', why: 'video açıldı ama adım ilerlemiyor ve nedenini söylemiyor' };
         } else if (seen.messages.length === 0) {
           judged = seen.downloadEnabled
             ? { verdict: 'bozuk', why: 'ses yok ama hiçbir şey söylenmeden indirme sunuluyor' }

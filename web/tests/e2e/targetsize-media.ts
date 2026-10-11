@@ -36,6 +36,20 @@ export function noisyFixture(): string {
 }
 
 /**
+ * 5 s of the same noisy picture: about 11 MB, under every ready-made size of
+ * "Küçült" and heavy enough to be halved ("Daha da küçült").
+ */
+export function noisyShortFixture(): string {
+  return make('noisy-720p30-5s.mp4', [
+    '-f', 'lavfi', '-i', 'testsrc2=size=1280x720:rate=30:duration=5',
+    '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000:duration=5',
+    '-filter_complex', '[0:v]noise=alls=60:allf=t+u[v]', '-map', '[v]', '-map', '1:a',
+    '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-b:v', '12M',
+    '-c:a', 'aac', '-b:a', '128k',
+  ]);
+}
+
+/**
  * 14 s of the same noisy picture: about 21 MB, over WhatsApp's 16 MB and under
  * the e-mail and share limits — "Küçült" has one size to really shrink to.
  */

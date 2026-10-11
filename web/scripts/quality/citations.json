@@ -24,12 +24,12 @@
     {
       "what": "Sığmayan hedef: indirme kapalı, hiçbir şey yazılmaz",
       "file": "tests/e2e/wizards.spec.ts",
-      "title": "a video that cannot fit: the option says the smallest size, İndir stays off, nothing is written"
+      "title": "a video that cannot fit WhatsApp: the option says the smallest size, the next size that works is chosen, nothing is written"
     },
     {
       "what": "Uygulamanın söylediği boyut dosyanın gerçek boyutudur (Küçült)",
       "file": "tests/e2e/wizards.spec.ts",
-      "title": "one choice, each option says its outcome first; WhatsApp: the saved file is under 16 MB and says its real size"
+      "title": "one choice, WhatsApp chosen as the card says; each option says its outcome first; the saved file is under 16 MB and says its real size"
     },
     {
       "what": "Sesi olmayan video: başarı yok, kaydetme penceresi yok, dosya yok",
@@ -70,6 +70,26 @@
       "what": "Bozuk inen model dosyası reddedilir, silinir, kullanılmaz",
       "file": "tests/e2e/transcript.spec.ts",
       "title": "a damaged file is refused, deleted and never used; a clean retry works"
+    },
+    {
+      "what": "Zaten sığan video yeniden kaydedilmez: İndir kapalı, nedeni yazılı, hiçbir dosya yok (Küçült)",
+      "file": "tests/e2e/wizards.spec.ts",
+      "title": "a video already under every size: said before İndir, nothing is saved; “Daha da küçült” is the way on"
+    },
+    {
+      "what": "Yarım kalmış video seçildiği anda reddedilir; tarayıcı suçlanmaz (ADR-040)",
+      "file": "tests/e2e/incomplete-source.spec.ts",
+      "title": "every wizard refuses half a video when it is picked: what is wrong, what to do, nothing about the browser"
+    },
+    {
+      "what": "Yarım video “İndir”e ulaşırsa: “Kaydedildi” yok, dosya yok (ADR-040)",
+      "file": "tests/e2e/incomplete-source.spec.ts",
+      "title": "if half a video ever reaches “İndir”, the export refuses it and saves nothing"
+    },
+    {
+      "what": "Çözülmüş ses ve görüntü örnekleri kapatılır: çöp toplayıcı zorlandığında konsol uyarısı yok",
+      "file": "tests/e2e/resource-leak.spec.ts",
+      "title": "Küçült (a full re-encode with sound): nothing decoded is left open"
     }
   ]
 }

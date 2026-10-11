@@ -19,7 +19,7 @@ import {
   stubShare,
 } from './kesitFlow';
 import { silenceFixture } from './silence-media';
-import { decodeMono, fileBytes, longNoisyFixture, noisyLongFixture, probeStreams } from './targetsize-media';
+import { decodeMono, fileBytes, longNoisyFixture, noisyLongFixture, noisyShortFixture, probeStreams } from './targetsize-media';
 import { bandLuma, meanVolumeDb, wizardFixture } from './wizard-media';
 
 /**
@@ -115,6 +115,14 @@ test.describe('Kes', () => {
     });
     const probe = probeMp4(await readSaved(page, testInfo, 'saved-sample-24s_00-02-00-04.mp4'));
     expect(probe.durationS).toBeCloseTo(2, 1);
+    // The video's own size (1280 × 720), not the editor's 1080p default: nothing is blown up, and
+    // because the size is the source's the pictures are kept instead of encoded again (ADR-027).
+    expect([probe.width, probe.height]).toEqual([1280, 720]);
+    await expect(page.getByTestId('export-method')).not.toHaveAttribute('data-method', 'encode');
+    await expect(page.getByTestId('export-method')).toHaveAttribute('data-fallback', '');
+    await openSettings(page, 'frame');
+    await expect(page.getByTestId('export-quality')).toHaveValue('720');
+    await closeSheet(page);
 
     // Well past the editor's 500 ms autosave: no project was written.
     await page.waitForTimeout(1500);
@@ -407,7 +415,9 @@ test.describe('Her yerde açılsın', () => {
     await startTask(page, 'cevir', SAMPLE);
     await expect(page.getByTestId('cevir-info')).toBeVisible({ timeout: 60_000 });
     await expect(title(page)).toHaveText('Her yerde açılan bir video yapalım');
-    await expect(page.getByTestId('cevir-info')).toContainText('iPhone, HEVC ya da HDR videolar her cihazda açılan MP4 olur.');
+    await expect(page.getByTestId('cevir-info')).toContainText(
+      'iPhone’da çekilmiş ya da başka cihazlarda açılmayan videolar, her cihazda açılan bir MP4 olur.',
+    );
     // No choice on this step: no radio button, one primary button.
     await expect(page.getByRole('radio')).toHaveCount(0);
     await expect(page.getByTestId('cevir-already')).toContainText('Bu video zaten her cihazda açılan türde.', {
@@ -475,7 +485,7 @@ test.describe('Küçült', () => {
     }
   }
 
-  test('one choice, each option says its outcome first; WhatsApp: the saved file is under 16 MB and says its real size', async ({
+  test('one choice, WhatsApp chosen as the card says; each option says its outcome first; the saved file is under 16 MB and says its real size', async ({
     page,
   }, testInfo) => {
     const errors: string[] = [];
@@ -488,24 +498,41 @@ test.describe('Küçült', () => {
     await expect(page.getByTestId('kucult-choice')).toBeVisible({ timeout: 60_000 });
     await expect(title(page)).toHaveText('Videonu küçültelim');
     await expect(page.getByRole('radio')).toHaveCount(3);
-    await expect(page.getByTestId('option-share')).toBeChecked();
-    await expect(page.getByTestId('kucult-choice')).toContainText('Paylaşmak için (52 MB altı)');
-    await expect(page.getByTestId('kucult-choice')).toContainText('E-posta (25 MB altı)');
-    await expect(page.getByTestId('kucult-choice')).toContainText('WhatsApp (16 MB altı)');
+    // The smallest first, and chosen: the card says "WhatsApp’a sığdır".
+    await expect(page.locator('[data-testid="kucult-choice"] .wizard-option-label')).toHaveText([
+      'WhatsApp (16 MB altı)',
+      'E-posta (25 MB altı)',
+      'Paylaşmak için (52 MB altı)',
+    ]);
     await hintsReady(page);
+    await expect(page.getByTestId('option-whatsapp')).toBeChecked();
 
-    // Already under the two larger limits: said so. WhatsApp: the planned size and resolution, up front.
+    // Already under the two larger limits: said so. WhatsApp: the planned size and what happens to the picture, up front.
     await expect(hint(page, 'share')).toHaveAttribute('data-state', 'already');
     await expect(hint(page, 'share')).toContainText('Videon zaten bunun altında');
+    await expect(hint(page, 'share')).toContainText('küçültmeye gerek yok');
     await expect(hint(page, 'email')).toHaveAttribute('data-state', 'already');
     // Smaller than the source either way: the bitrate lowered, or this browser's ordinary download already under 16 MB.
     await expect(hint(page, 'whatsapp')).toHaveAttribute('data-state', /^(reduced|normal)$/);
-    await expect(hint(page, 'whatsapp')).toContainText(/^≈ \d+(,\d)? MB · (1080|720|540|360)p/);
+    await expect(hint(page, 'whatsapp')).toHaveText(/^Yaklaşık \d+(,\d)? MB olur\. Görüntü/);
+    await expect(hint(page, 'whatsapp')).toHaveAttribute('data-short-edge', /^(1080|720|540|360)$/);
+    // Plain words on the default path: the pixel size is not in the sentence.
+    await expect(page.getByTestId('kucult-choice')).not.toContainText(/\d{3,4}p/);
     const planned = Number(await hint(page, 'whatsapp').getAttribute('data-planned-bytes'));
     expect(planned).toBeGreaterThan(1_000_000);
     expect(planned).toBeLessThanOrEqual(16_000_000);
 
+    // A size the video already fits is not downloaded again: İndir is off and the step says why.
+    await page.getByTestId('option-share').check();
+    await expect(page.getByTestId('wizard-download')).toBeDisabled();
+    await expect(page.getByTestId('wizard-blocked')).toHaveText(
+      /^Bu video zaten \d+(,\d)? MB; buraya sığıyor\. Küçültmene gerek yok\. Daha da küçülsün istersen daha küçük bir seçeneği seç\.$/,
+    );
+    expect(await pickerCalls(page)).toEqual([]);
+
+    // Back on WhatsApp — the default, nothing else pressed: İndir.
     await page.getByTestId('option-whatsapp').check();
+    await expect(page.getByTestId('wizard-blocked')).toHaveCount(0);
     await download(page);
     expect(await pickerCalls(page)).toEqual(['noisy-720p30-14s_kucuk.mp4']);
     const file = await readSaved(page, testInfo, 'saved-noisy-720p30-14s_kucuk.mp4');
@@ -516,6 +543,7 @@ test.describe('Küçült', () => {
     expect(Number(await line.getAttribute('data-actual-bytes'))).toBe(savedBytes);
     expect((await line.getAttribute('data-fits')) === 'true').toBe(savedBytes <= 16_000_000);
     expect(savedBytes).toBeLessThanOrEqual(16_000_000);
+    expect(savedBytes).toBeLessThan(fileBytes(source));
     await expect(line).toContainText('hedefin altında (hedef 16 MB)');
     const probe = probeMp4(file);
     expect(probe.videoCodec).toBe('h264');
@@ -531,29 +559,69 @@ test.describe('Küçült', () => {
     expect(errors).toEqual([]);
   });
 
-  test('a video already under the limit: said before İndir, and its pictures are copied, not re-encoded', async ({
+  test('the default path, nothing chosen: card → video → İndir saves a file under 16 MB', async ({ page }, testInfo) => {
+    const source = noisyLongFixture();
+    await startTask(page, 'kucult', source);
+    await expect(page.getByTestId('kucult-choice')).toBeVisible({ timeout: 60_000 });
+    await hintsReady(page);
+    await download(page);
+    const savedBytes = fileBytes(await readSaved(page, testInfo, 'saved-noisy-720p30-14s_kucuk.mp4'));
+    expect(savedBytes).toBeLessThanOrEqual(16_000_000);
+    expect(savedBytes).toBeLessThan(fileBytes(source) * 0.9);
+  });
+
+  test('a video already under every size: said before İndir, nothing is saved; “Daha da küçült” is the way on', async ({
     page,
   }, testInfo) => {
+    // 473 KB: under all three sizes, and too small to halve (its sound alone weighs more than half).
     await startTask(page, 'kucult', SAMPLE);
     await expect(page.getByTestId('kucult-choice')).toBeVisible({ timeout: 60_000 });
     await hintsReady(page);
+    await expect(page.getByRole('radio')).toHaveCount(4);
     for (const id of ['share', 'email', 'whatsapp']) {
       await expect(hint(page, id)).toHaveAttribute('data-state', 'already');
-      await expect(hint(page, id)).toContainText('Videon zaten bunun altında (473 KB)');
+      await expect(hint(page, id)).toHaveText('Videon zaten bunun altında (473 KB); küçültmeye gerek yok.');
     }
-    await page.getByTestId('option-whatsapp').check();
+    // No copy of the same weight under a new name: İndir is off, with the reason next to it.
+    await expect(page.getByTestId('option-whatsapp')).toBeChecked();
+    await expect(page.getByTestId('wizard-download')).toBeDisabled();
+    await expect(hint(page, 'half')).not.toHaveAttribute('data-state', 'pending', { timeout: 60_000 });
+    await expect(hint(page, 'half')).toHaveAttribute('data-state', 'refused');
+    await expect(hint(page, 'half')).toHaveText(/^Bu video daha fazla küçülemiyor: en az \d+(,\d)? (KB|MB) gerekir\.$/);
+    await expect(page.getByTestId('wizard-blocked')).toHaveText('Bu video zaten 473 KB; buraya sığıyor. Küçültmene gerek yok.');
+    await page.getByTestId('option-half').check();
+    await expect(page.getByTestId('wizard-download')).toBeDisabled();
+    await expect(page.getByTestId('wizard-blocked')).toContainText('Bu video bu boyuta sığmaz');
+    expect(await pickerCalls(page)).toEqual([]);
+    expect(Object.keys(await opfsFiles(page)).filter((name) => name.startsWith('saved-'))).toEqual([]);
+
+    // About 11 MB of detailed picture: also under every size, but it can be halved.
+    const source = noisyShortFixture();
+    expect(fileBytes(source)).toBeLessThan(16_000_000);
+    await page.getByTestId('wizard-change-video').click();
+    await page.getByTestId('video-input').setInputFiles(source);
+    await expect(page.getByTestId('wizard-video-name')).toHaveText('noisy-720p30-5s.mp4');
+    await hintsReady(page);
+    await expect(hint(page, 'half')).toHaveAttribute('data-state', /^(reduced|normal)$/, { timeout: 60_000 });
+    // The pick made for the video before does not carry over: WhatsApp again, and nothing to download yet.
+    await expect(page.getByTestId('option-whatsapp')).toBeChecked();
+    await expect(page.getByTestId('wizard-download')).toBeDisabled();
+    await expect(page.getByTestId('wizard-blocked')).toHaveText(
+      /^Bu video zaten \d+(,\d)? MB; buraya sığıyor\. Küçültmene gerek yok\. Yine de küçülsün istersen “Daha da küçült”ü seç\.$/,
+    );
+    await page.getByTestId('option-half').check();
+    await expect(page.getByTestId('wizard-blocked')).toHaveCount(0);
     await download(page);
-    const file = await readSaved(page, testInfo, 'saved-sample-24s_kucuk.mp4');
-    expect(fileBytes(file)).toBeLessThanOrEqual(16_000_000);
-    await expect(page.getByTestId('export-method')).toHaveAttribute('data-method', 'copy');
+    const file = await readSaved(page, testInfo, 'saved-noisy-720p30-5s_kucuk.mp4');
     const line = page.getByTestId('target-size-result');
-    await expect(line).toHaveAttribute('data-mode', 'copy');
-    await expect(line).toContainText('hedefin altında');
-    await expect(line).toContainText('yeniden kodlanmadı');
-    expect([probeMp4(file).width, probeMp4(file).height]).toEqual([1280, 720]);
+    expect(fileBytes(file)).toBe(Number(await line.getAttribute('data-actual-bytes')));
+    expect((await line.getAttribute('data-fits')) === 'true').toBe(fileBytes(file) <= Math.floor(fileBytes(source) / 2));
+    // Whatever the encoder managed, the saved file is smaller than the video: this is a shrink, not a copy.
+    expect(fileBytes(file)).toBeLessThan(fileBytes(source) * 0.75);
+    await expect(page.getByTestId('export-method')).toHaveAttribute('data-method', 'encode');
   });
 
-  test('a video that cannot fit: the option says the smallest size, İndir stays off, nothing is written', async ({
+  test('a video that cannot fit WhatsApp: the option says the smallest size, the next size that works is chosen, nothing is written', async ({
     page,
   }) => {
     // 5 minutes at ~1 Mbit/s (~38 MB). With this browser's software encoder 16 MB is not reachable.
@@ -564,13 +632,18 @@ test.describe('Küçült', () => {
     await expect(hint(page, 'whatsapp')).toContainText(/Bu video buna sığmaz: en az \d+(,\d)? MB gerekir\./);
     const minBytes = Number(await hint(page, 'whatsapp').getAttribute('data-min-bytes'));
     expect(minBytes).toBeGreaterThan(16_000_000);
-    // The default (share, 52 MB) can be downloaded …
+    // The smallest size that can be met is the one chosen (e-mail, 25 MB), and it can be downloaded …
+    await expect(page.getByTestId('option-email')).toBeChecked();
     await expect(page.getByTestId('wizard-download')).toBeEnabled();
     // … the one that cannot fit cannot: the reason is next to the button, and the button is off.
     await page.getByTestId('option-whatsapp').check();
     await expect(page.getByTestId('wizard-download')).toBeDisabled();
     await expect(page.getByTestId('wizard-blocked')).toContainText('Bu video bu boyuta sığmaz (hedef 16 MB). En az');
     await expect(page.getByTestId('wizard-blocked')).toContainText('uzunluğunda bir kesit seç');
+    // The share size (52 MB) is one the video already fits: nothing to do there either.
+    await page.getByTestId('option-share').check();
+    await expect(page.getByTestId('wizard-download')).toBeDisabled();
+    await expect(page.getByTestId('wizard-blocked')).toContainText('buraya sığıyor. Küçültmene gerek yok.');
     expect(await pickerCalls(page)).toEqual([]);
     expect(Object.keys(await opfsFiles(page)).filter((name) => name.startsWith('saved-'))).toEqual([]);
     // E-mail (25 MB) fits and can be chosen again.
@@ -697,7 +770,8 @@ test.describe('Sesi kapat', () => {
     expect(picture.audioCodec).toBeNull();
     // The same pictures: the fast cut copied them (ADR-027), and the result says so.
     await expect(page.getByTestId('export-method')).toHaveAttribute('data-method', 'copy');
-    await expect(page.getByTestId('export-method')).toContainText('görüntü yeniden kodlanmadı');
+    await expect(page.getByTestId('export-method')).toHaveText('Görüntüye dokunulmadı; kalitesi videondakiyle aynı');
+    await expect(page.getByTestId('measured-method')).toContainText('görüntü yeniden kodlanmadı');
     for (const atS of [0.5, 11, 23]) {
       expect(meanAbsDiff(frameGray(saved, atS), frameGray(SAMPLE, atS)), `frame at ${atS} s`).toBeLessThan(1);
     }

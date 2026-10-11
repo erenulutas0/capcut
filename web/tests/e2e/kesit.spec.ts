@@ -148,8 +148,10 @@ test.describe('kesit list: mark, add, play, download', () => {
     // not apply: encoded, and the line says why.
     await expect(card(page, 0).getByTestId('export-method')).toHaveAttribute('data-method', 'encode');
     await expect(card(page, 0).getByTestId('export-method')).toHaveText(
-      'Görüntü yeniden işlendi (çözünürlük kaynağınkinden farklı)',
+      'Görüntü yeniden işlendi (görüntünün boyutu videonunkinden farklı)',
     );
+    // The engineering wording is still there, behind "Ayrıntılar".
+    await expect(card(page, 0).getByTestId('measured-method')).toHaveText('Yeniden kodlandı (çözünürlük kaynağınkinden farklı)');
     await expect(page.getByTestId('export-download')).toHaveCount(0);
     await expect(card(page, 0).getByTestId('measured-route')).toHaveText('seçtiğin dosya');
     // ADR-030: every number of "Ayrıntılar" in Turkish form (the time taken used to read "1.2 s").
@@ -503,7 +505,7 @@ test.describe('limits per download (ADR-021 sentences, ADR-026)', () => {
     await page.getByTestId('video-input').setInputFiles(file);
     const error = page.getByTestId('media-error');
     await expect(error).toHaveText(
-      '“cok-uzun-video.mp4” açılamadı: video bu sürümdeki 120 dakika sınırının üzerinde. Açık olan videon değişmedi.',
+      '“cok-uzun-video.mp4” açılamadı: video bu sürümdeki 120 dakika sınırının üzerinde. Daha kısa bir video seç; ya da bu videoyu önce başka bir uygulamayla parçalara böl. Açık olan videon değişmedi.',
       { timeout: 60_000 },
     );
     await expect(error).toHaveAttribute('role', 'alert');
