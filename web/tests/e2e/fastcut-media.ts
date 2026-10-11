@@ -46,6 +46,34 @@ export function fastCutFixture(rate: 25 | 30 | 60 = 30): string {
   return file;
 }
 
+/**
+ * A plain 6-second H.264 + AAC test pattern of the given size, an IDR every
+ * second (ADR-041: sources smaller and larger than 720p, landscape or
+ * vertical). No barcode: these are for "what size, which method", not for
+ * frame identity.
+ */
+export function sizedFixture(width: number, height: number): string {
+  const file = join(FASTCUT_MEDIA_DIR, `e2e-${width}x${height}-6s.mp4`);
+  if (existsSync(file)) return file;
+  mkdirSync(FASTCUT_MEDIA_DIR, { recursive: true });
+  const partial = `${file}.part.mp4`;
+  rmSync(partial, { force: true });
+  execFileSync(
+    'ffmpeg',
+    [
+      '-hide_banner', '-loglevel', 'error', '-y',
+      '-f', 'lavfi', '-i', `testsrc2=size=${width}x${height}:rate=30:duration=6`,
+      '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000:duration=6',
+      '-c:v', 'libx264', '-preset', 'veryfast', '-profile:v', 'high', '-pix_fmt', 'yuv420p',
+      '-x264-params', 'bframes=3:keyint=30:min-keyint=30:scenecut=0',
+      '-c:a', 'aac', '-b:a', '96k', '-shortest', partial,
+    ],
+    { stdio: 'pipe' },
+  );
+  renameSync(partial, file);
+  return file;
+}
+
 /** Frame number from the barcode of every frame of `file`, in order. */
 export function barcodeFrames(file: string): number[] {
   const raw = execFileSync(

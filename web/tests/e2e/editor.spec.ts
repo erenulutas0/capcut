@@ -228,7 +228,8 @@ test.describe('editor', () => {
     await page.getByTestId('kesit-download').click();
     await expect(page.getByTestId('export-download')).toBeVisible({ timeout: 120_000 });
     await expect(page.getByTestId('measured-route')).toHaveText('tarayıcının geçici diski');
-    await expect(page.getByTestId('measured-resolution')).toHaveText('1920×1080');
+    // ADR-041: the 720p sample at its own size (it was 1920×1080, enlarged, until 11 Oct 2026).
+    await expect(page.getByTestId('measured-resolution')).toHaveText('1280×720');
     expect(await exportFiles(page)).toHaveLength(1);
 
     const download = page.waitForEvent('download');

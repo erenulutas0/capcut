@@ -510,8 +510,13 @@ export const tr = {
   'time.secondShort': 'sn',
 
   'export.quality': 'İndirme kalitesi',
-  'export.quality.1080': '1080p (Full HD)',
-  'export.quality.720': '720p (HD)',
+  // ADR-041: the setting is a limit ("en çok"); the file is the video's own size under it, never larger.
+  'export.quality.1080': 'Videonun kendi boyutu (en çok 1080p)',
+  'export.quality.720': 'En çok 720p',
+  'export.quality.size': 'İndirilen video {width} × {height} olur.',
+  'export.quality.sizeFloor':
+    'Bu görüntü çok küçük: her yerde açılabilsin diye {width} × {height} boyutuna büyütülür.',
+  'export.quality.noUpscale': 'Videon büyütülmez: büyütmek görüntüyü netleştirmez, yalnızca dosyayı büyütür.',
   'export.hdrNote':
     'Bu video HDR. İndirilen dosya SDR olacak; renkler telefondaki görüntüden biraz farklı görünebilir.',
   'export.blockedTitle': 'Bu tarayıcıda çıktı alınamıyor.',
@@ -1090,8 +1095,9 @@ export const tr = {
   'wizard.dikey.contain': 'Sığdır',
   'wizard.dikey.containHint': 'Hiçbir yer kesilmez, boşluk kalır.',
   'wizard.dikey.preview': 'Dikey videonun önizlemesi',
-  'wizard.dikey.note': 'Reels, TikTok ve Shorts için: 1080 × 1920.',
-  'wizard.dikey.already': 'Bu video zaten dikey: görüntü aynı kalır, 1080 × 1920 olarak kaydedilir.',
+  'wizard.dikey.note': 'Reels, TikTok ve Shorts için: {width} × {height}.',
+  'wizard.dikey.noteOwnSize': 'Reels, TikTok ve Shorts için dikey video: {width} × {height}. Videon büyütülmez; büyütmek onu netleştirmez.',
+  'wizard.dikey.already': 'Bu video zaten dikey: görüntü aynı kalır, {width} × {height} olarak kaydedilir.',
 
   'wizard.muzik.title': 'Müzik ekleyelim',
   'wizard.muzik.pick': 'Müzik seç',

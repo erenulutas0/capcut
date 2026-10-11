@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createEmptyProject,
+  setExportShortEdge,
   setFraming,
   setMusicAsset,
   setVideoAsset,
@@ -18,7 +19,6 @@ import {
   musicOutlastsVideo,
   musicUnderVideo,
   ownSizeRecipe,
-  shortEdgeForSource,
   silenceParamsFor,
   soundlessRecipe,
   taggedFileName,
@@ -75,25 +75,27 @@ describe('taggedFileName', () => {
 });
 
 describe('the video’s own size', () => {
-  it('720p and smaller stay at 720p, anything larger is Full HD', () => {
-    expect(shortEdgeForSource(1280, 720)).toBe(720);
-    expect(shortEdgeForSource(720, 1280)).toBe(720);
-    expect(shortEdgeForSource(640, 360)).toBe(720);
-    expect(shortEdgeForSource(1920, 1080)).toBe(1080);
-    expect(shortEdgeForSource(3840, 2160)).toBe(1080);
-    expect(shortEdgeForSource(1280, 721)).toBe(1080);
-    // Unknown size: the editor's default.
-    expect(shortEdgeForSource(undefined, undefined)).toBe(1080);
-    expect(shortEdgeForSource(0, 0)).toBe(1080);
+  it('a wizard starts from “the video’s own size, up to Full HD”, whatever limit the editor was left at', () => {
+    const fresh = opened(video({ displayWidth: 1280, displayHeight: 720 }));
+    // The default already says so: nothing changes, not even the revision.
+    expect(ownSizeRecipe(fresh)).toBe(fresh);
+    const limited = setExportShortEdge(fresh, 720);
+    const recipe = ownSizeRecipe(limited);
+    expect(recipe.export.shortEdge).toBe(1080);
+    expect({ ...recipe, export: limited.export, revision: limited.revision }).toEqual(limited);
   });
 
-  it('sets the download size on the recipe and nothing else', () => {
-    const small = opened(video({ displayWidth: 1280, displayHeight: 720 }));
-    const recipe = ownSizeRecipe(small);
-    expect(recipe.export.shortEdge).toBe(720);
-    expect({ ...recipe, export: small.export, revision: small.revision }).toEqual(small);
-    const large = opened();
-    expect(ownSizeRecipe(large)).toBe(large);
+  it('the download is the picture’s own pixels: 720p stays 720p, 360p stays 360p, 4K is Full HD (ADR-041)', () => {
+    const sizeOf = (displayWidth: number, displayHeight: number) => {
+      const compiled = compileRenderPlan(wholeVideoAsKesit(ownSizeRecipe(opened(video({ displayWidth, displayHeight })))), WEB_LOCAL_POLICY);
+      if (!compiled.ok) throw new Error(compiled.reason);
+      return [compiled.plan.width, compiled.plan.height];
+    };
+    expect(sizeOf(1280, 720)).toEqual([1280, 720]);
+    expect(sizeOf(640, 360)).toEqual([640, 360]);
+    expect(sizeOf(854, 480)).toEqual([854, 480]);
+    expect(sizeOf(1920, 1080)).toEqual([1920, 1080]);
+    expect(sizeOf(3840, 2160)).toEqual([1920, 1080]);
   });
 });
 
@@ -163,7 +165,7 @@ describe('Müzik ekle', () => {
       setVideoAsset(first, video({ assetId: 'a_video_002', durationUs: 45 * S, displayWidth: 1280, displayHeight: 720 })),
     );
     expect(next.clips).toHaveLength(0);
-    expect(next.export.shortEdge).toBe(720);
+    expect(next.export.shortEdge).toBe(1080);
     // A newly opened video's own sound is on, so the music is behind it again.
     expect(next.music).toMatchObject({ sourceInUs: 0, sourceOutUs: 45 * S, gainDb: MUSIC_BEHIND_DB, fadeOutUs: MUSIC_FADE_OUT_US });
     expectExportable(next);
@@ -185,12 +187,13 @@ describe('Müzik ekle', () => {
     expectExportable(next);
   });
 
-  it('with no music yet, opening the video only sets the download size', () => {
+  it('with no music yet, opening the video changes nothing but the size limit (back to Full HD)', () => {
     const small = opened(video({ displayWidth: 1280, displayHeight: 720 }));
-    const next = musicUnderVideo(small);
+    expect(musicUnderVideo(small)).toBe(small);
+    const next = musicUnderVideo(setExportShortEdge(small, 720));
     expect(next.music).toBeUndefined();
     expect(next.clips).toHaveLength(0);
-    expect(next.export.shortEdge).toBe(720);
+    expect(next.export.shortEdge).toBe(1080);
   });
 });
 
@@ -202,7 +205,7 @@ describe('Sesi kapat', () => {
     const recipe = soundlessRecipe(small);
     expect(recipe.clips).toHaveLength(0);
     expect(recipe.music).toBeUndefined();
-    expect(recipe.export.shortEdge).toBe(720);
+    expect(recipe.export.shortEdge).toBe(1080);
     // Music picked somewhere else does not come along.
     const withMusic = soundlessRecipe(setMusicAsset(small, music(30)));
     expect(withMusic.music).toBeUndefined();
@@ -256,14 +259,30 @@ describe('Her yerde açılsın', () => {
 });
 
 describe('Dikey yap', () => {
-  it('the 9:16 frame at the default size is 1080 × 1920, filled or fitted', () => {
-    for (const fit of ['cover', 'contain'] as const) {
-      const recipe = setFraming(wholeVideoAsKesit(opened()), { aspect: '9:16', fit, zoom: 1 });
-      const plan = compileRenderPlan(recipe, WEB_LOCAL_POLICY);
-      expect(plan.ok).toBe(true);
-      if (plan.ok) expect([plan.plan.width, plan.plan.height]).toEqual([1080, 1920]);
-      expect(recipe.clips[0]?.view.fit).toBe(fit);
-    }
+  /** The 9:16 frame of a landscape video of this size, filled or fitted. */
+  const vertical = (displayWidth: number, displayHeight: number, fit: 'cover' | 'contain') => {
+    const recipe = setFraming(wholeVideoAsKesit(opened(video({ displayWidth, displayHeight }))), { aspect: '9:16', fit, zoom: 1 });
+    expect(recipe.clips[0]?.view.fit).toBe(fit);
+    const plan = compileRenderPlan(recipe, WEB_LOCAL_POLICY);
+    if (!plan.ok) throw new Error(plan.reason);
+    return [plan.plan.width, plan.plan.height];
+  };
+
+  it('“Doldur” keeps the slice it cuts out at its own pixels: no 1080 × 1920 out of a 608-pixel slice (ADR-041)', () => {
+    // Until 11 Oct 2026 every one of these was 1080 × 1920: the slice enlarged 1.8, 2.7 and 5.3 times.
+    expect(vertical(1920, 1080, 'cover')).toEqual([608, 1080]);
+    expect(vertical(1280, 720, 'cover')).toEqual([406, 720]);
+    expect(vertical(640, 360, 'cover')).toEqual([202, 360]);
+    // A 4K video has more than enough: the ceiling, as before.
+    expect(vertical(3840, 2160, 'cover')).toEqual([1080, 1920]);
+  });
+
+  it('“Sığdır” adds bars, not picture: the frame is as wide as the picture, up to Full HD', () => {
+    // 1920 across does not fit under the ceiling: 1080 × 1920, the picture made smaller in it, as before.
+    expect(vertical(1920, 1080, 'contain')).toEqual([1080, 1920]);
+    // 1280 and 640 across: the picture stays 1:1 and the frame is that wide.
+    expect(vertical(1280, 720, 'contain')).toEqual([1080, 1920]);
+    expect(vertical(640, 360, 'contain')).toEqual([640, 1138]);
   });
 });
 

@@ -1,6 +1,6 @@
 /**
  * Local web limits. The single source of truth is
- * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-10-07.v8)
+ * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-10-11.v9)
  * plus the web guard rails in doc 11. Plan names are deliberately NOT hardcoded
  * into the domain: this is one policy object the app passes in.
  *
@@ -39,7 +39,9 @@ export const WEB_LOCAL_POLICY: ExportPolicy = {
   // source's own rate and bitrate (ADR-027). No limit below changed.
   // v8 (2026-10-07): on-device picture enhancement ("İyileştir", ADR-037) is a free basic
   // feature too; no limit here changes.
-  policyId: '2026-10-07.v8/web-local',
+  // v9 (2026-10-11): the download is the video's own size, 1080p at most (720p at most on
+  // request); nothing is enlarged (ADR-041, `domain/outputSize.ts`). No limit below changed.
+  policyId: '2026-10-11.v9/web-local',
   // Raised from 5 min by founder decision (doc 15 v3): on the disk (OPFS)
   // route export memory stays flat with output length (ADR-013, ADR-020).
   maxOutputDurationUs: 60 * 60 * US_PER_SECOND,

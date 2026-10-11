@@ -10,7 +10,6 @@
  */
 
 import {
-  outputPixelSize,
   type AspectRatio,
   type CaptionStyleV2,
   type FitMode,
@@ -19,6 +18,7 @@ import {
 } from './edl';
 import { outputCues, primaryCaptionTrack } from './captions';
 import { ENHANCE_ENGINE_VERSION, type EnhanceStrength } from './enhance';
+import { outputSizeFor, type OutputSize } from './outputSize';
 import type { ExportPolicy } from './policy';
 import { totalOutputDurationUs } from './timeline';
 import { cropPixels, type CropRect } from './transform';
@@ -105,6 +105,12 @@ export interface RenderPlan {
   audioCodec: 'aac';
   width: number;
   height: number;
+  /**
+   * Why the frame is this size (ADR-041): the user's ceiling, the picture's
+   * own pixels, or the smallest frame worth encoding. Never part of the
+   * fingerprint: the size itself is.
+   */
+  sizeRule: OutputSize['rule'];
   aspect: AspectRatio;
   background: string;
   fpsNum: number;
@@ -188,7 +194,6 @@ export function compileRenderPlan(project: Project, policy: ExportPolicy): PlanR
   }
 
   const { fpsNum, fpsDen, shortEdge, audioSampleRate } = project.export;
-  const { width, height } = outputPixelSize(project.canvas.aspect, shortEdge);
 
   const segments: RenderSegment[] = [];
   let cursorUs = 0;
@@ -244,6 +249,8 @@ export function compileRenderPlan(project: Project, policy: ExportPolicy): PlanR
   };
 
   const captions = captionPlan(project, totalFrames, fpsNum, fpsDen);
+  // ADR-041: `shortEdge` is the ceiling; the frame is the picture's own pixels up to it.
+  const { width, height, rule: sizeRule } = outputSizeFor(project.canvas.aspect, shortEdge, segments, { captions: captions !== null });
   const enhance: RenderEnhancePlan | null = project.enhance ? { strength: project.enhance.strength } : null;
 
   const body = JSON.stringify({
@@ -286,6 +293,7 @@ export function compileRenderPlan(project: Project, policy: ExportPolicy): PlanR
       audioCodec: 'aac',
       width,
       height,
+      sizeRule,
       aspect: project.canvas.aspect,
       background: project.canvas.background,
       fpsNum,

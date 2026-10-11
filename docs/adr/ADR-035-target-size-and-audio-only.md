@@ -508,3 +508,19 @@ bağlı olduğunu (`aria-describedby`) doğrular.
 
 **Ölçülmeyen:** "yaklaşık yarısı" seçeneği yalnızca üretilmiş gürültülü videoda denendi; gerçek kayıtlarda
 ve telefonda denenmedi. Bir çocuğun "zaten sığıyor" cümlesini nasıl karşıladığı ölçülmedi.
+
+## Güncelleme — 11 Ekim 2026: basamaklar indirmenin kendi boyutundan başlar (ADR-041)
+
+Standart basamaklar (1080, 720, 540, 360) aynı; **ilk basamak** değişti. 11 Ekim'e kadar ilk basamak
+"kaynağı tutan ilk standart basamak"tı: 480p kaynak 540'a, 360'ın altındaki kaynak 360'a **büyütülüp**
+sonra sıkıştırılıyordu. Şimdi ilk basamak indirmenin kendi çerçevesidir (`planShortEdge`:
+[ADR-041](ADR-041-never-upscale.md)'in büyütmeyen boyutu) — 480p video için 480, dikeye çevrilmiş 720p
+video için 406 — ve standart basamaklar onun altından devam eder (`targetShortEdges(480)` = 480, 360).
+Tabanın (360) altındaki bir görüntünün tek basamağı kendi boyutudur; tabana büyütülmez. Kodlayıcı türü
+(donanım / yazılım) bu ilk basamak için de sorulur (`encoderKindLookup`).
+
+"480p basamağı yok" kararı (540 aynı baytla daha iyi çıkıyordu) standart basamaklar için geçerli kalır;
+480p bir kaynağın kendi boyutu bir ara basamak değil, başlangıç noktasıdır.
+
+**Ölçülmeyen:** standart olmayan ilk basamakta (480, 406) bit / piksel tabanlarının (0,04 / 0,07)
+doğruluğu — tabanlar 1080 / 720 / 540 / 360 üzerinde ölçülmüştü.

@@ -15,6 +15,8 @@ import {
   outputRouteRefusal,
 } from '@/domain/policy';
 import { CAPTION_LIMITS } from '@/domain/captions';
+import { DEFAULT_EXPORT_SPEC } from '@/domain/edl';
+import { MIN_CAPTION_SHORT_EDGE, MIN_OUTPUT_SHORT_EDGE } from '@/domain/outputSize';
 import { formatClock, US_PER_SECOND } from '@/domain/time';
 import { downloadBytes } from '@/domain/transcriptModels';
 import { overLimitText } from '@/components/editor/outputLimitText';
@@ -58,9 +60,39 @@ describe('web local policy', () => {
     expect(WEB_LOCAL_POLICY.maxTotalSourceBytes).toBe(4_294_967_296);
   });
 
-  it('records the v8 change (on-device picture enhancement is a free basic feature) in doc 15; no AI, no upscaling promised', () => {
+  it('records the v9 change (the download is the video’s own size, at most 1080p; nothing is enlarged) in doc 15', () => {
     const [docId] = WEB_LOCAL_POLICY.policyId.split('/');
-    expect(docId).toBe('2026-10-07.v8');
+    expect(docId).toBe('2026-10-11.v9');
+    expect(doc15).toContain(`Politika kimliği: \`${docId}\`.`);
+    const lines = doc15.split(/\r?\n/);
+    const note = lines.find((line) => line.startsWith(`**Değişiklik \`${docId}\``));
+    expect(note).toBeDefined();
+    expect(note).toContain('kurucu kararı, 11 Ekim 2026');
+    expect(note).toContain('ADR-041');
+    expect(note).toContain('üst sınırdır');
+    expect(note).toContain('tek daralma');
+    expect(note).toContain('Ölçülmeyen');
+    expect(note).toContain('EDL v4');
+    // The row says what the code does: the two limits the setting offers, and the floors of the two exceptions.
+    expect(doc15).toContain(
+      '| Videonun kendi boyutu, en çok 1080p (istenirse en çok 720p); büyütme yok; SDR, en çok 30 fps | Desteklenen cihazda dahil | Desteklenen cihazda dahil |',
+    );
+    expect(DEFAULT_EXPORT_SPEC.shortEdge).toBe(1080);
+    expect(note).toContain(`kısa kenarı ${MIN_OUTPUT_SHORT_EDGE}'ün altında`);
+    expect(note).toContain(`kısa kenarı ${MIN_CAPTION_SHORT_EDGE}'ın altında`);
+    // The setting's two choices say "at most", in both languages, and the line under it says nothing is enlarged.
+    expect(tr['export.quality.1080']).toContain('en çok 1080p');
+    expect(tr['export.quality.720']).toContain('En çok 720p');
+    expect(en['export.quality.1080']).toContain('1080p at most');
+    expect(en['export.quality.720']).toContain('720p at most');
+    expect(tr['export.quality.noUpscale']).toContain('büyütülmez');
+    expect(en['export.quality.noUpscale']).toContain('not enlarged');
+    // The cloud row is another product and keeps its fixed sizes.
+    expect(doc15).toContain('| Çıktı kalitesi | 1080p veya 720p, SDR, 30 fps | Aynı |');
+  });
+
+  it('keeps the v8 change (on-device picture enhancement is a free basic feature) in doc 15; no AI, no upscaling promised', () => {
+    const docId = '2026-10-07.v8';
     const lines = doc15.split(/\r?\n/);
     const note = lines.find((line) => line.startsWith(`**Değişiklik \`${docId}\``));
     expect(note).toBeDefined();
@@ -126,7 +158,8 @@ describe('web local policy', () => {
     expect(note).toContain('yalnızca genişleme');
     expect(note).toContain('Ölçülmeyen');
     // The quality row says it too; the cloud row keeps its fixed 30 fps.
-    expect(doc15).toContain('| 720p / 1080p, SDR, en çok 30 fps | Desteklenen cihazda dahil | Desteklenen cihazda dahil |');
+    // (v9 reworded the sizes of this row — the video's own size, at most 1080p — and kept "en çok 30 fps".)
+    expect(doc15).toContain('SDR, en çok 30 fps | Desteklenen cihazda dahil | Desteklenen cihazda dahil |');
     expect(doc15).toContain('| Çıktı kalitesi | 1080p veya 720p, SDR, 30 fps | Aynı |');
   });
 

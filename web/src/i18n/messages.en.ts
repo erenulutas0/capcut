@@ -506,8 +506,11 @@ export const en: Record<MessageKey, string> = {
   'time.secondShort': 's',
 
   'export.quality': 'Download quality',
-  'export.quality.1080': '1080p (Full HD)',
-  'export.quality.720': '720p (HD)',
+  'export.quality.1080': 'The video’s own size (1080p at most)',
+  'export.quality.720': '720p at most',
+  'export.quality.size': 'The downloaded video will be {width} × {height}.',
+  'export.quality.sizeFloor': 'This picture is very small: it is enlarged to {width} × {height} so that it opens everywhere.',
+  'export.quality.noUpscale': 'Your video is not enlarged: that would not make it sharper, only make the file bigger.',
   'export.hdrNote':
     'This video is HDR. The downloaded file will be SDR; colours may look slightly different from what you see on your phone.',
   'export.blockedTitle': 'Export is not possible in this browser.',
@@ -1071,8 +1074,9 @@ export const en: Record<MessageKey, string> = {
   'wizard.dikey.contain': 'Fit',
   'wizard.dikey.containHint': 'Nothing is cut off; empty space remains.',
   'wizard.dikey.preview': 'Preview of the vertical video',
-  'wizard.dikey.note': 'For Reels, TikTok and Shorts: 1080 × 1920.',
-  'wizard.dikey.already': 'This video is already vertical: the picture stays the same and is saved as 1080 × 1920.',
+  'wizard.dikey.note': 'For Reels, TikTok and Shorts: {width} × {height}.',
+  'wizard.dikey.noteOwnSize': 'A vertical video for Reels, TikTok and Shorts: {width} × {height}. Your video is not enlarged; that would not make it sharper.',
+  'wizard.dikey.already': 'This video is already vertical: the picture stays the same and is saved as {width} × {height}.',
 
   'wizard.muzik.title': 'Let’s add music',
   'wizard.muzik.pick': 'Choose music',
