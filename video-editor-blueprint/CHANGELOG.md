@@ -3,6 +3,28 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Bulut yazıya dökme: "Yazıyı nerede çıkaralım?" ekranı ve internette yolu yazıldı — KAPALI doğar — 11 Ekim 2026 (ADR-039 eki; politika ve şema değişmedi)
+
+Kurucunun seçtiği rıza ekranı (B, "İki yol yan yana") ve bulut yolunun tarayıcı tarafı yazıldı. **Yayındaki sitede hiçbir şey değişmedi:** yol yalnızca derlemeye vekil Worker'ın kökeni verilirse vardır (`NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL`, varsayılan boş); boşken seçim ekranı yok, `connect-src 'self'` aynen, bulut kodu ve cümleleri derlemede yok (durağan çıktıda bulunursa derleme durur), gizlilik sayfası bugünkü cümlelerini söyler. Worker yayınlanmadı; AssemblyAI'ye, Cloudflare'e ya da başka bir dış hizmete tek istek atılmadı — her şey vekilin yerel bir sahtesine karşı sınandı.
+
+**Ekran (yol açıkken):** "Yazıya dök"te, yazıya dökme başlamadan önce "Yazıyı nerede çıkaralım?" ve eş ağırlıkta iki kart — **Cihazımda** ("Hiçbir şey gitmez…" → "Cihazımda yaz") ve **İnternette** (dört olgu: yalnızca ses gider · AssemblyAI'nin Avrupa'daki bilgisayarlarına · yazı gelince silinir · başkalarının sesi de gider; "Yaklaşık N dakika sürer · X dakika düşer, Y dakikan kalır" → "Sesi gönder ve yaz"). İki düğme aynı boyda; telefonda alt alta, masaüstünde yan yana; hiçbiri ön seçili değil, seçim hatırlanmaz; düğmeye basılmadan ses çıkmaz. Davet kodu bir kez yazılır (cihazda saklanır, kartların altında ve gizlilik sayfasında kaldırılır). Taslak ve ekranlar: `docs/ux/2026-10-11-cloud-consent/`.
+
+**Giden şey:** videonun sesi cihazda yeniden kodlanır (16 kHz, tek kanal, Opus 24 kbit/s, WebM; ölçülen ≈ 0,21 MB/dakika, 120 dakika ≈ 25,5 MB); kaynak dosyadan hiçbir şey kopyalanmaz. Sınama, sahte sunucunun aldığı baytları ffprobe ile okur: tam bir ses izi, görüntü yok, etiket yok.
+
+**İlerleme ve hata:** hazırlanan saniye, gönderilen bayt, sonra sayı yok ("Yazılıyor…" + geçen süre); uydurma yüzde yok. Yirmi iki hata/iptal durumunun her biri düz Türkçe söylenir (ADR-039'daki tablo), gönderilen iş silinir — silinemediyse ya da iş başlamadan durdurulduysa ekran "silindi" demez — ve "Cihazımda yaz" hep bir basış uzaktadır.
+
+**Sonuç:** sağlayıcının kelimeleri var olan transkript izine çevrilir (EDL v4, **şema değişmedi**): konuşmacı değişince ya da 1 sn'den uzun boşlukta yeni kesim, içinde cihaz üstü satır kuralları. Panel, arama, "Bunlardan kesit yap", altyazı ve SRT/VTT değişmeden çalışır. "İnternette yazıldı — yanlış olabilir, düzeltebilirsin." etiketi ve konuşmacılar ("1. kişi / 2. kişi") sonuç ekranında ve metin dosyasındadır; tarife yazılmaz (kalıcı olması v5 ister — kurucu kararı).
+
+**Worker (yayınlanmadı):** tarayıcının adlandırdığı iş (`x-job-id`), yükleme sırasında silme, sahipsiz kayıt temizliği, durum okunamasa da silme. Tarayıcıya bakan 18 sözleşme durumu hem gerçek Worker koduna (workerd) hem yerel sahte Worker'a koşar.
+
+**CI:** Pages derlemesi ve duman sınaması depo değişkeni `CLOUD_TRANSCRIPT_URL`'i okur (tanımsız = kapalı); bulut sınamaları yerel sahte Worker'a karşı koşar ve yol kapalıyken yayını durdurmaz.
+
+**Doğrulanmayan:** gerçek Worker (CORS, akıtma, bağlantı kesilmesi), gerçek sağlayıcının tarayıcının ürettiği WebM/Opus dosyasını kabulü ve kelime zamanları, gerçek telefon, Opus kodlayıcısı olmayan tarayıcılar (AAC yedeği bu makinede denenemedi), 120 dakikalık ses, konuşmayla boyut. Yazının doğruluğu için tek kaynak 11 Ekim ölçümüdür.
+
+**Açık kurucu kararları:** cihaz kartına eklenen "Şimdilik yalnızca İngilizce."; konuşmacıların kalıcılığı (EDL v5); iş başlamadan durdurulan yüklemenin sağlayıcıda en çok iki gün kalabilmesi; bulut dakikasının ücreti (belge 15 — dokunulmadı); veri sorumlusu (K02); CI'daki bulut adımının yayını durdurup durdurmayacağı.
+
+**Sayılar (11 Ekim, dal `worktree-agent-a4ba1c069e813cc66`; hepsi yerel):** `tsc` ve `eslint` temiz; birim 1276/1276 (75 dosya; 39'u yeni); e2e (yol kapalı) 362 testte 358 geçti / 4 atlandı / 0 başarısız (atlananlar: 2 ekran görüntüsü, 2 gerçek-model testi); bulut e2e'si (sahte Worker'a karşı) 36/36; `cloud/`: düzenek 39/39, Worker 43/43 (25 + 18 ortak sözleşme), sahte Worker 23/23, `tsc` temiz; durağan çıktı varsayılan ayarla 17 sayfada `connect-src 'self'`, ayar verilince 17 sayfada tam bir köken daha, biçimsiz ayarda derleme durur; kalite raporu 625 ölçü: 547 bütçe içinde / 9 dışında (sekizi önceki koşudakiler; yenisi rıza ekranının kurucu onaylı "AssemblyAI adlı şirketin Avrupa'daki bilgisayarlarına gider." cümlesinin okunabilirlikte "çok zor" çıkması — metne dokunulmadı) / 5 ölçülemedi; var olan ekran tabanları değişmedi. **Koşulan ama bu işle ilgisiz kırık:** Pages duman testinde 2 başarısız (Dikey yap'tan hâlâ 1080 × 1920 bekleyen eski beklenti; destek adresi değişkeni verilmeden derlenen çıktı). **Koşulmayan:** tarayıcı matrisi, gerçek telefon, gerçek Worker ve sağlayıcı. Mevcut kullanıcı haklarına etkisi: yok (fiyat, kota, şema, yayındaki gizlilik metni ve CSP değişmedi).
+
 ## Arama emin değilken soruyor; görüntü hiçbir yolda büyütülmüyor; editör kaynağın boyutunu izliyor — 11 Ekim 2026 (ADR-041; ADR-034, ADR-027, ADR-035 ekleri; politika `2026-10-11.v9`; şema değişmedi)
 
 Kalite raporunun 11 Ekim'de açık kalan üç maddesi (kurucu onayı, 11 Ekim).
