@@ -1,44 +1,41 @@
-**Yazıldığı koşu:** 11 Ekim 2026, commit `b8e355f` (önceki bulgular: 10 Ekim, `70c0b2f`). 10 Ekim’de yazılan on bulgunun dokuzu üzerinde çalışıldı; aşağıda her biri için ne değiştiği ve aynı ölçünün önceki → şimdiki değeri var. Sıra yine önem sırasıdır. Açık kalanlar en başta.
+**Yazıldığı koşu:** 11 Ekim 2026 öğleden sonra, dal `worktree-agent-a511c0275d7647e51` (önceki bulgular: aynı gün, `b8e355f`). O raporda açık kalan üç şey üzerinde çalışıldı: aramanın yanlış karta göndermesi, editörün her videoyu 1080p’ye büyütmesi, 720p’den küçük kaynakların büyütülmesi. Aşağıda her biri için aynı ölçünün önceki → şimdiki değeri var. Açık kalanlar en başta.
 
 ### Hâlâ açık
 
-1. **Arama hâlâ sekiz istekten birinde başka iş yapan bir kart öneriyor (bütçe ≤ %5).** Kuralları hiç görmemiş bir yazarın yazdığı, bir kez ölçülen ikinci yeni kümede (243 ifade, 209’u sayılır): “yanlış ama emin” %19,6 → **%12,0**; ilk sonuç doğru %75,0 → %81,8; ilk üçte %81,1 → %85,8; yapılabilen işe “yapamıyoruz” %4,1 → %2,0; “Bunu henüz yapamıyoruz.” yakalama %71,0 → %83,9, isabet %82,9 → %91,2. Uzun cümlelerde ilk sonuç %67,5 → %67,5 (değişmedi). Altı arama bütçesi dışarıda.
-   - **Eski küme artık kirlenmiş sayılır** (10 Ekim’in 240 ifadesi; bu çalışmada bir bölümü yanlışlıkla görüldü, aşağıda): ilk sonuç %89,0 → %92,4, yanlış ama emin %7,1 → %3,1. Bu sayılar başlık DEĞİLDİR.
-   - İlk yeni küme (178 ifade) bir kez ölçüldü (ilk sonuç %77,2 → %81,5; yanlış ama emin %20,9 → %12,2), sonra kaçanlarına bakılıp genel kurallar çıkarıldı; artık ayar kümesidir.
-   - İki ayrı görmeyen kümede aynı sonuç (%12) çıkması, kelime listesi + ek kuralı yaklaşımının buraya kadar getirdiğini gösteriyor. %5’e inmek için ya başka bir yaklaşım ya da bütçenin yeniden konuşulması gerekir (kurucu kararı). “İlk sonuç ≥ %85” ve “ilk üçte ≥ %90” bütçeleri eski, daha kolay kümede ayarlanmıştı.
-   Kanıt: bölüm 2. Yer: `web/src/domain/taskSearch.ts`, `web/src/domain/tasks.ts`, `web/src/domain/turkishSuffix.ts`.
+1. **Arama beş istekten birinde doğru işi hiç göstermiyor.** Yeni kör kümede (aşağıda, madde 4) doğru iş ilk satırda %75,7, ilk üç satırda %80,4 (bütçeler ≥ %85 ve ≥ %90); yapılabilen işlerin %12,2’sine “Bunu bulamadım.” deniyor. Uzun, derdini anlatan cümlelerde doğrudan doğru cevap %35 (40 ifade); “Yazıya dök” isteyen 13 ifadenin 2’si doğrudan doğru. Madde 4’teki değişiklik **sıralamayı değiştirmedi**; yanlış karta göndermeyi azalttı, bulamamayı azaltmadı. Yedi arama bütçesi dışarıda: ilk satır, ilk üç, yapılabilen işe “yapamıyoruz” (%2), “yapamıyoruz” yakalama (%88) ve isabet (%88,2), listede olmayan isteğe dürüst cevap (%65: 20 ifadenin 3’üne hâlâ tek kart, 4’üne soru), anlamsız yazı (%88,9: 9 ifadenin 1’i). Kelime listesi + ek kuralıyla iki turda düzelmedi; gerçek kullanıcı cümleleri ya da cihazda küçük bir anlam modeli gerekir. Kanıt: bölüm 2.
 
-2. **Editörün açılışı yavaş telefonda hâlâ sınırın kıyısında.** Mobil kısıtlamada TBT 256 ms (240–280) → bu koşuda **206 ms (167–213)**, bir önceki koşuda 176 ms (157–209): bütçe 200 ms; ortanca koşudan koşuya sınırın iki yanına düşüyor. Sayfa ağırlığı indi (aşağıda, 11. madde) ama bu ölçü “düzeldi” sayılamaz. Kanıt: bölüm 7.
+2. **Kaydedilen dosyaların hiçbirinde dizin başta değil (10 / 10).** Bu çalışmanın kapsamı dışındaydı; değişmedi. Kanıt: bölüm 5.
 
-3. **Kaydedilen dosyaların hiçbirinde dizin başta değil (10 / 10).** Bu çalışmanın kapsamı dışındaydı; değişmedi. Kanıt: bölüm 5.
+3. **Editörün açılışı yavaş telefonda sınırın kıyısında.** Mobil kısıtlamada TBT bu koşuda 176 ms (167–191) — bütçe (200 ms) içinde; sabahki koşuda 206 ms (167–213) idi. Bu çalışmada editörün açılışına dokunulmadı: ölçü koşudan koşuya sınırın iki yanına düşüyor, “düzeldi” sayılamaz. Kanıt: bölüm 7.
 
 ### Düzeltilenler (önce → şimdi)
 
-4. **“Küçült” artık söz verdiğini yapıyor** (`7e31a69`). Önceden seçili olan “WhatsApp (16 MB altı)”; video zaten sığıyorsa “İndir” kapalı ve “Bu video zaten … ; buraya sığıyor. Küçültmene gerek yok.” deniyor; 16 MB’ın altındaki videoya “Daha da küçült (yaklaşık yarısı)” seçeneği çıkıyor. Seçim değiştirilmeden: 24,74 MB → 24,73 MB (“Kaydedildi”) idi; şimdi yaklaşık 25 MB → **14,0 MB**, 1280 × 720. Dosyası doğrulanan görev 8 / 9 → **9 / 9** (iki görünümde).
+4. **Arama emin değilken tek karta göndermek yerine soruyor** (`fd6ce81`, `d8ad0b5`; ADR-034 eki). Sıralama aynı; değişen sunuş: kelimeler işi belirlemiyorsa satırlar birer seçenektir (“Bunu mu demek istedin?”, altında “Tam emin olamadım. Hangisini istiyorsan ona bas.”), hiçbiri seçili değildir ve **Enter hiçbir şey başlatmaz**. Kendisine yalnızca işlerin listesi verilen bir yazarın yazdığı, kural dondurulduktan sonra bir kez ölçülen kör kümede (280 ifade; daha önce görülen 78’i sayılmadı, sayılan 202):
+   - **yanlış ama emin** (tek cevap, yanlış iş) %12,4 (25 kart) → **%3,0** (6 kart) — bütçe ≤ %5, ilk kez içinde;
+   - sordu: %25,2 (51 kez; 16’sında tek seçenek, 7’si yapılabilen bir iş değildi); yapılabilen işlerde %29,7 (bütçe ≤ %33);
+   - sorduğunda doğru iş seçeneklerde: %88,6 (44 sorunun 39’u; bütçe ≥ %80);
+   - açık yazılmış isteğe soru: %5,6 (18 ifadeden 1’i; bütçe ≤ %15);
+   - **bedeli:** doğrudan doğru cevap %75,7 → %54,1; yeniden yazmadan doğru işe varma %75,7 → %80,4.
+   - **Kirlenmiş kümeler, başlık değil** (kural bunlara bakılarak ayarlandı): `search-eval-fresh2.ts` %12,0 → %1,0; `search-eval-fresh.ts` → %0; `HELD_OUT` %3,1 → %0,9; `DEV` → %0.
+   - Üçüncü bağımsız kümede de eski aramanın yanlış kart oranı %12 çıktı (%12,2, %12,0, %12,4).
+   Önce / sonra ekranları: `docs/ux/2026-10-11-did-you-mean/`.
 
-5. **Yarım kalmış video seçildiği anda reddediliyor** (`5bf0e7d`, ADR-040). Dosyanın söylediği süre ile gerçekten okunabilen süre karşılaştırılıyor; fark 1 saniyeden büyükse on sihirbaz ve editör aynı şeyi söylüyor (“… yarım kalmış görünüyor: 24,0 sn uzunluğunda olması gerekirken dosyada yalnızca ilk 12,3 sn var. …”), dışa aktarma başlamadan önce de aynı denetim var. “Chrome veya Edge ile dene” yalnızca tarayıcı Chromium değilken gösteriliyor. Hata hücreleri: 9 belirsiz + 1 ölçülemedi → **0 belirsiz**; toplamda iyi / belirsiz / bozuk **74 / 0 / 0**.
+5. **Editör videonun boyutunu izliyor** (`8d73554`, ADR-041). Editör doğrudan açılıp hiçbir ayara dokunulmadan: 1280 × 720 kaynaktan kesit 1920 × 1080, baştan sona yeniden kodlanmış → **1280 × 720, görüntüye dokunulmadan** (hızlı kesim; `export-method` öznitelikleri “Kes” sihirbazındakiyle aynı — e2e `own-size.spec.ts`). “Ayarlar”daki seçim artık bir üst sınır (“Videonun kendi boyutu (en çok 1080p)”, “En çok 720p”) ve altında gerçek boyut yazıyor.
 
-6. **Sınır mesajları ne yapılacağını söylüyor** (`7ba9a84`). Çok büyük dosya ve çok uzun video mesajları sınırı politikadan okuyup bir çıkış yolu öneriyor. 20 belirsiz hücre → 0.
-
-7. **Varsayılan yolda teknik terim yok** (`84ec4ea`). Sekiz cümle → **0**. Yöntemin teknik adı “Ayrıntılar”ın içinde duruyor; söylenen şey hâlâ ölçülen şey.
-
-8. **“Kes” videonun kendi boyutunu koruyor** (`7e31a69`). Neden: sihirbaz videoyu editörün varsayılan 1080p tarifiyle açıyordu; bu hem büyütüyor hem hızlı kesimi engelliyordu. 1280 × 720’den kesilen 3 saniye: 1920 × 1080, 1,5 MB, yeniden kodlanmış → **1280 × 720, 83 KB, görüntüye dokunulmadan**. Ayrıca yeniden kodlanan dosyanın bit hızı kaynağınkinin iki katını geçmiyor (ADR-024 eki). İki katı çarpanı gerçek çekimde ÖLÇÜLMEDİ.
-
-9. **Çözülmüş ses / görüntü örnekleri kapatılıyor** (`70e0947`). İki sızıntı: kodlayıcı öz-sınamasındaki ses örneği ve iptalde kare seçicinin elindeki bir sonraki kare. Konsoldaki “… garbage collected without first being closed” uyarısı görev yürüyüşlerinde artık çıkmıyor (Küçült’te iki görünümde çıkıyordu; şimdi “Konsol hatası” sütunu bütün görevlerde 0); çöp toplama zorlanarak denetleyen üç e2e testi eklendi.
-
-10. **Telefonda yazı ve hedefler** (`a30b8ac`, `a873a90`). 14 px’in altındaki kelime payı: ana ekran %62 → **%0**, sihirbaz ekranları %21–54 → **%0**, boş editör %74 → %0; video ve bir kesit olan editörde %17 (şeridin 12 px’lik zaman etiketleri — açık). 44 px’ten küçük dokunma hedefi 16 → **0**. Görsel tabanlar iki görünümde ekranlara bakıldıktan sonra yenilendi (36 ekran).
-
-11. **Sayfa ağırlığı** (`b594a58`, `c0a989a`). Sihirbaz editörü, İngilizce metinleri ve başka işlerin ekranını artık taşımıyor; medya kitaplığı video açılınca iniyor. Aktarılan JS: ana ekran 193 → **177 KB**, sihirbaz 422 → **234 KB**, editör 421 → **284 KB**. Mobil kısıtlamada TBT: sihirbaz 209 → 129 ms (122–134), ana ekran 118 ms; editör için 2. maddeye bakın (bütçe dışı). Bu üç sayfa ağırlığı bütçesi ve telefon yazı bütçesi yeni ölçülere göre sıkılaştırıldı; hiçbir bütçe gevşetilmedi.
+6. **Hiçbir yol görüntüyü büyütmüyor** (`8d73554`, ADR-041, belge 15 v9). Dokuz yol × üç kaynak (640 × 360, 854 × 480, 1280 × 720), kaydedilen dosyada: kaynağından büyük çıkan **0 / 27** (bölüm 5, “Büyütme yok”). Önceki kuralla (bu kaynaklarla yeniden ölçülmedi; eski kuraldan ve eski e2e beklentilerinden): editör üçünü de 1920 × 1080 yapıyordu; sihirbazlar 360p ve 480p kaynağı 1280 × 720; Dikey yap üçünü de 1080 × 1920. Şimdi: kendi biçiminde kalan yollarda 640 × 360 / 854 × 480 / 1280 × 720; Dikey yap (Doldur) 202 × 360 / 270 × 480 / 406 × 720 — kestiği dilimin kendisi. Yan kazanç: 360p ve 480p kaynakta Kes, Boşlukları at, Müzik ekle ve Sesi kapat artık görüntüyü yeniden kodlamıyor (tabloda “kopya” / “karma”).
 
 ### Bilinmesi gerekenler
 
-- **Ölçüm temizliği (arama):** eski ayrı kümenin “Küçült” bölümü bir arama komutunun çıktısında, ikinci yeni kümenin bazı kaçanları da ölçümden SONRA rapor çıktısında görüldü. İkinci yeni kümenin ölçümünden sonra arama kurallarına dokunulmadı; yine de o küme bir daha “görülmemiş” sayılmamalı: bir sonraki arama çalışması yeni bir küme yazdırmalı.
-- **Editör doğrudan açıldığında** varsayılan çıktı hâlâ 1080p’dir (yalnız sihirbazlar videonun boyutunu izler); 720p’den küçük kaynaklar hâlâ 720p’ye büyütülür. İkisi de politika sorusu, bu çalışmada değiştirilmedi.
-- **Yarım dosyanın okunabilen kısmını yine de açma** seçeneği yok (ADR-040’ta açık soru).
-- **İyileştir, grafik hızlandırma yokken gerçek zamandan yavaş**; yeniden işlenen görüntüde en düşük VMAF 84,6, SSIM 0,966 (üretilmiş kumlu video; gerçek çekimde ölçülmedi). Değişmedi.
+- **“Dikey yap” küçük videodan küçük dikey video verir** (1280 × 720’den 406 × 720). Kural gereği doğru ve sihirbaz indirmeden önce söylüyor; paylaşım sitelerinin bunu nasıl karşıladığı ÖLÇÜLMEDİ. Kurucu kararı gerekebilir (ADR-041, “Kurucuya”).
+- **“Sığdır”** görüntüyü büyütmez ama çevresine boşluk ekler: 640 × 360 → 640 × 1138. Kaynağından fazla pikseli olan tek durum budur; fazlası siyah boşluktur. Kalite tablosu “Doldur”u ölçer.
+- **İki taban, iki büyütme istisnası:** kısa kenarı 144’ün altındaki görüntü 144’e; içine altyazı gömülen ve kısa kenarı 360’ın altındaki görüntü 360’a getirilir (ADR-041).
+- **Kaynağından büyük indirme seçeneği yok.** İstenirse “Ayarlar”a açık bir seçenek olarak eklenir (şema alanı gerekir).
+- **Ölçüm temizliği (arama):** eminlik kuralı yalnızca görülmüş kümelerde ayarlandı; yeni küme ölçümden önce okunmadı; ölçümden sonra arama koduna dokunulmadı. Yeni bütçelerin değerleri ölçümle aynı oturumda yazıldı, `DEV` bütçesi bir kez düzeltildi (≤ %12 → ≤ %15: ilk değer raporun saymadığı ifadeleri de sayan bir hesaba dayanıyordu). Yeni kümenin kaçanları bu raporda yazılı: bir sonraki arama çalışması dördüncü bir küme yazdırmalı.
+- **Donanım kodlayıcı ölçülmedi.** Bütün dosyalar Playwright’ın Chromium’unda (yazılım kodlayıcı) üretildi; gerçek Chrome / Edge’in 360p’nin altındaki karelerde (202 × 360) ne yaptığı bilinmiyor.
+- **Görsel tabanlar** ekranlara bakıldıktan sonra yenilendi: `sihirbaz-dikey-secim` (iki görünüm; boyutu söyleyen cümle uzadı, telefonda bir satır daha), `yol-muzik-sonuc` ve `yol-kes-sonuc` (sonuç satırı), yeni ekran `ana-ekran-soru`.
 - **“Yazıya dök”** bu koşuda model dosyaları olmadığı için ölçülmedi (4 yürüyüş ölçüsü + gerçek model WER’i “ölçülemedi”).
-- **Ölçülmeyen:** gerçek telefon, Safari / Firefox, gerçek çekimler, tarayıcı matrisi — bu çalışmada koşulmadı.
-- **İyi olanlar:** ilerleme çubuğu hiç geri gitmedi, iptalden sonra bayt kalmadı; eklenen ses–görüntü sapması en çok 1 ms, süre hatası en çok 16 ms; dokuz görevin dokuzu en çok 4 tıklamayla (telefonda 5) doğru dosyayı verdi; metinlerin ortanca Ateşman puanı 81,3.
+- **Ölçülmeyen:** gerçek telefon, Safari / Firefox, gerçek çekimler, tarayıcı matrisi, gerçek kullanıcı cümleleri.
+- **İyi olanlar:** dokuz görevin dokuzu en çok 4 tıklamayla (telefonda 5) doğru dosyayı verdi; hata hücreleri 74 / 0 / 0; ilerleme çubuğu hiç geri gitmedi, iptalden sonra bayt kalmadı; eklenen ses–görüntü sapması en çok 1 ms, süre hatası en çok 16 ms; varsayılan yolda teknik terim içeren cümle 0; telefonda 44 px’ten küçük hedef 0.
 
 ### Açık kalan
 
