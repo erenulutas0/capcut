@@ -108,23 +108,38 @@ kullanılamaz hâle getirir ve yeni bir küme yazdırmak zorunda kalır. Ayar i�
 tablolarındaki (`web/tests/unit/taskSearch*.test.ts`) ve `DEV`'deki ifadeler otomatik olarak sayım dışı
 bırakılır.
 
-10 Ekim 2026'dan beri dört küme var ve rapor hangisinin ne olduğunu her seferinde yazar:
+11 Ekim 2026'dan beri beş küme var ve rapor hangisinin ne olduğunu her seferinde yazar:
 
 | Küme | Dosya | Ne |
 |---|---|---|
-| **Yeni ayrı küme** — başlık ve bütçeler | `search-eval-fresh2.ts` | Aramanın kodunu, listelerini ve öteki ifadeleri GÖRMEYEN ayrı bir yazar (bir alt ajan) yazdı; aramanın son değişikliğinden sonra bir kez ölçüldü. Kaçanları raporda yazılı olduğu için bir sonraki arama çalışmasında bu da görülmüş sayılır. |
-| İlk yeni küme | `search-eval-fresh.ts` | Aynı biçimde yazıldı, bir kez ölçüldü, sonra kaçanları okunup arama ona göre değiştirildi: artık ayar kümesi. |
-| Eski ayrı küme | `search-eval.ts` → `HELD_OUT` | **Kirlenmiş:** kaçanları arama değiştirilmeden önce okundu. Yalnızca "önce → sonra" için. |
+| **Yeni ayrı küme** — başlık ve bütçeler | `search-eval-fresh3.ts` | Kendisine YALNIZCA işlerin listesi ve birer satırlık açıklamaları (ve yapılamayanların listesi) verilen ayrı bir yazar (bir alt ajan) yazdı: aramanın kodunu, kelime listelerini, eminlik eşiklerini ve öteki ifadeleri görmedi. Yazarın JSON çıktısı, yalnızca sayım basan bir betikle veri dosyasına çevrildi; ölçümden önce ifadeleri kimse okumadı. Eminlik kuralı dondurulduktan (commit `fd6ce81`) sonra bir kez ölçüldü. Kaçanları raporda yazılı olduğu için bir sonraki arama çalışmasında bu da görülmüş sayılır. |
+| İkinci yeni küme | `search-eval-fresh2.ts` | 10–11 Ekim raporlarının başlığıydı. Kaçanları raporda yazılıydı ve eminlik kuralı bu kümeye de bakılarak ayarlandı: **artık ayar kümesi.** |
+| İlk yeni küme | `search-eval-fresh.ts` | Aynı biçimde yazıldı, bir kez ölçüldü, sonra kaçanları okunup arama ona göre değiştirildi: ayar kümesi. |
+| Eski ayrı küme | `search-eval.ts` → `HELD_OUT` | **Kirlenmiş:** kaçanları arama değiştirilmeden önce okundu. |
 | Geliştirme kümesi | `search-eval.ts` → `DEV` | Üzerinde ayar yapılır. |
 
 **Yeni bir ayrı küme nasıl yazdırılır:** yazan kişi (ya da ajan) `web/src/`, `web/tests/` ve `docs/` altını
 açmamalı, aramayı çalıştırmamalı; ona yalnızca on işin ne yaptığı, yapılamayanların listesi ve yazış
-biçimleri (Türkçe, harfsiz, yazım hatalı, argo, uzun cümle, İngilizce) verilir. Küme, arama değiştirilmeden
-ÖNCE ya da değişikliği görmeden yazılır ve değişiklikten sonra bir kez ölçülür.
+biçimleri (Türkçe, harfsiz, yazım hatalı, argo, uzun cümle, İngilizce; kısa ve açık olanlar `kolay`
+etiketiyle) verilir. Küme, arama değiştirilmeden ÖNCE ya da değişikliği görmeden yazılır; çıktısı
+ifadeleri göstermeyen bir betikle dosyaya çevrilir; değişiklik dondurulduktan sonra bir kez ölçülür.
 
-Sayılar: ilk sonuç doğru, ilk üçte var, **yanlış ama emin** (ilk sonuç başka iş yapan, "Başla" düğmeli
-bir kart — en pahalı hata), "Bunu henüz yapamıyoruz." için yakalama ve isabet. Kaçanlar tabloda:
-ifade → beklenen → çıkan.
+**İki sunuş, bu yüzden dört ek sayı (11 Ekim 2026).** Arama emin olduğunda tek bir işi cevap diye
+sunar (satırı seçilidir, Enter başlatır); emin olmadığında “Bunu mu demek istedin?” diye 1–3 seçenek
+sorar, hiçbiri seçili değildir. Sayılar (`web/tests/quality/lib/searchEval.ts`):
+
+- **yanlış ama emin** — TEK bir iş cevap diye sunuldu ve başka iş yapıyor (en pahalı hata; bütçe ≤ %5).
+  Seçenek olarak sorulan yanlış iş burada sayılmaz: kullanıcı gönderilmedi, soruldu.
+- “Hep sor” bu sayıyı sıfırlardı. Bunu kapatan dört sayı: **sorma oranı** (yapılabilen işlerde; bütçe
+  ≤ %33), **sorduğunda doğru iş seçeneklerde** (bütçe ≥ %80), **açık yazılmış isteğe soru** (yeni kümenin
+  `kolay` etiketli ifadeleri; bütçe ≤ %15) ve ayar kümesinde aynı şey (`DEV`; bütçe ≤ %12).
+- **doğrudan doğru** (tek cevap ve doğru iş), **yeniden yazmadan varıldı** (doğrudan ya da seçeneklerden),
+  **ilk satır doğru iş** (cevap ya da ilk seçenek olarak — önceki raporların “ilk sonuç doğru”su; sıralama
+  değişmediği için o sayılarla karşılaştırılabilir), ilk üçte var.
+- “Bunu henüz yapamıyoruz.” için yakalama ve isabet; listede olmayan isteğe ve anlamsız yazıya dürüst cevap.
+
+Kaçanlar tabloda: ifade → beklenen → çıkan (“soruldu, doğrusu seçeneklerde” de kaçan sayılır: doğrudan
+cevap değildir).
 
 ### 3. Hata yolları (`errors`)
 
@@ -163,6 +178,12 @@ Kes, Küçült, Dikey yap ve Her yerde açılsın için, ffmpeg / ffprobe ile:
 - **Küçült:** dosya hedefe sığdı mı, hedefin ne kadarını kullandı.
 - **Her yerde açılır:** H.264 / AAC / yuv420p, önce dizin (faststart), sıralı ve boşluksuz zaman
   damgaları.
+
+**Büyütme yok (ADR-041):** video dosyası üreten dokuz yol (editör doğrudan, Kes, Boşlukları at, Dikey
+yap, Küçült, Müzik ekle, Sesi kapat, Her yerde açılsın, İyileştir), 640 × 360, 854 × 480 ve 1280 × 720
+kaynakla: kaydedilen dosyanın piksel sayısı kaynağınkini geçmemeli (çıkan / kaynak piksel oranı ≤ 1).
+Kaynak üretilmiş, loş ve kumlu bir deneme desenidir (her işin yapacak bir şeyi olsun diye: ses boşluğu,
+aydınlatılacak görüntü, atılacak bayt).
 
 İyileştir için ADR-037'nin ölçüleri yeniden kullanılır (ortalama parlaklık, Laplace varyansı, eklenen
 titreme, "değişecek bir şey yoksa indirme yok"). Sadakat videosu üretilmiştir ("kamera benzeri":
@@ -266,6 +287,7 @@ insanın takıldığı her nokta, bu katmanın kör noktasıdır ve mümkünse y
 | `web/playwright.quality.config.ts` | Ölçüm betiklerinin Playwright ayarı (masaüstü + telefon) |
 | `web/tests/quality/*.spec.ts` | Bölümlerin ölçüm betikleri (ölçer, yargılamaz) |
 | `web/tests/quality/lib/` | Betikli kullanıcı, ekran okuma, teknik terim listesi, ffmpeg ölçümleri, görsel karşılaştırma |
-| `web/tests/quality/data/search-eval.ts` | Arama değerlendirme kümeleri (`HELD_OUT`, `DEV`) |
+| `web/tests/quality/data/search-eval*.ts` | Arama değerlendirme kümeleri (`HELD_OUT`, `DEV`; üç “yeni” küme: `-fresh`, `-fresh2`, `-fresh3`) |
+| `web/tests/quality/lib/searchEval.ts` | Arama sayılarının hesabı (tarayıcısız; ayar sırasında da aynı hesap) |
 | `web/tests/quality/baselines/` | Ekran tabanları (PNG) |
 | `web/.scratch/quality/` | Ham sonuçlar, üretilen kaynaklar, çıkan dosyalar (git'e girmez) |

@@ -331,6 +331,33 @@ export function cameraLikeWebm(): string {
   ]);
 }
 
+/**
+ * A small video for the "never enlarged" checks (ADR-041): a dim, grainy test pattern of the given
+ * size, 6 s, with a tone that stops for a second twice — so that every task has something to do with
+ * it: "Boşlukları at" finds a gap, "İyileştir" finds a picture to brighten, "Küçült" finds bytes to
+ * lose (the bitrate is held at about 0.45 bit per pixel). H.264 + AAC in MP4. Generated; not footage.
+ */
+export function smallSource(width: number, height: number): string {
+  const tone = '0.25*sin(2*PI*440*t)*lt(mod(t,3),2)'.replace(/,/g, '\\,');
+  const rate = `${Math.round((width * height * 30 * 0.45) / 1000)}k`;
+  return make(`kucuk-${width}x${height}-6s.mp4`, [
+    '-f', 'lavfi', '-i', `testsrc2=size=${width}x${height}:rate=30:duration=6`,
+    '-f', 'lavfi', '-i', `aevalsrc=exprs=${tone}:s=48000:d=6`,
+    '-vf', 'lutyuv=y=val*0.4,noise=alls=18:allf=t,format=yuv420p',
+    '-c:v', 'libx264', '-preset', 'veryfast', '-b:v', rate, '-minrate', rate, '-maxrate', rate, '-bufsize', rate, '-pix_fmt', 'yuv420p', '-g', '30',
+    '-c:a', 'aac', '-b:a', '96k', '-shortest', '-movflags', '+faststart',
+  ]);
+}
+
+/** The same small picture as VP9 + Opus in WebM: what "Her yerde açılsın" has to convert. */
+export function smallWebm(width: number, height: number): string {
+  return make(`kucuk-${width}x${height}-6s.webm`, [
+    '-i', smallSource(width, height),
+    '-c:v', 'libvpx-vp9', '-b:v', '1M', '-deadline', 'realtime', '-cpu-used', '8', '-pix_fmt', 'yuv420p', '-g', '30',
+    '-c:a', 'libopus', '-b:a', '64k',
+  ]);
+}
+
 /** A copy of `source` (an MP4 with its index first) cut off at `share` of its bytes: a download that stopped half way. */
 export function truncatedCopy(source: string, name: string, share: number): Buffer {
   const fast = make(`${name}-faststart.mp4`, ['-i', source, '-c', 'copy', '-movflags', '+faststart']);

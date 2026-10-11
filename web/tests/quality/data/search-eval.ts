@@ -27,6 +27,15 @@
  * tunes on a batch's misses has to have a new one written — by a writer who
  * has not read the lists.
  *
+ * 11 Oct 2026 — THE SECOND FRESH BATCH IS A TUNING SET TOO. The confidence
+ * rule (taskSearch.ts, rule 12: answer or "Bunu mu demek istedin?") was
+ * tuned on everything that had been seen by then: DEV, HELD_OUT and both
+ * fresh batches. The measurement is search-eval-fresh3.ts, written by a
+ * writer who was given only the list of tasks and their one-line
+ * descriptions, converted without anyone reading it, and measured once after
+ * the rule was frozen (commit fd6ce81). Its misses are printed in the report:
+ * the next search change needs a fourth batch.
+ *
  * A caveat, said plainly: whoever wrote these phrases had read the word
  * lists. They were written as a child or a first-time user would type —
  * typos, no Turkish letters, slang, whole sentences — and not to hit or to

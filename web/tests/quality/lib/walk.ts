@@ -144,8 +144,16 @@ export const FLOWS: Flow[] = [
       await novice.look('seçim');
     },
     download: { name: t('wizard.download'), testId: 'wizard-download' },
-    verify: (out) => [
-      { name: '1080 × 1920', ok: out.video?.width === 1080 && out.video?.height === 1920, value: `${out.video?.width} × ${out.video?.height}` },
+    verify: (out, source) => [
+      // ADR-041: the 9:16 slice at its own pixels — vertical, and no larger than the 640 × 360 it was cut from.
+      {
+        name: 'dikey (9:16) ve kaynaktan büyük değil',
+        ok:
+          (out.video?.width ?? 0) > 0 &&
+          Math.abs((out.video?.width ?? 0) / (out.video?.height ?? 1) - 9 / 16) < 0.01 &&
+          (out.video?.width ?? 0) * (out.video?.height ?? 0) <= (source.video?.width ?? 0) * (source.video?.height ?? 0),
+        value: `${out.video?.width} × ${out.video?.height}`,
+      },
       lengthCheck(out, 8),
       codecCheck(out, ['video:h264', 'audio:aac']),
     ],

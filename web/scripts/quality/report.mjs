@@ -821,6 +821,45 @@ function sectionOutput(results, M) {
     );
     head.notFaststart = without.length;
   }
+
+  // ADR-041: no road produces more pixels than the source has.
+  const sizes = parts.filter((part) => part.kind === 'size');
+  out.push(
+    '\n**Büyütme yok (ADR-041)** — video dosyası üreten her yol, 640 × 360, 854 × 480 ve 1280 × 720 kaynakla: kaydedilen dosyanın piksel sayısı kaynağınkini geçmemeli. ' +
+      'Hücre: çıkan boyut ve çıkan / kaynak piksel oranı (1’in üstü büyütmedir). Kaynak: üretilmiş, loş ve kumlu deneme deseni, 6 sn. “Yazıya dök” ve “Sesini al” görüntü kaydetmez.\n\n',
+  );
+  if (sizes.length === 0) {
+    out.push('_Ölçülemedi: sonuç dosyası yok._\n');
+    M.add('output', 'out.size.run', 'Büyütme yok denetimleri', null, { note: 'sonuç dosyası yok' });
+  } else {
+    let enlarged = 0;
+    let measuredSizes = 0;
+    const heights = [...new Set(sizes.flatMap((part) => part.rows.map((row) => row.sourceHeight)))].sort((a, b) => a - b);
+    out.push(
+      table(
+        ['Yol', ...heights.map((height) => `${num(height, 0)}p kaynak`)],
+        sizes.map((part) => [
+          part.label,
+          ...heights.map((height) => {
+            const row = part.rows.find((item) => item.sourceHeight === height);
+            const id = `out.size.${part.road}.${height}.pixelRatio`;
+            const name = `${part.label}, ${height}p kaynak: çıkan / kaynak piksel oranı`;
+            if (!row || !row.measured || row.pixelRatio === null) {
+              M.add('output', id, name, null, { note: row?.reason ?? part.reason ?? 'ölçülemedi' });
+              return `ölçülemedi (${row?.reason ?? part.reason ?? 'satır yok'})`;
+            }
+            measuredSizes += 1;
+            if (row.pixelRatio > 1) enlarged += 1;
+            const cell = M.cell('output', id, name, row.pixelRatio, { format: (v) => `× ${num(v, 2)}` });
+            return `${row.width} × ${row.height} (${cell})${row.method ? `, ${METHOD[row.method] ?? row.method}` : ''}`;
+          }),
+        ]),
+      ),
+    );
+    head.sizeEnlarged = enlarged;
+    head.sizeMeasured = measuredSizes;
+  }
+
   head.worstAvAddedMs = worstSync;
   head.worstDurationErrorMs = worstDuration;
   head.worstSsim = worstSsim;
@@ -1347,6 +1386,9 @@ export function writeReport({ webDir, resultsDir, ran, failedSpecs, runSeconds, 
     errorsBroken: built.errors.head.broken ?? null,
     progressBackwards: built.honesty.head.backwards ?? null,
     cancelLeftoverBytes: built.honesty.head.leftoverBytes ?? null,
+    // ADR-041: saved files that hold more pixels than their source, of those measured.
+    outputsEnlarged: built.output.head.sizeEnlarged ?? null,
+    outputsSizeMeasured: built.output.head.sizeMeasured ?? null,
     worstAvAddedMs: built.output.head.worstAvAddedMs ?? null,
     worstDurationErrorMs: built.output.head.worstDurationErrorMs ?? null,
     worstSsim: built.output.head.worstSsim ?? null,
@@ -1438,6 +1480,7 @@ export function writeReport({ webDir, resultsDir, ran, failedSpecs, runSeconds, 
           : []),
         ['Hata hücreleri: iyi / belirsiz / bozuk', or(h.errorsGood, `${num(h.errorsGood, 0)} / ${num(h.errorsUnclear, 0)} / ${num(h.errorsBroken, 0)}`)],
         ['İlerleme çubuğu geri gitti (kez) · iptalden sonra kalan bayt', or(h.progressBackwards, `${num(h.progressBackwards, 0)} · ${num(h.cancelLeftoverBytes, 0)}`)],
+        ['Kaynağından büyük çıkan dosya (9 yol × 360p, 480p, 720p kaynak)', or(h.outputsEnlarged, `${num(h.outputsEnlarged, 0)} / ${num(h.outputsSizeMeasured, 0)}`)],
         ['Eklenen ses–görüntü sapması (en kötü) · süre hatası (en kötü)', or(h.worstAvAddedMs, `${num(h.worstAvAddedMs, 2)} ms · ${num(h.worstDurationErrorMs, 0)} ms`)],
         ['Görüntü sadakati, en düşük: SSIM · VMAF', or(h.worstSsim, `${num(h.worstSsim, 4)} · ${h.worstVmaf === null ? 'ölçülemedi' : num(h.worstVmaf, 1)}`)],
         ['Küçült → WhatsApp hedefe sığdı', or(h.kucultFitsTarget, h.kucultFitsTarget ? 'evet' : 'hayır')],
