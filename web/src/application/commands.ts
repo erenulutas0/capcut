@@ -785,20 +785,23 @@ export function importCaptionTrack(
 }
 
 /**
- * Replaces the caption track with the on-device transcript of the video
- * (ADR-036): source-anchored lines, `origin: 'transcript'`, English, and the
- * spans that could not be written. The same rules as a subtitle file — a
- * line that breaks one is skipped and counted, never bent to fit. A
- * transcript with no line at all is still kept when it has unclear spans:
- * "speech was heard, nothing could be written" is a result, not a failure.
- * One undo step.
+ * Replaces the caption track with the transcript of the video (ADR-036):
+ * source-anchored lines, `origin: 'transcript'`, and the spans that could
+ * not be written. The same rules as a subtitle file — a line that breaks one
+ * is skipped and counted, never bent to fit. A transcript with no line at
+ * all is still kept when it has unclear spans: "speech was heard, nothing
+ * could be written" is a result, not a failure. One undo step.
+ *
+ * `language`: the on-device recogniser writes English only; the cloud route
+ * (ADR-039) passes the language the provider named.
  */
 export function applyTranscriptTrack(
   project: Project,
   cues: readonly ImportedCueInput[],
   unclear: readonly CaptionUnclearV3[],
+  language: string = 'en',
 ): CaptionImportResult {
-  return replaceCaptionTrack(project, cues, 'source', { unclear });
+  return replaceCaptionTrack(project, cues, 'source', { unclear, language: isCaptionLanguage(language) ? language : 'en' });
 }
 
 /** Sorted, inside the video, apart from each other, within the line limit. */
@@ -823,7 +826,7 @@ function replaceCaptionTrack(
   project: Project,
   cues: readonly ImportedCueInput[],
   timeBase: CaptionTrackV2['timeBase'],
-  transcript: { unclear: readonly CaptionUnclearV3[] } | null,
+  transcript: { unclear: readonly CaptionUnclearV3[]; language: string } | null,
 ): CaptionImportResult {
   const video = primaryVideoAsset(project);
   if (timeBase === 'source' && !video) return { ok: false, reason: 'caption_no_video' };
@@ -868,8 +871,8 @@ function replaceCaptionTrack(
       origin: transcript ? 'transcript' : 'imported',
       timeBase,
       ...(timeBase === 'source' && video ? { assetId: video.assetId } : {}),
-      // The transcript is English only for now (ADR-036); a file keeps the track's language.
-      ...(transcript ? { language: 'en' } : {}),
+      // The transcript names its language (on-device: English only, ADR-036); a file keeps the track's language.
+      ...(transcript ? { language: transcript.language } : {}),
       cues: numbered,
       ...(unclear.length > 0 ? { unclear } : {}),
     };

@@ -1185,6 +1185,7 @@ export const en: Record<MessageKey, string> = {
   'transcript.failed.nothing_heard': 'No speech was found in this video; there was nothing to write.',
   'transcript.machine': 'Written automatically — it may be wrong, and you can correct it.',
   'transcript.unclear': '(could not be understood)',
+  'transcript.speaker': 'Person {n}',
   'transcript.unclearCount': '{n} places could not be understood; you can listen and type them yourself.',
   'transcript.coverage': 'About {pct} per cent of the speech that was found was written; {n} places could not be understood.',
   'transcript.coverage.larger': 'This was written with the small model. The recommended large model can write most of the places that were not understood.',

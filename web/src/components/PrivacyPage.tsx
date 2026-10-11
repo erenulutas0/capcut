@@ -2,7 +2,9 @@ import Link from 'next/link';
 
 import { Wordmark } from '@/components/Icon';
 import { ExportLogPanel } from '@/components/ExportLogPanel';
+import { CloudInviteSlot } from '@/components/transcript/CloudInviteSlot';
 import { ModelStoragePanel } from '@/components/transcript/ModelStoragePanel';
+import { cloudTranslator, type CloudMessageKey } from '@/i18n/cloudMessages';
 import { translator, type Locale, type MessageKey } from '@/i18n/messages';
 
 /**
@@ -16,7 +18,29 @@ import { translator, type Locale, type MessageKey } from '@/i18n/messages';
  *
  * Build-time values are read from process.env directly: this is a server
  * component and cannot take constants from a 'use client' module.
+ *
+ * The cloud transcript route (ADR-039) exists only in a build that names our
+ * proxy. In every other build — the published site today — this page says
+ * what it always said: nothing leaves the device. In a build WITH the route
+ * the sentences that would then be untrue are replaced (`CLOUD_SWAPS`), and
+ * the route gets its own section: what is sent, to whom, where, when it is
+ * deleted, and the invite code kept in this browser.
  */
+
+/** '1' only in a build that names the proxy (next.config.ts). */
+const CLOUD_ON = process.env.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1';
+
+/** What the route's section says, in order. */
+const CLOUD_FACTS: CloudMessageKey[] = [
+  'cloud.privacy.what',
+  'cloud.privacy.who',
+  'cloud.privacy.region',
+  'cloud.privacy.deletion',
+  'cloud.privacy.others',
+  'cloud.privacy.ledger',
+  'cloud.privacy.quota',
+  'cloud.privacy.trial',
+];
 
 const STORED: Array<{ name: MessageKey; body: MessageKey; where: MessageKey; delete: MessageKey; id: string }> = [
   {
@@ -89,6 +113,7 @@ function Undecided({ label }: { label: string }) {
 
 export function PrivacyPage({ locale }: { locale: Locale }) {
   const t = translator(locale);
+  const ct = cloudTranslator(locale);
   const undecided = t('privacy.undecided');
   const supportContact = (process.env.NEXT_PUBLIC_SUPPORT_CONTACT ?? '').trim();
   // Set by the deploy build only (language-neutral values: a name and a URL).
@@ -142,18 +167,31 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
         <section aria-labelledby="privacy-summary">
           <h2 id="privacy-summary">{t('privacy.summary.title')}</h2>
           <ul className="legal-list">
-            <li>{t('privacy.summary.local')}</li>
+            <li data-testid="privacy-local">{CLOUD_ON ? ct('cloud.privacy.summary.local') : t('privacy.summary.local')}</li>
             <li>{t('privacy.summary.nothingCollected')}</li>
             <li data-testid="privacy-search">{t('privacy.summary.search')}</li>
             <li>{t('privacy.summary.stored')}</li>
-            <li>{t('privacy.summary.report')}</li>
+            <li>{CLOUD_ON ? ct('cloud.privacy.summary.report') : t('privacy.summary.report')}</li>
           </ul>
         </section>
 
         <section aria-labelledby="privacy-network">
           <h2 id="privacy-network">{t('privacy.network.title')}</h2>
           <p>{t('privacy.network.body')}</p>
+          {CLOUD_ON ? <p data-testid="privacy-network-cloud">{ct('cloud.privacy.network.extra')}</p> : null}
         </section>
+
+        {CLOUD_ON ? (
+          <section aria-labelledby="privacy-cloud" data-testid="privacy-cloud">
+            <h2 id="privacy-cloud">{ct('cloud.privacy.title')}</h2>
+            <p>{ct('cloud.privacy.intro')}</p>
+            <ul className="legal-list">
+              {CLOUD_FACTS.map((key) => (
+                <li key={key}>{ct(key)}</li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         <section aria-labelledby="privacy-stored">
           <h2 id="privacy-stored">{t('privacy.stored.title')}</h2>
@@ -174,7 +212,28 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
               {item.id === 'model' ? <ModelStoragePanel locale={locale} buttonClassName="btn-ghost-light" /> : null}
             </article>
           ))}
-          <p>{t('privacy.stored.none')}</p>
+          {CLOUD_ON ? (
+            <article className="legal-card" data-testid="stored-invite">
+              <h3>{ct('cloud.privacy.stored.invite.name')}</h3>
+              <p>{ct('cloud.privacy.stored.invite.body')}</p>
+              <dl>
+                <dt>{t('privacy.stored.where')}</dt>
+                <dd>{ct('cloud.privacy.stored.invite.where')}</dd>
+                <dt>{t('privacy.stored.howLong')}</dt>
+                <dd>{ct('cloud.privacy.stored.invite.delete')}</dd>
+              </dl>
+              <CloudInviteSlot
+                buttonClassName="btn-ghost-light"
+                words={{
+                  present: ct('cloud.privacy.invite.present'),
+                  absent: ct('cloud.privacy.invite.absent'),
+                  remove: ct('cloud.invite.remove'),
+                  removed: ct('cloud.invite.removed'),
+                }}
+              />
+            </article>
+          ) : null}
+          <p>{CLOUD_ON ? ct('cloud.privacy.stored.none') : t('privacy.stored.none')}</p>
         </section>
 
         <section aria-labelledby="privacy-downloads">
@@ -189,7 +248,7 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
 
         <section aria-labelledby="privacy-not-collected">
           <h2 id="privacy-not-collected">{t('privacy.notCollected.title')}</h2>
-          <p>{t('privacy.notCollected.body')}</p>
+          <p data-testid="privacy-not-collected">{CLOUD_ON ? ct('cloud.privacy.notCollected.body') : t('privacy.notCollected.body')}</p>
         </section>
 
         <section aria-labelledby="privacy-report">

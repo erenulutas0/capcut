@@ -5,6 +5,7 @@ import { EnglishMessages } from '@/i18n/EnglishMessages';
 import { translator } from '@/i18n/messages';
 // On the server too: the page is prerendered in English.
 import '@/i18n/messages.en';
+import '@/i18n/cloudMessages.en';
 
 const t = translator('en');
 

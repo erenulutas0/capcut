@@ -32,6 +32,8 @@ const PATHS = {
   grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
   share: 'M12 15V4m0 0L8 8m4-4 4 4M6 11H5v9h14v-9h-1',
   install: 'M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm4 4v7m0 0 3-3m-3 3-3-3',
+  // "İnternette" (ADR-039; drawn in docs/ux/2026-10-11-cloud-consent).
+  cloud: 'M7 18a4 4 0 0 1-.5-8 6 6 0 0 1 11.5 1.5A3.5 3.5 0 0 1 17.5 18z',
   // The opening screen and the task wizards (ADR-034; drawn in docs/ux/2026-10-03-home).
   search: 'M3 11a8 8 0 1 0 16 0a8 8 0 1 0-16 0M21 21l-4.35-4.35',
   back: 'M15 18l-6-6 6-6',

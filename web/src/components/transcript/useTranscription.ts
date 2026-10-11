@@ -57,7 +57,7 @@ export interface TranscriptionTarget {
  * typeface only the character rule applies (the export says so if a line
  * then does not fit; it is never shrunk).
  */
-async function frameTest(style: CaptionStyleV2): Promise<FitsFrame> {
+export async function frameTest(style: CaptionStyleV2): Promise<FitsFrame> {
   try {
     const ready = await loadCaptionFont(document.fonts, window.location.origin);
     const context = document.createElement('canvas').getContext('2d');

@@ -488,3 +488,186 @@
     align-items: center;
   }
 }
+
+/* ------------------------------------------------ "Yazıyı nerede çıkaralım?" (ADR-039)
+   Two cards of the same weight: on this device, or on the internet. Stacked on
+   a phone, side by side from 700px. Only in a build that names the proxy. */
+
+.route {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.route-cards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.route-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.route-card-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.route-card-title svg.icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  stroke-width: 2;
+}
+
+.route-card-title-online svg.icon {
+  color: var(--accent);
+}
+
+.route-card-body {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.route-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.route-facts li {
+  position: relative;
+  padding-left: 20px;
+}
+
+.route-facts li::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.route-card-meta {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* The two ways forward are the same size; only one of them is filled. */
+.route-go {
+  margin-top: auto;
+  border-width: 2px;
+  font-weight: 700;
+  white-space: normal;
+}
+
+.route-go-device {
+  background: transparent;
+  border-color: var(--control-border);
+}
+
+.route-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.route-invite .route-go {
+  margin-top: 0;
+}
+
+.route-invite-label {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.route-invite-field {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 14px;
+  background: var(--bg);
+  border: 2px solid var(--control-border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-family: var(--font-time);
+  font-size: 17px;
+  letter-spacing: 0.02em;
+}
+
+.route-small,
+.route-stop {
+  align-self: flex-start;
+  min-height: 48px;
+  font-size: 15px;
+}
+
+.route-forget {
+  min-height: var(--tap);
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: 14px;
+  text-underline-offset: 3px;
+}
+
+.route-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-card);
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.route-notice p {
+  margin: 0;
+}
+
+.route-privacy {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 20px;
+  font-size: 14px;
+}
+
+.route-privacy a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 8px;
+  color: var(--focus);
+  text-underline-offset: 3px;
+}
+
+@media (min-width: 700px) {
+  .route-cards {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
