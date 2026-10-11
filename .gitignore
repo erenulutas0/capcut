@@ -69,3 +69,7 @@ web/.scratch/
 cloud/harness/results/
 .wrangler/
 .dev.vars
+
+# Founder-local secrets must never be committed
+cloud/pass.txt
+cloud/*.secret
