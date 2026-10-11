@@ -86,7 +86,7 @@ test('what the screen says: the founder\'s two cards, word for word, and nothing
   await expect(online.locator('.route-card-body')).toHaveText('Daha doğru, çok daha hızlı. Kimin konuştuğunu da ayırır.');
   await expect(page.getByTestId('route-facts').locator('li')).toHaveText([
     'Yalnızca ses gider, görüntü gitmez.',
-    'AssemblyAI adlı şirketin Avrupa’daki bilgisayarlarına gider.',
+    'AssemblyAI adlı bir şirkete gider. Bilgisayarları Avrupa’da.',
     'Yazı gelince oradaki ses ve yazı silinir.',
     'Başka insanlar konuşuyorsa onların sesi de gider.',
   ]);

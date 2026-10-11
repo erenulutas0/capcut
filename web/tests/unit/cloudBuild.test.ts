@@ -149,7 +149,7 @@ describe('the route\'s own words', () => {
     expect(cloudTr['cloud.online.title']).toBe('İnternette');
     expect(cloudTr['cloud.online.body']).toBe('Daha doğru, çok daha hızlı. Kimin konuştuğunu da ayırır.');
     expect(cloudTr['cloud.online.fact.sound']).toBe('**Yalnızca ses** gider, görüntü gitmez.');
-    expect(cloudTr['cloud.online.fact.who']).toBe('**AssemblyAI** adlı şirketin Avrupa’daki bilgisayarlarına gider.');
+    expect(cloudTr['cloud.online.fact.who']).toBe('**AssemblyAI** adlı bir şirkete gider. Bilgisayarları Avrupa’da.');
     expect(cloudTr['cloud.online.fact.deleted']).toBe('Yazı gelince oradaki ses ve yazı **silinir**.');
     expect(cloudTr['cloud.online.fact.others']).toBe('Başka insanlar konuşuyorsa **onların sesi de gider**.');
     expect(cloudTr['cloud.online.minutes']).toBe('Yaklaşık {n} dakika sürer · {x} dakika düşer, {y} dakikan kalır');

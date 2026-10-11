@@ -18,7 +18,7 @@ export const cloudEn: Record<CloudMessageKey, string> = {
   'cloud.online.title': 'On the internet',
   'cloud.online.body': 'More accurate, much faster. Also tells speakers apart.',
   'cloud.online.fact.sound': '**Only the sound** is sent, not the picture.',
-  'cloud.online.fact.who': 'It goes to computers in Europe of a company called **AssemblyAI**.',
+  'cloud.online.fact.who': 'It goes to a company called **AssemblyAI**. Its computers are in Europe.',
   'cloud.online.fact.deleted': 'When the text arrives, the sound and the text there are **deleted**.',
   'cloud.online.fact.others': 'If other people speak in it, **their voices are sent too**.',
   'cloud.online.minutes': 'Takes about {n} min · uses {x} min, {y} min left',

@@ -31,7 +31,7 @@ export const cloudTr = {
   'cloud.online.title': 'İnternette',
   'cloud.online.body': 'Daha doğru, çok daha hızlı. Kimin konuştuğunu da ayırır.',
   'cloud.online.fact.sound': '**Yalnızca ses** gider, görüntü gitmez.',
-  'cloud.online.fact.who': '**AssemblyAI** adlı şirketin Avrupa’daki bilgisayarlarına gider.',
+  'cloud.online.fact.who': '**AssemblyAI** adlı bir şirkete gider. Bilgisayarları Avrupa’da.',
   'cloud.online.fact.deleted': 'Yazı gelince oradaki ses ve yazı **silinir**.',
   'cloud.online.fact.others': 'Başka insanlar konuşuyorsa **onların sesi de gider**.',
   'cloud.online.minutes': 'Yaklaşık {n} dakika sürer · {x} dakika düşer, {y} dakikan kalır',
