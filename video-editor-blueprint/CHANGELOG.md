@@ -3,6 +3,28 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Kalite raporunun bulguları: Küçült, yarım dosya, arama, düz sözler, Kes, telefon, sayfa ağırlığı — 11 Ekim 2026 (ADR-040; ADR-035, ADR-024, ADR-034 ekleri; politika ve şema değişmedi)
+
+10 Ekim kalite raporunun (`docs/quality/`) on bulgusundan dokuzu üzerinde çalışıldı; her biri aynı ölçünün önce → sonra değeriyle (`docs/quality/latest.md`, `bulgular.md`).
+
+**Küçült (ADR-035 eki):** önceden seçili olan artık “WhatsApp (16 MB altı)”. Video seçilen sınıra zaten sığıyorsa “İndir” kapalıdır ve nedeni yazar; 16 MB’ın altındaki videoya “Daha da küçült (yaklaşık yarısı)” çıkar. Hiçbir şeyi küçültmeyen bir indirme artık “Kaydedildi” demez. Seçim değiştirilmeden: 24,74 → 24,73 MB idi; şimdi ≈ 25 → 14,0 MB.
+
+**Yarım kalmış video (ADR-040):** dosyanın söylediği süre ile okunabilen süre karşılaştırılır; fark 1 sn’den büyükse dosya seçildiği anda, on sihirbazda ve editörde aynı cümleyle reddedilir; dışa aktarma da başlamadan aynı denetimi yapar. Önce: sessiz 24 sn’lik ses dosyası, 12,5 sn’lik video ya da “Chrome veya Edge ile dene”. “Başka tarayıcı dene” önerisi yalnızca tarayıcı Chromium değilken gösterilir. **Açık:** okunabilen kısmı yine de açma seçeneği yok.
+
+**Kes:** sihirbaz videoyu kendi boyutunda açar (önce editörün 1080p varsayılanı: 720p kaynak 1080p’ye büyüyor, hızlı kesim reddediliyordu). 3 sn’lik kesit 1920 × 1080 / 1,5 MB / yeniden kodlanmış → 1280 × 720 / 83 KB / görüntüye dokunulmadan. Yeniden kodlamada bit hızı kaynağınkinin iki katıyla sınırlı (ADR-024 eki; İyileştir hariç). **Değişmeyen:** doğrudan editörde varsayılan 1080p; 720p’den küçük kaynak 720p’ye büyür.
+
+**Metinler:** çok büyük / çok uzun video mesajları ne yapılacağını söyler (sayılar politikadan); varsayılan yolda teknik terim içeren cümle 8 → 0 (teknik ad “Ayrıntılar”da).
+
+**Arama:** Türkçe ek denetimi (`turkishSuffix.ts`), “şey + fiil” çiftleri, olumsuz fiiller, yapılamayan dört yeni istek (indirme, yükleme, ekran / kamera kaydı, canlı yayın). Kuralları görmeyen bir yazarın 243 ifadelik kümesinde (bir kez ölçüldü): yanlış ama emin %19,6 → %12,0, ilk sonuç doğru %75,0 → %81,8. **Bütçe (≤ %5) hâlâ aşılıyor.** Eski 240’lık küme kirlenmiş sayılır (ilk sonuç %89,0 → %92,4; yanlış ama emin %7,1 → %3,1); ayrı raporlanır.
+
+**Kaynak sızıntısı:** kapatılmayan iki çözülmüş örnek (kodlayıcı öz-sınaması, iptalde kare seçici) kapatılıyor; çöp toplamayı zorlayan 3 e2e testi.
+
+**Telefon:** 14 px altı kelime payı ana ekranda %62 → %0, sihirbazlarda %21–54 → %0; 44 px’ten küçük hedef 16 → 0. Editörde video ve kesit varken %17 (şeridin 12 px’lik zaman etiketleri).
+
+**Sayfa ağırlığı:** editör, İngilizce metinler, Yazı / İyileştir sihirbazları ve iletişim kutuları ayrı parçalarda; medya kitaplığı video açılınca iner. Aktarılan JS: ana ekran 193 → 177 KB, sihirbaz 422 → 234 KB, editör 421 → 284 KB; mobil kısıtlamada TBT sihirbaz 209 → 129 ms, editör 256 → 176 ms (157–209; kıyıda). Çevrimdışı kopya 46 → 63 dosya; CSP değişmedi.
+
+**Sayılar (11 Ekim, dal `worktree-agent-a30ab281ec174f86b`):** `tsc` ve `eslint` temiz; birim 1214/1214 (71 dosya); e2e 347 testte 343 geçti / 4 atlandı / 0 başarısız (atlananlar: 2 ekran görüntüsü testi, model dosyaları olmadığı için 2 gerçek-model testi); statik dışa aktarım (`/capcut`) derlendi; kalite raporu 490 bütçe içinde / 7 dışında (altısı arama, biri dizinin sonda olması — kapsam dışı) / 5 ölçülemedi (Yazıya dök: model dosyaları yok). **Koşulmayan:** Pages duman testi, tarayıcı matrisi, gerçek telefon, gerçek çekimlerle ölçüm. Mevcut kullanıcı haklarına etkisi: yok (fiyat, kota, şema, gizlilik metni değişmedi).
+
 ## Ürünün adı LiloCut; kesitsiz proje kaybı, dürüst arama yanıtları, test sağlamlığı — 10 Ekim 2026 (ADR-038, ADR-012 eki; politika ve şema değişmedi)
 
 **Ad (kurucu kararı, K01):** ürünün adı **LiloCut**; "Clip" o güne kadarki geçici addı. Ad tek yerde yazılır (`web/src/appIdentity.ts`, `APP_NAME`); manifest, sekme başlıkları, logodaki yazı, TR/EN metinler, transkript dosyasının ilk satırı ve indirilen dosya adları (`lilocut-tani-…json`, `….lilocut.json`) ondan türer. Ana sayfadaki "Clip geçici çalışma adıdır." cümlesi kalktı. Bir koruma testi eski adın ürün adı olarak geri gelmesini yakalar. **Bilerek değişmeyen:** tarayıcıda tutulanların adları (`clip-editor`, `clip-export-`, `clip-app-`, `clip-models-`, `clip.firstRunHint.dismissed`) — değişseydi kayıtlı projeler ve indirilmiş modeller sahipsiz kalırdı —, `CLIP_TEST_HOOKS`, depo ve `/capcut` yolu. Eski `.clip.json` yedekleri aynı biçimde açılır. Önbellek sürümü elle artırılmadı: önbellek adı dosyaların baytlarından hesaplanır, yeni derleme yeni ad üretir. **Doğrulanmayan:** yüklenmiş uygulamanın simge altındaki adının telefonda ne zaman değiştiği; marka/alan adı incelemesi yapılmadı (K01'de açık iş).
