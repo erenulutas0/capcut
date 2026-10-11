@@ -309,6 +309,38 @@ konuşmacı etiketleri için şema eklemesi gerekir (bu çalışmada tasarlanmad
 | `tsc --noEmit` (Worker) | hatasız |
 | Web uygulaması | değişmedi; sınamaları bu çalışmada yeniden koşulmadı |
 
+## Ek, 11 Ekim 2026 — ilk gerçek ölçüm
+
+Kurucunun onayıyla ve kendi çalıştırmasıyla (`cloud/harness/run.mjs`, AB bölgesi, universal-3-5-pro,
+konuşmacı etiketleri açık, yalnızca açık lisanslı sesler). 12 dosya, 115,7 dakika, 19,61 MB yalnız ses
+yüklendi; ücretsiz krediden 0,444 $ harcandı; 12 kaydın 12'si sağlayıcıda silindi; 90 istek, 0 yeniden
+deneme. Ham rapor depoya girmez (`cloud/harness/results/2026-10-11T10-34-21-316Z/`).
+
+Cihaz üstü sütunlar ADR-036'nın 7–8 Ekim doğrulama (`rval`) sayılarıdır; yeniden ölçülmedi. WER normalize.
+
+| Dosya | Cihazda `base` | Cihazda `turbo` | AssemblyAI | Konuşmacı (bulunan / beklenen) | Süre |
+|---|---|---|---|---|---|
+| Çağrı 4474229 (51 dk) | %14,7 | %11,1 | %9,3 | 4 / 4 | 38,4 sn |
+| Çağrı 4481221 (aksan, 21 dk) | %15,7 | %10,9 | %7,5 | 6 / 6 | 22,0 sn |
+| Toplantı IS1009a, yaka mikrofonları | %25,5 | %21,9 | %19,1 | 4 / 4 | 15,5 sn |
+| Aynı toplantı, uzak mikrofon | %34,2 | %25,8 | %23,3 | 4 / 4 | 20,7 sn |
+| Toplantı + müzik | %54,8 | %22,4 | %15,1 | 2 / 3 | 14,6 sn |
+| Konuşmaya bitişik müzik | %2,9 | %2,0 | %2,0 | 1 / 1 | 10,9 sn |
+| İki kişi üst üste (LibriSpeech karışımı) | — | — | %12,8 | 2 / 2 | 15,2 sn |
+| Japonca okuma (FLEURS) | — | — | CER %4,5 | 3 / ? | 11,3 sn |
+| Türkçe MediaSpeech (5 dk) | — | — | katı %13,5 | 1 / ? | 10,8 sn |
+| Türkçe okuma / müzikli (10 sn) | — | — | katı %21,4 / %15,0 | 1 / 1 | ≈4 sn |
+
+Okuma:
+- Doğruluk farkı var ama küçük: `turbo`'ya göre 2–7 puan; en büyük fark `base`'e ve müzik altındaki
+  konuşmaya karşı. Kalabalık toplantıda bulut da %19–23 hata yapıyor.
+- Asıl fark hız (51 dakika 38 saniyede) ve konuşmacı etiketleri; ayrıca WebGPU gerektirmemesi.
+- Müzik altında kelime bitiş zamanı p95 1561 ms (eşik 250 ms): altyazı zamanlaması için zayıf nokta.
+- Türkçe ve Japonca sayılar üst sınırdır (sayı/yazım normalleştiricisi yok).
+- Doğrulananlar: ücretsiz hesap AB uç noktasını kullanabiliyor; silme çağrısı çalışıyor.
+- Ölçülmeyenler: gerçek Türkçe ve Japonca sohbet, çeviri, `audio_end_at` faturalaması, Worker'ın
+  gerçek Cloudflare'deki davranışı.
+
 ## Doğrulanmayanlar
 
 - **Sağlayıcının kendisi:** doğruluk, hız, gerçek hata metinleri, hız sınırı davranışı — hiçbiri
