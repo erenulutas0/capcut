@@ -1,4 +1,4 @@
-**Yazıldığı koşu:** 11 Ekim 2026, commit `a873a90` (önceki bulgular: 10 Ekim, `70c0b2f`). 10 Ekim’de yazılan on bulgunun dokuzu üzerinde çalışıldı; aşağıda her biri için ne değiştiği ve aynı ölçünün önceki → şimdiki değeri var. Sıra yine önem sırasıdır. Açık kalanlar en başta.
+**Yazıldığı koşu:** 11 Ekim 2026, commit `b8e355f` (önceki bulgular: 10 Ekim, `70c0b2f`). 10 Ekim’de yazılan on bulgunun dokuzu üzerinde çalışıldı; aşağıda her biri için ne değiştiği ve aynı ölçünün önceki → şimdiki değeri var. Sıra yine önem sırasıdır. Açık kalanlar en başta.
 
 ### Hâlâ açık
 
@@ -8,25 +8,27 @@
    - İki ayrı görmeyen kümede aynı sonuç (%12) çıkması, kelime listesi + ek kuralı yaklaşımının buraya kadar getirdiğini gösteriyor. %5’e inmek için ya başka bir yaklaşım ya da bütçenin yeniden konuşulması gerekir (kurucu kararı). “İlk sonuç ≥ %85” ve “ilk üçte ≥ %90” bütçeleri eski, daha kolay kümede ayarlanmıştı.
    Kanıt: bölüm 2. Yer: `web/src/domain/taskSearch.ts`, `web/src/domain/tasks.ts`, `web/src/domain/turkishSuffix.ts`.
 
-2. **Kaydedilen dosyaların hiçbirinde dizin başta değil (10 / 10).** Bu çalışmanın kapsamı dışındaydı; değişmedi. Kanıt: bölüm 5.
+2. **Editörün açılışı yavaş telefonda hâlâ sınırın kıyısında.** Mobil kısıtlamada TBT 256 ms (240–280) → bu koşuda **206 ms (167–213)**, bir önceki koşuda 176 ms (157–209): bütçe 200 ms; ortanca koşudan koşuya sınırın iki yanına düşüyor. Sayfa ağırlığı indi (aşağıda, 11. madde) ama bu ölçü “düzeldi” sayılamaz. Kanıt: bölüm 7.
+
+3. **Kaydedilen dosyaların hiçbirinde dizin başta değil (10 / 10).** Bu çalışmanın kapsamı dışındaydı; değişmedi. Kanıt: bölüm 5.
 
 ### Düzeltilenler (önce → şimdi)
 
-3. **“Küçült” artık söz verdiğini yapıyor** (`7e31a69`). Önceden seçili olan “WhatsApp (16 MB altı)”; video zaten sığıyorsa “İndir” kapalı ve “Bu video zaten … ; buraya sığıyor. Küçültmene gerek yok.” deniyor; 16 MB’ın altındaki videoya “Daha da küçült (yaklaşık yarısı)” seçeneği çıkıyor. Seçim değiştirilmeden: 24,74 MB → 24,73 MB (“Kaydedildi”) idi; şimdi yaklaşık 25 MB → **14,0 MB**, 1280 × 720. Dosyası doğrulanan görev 8 / 9 → **9 / 9** (iki görünümde).
+4. **“Küçült” artık söz verdiğini yapıyor** (`7e31a69`). Önceden seçili olan “WhatsApp (16 MB altı)”; video zaten sığıyorsa “İndir” kapalı ve “Bu video zaten … ; buraya sığıyor. Küçültmene gerek yok.” deniyor; 16 MB’ın altındaki videoya “Daha da küçült (yaklaşık yarısı)” seçeneği çıkıyor. Seçim değiştirilmeden: 24,74 MB → 24,73 MB (“Kaydedildi”) idi; şimdi yaklaşık 25 MB → **14,0 MB**, 1280 × 720. Dosyası doğrulanan görev 8 / 9 → **9 / 9** (iki görünümde).
 
-4. **Yarım kalmış video seçildiği anda reddediliyor** (`5bf0e7d`, ADR-040). Dosyanın söylediği süre ile gerçekten okunabilen süre karşılaştırılıyor; fark 1 saniyeden büyükse on sihirbaz ve editör aynı şeyi söylüyor (“… yarım kalmış görünüyor: 24,0 sn uzunluğunda olması gerekirken dosyada yalnızca ilk 12,3 sn var. …”), dışa aktarma başlamadan önce de aynı denetim var. “Chrome veya Edge ile dene” yalnızca tarayıcı Chromium değilken gösteriliyor. Hata hücreleri: 9 belirsiz + 1 ölçülemedi → **0 belirsiz**; toplamda iyi / belirsiz / bozuk **74 / 0 / 0**.
+5. **Yarım kalmış video seçildiği anda reddediliyor** (`5bf0e7d`, ADR-040). Dosyanın söylediği süre ile gerçekten okunabilen süre karşılaştırılıyor; fark 1 saniyeden büyükse on sihirbaz ve editör aynı şeyi söylüyor (“… yarım kalmış görünüyor: 24,0 sn uzunluğunda olması gerekirken dosyada yalnızca ilk 12,3 sn var. …”), dışa aktarma başlamadan önce de aynı denetim var. “Chrome veya Edge ile dene” yalnızca tarayıcı Chromium değilken gösteriliyor. Hata hücreleri: 9 belirsiz + 1 ölçülemedi → **0 belirsiz**; toplamda iyi / belirsiz / bozuk **74 / 0 / 0**.
 
-5. **Sınır mesajları ne yapılacağını söylüyor** (`7ba9a84`). Çok büyük dosya ve çok uzun video mesajları sınırı politikadan okuyup bir çıkış yolu öneriyor. 20 belirsiz hücre → 0.
+6. **Sınır mesajları ne yapılacağını söylüyor** (`7ba9a84`). Çok büyük dosya ve çok uzun video mesajları sınırı politikadan okuyup bir çıkış yolu öneriyor. 20 belirsiz hücre → 0.
 
-6. **Varsayılan yolda teknik terim yok** (`84ec4ea`). Sekiz cümle → **0**. Yöntemin teknik adı “Ayrıntılar”ın içinde duruyor; söylenen şey hâlâ ölçülen şey.
+7. **Varsayılan yolda teknik terim yok** (`84ec4ea`). Sekiz cümle → **0**. Yöntemin teknik adı “Ayrıntılar”ın içinde duruyor; söylenen şey hâlâ ölçülen şey.
 
-7. **“Kes” videonun kendi boyutunu koruyor** (`7e31a69`). Neden: sihirbaz videoyu editörün varsayılan 1080p tarifiyle açıyordu; bu hem büyütüyor hem hızlı kesimi engelliyordu. 1280 × 720’den kesilen 3 saniye: 1920 × 1080, 1,5 MB, yeniden kodlanmış → **1280 × 720, 83 KB, görüntüye dokunulmadan**. Ayrıca yeniden kodlanan dosyanın bit hızı kaynağınkinin iki katını geçmiyor (ADR-024 eki). İki katı çarpanı gerçek çekimde ÖLÇÜLMEDİ.
+8. **“Kes” videonun kendi boyutunu koruyor** (`7e31a69`). Neden: sihirbaz videoyu editörün varsayılan 1080p tarifiyle açıyordu; bu hem büyütüyor hem hızlı kesimi engelliyordu. 1280 × 720’den kesilen 3 saniye: 1920 × 1080, 1,5 MB, yeniden kodlanmış → **1280 × 720, 83 KB, görüntüye dokunulmadan**. Ayrıca yeniden kodlanan dosyanın bit hızı kaynağınkinin iki katını geçmiyor (ADR-024 eki). İki katı çarpanı gerçek çekimde ÖLÇÜLMEDİ.
 
-8. **Çözülmüş ses / görüntü örnekleri kapatılıyor** (`70e0947`). İki sızıntı: kodlayıcı öz-sınamasındaki ses örneği ve iptalde kare seçicinin elindeki bir sonraki kare. Konsoldaki “… garbage collected without first being closed” uyarısı görev yürüyüşlerinde artık çıkmıyor (Küçült’te iki görünümde çıkıyordu; şimdi “Konsol hatası” sütunu bütün görevlerde 0); çöp toplama zorlanarak denetleyen üç e2e testi eklendi.
+9. **Çözülmüş ses / görüntü örnekleri kapatılıyor** (`70e0947`). İki sızıntı: kodlayıcı öz-sınamasındaki ses örneği ve iptalde kare seçicinin elindeki bir sonraki kare. Konsoldaki “… garbage collected without first being closed” uyarısı görev yürüyüşlerinde artık çıkmıyor (Küçült’te iki görünümde çıkıyordu; şimdi “Konsol hatası” sütunu bütün görevlerde 0); çöp toplama zorlanarak denetleyen üç e2e testi eklendi.
 
-9. **Telefonda yazı ve hedefler** (`a30b8ac`, `a873a90`). 14 px’in altındaki kelime payı: ana ekran %62 → **%0**, sihirbaz ekranları %21–54 → **%0**, boş editör %74 → %0; video ve bir kesit olan editörde %17 (şeridin 12 px’lik zaman etiketleri — açık). 44 px’ten küçük dokunma hedefi 16 → **0**. Görsel tabanlar iki görünümde ekranlara bakıldıktan sonra yenilendi (36 ekran).
+10. **Telefonda yazı ve hedefler** (`a30b8ac`, `a873a90`). 14 px’in altındaki kelime payı: ana ekran %62 → **%0**, sihirbaz ekranları %21–54 → **%0**, boş editör %74 → %0; video ve bir kesit olan editörde %17 (şeridin 12 px’lik zaman etiketleri — açık). 44 px’ten küçük dokunma hedefi 16 → **0**. Görsel tabanlar iki görünümde ekranlara bakıldıktan sonra yenilendi (36 ekran).
 
-10. **Sayfa ağırlığı** (`b594a58`, `c0a989a`). Sihirbaz editörü, İngilizce metinleri ve başka işlerin ekranını artık taşımıyor; medya kitaplığı video açılınca iniyor. Aktarılan JS: ana ekran 193 → **177 KB**, sihirbaz 422 → **234 KB**, editör 421 → **284 KB**. Mobil kısıtlamada TBT: sihirbaz 209 → 129 ms (120–143), editör 256 → 176 ms (157–209), ana ekran 128 ms. Editörün TBT’si bütçenin (200 ms) içinde ama üç koşunun en yükseği 209: kıyıda, koşudan koşuya oynuyor. Bu üç sayfa ağırlığı bütçesi ve telefon yazı bütçesi yeni ölçülere göre sıkılaştırıldı; hiçbir bütçe gevşetilmedi.
+11. **Sayfa ağırlığı** (`b594a58`, `c0a989a`). Sihirbaz editörü, İngilizce metinleri ve başka işlerin ekranını artık taşımıyor; medya kitaplığı video açılınca iniyor. Aktarılan JS: ana ekran 193 → **177 KB**, sihirbaz 422 → **234 KB**, editör 421 → **284 KB**. Mobil kısıtlamada TBT: sihirbaz 209 → 129 ms (122–134), ana ekran 118 ms; editör için 2. maddeye bakın (bütçe dışı). Bu üç sayfa ağırlığı bütçesi ve telefon yazı bütçesi yeni ölçülere göre sıkılaştırıldı; hiçbir bütçe gevşetilmedi.
 
 ### Bilinmesi gerekenler
 
