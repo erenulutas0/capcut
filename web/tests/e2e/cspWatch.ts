@@ -18,6 +18,20 @@
 
 import { expect, type BrowserContext, type Page, type Worker } from '@playwright/test';
 
+import { cloudOriginFromEnv } from '../../scripts/lib/cloudOrigin.mjs';
+
+/**
+ * What `connect-src` must be, exactly. `'self'` — unless the build under test
+ * was given the transcript proxy's origin (ADR-039) and the test run is told
+ * the same (`NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL` in the environment of both the
+ * build and the tests, as a deploy with the route on sets it): then that one
+ * origin more, and nothing else. A build and a test run that disagree fail.
+ */
+export function expectedConnectSrc(): string {
+  const origin = cloudOriginFromEnv();
+  return origin ? `'self' ${origin}` : "'self'";
+}
+
 const MARKER = '[csp-violation]';
 const CSP_TEXT = /Content Security Policy|\[csp-violation\]/i;
 
@@ -89,7 +103,7 @@ export async function expectPolicy(page: Page): Promise<string> {
   expect(script).not.toContain('unsafe-inline');
   expect(script).not.toContain('unsafe-eval');
   expect(script).not.toContain('*');
-  expect(policy).toContain("connect-src 'self';");
+  expect(/connect-src ([^;]*);/.exec(policy)?.[1], 'connect-src').toBe(expectedConnectSrc());
   expect(policy).toContain("object-src 'none'");
   expect(policy).toContain("base-uri 'self'");
   expect(policy).toContain("form-action 'none'");
