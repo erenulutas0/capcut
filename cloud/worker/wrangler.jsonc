@@ -18,9 +18,9 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Ledger"] }],
   "vars": {
     // KILL SWITCH. Anything other than "true" = the cloud route answers 503 and spends nothing.
-    "ENABLED": "false",
+    "ENABLED": "true",
     // Monthly hard cap in USD. 0 = cloud route OFF. The founder sets it (e.g. "1").
-    "MONTHLY_CAP_USD": "0",
+    "MONTHLY_CAP_USD": "1",
     // Universal-3.5 Pro $0.21/h + speaker labels $0.02/h (https://www.assemblyai.com/pricing, read 2026-10-10).
     // Change it together with SPEECH_MODELS / SPEAKER_LABELS, or the cap counts the wrong money.
     "PRICE_USD_PER_HOUR": "0.23",
