@@ -103,11 +103,15 @@ function isFullFrame(segment: RenderSegment, width: number, height: number): boo
  * against the real packets afterwards (`frameRateWithinPlan`, `planSegmentCut`).
  *
  * The copy keeps the source's own resolution, so it is allowed only when that
- * already IS the download's resolution — "within the 720p/1080p tier" (doc 15,
- * founder decision 2026-09-24) means exactly the sizes the editor offers:
- * 1280x720, 720x1280, 720x720, 1920x1080, 1080x1920, 1080x1080 (after the
- * source's rotation). 1440p, 4K, 480p and odd sizes (e.g. 1920x1088, 592x1280)
- * are encoded to the chosen size, exactly as before.
+ * already IS the download's resolution. Since ADR-041 the download's frame is
+ * the picture's own size up to the limit in "Ayarlar" (1080p, or 720p), so
+ * every source in one of the three frame shapes that is not larger than the
+ * limit qualifies: 1920x1080, 1280x720, 854x480, 640x360, their vertical
+ * twins and the squares (after the source's rotation). Until then only the
+ * exact 720p and 1080p sizes did, because a download was always one of those
+ * two. 1440p and 4K are encoded down to the limit, and shapes between the
+ * frames (1920x1088, 592x1280, 848x480, 4:3) are cropped or barred — encoded,
+ * exactly as before.
  */
 export function fastCutEligibility(
   plan: Pick<RenderPlan, 'width' | 'height' | 'captions' | 'segments'> & Partial<Pick<RenderPlan, 'enhance'>>,
@@ -126,7 +130,11 @@ export function fastCutEligibility(
   if (!plan.segments.every((segment) => isFullFrame(segment, width, height))) {
     // A crop on a source whose shape differs from the frame is the framing
     // itself (cover/contain), not a user zoom.
-    const sameShape = width * plan.height === height * plan.width;
+    // Only the reason is chosen here, so the shapes are compared loosely: since ADR-041 a zoomed
+    // picture's frame is its own pixels (1280x720 at 150 % is 854x480), whose even rounding is not
+    // exactly 16:9 — still the same shape, and still a zoom. One pixel of rounding in either
+    // dimension of the frame is the whole allowance (a 1920x1088 source in a 16:9 frame is far outside it).
+    const sameShape = Math.abs(width * plan.height - height * plan.width) <= width + height;
     return refuse(sameShape ? 'crop' : 'aspect');
   }
   if (width * plan.height !== height * plan.width) return refuse('aspect');

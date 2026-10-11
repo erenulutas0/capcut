@@ -335,108 +335,176 @@ function sectionSearch(results, M) {
   const old = part.data.heldOut;
   // Until 10 Oct 2026 there was one held-out set; a result file from then has no `fresh`.
   const fresh = part.data.fresh ?? null;
+  /** The headline of 10–11 Oct (search-eval-fresh2.ts): a tuning set since the confidence rule (11 Oct 2026). */
+  const secondFresh = part.data.secondFresh ?? null;
   /** The first fresh batch: a tuning set since its misses were read (10 Oct 2026). */
   const firstFresh = part.data.firstFresh ?? null;
+  const freshFile = part.data.freshFile ?? 'search-eval-fresh2.ts';
   const main = fresh ?? old;
   const dev = part.data.dev;
   const out = [];
-  const TAG = { tr: 'Türkçe', en: 'İngilizce', yazım: 'yazım hatalı', ascii: 'Türkçe harfsiz', argo: 'argo / kısaltma', uzun: 'uzun cümle' };
+  const TAG = { tr: 'Türkçe', en: 'İngilizce', kolay: 'kısa ve açık (“kolay”)', yazım: 'yazım hatalı', ascii: 'Türkçe harfsiz', argo: 'argo / kısaltma', uzun: 'uzun cümle' };
   const EXPECT = { cannot: '“Bunu henüz yapamıyoruz.”', outside: 'kart önerilmemesi', nothing: 'kart önerilmemesi' };
 
-  /** The nine numbers of one set. `prefix`: the measure ids ('search' is the budgeted, headline set). */
+  /** The numbers of one set. `prefix`: the measure ids ('search' is the budgeted, headline set). */
   const numbers = (set, prefix, suffix) =>
     table(
       ['Ölçü', 'Değer', 'Bütçe', 'Durum'],
       [
-        ['İlk sonuç doğru (yapılabilen işler)', 'firstHit', set.firstHitPercent, `${num(set.taskPhrases, 0)} ifadede`],
-        ['İlk üç sonuçta var', 'top3', set.top3Percent, ''],
-        ['Yanlış ama emin: ilk sonuç başka iş yapan bir kart (bütün ifadelerde)', 'wrongConfident', set.wrongConfidentPercent, `${num(set.counted, 0)} ifadede`],
+        ['Yanlış ama emin: TEK bir iş cevap diye sunuldu ve başka iş yapıyor (bütün ifadelerde)', 'wrongConfident', set.wrongConfidentPercent, `${num(set.counted, 0)} ifadede`],
+        // A result file from before 11 Oct 2026 has no "asked" numbers: everything was presented as the answer.
+        ...(set.asked
+          ? [
+              [
+                'Tahmin etmek yerine sordu: “Bunu mu demek istedin?” (bütün ifadelerde)',
+                'asked',
+                set.asked.percent,
+                `${num(set.asked.count, 0)} kez; ${num(set.asked.singleChoice, 0)} tanesinde tek seçenek; ${num(set.asked.onOthers, 0)} tanesi yapılabilen bir iş değildi`,
+              ],
+              ['Yapılabilen işlerde sorma oranı', 'askedOnTasks', set.asked.onTasksPercent, `${num(set.taskPhrases, 0)} ifadede`],
+              ['Sorduğunda doğru iş seçeneklerin arasında', 'askRightPresent', set.asked.rightPresentPercent, `${num(set.asked.onTasks, 0)} soruda; ${num(set.asked.rightAbsent, 0)} tanesinde yok`],
+              // Only the batch written on 11 Oct 2026 marks its plain phrases ("kolay"); the older sets have none to count.
+              ...(set.clear.phrases > 0
+                ? [['Açık yazılmış isteğe (“kolay”) doğrudan cevap yerine soru', 'clearAsked', set.clear.askedPercent, `${num(set.clear.phrases, 0)} ifadede`]]
+                : []),
+              ['Doğrudan doğru: tek cevap ve doğru iş (yapılabilen işler)', 'direct', set.firstHitPercent, ''],
+              ['Doğru işe yeniden yazmadan varıldı: doğrudan ya da seçeneklerden', 'reached', set.reachedPercent, ''],
+            ]
+          : []),
+        ['İlk satır doğru iş — cevap ya da ilk seçenek olarak (önceki raporların “ilk sonuç doğru”su)', 'firstHit', set.firstRowPercent ?? set.firstHitPercent, `${num(set.taskPhrases, 0)} ifadede`],
+        ['İlk üç satırda var', 'top3', set.top3Percent, ''],
         ['Yapılabilen işe “Bunu bulamadım.”', 'taskNotFound', set.taskNotFoundPercent, ''],
         ['Yapılabilen işe “Bunu henüz yapamıyoruz.”', 'taskDenied', set.taskDeniedPercent, ''],
         ['“Bunu henüz yapamıyoruz.” — yakalama (recall)', 'cannotRecall', set.cannot.recallPercent, `${num(set.cannot.phrases, 0)} ifadede`],
         ['“Bunu henüz yapamıyoruz.” — isabet (precision)', 'cannotPrecision', set.cannot.precisionPercent, `${num(set.cannot.said, 0)} kez söylendi`],
-        ['Listede hiç olmayan isteğe dürüst cevap (yapamıyoruz ya da bulamadım)', 'outsideHonest', set.outside.honestPercent, `${num(set.outside.phrases, 0)} ifadede; ${num(set.outside.offeredWrongCard, 0)} tanesine kart önerildi`],
+        [
+          'Listede hiç olmayan isteğe dürüst cevap (yapamıyoruz ya da bulamadım)',
+          'outsideHonest',
+          set.outside.honestPercent,
+          `${num(set.outside.phrases, 0)} ifadede; ${num(set.outside.offeredWrongCard, 0)} tanesine tek kart cevap diye sunuldu` +
+            (set.outside.asked === undefined ? '' : `, ${num(set.outside.asked, 0)} tanesinde seçenek soruldu`),
+        ],
         ['Anlamsız yazı / sohbete kart önerilmedi', 'nothingQuiet', set.nothing.quietPercent, `${num(set.nothing.phrases, 0)} ifadede`],
       ].map(([label, id, value, extra]) => {
         const measure = M.add('search', `${prefix}.${id}`, `${label}${suffix}`, value, { format: (v) => pct(v) });
         return [`${label}${extra ? ` — ${extra}` : ''}`, measure.shown, measure.budget ?? '—', STATUS_WORD[measure.status]];
       }),
     );
+  const askedCell = (row) => (row.asked === undefined ? '—' : `${num(row.asked, 0)} (${num(row.askedWithRight, 0)})`);
   const byTask = (set) =>
     table(
-      ['İş', 'İfade', 'İlk sonuç doğru', 'İlk üçte', 'Yanlış ama emin', 'Bulunamadı'],
-      Object.values(set.byTask).map((row) => [row.label, num(row.n, 0), `${num(row.firstHit, 0)} (${pct(row.firstHitPercent)})`, num(row.top3, 0), num(row.wrongConfident, 0), num(row.none, 0)]),
+      ['İş', 'İfade', 'Doğrudan doğru', 'Soruldu (doğrusu içinde)', 'İlk üçte', 'Yanlış ama emin', 'Bulunamadı'],
+      Object.values(set.byTask).map((row) => [
+        row.label,
+        num(row.n, 0),
+        `${num(row.firstHit, 0)} (${pct(row.firstHitPercent)})`,
+        askedCell(row),
+        num(row.top3, 0),
+        num(row.wrongConfident, 0),
+        num(row.none, 0),
+      ]),
     );
   const byTag = (set) =>
-    table(['Biçim', 'İfade', 'İlk sonuç doğru'], Object.entries(set.byTag).map(([tag, row]) => [TAG[tag] ?? tag, num(row.n, 0), `${num(row.firstHit, 0)} (${pct(row.firstHitPercent)})`]));
+    table(
+      ['Biçim', 'İfade', 'Doğrudan doğru', 'Soruldu (doğrusu içinde)', 'Yanlış ama emin'],
+      Object.entries(set.byTag).map(([tag, row]) => [
+        TAG[tag] ?? tag,
+        num(row.n, 0),
+        `${num(row.firstHit, 0)} (${pct(row.firstHitPercent)})`,
+        askedCell(row),
+        row.wrongConfident === undefined ? '—' : num(row.wrongConfident, 0),
+      ]),
+    );
+  const missKind = (miss) => {
+    if (miss.wrongConfident) return '**yanlış ama emin**';
+    if (miss.asked) {
+      if (miss.askedWithRight) return 'soruldu, doğrusu seçeneklerde';
+      return miss.category === 'task' ? 'soruldu, doğrusu seçeneklerde YOK' : 'soruldu (yapılabilen bir iş değildi)';
+    }
+    return miss.top3 ? 'ilk üçte var, ilk değil' : 'bulunamadı';
+  };
   const misses = (set) =>
     table(
       ['İfade', 'Beklenen', 'Çıkan', 'Tür'],
-      set.misses.map((miss) => [
-        `“${miss.text}”`,
-        EXPECT[miss.category] ?? miss.expected,
-        miss.got,
-        miss.wrongConfident ? '**yanlış ama emin**' : miss.top3 ? 'ilk üçte var, ilk değil' : 'bulunamadı',
-      ]),
+      set.misses.map((miss) => [`“${miss.text}”`, EXPECT[miss.category] ?? miss.expected, miss.got, missKind(miss)]),
     );
 
   if (fresh) {
     out.push(
-      'Dört küme var ve hangisinin ne olduğu önemlidir:\n\n' +
-        `- **Yeni ayrı küme** (\`web/tests/quality/data/search-eval-fresh2.ts\`, ${num(fresh.phrases, 0)} ifade; sayılan ${num(fresh.counted, 0)}): aramanın kodunu, kelime listelerini ve öteki ifadeleri ` +
-        'GÖRMEYEN bir yazar tarafından yazıldı; aramanın son değişikliğinden sonra BİR KEZ ölçüldü. **Başlık sayıları ve bütçeler bu kümedendir.** ' +
+      'Arama iki biçimde iş gösterir (ADR-034, 11 Ekim 2026 eki): **emin olduğunda** tek bir işi cevap diye sunar (satırı seçilidir, Enter onu başlatır); ' +
+        '**emin olmadığında** “Bunu mu demek istedin?” diye 1–3 seçenek sorar, hiçbiri seçili değildir, kullanıcı seçmeden hiçbir şey başlamaz. ' +
+        '“Yanlış ama emin” artık yalnızca birincisidir: tek cevap ve yanlış iş. Her zaman sormak bu sayıyı sıfırlardı; bu yüzden yanında ne sıklıkla sorduğu, ' +
+        'sorduğunda doğru işin seçeneklerde olup olmadığı ve açık yazılmış bir isteğe soru sorup sormadığı da bütçelidir.\n\n' +
+        'Beş küme var ve hangisinin ne olduğu önemlidir:\n\n' +
+        `- **Yeni ayrı küme** (\`web/tests/quality/data/${freshFile}\`, ${num(fresh.phrases, 0)} ifade; sayılan ${num(fresh.counted, 0)}): kendisine yalnızca işlerin listesi ve birer satırlık açıklamaları verilen, ` +
+        'aramanın kodunu, kelime listelerini, eşiklerini ve öteki ifadeleri GÖRMEYEN bir yazar tarafından yazıldı; eminlik kuralı dondurulduktan sonra BİR KEZ ölçüldü. **Başlık sayıları ve bütçeler bu kümedendir.** ' +
         'Kaçanları aşağıda yazılı olduğu için bundan sonra bu küme de görülmüş sayılır: arama onun kaçanlarına bakılarak ayarlanırsa yeni bir küme yazılmalıdır.\n' +
+        (secondFresh
+          ? `- **İkinci yeni küme** (\`search-eval-fresh2.ts\`, ${num(secondFresh.phrases, 0)} ifade; sayılan ${num(secondFresh.counted, 0)}): 10–11 Ekim raporlarının başlığıydı ` +
+            '(o ölçüm: ilk sonuç doğru %81,8, yanlış ama emin %12,0). Kaçanları raporda yazılıydı ve eminlik kuralı bu kümeye de bakılarak ayarlandı: **artık ayar kümesidir**, ' +
+            `bugünkü sayıları (yanlış ama emin ${pct(secondFresh.wrongConfidentPercent)}, sordu ${pct(secondFresh.asked?.percent)}) bir tahmin değildir.\n`
+          : '') +
         (firstFresh
-          ? `- **İlk yeni küme** (\`search-eval-fresh.ts\`, ${num(firstFresh.phrases, 0)} ifade; sayılan ${num(firstFresh.counted, 0)}): aynı biçimde, görmeyen bir yazarca yazıldı ve ilk arama değişikliğinden sonra bir kez ölçüldü ` +
-            '(o ölçüm: ilk sonuç doğru %81,5, yanlış ama emin %12,2 — commit `9dae184`). Sonra kaçanları okundu ve arama onlara göre bir kez daha değiştirildi: **artık ayar kümesidir**, ' +
-            `bugünkü sayıları (ilk sonuç ${pct(firstFresh.firstHitPercent)}, yanlış ama emin ${pct(firstFresh.wrongConfidentPercent)}) bir tahmin değildir.\n`
+          ? `- **İlk yeni küme** (\`search-eval-fresh.ts\`, ${num(firstFresh.phrases, 0)} ifade; sayılan ${num(firstFresh.counted, 0)}): 10 Ekim’den beri ayar kümesi ` +
+            `(bugün: yanlış ama emin ${pct(firstFresh.wrongConfidentPercent)}, sordu ${pct(firstFresh.asked?.percent)}).\n`
           : '') +
         `- **Eski ayrı küme** (\`search-eval.ts\` içindeki \`HELD_OUT\`, ${num(old.phrases, 0)} ifade; sayılan ${num(old.counted, 0)}): **KİRLENMİŞ.** 10 Ekim’deki arama çalışması bu kümenin kaçanları okunduktan sonra ` +
-        'yapıldı (iş onların üzerine istendi). Sayıları bir tahmin değildir; yalnızca “önce → sonra” karşılaştırması için durur.\n' +
-        `- **Geliştirme kümesi** (\`DEV\`, ${num(dev.phrases, 0)} ifade): üzerinde ayar yapıldı; ölçüm değildir.\n\n` +
-        'Ayar tablolarında (`tests/unit/taskSearch*.test.ts`) ya da `DEV` içinde bulunan ifadeler iki ayrı kümenin sayımından da çıkarıldı; eski kümede bulunanlar yeni kümenin sayımından çıkarıldı ' +
-        `(yeni kümede sayılmayan: ${num(fresh.seenBefore, 0)}; eski kümede sayılmayan: ${num(old.seenBefore, 0)}).\n\n`,
+        'yapıldı; eminlik kuralı da ona bakılarak ayarlandı. Sayıları bir tahmin değildir.\n' +
+        `- **Geliştirme kümesi** (\`DEV\`, ${num(dev.phrases, 0)} ifade): üzerinde ayar yapıldı; ölçüm değildir. Açık yazılmış isteklerin soruya düşmediği burada da izlenir.\n\n` +
+        'Ayar tablolarında (`tests/unit/taskSearch*.test.ts`) ya da daha eski bir kümede bulunan ifadeler yeni kümenin sayımından çıkarıldı ' +
+        `(yeni kümede sayılmayan: ${num(fresh.seenBefore, 0)}; bunlar çoğunlukla kısa, açık ifadelerdir — sayılan küme bu yüzden yazılandan zordur).\n\n`,
     );
     out.push('**Yeni ayrı küme — başlık**\n\n');
     out.push(numbers(fresh, 'search', ''));
-    out.push('\n**İşe göre** (yeni küme, ilk sonuç)\n');
+    out.push('\n**İşe göre** (yeni küme)\n');
     out.push(byTask(fresh));
-    out.push('\n**Yazış biçimine göre** (yeni küme, ilk sonuç; bir ifade birden çok satırda sayılır)\n');
+    out.push('\n**Yazış biçimine göre** (yeni küme; bir ifade birden çok satırda sayılır)\n');
     out.push(byTag(fresh));
-    out.push(`\n**Kaçanlar, yeni küme** (${num(fresh.misses.length, 0)}) — ifade → beklenen → çıkan\n`);
+    out.push(
+      `\n**Kaçanlar, yeni küme** (${num(fresh.misses.length, 0)}) — ifade → beklenen → çıkan. “Soruldu, doğrusu seçeneklerde” de burada sayılır (doğrudan cevap değildir), ` +
+        'ama kullanıcı doğru işe bir dokunuşla varır.\n',
+    );
     out.push(misses(fresh));
+    if (secondFresh) {
+      out.push('\n**İkinci yeni küme — artık AYAR KÜMESİ, başlık değil**\n\n');
+      out.push(numbers(secondFresh, 'search.second', ' (ikinci küme, ayar kümesi)'));
+    }
     out.push('\n**Eski ayrı küme — KİRLENMİŞ, başlık değil**\n\n');
     out.push(numbers(old, 'search.old', ' (eski, kirlenmiş küme)'));
-    out.push('\n**Yazış biçimine göre** (eski küme)\n');
-    out.push(byTag(old));
-    out.push(`\n**Kaçanlar, eski küme** (${num(old.misses.length, 0)})\n`);
-    out.push(misses(old));
   } else {
     out.push(
       `Ayrı tutulan küme: \`web/tests/quality/data/search-eval.ts\` içindeki \`HELD_OUT\` — ${num(old.phrases, 0)} ifade; bunlardan ${num(old.seenBefore, 0)} tanesi ` +
         `arama listelerinin üzerinde ayarlandığı tablolarda (\`tests/unit/taskSearch*.test.ts\`) zaten bulunduğu için **sayılmadı**; sayılan ${num(old.counted, 0)}.\n\n`,
     );
     out.push(numbers(old, 'search', ''));
-    out.push('\n**İşe göre** (ilk sonuç)\n');
+    out.push('\n**İşe göre**\n');
     out.push(byTask(old));
-    out.push('\n**Yazış biçimine göre** (ilk sonuç; bir ifade birden çok satırda sayılır)\n');
+    out.push('\n**Yazış biçimine göre** (bir ifade birden çok satırda sayılır)\n');
     out.push(byTag(old));
     out.push(`\n**Kaçanlar** (${num(old.misses.length, 0)}) — ifade → beklenen → çıkan\n`);
     out.push(misses(old));
   }
-  head.firstHit = main.firstHitPercent;
+  head.firstHit = main.firstRowPercent ?? main.firstHitPercent;
+  head.direct = main.asked ? main.firstHitPercent : null;
   head.top3 = main.top3Percent;
   head.wrongConfident = main.wrongConfidentPercent;
+  head.asked = main.asked?.percent ?? null;
+  head.askRightPresent = main.asked?.rightPresentPercent ?? null;
+  head.clearAsked = main.clear?.askedPercent ?? null;
   head.cannotRecall = main.cannot.recallPercent;
   head.set = fresh ? 'fresh' : 'old';
   if (fresh) {
-    head.oldFirstHit = old.firstHitPercent;
+    head.oldFirstHit = old.firstRowPercent ?? old.firstHitPercent;
     head.oldWrongConfident = old.wrongConfidentPercent;
   }
 
+  // The clear-request guard on the tuning set: its doable phrases are plainly worded ones.
+  const devAsked = M.add('search', 'search.dev.askedOnTasks', 'Geliştirme kümesi: yapılabilen işe doğrudan cevap yerine soru', dev.asked?.onTasksPercent ?? null, {
+    format: (v) => pct(v),
+  });
   out.push(
-    `\nGeliştirme kümesi (\`DEV\`, ayar yapılırken kullanılabilir; başlık sayısı değildir): ${num(dev.counted, 0)} ifade, ilk sonuç ${pct(dev.firstHitPercent)}, ` +
-      `yanlış ama emin ${pct(dev.wrongConfidentPercent)}, kaçan ${num(dev.misses.length, 0)}` +
+    `\nGeliştirme kümesi (\`DEV\`, ayar yapılırken kullanılabilir; başlık sayısı değildir): ${num(dev.counted, 0)} ifade, doğrudan doğru ${pct(dev.firstHitPercent)}, ` +
+      `yanlış ama emin ${pct(dev.wrongConfidentPercent)}, yapılabilen işe soru ${devAsked.shown} (bütçe ${devAsked.budget ?? '—'}; ${STATUS_WORD[devAsked.status]}), kaçan ${num(dev.misses.length, 0)}` +
       `${dev.misses.length > 0 ? ` (${dev.misses.map((miss) => `“${miss.text}” → ${miss.got}`).join('; ')})` : ''}.\n`,
   );
   return { md: out.join(''), head };
@@ -756,6 +824,45 @@ function sectionOutput(results, M) {
     );
     head.notFaststart = without.length;
   }
+
+  // ADR-041: no road produces more pixels than the source has.
+  const sizes = parts.filter((part) => part.kind === 'size');
+  out.push(
+    '\n**Büyütme yok (ADR-041)** — video dosyası üreten her yol, 640 × 360, 854 × 480 ve 1280 × 720 kaynakla: kaydedilen dosyanın piksel sayısı kaynağınkini geçmemeli. ' +
+      'Hücre: çıkan boyut ve çıkan / kaynak piksel oranı (1’in üstü büyütmedir). Kaynak: üretilmiş, loş ve kumlu deneme deseni, 6 sn. “Yazıya dök” ve “Sesini al” görüntü kaydetmez.\n\n',
+  );
+  if (sizes.length === 0) {
+    out.push('_Ölçülemedi: sonuç dosyası yok._\n');
+    M.add('output', 'out.size.run', 'Büyütme yok denetimleri', null, { note: 'sonuç dosyası yok' });
+  } else {
+    let enlarged = 0;
+    let measuredSizes = 0;
+    const heights = [...new Set(sizes.flatMap((part) => part.rows.map((row) => row.sourceHeight)))].sort((a, b) => a - b);
+    out.push(
+      table(
+        ['Yol', ...heights.map((height) => `${num(height, 0)}p kaynak`)],
+        sizes.map((part) => [
+          part.label,
+          ...heights.map((height) => {
+            const row = part.rows.find((item) => item.sourceHeight === height);
+            const id = `out.size.${part.road}.${height}.pixelRatio`;
+            const name = `${part.label}, ${height}p kaynak: çıkan / kaynak piksel oranı`;
+            if (!row || !row.measured || row.pixelRatio === null) {
+              M.add('output', id, name, null, { note: row?.reason ?? part.reason ?? 'ölçülemedi' });
+              return `ölçülemedi (${row?.reason ?? part.reason ?? 'satır yok'})`;
+            }
+            measuredSizes += 1;
+            if (row.pixelRatio > 1) enlarged += 1;
+            const cell = M.cell('output', id, name, row.pixelRatio, { format: (v) => `× ${num(v, 2)}` });
+            return `${row.width} × ${row.height} (${cell})${row.method ? `, ${METHOD[row.method] ?? row.method}` : ''}`;
+          }),
+        ]),
+      ),
+    );
+    head.sizeEnlarged = enlarged;
+    head.sizeMeasured = measuredSizes;
+  }
+
   head.worstAvAddedMs = worstSync;
   head.worstDurationErrorMs = worstDuration;
   head.worstSsim = worstSsim;
@@ -1267,6 +1374,12 @@ export function writeReport({ webDir, resultsDir, ran, failedSpecs, runSeconds, 
     searchTop3Percent: built.search.head.top3 ?? null,
     searchWrongConfidentPercent: built.search.head.wrongConfident ?? null,
     searchCannotRecallPercent: built.search.head.cannotRecall ?? null,
+    // Since 11 Oct 2026 (the confidence rule): answered directly and rightly; asked instead of guessed;
+    // the right task among the choices; a clearly phrased request asked about.
+    searchDirectPercent: built.search.head.direct ?? null,
+    searchAskedPercent: built.search.head.asked ?? null,
+    searchAskRightPresentPercent: built.search.head.askRightPresent ?? null,
+    searchClearAskedPercent: built.search.head.clearAsked ?? null,
     // Which held-out set the four numbers above are from: 'fresh' since 10 Oct 2026 ('old' before; the old set is contaminated).
     searchSet: built.search.head.set ?? null,
     searchOldSetFirstHitPercent: built.search.head.oldFirstHit ?? null,
@@ -1276,6 +1389,9 @@ export function writeReport({ webDir, resultsDir, ran, failedSpecs, runSeconds, 
     errorsBroken: built.errors.head.broken ?? null,
     progressBackwards: built.honesty.head.backwards ?? null,
     cancelLeftoverBytes: built.honesty.head.leftoverBytes ?? null,
+    // ADR-041: saved files that hold more pixels than their source, of those measured.
+    outputsEnlarged: built.output.head.sizeEnlarged ?? null,
+    outputsSizeMeasured: built.output.head.sizeMeasured ?? null,
     worstAvAddedMs: built.output.head.worstAvAddedMs ?? null,
     worstDurationErrorMs: built.output.head.worstDurationErrorMs ?? null,
     worstSsim: built.output.head.worstSsim ?? null,
@@ -1351,14 +1467,23 @@ export function writeReport({ webDir, resultsDir, ran, failedSpecs, runSeconds, 
         ['Ana ekrandan dosyaya en çok tıklama (masaüstü / telefon)', or(h.maxClicksDesktop, `${num(h.maxClicksDesktop, 0)} / ${num(h.maxClicksPhone, 0)}`)],
         ['Varsayılan yolda görülen, teknik terim içeren farklı cümle', or(h.jargonOnDefaultPath, num(h.jargonOnDefaultPath, 0))],
         [
-          `Arama${h.searchSet === 'fresh' ? ' (yeni ayrı küme)' : ''}: ilk sonuç doğru / ilk üçte / yanlış ama emin`,
+          `Arama${h.searchSet === 'fresh' ? ' (yeni ayrı küme)' : ''}: ilk satır doğru / ilk üçte / yanlış ama emin`,
           or(h.searchFirstHitPercent, `${pct(h.searchFirstHitPercent)} / ${pct(h.searchTop3Percent)} / ${pct(h.searchWrongConfidentPercent)}`),
         ],
+        ...(h.searchAskedPercent !== null && h.searchAskedPercent !== undefined
+          ? [
+              [
+                'Arama: sordu (“Bunu mu demek istedin?”) / sorduğunda doğrusu seçeneklerde / açık isteğe soru / doğrudan doğru',
+                `${pct(h.searchAskedPercent)} / ${pct(h.searchAskRightPresentPercent)} / ${pct(h.searchClearAskedPercent)} / ${pct(h.searchDirectPercent)}`,
+              ],
+            ]
+          : []),
         ...(h.searchSet === 'fresh'
-          ? [['Arama, eski küme (KİRLENMİŞ): ilk sonuç doğru / yanlış ama emin', `${pct(h.searchOldSetFirstHitPercent)} / ${pct(h.searchOldSetWrongConfidentPercent)}`]]
+          ? [['Arama, eski küme (KİRLENMİŞ): ilk satır doğru / yanlış ama emin', `${pct(h.searchOldSetFirstHitPercent)} / ${pct(h.searchOldSetWrongConfidentPercent)}`]]
           : []),
         ['Hata hücreleri: iyi / belirsiz / bozuk', or(h.errorsGood, `${num(h.errorsGood, 0)} / ${num(h.errorsUnclear, 0)} / ${num(h.errorsBroken, 0)}`)],
         ['İlerleme çubuğu geri gitti (kez) · iptalden sonra kalan bayt', or(h.progressBackwards, `${num(h.progressBackwards, 0)} · ${num(h.cancelLeftoverBytes, 0)}`)],
+        ['Kaynağından büyük çıkan dosya (9 yol × 360p, 480p, 720p kaynak)', or(h.outputsEnlarged, `${num(h.outputsEnlarged, 0)} / ${num(h.outputsSizeMeasured, 0)}`)],
         ['Eklenen ses–görüntü sapması (en kötü) · süre hatası (en kötü)', or(h.worstAvAddedMs, `${num(h.worstAvAddedMs, 2)} ms · ${num(h.worstDurationErrorMs, 0)} ms`)],
         ['Görüntü sadakati, en düşük: SSIM · VMAF', or(h.worstSsim, `${num(h.worstSsim, 4)} · ${h.worstVmaf === null ? 'ölçülemedi' : num(h.worstVmaf, 1)}`)],
         ['Küçült → WhatsApp hedefe sığdı', or(h.kucultFitsTarget, h.kucultFitsTarget ? 'evet' : 'hayır')],

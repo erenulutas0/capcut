@@ -143,15 +143,15 @@ test.describe('kesit list: mark, add, play, download', () => {
       'Kaydetme penceresinde seçtiğin klasörde.',
     );
     expect(await pickerCalls(page)).toEqual(['sample-24s_00-02-00-06.mp4']);
-    // Only the encode path exists in this build (the fast path reports its own).
-    // The sample is not a 720p/1080p frame, so the fast cut (ADR-027) does
-    // not apply: encoded, and the line says why.
-    await expect(card(page, 0).getByTestId('export-method')).toHaveAttribute('data-method', 'encode');
-    await expect(card(page, 0).getByTestId('export-method')).toHaveText(
-      'Görüntü yeniden işlendi (görüntünün boyutu videonunkinden farklı)',
-    );
+    // ADR-041: the editor's download is the video's own size (1280 × 720), so the fast cut (ADR-027)
+    // applies with nothing set. Until 11 Oct 2026 this download was 1920 × 1080 — enlarged — and for that
+    // reason fully encoded ("görüntünün boyutu videonunkinden farklı"; own-size.spec.ts keeps that sentence
+    // for a size that really differs).
+    await expect(card(page, 0).getByTestId('export-method')).not.toHaveAttribute('data-method', 'encode');
+    await expect(card(page, 0).getByTestId('export-method')).toHaveAttribute('data-fallback', '');
+    await expect(card(page, 0).getByTestId('export-method')).toContainText('Görüntüye dokunulmadı; kalitesi videondakiyle aynı');
     // The engineering wording is still there, behind "Ayrıntılar".
-    await expect(card(page, 0).getByTestId('measured-method')).toHaveText('Yeniden kodlandı (çözünürlük kaynağınkinden farklı)');
+    await expect(card(page, 0).getByTestId('measured-method')).toContainText('Hızlı kesim');
     await expect(page.getByTestId('export-download')).toHaveCount(0);
     await expect(card(page, 0).getByTestId('measured-route')).toHaveText('seçtiğin dosya');
     // ADR-030: every number of "Ayrıntılar" in Turkish form (the time taken used to read "1.2 s").
@@ -165,7 +165,7 @@ test.describe('kesit list: mark, add, play, download', () => {
     const probe = probeMp4(saved);
     expect(probe.frames).toBe(120);
     expect(Math.abs(probe.durationS - 4)).toBeLessThanOrEqual(0.034);
-    expect([probe.width, probe.height]).toEqual([1920, 1080]);
+    expect([probe.width, probe.height]).toEqual([1280, 720]);
     expect(probe.videoCodec).toBe('h264');
     expect(probe.audioCodec).toBe('aac');
     // It shows the kesit's picture, not the start of the video.
@@ -247,6 +247,11 @@ test.describe('kesit list: mark, add, play, download', () => {
     await openEditor(page);
     await openVideo(page, SAMPLE);
     await addKesit(page, '0', '20');
+    // Zoomed in, so that every picture has to be encoded: since ADR-041 the plain download of this
+    // 720p sample is a fast cut (the video's own size) and is over before it can be canceled.
+    await openSettings(page, 'frame');
+    await page.getByTestId('zoom-slider').fill('110');
+    await closeSheet(page);
     await card(page, 0).getByTestId('kesit-download').click();
     await expect(card(page, 0).getByTestId('download-running')).toBeVisible({ timeout: 30_000 });
     await expect(card(page, 0).getByTestId('download-file-name')).toHaveText('saved-sample-24s_00-00-00-20.mp4');

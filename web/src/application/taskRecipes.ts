@@ -5,7 +5,7 @@
  * would have downloaded.
  */
 
-import type { EnhanceStrengthV4, MusicV1, Project } from '@/domain/edl';
+import { DEFAULT_EXPORT_SPEC, type EnhanceStrengthV4, type MusicV1, type Project } from '@/domain/edl';
 import { fileBaseName } from '@/domain/kesit';
 import { downloadDurationUs, fittedMusicEndUs } from '@/domain/musicFit';
 import { DEFAULT_SILENCE_PARAMS, SILENCE_PARAM_LIMITS, type SilenceParams } from '@/domain/silence';
@@ -92,21 +92,19 @@ export function musicUnderVideo(project: Project): Project {
 // ------------------------------------------------------------ the video's own size
 
 /**
- * The download's size for the wizards that keep the video's own frame
- * ("Boşlukları at", "Müzik ekle", "Her yerde açılsın"): 720p stays 720p (and
- * anything smaller becomes 720p), anything larger is Full HD — the two sizes
- * the editor offers. A 720p video is then not blown up to 1080p for nothing,
- * and where nothing else changes its pictures can be kept as they are
- * (the fast cut, ADR-027).
+ * A wizard's download is the video at its own size, up to Full HD — whatever
+ * limit an earlier editing session left in "Ayarlar" (a wizard has no such
+ * setting to look at).
+ *
+ * Since ADR-041 the size itself is not decided here: `export.shortEdge` is a
+ * ceiling and the render plan takes the picture's own pixels under it
+ * (`domain/outputSize.ts`), in the wizards and in the editor alike. A 720p
+ * video stays 720p, a 360p one stays 360p (until 11 Oct 2026 it became 720p),
+ * and where nothing else changes its pictures can be kept as they are (the
+ * fast cut, ADR-027).
  */
-export function shortEdgeForSource(displayWidth: number | undefined, displayHeight: number | undefined): 720 | 1080 {
-  const shortEdge = Math.min(displayWidth ?? 0, displayHeight ?? 0);
-  return shortEdge > 0 && shortEdge <= 720 ? 720 : 1080;
-}
-
 export function ownSizeRecipe(project: Project): Project {
-  const asset = primaryVideoAsset(project);
-  return setExportShortEdge(project, shortEdgeForSource(asset?.displayWidth, asset?.displayHeight));
+  return setExportShortEdge(project, DEFAULT_EXPORT_SPEC.shortEdge);
 }
 
 // ------------------------------------------------------------ İyileştir

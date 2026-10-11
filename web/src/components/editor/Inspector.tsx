@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Icon } from '@/components/Icon';
 import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
+import type { DownloadFrame } from '@/application/downloadFrame';
 import type { AspectRatio, FitMode, MusicV1, Project } from '@/domain/edl';
 import { formatTimecode, parseTimecode, US_PER_SECOND } from '@/domain/time';
 import { MAX_ZOOM, MIN_ZOOM } from '@/domain/transform';
@@ -20,8 +21,10 @@ interface Props {
   audio: MediaHandle | null;
   framing: { fit: FitMode; zoom: number };
   onFraming: (framing: { aspect?: AspectRatio; fit?: FitMode; zoom?: number }) => void;
-  /** Output resolution (short edge), for every download. */
+  /** The largest size a download may have (short edge); the picture is never enlarged to it (ADR-041). */
   onShortEdge: (shortEdge: number) => void;
+  /** The frame the download of everything will have right now; null while there is nothing to download. */
+  outputFrame?: DownloadFrame | null;
   /** The video's own sound, the same for every kesit (ADR-026). */
   videoSound: { gainDb: number; muted: boolean };
   onVideoGain: (gainDb: number) => void;
@@ -49,8 +52,11 @@ export function FramePanel({
   framing,
   onFraming,
   onShortEdge,
+  outputFrame,
   enhanceNode,
-}: Pick<Props, 't' | 'project' | 'framing' | 'onFraming' | 'onShortEdge' | 'enhanceNode'>) {
+}: Pick<Props, 't' | 'project' | 'framing' | 'onFraming' | 'onShortEdge' | 'outputFrame' | 'enhanceNode'>) {
+  const sizeText = (key: MessageKey) =>
+    outputFrame ? t(key).replace('{width}', String(outputFrame.width)).replace('{height}', String(outputFrame.height)) : '';
   return (
     <>
       <div className="section-head">
@@ -141,11 +147,24 @@ export function FramePanel({
         className="select"
         value={project.export.shortEdge}
         onChange={(event) => onShortEdge(Number(event.target.value))}
+        aria-describedby="export-quality-note"
         data-testid="export-quality"
       >
         <option value={1080}>{t('export.quality.1080')}</option>
         <option value={720}>{t('export.quality.720')}</option>
       </select>
+      {/* ADR-041: the setting is a limit; what the file will really be is said here, from the download's own plan. */}
+      <p
+        className="hint-small"
+        id="export-quality-note"
+        data-testid="export-size"
+        data-width={outputFrame?.width}
+        data-height={outputFrame?.height}
+        data-rule={outputFrame?.rule}
+      >
+        {outputFrame ? `${sizeText(outputFrame.rule === 'floor' ? 'export.quality.sizeFloor' : 'export.quality.size')} ` : null}
+        {outputFrame?.rule === 'floor' ? null : t('export.quality.noUpscale')}
+      </p>
 
       {enhanceNode}
 

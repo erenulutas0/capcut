@@ -44,6 +44,16 @@ export const STATES: ScreenState[] = [
     },
   },
   {
+    // 11 Oct 2026: the words do not settle it — the rows are choices, none highlighted (taskSearch.ts, rule 12).
+    id: 'ana-ekran-soru',
+    label: 'Ana ekran, emin değilken seçenekler (“tiktok için kes”)',
+    open: async (page) => {
+      await page.goto('/');
+      await page.getByTestId('finder-input').fill('tiktok için kes');
+      await expect(page.getByTestId('finder-ask-hint')).toBeVisible();
+    },
+  },
+  {
     id: 'ana-ekran-yapamiyoruz',
     label: 'Ana ekran, “Bunu henüz yapamıyoruz.” (“gif yap”)',
     open: async (page) => {

@@ -143,9 +143,11 @@ test.describe("fast cut", () => {
     expect(errors).toEqual([]);
   });
 
-  test("a different download size is encoded (1080p from a 720p source)", async ({
+  test("the 1080p limit on a 720p source is not a different size any more: 1280×720, cut fast (ADR-041)", async ({
     page,
   }) => {
+    // Until 11 Oct 2026 this download was 1920×1080, fully encoded ("resolution"): the picture enlarged for nothing.
+    // A size that really differs — a limit under the source — is in own-size.spec.ts.
     const errors = await openFixture(page);
     await addKesit(page, "00:01.000", "00:02.000");
     await setQuality(page, "1080");
@@ -153,10 +155,14 @@ test.describe("fast cut", () => {
     await page.getByTestId("export-succeeded").getByText("Ayrıntılar").click();
     await expect(page.getByTestId("export-method")).toHaveAttribute(
       "data-fallback",
-      "resolution",
+      "",
+    );
+    await expect(page.getByTestId("export-method")).not.toHaveAttribute(
+      "data-method",
+      "encode",
     );
     await expect(page.getByTestId("measured-resolution")).toHaveText(
-      "1920×1080",
+      "1280×720",
     );
     expect(errors).toEqual([]);
   });

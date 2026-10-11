@@ -1007,9 +1007,17 @@ async function auditHome(page: Page, prefix: string, testInfo: TestInfo) {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ne yapmak istiyorsun?');
   await audit(page, `${prefix}-home`, testInfo);
+  // A sure answer with a second row under it…
+  await finderBox(page).fill('sesini kapat');
+  await expect(page.getByRole('option')).toHaveCount(2);
+  await expect(page.getByTestId('finder-results')).toHaveAttribute('data-confidence', 'sure');
+  await audit(page, `${prefix}-home-results`, testInfo);
+  // …and the words that do not settle it: choices, none highlighted (11 Oct 2026).
   await finderBox(page).fill('tiktok için kes');
   await expect(page.getByRole('option')).toHaveCount(2);
-  await audit(page, `${prefix}-home-results`, testInfo);
+  await expect(page.getByTestId('finder-ask-hint')).toBeVisible();
+  await audit(page, `${prefix}-home-did-you-mean`, testInfo);
+  expect(await horizontalOverflow(page), `${prefix} home, did you mean`).toBe(0);
   await finderBox(page).fill('altyazı ekle');
   // Every task works since ADR-036: "altyazı ekle" finds "Yazıya dök" and can start it.
   await expect(page.getByTestId('result-yazi').getByTestId('result-start')).toBeVisible();
@@ -1194,8 +1202,13 @@ test.describe('a11y: opening screen and a wizard, keyboard only', () => {
 
     // 2. Type; the results are announced; ↓ moves, Enter starts.
     await page.keyboard.type('tiktok için kes');
-    await expect(page.getByTestId('finder-status')).toHaveText('2 sonuç. İlki: Dikey yap.');
+    // Two words, two tasks: the search asks (11 Oct 2026). Enter alone starts nothing; the arrows choose.
+    await expect(page.getByTestId('finder-status')).toHaveText('Emin olamadım. 2 seçenek var. Aşağı okla birini seç, sonra Enter’a bas.');
     await expect(page.getByTestId('finder-status')).toHaveAttribute('role', 'status');
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByTestId('finder-status')).toHaveText('Hiçbiri seçili değil. Önce aşağı okla birini seç.');
+    await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowUp');
     await expect(finderBox(page)).toHaveAttribute('aria-activedescendant', 'finder-option-dikey');

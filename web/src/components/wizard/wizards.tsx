@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType }
 
 import { safeFileName } from '@/adapters/browserMedia';
 import { applySilenceCuts, withWholeKesit } from '@/application/commands';
+import { downloadFrame } from '@/application/downloadFrame';
 import { reviewSilences } from '@/application/silenceReview';
 import {
   MUSIC_ALONE_DB,
@@ -262,9 +263,15 @@ function BoslukWizard(host: WizardHostProps) {
 // ---------------------------------------------------------------- Dikey yap
 
 /**
- * "Dikey yap": the 9:16 frame of Reels / TikTok / Shorts (1080 × 1920, the
- * editor's default size). One choice: fill the frame (the sides are cut) or
- * fit the whole picture (empty space remains), shown live in the frame.
+ * "Dikey yap": the 9:16 frame of Reels / TikTok / Shorts. One choice: fill
+ * the frame (the sides are cut) or fit the whole picture (empty space
+ * remains), shown live in the frame.
+ *
+ * The picture is never enlarged (ADR-041): "Doldur" keeps the slice it cuts
+ * out at its own size (406 × 720 from a 1280 × 720 video; 1080 × 1920 only
+ * from a video that has that many), "Sığdır" adds the bars around the
+ * picture as it is. The size the file will have is said under the choice,
+ * from the download's own plan.
  */
 function DikeyWizard(host: WizardHostProps) {
   const { state } = host;
@@ -272,6 +279,8 @@ function DikeyWizard(host: WizardHostProps) {
   const fit = state.settings.fit;
   const vertical = state.project.canvas.aspect === '9:16';
   const already = video !== null && (video.displayWidth ?? 0) * 16 === (video.displayHeight ?? 0) * 9;
+  const frame = useMemo(() => (video && vertical ? downloadFrame(state.project, state.settings) : null), [state.project, state.settings, vertical, video]);
+  const withSize = (key: MessageKey) => (frame ? fill(t(key), { width: String(frame.width), height: String(frame.height) }) : '');
 
   return (
     <WizardFlow
@@ -293,7 +302,7 @@ function DikeyWizard(host: WizardHostProps) {
         <>
           {already ? (
             <p className="wizard-hint" data-testid="dikey-already">
-              {t('wizard.dikey.already')}
+              {withSize('wizard.dikey.already')}
             </p>
           ) : (
             <fieldset className="wizard-choice" data-testid="dikey-choice">
@@ -318,7 +327,11 @@ function DikeyWizard(host: WizardHostProps) {
               />
             </fieldset>
           )}
-          {already ? null : <p className="wizard-hint">{t('wizard.dikey.note')}</p>}
+          {already ? null : (
+            <p className="wizard-hint" data-testid="dikey-size" data-width={frame?.width} data-height={frame?.height}>
+              {withSize(frame?.rule === 'source' ? 'wizard.dikey.noteOwnSize' : 'wizard.dikey.note')}
+            </p>
+          )}
         </>
       )}
     </WizardFlow>

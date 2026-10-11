@@ -10,7 +10,7 @@ import {
   type CapabilityReportV1,
 } from '@/adapters/exportCapability';
 import { recordCapability, recordError } from '@/adapters/diagnostics';
-import { encoderKindLookup, type EncoderKindLookup } from '@/adapters/export/encoderKind';
+import { encoderKindKey, encoderKindLookup, type EncoderKindLookup } from '@/adapters/export/encoderKind';
 import { ExportWorkerClient } from '@/adapters/export/exportClient';
 import type { TargetSizeExport } from '@/adapters/export/protocol';
 import { exportLog } from '@/adapters/exportLogStore';
@@ -35,8 +35,7 @@ import type { ShareVerdict } from '@/domain/share';
 import { audioFileName, audioOnlyRecipe } from '@/domain/audioOnly';
 import {
   estimateEncodeSeconds,
-  maxTargetShortEdge,
-  nativeShortEdge,
+  planShortEdge,
   planForTargetSize,
   planTargetSize,
   targetSizeFacts,
@@ -330,16 +329,16 @@ export function useDownloads({
   // The background check: once a video is open, and again when the output
   // size, the frame or the captions change what the encoder must do.
   const withFont = (project.captionTracks[0]?.cues.length ?? 0) > 0;
-  // Any one second of the video gives the same encoder configuration as every
-  // download of this project: size, frame rate and bit rates are the project's.
+  // One second of every kesit gives the same encoder configuration as the
+  // download of this project: frame rate and bit rates are the project's, and
+  // the size follows the pictures the kesitler show (ADR-041), not their length.
   const allRecipe = downloadRecipe(project, { kind: 'all' }, settings);
-  const firstClip = allRecipe?.clips[0];
   const backgroundPlan =
-    allRecipe && firstClip
+    allRecipe && allRecipe.clips.length > 0
       ? compileRenderPlan(
           {
             ...allRecipe,
-            clips: [{ ...firstClip, sourceOutUs: Math.min(firstClip.sourceOutUs, firstClip.sourceInUs + 1_000_000) }],
+            clips: allRecipe.clips.map((clip) => ({ ...clip, sourceOutUs: Math.min(clip.sourceOutUs, clip.sourceInUs + 1_000_000) })),
           },
           WEB_LOCAL_POLICY,
         )
@@ -366,21 +365,23 @@ export function useDownloads({
   const { aspect } = project.canvas;
   const { fpsNum, fpsDen } = project.export;
   const kindsRef = useRef<{ key: string; lookup: EncoderKindLookup } | null>(null);
-  const kindsKey = `${aspect}|${fpsNum}/${fpsDen}`;
+  // The download's own frame is the planner's first rung (ADR-041); 0 while there is nothing to download.
+  const ownShortEdge = backgroundPlan?.ok ? planShortEdge(backgroundPlan.plan) : 0;
+  const kindsKey = encoderKindKey(aspect, fpsNum, fpsDen, ownShortEdge);
   // Only once a video is open: the question loads the media library (about 120 KB of script), and a
   // page that has no video yet has nothing to download (10 Oct 2026: every wizard and the editor were
   // fetching it while still showing "Videonu seç").
   const hasVideo = videoFile !== null;
   useEffect(() => {
-    if (!hasVideo) return undefined;
+    if (!hasVideo || ownShortEdge <= 0) return undefined;
     let live = true;
-    void encoderKindLookup(aspect, fpsNum, fpsDen).then((lookup) => {
+    void encoderKindLookup(aspect, fpsNum, fpsDen, ownShortEdge).then((lookup) => {
       if (live) kindsRef.current = { key: kindsKey, lookup };
     });
     return () => {
       live = false;
     };
-  }, [aspect, fpsDen, fpsNum, hasVideo, kindsKey]);
+  }, [aspect, fpsDen, fpsNum, hasVideo, kindsKey, ownShortEdge]);
 
   /** ADR-035: the open video's own bitrate (bytes over length), for the target-size planner. */
   const sourceBitrate = useCallback((): number | undefined => {
@@ -408,8 +409,9 @@ export function useDownloads({
       const compiled = recipe ? compileRenderPlan(recipe, WEB_LOCAL_POLICY) : null;
       if (!compiled?.ok) return { ok: false, reason: 'unavailable' };
       const plan = compiled.plan;
-      const lookup = await encoderKindLookup(plan.aspect, plan.fpsNum, plan.fpsDen);
-      const fullShortEdge = maxTargetShortEdge(project.export.shortEdge, nativeShortEdge(plan));
+      // ADR-041: the plan's own frame is already the largest this download may have.
+      const fullShortEdge = planShortEdge(plan);
+      const lookup = await encoderKindLookup(plan.aspect, plan.fpsNum, plan.fpsDen, fullShortEdge);
       const planned = planTargetSize(
         request,
         targetSizeFacts(plan, {
@@ -522,10 +524,11 @@ export function useDownloads({
         targetSize = {
           targetBytes: options.targetSize?.targetBytes ?? Number.MAX_SAFE_INTEGER,
           ...(options.targetSize?.minShortEdge !== undefined ? { minShortEdge: options.targetSize.minShortEdge } : {}),
-          maxShortEdge: maxTargetShortEdge(project.export.shortEdge, nativeShortEdge(plan)),
+          maxShortEdge: planShortEdge(plan),
           ...(hook?.forced ? { forced: hook.forced } : {}),
         };
-        const kinds = kindsRef.current?.key === `${plan.aspect}|${plan.fpsNum}/${plan.fpsDen}` ? kindsRef.current.lookup : null;
+        const kinds =
+          kindsRef.current?.key === encoderKindKey(plan.aspect, plan.fpsNum, plan.fpsDen, targetSize.maxShortEdge) ? kindsRef.current.lookup : null;
         if (kinds && !targetSize.forced) {
           const planned = planTargetSize(
             targetSize,

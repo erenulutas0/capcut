@@ -3,8 +3,8 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { enhanceFixture, frameLumas, frameRgb, laplacianVariance, rgbMeans } from '../e2e/enhance-media';
 import { addKesit, installSavePicker } from '../e2e/kesitFlow';
-import { takeSavedFile, waitForResult } from './lib/app';
-import { buildReference, cameraLikeSource, cameraLikeWebm, fidelity, hasVmaf, loadAvSync, playableEverywhere, probeFile, syncSource, syncWebm, type Fidelity, syncHeavy } from './lib/media';
+import { MUSIC, takeSavedFile, waitForResult } from './lib/app';
+import { buildReference, cameraLikeSource, cameraLikeWebm, fidelity, hasVmaf, loadAvSync, playableEverywhere, probeFile, smallDarkSource, smallSource, smallWebm, syncSource, syncWebm, type Fidelity, syncHeavy } from './lib/media';
 import { BUILD, SOURCES, ensureDir, round, writeResult } from './lib/record';
 import { watchProblems } from './lib/screen';
 
@@ -225,6 +225,116 @@ for (const item of CASES) {
       result.appSaysFits = run.fits;
     }
     writeResult('output', `${testInfo.project.name}.${item.id}`, result);
+  });
+}
+
+/* ------------------------------------------------------------------ never enlarged (ADR-041)
+ *
+ * Every road that ends in a video file, on a 640 × 360, an 854 × 480 and a 1280 × 720 source: the file
+ * the app saved must not hold more pixels than the video it was made from. Until 11 Oct 2026 the
+ * editor made every one of these 1920 × 1080, the wizards made the two small ones 1280 × 720, and
+ * "Dikey yap" made all three 1080 × 1920. ("Yazıya dök" and "Sesini al" save no picture.)
+ */
+
+type SizeRoad = 'editor' | 'kes' | 'bosluk' | 'dikey' | 'kucult' | 'muzik' | 'sustur' | 'cevir' | 'iyilestir';
+
+const SIZE_ROADS: ReadonlyArray<{ id: SizeRoad; label: string }> = [
+  { id: 'editor', label: 'Editör (doğrudan açıldı, Ayarlar’a dokunulmadı)' },
+  { id: 'kes', label: 'Kes' },
+  { id: 'bosluk', label: 'Boşlukları at' },
+  { id: 'dikey', label: 'Dikey yap (Doldur)' },
+  { id: 'kucult', label: 'Küçült (Daha da küçült)' },
+  { id: 'muzik', label: 'Müzik ekle' },
+  { id: 'sustur', label: 'Sesi kapat' },
+  { id: 'cevir', label: 'Her yerde açılsın (WebM kaynak)' },
+  { id: 'iyilestir', label: 'İyileştir (karanlık, kamera benzeri kaynak)' },
+];
+
+const SIZE_SOURCES: ReadonlyArray<readonly [number, number]> = [
+  [640, 360],
+  [854, 480],
+  [1280, 720],
+];
+
+/** Drives one road to its download button; null when the step offers none (with what it says). */
+async function toDownload(page: Page, road: SizeRoad, source: string): Promise<{ button: ReturnType<Page['getByTestId']> } | { blocked: string }> {
+  await page.goto(road === 'editor' ? '/editor/' : `/yap/${road}/`);
+  await page.getByTestId('video-input').setInputFiles(source);
+  let button = page.getByTestId('wizard-download');
+  if (road === 'editor' || road === 'kes') {
+    await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 120_000 });
+    await addKesit(page, '1', '4');
+    await expect(page.getByTestId('kesit-card')).toHaveCount(1);
+    button = road === 'editor' ? page.getByTestId('download-all') : page.getByTestId('kesit-download').first();
+  } else if (road === 'bosluk') {
+    await expect(page.getByTestId('bosluk-summary')).toBeVisible({ timeout: 120_000 });
+  } else if (road === 'dikey') {
+    await expect(page.getByTestId('dikey-choice')).toBeVisible({ timeout: 120_000 });
+  } else if (road === 'kucult') {
+    await expect(page.getByTestId('kucult-choice')).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByTestId('size-hint-half')).not.toHaveAttribute('data-state', 'pending', { timeout: 60_000 });
+    await page.getByTestId('option-half').check();
+  } else if (road === 'muzik') {
+    await expect(page.getByTestId('muzik-pick')).toBeVisible({ timeout: 120_000 });
+    await page.getByTestId('audio-input').setInputFiles(MUSIC);
+    await expect(page.getByTestId('muzik-picked')).toBeVisible({ timeout: 60_000 });
+  } else if (road === 'sustur') {
+    await expect(page.getByTestId('sustur-info')).toBeVisible({ timeout: 120_000 });
+  } else if (road === 'cevir') {
+    await expect(page.getByTestId('cevir-info')).toBeVisible({ timeout: 120_000 });
+  } else {
+    await expect(page.getByTestId('enhance-preview')).toHaveAttribute('data-status', 'ready', { timeout: 180_000 });
+  }
+  const enabled = await expect(button)
+    .toBeEnabled({ timeout: 60_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (enabled) return { button };
+  const said = await page
+    .locator('[data-testid="wizard-blocked"], [data-testid="iyilestir-summary"]')
+    .first()
+    .innerText({ timeout: 2000 })
+    .catch(() => '');
+  return { blocked: said.replace(/\s+/g, ' ').trim().slice(0, 200) };
+}
+
+for (const road of SIZE_ROADS) {
+  test(`output: never enlarged — ${road.id}`, async ({ page }, testInfo) => {
+    test.setTimeout(600_000);
+    const rows: Array<Record<string, unknown>> = [];
+    const save = (reason?: string) =>
+      writeResult('output', `${testInfo.project.name}.boyut-${road.id}`, { kind: 'size', road: road.id, label: road.label, rows, ...(reason ? { reason } : {}) });
+    save(CUT_SHORT);
+    await installSavePicker(page);
+    for (const [width, height] of SIZE_SOURCES) {
+      const source = road.id === 'cevir' ? smallWebm(width, height) : road.id === 'iyilestir' ? smallDarkSource(width, height) : smallSource(width, height);
+      const info = probeFile(source);
+      const row: Record<string, unknown> = { sourceWidth: info.video?.width ?? width, sourceHeight: info.video?.height ?? height, measured: false };
+      rows.push(row);
+      const reached = await toDownload(page, road.id, source);
+      if ('blocked' in reached) {
+        row.reason = `indirme sunulmadı${reached.blocked ? `; ekranda: “${reached.blocked}”` : ''}`;
+        save(CUT_SHORT);
+        continue;
+      }
+      await reached.button.click();
+      const phase = await waitForResult(page, 300_000);
+      if (phase !== 'saved') {
+        row.reason = `indirme “${phase}” ile bitti`;
+        save(CUT_SHORT);
+        continue;
+      }
+      const out = probeFile(await takeSavedFile(page, testInfo, `boyut-${road.id}-${height}`));
+      const sourcePixels = (info.video?.width ?? width) * (info.video?.height ?? height);
+      row.measured = true;
+      row.width = out.video?.width ?? null;
+      row.height = out.video?.height ?? null;
+      row.method = await page.getByTestId('export-method').first().getAttribute('data-method', { timeout: 2000 }).catch(() => null);
+      // Output pixels over source pixels: above 1 the file holds more pixels than the video had.
+      row.pixelRatio = out.video?.width && out.video.height ? round((out.video.width * out.video.height) / sourcePixels, 4) : null;
+      save(CUT_SHORT);
+    }
+    save();
   });
 }
 

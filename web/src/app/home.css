@@ -305,6 +305,32 @@
   color: var(--muted);
 }
 
+/* "Bunu mu demek istedin?" as a question (rule 12): the same rows, no row chosen for the user. */
+.finder-ask-hint,
+.finder-ask-other {
+  margin: 0;
+  max-width: 720px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.finder-ask-other {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Enter was pressed before a row was picked: the line that says what to do stands out. */
+.finder-ask-hint[data-nudged='true'] {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* Among choices the pointer lights a row up without choosing it (Enter follows the arrows only). */
+.finder-results[data-confidence='ask'] .result:not([aria-disabled='true']):hover {
+  border-color: var(--accent);
+}
+
 .home-quiet-button {
   align-self: flex-start;
   min-height: var(--tap);

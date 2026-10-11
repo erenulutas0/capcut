@@ -8,6 +8,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { closeSync, existsSync, openSync, readSync, renameSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { enhanceFixture } from '../../e2e/enhance-media';
 import { SOURCES, ensureDir, round, tr } from './record';
 
 export interface StreamInfo {
@@ -328,6 +329,47 @@ export function cameraLikeWebm(): string {
     '-i', source, '-t', '6', '-vf', 'scale=1280:720:flags=bicubic',
     '-c:v', 'libvpx-vp9', '-b:v', '4M', '-deadline', 'good', '-cpu-used', '5', '-row-mt', '1', '-pix_fmt', 'yuv420p', '-g', '30',
     '-c:a', 'libopus', '-b:a', '96k',
+  ]);
+}
+
+/**
+ * A small video for the "never enlarged" checks (ADR-041): a dim, grainy test pattern of the given
+ * size, 6 s, with a tone that stops for a second twice — so that every task has something to do with
+ * it: "Boşlukları at" finds a gap, "İyileştir" finds a picture to brighten, "Küçült" finds bytes to
+ * lose (the bitrate is held at about 0.45 bit per pixel). H.264 + AAC in MP4. Generated; not footage.
+ */
+export function smallSource(width: number, height: number): string {
+  const tone = '0.25*sin(2*PI*440*t)*lt(mod(t,3),2)'.replace(/,/g, '\\,');
+  const rate = `${Math.round((width * height * 30 * 0.45) / 1000)}k`;
+  return make(`kucuk-${width}x${height}-6s.mp4`, [
+    '-f', 'lavfi', '-i', `testsrc2=size=${width}x${height}:rate=30:duration=6`,
+    '-f', 'lavfi', '-i', `aevalsrc=exprs=${tone}:s=48000:d=6`,
+    '-vf', 'lutyuv=y=val*0.4,noise=alls=18:allf=t,format=yuv420p',
+    '-c:v', 'libx264', '-preset', 'veryfast', '-b:v', rate, '-minrate', rate, '-maxrate', rate, '-bufsize', rate, '-pix_fmt', 'yuv420p', '-g', '30',
+    '-c:a', 'aac', '-b:a', '96k', '-shortest', '-movflags', '+faststart',
+  ]);
+}
+
+/**
+ * A small video "İyileştir" has work on: the underexposed, camera-like clip of ADR-037's own set
+ * (tests/e2e/enhance-media.ts, 1280 × 720, 3 s) at the given size. The test pattern of `smallSource`
+ * is judged "already looks good" — rightly — and is then offered no download to measure.
+ */
+export function smallDarkSource(width: number, height: number): string {
+  return make(`kucuk-karanlik-${width}x${height}-3s.mp4`, [
+    '-i', enhanceFixture('dark'),
+    '-vf', `scale=${width}:${height}:flags=bicubic,format=yuv420p`,
+    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-g', '30',
+    '-c:a', 'copy', '-movflags', '+faststart',
+  ]);
+}
+
+/** The same small picture as VP9 + Opus in WebM: what "Her yerde açılsın" has to convert. */
+export function smallWebm(width: number, height: number): string {
+  return make(`kucuk-${width}x${height}-6s.webm`, [
+    '-i', smallSource(width, height),
+    '-c:v', 'libvpx-vp9', '-b:v', '1M', '-deadline', 'realtime', '-cpu-used', '8', '-pix_fmt', 'yuv420p', '-g', '30',
+    '-c:a', 'libopus', '-b:a', '64k',
   ]);
 }
 

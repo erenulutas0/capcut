@@ -24,6 +24,7 @@ import {
   type PendingOutcome,
   type PendingRange,
 } from '@/domain/kesit';
+import { downloadFrame } from '@/application/downloadFrame';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import { compileRenderPlan } from '@/domain/renderPlan';
 import { formatLengthShort, MIN_CLIP_DURATION_US, type Micros } from '@/domain/time';
@@ -708,11 +709,15 @@ export function EditorView({ state, stored }: { state: EditorState; stored: bool
     ? { kind: 'kesit', number: selectedIndex + 1, inUs: selected.sourceInUs, outUs: selected.sourceOutUs }
     : { kind: 'pending', inUs: pending.inUs, outUs: pending.outUs, durationUs };
 
+  // ADR-041: the frame the download will really have — the picture's own size under the limit of "Ayarlar".
+  const outputFrame = useMemo(() => downloadFrame(project, state.settings), [project, state.settings]);
+
   const captionsNode = (
     <CaptionsPanel
       t={t}
       project={project}
       title={state.title}
+      exportFrame={outputFrame?.captionFrame ?? null}
       outputDurationUs={totalOutputDurationUs(project)}
       videoTimeUs={playback.timeUs}
       preferClipId={playback.range?.clipId ?? state.selectedClipId}
@@ -1142,6 +1147,7 @@ export function EditorView({ state, stored }: { state: EditorState; stored: bool
           framing={state.framing}
           onFraming={state.changeFraming}
           onShortEdge={state.changeShortEdge}
+          outputFrame={outputFrame}
           videoSound={{ gainDb: state.settings.sourceGainDb, muted: state.settings.muted }}
           onVideoGain={state.changeVideoGain}
           onVideoMuted={state.changeVideoMuted}

@@ -120,8 +120,10 @@ test.describe('Kes', () => {
     expect([probe.width, probe.height]).toEqual([1280, 720]);
     await expect(page.getByTestId('export-method')).not.toHaveAttribute('data-method', 'encode');
     await expect(page.getByTestId('export-method')).toHaveAttribute('data-fallback', '');
+    // ADR-041: "Ayarlar" holds the limit (the default, Full HD); the size is the video's own.
     await openSettings(page, 'frame');
-    await expect(page.getByTestId('export-quality')).toHaveValue('720');
+    await expect(page.getByTestId('export-quality')).toHaveValue('1080');
+    await expect(page.getByTestId('export-size')).toContainText('İndirilen video 1280 × 720 olur.');
     await closeSheet(page);
 
     // Well past the editor's 500 ms autosave: no project was written.
@@ -265,7 +267,9 @@ test.describe('Boşlukları at', () => {
 // ------------------------------------------------------------------ Dikey yap
 
 test.describe('Dikey yap', () => {
-  test('“Doldur” by default: 1080 × 1920, the frame filled', async ({ page }, testInfo) => {
+  test('“Doldur” by default: the frame filled, at the slice’s own size — 202 × 360 from a 640 × 360 video, not a blown-up 1080 × 1920', async ({
+    page,
+  }, testInfo) => {
     await startTask(page, 'dikey', OTHER);
     await expect(page.getByTestId('dikey-choice')).toBeVisible({ timeout: 60_000 });
     await expect(title(page)).toHaveText('Dikey yapalım');
@@ -276,16 +280,22 @@ test.describe('Dikey yap', () => {
     const box = await frame.boundingBox();
     expect((box?.width ?? 0) / (box?.height ?? 1)).toBeCloseTo(9 / 16, 1);
     expect(await page.getByTestId('wizard-video').evaluate((video) => getComputedStyle(video).objectFit)).toBe('cover');
+    // The size is said before the download, from the download's own plan (ADR-041).
+    await expect(page.getByTestId('dikey-size')).toHaveText(
+      'Reels, TikTok ve Shorts için dikey video: 202 × 360. Videon büyütülmez; büyütmek onu netleştirmez.',
+    );
 
     await download(page);
     expect(await pickerCalls(page)).toEqual(['other-8s_dikey.mp4']);
     const saved = await readSaved(page, testInfo, 'saved-other-8s_dikey.mp4');
     const probe = probeMp4(saved);
-    expect([probe.width, probe.height]).toEqual([1080, 1920]);
+    // The slice "Doldur" cuts out of 640 × 360 is 202 × 360: that is the file (it was 1080 × 1920, enlarged 5.3 times).
+    expect([probe.width, probe.height]).toEqual([202, 360]);
+    expect(probe.width * probe.height).toBeLessThanOrEqual(640 * 360);
     expect(probe.videoCodec).toBe('h264');
     expect(probe.durationS).toBeCloseTo(8, 1);
     // Filled: the top of the frame is picture, not a black bar.
-    expect(bandLuma(saved, 1, { y: 0, height: 300 })).toBeGreaterThan(40);
+    expect(bandLuma(saved, 1, { y: 0, height: 60 })).toBeGreaterThan(40);
     expect(await storedProjects(page)).toBe(0);
   });
 
@@ -297,14 +307,17 @@ test.describe('Dikey yap', () => {
     await page.getByTestId('option-contain').check();
     await expect(page.getByTestId('wizard-preview-frame')).toHaveAttribute('data-fit', 'contain');
     expect(await page.getByTestId('wizard-video').evaluate((video) => getComputedStyle(video).objectFit)).toBe('contain');
+    await expect(page.getByTestId('dikey-size')).toContainText('640 × 1138');
 
     await download(page);
     const saved = await readSaved(page, testInfo, 'saved-other-8s_dikey.mp4');
     const probe = probeMp4(saved);
-    expect([probe.width, probe.height]).toEqual([1080, 1920]);
-    // 16:9 inside 1080 × 1920 is 1080 × 608 in the middle: black above, picture at the centre.
+    // ADR-041: bars are added, picture is not — the frame is as wide as the picture (it was 1080 × 1920,
+    // the picture enlarged 1.7 times inside it).
+    expect([probe.width, probe.height]).toEqual([640, 1138]);
+    // 640 × 360 in the middle of 640 × 1138: black above, picture at the centre.
     expect(bandLuma(saved, 1, { y: 0, height: 300 })).toBeLessThan(24);
-    expect(bandLuma(saved, 1, { y: 760, height: 400 })).toBeGreaterThan(40);
+    expect(bandLuma(saved, 1, { y: 420, height: 300 })).toBeGreaterThan(40);
 
     // The hand-off: same video, 9:16, "Tam görüntüyü göster" already chosen.
     await page.getByTestId('wizard-open-editor').click();
@@ -318,13 +331,14 @@ test.describe('Dikey yap', () => {
   test('a video that is already 9:16 is told so, and there is nothing to choose', async ({ page }, testInfo) => {
     await startTask(page, 'dikey', wizardFixture('vertical'));
     await expect(page.getByTestId('dikey-already')).toHaveText(
-      'Bu video zaten dikey: görüntü aynı kalır, 1080 × 1920 olarak kaydedilir.',
+      'Bu video zaten dikey: görüntü aynı kalır, 360 × 640 olarak kaydedilir.',
       { timeout: 60_000 },
     );
     await expect(page.getByTestId('dikey-choice')).toHaveCount(0);
     await download(page);
     const probe = probeMp4(await readSaved(page, testInfo, 'saved-dikey-telefon_dikey.mp4'));
-    expect([probe.width, probe.height]).toEqual([1080, 1920]);
+    // Its own 360 × 640 (it was enlarged to 1080 × 1920).
+    expect([probe.width, probe.height]).toEqual([360, 640]);
   });
 });
 
@@ -353,8 +367,8 @@ test.describe('Müzik ekle', () => {
     const probe = probeMp4(saved);
     expect(probe.audioCodec).toBe('aac');
     expect(probe.durationS).toBeCloseTo(8, 1);
-    // 640 × 360 is not blown up to Full HD: the smaller of the two sizes.
-    expect([probe.width, probe.height]).toEqual([1280, 720]);
+    // ADR-041: 640 × 360 stays 640 × 360 (it became 1280 × 720 until 11 Oct 2026).
+    expect([probe.width, probe.height]).toEqual([640, 360]);
     // The video's own sound is off, so what is heard is the music: clearly not silence.
     expect(meanVolumeDb(saved)).toBeGreaterThan(-40);
     // …and it is heard to the end: in each of the eight seconds (the last one fades out), not only at the start.
@@ -444,8 +458,8 @@ test.describe('Her yerde açılsın', () => {
     const probe = probeMp4(await readSaved(page, testInfo, 'saved-tarayici-kaydi_uyumlu.mp4'));
     expect(probe.videoCodec).toBe('h264');
     expect(probe.audioCodec).toBe('aac');
-    // 640 × 360 is under the smaller of the two sizes: saved as 720p.
-    expect([probe.width, probe.height]).toEqual([1280, 720]);
+    // ADR-041: 640 × 360 stays 640 × 360 (it was saved as 720p until 11 Oct 2026).
+    expect([probe.width, probe.height]).toEqual([640, 360]);
     expect(probe.durationS).toBeCloseTo(2, 1);
     await expect(page.getByTestId('export-method')).toHaveAttribute('data-method', 'encode');
   });

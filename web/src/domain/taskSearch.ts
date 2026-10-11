@@ -60,6 +60,14 @@
  *    a task that only shares a word with the request is not offered under
  *    it: rows of tasks that work stay only when they score nearly as much as
  *    the best (80 %), i.e. the words point at them just as much.
+ * 12. Sure, or asking (11 Oct 2026). The ranking above always has a first
+ *    row; whether that row is THE answer is a separate question, answered
+ *    from what stands behind it (`confidenceOf`): how many of the request's
+ *    words it accounts for, how many are left over, how close the next task
+ *    is. `sure`: the row is highlighted and Enter starts it. `ask`: the rows
+ *    are choices ("Bunu mu demek istedin?"), none is highlighted, and tasks
+ *    that work are listed down to 25 % of the best score instead of 40 %.
+ *    An answer of rule 11 ("Bunu henüz yapamıyoruz.") is never a question.
  */
 
 import { TASKS, type TaskDefinition } from './tasks';
@@ -291,23 +299,28 @@ function tokenIs(token: string, word: string): boolean {
  * inside a phrase the neighbour is the proof, so the looser reading is safe here and only here. (Not
  * for shorter words: "sesiz kısımları" is not the phrase "sesi kıs".)
  */
-function containsPhrase(tokens: readonly string[], phrase: string): boolean {
+function phraseAt(tokens: readonly string[], phrase: string): number[] | null {
   const words = phrase.split(' ');
   for (let start = 0; start + words.length <= tokens.length; start += 1) {
     const hit = words.every((word, index) => {
       const token = tokens[start + index] ?? '';
       return tokenIs(token, word) || (word.length >= 5 && token.startsWith(word));
     });
-    if (hit) return true;
+    if (hit) return words.map((_, index) => start + index);
   }
-  return false;
+  return null;
 }
 
 /**
  * One of `things` next to one of `verbs`, either order, among the words that carry intent — with at
- * most `gap` other words between them.
+ * most `gap` other words between them. Answers with the places of the two words.
  */
-function containsPair(tokens: readonly string[], things: readonly string[], verbs: readonly string[], gap = 0): boolean {
+function pairAt(
+  tokens: readonly string[],
+  things: readonly string[],
+  verbs: readonly string[],
+  gap = 0,
+): [number, number] | null {
   const isOne = (token: string, words: readonly string[]) => words.some((word) => tokenIs(token, word));
   for (let index = 0; index + 1 < tokens.length; index += 1) {
     const a = tokens[index] ?? '';
@@ -316,10 +329,10 @@ function containsPair(tokens: readonly string[], things: readonly string[], verb
     if (!aIsThing && !aIsVerb) continue;
     for (let other = index + 1; other <= index + 1 + gap && other < tokens.length; other += 1) {
       const b = tokens[other] ?? '';
-      if ((aIsThing && isOne(b, verbs)) || (aIsVerb && isOne(b, things))) return true;
+      if ((aIsThing && isOne(b, verbs)) || (aIsVerb && isOne(b, things))) return [index, other];
     }
   }
-  return false;
+  return null;
 }
 
 export interface TaskMatch {
@@ -327,10 +340,39 @@ export interface TaskMatch {
   score: number;
 }
 
+/**
+ * What stands behind the best match — the facts the confidence rule reads
+ * (rule 12). Counted over the words that carry intent.
+ */
+export interface SearchEvidence {
+  /** Words of the request that carry intent. */
+  words: number;
+  /** Of those, the ones the best match accounts for (its words, its phrase, its pair). */
+  covered: number;
+  /** Not accounted for by the best match, but another task knows them. */
+  rival: number;
+  /** No task knows them. */
+  unknown: number;
+  /** Score of the best match and of the next task (0: there is none). */
+  best: number;
+  second: number;
+  /** The best match has evidence of its own: a strong word, a phrase, a pair, a verb that cannot. */
+  specific: boolean;
+  /** …and more than one word stands behind it together (a phrase or a pair). */
+  combined: boolean;
+}
+
+/**
+ * `sure`: the first row is the answer — it is highlighted and Enter starts it.
+ * `ask`: the words do not settle it; the rows are choices ("Bunu mu demek
+ * istedin?"), none is highlighted and Enter starts nothing until one is chosen.
+ */
+export type SearchConfidence = 'sure' | 'ask';
+
 export type TaskSearchResult =
   /** Nothing typed that says what to do (empty, one letter, only "video"): the cards stay. */
   | { kind: 'empty' }
-  | { kind: 'results'; matches: TaskMatch[] }
+  | { kind: 'results'; matches: TaskMatch[]; confidence: SearchConfidence; evidence: SearchEvidence }
   /** Words were typed and no task knows them: "Bunu bulamadım". */
   | { kind: 'none' };
 
@@ -351,18 +393,22 @@ interface Tally {
   combined: boolean;
   /** How many of the query's intent words the task's single words account for. */
   explained: number;
+  /** Which intent words stand behind the task: single words, and the words of its phrase or pair. */
+  covered: Set<number>;
 }
 
 export function searchTasks(query: string, tasks: readonly TaskDefinition[] = TASKS): TaskSearchResult {
   const raw = rawTokens(query);
-  const tokens = raw.filter((token) => token.length >= 2 && !isStopWord(token));
+  /** Places, in `raw`, of the words that carry intent. */
+  const places = raw.flatMap((token, index) => (token.length >= 2 && !isStopWord(token) ? [index] : []));
+  const tokens = places.map((index) => raw[index] ?? '');
   // The last word may still be growing — unless the user already typed a space after it.
   const stillTyping = !/\s$/.test(query);
   const tallies = new Map<TaskDefinition, Tally>();
   const tally = (task: TaskDefinition): Tally => {
     let entry = tallies.get(task);
     if (!entry) {
-      entry = { own: 0, yieldStrong: 0, yieldWeak: 0, specific: false, combined: false, explained: 0 };
+      entry = { own: 0, yieldStrong: 0, yieldWeak: 0, specific: false, combined: false, explained: 0, covered: new Set() };
       tallies.set(task, entry);
     }
     return entry;
@@ -400,6 +446,7 @@ export function searchTasks(query: string, tasks: readonly TaskDefinition[] = TA
       if (match.matched !== matched) continue;
       const entry = tally(task);
       entry.explained += 1;
+      entry.covered.add(index);
       if (match.yielding) {
         entry.yieldStrong += STRONG_SCORE[match.kind];
         entry.yieldWeak += WEAK_SCORE[match.kind];
@@ -411,16 +458,35 @@ export function searchTasks(query: string, tasks: readonly TaskDefinition[] = TA
   });
 
   for (const task of tasks) {
-    const found = task.words.phrases
-      .filter((phrase) => containsPhrase(raw, phrase))
-      .map((phrase) => phrase.split(' ').length);
-    const paired = (task.words.pairs ?? []).some(([things, verbs, gap]) => containsPair(tokens, things, verbs, gap ?? 0));
-    const longest = Math.max(paired ? 2 : 0, ...found);
+    let longest = 0;
+    let behind: number[] = [];
+    for (const phrase of task.words.phrases) {
+      const at = phraseAt(raw, phrase);
+      if (at && at.length > longest) {
+        longest = at.length;
+        // Phrases are read over every word; only the ones that carry intent count as covered.
+        behind = at.flatMap((rawIndex) => {
+          const index = places.indexOf(rawIndex);
+          return index >= 0 ? [index] : [];
+        });
+      }
+    }
+    if (longest < 2) {
+      for (const [things, verbs, gap] of task.words.pairs ?? []) {
+        const at = pairAt(tokens, things, verbs, gap ?? 0);
+        if (at) {
+          longest = 2;
+          behind = at;
+          break;
+        }
+      }
+    }
     if (longest >= 2) {
       const entry = tally(task);
       entry.own += PHRASE_SCORE + (longest - 2) * PHRASE_EXTRA_WORD_SCORE;
       entry.specific = true;
       entry.combined = true;
+      for (const index of behind) entry.covered.add(index);
     }
   }
 
@@ -457,11 +523,77 @@ export function searchTasks(query: string, tasks: readonly TaskDefinition[] = TA
   ) {
     return { kind: 'none' };
   }
+
+  const covered = topTally?.covered ?? new Set<number>();
+  let rival = 0;
+  let unknown = 0;
+  tokens.forEach((_, index) => {
+    if (covered.has(index)) return;
+    if ([...tallies.values()].some((entry) => entry.covered.has(index))) rival += 1;
+    else unknown += 1;
+  });
+  const evidence: SearchEvidence = {
+    words: tokens.length,
+    covered: covered.size,
+    rival,
+    unknown,
+    best: top.score,
+    second: ranked[1]?.score ?? 0,
+    specific: topTally?.specific === true,
+    combined: topTally?.combined === true,
+  };
+
   const cannotDoYet = !top.task.available;
+  const confidence: SearchConfidence = cannotDoYet ? 'sure' : confidenceOf(evidence);
+  // Among choices a weaker task that WORKS is worth a row; a row that only says "not yet" is not.
+  const keepRatio = (entry: { task: TaskDefinition }) =>
+    confidence === 'ask' && entry.task.available ? ASK_KEEP_RATIO : KEEP_RATIO;
   const matches = ranked
-    .filter((entry) => entry.score >= top.score * KEEP_RATIO)
+    .filter((entry) => entry.score >= top.score * keepRatio(entry))
     .filter((entry) => !cannotDoYet || !entry.task.available || entry.score >= top.score * KEEP_UNDER_CANNOT_RATIO)
     .slice(0, MAX_RESULTS)
     .map(({ task, score }) => ({ task, score }));
-  return { kind: 'results', matches };
+  return { kind: 'results', matches, confidence, evidence };
+}
+
+/** In a list of choices a weaker candidate is worth a row: the user picks, nothing is started for them. */
+const ASK_KEEP_RATIO = 0.25;
+
+/** Rule 12, one word behind the match: the score it needs when the request is that word alone / has one more word. */
+const SURE_ALONE_SCORE = 2;
+const SURE_ONE_LEFT_SCORE = 3;
+/** Rule 12: the next task must stay under this share of the best score… */
+const SURE_RIVAL_RATIO = 0.5;
+/** …or under this one, when two words or more stand behind the best match and at most one is left over. */
+const SURE_RIVAL_RATIO_COVERED = 0.8;
+
+/**
+ * Rule 12 — is the best match THE answer, or one of a few guesses?
+ *
+ * Measured on the four phrase sets that had already been seen (11 Oct 2026):
+ * a best match that accounts for two words or more of the request was the
+ * wrong task in about 1 case in 60; one that rests on a single word while
+ * other words of the request are left unexplained was wrong in about 1 in 4.
+ * So the answer is `sure` only when
+ *
+ * - two words or more stand behind it, and the next task scores under 80 % of
+ *   it — under 50 % when two or more words of the request are left over; or
+ * - one word stands behind it and that word is the whole request (a strong
+ *   word, or the word still being typed); or
+ * - one word stands behind it, exactly one other word is left over, the word
+ *   is the task's own name said outright (score 3) and the next task scores
+ *   under half of it.
+ *
+ * Everything else is `ask`. Coverage counts the words that carry intent; a
+ * phrase or a pair covers each of its words.
+ */
+export function confidenceOf(evidence: SearchEvidence): SearchConfidence {
+  const left = evidence.rival + evidence.unknown;
+  const ratio = evidence.best > 0 ? evidence.second / evidence.best : 1;
+  if (evidence.covered >= 2) {
+    return ratio < (left <= 1 ? SURE_RIVAL_RATIO_COVERED : SURE_RIVAL_RATIO) ? 'sure' : 'ask';
+  }
+  if (left === 0) return evidence.best >= SURE_ALONE_SCORE && ratio < SURE_RIVAL_RATIO_COVERED ? 'sure' : 'ask';
+  if (left === 1) return evidence.best >= SURE_ONE_LEFT_SCORE && ratio < SURE_RIVAL_RATIO ? 'sure' : 'ask';
+  return 'ask';
 }

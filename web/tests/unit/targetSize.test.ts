@@ -23,7 +23,7 @@ import {
   containerOverheadBytes,
   correctTargetSize,
   estimateEncodeSeconds,
-  maxTargetShortEdge,
+  planShortEdge,
   nativeShortEdge,
   planForTargetSize,
   planTargetSize,
@@ -86,19 +86,27 @@ describe('the resolution ladder', () => {
     expect(targetShortEdges(1080, 720)).toEqual([1080, 720]);
   });
 
-  it('keeps the floor itself when nothing lies between the floor and the cap', () => {
-    expect(targetShortEdges(540, 720)).toEqual([720]);
+  it('starts at the download’s own frame, whatever it is, and never goes above it (ADR-041)', () => {
+    // A 480p video: its own size first (until 11 Oct 2026 it was blown up to 540), then the ladder under it.
+    expect(targetShortEdges(480)).toEqual([480, 360]);
+    // A 720p video made vertical keeps a 406-pixel slice.
+    expect(targetShortEdges(406)).toEqual([406, 360]);
     expect(targetShortEdges(360)).toEqual([360]);
+    // Smaller than the floor: its own size is the only rung — nothing is enlarged to the floor.
+    expect(targetShortEdges(202)).toEqual([202]);
+    expect(targetShortEdges(540, 720)).toEqual([540]);
+    for (const own of [1080, 720, 608, 540, 480, 406, 360, 202, 144]) {
+      for (const floor of [360, 720]) {
+        const rungs = targetShortEdges(own, floor);
+        expect(rungs[0], `${own}/${floor}`).toBe(own);
+        expect(Math.max(...rungs), `${own}/${floor}`).toBe(own);
+      }
+    }
   });
 
-  it('never encodes a rung larger than the first one that holds the source picture', () => {
-    expect(maxTargetShortEdge(1080, 1080)).toBe(1080);
-    expect(maxTargetShortEdge(1080, 2160)).toBe(1080);
-    expect(maxTargetShortEdge(1080, 608)).toBe(720);
-    expect(maxTargetShortEdge(1080, 480)).toBe(540);
-    expect(maxTargetShortEdge(1080, 128)).toBe(360);
-    expect(maxTargetShortEdge(720, 1080)).toBe(720);
-    expect(maxTargetShortEdge(1080, null)).toBe(1080);
+  it('the largest size of a target-size download is the plan’s own frame', () => {
+    expect(planShortEdge({ width: 1920, height: 1080 })).toBe(1080);
+    expect(planShortEdge({ width: 406, height: 720 })).toBe(406);
   });
 
   it('reads the real pixels across the frame from the plan (crop and fit)', () => {

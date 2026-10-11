@@ -73,6 +73,11 @@ interface Props {
   project: Project;
   /** Project title, for the name of a downloaded SRT/VTT file. */
   title: string;
+  /**
+   * The frame a download with these subtitles will really have (ADR-041: the
+   * picture's own size, not the limit in "Ayarlar"). Absent: the limit itself.
+   */
+  exportFrame?: { width: number; height: number } | null;
   /** Length of the joined download (all kesitler), the clock of output-anchored lines. */
   outputDurationUs: Micros;
   /** The playhead: the video's own time, the editor's one clock (ADR-026). */
@@ -445,6 +450,7 @@ export function CaptionsPanel({
   t,
   project,
   title,
+  exportFrame: downloadFrameSize,
   outputDurationUs,
   videoTimeUs,
   preferClipId,
@@ -489,7 +495,7 @@ export function CaptionsPanel({
   const measure = useMemo(() => (fontStatus === 'ready' ? fontMeasure() : null), [fontStatus]);
   const { aspect } = project.canvas;
   const { shortEdge } = project.export;
-  const exportFrame = { ...outputPixelSize(aspect, shortEdge), aspect };
+  const exportFrame = { ...(downloadFrameSize ?? outputPixelSize(aspect, shortEdge)), aspect };
   const fits = (text: string) =>
     measure === null ? true : captionFits(text, style, exportFrame, measure);
 

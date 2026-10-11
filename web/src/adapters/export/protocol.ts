@@ -60,7 +60,7 @@ export type ExportOutputKind = 'video' | 'audio';
  * and encodes at the size and bitrates that decides.
  */
 export interface TargetSizeExport extends TargetSizeRequest {
-  /** The largest short edge worth encoding (`maxTargetShortEdge`). */
+  /** The ordinary download's own short edge (`planShortEdge`, ADR-041): the planner's first rung. */
   maxShortEdge: number;
   /**
    * Measurement hook only (`window.__clipExportOptions.forced`): encode at

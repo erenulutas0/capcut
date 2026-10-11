@@ -883,7 +883,7 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
     const facts = targetSizeFacts(plan, {
       maxShortEdge: targetSize.maxShortEdge,
       hasAudio: wantsAudio,
-      encoderKind: await encoderKindLookup(plan.aspect, plan.fpsNum, plan.fpsDen),
+      encoderKind: await encoderKindLookup(plan.aspect, plan.fpsNum, plan.fpsDen, targetSize.maxShortEdge),
       ...(wantsAudio ? { audioBitrates } : {}),
       ...(sourceSeconds > 0 ? { sourceBitrate: (videoFile.size * 8) / sourceSeconds } : {}),
     });

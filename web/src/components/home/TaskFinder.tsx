@@ -41,8 +41,11 @@ function fill(template: string, values: Record<string, string>): string {
  *
  * - the box: type what you want in your own words; the cards give way to
  *   "Bunu mu demek istedin?" with the tasks that match (`searchTasks`, in the
- *   page, no network). Enter starts the first one; a task that is not built
- *   yet says so and has no button.
+ *   page, no network). When the words settle it, the first row is the answer:
+ *   it is highlighted and Enter starts it. When they do not (rule 12), the
+ *   rows are choices: none is highlighted, a line says so, and Enter starts
+ *   nothing until one is picked — it only says "pick one first". A task that
+ *   is not built yet says so and has no button.
  * - the cards: every task that works today, largest target on the screen.
  *
  * The box is a combobox over a listbox (WAI-ARIA 1.2): focus stays in the
@@ -54,17 +57,23 @@ export function TaskFinder() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const gridRef = useRef<HTMLHeadingElement | null>(null);
   const [query, setQuery] = useState('');
-  const [active, setActive] = useState(0);
+  /** The highlighted row; null: wherever the answer puts it (the first row when sure, none when asking). */
+  const [active, setActive] = useState<number | null>(null);
+  /** Enter was pressed on a list of choices before one was picked. */
+  const [nudged, setNudged] = useState(false);
 
   const result = useMemo(() => searchTasks(query), [query]);
   const matches = result.kind === 'results' ? result.matches : [];
-  const activeIndex = Math.min(active, Math.max(0, matches.length - 1));
-  const activeMatch = matches[activeIndex];
+  /** The words do not settle it: the rows are choices, none is THE answer (taskSearch.ts, rule 12). */
+  const asking = result.kind === 'results' && result.confidence === 'ask';
+  const activeIndex = active === null ? (asking ? -1 : 0) : Math.min(active, matches.length - 1);
+  const activeMatch = activeIndex >= 0 ? matches[activeIndex] : undefined;
   const cards = availableTasks();
 
   const type = (text: string) => {
     setQuery(text);
-    setActive(0);
+    setActive(null);
+    setNudged(false);
   };
 
   const start = (task: TaskDefinition) => {
@@ -89,13 +98,17 @@ export function TaskFinder() {
     if (matches.length === 0) return;
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      setActive((activeIndex + 1) % matches.length);
+      setActive(activeIndex < 0 ? 0 : (activeIndex + 1) % matches.length);
+      setNudged(false);
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      setActive((activeIndex - 1 + matches.length) % matches.length);
+      setActive(activeIndex < 0 ? matches.length - 1 : (activeIndex - 1 + matches.length) % matches.length);
+      setNudged(false);
     } else if (event.key === 'Enter') {
       event.preventDefault();
+      // On a list of choices Enter starts nothing until one is picked: it must not pick for the user.
       if (activeMatch) start(activeMatch.task);
+      else setNudged(true);
     }
   };
 
@@ -103,12 +116,16 @@ export function TaskFinder() {
   const status =
     result.kind === 'none'
       ? t('home.results.statusNone')
-      : first
-        ? fill(t(first.task.available ? 'home.results.status' : 'home.results.statusUnavailable'), {
-            n: String(matches.length),
-            first: t(first.task.labelKey),
-          })
-        : '';
+      : asking
+        ? nudged
+          ? t('home.results.statusChoose')
+          : fill(t('home.results.statusAsk'), { n: String(matches.length) })
+        : first
+          ? fill(t(first.task.available ? 'home.results.status' : 'home.results.statusUnavailable'), {
+              n: String(matches.length),
+              first: t(first.task.labelKey),
+            })
+          : '';
 
   return (
     <div className="finder">
@@ -163,10 +180,20 @@ export function TaskFinder() {
       </p>
 
       {/* The listbox the box controls: present (empty) while the cards show. */}
-      <div className="finder-results" hidden={result.kind !== 'results'} data-testid="finder-results">
+      <div
+        className="finder-results"
+        hidden={result.kind !== 'results'}
+        data-confidence={result.kind === 'results' ? result.confidence : undefined}
+        data-testid="finder-results"
+      >
         <h2 className="home-label" id="finder-results-title">
           {t('home.results.title')}
         </h2>
+        {asking ? (
+          <p className="finder-ask-hint" data-nudged={nudged ? 'true' : undefined} data-testid="finder-ask-hint">
+            {t('home.results.ask.hint')}
+          </p>
+        ) : null}
         <ul className="result-list" role="listbox" id={LISTBOX_ID} aria-labelledby="finder-results-title">
           {matches.map(({ task }, index) => (
             // Focus stays in the box (aria-activedescendant); the pointer and touch act here.
@@ -181,7 +208,9 @@ export function TaskFinder() {
               data-testid={`result-${task.id}`}
               onClick={() => start(task)}
               onPointerMove={() => {
-                if (index !== activeIndex) setActive(index);
+                // Among choices only the arrows pick a row: Enter must never start one because the
+                // pointer happened to rest where the list appeared (the row still lights up, in CSS).
+                if (!asking && index !== activeIndex) setActive(index);
               }}
             >
               <span className="result-icon">
@@ -209,6 +238,12 @@ export function TaskFinder() {
           <h2 className="finder-none-title">{t('home.results.none.title')}</h2>
           <p>{t('home.results.none.body')}</p>
         </div>
+      ) : null}
+
+      {asking ? (
+        <p className="finder-ask-other" data-testid="finder-ask-other">
+          {t('home.results.ask.other')}
+        </p>
       ) : null}
 
       {result.kind !== 'empty' ? (

@@ -44,19 +44,27 @@ export type EncoderKindLookup = (width: number, height: number) => VideoEncoderK
 
 const tables = new Map<string, Promise<EncoderKindLookup>>();
 
+/** What an `encoderKindLookup` table is kept under: the same key, the same answers. */
+export function encoderKindKey(aspect: AspectRatio, fpsNum: number, fpsDen: number, ownShortEdge: number): string {
+  return `${aspect}|${fpsNum}/${fpsDen}|${ownShortEdge}`;
+}
+
 /**
  * The encoder kind at every size the target-size planner may pick for this
- * frame shape, asked once per shape and frame rate. A size that was not asked
- * answers `hardware` (the plan's own bitrate), like an unknown encoder.
+ * frame shape, asked once per shape, frame rate and own size. `ownShortEdge`:
+ * the download's own frame (ADR-041: the picture's own pixels — 480 for a
+ * 480p video, 406 for a 720p video made vertical), which is the planner's
+ * first rung and need not be one of the ladder's sizes. A size that was not
+ * asked answers `hardware` (the plan's own bitrate), like an unknown encoder.
  */
-export function encoderKindLookup(aspect: AspectRatio, fpsNum: number, fpsDen: number): Promise<EncoderKindLookup> {
-  const key = `${aspect}|${fpsNum}/${fpsDen}`;
+export function encoderKindLookup(aspect: AspectRatio, fpsNum: number, fpsDen: number, ownShortEdge: number): Promise<EncoderKindLookup> {
+  const key = encoderKindKey(aspect, fpsNum, fpsDen, ownShortEdge);
   let table = tables.get(key);
   if (!table) {
     table = (async () => {
       const kinds = new Map<string, VideoEncoderKind>();
       const fps = fpsNum / fpsDen;
-      for (const shortEdge of TARGET_SHORT_EDGES) {
+      for (const shortEdge of new Set([ownShortEdge, ...TARGET_SHORT_EDGES])) {
         const { width, height } = outputPixelSize(aspect, shortEdge);
         // A mid-range bitrate: the answer does not depend on it in practice.
         kinds.set(`${width}x${height}`, await videoEncoderKindFor(width, height, fps, Math.round(width * height * fps * 0.09)));

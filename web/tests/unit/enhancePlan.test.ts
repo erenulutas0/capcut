@@ -244,10 +244,12 @@ describe('"İyileştir" wizard recipe', () => {
     expect(DEFAULT_ENHANCE_STRENGTH).toBe('auto');
     const small = enhanceRecipe(opened(video({ displayWidth: 1280, displayHeight: 720 })));
     expect(small.enhance).toEqual({ strength: 'auto' });
-    expect(small.export.shortEdge).toBe(720);
+    // ADR-041: the recipe holds the ceiling (Full HD); the plan takes the picture's own pixels under it.
+    expect(small.export.shortEdge).toBe(1080);
+    expect([plan(small).width, plan(small).height]).toEqual([1280, 720]);
     const large = enhanceRecipe(opened(video({ displayWidth: 3840, displayHeight: 2160 })), 'strong');
     expect(large.enhance).toEqual({ strength: 'strong' });
-    expect(large.export.shortEdge).toBe(1080);
+    expect([plan(large).width, plan(large).height]).toEqual([1920, 1080]);
     // What "İndir" would compile: the whole video, enhanced.
     expect(plan(small).enhance).toEqual({ strength: 'auto' });
     expect(plan(small).totalFrames).toBe(600);

@@ -528,7 +528,8 @@ test.describe('open without internet', () => {
       timeout: 180_000,
     });
     const probe = probeMp4(await readSaved(page, testInfo, 'saved-other-8s_dikey.mp4'));
-    expect([probe.width, probe.height]).toEqual([1080, 1920]);
+    // ADR-041: "Sığdır" adds bars around the 640 × 360 picture as it is (it was 1080 × 1920, the picture enlarged).
+    expect([probe.width, probe.height]).toEqual([640, 1138]);
 
     // "Daha fazla ayar → editörde aç" needs no page load, so it works offline with the video still open.
     await page.getByTestId('wizard-open-editor').click();

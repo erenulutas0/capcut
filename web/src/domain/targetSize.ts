@@ -18,6 +18,7 @@
 
 import { outputPixelSize, type AspectRatio } from './edl';
 import { encoderVideoBitrate, type VideoEncoderKind } from './encoderBitrate';
+import { nativeShortEdge as nativeShortEdgeOf } from './outputSize';
 import { videoBitrateFor, type RenderPlan } from './renderPlan';
 import { US_PER_SECOND, type Micros } from './time';
 
@@ -255,25 +256,25 @@ export interface TargetSizeRefusal {
 
 export type TargetSizePlan = TargetSizeDecision | TargetSizeRefusal;
 
-/** The rungs a download may use, best first: never above `maxShortEdge`, never below the floor. */
+/**
+ * The rungs a download may use, best first (ADR-041: never a rung above the
+ * download's own frame).
+ *
+ * `maxShortEdge` is the ordinary download's short edge (`planShortEdge`): the
+ * picture's own pixels, up to the user's ceiling. It is the first rung
+ * whatever it is — 1080, 720, or 480 for a 480p video, 406 for a 720p video
+ * made vertical — and the ladder's sizes under it follow, down to the floor.
+ * A picture that is already smaller than the floor is not enlarged to it:
+ * its own size is then the only rung.
+ */
 export function targetShortEdges(maxShortEdge: number, minShortEdge: number = DEFAULT_MIN_SHORT_EDGE): number[] {
-  const rungs = TARGET_SHORT_EDGES.filter((edge) => edge <= maxShortEdge && edge >= minShortEdge);
-  if (rungs.length > 0) return rungs;
-  // Nothing in between (e.g. floor 720 and a 480p cap): the floor itself.
-  const floor = TARGET_SHORT_EDGES.filter((edge) => edge >= minShortEdge).pop() ?? TARGET_SHORT_EDGES[0];
-  return [floor];
+  const below = TARGET_SHORT_EDGES.filter((edge) => edge < maxShortEdge && edge >= minShortEdge);
+  return [maxShortEdge, ...below];
 }
 
-/**
- * The largest rung worth encoding for a source: the project's quality, but not
- * a rung larger than the first one that already holds the whole source
- * picture (a 480p recording is not blown up to 1080p to be squeezed again).
- */
-export function maxTargetShortEdge(exportShortEdge: number, sourceShortEdge: number | null): number {
-  const quality = TARGET_SHORT_EDGES.find((edge) => edge <= exportShortEdge) ?? TARGET_SHORT_EDGES[TARGET_SHORT_EDGES.length - 1];
-  if (sourceShortEdge === null || !(sourceShortEdge > 0)) return quality as number;
-  const holding = [...TARGET_SHORT_EDGES].reverse().find((edge) => edge >= sourceShortEdge) ?? TARGET_SHORT_EDGES[0];
-  return Math.min(quality as number, holding);
+/** The short edge of a plan's frame: the largest size a target-size download of it may have. */
+export function planShortEdge(plan: Pick<RenderPlan, 'width' | 'height'>): number {
+  return Math.min(plan.width, plan.height);
 }
 
 interface Rung {
@@ -552,19 +553,7 @@ export function estimateEncodeSeconds(
  * only 608 real pixels across, whatever the download's quality says. The
  * largest value over the kesitler, or null for a plan without segments.
  */
-export function nativeShortEdge(plan: Pick<RenderPlan, 'width' | 'height' | 'segments'>): number | null {
-  let best: number | null = null;
-  for (const segment of plan.segments) {
-    const { width, height } = segment.crop;
-    if (!(width > 0) || !(height > 0)) continue;
-    const scaleX = plan.width / width;
-    const scaleY = plan.height / height;
-    const scale = segment.fit === 'cover' ? Math.max(scaleX, scaleY) : Math.min(scaleX, scaleY);
-    const edge = Math.min(plan.width, plan.height) / scale;
-    best = best === null ? edge : Math.max(best, edge);
-  }
-  return best === null ? null : Math.round(best);
-}
+export const nativeShortEdge = nativeShortEdgeOf;
 
 /** The planner's facts for a compiled plan. */
 export function targetSizeFacts(

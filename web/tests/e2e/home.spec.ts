@@ -226,7 +226,7 @@ test.describe('type to find', () => {
     await page.keyboard.press('Tab');
     await expect(input).toBeFocused();
 
-    await page.keyboard.type('tiktok için kes');
+    await page.keyboard.type('sesini kapat');
     await expect(input).toHaveAttribute('aria-expanded', 'true');
     const listId = await input.getAttribute('aria-controls');
     const listbox = page.locator(`#${listId}`);
@@ -235,18 +235,18 @@ test.describe('type to find', () => {
     await expect(page.getByRole('listbox', { name: 'Bunu mu demek istedin?' })).toBeVisible();
 
     // The first result is highlighted; focus never leaves the box.
-    await expect(input).toHaveAttribute('aria-activedescendant', 'finder-option-dikey');
-    await expect(page.locator('#finder-option-dikey')).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('#finder-option-kes')).toHaveAttribute('aria-selected', 'false');
+    await expect(input).toHaveAttribute('aria-activedescendant', 'finder-option-sustur');
+    await expect(page.locator('#finder-option-sustur')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#finder-option-ses')).toHaveAttribute('aria-selected', 'false');
     await page.keyboard.press('ArrowDown');
-    await expect(input).toHaveAttribute('aria-activedescendant', 'finder-option-kes');
-    await expect(page.locator('#finder-option-kes')).toHaveAttribute('aria-selected', 'true');
+    await expect(input).toHaveAttribute('aria-activedescendant', 'finder-option-ses');
+    await expect(page.locator('#finder-option-ses')).toHaveAttribute('aria-selected', 'true');
     await expect(input).toBeFocused();
     // It wraps, both ways.
     await page.keyboard.press('ArrowDown');
-    await expect(input).toHaveAttribute('aria-activedescendant', 'finder-option-dikey');
+    await expect(input).toHaveAttribute('aria-activedescendant', 'finder-option-sustur');
     await page.keyboard.press('ArrowUp');
-    await expect(input).toHaveAttribute('aria-activedescendant', 'finder-option-kes');
+    await expect(input).toHaveAttribute('aria-activedescendant', 'finder-option-ses');
 
     // Escape clears the box and brings the cards back.
     await page.keyboard.press('Escape');
@@ -254,10 +254,90 @@ test.describe('type to find', () => {
     await expect(page.getByTestId('task-grid')).toBeVisible();
 
     // Enter starts the highlighted one, not always the first.
-    await page.keyboard.type('tiktok için kes');
+    await page.keyboard.type('sesini kapat');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/yap\/ses$/);
+  });
+
+  test('did you mean: when the words do not settle it, the rows are choices — none is highlighted and Enter starts nothing until one is picked', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const input = box(page);
+    await input.click();
+    // "tiktok" says Dikey yap, "kes" says Kes: one word each, neither is THE answer.
+    await page.keyboard.type('tiktok için kes');
+    const panel = page.getByTestId('finder-results');
+    await expect(panel).toHaveAttribute('data-confidence', 'ask');
+    await expect(page.getByRole('listbox', { name: 'Bunu mu demek istedin?' })).toBeVisible();
+    await expect(results(page)).toHaveCount(2);
+    // Each choice says what it does, so they can be told apart, and each can be started by a press.
+    await expect(page.getByTestId('result-dikey')).toContainText('Reels, TikTok, Shorts');
+    await expect(page.getByTestId('result-kes')).toContainText('İstediğin yerleri al');
+    await expect(results(page).getByTestId('result-start')).toHaveCount(2);
+    await expect(page.getByTestId('finder-ask-hint')).toHaveText(tr['home.results.ask.hint']);
+    await expect(page.getByTestId('finder-ask-other')).toHaveText(tr['home.results.ask.other']);
+    await expect(page.getByTestId('finder-show-all')).toBeVisible();
+    await expect(page.getByTestId('finder-status')).toHaveText('Emin olamadım. 2 seçenek var. Aşağı okla birini seç, sonra Enter’a bas.');
+
+    // Nothing is chosen for the user.
+    expect(await input.getAttribute('aria-activedescendant')).toBeNull();
+    await expect(page.locator('[role="option"][aria-selected="true"]')).toHaveCount(0);
+    // Enter does not start anything: it says to pick one, and the box keeps the focus and the text.
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/$/);
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue('tiktok için kes');
+    await expect(page.getByTestId('finder-status')).toHaveText(tr['home.results.statusChoose']);
+    await expect(page.getByTestId('finder-ask-hint')).toHaveAttribute('data-nudged', 'true');
+    // The pointer resting on a row does not choose it either.
+    await page.getByTestId('result-kes').hover();
+    expect(await input.getAttribute('aria-activedescendant')).toBeNull();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/$/);
+
+    // The arrows choose; then Enter starts the chosen one.
+    await page.keyboard.press('ArrowDown');
+    await expect(input).toHaveAttribute('aria-activedescendant', 'finder-option-dikey');
+    await expect(page.getByTestId('finder-ask-hint')).not.toHaveAttribute('data-nudged', 'true');
+    await page.keyboard.press('ArrowDown');
+    await expect(input).toHaveAttribute('aria-activedescendant', 'finder-option-kes');
+    await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/yap\/kes$/);
+
+    // ArrowUp from nothing goes to the last choice; typing on asks again from nothing.
+    await page.goto('/');
+    await box(page).click();
+    await page.keyboard.type('tiktok için kes');
+    await page.keyboard.press('ArrowUp');
+    await expect(box(page)).toHaveAttribute('aria-activedescendant', 'finder-option-kes');
+    await page.keyboard.type(' ');
+    expect(await box(page).getAttribute('aria-activedescendant')).toBeNull();
+  });
+
+  test('did you mean: a press on a choice starts it; a single unsure candidate is a question too, not an answer', async ({ page }) => {
+    await page.goto('/');
+    await box(page).fill('tiktok için kes');
+    await page.getByTestId('result-dikey').click();
+    await expect(page).toHaveURL(/\/yap\/dikey$/);
+
+    await page.goto('/');
+    // Small talk with one word a task knows ("güzel"): it used to be answered with İyileştir, started by Enter.
+    await box(page).fill('bugün hava çok güzel');
+    await expect(page.getByTestId('finder-results')).toHaveAttribute('data-confidence', 'ask');
+    await expect(results(page)).toHaveCount(1);
+    await expect(page.getByTestId('finder-status')).toHaveText('Emin olamadım. 1 seçenek var. Aşağı okla birini seç, sonra Enter’a bas.');
+    await box(page).press('Enter');
+    await expect(page).toHaveURL(/\/$/);
+    // A sure answer next to it keeps what it always did.
+    await box(page).fill('dikey yap');
+    await expect(page.getByTestId('finder-results')).toHaveAttribute('data-confidence', 'sure');
+    await expect(page.getByTestId('finder-ask-hint')).toHaveCount(0);
+    await expect(page.getByTestId('finder-ask-other')).toHaveCount(0);
+    await expect(box(page)).toHaveAttribute('aria-activedescendant', 'finder-option-dikey');
+    await box(page).press('Enter');
+    await expect(page).toHaveURL(/\/yap\/dikey$/);
   });
 
   test('touch: an example chip fills the box, a tap on a result starts it', async ({ browser }) => {

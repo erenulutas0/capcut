@@ -173,3 +173,20 @@ Windows oynatıcı uygulamalarının ekranı (yalnızca aynı Media Foundation h
 macOS/iOS, Safari, Firefox, Android oynatıcıları; başka makineler; gerçek uzun telefon
 kaydının hızlı kesimi (bugünkü kuralla uygun değil); 60 dk kesitte bütün karelerin kare
 kare kimliği (dikiş pencereleri + sayım + zamanlar denetlendi).
+
+## Güncelleme — 11 Ekim 2026: hangi boyutlar kopyalanabilir (ADR-041)
+
+Kural değişmedi: kopya kaynağın boyutunu korur, bu yüzden yalnızca kaynağın boyutu indirmenin boyutu
+olduğunda yapılır. Değişen, indirmenin boyutudur ([ADR-041](ADR-041-never-upscale.md)): çerçeve artık
+"Ayarlar"daki sınıra kadar görüntünün kendi boyutudur. Sonuç: üç çerçeve biçiminden birinde olan ve
+sınırdan büyük olmayan her kaynak uygundur — 1920 × 1080 ve 1280 × 720'nin yanında 854 × 480, 640 × 360,
+dikeyleri ve kareler. 11 Ekim'e kadar yalnızca tam 720p ve 1080p uygundu; editör doğrudan açıldığında
+(varsayılan 1080p) 720p kaynak hiç uygun değildi (`resolution`). Sınırın üstündeki kaynak (4K; "en çok
+720p" seçiliyken 1080p) eskisi gibi yeniden kodlanır. Belge 15 v6'daki "720p / 1080p basamağı içinde"
+ifadesinin yerini v9'un "videonun kendi boyutu, en çok 1080p" satırı aldı.
+
+Kanıt: `web/tests/e2e/own-size.spec.ts` — editör ile "Kes" sihirbazında aynı kaynak ve aynı kesit için
+aynı `export-method` öznitelikleri; 640 × 360, 854 × 480 ve dikey 360 × 640 kaynakta kopya.
+
+**Ölçülmeyen:** 480p / 360p gerçek çekimlerde hızlı kesim (kaynaklar üretilmiş desenlerdir); bu
+boyutlarda dikiş karelerinin kalitesi (SSIM); gerçek Chrome / Edge.

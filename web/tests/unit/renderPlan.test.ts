@@ -95,7 +95,9 @@ describe('render plan', () => {
     project = setFraming(project, { aspect: '9:16', fit: 'cover' });
     const plan = compile(project);
 
-    expect({ width: plan.width, height: plan.height }).toEqual({ width: 1080, height: 1920 });
+    // ADR-041: the frame is the slice's own pixels, not 1080 × 1920 — nothing is enlarged.
+    expect({ width: plan.width, height: plan.height }).toEqual({ width: 608, height: 1080 });
+    expect(plan.sizeRule).toBe('source');
     const crop = plan.segments[0]!.crop;
     expect(crop.height).toBe(1080);
     expect(crop.width).toBe(608); // 1080 * 9/16 rounded to an even number
