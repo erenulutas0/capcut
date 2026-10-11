@@ -90,7 +90,9 @@ test('opening screen → search → wizard → download → editor hand-off', as
     timeout: 180_000,
   });
   const probe = probeMp4(await readSaved(page, testInfo, 'saved-other-8s_dikey.mp4'));
-  expect([probe.width, probe.height]).toEqual([1080, 1920]);
+  // ADR-041: the picture is never enlarged. "Sığdır" keeps the 640 × 360
+  // source at its own width and adds bars up to 9:16.
+  expect([probe.width, probe.height]).toEqual([640, 1138]);
   expect(probe.videoCodec).toBe('h264');
 
   // The same video in the editor, in place: no navigation, no second file dialog.
