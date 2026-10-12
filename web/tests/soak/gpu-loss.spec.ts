@@ -2,7 +2,7 @@ import { appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
-import { frameGray, installSavePicker, meanAbsDiff, probeMp4, readSaved } from '../e2e/kesitFlow';
+import { installSavePicker, probeMp4, readSaved } from '../e2e/kesitFlow';
 import { LONG_SECONDS, enterInvite, longSample, openChoice, realisticWords, startFake, type FakeWorker } from '../cloud/cloudKit';
 
 /**
@@ -16,9 +16,16 @@ import { LONG_SECONDS, enterInvite, longSample, openChoice, realisticWords, star
  * decodes and encodes in software. The crash is asked of the browser itself
  * (`Browser.crashGpuProcess`); it restarts its graphics process on its own.
  *
- * Whatever happens is written to `soak-results/gpu-loss.jsonl`. The run fails
- * only on the one thing that must never happen: a file reported as saved whose
- * pictures are not the video's.
+ * Whatever happens is written to `soak-results/gpu-loss.jsonl`. A saved file is
+ * checked for its length and its number of frames only: whether its PICTURES
+ * are right is not checked here (the test pattern looks nearly the same at
+ * every moment once it is made small enough to compare).
+ *
+ * Measured 12 Oct 2026 (Chrome 154, Edge 155, Windows, hardware encoder): no
+ * error ever arrives; the export stands still in the encoder. Before the
+ * page's watchdog (exportClient, STALL_MS) the download stayed at its
+ * percentage for good and "İptal et" did nothing; with it the download ends
+ * as a failure after a minute and the next press saves the whole video.
  */
 
 const AFTER_S = Number(process.env.SOAK_GPU_CRASH || 'NaN');
@@ -108,26 +115,17 @@ for (let round = 1; round <= ROUNDS; round += 1) {
       row.outcome = 'saved';
     }
 
-    let wrongPictures: number[] = [];
     if (await saved.isVisible()) {
       const name = (await saved.innerText()).replace(/^Kaydedildi: /, '');
       const file = await readSaved(page, testInfo, name);
       const probe = probeMp4(file);
       row.frames = probe.frames;
       row.durationS = probe.durationS;
-      // Is every moment the video's own picture? (The top of the frame: no caption there.)
-      const times = [2, 10, 20, 30, 45, 60, 90, 120, 150, 180, 210, 240, 250];
-      const top = (picture: Buffer) => picture.subarray(0, 64 * 18);
-      const diffs = times.map((at) => Math.round(meanAbsDiff(top(frameGray(file, at)), top(frameGray(source, at))) * 10) / 10);
-      row.pictureDiffs = diffs;
-      wrongPictures = times.filter((_, index) => (diffs[index] ?? 255) > 12);
-      row.wrongPictures = wrongPictures;
       const missing = page.getByTestId('measured-frames-missing');
       await page.locator('.dl-details summary').first().click();
       row.framesMissingSaid = (await missing.count()) > 0 ? await missing.innerText() : null;
     }
     appendFileSync(join(RESULTS, 'gpu-loss.jsonl'), `${JSON.stringify(row)}\n`);
-    expect(wrongPictures, `a saved file whose pictures at ${wrongPictures.join(', ')} s are not the video's: ${JSON.stringify(row)}`).toEqual([]);
     if (row.outcome === 'saved') expect(row.frames).toBe(LONG_SECONDS * 30);
   });
 }

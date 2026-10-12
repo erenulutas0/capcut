@@ -3,6 +3,20 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Beklenmeyen indirme hatası artık okunur; yerinde sayan indirme hata olarak biter — 12 Ekim 2026 (ADR-042; politika ve şema değişmedi)
+
+**Olay (11 Ekim):** kurucunun makinesinde bulutta yazılan 4 dk 13 sn'lik videonun "Altyazılı videoyu indir"i bir kez "Beklenmeyen bir hata oluştu" ile bitti, ikinci basışta kaydedildi. Geriye bilgi kalmamıştı. **Neden bulunamadı:** 161 taze sayfa denemesinde (Chrome 154 ve Edge 155 donanım kodlayıcısıyla, Playwright Chromium; oynayan önizleme, işlemci yükü, koşut sayfalar, cihazda yazılmış yazı, 1080p dosya, bekletilmiş yazı) **0 hata**. Kendiliğinden yeniden deneme **eklenmedi** (hangi hatanın geçici olduğu bilinmiyor).
+
+**Bir sonraki sefer için:** başarısız indirme hatanın **adını** (izin listesinden), **aşamasını** (kendi etiketimiz: `decode`, `encode`, `write`, `commit`…), geliş yolunu, kaçıncı karede kaldığını ve gerçekten yapılandırılan codec dizgilerini taşır; hata kartında kapalı "Ayrıntılar"da tek satır, dışa aktarma günlüğünde ve "Sorun bildir" dosyasında `failureDetail`. **Hatanın metni, dosya adı, yol saklanmaz** — metin yalnızca bilinen cümlelerle karşılaştırılır, etiketi yazılır; her alan okunurken yeniden denetlenir. Veri envanteri ve `/gizlilik` metni güncellendi.
+
+**Bulunan ve düzeltilen:** tarayıcının grafik süreci indirme sırasında ölünce (Chrome 154 / Edge 155'te bilerek öldürüldü, 8'de 8) hiçbir hata gelmiyor, yüzde yerinde kalıyor, "İptal et" çalışmıyordu. Şimdi 60 sn ses gelmezse (sayfa görünürken) indirme hata olarak biter ve nerede durduğunu söyler (ölçülen: donanım kodlayıcısına kare verirken); ikinci basış 6'da 6 kaydetti. Yanıtsız "İptal et" 15 sn sonra işleyiciyi durdurur. Ayrıca: çöken işleyici durdurulur (önce yazmayı sürdürebilirdi) ve "başlatılamadı" yerine "beklenmeyen hata" denir; okunamayan ileti ve gönderilemeyen istek asılı kalmaz; tarayıcının geri aldığı codec "disk doldu" sayılmaz; çöken işleyiciden kalan 0 baytlık dosya kaldırılır.
+
+**Cümle değişti:** "Beklenmeyen bir hata oluştu." → "Beklenmeyen bir hata oluştu. Bir kez daha dene; yine olursa “Sorun bildir”e bas." (kurucu isterse tek satır).
+
+**Doğrulanmayan:** olayın nedeni; gerçek diske gerçek kaydetme penceresiyle yazma; gizlenen sekme; kurucunun gerçek videosu; 60 sn bekçisinin yavaş cihazda yanlış alarmı; diğer işleyicilerin hataları (hâlâ ayrıntısız).
+
+**Sayılar (12 Ekim, dal `worktree-agent-a8fa4f279601b4f6f`; hepsi yerel):** `tsc` ve `eslint` temiz; birim 1294/1294 (76 dosya; 18'i yeni); e2e (olağan derleme) 367 testte 363 geçti / 4 atlandı / 0 başarısız (5'i yeni: `export-failure.spec.ts`); bulut e2e'si (sahte Worker'a karşı) 39 geçti / 4 atlandı (ekran görüntüsü betikleri; 1'i yeni: 4 dk 13 sn + gerçeğe benzer yanıt); durağan çıktı (`/capcut`) derlendi, sınama kancası çıktıda yok. **Koşulmayan:** kalite raporu, Pages duman sınaması, tarayıcı matrisi, gerçek telefon, gerçek Worker ve sağlayıcı. Mevcut kullanıcı haklarına etkisi: fiyat, kota, şema değişmedi; yerel günlüğe bir alan eklendi (metin değil, etiketler).
+
 ## Bulut yazıya dökme: "Yazıyı nerede çıkaralım?" ekranı ve internette yolu yazıldı — KAPALI doğar — 11 Ekim 2026 (ADR-039 eki; politika ve şema değişmedi)
 
 Kurucunun seçtiği rıza ekranı (B, "İki yol yan yana") ve bulut yolunun tarayıcı tarafı yazıldı. **Yayındaki sitede hiçbir şey değişmedi:** yol yalnızca derlemeye vekil Worker'ın kökeni verilirse vardır (`NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL`, varsayılan boş); boşken seçim ekranı yok, `connect-src 'self'` aynen, bulut kodu ve cümleleri derlemede yok (durağan çıktıda bulunursa derleme durur), gizlilik sayfası bugünkü cümlelerini söyler. Worker yayınlanmadı; AssemblyAI'ye, Cloudflare'e ya da başka bir dış hizmete tek istek atılmadı — her şey vekilin yerel bir sahtesine karşı sınandı.
