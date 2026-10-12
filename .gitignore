@@ -36,6 +36,12 @@ web/tests/media/silence/
 # Generated single-timeline fixtures (ffmpeg, made by the e2e setup)
 web/tests/media/timeline/
 
+# What a soak run wrote down (playwright.soak.config.ts)
+web/soak-results/
+
+# Generated long sample for the cloud burn-in test (ffmpeg, made by the test on first use)
+web/tests/media/cloud/
+
 # Generated task-wizard fixtures (ffmpeg, made by the e2e setup, ADR-034)
 web/tests/media/wizard/
 

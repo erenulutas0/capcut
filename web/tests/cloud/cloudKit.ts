@@ -10,7 +10,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
 
@@ -63,6 +63,130 @@ export const SCRIPT_WORDS: FakeWord[] = [
   ...sentence('Önce sesi ayırıyoruz, sonra yazı geliyor.', 7.0, 'A'),
   ...sentence('Teşekkürler.', 12.5, 'B'),
 ];
+
+/** Length of the long sample: the video of 11 Oct 2026 was 4 min 13 s. */
+export const LONG_SECONDS = 253;
+
+/**
+ * A video as long as the one whose burn-in download failed once on a real
+ * machine (11 Oct 2026): 4 min 13 s, 1280×720, 30 fps, H.264 + AAC, with a
+ * moving picture and a tone that comes and goes. Made with ffmpeg on first
+ * use into a gitignored folder; a test pattern and a generated tone, nothing
+ * real. The same command gives the same file.
+ */
+export function longSample(): string {
+  const dir = join(process.cwd(), 'tests', 'media', 'cloud');
+  const file = join(dir, `long-${LONG_SECONDS}s-720p.mp4`);
+  if (existsSync(file)) return file;
+  mkdirSync(dir, { recursive: true });
+  const partial = `${file}.part.mp4`;
+  rmSync(partial, { force: true });
+  execFileSync(
+    'ffmpeg',
+    [
+      '-hide_banner', '-loglevel', 'error', '-y',
+      '-f', 'lavfi', '-i', `testsrc2=size=1280x720:rate=30:duration=${LONG_SECONDS}`,
+      // A tone in bursts with pauses (speech-like for the meter, not speech).
+      '-f', 'lavfi', '-i', `aevalsrc=0.25*sin(2*PI*180*t)*gt(sin(2*PI*0.35*t)\\,-0.4):s=48000:d=${LONG_SECONDS}`,
+      '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-preset', 'veryfast', '-crf', '30', '-g', '60', '-bf', '2',
+      '-c:a', 'aac', '-b:a', '96k', '-ac', '2', '-shortest', '-movflags', '+faststart',
+      '-fflags', '+bitexact', '-flags:v', '+bitexact', '-flags:a', '+bitexact',
+      partial,
+    ],
+    { stdio: 'pipe' },
+  );
+  renameSync(partial, file);
+  return file;
+}
+
+/** A small repeatable random source (mulberry32): the same seed gives the same words on every machine. */
+function seeded(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const VOCABULARY = (
+  'so tell me about yourself and why you would like to work here well I have been working in sales for five years ' +
+  'and I really enjoy talking with customers every day what would you say is your greatest strength I think I am ' +
+  'patient and I listen carefully before I answer that is good to hear can you give me an example of a problem you solved'
+).split(' ');
+
+/**
+ * Words shaped like a real provider answer for a conversation of `durationS`
+ * seconds — invented text, real SHAPE. The shape was read from the provider's
+ * answers for openly licensed test audio (measurement of 11 Oct 2026, twelve
+ * files; the answers themselves are not in the repository):
+ *
+ * - about 2,5 words a second, a word mostly 0,05–0,7 s long, the next one
+ *   16–50 ms after it; now and then a pause of 1–3 s, and one long silence;
+ * - several speakers in turns; where a turn starts the next speaker's first
+ *   word can BEGIN BEFORE the last word of the previous one ended (seen: up
+ *   to 1,7 s) — the list stays in start order;
+ * - words of ZERO length (start = end; seen in 6 of 12 files);
+ * - long stretches without a full stop (seen: 86 words), and a "word" of 37
+ *   characters;
+ * - the last word ends before the audio does. One word more is added here
+ *   that runs PAST the end of the video (not seen in the measurement; the
+ *   provider's own clock is not the video's, so the route must bear it).
+ */
+export function realisticWords(durationS: number, seed = 20261011): FakeWord[] {
+  const random = seeded(seed);
+  const between = (low: number, high: number) => low + (high - low) * random();
+  const speakers = ['A', 'B', 'A', 'B', 'C'];
+  const out: FakeWord[] = [];
+  const endMs = durationS * 1000;
+  let at = 900;
+  let turn = 0;
+  let sinceStop = 0;
+  /** Words until the next full stop; one stretch has none for a long while. */
+  let stopAfter = 8;
+  let longSilenceDone = false;
+  let longTokenDone = false;
+  let unbrokenDone = false;
+  while (at < endMs - 6000) {
+    const speaker = speakers[turn % speakers.length] as string;
+    const inTurn = Math.round(between(4, 55));
+    for (let i = 0; i < inTurn && at < endMs - 6000; i += 1) {
+      const zero = random() < 0.012;
+      const length = zero ? 0 : Math.round(random() < 0.03 ? between(700, 2600) : between(48, 520));
+      let text = VOCABULARY[Math.floor(random() * VOCABULARY.length)] as string;
+      if (!longTokenDone && at > endMs * 0.4) {
+        text = 'pneumonoultramicroscopicsilicovolcano'; // 37 characters, like the longest "word" seen
+        longTokenDone = true;
+      }
+      sinceStop += 1;
+      if (sinceStop >= stopAfter) {
+        text = `${text}${random() < 0.2 ? '?' : '.'}`;
+        sinceStop = 0;
+        if (!unbrokenDone && at > endMs * 0.55) {
+          stopAfter = 86;
+          unbrokenDone = true;
+        } else stopAfter = Math.round(between(5, 22));
+      } else if (sinceStop === 1) text = text.charAt(0).toUpperCase() + text.slice(1);
+      out.push({ text, start: Math.round(at), end: Math.round(at + length), confidence: Math.round(between(0.42, 0.99) * 100) / 100, speaker });
+      at += length + (random() < 0.04 ? between(1000, 3200) : between(0, 60));
+    }
+    turn += 1;
+    if (!longSilenceDone && at > endMs * 0.25) {
+      at += 21_000;
+      longSilenceDone = true;
+    } else if (random() < 0.35) {
+      // The next speaker starts while the last word is still being said.
+      const last = out[out.length - 1];
+      if (last) at = Math.max(last.start + 1, at - between(200, 1700));
+    } else at += between(120, 900);
+  }
+  // Past the end of the video: must be cut or dropped, never break the download.
+  out.push({ text: 'Thanks.', start: Math.round(endMs - 300), end: Math.round(endMs + 450), confidence: 0.9, speaker: 'A' });
+  out.push({ text: 'Bye.', start: Math.round(endMs + 200), end: Math.round(endMs + 600), confidence: 0.5, speaker: 'B' });
+  return out;
+}
 
 /** The lines those words become (the app's segmentation: one line per turn here). */
 export const SCRIPT_LINES = ['Merhaba, bugün videoyu yazıya döküyoruz.', 'Çok iyi, ben de dinliyorum.', 'Önce sesi ayırıyoruz, sonra yazı geliyor.', 'Teşekkürler.'];
