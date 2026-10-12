@@ -19,6 +19,7 @@ import { setAppBusy } from '@/adapters/pwa/serviceWorker';
 import { shareVerdictFor, shareVideo } from '@/adapters/share';
 import type { Project } from '@/domain/edl';
 import type { ExportFailureCode, ExportResult, StorageShortfall, TargetSizeShortfall } from '@/domain/exportEvents';
+import type { ExportFailureDetail } from '@/domain/exportFailureDetail';
 import { exportLogEntry, type AttemptEnd } from '@/domain/exportLog';
 import {
   downloadKind,
@@ -146,6 +147,8 @@ export type DownloadState =
       targetSize?: TargetSizeShortfall;
       /** The memory route's 5-minute sentence (ADR-021) for its refusals. */
       overrun: OutputOverrun | null;
+      /** Where it broke and with what kind of error, for "Ayrıntılar" (enums and counts, never the error's text). */
+      detail?: ExportFailureDetail;
     }
   | { phase: 'canceled' };
 
@@ -758,7 +761,7 @@ export function useDownloads({
               const position = event.cueId ? cues.findIndex((cue) => cue.cueId === event.cueId) : -1;
               const cue = position >= 0 ? cues[position] : undefined;
               recordError('export', event.code);
-              logAttempt({ outcome: 'failed', code: event.code });
+              logAttempt({ outcome: 'failed', code: event.code, detail: event.detail ?? null });
               // A refusal before anything was written (no sound, half a source file, ADR-040) leaves the
               // file the save dialog created, still empty, under the name the user chose: take it back.
               if (destination) await removeEmptyPick(destination);
@@ -775,6 +778,7 @@ export function useDownloads({
                 ...(cue ? { captionCue: { index: position + 1, text: cue.text } } : {}),
                 ...(event.storage ? { storage: event.storage } : {}),
                 ...(event.targetSize ? { targetSize: event.targetSize } : {}),
+                ...(event.detail ? { detail: event.detail } : {}),
                 overrun: memoryRefusal
                   ? outputOverrun(plan.requestedDurationUs, WEB_LOCAL_POLICY.maxMemoryRouteOutputDurationUs)
                   : null,
@@ -903,13 +907,22 @@ function shareOffer(file: File): ShareOffer | null {
 
 /** The save dialog creates the chosen file; if it is still empty, remove it again. */
 async function removeEmptyPick(handle: FileSystemFileHandle): Promise<void> {
-  try {
-    const file = await handle.getFile();
-    const removable = handle as FileSystemFileHandle & { remove?: () => Promise<void> };
-    if (file.size === 0) await removable.remove?.();
-  } catch {
-    // Nothing to clean up, or no permission to; the file is empty either way.
+  const removable = handle as FileSystemFileHandle & { remove?: () => Promise<void> };
+  // A worker that was stopped mid-write (it crashed) still holds the file for a
+  // moment after it is gone; the browser refuses the removal until then
+  // (measured: the empty file stayed behind). A few short tries cover that.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      const file = await handle.getFile();
+      if (file.size === 0) await removable.remove?.();
+      return;
+    } catch (error) {
+      // Gone already: nothing to clean up.
+      if (error instanceof DOMException && error.name === 'NotFoundError') return;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
   }
+  // Still held, or no permission to remove it; the file is empty either way.
 }
 
 export type Downloads = ReturnType<typeof useDownloads>;

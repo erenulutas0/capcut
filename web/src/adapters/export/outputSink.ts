@@ -32,6 +32,7 @@ import type { ExportFailureCode, StorageShortfall } from '@/domain/exportEvents'
 import { hasRoomForOutput } from '@/domain/outputStorage';
 import { outputRouteRefusal, type OutputRouteAvailability } from '@/domain/policy';
 
+import { tagStage } from './failureStage';
 import { EXPORT_ENTRY_PREFIX, opfsRoot } from './opfsEntries';
 
 export type OutputRoute = 'opfs' | 'memory' | 'file';
@@ -240,10 +241,16 @@ export async function prepareOutput(
     write(chunk) {
       // Past the claimed size the file grows again, and a full disk or quota
       // throws QuotaExceededError here (ADR-023).
-      const count = access.write(chunk.data, { at: chunk.position });
+      let count: number;
+      try {
+        count = access.write(chunk.data, { at: chunk.position });
+      } catch (error) {
+        // Wherever this surfaces (the encoder's next frame, the muxer's close): it was a write.
+        throw tagStage(error, 'write');
+      }
       if (count !== chunk.data.byteLength) {
         // A short write means the disk or quota ran out mid-file.
-        throw new DOMException('short write', 'QuotaExceededError');
+        throw tagStage(new DOMException('short write', 'QuotaExceededError'), 'write');
       }
       written = Math.max(written, chunk.position + chunk.data.byteLength);
     },
@@ -422,7 +429,12 @@ async function prepareFileOutput(
       // fill up mid-write was not measured (ADR-026): a QuotaExceededError
       // is reported as `output_storage_full`, anything else as a plain
       // failure, and either way the temporary file is dropped.
-      await writable.write({ type: 'write', position: chunk.position, data: chunk.data });
+      try {
+        await writable.write({ type: 'write', position: chunk.position, data: chunk.data });
+      } catch (error) {
+        // Wherever this surfaces (the encoder's next frame, the muxer's close): it was a write.
+        throw tagStage(error, 'write');
+      }
       written = Math.max(written, chunk.position + chunk.data.byteLength);
     },
     async close() {

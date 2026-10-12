@@ -9,6 +9,7 @@
  */
 
 import type { ExportFailureCode, ExportOutputRoute } from './exportEvents';
+import { sanitizeExportFailureDetail, type ExportFailureDetail } from './exportFailureDetail';
 import type { RenderPlan } from './renderPlan';
 
 /** Enough to see a pattern across a beta session, small enough to read. */
@@ -22,6 +23,12 @@ export interface ExportLogEntry {
   outcome: ExportOutcome;
   /** Only for `failed`. */
   failureCode: ExportFailureCode | null;
+  /**
+   * Only for `failed`, and only when something is known: the stage, the
+   * error's name, the codecs (`ExportFailureDetail`). Enums, counts and codec
+   * strings — never the error's text.
+   */
+  failureDetail: ExportFailureDetail | null;
   /** Measured from the file when it succeeded, otherwise the planned length. */
   outputDurationMs: number;
   width: number;
@@ -57,7 +64,7 @@ export type AttemptEnd =
       height: number;
       route: ExportOutputRoute;
     }
-  | { outcome: 'failed'; code: ExportFailureCode }
+  | { outcome: 'failed'; code: ExportFailureCode; detail?: ExportFailureDetail | null }
   | { outcome: 'canceled' };
 
 /** Builds the entry from the plan and how the attempt ended — nothing else. */
@@ -67,6 +74,7 @@ export function exportLogEntry(plan: RenderPlan, end: AttemptEnd, elapsedMs: num
     at: now.toISOString(),
     outcome: end.outcome,
     failureCode: end.outcome === 'failed' ? end.code : null,
+    failureDetail: end.outcome === 'failed' ? sanitizeExportFailureDetail(end.detail) : null,
     outputDurationMs: Math.round((succeeded ? end.measuredDurationUs : plan.expectedDurationUs) / 1000),
     width: succeeded ? end.width : plan.width,
     height: succeeded ? end.height : plan.height,
@@ -111,6 +119,8 @@ export function sanitizeExportLogEntry(raw: unknown): ExportLogEntry | null {
     at,
     outcome,
     failureCode,
+    // Rebuilt field by field: a stored row cannot bring anything else along.
+    failureDetail: outcome === 'failed' ? sanitizeExportFailureDetail(row.failureDetail) : null,
     outputDurationMs: Math.round(outputDurationMs),
     width: Math.round(width),
     height: Math.round(height),

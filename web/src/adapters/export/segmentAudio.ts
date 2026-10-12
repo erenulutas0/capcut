@@ -15,6 +15,7 @@ import { clampBuffers, interleave, mixStreamInto, musicEnvelope } from '@/domain
 import { frameToUs, type RenderPlan, type RenderSegment } from '@/domain/renderPlan';
 import { US_PER_SECOND } from '@/domain/time';
 import type { AudioStreamReader } from './audioStream';
+import { staged } from './failureStage';
 import type { StageLane } from './exportProfile';
 
 /** Audio is mixed in chunks so memory stays flat regardless of duration. */
@@ -80,7 +81,7 @@ export class SegmentAudioWriter {
     if (!this.opened) {
       this.opened = true;
       if (clipReader && segment.gain > 0) {
-        await clipReader.open(segment.sourceInUs / US_PER_SECOND, segment.sourceOutUs / US_PER_SECOND);
+        await staged('audio_decode', () => clipReader.open(segment.sourceInUs / US_PER_SECOND, segment.sourceOutUs / US_PER_SECOND));
         clock.lap('audioDecode');
       }
     }
@@ -107,7 +108,7 @@ export class SegmentAudioWriter {
         // Buffer forward first, then mix: `pcm` only exists once something
         // has been decoded, and a silent source legitimately never fills it.
         clock.lap('audioMix');
-        await clipReader.ensure(Math.ceil(positionStart + chunkFrames * positionStep) + 2);
+        await staged('audio_decode', () => clipReader.ensure(Math.ceil(positionStart + chunkFrames * positionStep) + 2));
         clock.lap('audioDecode');
         if (clipReader.pcm) {
           mixStreamInto(planar, chunkFrames, clipReader.pcm, positionStart, positionStep, segment.gain);
@@ -134,7 +135,7 @@ export class SegmentAudioWriter {
           const positionStep = srcRate / outRate;
 
           clock.lap('audioMix');
-          await musicReader.ensure(Math.ceil(positionStart + chunkFrames * positionStep) + 2);
+          await staged('audio_decode', () => musicReader.ensure(Math.ceil(positionStart + chunkFrames * positionStep) + 2));
           clock.lap('audioDecode');
           if (musicReader.pcm) {
             mixStreamInto(planar, chunkFrames, musicReader.pcm, positionStart, positionStep, gains);
@@ -162,7 +163,7 @@ export class SegmentAudioWriter {
       });
       clock.lap('audioMix');
       try {
-        await audioSource.add(sample);
+        await staged('audio_encode', () => audioSource.add(sample));
       } finally {
         // `add` has copied it to the encoder by the time it resolves; closing is ours.
         sample.close();

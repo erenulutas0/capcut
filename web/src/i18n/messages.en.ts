@@ -116,7 +116,7 @@ export const en: Record<MessageKey, string> = {
     'Until you delete it. You can clear this site’s data in your browser settings; when the editor asks for the file again, “Delete the saved project” also works. The browser may also evict it to free space.',
   'privacy.stored.log.name': 'Export log',
   'privacy.stored.log.body':
-    'The last 20 export attempts: time, outcome (succeeded, failed, canceled), failure code, output duration, resolution, write route (disk or memory), elapsed time and a short code summarising the recipe. No file names, caption text or pictures. It is added to a diagnostics file only if you download one.',
+    'The last 20 export attempts: time, outcome (succeeded, failed, canceled), failure code, output duration, resolution, write route (disk or memory), elapsed time and a short code summarising the recipe. For a failed attempt also the kind of error, the stage it happened in, the frame it had reached and the names of the encoder and decoder in use; the error’s text is not kept. No file names, caption text or pictures. It is added to a diagnostics file only if you download one.',
   'privacy.stored.log.where': 'IndexedDB “clip-editor”, store “exportLog”',
   'privacy.stored.log.delete': 'The 21st attempt removes the oldest. “Clear the log” below deletes all of them.',
   'privacy.stored.temp.name': 'Temporary output file',
@@ -658,7 +658,9 @@ export const en: Record<MessageKey, string> = {
   'export.fail.output_storage_insufficient':
     'There is not enough free disk space for a video this long. Free some disk space or download a clip of at most 5 minutes; no frame was encoded.',
   'export.fail.worker_unavailable': 'The background worker could not be started.',
-  'export.fail.internal_error': 'An unexpected error occurred.',
+  'export.fail.internal_error': 'An unexpected error occurred. Try once more; if it happens again, press “Report a problem”.',
+  'export.failDetail.frame': 'frame',
+  'export.failDetail.note': 'This line is also written into the “Report a problem” file. It holds nothing of your video’s name or content.',
   'export.plan.no_clips': 'There is no clip to download.',
   'export.plan.source_missing':
     'The project\u2019s video file is not open in this tab. Choose it again to export.',

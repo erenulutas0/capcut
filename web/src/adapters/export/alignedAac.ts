@@ -40,9 +40,11 @@ export interface AacPacketTarget {
  * rate (AAC-LC above 24 kHz, raw AAC rather than ADTS), so the files do not
  * change where there is nothing to undo.
  */
+export const AAC_CODEC_STRING = 'mp4a.40.2';
+
 export function aacEncoderConfig(settings: AacSettings): AudioEncoderConfig {
   return {
-    codec: 'mp4a.40.2',
+    codec: AAC_CODEC_STRING,
     sampleRate: settings.sampleRate,
     numberOfChannels: settings.numberOfChannels,
     bitrate: settings.bitrate,

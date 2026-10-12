@@ -6,6 +6,7 @@ import { isChromiumBrowser } from '@/adapters/browserKind';
 import { environmentPasses } from '@/adapters/exportCapability';
 import type { DownloadKind } from '@/domain/kesit';
 import type { ExportFailureCode, TargetSizeShortfall } from '@/domain/exportEvents';
+import { failureDetailLine } from '@/domain/exportFailureDetail';
 import { formatStorageBytes } from '@/domain/outputStorage';
 import { formatByteLimit, formatBytes, formatBytesAgainstLimit } from '@/domain/policy';
 import { CHROMIUM_SHARE_MAX_BYTES } from '@/domain/share';
@@ -628,6 +629,17 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
         </span>
         <DismissButton t={t} onDismiss={onDismiss} />
       </div>
+      {/* Only for a failure nobody planned for: where it broke and with what kind of error, in engineering
+          words, closed by default. The same line goes into the "Sorun bildir" file. Never the error's own text. */}
+      {entry.detail && (entry.code === 'internal_error' || entry.code === 'worker_unavailable' || entry.detail.errorName !== 'ExportFailure') ? (
+        <details className="dl-details" data-testid="export-failed-details">
+          <summary>{t('download.details')}</summary>
+          <p className="dl-tech" data-testid="export-failed-detail">
+            {failureDetailLine(entry.detail, t('export.failDetail.frame'))}
+          </p>
+          <p className="hint-small">{t('export.failDetail.note')}</p>
+        </details>
+      ) : null}
       <button type="button" className="link-button" onClick={onReportProblem} data-testid="export-report">
         {t('support.open')}
       </button>

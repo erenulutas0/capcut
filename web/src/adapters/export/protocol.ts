@@ -85,6 +85,23 @@ export interface EnhanceAnalysis {
   points: AnalysisPoint[];
 }
 
+/**
+ * Test builds only (`CLIP_TEST_HOOKS=1`, never the published site): break one
+ * export on purpose, so a test can prove what a failure reports — and that the
+ * error's own text goes nowhere.
+ *
+ * - `encode`: handing frame `atFrame` to the encoder throws a DOMException
+ *   named `errorName` with `message` as its text;
+ * - `crash`: at frame `atFrame` an error is thrown outside every handler, so
+ *   the worker's `error` event fires on the page.
+ */
+export interface ExportTestFault {
+  kind: 'encode' | 'crash';
+  atFrame: number;
+  errorName?: string;
+  message?: string;
+}
+
 /** ADR-037: one real frame of the video before and after "İyileştir". */
 export type EnhancePreviewResult =
   | {
@@ -186,6 +203,8 @@ export type WorkerRequest =
        * enhance with the reference renderer even where the GPU path works.
        */
       enhanceEngine?: 'cpu' | null;
+      /** Test builds only (`window.__clipExportFault`): see `ExportTestFault`. Ignored in every other build. */
+      testFault?: ExportTestFault | null;
     }
   | {
       /** ADR-037: one frame of `plan` (which must ask for enhancement) before and after. Nothing is encoded. */

@@ -114,7 +114,7 @@ export const tr = {
     'Sen silene kadar. Tarayıcı ayarlarından bu sitenin verilerini temizleyebilirsin; editör dosyayı yeniden istediğinde “Kayıtlı projeyi sil” de kullanılabilir. Tarayıcı yer açmak için kendisi de silebilir.',
   'privacy.stored.log.name': 'Dışa aktarma günlüğü',
   'privacy.stored.log.body':
-    'Son 20 dışa aktarma denemesi: zaman, sonuç (başarılı, başarısız, iptal), hata kodu, çıktı süresi, çözünürlük, yazma yolu (disk veya bellek), geçen süre ve tarifin kısa özet kodu. Dosya adı, altyazı metni veya görüntü içermez. Yalnızca sen tanı dosyası indirirsen o dosyaya eklenir.',
+    'Son 20 dışa aktarma denemesi: zaman, sonuç (başarılı, başarısız, iptal), hata kodu, çıktı süresi, çözünürlük, yazma yolu (disk veya bellek), geçen süre ve tarifin kısa özet kodu. Başarısız denemede ayrıca hatanın türü, hangi aşamada olduğu, kaçıncı karede kaldığı ve kullanılan kodlayıcı ile çözücünün adı; hatanın metni saklanmaz. Dosya adı, altyazı metni veya görüntü içermez. Yalnızca sen tanı dosyası indirirsen o dosyaya eklenir.',
   'privacy.stored.log.where': 'IndexedDB “clip-editor”, “exportLog” deposu',
   'privacy.stored.log.delete': '21. deneme en eskisini siler. Hepsini aşağıdaki “Günlüğü temizle” ile silebilirsin.',
   'privacy.stored.temp.name': 'Geçici çıktı dosyası',
@@ -670,7 +670,11 @@ export const tr = {
   'export.fail.output_storage_insufficient':
     'Bu uzunlukta bir video için boş disk alanı yetmiyor. Diskte yer aç ya da en fazla 5 dakikalık bir kesit indir; hiçbir kare kodlanmadı.',
   'export.fail.worker_unavailable': 'Arka plan işleyicisi başlatılamadı.',
-  'export.fail.internal_error': 'Beklenmeyen bir hata oluştu.',
+  // 11 Oct 2026: it happened once on a real machine and the next press worked — so the sentence says what to do.
+  'export.fail.internal_error': 'Beklenmeyen bir hata oluştu. Bir kez daha dene; yine olursa “Sorun bildir”e bas.',
+  // "Ayrıntılar" of an unexpected failure: one line of engineering words (error name, stage, codecs), then this.
+  'export.failDetail.frame': 'kare',
+  'export.failDetail.note': 'Bu satır “Sorun bildir” dosyasına da yazılır. İçinde videonun adı ya da içeriği yoktur.',
   'export.plan.no_clips': 'İndirilecek kesit yok.',
   'export.plan.source_missing':
     'Projenin video dosyası bu sekmede açık değil. Çıktı almak için dosyayı yeniden seç.',
