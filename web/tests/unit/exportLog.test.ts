@@ -66,6 +66,7 @@ function entry(index: number): ExportLogEntry {
     at: new Date(Date.UTC(2026, 8, 22, 10, index)).toISOString(),
     outcome: 'succeeded',
     failureCode: null,
+    failureDetail: null,
     outputDurationMs: 3000,
     width: 1280,
     height: 720,
@@ -83,6 +84,7 @@ describe('exportLogEntry', () => {
       at: '1970-01-01T00:00:00.000Z',
       outcome: 'failed',
       failureCode: 'caption_does_not_fit',
+      failureDetail: null,
       outputDurationMs: Math.round(recipe.expectedDurationUs / 1000),
       width: recipe.width,
       height: recipe.height,
@@ -91,6 +93,59 @@ describe('exportLogEntry', () => {
       planPrefix: recipe.fingerprint.slice(0, 9),
     });
     expect(JSON.stringify(failed)).not.toContain(CAPTION);
+  });
+
+  it('keeps a failure\'s detail as checked values only: whatever else the caller hands over is left behind', () => {
+    const recipe = plan();
+    const failed = exportLogEntry(
+      recipe,
+      {
+        outcome: 'failed',
+        code: 'internal_error',
+        detail: {
+          errorName: 'EncodingError',
+          stage: 'encode',
+          via: 'exception',
+          hint: 'encoding_error',
+          phase: 'encoding',
+          framesDone: 12,
+          totalFrames: 90,
+          videoPacketsOut: 3,
+          videoEncoder: { codec: 'avc1.640028', hardwareAcceleration: 'no-preference' },
+          hardwareEncoderAvailable: true,
+          videoDecoder: { codec: 'avc1.64001f', hardwareAcceleration: 'no-preference' },
+          audioEncoder: { codec: 'mp4a.40.2', hardwareAcceleration: 'no-preference' },
+          route: 'file',
+          pageWasHidden: false,
+          attemptInSession: 0,
+          // Not fields of the detail: an error's text and a file name must not ride along.
+          ...({ message: `C:\\Users\\ayse\\Videos\\${CAPTION}.mp4`, fileName: 'tatil.mp4' } as object),
+        },
+      },
+      40,
+      new Date(0),
+    );
+    expect(failed.failureDetail).toEqual({
+      errorName: 'EncodingError',
+      stage: 'encode',
+      via: 'exception',
+      hint: 'encoding_error',
+      phase: 'encoding',
+      framesDone: 12,
+      totalFrames: 90,
+      videoPacketsOut: 3,
+      videoEncoder: { codec: 'avc1.640028', hardwareAcceleration: 'no-preference' },
+      hardwareEncoderAvailable: true,
+      videoDecoder: { codec: 'avc1.64001f', hardwareAcceleration: 'no-preference' },
+      audioEncoder: { codec: 'mp4a.40.2', hardwareAcceleration: 'no-preference' },
+      route: 'file',
+      pageWasHidden: false,
+      attemptInSession: 0,
+    });
+    const json = JSON.stringify(failed);
+    for (const secret of [CAPTION, 'tatil', 'ayse', 'Users']) expect(json).not.toContain(secret);
+    // A success or a cancel has no detail, whatever is passed.
+    expect(exportLogEntry(recipe, { outcome: 'canceled' }, 1, new Date(0)).failureDetail).toBeNull();
   });
 
   it('takes duration, size and route from the produced file when it succeeded', () => {
@@ -125,6 +180,53 @@ describe('sanitizeExportLogEntry', () => {
     expect(clean?.failureCode).toBeNull();
     expect(JSON.stringify(clean)).not.toContain('tatil');
     expect(Object.keys(clean ?? {})).not.toContain('id');
+  });
+
+  it('rebuilds a stored failure detail field by field: free text in any of its fields is refused', () => {
+    const clean = sanitizeExportLogEntry({
+      ...entry(1),
+      outcome: 'failed',
+      failureCode: 'internal_error',
+      failureDetail: {
+        errorName: 'tatil.mp4 could not be read',
+        stage: 'C:\\Users\\ayse\\tatil.mp4',
+        via: 'tatil',
+        hint: 'tatil.mp4',
+        phase: 'tatil',
+        framesDone: 'tatil',
+        totalFrames: 90,
+        videoPacketsOut: -4,
+        videoEncoder: { codec: 'D:/videolar/tatil.mp4', hardwareAcceleration: 'no-preference' },
+        hardwareEncoderAvailable: 'tatil',
+        videoDecoder: { codec: 'avc1.64001f', hardwareAcceleration: 'tatil', note: 'tatil.mp4' },
+        audioEncoder: 'tatil',
+        route: 'tatil',
+        pageWasHidden: 'tatil',
+        attemptInSession: 2,
+        message: 'tatil.mp4',
+        stack: 'at tatil.mp4:1',
+      },
+    });
+    expect(clean?.failureDetail).toEqual({
+      errorName: 'Other',
+      stage: 'unknown',
+      via: 'exception',
+      hint: null,
+      phase: null,
+      framesDone: null,
+      totalFrames: 90,
+      videoPacketsOut: null,
+      videoEncoder: null,
+      hardwareEncoderAvailable: null,
+      videoDecoder: { codec: 'avc1.64001f', hardwareAcceleration: 'no-preference' },
+      audioEncoder: null,
+      route: null,
+      pageWasHidden: null,
+      attemptInSession: 2,
+    });
+    expect(JSON.stringify(clean)).not.toMatch(/tatil|ayse|Users|videolar/);
+    // A detail on a row that did not fail is not kept.
+    expect(sanitizeExportLogEntry({ ...entry(2), failureDetail: { errorName: 'TypeError', stage: 'encode' } })?.failureDetail).toBeNull();
   });
 
   it('rejects rows that are not entries', () => {

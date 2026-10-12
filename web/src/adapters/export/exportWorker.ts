@@ -50,6 +50,14 @@ import type {
 import { encoderVideoBitrate, sourceBoundedBitrate, type VideoEncoderKind } from '@/domain/encoderBitrate';
 import { sourceIntegrity } from '@/adapters/sourceIntegrity';
 import { audioDurationWithinTolerance, durationWithinTolerance, missingFramesAllowed } from '@/domain/exportEvents';
+import {
+  failureHint,
+  safeErrorName,
+  sanitizeCodecUse,
+  type CodecUse,
+  type ExportFailureDetail,
+  type ExportStage,
+} from '@/domain/exportFailureDetail';
 import type { ExportMode, FastCutFallbackReason } from '@/domain/fastPath';
 import {
   frameToUs,
@@ -83,7 +91,7 @@ import {
   drawCaptionLayout,
   loadCaptionFont,
 } from '../captionRender';
-import { AacAlignmentError, AlignedAacEncoder, measureAacEncoderDelay, type AacSettings } from './alignedAac';
+import { AAC_CODEC_STRING, AacAlignmentError, AlignedAacEncoder, measureAacEncoderDelay, type AacSettings } from './alignedAac';
 import { AudioStreamReader } from './audioStream';
 import { MediaPacer } from './exportPacing';
 import {
@@ -102,6 +110,7 @@ import { holdDecoder, type DecoderHold } from './decoderHold';
 import { encoderKindLookup } from './encoderKind';
 import { analyseForEnhance, analysisKey, pictureRects } from './enhanceAnalysis';
 import { EnhanceFailed, createFrameEnhancer, glEnhancerCheck, type FrameEnhancer } from './frameEnhancer';
+import { stageOf, stagedIterable, tagStage } from './failureStage';
 import { FastCutFallback, prepareFastCut, type FastCutJob } from './fastCut';
 import { pickFrames } from './framePicker';
 import { createHdrContext, readHdrPixels, softClippedImage } from './hdrCanvas';
@@ -118,6 +127,7 @@ import type {
   EnhancePreviewFailure,
   EnhancePreviewResult,
   ExportOutputKind,
+  ExportTestFault,
   TargetSizeExport,
   WorkerRequest,
   WorkerResponse,
@@ -134,6 +144,9 @@ const profiling = typeof scope.name === 'string' && scope.name.endsWith(EXPORT_P
  * that both tracks are written to the file side by side.
  */
 const AUDIO_LEAD_SECONDS = 1;
+
+/** '1' only in a test build (`CLIP_TEST_HOOKS=1`); the published site is built with ''. */
+const TEST_HOOKS = process.env.NEXT_PUBLIC_CLIP_TEST_HOOKS === '1';
 
 /** How often the encoding progress is looked at, in output frames. */
 const PROGRESS_EVERY_FRAMES = 5;
@@ -183,6 +196,92 @@ class TargetSizeOver extends Error {
 }
 
 let cancelRequestedFor: string | null = null;
+
+/**
+ * What is known about the running export for the day it fails (see
+ * `ExportFailureDetail`): where it is, and which codecs it configured. Only
+ * numbers, booleans and checked codec strings; reset when an export starts.
+ */
+interface FailureFacts {
+  /** The part of the export that is running; a step inside it may tag its own error more exactly (`tagStage`). */
+  stage: ExportStage;
+  framesDone: number | null;
+  totalFrames: number | null;
+  videoPacketsOut: number | null;
+  videoEncoder: CodecUse | null;
+  hardwareEncoderAvailable: boolean | null;
+  videoDecoder: CodecUse | null;
+  audioEncoder: CodecUse | null;
+  route: ExportFailureDetail['route'];
+}
+
+function freshFacts(): FailureFacts {
+  return {
+    stage: 'unknown',
+    framesDone: null,
+    totalFrames: null,
+    videoPacketsOut: null,
+    videoEncoder: null,
+    hardwareEncoderAvailable: null,
+    videoDecoder: null,
+    audioEncoder: null,
+    route: null,
+  };
+}
+
+let facts = freshFacts();
+
+function enter(stage: ExportStage): void {
+  facts.stage = stage;
+}
+
+/**
+ * The detail sent with a failure. The error's own text is not read here
+ * except to recognise a known sentence (`failureHint` returns its label).
+ */
+function failureDetail(error: unknown): ExportFailureDetail {
+  return {
+    errorName: safeErrorName(error),
+    stage: stageOf(error) ?? facts.stage,
+    via: 'exception',
+    hint: failureHint(error),
+    // The page knows these three.
+    phase: null,
+    pageWasHidden: null,
+    attemptInSession: null,
+    framesDone: facts.framesDone,
+    totalFrames: facts.totalFrames,
+    videoPacketsOut: facts.videoPacketsOut,
+    videoEncoder: facts.videoEncoder,
+    hardwareEncoderAvailable: facts.hardwareEncoderAvailable,
+    videoDecoder: facts.videoDecoder,
+    audioEncoder: facts.audioEncoder,
+    route: facts.route,
+  };
+}
+
+/**
+ * Notes the decoder a `VideoSampleSink` really configures (codec string and
+ * hardware preference, after mediabunny's own browser workarounds) and marks
+ * a failure to create it. Call before `holdDecoder`, which wraps the same
+ * factory on top. Without the factory nothing is noted (`holdDecoder` then
+ * refuses the export anyway).
+ */
+function noteDecoder(sink: object): void {
+  type Factory = (...args: never[]) => Promise<{ decoderConfig?: unknown }>;
+  const internals = sink as { _createDecoder?: Factory };
+  const create = internals._createDecoder;
+  if (typeof create !== 'function') return;
+  internals._createDecoder = async (...args: Parameters<Factory>) => {
+    try {
+      const wrapper = await create.apply(sink, args);
+      facts.videoDecoder = sanitizeCodecUse(wrapper.decoderConfig);
+      return wrapper;
+    } catch (error) {
+      throw tagStage(error, 'configure_decoder');
+    }
+  };
+}
 
 /** OPFS entries this worker created and has not yet been told to release. */
 const ownEntries = new Set<string>();
@@ -608,6 +707,7 @@ async function videoEncoderKind(plan: RenderPlan): Promise<VideoEncoderKind> {
       frameRate: plan.fpsNum / plan.fpsDen,
       hardwareAcceleration: 'prefer-hardware',
     });
+    facts.hardwareEncoderAvailable = hardware;
     return hardware ? 'hardware' : 'software';
   } catch {
     // Unknown: keep the plan's bitrate, as before.
@@ -679,6 +779,8 @@ interface ExportRequestOptions {
   enhanceAnalysis: EnhanceAnalysis | null;
   /** ADR-037, test hook: the reference renderer instead of the GPU. */
   enhanceForceCpu: boolean;
+  /** Test builds only: break this export on purpose (`ExportTestFault`); null everywhere else. */
+  testFault: ExportTestFault | null;
 }
 
 /* ------------------------------------------------------------- İyileştir */
@@ -834,8 +936,10 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
   // Before any decoding or output file exists: a missing font or a line that
   // cannot fit is known now, not after minutes of encoding. A target-size
   // download lays its captions out per attempt, at the size it encodes.
+  enter('captions');
   const captionLayouts = targetSize ? null : await prepareCaptionLayouts(plan, origin);
 
+  enter('open_source');
   const videoInput = new Input({ formats: ALL_FORMATS, source: new BlobSource(videoFile) });
   const videoTrack = await videoInput.getPrimaryVideoTrack();
   if (!videoTrack) throw new ExportFailure('no_video_track');
@@ -869,6 +973,7 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
   // smallest size that would work.
   let target: TargetRun | null = null;
   if (targetSize) {
+    enter('audio_calibration');
     // Only audio bitrates whose encoder delay can be measured here (ADR-032)
     // are planned with: a bitrate the browser accepts but cannot align would
     // end in a refusal after the plan was made.
@@ -934,14 +1039,17 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
   // ADR-032: how many priming frames this browser's AAC encoder puts in
   // front of the audio, measured before any output exists. An encoder whose
   // delay cannot be measured would give sound out of sync with the picture.
+  enter('audio_calibration');
   await measureAudioDelay(sources, plan);
 
   // Previous results from this worker are no longer offered once a new export
   // starts; stale files from closed tabs are swept too.
+  enter('open_output');
   for (const name of ownEntries) await removeExportEntry(name);
   ownEntries.clear();
   await sweepExportEntries().catch(() => 0);
 
+  enter('fast_cut');
   // ADR-027: keep the source's pictures when the plan allows it. Everything
   // that can refuse (eligibility, packet scan, seam encoder) is decided here,
   // before an output file exists.
@@ -1014,7 +1122,9 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
   // what the result says.
   for (;;) {
     const attemptPlan = planForTargetSize(plan, target.decision);
+    enter('captions');
     sources.captionLayouts = await prepareCaptionLayouts(attemptPlan, origin);
+    enter('audio_calibration');
     await measureAudioDelay(sources, attemptPlan);
     try {
       await produceOutput({ ...options, plan: attemptPlan, target }, sources, null, fallbackReason, startedAt, clock);
@@ -1091,6 +1201,7 @@ async function runAudioExport(options: ExportRequestOptions, startedAt: number):
   const { requestId, plan, videoFile, audioFile, forceMemoryRoute, storageFreeBytes, storageReserveBytes, destination } =
     options;
 
+  enter('open_source');
   const videoInput = new Input({ formats: ALL_FORMATS, source: new BlobSource(videoFile) });
   const sourceAudioTrack = await videoInput.getPrimaryAudioTrack();
   // Before anything else: half a file would give a sound file whose end is silence.
@@ -1111,9 +1222,11 @@ async function runAudioExport(options: ExportRequestOptions, startedAt: number):
   // Nothing to save: refused before any file exists.
   if (!sourceAudioUsable && musicTrack === null) throw new ExportFailure('no_audio_track');
 
+  enter('audio_calibration');
   const delay = await measureAacEncoderDelay(aacSettings(plan));
   if (!delay.ok) throw new ExportFailure('audio_encoder_misaligned');
 
+  enter('open_output');
   for (const name of ownEntries) await removeExportEntry(name);
   ownEntries.clear();
   await sweepExportEntries().catch(() => 0);
@@ -1129,11 +1242,14 @@ async function runAudioExport(options: ExportRequestOptions, startedAt: number):
     throw new ExportFailure(refusal.code, undefined, refusal.storage ?? undefined);
   }
 
+  facts.route = sink.route;
+  enter('setup');
   const output = new Output({ format: sink.format, target: sink.target });
   const audioPackets = new EncodedAudioPacketSource('aac');
   output.addAudioTrack(audioPackets);
   const endFrame = audioEndFrame(plan);
   const encoder = new AlignedAacEncoder(audioPackets, aacSettings(plan), delay.delayFrames, endFrame, true);
+  facts.audioEncoder = { codec: AAC_CODEC_STRING, hardwareAcceleration: 'no-preference' };
   const audioSources: AudioContextSources = {
     clipReader:
       sourceAudioUsable && sourceAudioTrack ? new AudioStreamReader(new AudioSampleSink(sourceAudioTrack)) : null,
@@ -1160,7 +1276,9 @@ async function runAudioExport(options: ExportRequestOptions, startedAt: number):
 
   let succeeded = false;
   try {
+    enter('mux');
     await output.start();
+    enter('audio');
     if (audioSources.musicReader && plan.audio.music) {
       await audioSources.musicReader.open(
         plan.audio.music.sourceInUs / US_PER_SECOND,
@@ -1182,18 +1300,21 @@ async function runAudioExport(options: ExportRequestOptions, startedAt: number):
 
     checkCanceled(requestId);
     emit(requestId, { type: 'finalizing', attemptId: requestId });
+    enter('finalize');
     try {
       await encoder.finish();
     } catch (error) {
-      throw error instanceof AacAlignmentError ? new ExportFailure('audio_encoder_misaligned') : error;
+      throw error instanceof AacAlignmentError ? new ExportFailure('audio_encoder_misaligned') : tagStage(error, 'audio_encode');
     }
     audioPackets.close();
     await output.finalize();
 
+    enter('commit');
     const collected = await sink.collect(output.target);
     const produced = collected.file ?? collected.bytes;
     if (!produced || collected.sizeBytes === 0) throw new ExportFailure('output_probe_failed');
 
+    enter('verify');
     emit(requestId, { type: 'verifying', attemptId: requestId });
     const probe = await probeProducedAudio(produced);
     if (probe.audioCodec !== 'aac') throw new ExportFailure('output_probe_failed');
@@ -1262,6 +1383,7 @@ async function produceOutput(
   const { videoTrack, hdrTransfer, captionLayouts, sourceAudioTrack, sourceAudioUsable, musicTrack, wantsAudio } =
     sources;
   const durationSeconds = plan.expectedDurationUs / US_PER_SECOND;
+  if (!fastJob) enter('setup');
 
   // The fast cut's video is the source's own bytes; the full encode's is the
   // encoder's bitrate (ADR-024). A target-size attempt's bitrate is the
@@ -1274,6 +1396,8 @@ async function produceOutput(
 
   // ADR-035: the encoded video bytes, counted as the encoder hands them over.
   let videoBytes = fastJob ? fastJob.videoBytes : 0;
+  /** Packets the video encoder has handed back (for a failure's detail). */
+  let videoPacketsOut = 0;
   /** Everything in the file that is not video, as the planner counts it. */
   const otherBytesEstimate = target
     ? Math.ceil(
@@ -1299,9 +1423,11 @@ async function produceOutput(
   let enhancement: EnhanceRun | null = null;
   if (!fastJob && plan.enhance) {
     clock.lap('setup');
+    enter('analyse');
     enhancement = await prepareEnhancement(options, plan, sources);
     clock.lap('analyse');
   }
+  if (!fastJob) enter('open_output');
 
   // Measured, not guessed (ADR-023): the file is written once, and its size
   // stays under this estimate.
@@ -1322,6 +1448,10 @@ async function produceOutput(
   if (refusal) {
     await sink.discard();
     throw new ExportFailure(refusal.code, undefined, refusal.storage ?? undefined);
+  }
+  if (!fastJob) {
+    facts.route = sink.route;
+    enter('setup');
   }
 
   const output = new Output({ format: sink.format, target: sink.target });
@@ -1359,14 +1489,20 @@ async function produceOutput(
       bitrate: videoBitrate,
       keyFrameInterval: 2,
       ...(bitrateMode ? { bitrateMode } : {}),
-      ...(target
-        ? {
-            onEncodedPacket: (packet: { data: Uint8Array }) => {
-              videoBytes += packet.data.byteLength;
-            },
-          }
-        : {}),
+      // The configuration the encoder is really given (the last one tried is the one used, or the one refused).
+      onEncoderConfig: (config: VideoEncoderConfig) => {
+        facts.videoEncoder = sanitizeCodecUse(config);
+      },
+      onEncodedPacket: (packet: { data: Uint8Array }) => {
+        videoPacketsOut += 1;
+        facts.videoPacketsOut = videoPacketsOut;
+        // ADR-035: the encoded video bytes of a target-size attempt.
+        if (target) videoBytes += packet.data.byteLength;
+      },
     });
+    facts.totalFrames = plan.totalFrames;
+    facts.framesDone = 0;
+    facts.videoPacketsOut = 0;
     output.addVideoTrack(videoSource, { frameRate: plan.fpsNum / plan.fpsDen });
   }
 
@@ -1379,6 +1515,7 @@ async function produceOutput(
     audioPackets = new EncodedAudioPacketSource('aac');
     output.addAudioTrack(audioPackets);
     audioSource = new AlignedAacEncoder(audioPackets, aacSettings(plan), sources.audioDelayFrames, audioEndFrame(plan));
+    if (!fastJob) facts.audioEncoder = { codec: AAC_CODEC_STRING, hardwareAcceleration: 'no-preference' };
   }
 
   const audioSources: AudioContextSources = {
@@ -1443,7 +1580,7 @@ async function produceOutput(
       try {
         enhancer.apply(context, paramsAtFrame(enhancement.timeline, frameIndex), pictureRect);
       } catch (error) {
-        throw error instanceof EnhanceFailed ? new ExportFailure('enhance_failed') : error;
+        throw error instanceof EnhanceFailed ? new ExportFailure('enhance_failed') : tagStage(error, 'enhance');
       }
       enhancedFrames += 1;
       clock.lap('enhance');
@@ -1452,21 +1589,46 @@ async function produceOutput(
     // encoder. Drawn even on a held/background frame: the caption belongs
     // to output time, not to the source frame.
     if (captionLayouts && plan.captions) {
-      const cueIndex = cueIndexAtFrame(plan.captions.cues, frameIndex);
-      const layout = cueIndex >= 0 ? captionLayouts[cueIndex] : undefined;
-      if (layout) drawCaptionLayout(context, layout, plan.captions.style.preset);
+      try {
+        const cueIndex = cueIndexAtFrame(plan.captions.cues, frameIndex);
+        const layout = cueIndex >= 0 ? captionLayouts[cueIndex] : undefined;
+        if (layout) drawCaptionLayout(context, layout, plan.captions.style.preset);
+      } catch (error) {
+        throw tagStage(error, 'draw');
+      }
       clock.lap('captions');
     }
 
-    const picture = new VideoSample(canvas, { timestamp: frameIndex * frameDuration, duration: frameDuration });
+    let picture: VideoSample;
+    try {
+      picture = new VideoSample(canvas, { timestamp: frameIndex * frameDuration, duration: frameDuration });
+    } catch (error) {
+      throw tagStage(error, 'frame_capture');
+    }
     clock.lap('frameCapture');
     try {
+      // Where the export is, should it stand still here (the page asks: `where`).
+      enter(framesDone === 0 ? 'configure_encoder' : 'encode');
+      const fault = options.testFault;
+      if (fault && framesDone === fault.atFrame) {
+        if (fault.kind === 'encode') throw new DOMException(fault.message ?? 'test fault', fault.errorName ?? 'EncodingError');
+        if (fault.kind === 'stall') await new Promise<never>(() => undefined);
+        // Outside every handler: nothing catches it, the worker's `error` event fires on the page.
+        setTimeout(() => {
+          throw new Error(fault.message ?? 'test crash');
+        }, 0);
+      }
       await videoSource.add(picture);
+    } catch (error) {
+      // The first frame is where the encoder is created and configured; an
+      // encoder that breaks later reports it at the next frame handed over.
+      throw tagStage(error, framesDone === 0 ? 'configure_encoder' : 'encode');
     } finally {
       picture.close();
     }
     clock.lap('encode');
     framesDone += 1;
+    facts.framesDone = framesDone;
     pacer.advance((frameIndex + 1) * frameDuration);
 
     if (framesDone % PROGRESS_EVERY_FRAMES === 0 || framesDone === plan.totalFrames) {
@@ -1505,7 +1667,9 @@ async function produceOutput(
   };
 
   try {
+    if (!fastJob) enter('mux');
     await output.start();
+    if (!fastJob) enter('setup');
     if (hdrClipper) await hdrClipper.ready();
     clock.lap('setup');
 
@@ -1542,6 +1706,7 @@ async function produceOutput(
       }
       if (timestamps.length === 0) continue;
       if (!videoSource || !context || !canvas) throw new ExportFailure('internal_error');
+      enter('frames');
       const frameContext = hdrContext ?? context;
       pictureRect = pictureRects(segment, plan).outer;
 
@@ -1556,7 +1721,7 @@ async function produceOutput(
       let audioFailure: { error: unknown } | null = null;
       const audioTask = audioWriter
         ? paceSegmentAudio(audioWriter, pacer, plan, segment).catch((error: unknown) => {
-            audioFailure = { error };
+            audioFailure = { error: tagStage(error, 'audio') };
           })
         : null;
 
@@ -1565,11 +1730,12 @@ async function produceOutput(
       // with it when it closes; a decoder that closes anyway marks the frames
       // after it as missing instead of drawing them as real ones.
       const videoSink = new VideoSampleSink(videoTrack);
+      noteDecoder(videoSink);
       let hold: DecoderHold;
       try {
         hold = holdDecoder(videoSink);
       } catch {
-        throw new ExportFailure('internal_error');
+        throw tagStage(new ExportFailure('internal_error'), 'configure_decoder');
       }
       let drawnAfterPass = 0;
       try {
@@ -1580,28 +1746,34 @@ async function produceOutput(
         const samples = videoSink.samples(firstTs, lastTs + 0.001);
         const seen: number[] = [];
         if (clock.enabled) decodedTimesUs.push(seen);
-        const decoded = clock.enabled ? recordTimes(samples, seen) : samples;
+        // An error while waiting for the next picture is the decoder's (or the file's): marked as such.
+        const decoded = stagedIterable(clock.enabled ? recordTimes(samples, seen) : samples, 'decode');
         const usable = () => !hold.decoderClosed();
         let frame = segment.startFrame;
         clock.mark();
+        enter('decode');
         for await (const { frame: sample, missing } of pickFrames(decoded, timestamps, frameDuration, usable)) {
+          enter('draw');
           if (hold.closeRequested) drawnAfterPass += 1;
           clock.lap('decodeWait');
           checkCanceled(requestId);
           if (audioFailure) throw (audioFailure as { error: unknown }).error;
 
-          frameContext.fillStyle = plan.background;
-          frameContext.fillRect(0, 0, plan.width, plan.height);
-
           // A frame the decoder did not deliver is counted, never hidden: the
           // previous frame is held (or the background shown when none exists)
           // and the total decides below whether this is still an honest result.
           if (missing) framesMissing += 1;
-          if (sample) {
-            // Same rectangle the preview uses, taken straight from the plan.
-            // The picker owns the sample and closes it; do not close it here.
-            drawSegmentFrame(frameContext, sample, segment, plan);
-            framesDrawn += 1;
+          try {
+            frameContext.fillStyle = plan.background;
+            frameContext.fillRect(0, 0, plan.width, plan.height);
+            if (sample) {
+              // Same rectangle the preview uses, taken straight from the plan.
+              // The picker owns the sample and closes it; do not close it here.
+              drawSegmentFrame(frameContext, sample, segment, plan);
+              framesDrawn += 1;
+            }
+          } catch (error) {
+            throw tagStage(error, 'draw');
           }
           clock.lap('draw');
 
@@ -1621,6 +1793,8 @@ async function produceOutput(
             await encodeCanvasFrame(frame, pacer, sample !== null);
             frame += 1;
           }
+          // Next: waiting for the decoder's next picture.
+          enter('decode');
           clock.mark();
         }
         while (hdrQueue.length > 0) await finishHdrFrame(pacer);
@@ -1647,6 +1821,7 @@ async function produceOutput(
 
     checkCanceled(requestId);
     emit(requestId, { type: 'finalizing', attemptId: requestId });
+    if (!fastJob) enter('finalize');
 
     clock.mark();
     if (fastJob) fastJob.finishVideo();
@@ -1656,7 +1831,9 @@ async function produceOutput(
         await audioSource.finish();
       } catch (error) {
         // Audio that stops short of the end is refused, on either path.
-        throw error instanceof AacAlignmentError ? new ExportFailure('audio_encoder_misaligned') : error;
+        throw error instanceof AacAlignmentError
+          ? new ExportFailure('audio_encoder_misaligned')
+          : tagStage(error, 'audio_encode');
       }
     }
     audioPackets?.close();
@@ -1680,12 +1857,14 @@ async function produceOutput(
       }
     }
 
+    if (!fastJob) enter('commit');
     const collected = await sink.collect(output.target);
     const produced = collected.file ?? collected.bytes;
     if (!produced || collected.sizeBytes === 0) throw new ExportFailure('output_probe_failed');
     if (clock.enabled) producedForProfile = produced;
     clock.lap('finalize');
 
+    if (!fastJob) enter('verify');
     emit(requestId, { type: 'verifying', attemptId: requestId });
     // The fast cut's seams are decoded again in this browser before the file
     // may be offered (ADR-027); a failure here falls back to the full encode.
@@ -2013,6 +2192,14 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
     return;
   }
 
+  if (request.type === 'where') {
+    // The export stands still somewhere in an `await`; this handler still runs. Nothing was thrown.
+    const detail: ExportFailureDetail = { ...failureDetail(null), errorName: 'Stalled', via: 'stalled' };
+    const response: WorkerResponse = { type: 'where', requestId: request.requestId, detail };
+    scope.postMessage(response);
+    return;
+  }
+
 
   if (request.type === 'enhancePreview') {
     let result: EnhancePreviewResult;
@@ -2043,6 +2230,7 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
   }
 
   if (request.type === 'export') {
+    facts = freshFacts();
     try {
       await runExport({
         requestId: request.requestId,
@@ -2061,6 +2249,7 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
         target: null,
         enhanceAnalysis: request.enhanceAnalysis ?? null,
         enhanceForceCpu: request.enhanceEngine === 'cpu',
+        testFault: TEST_HOOKS ? (request.testFault ?? null) : null,
       });
     } catch (error) {
       if (error instanceof CanceledError) {
@@ -2073,19 +2262,24 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
           ...(error.cueId !== undefined ? { cueId: error.cueId } : {}),
           ...(error.storage !== undefined ? { storage: error.storage } : {}),
           ...(error.targetSize !== undefined ? { targetSize: error.targetSize } : {}),
+          detail: failureDetail(error),
         });
       } else {
         const name = error instanceof Error ? error.name : '';
+        // Never forward the raw message: it can contain file paths. The detail
+        // carries the error's name, the stage and the codecs — no text.
+        const detail = failureDetail(error);
         emit(request.requestId, {
           type: 'failed',
           attemptId: request.requestId,
-          // Never forward the raw message: it can contain file paths.
           code:
             name === 'RangeError'
               ? 'out_of_memory'
-              : name === 'QuotaExceededError'
+              : // Chromium closes a codec it reclaimed with a QuotaExceededError too: that is not a full disk.
+                name === 'QuotaExceededError' && detail.hint !== 'codec_reclaimed'
                 ? 'output_storage_full'
                 : 'internal_error',
+          detail,
         });
       }
     } finally {

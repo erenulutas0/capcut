@@ -10,6 +10,7 @@
  */
 
 import type { EnhanceStrength, EnhanceSummary } from './enhance';
+import type { ExportFailureDetail } from './exportFailureDetail';
 import type { ExportMethod, FastCutFallbackReason } from './fastPath';
 import type { TargetSizeOutcome } from './targetSize';
 import type { Micros } from './time';
@@ -192,6 +193,11 @@ export type ExportEvent =
       storage?: StorageShortfall;
       /** With `target_size_too_small`: the target, and what would work instead. */
       targetSize?: TargetSizeShortfall;
+      /**
+       * Where it broke and with what kind of error — enums, counts and codec
+       * strings only, never the error's text (see `ExportFailureDetail`).
+       */
+      detail?: ExportFailureDetail;
     }
   | { type: 'canceled'; attemptId: string };
 

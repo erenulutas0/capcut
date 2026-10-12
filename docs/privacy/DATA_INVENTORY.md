@@ -65,11 +65,39 @@ Alanlar `web/src/domain/exportLog.ts` (`ExportLogEntry`), yazma `web/src/compone
 | `at` | Denemenin bittiği an (ISO) |
 | `outcome` | `succeeded` / `failed` / `canceled` |
 | `failureCode` | Yalnızca başarısızlıkta; `ExportFailureCode` enum'u (snake_case desenle doğrulanır) |
+| `failureDetail` | Yalnızca başarısızlıkta (12 Ekim 2026): hatanın **nerede ve ne tür** olduğu — aşağıdaki tablo. Hatanın metni (`message`), yığını, dosya adı ya da yolu **yok** |
 | `outputDurationMs` | Başarılıysa üretilen dosyadan ölçülen, değilse planlanan süre |
 | `width`, `height` | Çıktı çözünürlüğü |
 | `route` | `opfs` / `memory`; yalnızca dosya üretildiyse |
 | `elapsedMs` | Sayfa tarafında başlangıçtan son olaya kadar geçen süre |
 | `planPrefix` | Render planı parmak izinin ilk 9 karakteri (`fp_` + 6 hex); aynı tarifin denemelerini eşleştirmek için. Sayılardan oluşan bir FNV hash'inin öneki; tarife geri çevrilemez |
+
+**`failureDetail`** (`web/src/domain/exportFailureDetail.ts`, `ExportFailureDetail`). Neden var: 11 Ekim 2026'da
+gerçek bir makinede bir indirme "Beklenmeyen bir hata oluştu" ile bitti, ikinci basışta çalıştı ve geriye
+hiçbir bilgi kalmadı (işleyici hata metnini bilerek iletmiyordu). Alanların hepsi sayı, doğru/yanlış ya da
+dosyadaki sabit bir listeden değerdir:
+
+| Alan | İçerik |
+|---|---|
+| `errorName` | Hatanın adı, **yalnızca** bilinen adlar listesindeyse (`EncodingError`, `InvalidStateError`, `TypeError`…; `KNOWN_ERROR_NAMES`); değilse `Other` |
+| `stage` | Kendi kodumuzun koyduğu aşama etiketi (`EXPORT_STAGES`: `open_source`, `configure_decoder`, `decode`, `draw`, `configure_encoder`, `encode`, `audio_decode`, `audio_encode`, `write`, `finalize`, `commit`, `verify`, `worker_crash`…) |
+| `via` | `exception` (işleyicide yakalandı) / `worker_error_event` (işleyicinin kendisi çöktü) / `worker_message_error` / `request_not_sent` / `stalled` (hata yok: indirme yerinde saydı, sayfa beklemeyi bıraktı) |
+| `hint` | Hata metni **saklanmaz**; yalnızca bilinen birkaç cümleyle karşılaştırılır ve eşleşenin **etiketi** yazılır (`codec_reclaimed`, `encoding_error`, `decoding_error`…); eşleşmezse `null` |
+| `phase` | Sayfanın gördüğü son adım (`preparing`, `encoding`, `finalizing`…) |
+| `framesDone`, `totalFrames`, `videoPacketsOut` | Kaçıncı karede kaldığı |
+| `videoEncoder`, `videoDecoder`, `audioEncoder` | Gerçekten yapılandırılan codec dizgisi (`avc1.640028`, `mp4a.40.2`) ve `hardwareAcceleration` isteği. Dizgi, codec dizgilerinin kendi dil bilgisine uymuyorsa atılır ("harf, rakam, nokta" yetmez: `tatil-2025.mp4` da öyledir) |
+| `hardwareEncoderAvailable` | Bu tarayıcı bu görüntü için donanım kodlayıcısı sunuyor mu |
+| `route` | `opfs` / `memory` / `file` |
+| `pageWasHidden` | Deneme sırasında sayfa hiç gizlendi mi (başka sekme, küçültülmüş pencere) |
+| `attemptInSession` | Bu sayfada kaçıncı indirme (0: ilki) |
+
+**Hatanın metni neden hiç saklanmıyor:** tarayıcının ve medya kitaplığının hata cümleleri dosya adı, yol,
+`blob:` adresi ya da dosyanın üstverisinden bir parça taşıyabilir; "şunları sil" diye yazılacak bir kuralın
+hepsini yakaladığı gösterilemez. Bu yüzden metin işleyiciden çıkmaz; ad izin listesinden geçer; kayıt
+okunurken `sanitizeExportFailureDetail` nesneyi alan alan yeniden kurar. Birim testleri her alana ayrı ayrı
+dosya adı, yol ve altyazı cümlesi koyup çıktıda arar (`exportFailureDetail.test.ts`, `exportLog.test.ts`,
+`diagnostics.test.ts`); e2e testi bilerek yol içeren bir hata fırlatır ve ne ekranda ne tanı dosyasında
+bulunmadığını doğrular (`export-failure.spec.ts`).
 
 Dosya adı, proje adı, altyazı metni, medya **yok** — serbest metin alanı tanımlı değil; okurken
 `sanitizeExportLogEntry` yalnızca bilinen alanları kopyalar. En fazla 20 kayıt: her eklemeden
@@ -289,7 +317,7 @@ Alan listesi bir izin listesidir (`web/src/domain/diagnostics.ts` `buildDiagnost
 | `storage` | kota ve kullanım, MB'a yuvarlanmış |
 | `capabilityGate` | son kontrolün aşama sonuçları (ortam, encoder yapılandırması, öz-test, altyazı fontu, kaynak çözülebilirliği, kaynak codec'leri, HDR, engel kodları) — yoksa `null` |
 | `project` | yalnızca yapı: an sayısı, altyazı satırı sayısı, müzik var mı, oran, kısa kenar, çıktı süresi |
-| `exportLog` | §2.1'deki günlük |
+| `exportLog` | §2.1'deki günlük (başarısız denemede `failureDetail` ile: hatanın adı, aşaması, codec'ler — metni değil) |
 | `sessionErrors` | §2.3'teki kodlar |
 
 Dosya adı, proje adı, altyazı metni, proje/asset kimlikleri **yok**; birim testi projeye ve

@@ -9,6 +9,13 @@
  */
 
 import type { ExportEvent } from '@/domain/exportEvents';
+import {
+  pageSideFailureDetail,
+  sanitizeExportFailureDetail,
+  type ExportFailureDetail,
+  type FailurePhase,
+  type FailureVia,
+} from '@/domain/exportFailureDetail';
 import type { HdrTransfer } from '@/domain/hdr';
 import { TERMINAL_EXPORT_TYPES } from '@/domain/exportEvents';
 import type { RenderPlan } from '@/domain/renderPlan';
@@ -19,10 +26,27 @@ import type {
   EnhanceAnalysis,
   EnhancePreviewResult,
   ExportOutputKind,
+  ExportTestFault,
   TargetSizeExport,
   WorkerRequest,
   WorkerResponse,
 } from './protocol';
+
+/**
+ * How long an export in its frame loop may say nothing before it counts as
+ * standing still. The worker reports progress at least every few frames, so
+ * silence this long is not slowness. Measured reason (12 Oct 2026, Chrome 154
+ * on Windows): when the browser's graphics process dies under an export, no
+ * error arrives at all — the download stayed at its percentage for as long as
+ * anyone waited, and "İptal et" did nothing. Counted only while the page is
+ * visible: a hidden page's worker may be paused by the browser, which is not
+ * a fault.
+ */
+const STALL_MS = 60_000;
+/** How long a pressed "İptal et" waits for the worker to stop by itself before the worker is stopped for it. */
+const CANCEL_GRACE_MS = 15_000;
+/** How long the page waits for the worker to say where it stands before stopping it. */
+const WHERE_WAIT_MS = 1000;
 
 /** Stage C renders a tiny file, so this is generous but finite. */
 const CAPABILITY_TIMEOUT_MS = 60_000;
@@ -42,6 +66,37 @@ function enhanceEngineHook(): 'cpu' | null {
   return (globalThis as { __clipEnhanceEngine?: unknown }).__clipEnhanceEngine === 'cpu' ? 'cpu' : null;
 }
 
+/** '1' only in a test build (`CLIP_TEST_HOOKS=1`); the published site is built with ''. */
+const TEST_HOOKS = process.env.NEXT_PUBLIC_CLIP_TEST_HOOKS === '1';
+
+/**
+ * Test builds only (`window.__clipExportFault`): the next export breaks on
+ * purpose (see `ExportTestFault`). Taken once: the export after it is an
+ * ordinary one, so a test can press download again and see it work.
+ */
+function takeTestFault(): ExportTestFault | null {
+  if (!TEST_HOOKS) return null;
+  const holder = globalThis as { __clipExportFault?: unknown };
+  const value = holder.__clipExportFault;
+  if (typeof value !== 'object' || value === null) return null;
+  delete holder.__clipExportFault;
+  const fault = value as Partial<ExportTestFault>;
+  if ((fault.kind !== 'encode' && fault.kind !== 'crash' && fault.kind !== 'stall') || typeof fault.atFrame !== 'number') return null;
+  return {
+    kind: fault.kind,
+    atFrame: fault.atFrame,
+    ...(typeof fault.errorName === 'string' ? { errorName: fault.errorName } : {}),
+    ...(typeof fault.message === 'string' ? { message: fault.message } : {}),
+  };
+}
+
+/** Test builds only (`window.__clipExportStallMs`, `__clipExportCancelGraceMs`): shorter waits, so a test need not take a minute. */
+function waitHook(name: '__clipExportStallMs' | '__clipExportCancelGraceMs', fallback: number): number {
+  if (!TEST_HOOKS) return fallback;
+  const value = (globalThis as Record<string, unknown>)[name];
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
 function createWorker(): Worker {
   // Test hook (`window.__clipExportProfile`, ADR-028): the measurement scripts
   // ask the worker for stage timings; nothing in the app sets it.
@@ -55,6 +110,8 @@ function createWorker(): Worker {
 export class ExportWorkerClient {
   private worker: Worker | null = null;
   private counter = 0;
+  /** Downloads this client has started (a failure's detail says whether it was the first). */
+  private exportsStarted = 0;
 
   private ensureWorker(): Worker {
     if (!this.worker) this.worker = createWorker();
@@ -149,7 +206,39 @@ export class ExportWorkerClient {
     const queue: ExportEvent[] = [];
     let notify: (() => void) | null = null;
     let finished = false;
-    let failure: Error | null = null;
+    /** Set when the worker itself broke: its `error` event, or a message of it that could not be read. */
+    let crashed: Exclude<FailureVia, 'exception'> | null = null;
+
+    // What the page itself knows about the attempt, for a failure's detail:
+    // how far it had come, whether the page was ever hidden, which attempt it was.
+    const attemptInSession = this.exportsStarted;
+    this.exportsStarted += 1;
+    let lastPhase: FailurePhase = 'waiting';
+    let framesDone: number | null = null;
+    let totalFrames: number | null = null;
+    let heardFromWorker = false;
+    let wasHidden = typeof document !== 'undefined' && document.hidden;
+    /** When the worker was last heard from (or the page last changed between hidden and visible). */
+    let lastHeardAt = performance.now();
+    const onVisibility = () => {
+      if (document.hidden) wasHidden = true;
+      // Time spent hidden does not count as standing still.
+      lastHeardAt = performance.now();
+    };
+    /** Set when the page gave up waiting: the export stood still, or a cancel was not answered. */
+    let gaveUp: 'stall' | 'cancel' | null = null;
+    /** What the worker said about where it stood, if it still answered. */
+    let whereDetail: ExportFailureDetail | null = null;
+    this.cancelAskedAt = null;
+    /** The worker's detail (checked again field by field) with the page's part filled in. */
+    const withPageSide = (detail: ExportFailureDetail): ExportFailureDetail => ({
+      ...detail,
+      phase: lastPhase,
+      framesDone: detail.framesDone ?? framesDone,
+      totalFrames: detail.totalFrames ?? totalFrames,
+      pageWasHidden: wasHidden,
+      attemptInSession,
+    });
 
     const push = (event: ExportEvent) => {
       queue.push(event);
@@ -159,17 +248,52 @@ export class ExportWorkerClient {
 
     const onMessage = (event: MessageEvent<WorkerResponse>) => {
       const data = event.data;
-      if (data.type !== 'event' || data.requestId !== requestId) return;
-      push(data.event);
+      if (data.requestId !== requestId) return;
+      if (data.type === 'where') {
+        whereDetail = sanitizeExportFailureDetail(data.detail);
+        return;
+      }
+      if (data.type !== 'event') return;
+      heardFromWorker = true;
+      lastHeardAt = performance.now();
+      const received = data.event;
+      if (received.type === 'failed') {
+        const detail = sanitizeExportFailureDetail(received.detail);
+        const { detail: _dropped, ...rest } = received;
+        push(detail ? { ...rest, detail: withPageSide(detail) } : rest);
+        return;
+      }
+      if (received.type === 'encoding') {
+        framesDone = received.framesDone;
+        totalFrames = received.totalFrames;
+      }
+      if (
+        received.type === 'preparing' ||
+        received.type === 'analysing' ||
+        received.type === 'encoding' ||
+        received.type === 'finalizing' ||
+        received.type === 'verifying'
+      ) {
+        lastPhase = received.type;
+      }
+      push(received);
     };
+    // The event's own text (message, script address, line) is not read: it is the browser's free text.
     const onError = () => {
-      failure = new Error('worker_unavailable');
+      crashed ??= 'worker_error_event';
+      finished = true;
+      notify?.();
+    };
+    const onMessageError = () => {
+      crashed ??= 'worker_message_error';
       finished = true;
       notify?.();
     };
 
     worker.addEventListener('message', onMessage);
     worker.addEventListener('error', onError);
+    worker.addEventListener('messageerror', onMessageError);
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility);
 
     const request: WorkerRequest = {
       type: 'export',
@@ -192,8 +316,38 @@ export class ExportWorkerClient {
       targetSize: options.targetSize ?? null,
       enhanceAnalysis: options.enhanceAnalysis ?? null,
       enhanceEngine: enhanceEngineHook(),
+      testFault: takeTestFault(),
     };
-    worker.postMessage(request);
+    const stallMs = waitHook('__clipExportStallMs', STALL_MS);
+    const cancelGraceMs = waitHook('__clipExportCancelGraceMs', CANCEL_GRACE_MS);
+    const watchdog = window.setInterval(() => {
+      if (finished || gaveUp || (typeof document !== 'undefined' && document.hidden)) return;
+      const now = performance.now();
+      if (this.cancelAskedAt !== null && now - this.cancelAskedAt > cancelGraceMs) gaveUp = 'cancel';
+      else if (lastPhase === 'encoding' && now - lastHeardAt > stallMs) gaveUp = 'stall';
+      if (!gaveUp) return;
+      // Ask where it stands (its message loop may still run), then end the attempt either way.
+      try {
+        const where: WorkerRequest = { type: 'where', requestId };
+        worker.postMessage(where);
+      } catch {
+        // No answer then.
+      }
+      window.setTimeout(() => {
+        finished = true;
+        notify?.();
+      }, WHERE_WAIT_MS);
+    }, 1000);
+
+    /** The request could not be handed over (it could not be copied to the worker): the error, to name it. */
+    let unsent: { error: unknown } | null = null;
+    try {
+      worker.postMessage(request);
+    } catch (error) {
+      // Without this the download would sit at "waiting" for ever: nothing was sent, so nothing answers.
+      unsent = { error };
+      finished = true;
+    }
 
     try {
       while (true) {
@@ -212,12 +366,50 @@ export class ExportWorkerClient {
         yield event;
         if (TERMINAL_EXPORT_TYPES.has(event.type)) return;
       }
-      if (failure) {
-        yield { type: 'failed', attemptId: requestId, code: 'worker_unavailable' };
+      if (unsent) {
+        yield {
+          type: 'failed',
+          attemptId: requestId,
+          code: 'internal_error',
+          detail: withPageSide(pageSideFailureDetail('request_not_sent', unsent.error)),
+        };
+      } else if (gaveUp && !queue.some((event) => TERMINAL_EXPORT_TYPES.has(event.type))) {
+        // Stopped here: a worker that stands still cannot be told to stop, and
+        // must not wake up later and write into a file the page has given up on.
+        if (this.worker === worker) this.dispose();
+        else worker.terminate();
+        if (gaveUp === 'cancel') yield { type: 'canceled', attemptId: requestId };
+        else {
+          yield {
+            type: 'failed',
+            attemptId: requestId,
+            code: 'internal_error',
+            detail: withPageSide(whereDetail ?? pageSideFailureDetail('stalled')),
+          };
+        }
+      } else if (crashed) {
+        // The worker broke under a running export. What it was doing is not
+        // known any more and it may still be writing: it is stopped here, so
+        // nothing goes on behind a download the page has called failed (the
+        // next download starts a fresh one).
+        if (this.worker === worker) this.dispose();
+        else worker.terminate();
+        yield {
+          type: 'failed',
+          attemptId: requestId,
+          // "Could not be started" only when it never said a word; a worker
+          // that was already working and then broke is an unexpected error.
+          code: heardFromWorker ? 'internal_error' : 'worker_unavailable',
+          detail: withPageSide(pageSideFailureDetail(crashed)),
+        };
       }
     } finally {
       worker.removeEventListener('message', onMessage);
       worker.removeEventListener('error', onError);
+      worker.removeEventListener('messageerror', onMessageError);
+      window.clearInterval(watchdog);
+      this.cancelAskedAt = null;
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisibility);
       if (this.activeRequestId === requestId) this.activeRequestId = null;
     }
   }
@@ -266,9 +458,12 @@ export class ExportWorkerClient {
   }
 
   private activeRequestId: string | null = null;
+  /** When "İptal et" was passed to the worker for the running export (see CANCEL_GRACE_MS). */
+  private cancelAskedAt: number | null = null;
 
   cancel(): void {
     if (!this.worker || !this.activeRequestId) return;
+    this.cancelAskedAt ??= performance.now();
     const request: WorkerRequest = { type: 'cancel', requestId: this.activeRequestId };
     this.worker.postMessage(request);
   }
