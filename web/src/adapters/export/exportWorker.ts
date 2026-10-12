@@ -1607,9 +1607,12 @@ async function produceOutput(
     }
     clock.lap('frameCapture');
     try {
+      // Where the export is, should it stand still here (the page asks: `where`).
+      enter(framesDone === 0 ? 'configure_encoder' : 'encode');
       const fault = options.testFault;
       if (fault && framesDone === fault.atFrame) {
         if (fault.kind === 'encode') throw new DOMException(fault.message ?? 'test fault', fault.errorName ?? 'EncodingError');
+        if (fault.kind === 'stall') await new Promise<never>(() => undefined);
         // Outside every handler: nothing catches it, the worker's `error` event fires on the page.
         setTimeout(() => {
           throw new Error(fault.message ?? 'test crash');
@@ -1748,7 +1751,9 @@ async function produceOutput(
         const usable = () => !hold.decoderClosed();
         let frame = segment.startFrame;
         clock.mark();
+        enter('decode');
         for await (const { frame: sample, missing } of pickFrames(decoded, timestamps, frameDuration, usable)) {
+          enter('draw');
           if (hold.closeRequested) drawnAfterPass += 1;
           clock.lap('decodeWait');
           checkCanceled(requestId);
@@ -1788,6 +1793,8 @@ async function produceOutput(
             await encodeCanvasFrame(frame, pacer, sample !== null);
             frame += 1;
           }
+          // Next: waiting for the decoder's next picture.
+          enter('decode');
           clock.mark();
         }
         while (hdrQueue.length > 0) await finishHdrFrame(pacer);
@@ -2182,6 +2189,14 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
 
   if (request.type === 'cancel') {
     cancelRequestedFor = request.requestId;
+    return;
+  }
+
+  if (request.type === 'where') {
+    // The export stands still somewhere in an `await`; this handler still runs. Nothing was thrown.
+    const detail: ExportFailureDetail = { ...failureDetail(null), errorName: 'Stalled', via: 'stalled' };
+    const response: WorkerResponse = { type: 'where', requestId: request.requestId, detail };
+    scope.postMessage(response);
     return;
   }
 

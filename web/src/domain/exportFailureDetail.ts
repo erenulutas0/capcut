@@ -87,9 +87,11 @@ export type ExportStage = (typeof EXPORT_STAGES)[number];
  * reported by it; `worker_error_event` — the worker's `error` event (an
  * uncaught error or a script that did not load); `worker_message_error` — a
  * message of the worker could not be read on the page; `request_not_sent` —
- * the page could not hand the request to the worker at all.
+ * the page could not hand the request to the worker at all; `stalled` — no
+ * error at all: the worker stopped making progress and the page gave up
+ * waiting (seen when the browser's graphics process dies under an export).
  */
-export const FAILURE_VIAS = ['exception', 'worker_error_event', 'worker_message_error', 'request_not_sent'] as const;
+export const FAILURE_VIAS = ['exception', 'worker_error_event', 'worker_message_error', 'request_not_sent', 'stalled'] as const;
 export type FailureVia = (typeof FAILURE_VIAS)[number];
 
 /** The last thing the page was told before the failure. */
@@ -147,6 +149,8 @@ export const KNOWN_ERROR_NAMES: ReadonlySet<string> = new Set([
   'NonError',
   /** The worker's `error` event carries no error object the page may read. */
   'WorkerError',
+  /** Nothing was thrown: the export stood still (see `via: 'stalled'`). */
+  'Stalled',
 ]);
 
 export const OTHER_ERROR_NAME = 'Other';
@@ -309,8 +313,9 @@ export function sanitizeExportFailureDetail(raw: unknown): ExportFailureDetail |
 export function pageSideFailureDetail(via: Exclude<FailureVia, 'exception'>, error?: unknown): ExportFailureDetail {
   return {
     // `request_not_sent` has a real error on the page: its name, if it is a known one.
-    errorName: via === 'request_not_sent' ? safeErrorName(error) : via === 'worker_message_error' ? 'DataCloneError' : 'WorkerError',
-    stage: via === 'request_not_sent' ? 'unknown' : 'worker_crash',
+    errorName:
+      via === 'request_not_sent' ? safeErrorName(error) : via === 'worker_message_error' ? 'DataCloneError' : via === 'stalled' ? 'Stalled' : 'WorkerError',
+    stage: via === 'request_not_sent' || via === 'stalled' ? 'unknown' : 'worker_crash',
     via,
     hint: null,
     phase: null,

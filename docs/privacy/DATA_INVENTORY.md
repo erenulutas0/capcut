@@ -81,7 +81,7 @@ dosyadaki sabit bir listeden değerdir:
 |---|---|
 | `errorName` | Hatanın adı, **yalnızca** bilinen adlar listesindeyse (`EncodingError`, `InvalidStateError`, `TypeError`…; `KNOWN_ERROR_NAMES`); değilse `Other` |
 | `stage` | Kendi kodumuzun koyduğu aşama etiketi (`EXPORT_STAGES`: `open_source`, `configure_decoder`, `decode`, `draw`, `configure_encoder`, `encode`, `audio_decode`, `audio_encode`, `write`, `finalize`, `commit`, `verify`, `worker_crash`…) |
-| `via` | `exception` (işleyicide yakalandı) / `worker_error_event` (işleyicinin kendisi çöktü) / `worker_message_error` |
+| `via` | `exception` (işleyicide yakalandı) / `worker_error_event` (işleyicinin kendisi çöktü) / `worker_message_error` / `request_not_sent` / `stalled` (hata yok: indirme yerinde saydı, sayfa beklemeyi bıraktı) |
 | `hint` | Hata metni **saklanmaz**; yalnızca bilinen birkaç cümleyle karşılaştırılır ve eşleşenin **etiketi** yazılır (`codec_reclaimed`, `encoding_error`, `decoding_error`…); eşleşmezse `null` |
 | `phase` | Sayfanın gördüğü son adım (`preparing`, `encoding`, `finalizing`…) |
 | `framesDone`, `totalFrames`, `videoPacketsOut` | Kaçıncı karede kaldığı |

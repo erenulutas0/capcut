@@ -8,6 +8,7 @@
 
 import type { AnalysisPoint, EnhanceParams, EnhanceSummary } from '@/domain/enhance';
 import type { ExportEvent, ExportFailureCode } from '@/domain/exportEvents';
+import type { ExportFailureDetail } from '@/domain/exportFailureDetail';
 import type { ExportMode } from '@/domain/fastPath';
 import type { HdrTransfer } from '@/domain/hdr';
 import type { RenderPlan } from '@/domain/renderPlan';
@@ -93,10 +94,12 @@ export interface EnhanceAnalysis {
  * - `encode`: handing frame `atFrame` to the encoder throws a DOMException
  *   named `errorName` with `message` as its text;
  * - `crash`: at frame `atFrame` an error is thrown outside every handler, so
- *   the worker's `error` event fires on the page.
+ *   the worker's `error` event fires on the page;
+ * - `stall`: at frame `atFrame` the export waits for something that never
+ *   comes — no error, no progress (what a dead graphics process looks like).
  */
 export interface ExportTestFault {
-  kind: 'encode' | 'crash';
+  kind: 'encode' | 'crash' | 'stall';
   atFrame: number;
   errorName?: string;
   message?: string;
@@ -217,11 +220,18 @@ export type WorkerRequest =
       enhanceAnalysis?: EnhanceAnalysis | null;
       enhanceEngine?: 'cpu' | null;
     }
-  | { type: 'cancel'; requestId: string };
+  | { type: 'cancel'; requestId: string }
+  /**
+   * "Where are you?" — asked by the page when an export has stood still (it
+   * is about to stop the worker): the worker answers with what it knows.
+   */
+  | { type: 'where'; requestId: string };
 
 export type WorkerResponse =
   | { type: 'capability'; requestId: string; result: CapabilityStageResult }
   /** ADR-037: the share of the frames looked at so far, while a preview is being prepared. */
   | { type: 'enhancePreviewProgress'; requestId: string; progress: number }
   | { type: 'enhancePreview'; requestId: string; result: EnhancePreviewResult }
-  | { type: 'event'; requestId: string; event: ExportEvent };
+  | { type: 'event'; requestId: string; event: ExportEvent }
+  /** The answer to `where`: stage, frame count and codecs of the running export (no error: nothing was thrown). */
+  | { type: 'where'; requestId: string; detail: ExportFailureDetail };

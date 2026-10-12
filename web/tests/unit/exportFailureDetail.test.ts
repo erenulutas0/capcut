@@ -191,6 +191,10 @@ describe('sanitizeExportFailureDetail', () => {
     expect(unsent).toMatchObject({ errorName: 'DataCloneError', stage: 'unknown', via: 'request_not_sent' });
     expect(JSON.stringify(unsent)).not.toContain('tatili');
     expect(sanitizeExportFailureDetail(unsent)).toEqual(unsent);
+    // An export that stood still: nothing was thrown, and nothing is invented about where.
+    const stalled = pageSideFailureDetail('stalled');
+    expect(stalled).toMatchObject({ errorName: 'Stalled', stage: 'unknown', via: 'stalled' });
+    expect(sanitizeExportFailureDetail(stalled)).toEqual(stalled);
   });
 });
 

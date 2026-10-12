@@ -25,7 +25,7 @@ const SECRET_PATH = 'C:\\Users\\ayse\\Videos\\aile-tatili-antalya.mp4';
 const SECRETS = ['ayse', 'aile-tatili', 'antalya', 'Users\\\\', 'Videos'];
 
 interface Fault {
-  kind: 'encode' | 'crash';
+  kind: 'encode' | 'crash' | 'stall';
   atFrame: number;
   errorName?: string;
   message?: string;
@@ -167,4 +167,59 @@ test('a codec the browser took back is not called a full disk; a full disk still
   const report = await diagnostics(page);
   expect(report.exportLog.map((row) => row.failureCode)).toEqual(['internal_error', 'output_storage_full']);
   expect(report.exportLog[1]?.failureDetail).toMatchObject({ errorName: 'QuotaExceededError', hint: null, attemptInSession: 1 });
+});
+
+test('a download that stands still (no error, no progress) is ended as a failure that says where it stood; the next press works', async ({ page }) => {
+  test.setTimeout(240_000);
+  // Seen in Chrome 154 when the graphics process dies under an export: the percentage stops for good.
+  await page.addInitScript(() => {
+    (window as unknown as { __clipExportStallMs: number }).__clipExportStallMs = 3000;
+  });
+  await openDikey(page, { kind: 'stall', atFrame: 40 });
+
+  await page.getByTestId('wizard-download').click();
+  await expect(page.getByTestId('export-failed')).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId('export-failed-reason')).toContainText('Beklenmeyen bir hata oluştu.');
+  await page.getByTestId('export-failed-details').locator('summary').click();
+  // The worker still answered "where": the stage and the frame it stood at, the codecs it had configured.
+  await expect(page.getByTestId('export-failed-detail')).toHaveText(
+    /^Stalled · encode · stalled · kare 40\/240 · enc avc1\.[0-9a-f]{6} no-preference hw[+-] · dec avc1\.[0-9A-Fa-f]{6} no-preference · file$/,
+  );
+  const report = await diagnostics(page);
+  expect(report.exportLog.at(-1)).toMatchObject({
+    outcome: 'failed',
+    failureCode: 'internal_error',
+    failureDetail: { errorName: 'Stalled', stage: 'encode', via: 'stalled', phase: 'encoding', framesDone: 40, totalFrames: 240 },
+  });
+  // The worker was stopped; nothing of the attempt is left.
+  await expect.poll(() => opfsFiles(page), { timeout: 10_000 }).toEqual({});
+
+  await page.getByTestId('download-dismiss').click();
+  await page.getByTestId('wizard-download').click();
+  await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
+  expect(Object.keys(await opfsFiles(page))).toEqual(['saved-other-8s_dikey.mp4']);
+});
+
+test('“İptal et” ends a download that stands still, even though its worker cannot answer', async ({ page }) => {
+  test.setTimeout(240_000);
+  await page.addInitScript(() => {
+    const w = window as unknown as { __clipExportStallMs: number; __clipExportCancelGraceMs: number };
+    // The stall itself is not waited out here: the press comes first.
+    w.__clipExportStallMs = 600_000;
+    w.__clipExportCancelGraceMs = 2000;
+  });
+  await openDikey(page, { kind: 'stall', atFrame: 40 });
+
+  await page.getByTestId('wizard-download').click();
+  await expect(page.getByTestId('export-cancel')).toBeVisible({ timeout: 60_000 });
+  // It stands still at frame 40 of 240.
+  await page.waitForTimeout(2500);
+  await expect(page.getByTestId('export-failed')).toHaveCount(0);
+  await page.getByTestId('export-cancel').click();
+  await expect(page.getByTestId('export-canceled')).toBeVisible({ timeout: 30_000 });
+  await expect.poll(() => opfsFiles(page), { timeout: 10_000 }).toEqual({});
+
+  await page.getByTestId('download-dismiss').click();
+  await page.getByTestId('wizard-download').click();
+  await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
 });

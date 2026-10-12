@@ -61,8 +61,36 @@ for (let round = 1; round <= ROUNDS; round += 1) {
 
     const saved = page.getByTestId('download-saved');
     const failed = page.getByTestId('export-failed');
-    await expect(saved.or(failed)).toBeVisible({ timeout: 900_000 });
     const row: Record<string, unknown> = { at: new Date().toISOString(), browser: testInfo.project.name, version: browser.version(), afterS: AFTER_S, progressAtCrash, crashAsked, round };
+    // Does it end at all? The progress is read every five seconds for three minutes
+    // (an undisturbed download of this video takes well under one).
+    const trace: (string | null)[] = [];
+    let ended = false;
+    for (let i = 0; i < 36 && !ended; i += 1) {
+      ended = await saved.or(failed).isVisible();
+      if (ended) break;
+      trace.push(await page.locator('[role="progressbar"]').first().getAttribute('aria-valuenow').catch(() => 'gone'));
+      await page.waitForTimeout(5000);
+    }
+    row.progressTrace = trace;
+    if (!ended) {
+      // Neither saved nor failed: the download stands still. Can it at least be stopped, and does the next press work?
+      row.outcome = 'stuck';
+      row.statusText = await page.getByTestId('download-status').innerText().catch(() => null);
+      await page.getByTestId('export-cancel').click().catch(() => undefined);
+      const canceled = page.getByTestId('export-canceled');
+      row.cancelWorked = await canceled.waitFor({ state: 'visible', timeout: 30_000 }).then(() => true, () => false);
+      if (row.cancelWorked) {
+        await page.getByTestId('download-dismiss').click();
+        await page.getByTestId('wizard-download').click();
+        row.secondPress = await saved.or(failed).waitFor({ state: 'visible', timeout: 180_000 }).then(
+          async () => ((await saved.isVisible()) ? 'saved' : `failed: ${await page.getByTestId('export-failed-reason').innerText()}`),
+          () => 'stuck again',
+        );
+      }
+      appendFileSync(join(RESULTS, 'gpu-loss.jsonl'), `${JSON.stringify(row)}\n`);
+      return;
+    }
 
     if (await failed.isVisible()) {
       row.outcome = 'failed';
