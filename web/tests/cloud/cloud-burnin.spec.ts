@@ -79,8 +79,10 @@ test('4 min 13 s and a provider answer shaped like a real one: written, burned i
   const summary = await page.getByTestId('yazi-cloud-summary').innerText();
   expect(Number(/(\d+) satır yazıldı/.exec(summary)?.[1] ?? '0'), summary).toBeGreaterThan(60);
   expect(summary).toContain('3 ayrı kişi ayırt edildi.');
-  // The sound that left the browser is as long as the video.
-  expect(Math.abs((fake.uploads[0]?.durationS ?? 0) - LONG_SECONDS)).toBeLessThan(0.5);
+  // The sound that left the browser is as long as the video (the proxy is told whole seconds, rounded up).
+  const declaredS = fake.uploads[0]?.durationS ?? 0;
+  expect(declaredS).toBeGreaterThanOrEqual(LONG_SECONDS);
+  expect(declaredS).toBeLessThanOrEqual(LONG_SECONDS + 1);
 
   // The first press — the one that failed on 11 Oct 2026.
   await page.getByTestId('wizard-download').click();
