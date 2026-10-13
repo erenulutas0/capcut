@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 
 import { installSavePicker } from './kesitFlow';
 import { noisyLongFixture } from './targetsize-media';

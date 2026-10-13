@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 import { startFakeWorker } from '../../../cloud/fake-worker/server.mjs';
 import { tr } from '../../src/i18n/messages';

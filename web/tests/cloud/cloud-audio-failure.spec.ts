@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e/fixtures';
 
 import { expectDetail, fault, faultBeforeLoad, nextFault, watchLogs, type FaultKind } from '../e2e/workerFaultKit';
 import { SCRIPT_LINES, SCRIPT_WORDS, ct, expectHonestFailure, lineTexts, openReady, startFake, type FakeWorker } from './cloudKit';

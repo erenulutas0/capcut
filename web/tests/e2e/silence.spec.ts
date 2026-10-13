@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 
 import { tr } from '../../src/i18n/messages';
 import { closeSheet, openMore, openSettings } from './kesitFlow';

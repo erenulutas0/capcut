@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 
 import { availableTasks, TASKS, TASK_EXAMPLES } from '../../src/domain/tasks';
 import { tr } from '../../src/i18n/messages';

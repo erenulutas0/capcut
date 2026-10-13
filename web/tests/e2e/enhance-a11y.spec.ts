@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from './fixtures';
 
 import { enhanceFixture } from './enhance-media';
 import { installSavePicker, openSettings } from './kesitFlow';

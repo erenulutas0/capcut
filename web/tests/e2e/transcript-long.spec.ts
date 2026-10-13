@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page } from './fixtures';
 
 import { expectStylesApplied } from './stylesReady';
 import { LONG_LINE_S, expectTestBuild, installTranscriptTest, longScript, longVideo, serveModels, testModels } from './transcriptKit';

@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from './fixtures';
 
 import { fastCutFixture, sizedFixture } from './fastcut-media';
 import { addKesit, closeSheet, installSavePicker, openEditor, openSettings, openVideo, pickerCalls, probeMp4, readSaved } from './kesitFlow';

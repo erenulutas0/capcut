@@ -556,3 +556,69 @@ test('İyileştir under /capcut/: before/after from the export worker, download,
   expect(seen.failures).toEqual([]);
   expect(seen.outside).toEqual([]);
 });
+
+/**
+ * ADR-044 under the sub-path: the watchdog of a page that never came alive is
+ * in every published page as an inline script, its hash is in that page's
+ * policy, it knows the site lives under /capcut/ — and it does its work on
+ * the published files: a build file that fails once costs one reload.
+ */
+test('a page that does not come alive: the watchdog is in the export, hashed into the policy, and recovers under /capcut/', async ({
+  page,
+  context,
+  request,
+}) => {
+  test.setTimeout(120_000);
+  for (const path of ['./', 'editor/', 'yap/cevir/', 'gizlilik/', 'gizlilik/en/']) {
+    const html = await (await request.get(path)).text();
+    const ours = [...html.matchAll(/<script data-clip-watchdog="">([\s\S]*?)<\/script>/g)].map((match) => match[1] ?? '');
+    expect(ours.length, `${path}: one watchdog script`).toBe(1);
+    const script = ours[0] ?? '';
+    expect(script).toContain('clip:page-recovery');
+    // The first script of the page, before any stylesheet is asked for.
+    expect(html.search(/<script[\s>]/), path).toBe(html.indexOf('<script data-clip-watchdog'));
+    expect(html.indexOf('<script data-clip-watchdog'), path).toBeLessThan(html.search(/<link[\s>]/));
+    const policy = /<meta http-equiv="Content-Security-Policy"[^>]*content="([^"]*)"/.exec(html)?.[1] ?? '';
+    expect(policy, path).toContain(`'sha256-${createHash('sha256').update(script, 'utf8').digest('base64')}'`);
+    expect(policy).not.toContain('unsafe-inline');
+    expect(script).toContain('"staticPrefix":"/capcut/_next/static/"');
+    expect(script).toContain('"scope":"/capcut/"');
+    expect(script).toContain('"enPrefix":"/capcut/gizlilik/en"');
+    expect(script).toContain('"graceS":15');
+    expect(html).toContain('id="clip-page-dead"');
+    expect(html).toContain('Sayfa tam açılamadı.');
+    expect(html).toContain('The page did not open fully.');
+  }
+
+  const csp = await watchCsp(context);
+  await csp.attach(page);
+  let documents = 0;
+  page.on('request', (item) => {
+    if (item.isNavigationRequest() && item.frame() === page.mainFrame()) documents += 1;
+  });
+  // Every build script fails while the tab is on its first load.
+  await page.route('**/capcut/_next/static/chunks/*.js', (route) => (documents < 2 ? route.abort('connectionreset') : route.continue()));
+  await page.goto('yap/cevir/');
+  await expect(page.getByTestId('video-input')).toBeAttached({ timeout: 40_000 });
+  expect(documents).toBe(2);
+  await expect(page.locator('html')).toHaveAttribute('data-clip-alive', '');
+  await expect(page.getByTestId('page-dead')).toBeHidden();
+  expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem('clip:page-recovery') ?? 'null'))).toMatchObject({
+    s: 'recovered',
+    p: '/capcut/yap/cevir/',
+    why: 'file',
+  });
+
+  // And when they keep failing: the notice, in the page's own colours, with its button; no further reload.
+  await page.unroute('**/capcut/_next/static/chunks/*.js');
+  await page.evaluate(() => sessionStorage.clear());
+  documents = 0;
+  await page.route('**/capcut/_next/static/chunks/*.js', (route) => route.abort('connectionreset'));
+  await page.goto('yap/cevir/');
+  await expect(page.getByTestId('page-dead')).toHaveAttribute('data-state', 'dead', { timeout: 40_000 });
+  expect(documents).toBe(2);
+  await expect(page.getByTestId('page-dead-reload-tr')).toBeVisible();
+  await page.waitForTimeout(20_000);
+  expect(documents).toBe(2);
+  expect(csp.violations, csp.violations.join('\n')).toEqual([]);
+});
