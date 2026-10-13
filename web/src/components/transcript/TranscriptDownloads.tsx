@@ -10,7 +10,7 @@ import { serializeSubtitles, type SubtitleFormat } from '@/domain/subtitleFormat
 import { totalOutputDurationUs } from '@/domain/timeline';
 import { speakerTurns, transcriptText, type TranscriptLine } from '@/domain/transcript';
 import type { MessageKey } from '@/i18n/messages';
-import { fillText } from './TranscribeSteps';
+import { speakerLabel, voiceNames } from './speakerLabel';
 
 type T = (key: MessageKey) => string;
 
@@ -22,6 +22,11 @@ type T = (key: MessageKey) => string;
  * video shows them — the same mapping the burned-in download uses
  * (`outputCues`, ADR-016) — so a player showing the SRT next to the video
  * shows what the app would burn in.
+ *
+ * Speakers (ADR-043), when the lines tell voices apart: the text file names
+ * the voice where it changes; the VTT file carries it as a voice tag on each
+ * line; the SRT file does not carry it (SRT has no place for it that is not
+ * the text itself).
  */
 export function TranscriptDownloads({
   t,
@@ -30,7 +35,6 @@ export function TranscriptDownloads({
   lines,
   videoName,
   header,
-  speakers,
 }: {
   t: T;
   project: Project;
@@ -39,8 +43,6 @@ export function TranscriptDownloads({
   videoName: string;
   /** The first line of the text file, when it is not the on-device one (the cloud route says where it was written). */
   header?: string;
-  /** Which voice said which line, when the transcript tells voices apart: named in the text file where the voice changes. */
-  speakers?: ReadonlyMap<string, number>;
 }) {
   const base = fileBaseName(videoName);
   const whole = wholeVideoRecipe({ ...project, clips: [] }, settings);
@@ -49,13 +51,16 @@ export function TranscriptDownloads({
 
   const saveText = () => {
     const name = subtitleFileName(`${base}_yazi`, 'srt').replace(/\.srt$/, '.txt');
-    const turns = speakerTurns(lines, speakers);
-    const speakerLabel = (line: TranscriptLine) => (turns.has(line.key) ? fillText(t('transcript.speaker'), { n: String(turns.get(line.key)) }) : null);
-    saveTextFile(name, transcriptText(lines, t('transcript.unclear'), header ?? t('transcript.file.header'), speakerLabel), TEXT_MIME.txt);
+    const turns = speakerTurns(lines);
+    const turnLabel = (line: TranscriptLine) => {
+      const speaker = turns.get(line.key);
+      return speaker === undefined ? null : speakerLabel(t, speaker);
+    };
+    saveTextFile(name, transcriptText(lines, t('transcript.unclear'), header ?? t('transcript.file.header'), turnLabel), TEXT_MIME.txt);
   };
   const saveSubtitles = (format: SubtitleFormat) => {
     if (noLines) return;
-    saveTextFile(subtitleFileName(`${base}_altyazi`, format), serializeSubtitles(cues, format), TEXT_MIME[format]);
+    saveTextFile(subtitleFileName(`${base}_altyazi`, format), serializeSubtitles(cues, format, voiceNames(t, project)), TEXT_MIME[format]);
   };
 
   return (

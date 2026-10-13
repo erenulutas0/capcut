@@ -8,6 +8,7 @@
  * part of it that can be tested without a browser.
  */
 
+import { CAPTION_LIMITS } from './captions';
 import { CUE_RULES, cuesForWords, type CueRules, type FitsFrame, type SegmentedCue } from './subtitleSegmentation';
 import { US_PER_SECOND, type Micros } from './time';
 import type { TranscriptWord } from './transcript';
@@ -155,8 +156,11 @@ export interface CloudResult {
   speakers: number;
 }
 
-/** More speakers than this are not told apart on screen (a label per line would say nothing any more). */
-export const MAX_SPEAKERS = 20;
+/**
+ * More speakers than this are not told apart (a label per line would say nothing any more). It is the
+ * recipe's own limit for a line's `speaker` (EDL v5), so every number given here can be stored.
+ */
+export const MAX_SPEAKERS = CAPTION_LIMITS.maxSpeakers;
 
 const LANGUAGE = /^([a-z]{2,3})(?:[_-]([a-zA-Z]{2}))?$/;
 
@@ -253,7 +257,12 @@ export interface CloudCue extends SegmentedCue {
   speaker: number | null;
 }
 
-/** The whole result as subtitle lines, each with the voice that said it. */
+/**
+ * The whole result as subtitle lines, each with the voice that said it. The
+ * voice goes into the recipe with the line (`speaker`, EDL v5, ADR-043): the
+ * transcript command stores it, so the labels are there in the editor, after
+ * a reload and in a backup file.
+ */
 export function cloudCues(
   result: Pick<CloudResult, 'words'>,
   videoDurationUs: Micros,
@@ -268,25 +277,4 @@ export function cloudCues(
     for (const cue of cuesForWords(segment.words, nextStartUs, rules, fits)) cues.push({ ...cue, speaker: segment.speaker });
   });
   return cues;
-}
-
-/**
- * Which voice each stored line belongs to, for the result screen. The recipe
- * (EDL v4) has no field for it and this route does not add one: the map lives
- * with the open wizard only. Lines are matched by their start time — the
- * transcript command numbers the accepted lines in time order and skips the
- * ones a caption rule refuses.
- */
-export function speakersByCue(
-  cues: readonly CloudCue[],
-  stored: readonly { cueId: string; startUs: Micros }[],
-): Map<string, number> {
-  const byStart = new Map<number, number>();
-  for (const cue of cues) if (cue.speaker !== null) byStart.set(Math.round(cue.startUs), cue.speaker);
-  const out = new Map<string, number>();
-  for (const line of stored) {
-    const speaker = byStart.get(line.startUs);
-    if (speaker !== undefined) out.set(line.cueId, speaker);
-  }
-  return out;
 }
