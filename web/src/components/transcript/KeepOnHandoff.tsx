@@ -7,11 +7,11 @@ import { createIndexedDbStore } from '@/adapters/projectStore';
 import { Icon } from '@/components/Icon';
 import { Dialog } from '@/components/editor/Dialog';
 import { handoffAction, storedProjectName, type StoredProbe } from '@/domain/wizardHandoff';
-import { cloudTranslator } from '@/i18n/cloudMessages';
+import { translator } from '@/i18n/messages';
 
-const ct = cloudTranslator('tr');
+const t = translator('tr');
 
-export interface CloudKeepProps {
+export interface KeepOnHandoffProps {
   /** The id the browser's one stored project is kept under (the recipe's own). */
   projectId: string;
   /** The editor opens: `stored` true makes this work the stored project, false leaves the store alone. */
@@ -21,8 +21,9 @@ export interface CloudKeepProps {
 }
 
 /**
- * "Daha fazla ayar → editörde aç" over a transcript written on the internet
- * (ADR-034 addendum, 13 Oct 2026): the work becomes the browser's stored
+ * "Daha fazla ayar → editörde aç" over a transcript (ADR-034 addendum,
+ * 13 Oct 2026 — the one written on the internet that morning, the one written
+ * on this device since that evening): the work becomes the browser's stored
  * project, so a reload does not lose what the user spent minutes on.
  *
  * The store holds one project (ADR-012). This part looks first:
@@ -33,10 +34,9 @@ export interface CloudKeepProps {
  * - a store that cannot be read: the editor opens and its own header says
  *   what happened to the saving (`domain/wizardHandoff.ts`).
  *
- * It exists only in a build that has the cloud route (loaded by `YaziWizard`
- * behind the same build literal as the route itself).
+ * In every build: it has no word of the cloud route and imports nothing of it.
  */
-export default function CloudKeep({ projectId, onDecide, onClose }: CloudKeepProps) {
+export default function KeepOnHandoff({ projectId, onDecide, onClose }: KeepOnHandoffProps) {
   const [existing, setExisting] = useState<{ name: string } | null>(null);
   const decide = useRef(onDecide);
   useEffect(() => {
@@ -66,29 +66,29 @@ export default function CloudKeep({ projectId, onDecide, onClose }: CloudKeepPro
   if (!existing) return null;
 
   return (
-    <Dialog open onClose={onClose} labelledBy="cloud-keep-title">
+    <Dialog open onClose={onClose} labelledBy="keep-choice-title">
       <div className="dialog-head">
-        <h2 id="cloud-keep-title">{ct('cloud.keep.title')}</h2>
-        <button type="button" className="icon-btn" onClick={onClose} aria-label={ct('cloud.keep.cancel')} data-testid="cloud-keep-cancel">
+        <h2 id="keep-choice-title">{t('wizard.yazi.keep.title')}</h2>
+        <button type="button" className="icon-btn" onClick={onClose} aria-label={t('wizard.yazi.keep.cancel')} data-testid="keep-cancel">
           <Icon name="close" />
         </button>
       </div>
-      <div data-testid="cloud-keep">
+      <div data-testid="keep-choice">
         {existing.name ? (
-          <p className="field-label" data-testid="cloud-keep-name">
-            {ct('cloud.keep.named').replace('{name}', safeFileName(existing.name, 48))}
+          <p className="field-label" data-testid="keep-choice-name">
+            {t('wizard.yazi.keep.named').replace('{name}', safeFileName(existing.name, 48))}
           </p>
         ) : null}
-        <p>{ct('cloud.keep.body')}</p>
+        <p>{t('wizard.yazi.keep.body')}</p>
         <div className="dialog-actions">
-          <button type="button" className="btn" onClick={() => onDecide(false)} data-testid="cloud-keep-old">
-            {ct('cloud.keep.old')}
+          <button type="button" className="btn" onClick={() => onDecide(false)} data-testid="keep-old">
+            {t('wizard.yazi.keep.old')}
           </button>
-          <button type="button" className="btn btn-accent" onClick={() => onDecide(true)} data-testid="cloud-keep-new">
-            {ct('cloud.keep.new')}
+          <button type="button" className="btn btn-accent" onClick={() => onDecide(true)} data-testid="keep-new">
+            {t('wizard.yazi.keep.new')}
           </button>
         </div>
-        <p className="hint-small">{ct('cloud.keep.hint')}</p>
+        <p className="hint-small">{t('wizard.yazi.keep.hint')}</p>
       </div>
     </Dialog>
   );

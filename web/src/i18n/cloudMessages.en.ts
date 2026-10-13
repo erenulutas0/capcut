@@ -82,15 +82,6 @@ export const cloudEn: Record<CloudMessageKey, string> = {
   'cloud.footer.sending': 'Only the sound is sent; the picture does not leave your device.',
   'cloud.footer.sent': 'The sound of this video was sent to the internet to be written; its picture did not leave your device.',
 
-  'cloud.keep.note': 'This text is not kept yet: it stays if you open it in the editor or download the text, otherwise it is gone when the page closes.',
-  'cloud.keep.title': 'You have a kept project',
-  'cloud.keep.body': 'Only one project can be kept in this browser. Which one should stay?',
-  'cloud.keep.named': 'Kept project: {name}',
-  'cloud.keep.old': 'Keep the old project (this text is not kept)',
-  'cloud.keep.new': 'Keep this text (the old project is deleted)',
-  'cloud.keep.hint': 'If you cancel, nothing changes. You can also save the text as a file with “Metni indir”.',
-  'cloud.keep.cancel': 'Cancel',
-
   'cloud.privacy.summary.local':
     'The video, audio and subtitle files you choose are processed in this browser, on your own device. One exception: if you choose “On the internet” in “Yazıya dök”, only the sound of the video is sent (see “Writing on the internet” below). Nothing is sent unless you choose it.',
   'cloud.privacy.summary.report':
@@ -113,7 +104,7 @@ export const cloudEn: Record<CloudMessageKey, string> = {
   'cloud.privacy.kept':
     'Where the text is on your device: at first only in the open page; if you close the page it is gone. If you press “Daha fazla ayar → editörde aç”, its lines and who spoke are kept in this browser as a project (see “Project recipe” below). If a project you kept earlier is there, you are asked which one stays. To delete it: press “Delete the saved project” when the editor asks for the video file again, or clear this site’s data in the browser settings.',
   'cloud.privacy.stored.project.extra':
-    'One exception: if you open a text written on the internet in “Yazıya dök” in the editor, that work is kept here too (the text of its lines and who spoke included).',
+    'The same for a text written on the internet: if you open it in the editor, the text of its lines and who spoke are kept here; the sound, your invite code and the company’s reply are not.',
   'cloud.privacy.others': 'If other people speak in the video, their voices are sent too. Think about that before you send.',
   'cloud.privacy.ledger':
     'What our relay server records: a digest of the invite code, the length and size of the sound, the state and time of the job (90 days); to prevent overuse, a digest of the IP address (for about an hour at most). The sound, the text and the file name are not recorded. Like every internet server, Cloudflare sees the IP address while carrying the request.',

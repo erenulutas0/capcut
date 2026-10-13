@@ -2,8 +2,10 @@ import { join } from 'node:path';
 import { expect, test, type Page } from '../e2e/fixtures';
 
 import { addKesit, installSavePicker, openEditor, openVideo } from '../e2e/kesitFlow';
+import { storedRecord, storedShape } from '../e2e/projectStore';
 import { STUB_LINES, STUB_SCRIPT, installTranscriptTest, serveModels, testModels } from '../e2e/transcriptKit';
 import { cloudEn } from '../../src/i18n/cloudMessages.en';
+import { tr } from '../../src/i18n/messages';
 import { SAMPLE, SCRIPT_LINES, SCRIPT_WORDS, ct, fill, lineTexts, openReady, startFake, type FakeWorker } from './cloudKit';
 
 /**
@@ -11,9 +13,11 @@ import { SAMPLE, SCRIPT_LINES, SCRIPT_WORDS, ct, fill, lineTexts, openReady, sta
  * over it (ADR-034, addendum of 13 Oct 2026) — against the LOCAL FAKE of our
  * proxy (cloudKit.ts). Before that, the result screen says it is not stored.
  *
- * The browser's store holds one project (ADR-012): one that is already there
- * and has work in it is never replaced without the user choosing, and a
- * deleted project does not come back.
+ * The rule, the sentence and the question are the wizard's own and in every
+ * build (`tests/e2e/transcript-keep.spec.ts` walks them with the on-device
+ * stand-in); what this suite adds is the internet route: who spoke survives
+ * the store, and the on-device route of THIS build keeps the text too
+ * without a word to the proxy.
  *
  * The fake hears nothing; nothing here says how well speech is written.
  */
@@ -29,48 +33,6 @@ test.afterAll(async () => {
   await fake.close();
 });
 test.beforeEach(() => fake.reset());
-
-interface Stored {
-  title: string;
-  edl: { schemaVersion: number; clips: unknown[]; captionTracks: { origin: string; cues: { text: string; speaker?: number }[] }[] };
-  bindings: { kind: string; fileName: string }[];
-}
-
-/** The project as the browser's store holds it right now (null: nothing stored). */
-function storedRecord(page: Page): Promise<Stored | null> {
-  return page.evaluate(
-    () =>
-      new Promise<Stored | null>((resolve, reject) => {
-        const open = indexedDB.open('clip-editor');
-        open.onerror = () => reject(open.error);
-        open.onsuccess = () => {
-          const db = open.result;
-          if (!db.objectStoreNames.contains('projects')) {
-            db.close();
-            resolve(null);
-            return;
-          }
-          const all = db.transaction('projects', 'readonly').objectStore('projects').getAll();
-          all.onerror = () => reject(all.error);
-          all.onsuccess = () => {
-            db.close();
-            resolve((all.result[0] as Stored | undefined) ?? null);
-          };
-        };
-      }),
-  );
-}
-
-/** What identifies the stored project in these tests: its video, its kesit count, its lines with their voices. */
-async function storedShape(page: Page) {
-  const record = await storedRecord(page);
-  if (!record) return null;
-  return {
-    video: record.bindings.find((binding) => binding.kind === 'video')?.fileName ?? null,
-    clips: record.edl.clips.length,
-    lines: record.edl.captionTracks[0]?.cues.map((cue) => [cue.text.split('\n').join(' '), cue.speaker ?? null]) ?? [],
-  };
-}
 
 const TRANSCRIPT_SHAPE = {
   video: 'sample-24s.mp4',
@@ -122,13 +84,13 @@ test('opened in the editor, the transcript is the stored project: a reload bring
   await writeOnline(page);
 
   // ---- before the hand-over: said plainly, and true — nothing is in the store
-  await expect(page.getByTestId('yazi-cloud-keep-note')).toHaveText(ct('cloud.keep.note'));
+  await expect(page.getByTestId('yazi-keep-note')).toHaveText(tr['wizard.yazi.keepNote']);
   expect(await storedRecord(page)).toBeNull();
 
   // ---- the hand-over: no question (nothing was stored), the editor, and its usual "saved" words
   await page.getByTestId('wizard-open-editor').click();
   await expect(page.getByTestId('download-all')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId('cloud-keep')).toHaveCount(0);
+  await expect(page.getByTestId('keep-choice')).toHaveCount(0);
   await expect(page.getByTestId('transcript-panel')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
   await expect(page.getByTestId('save-state-off')).toHaveCount(0);
@@ -168,7 +130,7 @@ test('opened in the editor, the transcript is the stored project: a reload bring
 test('never opening the editor stores nothing: the wizard alone is as it was', async ({ page }) => {
   test.setTimeout(180_000);
   await writeOnline(page);
-  await expect(page.getByTestId('yazi-cloud-keep-note')).toBeVisible();
+  await expect(page.getByTestId('yazi-keep-note')).toBeVisible();
   // A file is saved, a line is fixed, time passes: still nothing in the store.
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('transcript-save-txt').click()]);
   expect(download.suggestedFilename()).toMatch(/\.txt$/);
@@ -198,7 +160,7 @@ test('after "Altyazılı videoyu indir" the sentence still stands above the edit
   await page.getByTestId('wizard-download').click();
   await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 180_000 });
   // A video was saved; the text itself is still only in this page.
-  await expect(page.getByTestId('wizard-editor-note')).toHaveText(ct('cloud.keep.note'));
+  await expect(page.getByTestId('wizard-editor-note')).toHaveText(tr['wizard.yazi.keepNote']);
   await expect(page.getByTestId('wizard-open-editor')).toBeVisible();
   expect(await storedRecord(page)).toBeNull();
 
@@ -218,12 +180,12 @@ test.describe('a project is already stored', () => {
     await page.getByTestId('wizard-open-editor').click();
     const choice = page.getByRole('dialog');
     await expect(choice).toBeVisible({ timeout: 30_000 });
-    await expect(choice.getByRole('heading', { level: 2 })).toHaveText(ct('cloud.keep.title'));
-    await expect(page.getByTestId('cloud-keep-name')).toHaveText(fill(ct('cloud.keep.named'), { name: 'other-8s.mp4' }));
-    await expect(page.getByTestId('cloud-keep')).toContainText(ct('cloud.keep.body'));
-    await expect(page.getByTestId('cloud-keep-old')).toHaveText(ct('cloud.keep.old'));
-    await expect(page.getByTestId('cloud-keep-new')).toHaveText(ct('cloud.keep.new'));
-    await expect(page.getByTestId('cloud-keep')).toContainText(ct('cloud.keep.hint'));
+    await expect(choice.getByRole('heading', { level: 2 })).toHaveText(tr['wizard.yazi.keep.title']);
+    await expect(page.getByTestId('keep-choice-name')).toHaveText(fill(tr['wizard.yazi.keep.named'], { name: 'other-8s.mp4' }));
+    await expect(page.getByTestId('keep-choice')).toContainText(tr['wizard.yazi.keep.body']);
+    await expect(page.getByTestId('keep-old')).toHaveText(tr['wizard.yazi.keep.old']);
+    await expect(page.getByTestId('keep-new')).toHaveText(tr['wizard.yazi.keep.new']);
+    await expect(page.getByTestId('keep-choice')).toContainText(tr['wizard.yazi.keep.hint']);
     // The question is on screen and nothing has been done yet.
     await page.waitForTimeout(1200);
     expect(await storedShape(page)).toEqual(EARLIER_SHAPE);
@@ -236,9 +198,9 @@ test.describe('a project is already stored', () => {
     expect(await lineTexts(page)).toEqual(SCRIPT_LINES);
     await page.getByTestId('wizard-open-editor').click();
     await expect(choice).toBeVisible();
-    await page.getByTestId('cloud-keep-cancel').click();
+    await page.getByTestId('keep-cancel').click();
     await expect(choice).toHaveCount(0);
-    await expect(page.getByTestId('yazi-cloud-keep-note')).toHaveText(ct('cloud.keep.note'));
+    await expect(page.getByTestId('yazi-keep-note')).toHaveText(tr['wizard.yazi.keepNote']);
     await page.waitForTimeout(800);
     expect(await storedShape(page)).toEqual(EARLIER_SHAPE);
     expect(pathOf(page)).toBe('/yap/yazi');
@@ -249,7 +211,7 @@ test.describe('a project is already stored', () => {
     await earlierProject(page);
     await writeOnline(page);
     await page.getByTestId('wizard-open-editor').click();
-    await page.getByTestId('cloud-keep-old').click();
+    await page.getByTestId('keep-old').click();
 
     await expect(page.getByTestId('download-all')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('transcript-panel')).toBeVisible({ timeout: 30_000 });
@@ -277,7 +239,7 @@ test.describe('a project is already stored', () => {
     await earlierProject(page);
     await writeOnline(page);
     await page.getByTestId('wizard-open-editor').click();
-    await page.getByTestId('cloud-keep-new').click();
+    await page.getByTestId('keep-new').click();
 
     await expect(page.getByTestId('download-all')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
@@ -357,7 +319,7 @@ test('a store that cannot be used: the editor opens and its header says the work
   await expect(page.getByTestId('save-recover')).toBeVisible();
 });
 
-test('a transcript written ON THE DEVICE hands over as before: unsaved, no sentence, no question', async ({ page, context }) => {
+test('a transcript written ON THE DEVICE in this build is kept the same way, without a word to the proxy', async ({ page, context }) => {
   test.setTimeout(240_000);
   const models = testModels();
   await serveModels(context, models);
@@ -371,21 +333,31 @@ test('a transcript written ON THE DEVICE hands over as before: unsaved, no sente
   await page.getByTestId('transcribe-start').click();
   await expect(page.getByTestId('transcript-panel')).toBeVisible({ timeout: 120_000 });
   expect(await lineTexts(page)).toEqual(STUB_LINES);
-  await expect(page.getByTestId('yazi-cloud-keep-note')).toHaveCount(0);
+  // The same sentence as over the internet one; no "İnternette yazıldı" line, no voices.
+  await expect(page.getByTestId('yazi-keep-note')).toHaveText(tr['wizard.yazi.keepNote']);
+  await expect(page.getByTestId('yazi-cloud-summary')).toHaveCount(0);
+  expect(await storedRecord(page)).toBeNull();
 
   await page.getByTestId('wizard-open-editor').click();
   await expect(page.getByTestId('download-all')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByTestId('save-state-off')).toHaveText('Bu düzenleme saklanmıyor');
-  await page.waitForTimeout(1500);
-  expect(await storedRecord(page)).toBeNull();
-  expect(pathOf(page)).toBe('/yap/yazi');
+  await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
+  await expect(page.getByTestId('save-state-off')).toHaveCount(0);
+  await expect.poll(() => storedShape(page), { timeout: 15_000 }).toEqual({
+    video: 'sample-24s.mp4',
+    clips: 0,
+    lines: STUB_LINES.filter((line) => line !== '(anlaşılamadı)').map((line) => [line, null]),
+  });
+  expect(pathOf(page)).toBe('/editor');
+  // Nothing of it went to the proxy: the quota was asked once on the choice screen, before, and that is all.
   expect(fake.requests.length).toBe(before);
 });
 
 test('the privacy page of this build says the opened transcript is stored on the device, and how to delete it', async ({ page }) => {
   await page.goto('/gizlilik/');
   await expect(page.getByTestId('privacy-cloud')).toContainText(ct('cloud.privacy.kept'));
+  // The exception is in the card every build has; the route's own line adds what more of its text is kept.
+  await expect(page.getByTestId('stored-project')).toContainText('Tek istisna “Yazıya dök”');
   await expect(page.getByTestId('stored-project-cloud')).toHaveText(ct('cloud.privacy.stored.project.extra'));
   // The way to delete it is the project's own, named as the button is.
   await expect(page.getByTestId('privacy-cloud')).toContainText('Kayıtlı projeyi sil');

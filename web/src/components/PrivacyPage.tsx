@@ -209,7 +209,7 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
             <article className="legal-card" key={item.id} data-testid={`stored-${item.id}`}>
               <h3>{t(item.name)}</h3>
               <p>{t(item.body)}</p>
-              {/* The one wizard hand-over that IS stored exists only in a build that has the route (ADR-034 addendum). */}
+              {/* The body names the one wizard hand-over that IS stored; a build with the route adds what of the internet one is kept (ADR-034 addendum). */}
               {CLOUD_ON && item.id === 'project' ? <p data-testid="stored-project-cloud">{ct('cloud.privacy.stored.project.extra')}</p> : null}
               <dl>
                 <dt>{t('privacy.stored.where')}</dt>

@@ -110,7 +110,7 @@ export const tr = {
   'privacy.stored.howLong': 'Ne zaman silinir',
   'privacy.stored.project.name': 'Proje tarifi',
   'privacy.stored.project.body':
-    'Proje adı, kesitlerin ve sırası, görüntü/oran ayarları, müzik ayarları, altyazı satırlarının metni ve biçimi. Kaynak dosyayı yeniden tanımak için dosyanın adı, boyutu, değiştirilme tarihi, süresi, çözünürlüğü ve türü. Video ve ses dosyasının kendisi saklanmaz. Yalnızca editörde (“Kendim düzenleyeceğim”) yaptığın düzenleme saklanır; ana ekrandaki bir işten (Kes, Dikey yap…) başlattığın çalışma saklanmaz.',
+    'Proje adı, kesitlerin ve sırası, görüntü/oran ayarları, müzik ayarları, altyazı satırlarının metni ve biçimi. Kaynak dosyayı yeniden tanımak için dosyanın adı, boyutu, değiştirilme tarihi, süresi, çözünürlüğü ve türü. Video ve ses dosyasının kendisi saklanmaz. Yalnızca editörde (“Kendim düzenleyeceğim”) yaptığın düzenleme saklanır; ana ekrandaki bir işten (Kes, Dikey yap…) başlattığın çalışma saklanmaz. Tek istisna “Yazıya dök”: çıkan yazıyı “Daha fazla ayar → editörde aç” ile açarsan o çalışma (satırların metni dahil) burada proje olarak saklanır; orada daha önce sakladığın bir proje varsa hangisinin kalacağı sana sorulur. Silmesi aşağıdaki gibi.',
   'privacy.stored.project.where': 'IndexedDB “clip-editor”, “projects” deposu',
   'privacy.stored.project.delete':
     'Sen silene kadar. Tarayıcı ayarlarından bu sitenin verilerini temizleyebilirsin; editör dosyayı yeniden istediğinde “Kayıtlı projeyi sil” de kullanılabilir. Tarayıcı yer açmak için kendisi de silebilir.',
@@ -1197,6 +1197,17 @@ export const tr = {
   'wizard.yazi.done': '{lines} satır yazıldı ({time} sürdü).',
   'wizard.yazi.skipped': '{n} satır kurallara uymadığı için alınmadı.',
   'wizard.yazi.editorHint': 'Satırları seçip onlardan kesit yapmak ya da altyazının görünüşünü değiştirmek için editörde aç.',
+  // ---- keeping the text (ADR-034 addendum, 13 Oct 2026; the on-device transcript too since that evening)
+  // On the result screen, before the editor was opened: the text is in the open page only. One sentence, and true.
+  'wizard.yazi.keepNote': 'Bu yazı henüz saklanmadı: editörde açarsan ya da metni indirirsen kalır, yoksa sayfa kapanınca gider.',
+  // Asked only when a project with work in it is already stored (the store holds one project, ADR-012).
+  'wizard.yazi.keep.title': 'Saklanan bir projen var',
+  'wizard.yazi.keep.body': 'Bu tarayıcıda yalnızca bir proje saklanabilir. Hangisi kalsın?',
+  'wizard.yazi.keep.named': 'Saklanan proje: {name}',
+  'wizard.yazi.keep.old': 'Eski proje kalsın (bu yazı saklanmaz)',
+  'wizard.yazi.keep.new': 'Bu yazı saklansın (eski proje silinir)',
+  'wizard.yazi.keep.hint': 'Vazgeçersen hiçbir şey değişmez. Yazıyı “Metni indir” ile dosya olarak da alabilirsin.',
+  'wizard.yazi.keep.cancel': 'Vazgeç',
   'transcript.english': 'Şimdilik yalnızca İngilizce konuşmaları yazıya döker.',
   'transcript.onDevice': 'Yazıya dökme bu cihazda yapılır; videon ve sesin hiçbir yere gönderilmez.',
   'transcript.model.need':
