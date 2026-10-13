@@ -190,9 +190,49 @@ bu alanı içeren bir dosyayı hiçbir derleme yazmadı: yükseltilmez, doğrula
   girer (motor sürümüyle birlikte): iyileştirmesi kapalı bir tarifin parmak izi v3'teki ile
   aynıdır. Açıkken hızlı kesim (ADR-027) uygulanmaz: iyileştirilmiş video kopya olamaz.
 
+## EDL v5 — satırda konuşan (2026-10-13, kurucu kararı; ADR-043)
+
+v5, v4'ün aynısıdır; transkript izinin **satırına isteğe bağlı tek bir alan** gelir. Hiçbir v4 alanı
+değişmez ya da kalkmaz, bu yüzden v4 tarif kayıpsız okunur: yalnızca `schemaVersion` 5 yapılır (v1,
+v2 ve v3 önce kendi kurallarıyla yükselir). Geçerli her v4 tarif, numarası değişince hiçbir satırı
+konuşan adı taşımayan geçerli bir v5 tariftir; fixture'lar `web/fixtures/edl/legacy-v4/`. Eski sürüm
+numarası taşıyıp bu alanı içeren bir dosyayı hiçbir derleme yazmadı: yükseltilmez, doğrulayıcı
+reddeder (`schema_version_unsupported`).
+
+```json
+"cues": [
+  { "cueId": "q_001", "startUs": 1000000, "endUs": 3200000, "text": "Merhaba, başlayalım mı?", "speaker": 1 },
+  { "cueId": "q_002", "startUs": 3400000, "endUs": 5000000, "text": "Olur, hazırım.", "speaker": 2 },
+  { "cueId": "q_003", "startUs": 9000000, "endUs": 11000000, "text": "Elle yazılan satır" }
+]
+```
+
+- **`speaker`** (isteğe bağlı): satırı kimin söylediği, **sıra numarası** olarak: videoda ilk duyulan
+  ses 1, sonraki 2 … en çok **20**. Bir ad değildir, bir kimlik değildir; arayüz "1. kişi", "2. kişi"
+  diye gösterir. Alan yoksa bilinmiyordur (cihazda yazılan, elle yazılan, dosyadan gelen her satır).
+  `null` ya da `0` "bilinmiyor" demek **değildir**: bilinmeyen satırda alan hiç bulunmaz.
+- Yalnızca `origin: "transcript"` olan izin satırında bulunabilir (zaman tabanı fark etmez); başka
+  izde `caption_track_invalid`. 1–20 arası tam sayı değilse (`0`, `21`, `1.5`, `"1"`, `null`)
+  **`caption_speaker_invalid`**.
+- Numaralar 1'den başlamak ya da boşluksuz olmak zorunda değildir: bir kişinin bütün satırları
+  silinince ötekilerin numarası değişmez (etiketler kullanıcının gözü önünde yeniden numaralanmaz).
+- **İz düzeyinde alan yoktur** (kişi sayısı, ad tablosu): sayı satırlardan türetilir, ayrı tutulsa
+  satırlarla çelişebilirdi; adlandırma bir arayüz kararı bekliyor (ADR-043 "Kurucu kararları").
+  `speakers` gibi bir iz alanı `unknown_field`'dir.
+- Düzenleme kuralları (komutlar bunları uygular, ADR-043): metni ya da zamanı değişen satır
+  konuşanını **korur**; bir satır kesitlere göre parçalanırsa her parça aynı konuşanı taşır; yalnızca
+  **aynı satırın** parçaları yeniden birleşir, iki ayrı satır hiç birleştirilmez (bir satır iki kişinin
+  sözünü taşımaz); elle eklenen satırın konuşanı yoktur; izi yeniden kuran her şey (altyazı dosyası
+  içe aktarma, cihazda yeniden yazıya dökme) konuşanları eski satırlarla birlikte götürür.
+- **Videoya çizilmez.** Render planı ve parmak izi `speaker`'ı hiç okumaz: konuşanı olan bir tarifin
+  planı, alanı silinmiş aynı tarifin planıyla parmak izine kadar aynıdır. Dosyalarda: TXT ses
+  değişen satırda adı yazar; **VTT** her satırda ses etiketi taşır (`<v 1. kişi>metin`); **SRT taşımaz**
+  (SRT'de metnin önüne yazılan ad, dosyayı okuyan her program için metnin kendisi olurdu). Etiketler
+  yalnızca izde en az iki ayrı konuşan varsa gösterilir ve yazılır.
+
 ## Doğrulama kuralları
 
-`schemaVersion=4` (v1, v2 ve v3 okunurken yukarıdaki geçişlerle yükseltilir); bilinmeyen ana alanlar ilk sürümde hata verir. Alan genişletme ihtiyacı değişiklik kaydıyla ele alınır. `projectId/assetId/clipId` sınırlı uzunlukta opaque kimliktir. Her `assetId` tekil; klipte referans verilen asset `video`; müzik asset'i `audio` olmalıdır. Tüm sayılar finite; NaN/Infinity kabul edilmez.
+`schemaVersion=5` (v1, v2, v3 ve v4 okunurken yukarıdaki geçişlerle yükseltilir); bilinmeyen ana alanlar ilk sürümde hata verir. Alan genişletme ihtiyacı değişiklik kaydıyla ele alınır. `projectId/assetId/clipId` sınırlı uzunlukta opaque kimliktir. Her `assetId` tekil; klipte referans verilen asset `video`; müzik asset'i `audio` olmalıdır. Tüm sayılar finite; NaN/Infinity kabul edilmez.
 
 Zamanlar güvenli integer ve ≥0; JSON'da stringe çevrilmez. JavaScript safe-integer sınırı korunur. `0 ≤ in < out ≤ probedDuration`; her klip ≥100.000 µs. Düzenlemede tekrarlanan/örtüşen kaynak aralıkları geçerlidir; örneğin aynı sahnenin tekrar gösterilmesi mümkündür. Çıktı timeline'ında klipler ardışık ve boşluksuzdur; konum dizi sırasından türetilir.
 
@@ -237,12 +277,16 @@ Undo/redo için en az son 100 küçük komut hedeflenir; büyük medya payload'�
 
 ## Sürümleme ve render fingerprint
 
-Migrations ileri yönde test edilir; eski dosyaya doğrudan destructive rewrite yapılmaz. Desteklenmeyen gelecek sürüm read-only hata verir. Export fingerprint kanonik recipe, çözülmüş asset kimlikleri/içerik sürümleri, politika ve engine sürümünü içerir; UI seçimi veya updated timestamp'i gibi semantiği etkilemeyen değerleri içermez.
+Migrations ileri yönde test edilir; eski dosyaya doğrudan destructive rewrite yapılmaz. Desteklenmeyen gelecek sürüm read-only hata verir.
+
+**Geri yol yoktur (2026-10-13, ADR-043).** Web uygulamasında kayıtlı proje ilk açılışta güncel sürüm numarasıyla yeniden yazılır (otomatik kayıt; değişen tek şey numaradır). Tarayıcı sonradan uygulamanın **daha eski** bir kopyasını açarsa (service worker'ın sakladığı kabuk, sürümler arasında açık kalmış sekme) o kopya daha yüksek numaralı tarifi **okumaz ve üstüne yazmaz**: kayıt `edl_newer` olarak ayrılır (bozuk kayıttan — `edl_invalid` — farklı), başlık "Bu proje daha yeni bir sürümle saklanmış. Sayfayı yenile. Bu sayfada yaptıkların saklanmaz." der ve otomatik kayıt o sekmede durur. Bu koruma v5 derlemesiyle geldi; ondan önceki derlemeler (v4 ve öncesi) yüksek numaralı kaydı "bozuk" sayar, yüklemez, ama o sekmede yeni bir video açılırsa üstüne yazar — ayrıntı ve kalan pencere ADR-043'te. Export fingerprint kanonik recipe, çözülmüş asset kimlikleri/içerik sürümleri, politika ve engine sürümünü içerir; UI seçimi veya updated timestamp'i gibi semantiği etkilemeyen değerleri içermez.
 
 Fingerprint cache anahtarı olabilir, fakat başka kullanıcının özel videosunu global hash eşleşmesiyle ona açmak yasaktır. Cloud dedupe yalnızca aynı owner/job bağlamında değerlendirilir.
 
 ## İlk ortak fixture seti
 
 Geçerli: tek klip, çok klip, aynı kaynaktan tekrar, sessiz kaynak, gecikmeli müzik, kare/portre çıktı. Geçersiz: negatif zaman, ters aralık, unknown asset, crop taşması, süre limiti aşımı, unsupported codec spec, fazla klip, müzik fade taşması, future schema.
+
+v5 ile eklenenler (`web/fixtures/edl/`, 2026-10-13): geçerli `caption-transcript-speakers`, `caption-transcript-speaker-highest`; geçersiz `caption-speaker-zero`, `-too-high`, `-not-integer`, `-not-a-number`, `-null` (`caption_speaker_invalid`), `caption-speaker-on-manual-track`, `-on-imported-track` (`caption_track_invalid`), `caption-track-speakers-field` (`unknown_field`); `future-schema` artık 6; `legacy-v4/` (dördü geçerli, `v4-with-speaker` geçersiz).
 
 Dart, TypeScript ve Python aynı fixture dosyalarını okuyup aynı valid/invalid sonucunu üretmeden sözleşme tamamlanmış sayılmaz.

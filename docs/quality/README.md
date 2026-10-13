@@ -58,6 +58,14 @@ derlemesini, sonra olağan test kancalı derlemeyi yapar (koşu sonunda `.next/`
 derlemesidir) ve hangisinin durduğunu `.next/quality-build.txt`'ye yazar; `--no-build` yanlış
 derlemeyi kullanmaz, yeniden derler.
 
+**"Kim konuştu" kalıcı mı (ADR-043; 13 Ekim 2026).** Aynı dosyanın ikinci ölçümü, yine sahte sunucuya
+karşı: betikteki iki kişinin dört konuşma sırasının etiketi ("1. kişi", "2. kişi", …) sonuç ekranında,
+editörde, yedek dosyasında, yedekten açılan editörde, sayfa yenilendikten sonra depoda ve ekranda, VTT
+dosyasında sayılır; SRT'de hiç geçmediği sayılır (bütçe: hepsi 4, SRT 0). Betiğin ulaşamadığı adım
+"ölçülemedi" yazılır. Sahte sunucu kimin konuştuğunu duymaz: bu ölçü **saklamanın ve göstermenin**
+ölçüsüdür, kişi ayrımının doğruluğunun değil. Akış ölçümünün (tıklama, ekran, kelime) sayılarına
+eklenmez.
+
 **Süre** (bu makinede, 10 Ekim 2026; 12 çekirdek, 64 GB): iki derlemeyle birlikte toplam yaklaşık 9 dakika,
 kilit beklemesi hariç. En uzun bölümler çıktı kalitesi ve yükleme ölçümleri (ikişer dakika), sonra hata
 yolları (80 hücre) ve yürüyüşler (birer dakika). `search` ve `text` tarayıcı açmaz, birer saniye sürer.
