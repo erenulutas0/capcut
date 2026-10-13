@@ -161,6 +161,13 @@ yolu yedek dosyasıdır.
 
 ## Bulunan: bulut yazısı kalıcı projeye yalnızca yedek dosyasıyla geçer
 
+> **ÇÖZÜLDÜ — 13 Ekim 2026** (kurucu kararı: "Bulut yazısı editöre geçişte saklansın";
+> [ADR-034'ün 13 Ekim eki](ADR-034-task-first-home.md)). İnternette yazılan yazının üstünde "Daha fazla
+> ayar → editörde aç"a basılınca çalışma kayıtlı proje olur; yenileme onu konuşanlarıyla geri getirir
+> (video dosyası yeniden seçilerek). Kayıtlı proje varsa önce sorulur. Sonuç ekranı, geçişten önce yazının
+> saklanmadığını söyler. Aşağıdaki paragraf o günkü durumu anlatır ve tarih için bırakıldı; yedek dosyası
+> yolu çalışmaya devam ediyor ve sınanıyor (başka bir tarayıcıda).
+
 Bu işin kendisinden bağımsız, ama "sayfa yenilenince" ne demek olduğunu belirlediği için yazılıyor:
 bulut yolu yalnızca **sihirbazdadır** (ADR-039) ve sihirbaz proje **saklamaz** (ADR-034) — sihirbazdan
 "editörde aç" ile gelinen editör de saklamaz (başlık "Bu düzenleme saklanmıyor" der). Yani internette
@@ -177,6 +184,10 @@ yedek dosyasında, yedekten açılan editörde, yenilemeden sonra depoda ve ekra
 "kişi" geçmediği sayılır. Bütçe: hepsi = 4, SRT = 0 (`budgets.json`, `walk.fakecloud.*.speakers.*`).
 Betiğin ulaşamadığı adım "ölçülemedi" yazılır, geçmiş sayılmaz. Var olan akış ölçümünün (tıklama, ekran,
 kelime) bütçelerine dokunulmadı; yeni adımlar o sayılara eklenmedi (ayrı test).
+
+**13 Ekim, ADR-034 ekiyle:** "yenilemeden sonra" artık yedek dosyası dolambacıyla değil, **editöre geçişin
+sakladığı projenin kendi sayfası yenilenerek** ölçülür; yeni sütun "editöre geçince depoda". Yedek dosyası
+ayrı bir yol olarak kaldı ve deposu boş başka bir tarayıcıda açılarak sayılır. Bütçe aynı (hepsi = 4, SRT = 0).
 
 ## Doğrulanmayanlar
 
@@ -200,11 +211,15 @@ kelime) bütçelerine dokunulmadı; yeni adımlar o sayılara eklenmedi (ayrı t
 2. **SRT'de konuşan:** bugün yok. İstenirse "metnin önüne ad" bir seçenek olarak eklenebilir; varsayılan
    olmamalı (yukarıdaki neden).
 3. **Yakılan altyazıda konuşan:** bugün yok ve bu ADR onu değiştirmiyor.
-4. **Bulut yazısının kalıcılığı** (yukarıdaki "Bulunan"): sihirbazın işi saklanmadığı için internette
+4. ~~**Bulut yazısının kalıcılığı** (yukarıdaki "Bulunan"): sihirbazın işi saklanmadığı için internette
    yazılan yazı yenilemede gider; tek yol yedek dosyası. Yol açılmadan önce bilinmeli. Seçenekler:
    olduğu gibi bırak ve sonuç ekranında söyle; sihirbazdan editöre geçişte projeyi sakla (ADR-034'ü
-   değiştirir, kayıtlı projenin yerine geçer); editörün kendi "Videoyu yazıya dök"üne bulut yolunu ekle.
+   değiştirir, kayıtlı projenin yerine geçer); editörün kendi "Videoyu yazıya dök"üne bulut yolunu ekle.~~
+   — **13 Ekim 2026: karar verildi ve yapıldı** — editöre geçişte saklanır, kayıtlı projenin yerine
+   sormadan geçmez, sonuç ekranı geçişten önce saklanmadığını söyler (ADR-034 eki).
 5. **"İnternette yazıldı" etiketi** kalıcı olsun mu (tarife `origin` ayrıntısı; ayrı bir şema eklemesi).
+   — 13 Ekim: hâlâ açık. Yazı artık saklandığı için daha görünür: saklanan projede yazının internette
+   yazıldığını gösteren hiçbir şey yok (ADR-034 eki, "İnternette yazıldı etiketi").
 6. **v4 → v5 penceresi** (Karar 3): kabul edildi sayıldı. İstenirse yayından önce v4 derlemesine
    yalnızca "daha yeni kayıt" korumasını taşıyan ara bir yayın yapılabilir (önce o, sonra v5).
 
