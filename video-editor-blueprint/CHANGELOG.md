@@ -3,6 +3,26 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Cihazda yazılan yazı da editöre geçişte saklanır — 13 Ekim 2026 akşamı (ADR-034 "Ek 2", ADR-036 eki; yayındaki derlemenin davranışı değişti; şema, kayıt biçimi ve politika değişmedi; bulut yolu hâlâ KAPALI)
+
+Kurucu kararı (sabahki ek'in 1. açık sorusuna): "Evet: cihazda yazılan yazı da geçişte saklansın." Hiçbir dış hizmete istek gitmedi; bulut sınamaları yerel sahte vekile karşı. `cloud/` altına dokunulmadı.
+
+**Şimdi.** "Yazıya dök"ün yazısı nerede yazılmış olursa olsun, "Daha fazla ayar → editörde aç" ile açılan editör **kayıtlı projedir** — yayındaki (bulut yolu kapalı) derlemede de. Kural aynı (`handoffAction`); sihirbaz onu artık "satırı olan bir yazı varken" çağırıyor (`keepsOnHandoff = transcript !== undefined && hasLines`). Depo boşsa ya da yalnızca açılmış bir video kaydı varsa soru yok, proje hemen saklanır, adres `/editor` olur; üstünde çalışılmış bir proje varsa aynı soru penceresi ("Saklanan bir projen var" · "Eski proje kalsın (bu yazı saklanmaz)" / "Bu yazı saklansın (eski proje silinir)" / Vazgeç) — artık yayındaki sitede de; depo kullanılamıyorsa başlık "Düzenleme saklanamadı" + neden. Editör hiç açılmazsa hiçbir şey saklanmaz; satır çıkmadıysa saklanacak bir şey yoktur, geçiş öbür sihirbazlar gibi saklamadan olur. Öbür dokuz sihirbaz ve "Kes" **saklamaz** (ADR-034 aynen).
+
+**Ekran.** Sonuç ekranındaki cümle artık her iki yolda: "Bu yazı henüz saklanmadı: editörde açarsan ya da metni indirirsen kalır, yoksa sayfa kapanınca gider." (TR + EN, aynı sözler; "Altyazılı videoyu indir" bittikten sonra editör bağlantısının üstünde de.)
+
+**"Tek satır" iddiası doğrulandı: tek satır yetmedi.** Soru penceresi (`CloudKeep.tsx`) ve bütün sözleri (`cloud.keep.*`) bulut yolunun derleme sabitinin arkasında ve bulut tablosundaydı; varsayılan dışa aktarma onları atıyordu (`apply-csp` bulut sözü taşıyan çıktıyı reddeder). Taşındı: `CloudKeep.tsx` → `components/transcript/KeepOnHandoff.tsx` (bulut modülünden hiçbir şey almaz; her derlemede, `lazyPart` ile); `cloud.keep.*` → `wizard.yazi.keepNote` + `wizard.yazi.keep.*` (`messages.ts` / `messages.en.ts`); `CloudApplied.keepNote` kalktı; sınama kimlikleri `keep-choice*`, `keep-old`, `keep-new`, `keep-cancel`, `yazi-keep-note`. Varsayılan durağan çıktıda bulut sözü yok; `apply-csp` denetimi geçti.
+
+**Gizlilik: önce → sonra.** `/gizlilik` "Proje tarifi" kartı (her derleme, TR + EN): "…ana ekrandaki bir işten (Kes, Dikey yap…) başlattığın çalışma saklanmaz." → aynı cümle + "Tek istisna “Yazıya dök”: çıkan yazıyı “Daha fazla ayar → editörde aç” ile açarsan o çalışma (satırların metni dahil) burada proje olarak saklanır; orada daha önce sakladığın bir proje varsa hangisinin kalacağı sana sorulur. Silmesi aşağıdaki gibi." (silme: kartın "Ne zaman silinir" satırı, "Kayıtlı projeyi sil"). Bulut derlemesinin ek cümlesi: "Tek istisna: internette yazılan bir yazıyı…" → "İnternette yazılan yazı için de aynı: editörde açarsan satırların metni ve kimin konuştuğu burada saklanır; ses, davet kodun ve şirketin yanıtı saklanmaz." Veri envanteri: üst not, §2.7 (istisna ve silme), §2.8, §8.4a (artık her iki yol), §8.6 (soru kapandı). ADR-034 "Ek 2", ADR-036 eki, ADR-039 eki güncellendi.
+
+**Sınamalar (son kodla, yerel):** SINAMA-OZETI
+
+**Kalite katmanı.** KALITE-OZETI
+
+**Açık kurucu kararları:** soru penceresinin sözleri ve vurgulu düğme (artık yayındaki sitede); "iş" eşiği; satırsız yazının saklanmaması (bu işte seçildi); "İnternette yazıldı" etiketi (şema); video açıkken "projeyi sil"; adresin `/editor` olması; birden çok proje.
+
+**Doğrulanmayan:** gerçek telefon, Safari, Firefox, ekran okuyucu; GitHub Pages'te (`/capcut`) adres değişimi (yalnızca `next start` ile); gerçek modelle geçiş (betikli tanıyıcıyla sınandı); gerçek sağlayıcı/Worker; iki sekme yarışı; depolama kotası; yeni yığının paket boyutu.
+
 ## İnternette yazılan yazı editöre geçişte saklanır — 13 Ekim 2026 (ADR-034 eki; ADR-043'ün "Bulunan"ı kapandı; şema, kayıt biçimi ve politika değişmedi; bulut yolu hâlâ KAPALI)
 
 Kurucu kararı: "Bulut yazısı editöre geçişte saklansın." Hiçbir dış hizmete istek gitmedi; bulut sınamaları yalnızca yerel sahte vekile karşı. `cloud/` altına dokunulmadı.

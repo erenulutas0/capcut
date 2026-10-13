@@ -924,3 +924,24 @@ Hepsi 4–5 Ekim 2026'da bu makinede, son kaynakla koşuldu.
 7. **Uzun video süresi:** 60 ve 120 dakika masaüstü Chromium'da bitti (37,7 ve 54,5 dakika;
    bellek ~1,2 GiB). Ayrı bir sınır konmadı. Telefonda uzun video ölçülmedi: telefon için daha
    kısa bir sınır ya da "bu uzun sürecek" uyarısı istenir mi? (Önce gerçek cihaz ölçümü gerekir.)
+
+## Ek, 13 Ekim 2026 akşamı — yazı editöre geçişte saklanır
+
+Kurucu kararı: cihazda yazılan yazı da, internette yazılan gibi, "Daha fazla ayar → editörde aç" ile
+açılan editörde **kayıtlı proje** olur. Kural, soru penceresi, gizlilik metni ve sınamalar
+[ADR-034'ün 13 Ekim ekleri](ADR-034-task-first-home.md); burada yalnızca bu yolu ilgilendiren özet.
+
+- **Sonuç ekranı** (yazı çıktı, editör açılmadı): yazı yalnızca açık sayfadadır ve ekran bunu söyler —
+  "Bu yazı henüz saklanmadı: editörde açarsan ya da metni indirirsen kalır, yoksa sayfa kapanınca gider."
+  (`wizard.yazi.keepNote`; "Altyazılı videoyu indir" bittikten sonra editör bağlantısının üstünde de.)
+  Sihirbazda kalan kullanıcı için hiçbir şey değişmedi: sayfa yenilenince yazı gider (sınandı).
+- **"Daha fazla ayar → editörde aç":** proje tarifi (satırlar, "anlaşılamadı" aralıkları, kaynak dosyanın
+  tanıtıcı bilgileri) tarayıcının tek kayıtlı projesi olur; model dosyaları ve kelime zamanları saklanmaz
+  (zaten saklanmıyordu). Depoda üstünde çalışılmış bir proje varsa önce sorulur; adres `/editor` olur;
+  yenileme projeyi geri getirir ve video dosyasını yeniden ister.
+- **Satır çıkmadıysa** ("Yazılabilen bir satır çıkmadı") saklanacak bir şey yoktur: geçiş öbür
+  sihirbazlarınki gibi saklamadan olur, cümle görünmez.
+- **Değişmeyenler:** motor, model deposu, satır kuralları, EDL v3 altyazı izi, test ikizi, paket boyutu
+  (yeni parça `KeepOnHandoff` `lazyPart` ile ayrı bir yığında; bu işte ölçülmedi).
+- **Gizlilik:** `/gizlilik` "Proje tarifi" kartına tek istisna cümlesi eklendi (her derleme); veri
+  envanteri §2.7, §2.8, §8.4a.

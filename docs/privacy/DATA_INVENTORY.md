@@ -11,11 +11,11 @@
 > vermez. Yol açık bir derlemede neyin değiştiği **§8**'de yazılıdır; o derleme yayınlanırsa bu
 > belgenin §1, §2.4, §4.1 ve §6 satırları §8'e göre okunmalıdır.
 >
-> **13 Ekim 2026 — internette yazılan yazı editöre geçişte saklanır (ADR-034 eki).** Yalnızca yol açık
-> derlemede: "Yazıya dök"te internette yazılmış bir yazının üstünde "Daha fazla ayar → editörde aç"a
-> basılınca o çalışma tarayıcının proje deposuna yazılır (§8.4a). Yayındaki derlemede bu kod yoktur;
-> §2.7'nin "sihirbaz proje saklamaz" cümlesi orada olduğu gibi doğrudur. Yol açık derlemede §2.7 ve
-> §2.6'nın "sihirbazda hiçbir şey saklanmaz" satırları §8.4a'ya göre okunmalıdır.
+> **13 Ekim 2026 — "Yazıya dök"ün yazısı editöre geçişte saklanır (ADR-034 ekleri).** Sabah yalnızca
+> internette yazılan yazı için (yol açık derlemede), aynı akşam **cihazda yazılan yazı için de, yani
+> yayındaki derlemede**: "Yazıya dök"te çıkan yazının üstünde "Daha fazla ayar → editörde aç"a basılınca
+> o çalışma tarayıcının proje deposuna yazılır (§2.7, §8.4a). "Sihirbaz proje saklamaz" kuralının tek
+> istisnası budur; §2.6'nın ve §2.8'in "sihirbazda hiçbir şey saklanmaz" satırları §2.7'ye göre okunmalıdır.
 
 Bu belge "ne yapmayı planlıyoruz" değil, **kodun bugün ne yaptığıdır**. Her satır bir dosyaya
 dayanır; bir davranış değişirse önce bu belge ve `/gizlilik` sayfası (`web/src/components/PrivacyPage.tsx`,
@@ -259,9 +259,16 @@ Yeni saklanan veri **yok**.
   aç" ile açılan editörden) IndexedDB `projects` deposuna yazılmaz ve oradan okunmaz; `/editor`'de
   kayıtlı proje yerinde durur (e2e: `wizards.spec.ts`). Dışa aktarma günlüğü (§2.1) ve geçici
   dışa aktarma dosyası (§2.2) editördeki indirmeyle aynı yoldan yazılır.
-  **Tek istisna, yalnızca bulut yolu açık derlemede (13 Ekim 2026, §8.4a):** "Yazıya dök"te internette
-  yazılmış bir yazının üstünde açılan editör projeyi saklar. Öbür dokuz sihirbaz ve cihazda yazılan
-  yazı için yukarıdaki cümle değişmedi.
+  **Tek istisna (13 Ekim 2026, ADR-034 ekleri; her derlemede):** "Yazıya dök"te çıkan yazının — cihazda
+  (ADR-036) ya da internette (ADR-039, yalnız yol açık derlemede) yazılmış — üstünde "Daha fazla ayar →
+  editörde aç"a basılınca editör o çalışmayı **proje olarak saklar**: §2.1'deki `projects` kaydının
+  aynısı, aynı anahtar, aynı otomatik kayıt (ne saklandığı ve ne saklanmadığı §8.4a'daki tabloda; o tablo
+  cihazda yazılan yazı için de geçerlidir, `speaker` yalnızca internet yolunda olur). Satır çıkmamışsa
+  saklanmaz. Depoda üstünde çalışılmış bir proje varsa önce sorulur ("Saklanan bir projen var"); seçilmeden
+  hiçbir şey yazılmaz. Adres `/editor` olur; yenileme projeyi geri getirir ve video dosyasını yeniden
+  ister. **Silme:** §2.1'deki proje silmenin aynısı — editör dosyayı yeniden istediğinde "Kayıtlı projeyi
+  sil", ya da tarayıcı verisini temizlemek. Öbür dokuz sihirbaz için yukarıdaki cümle değişmedi
+  (e2e: `transcript-keep.spec.ts`, `wizards.spec.ts`). `/gizlilik` "Proje tarifi" kartı bunu söyler.
 - Çevrimdışı kopya (§2.5) artık `/yap/kes`, `/yap/bosluk`, `/yap/dikey`, `/yap/muzik`,
   `/yap/cevir` sayfalarını da içerir (yalnızca uygulamanın kendi dosyaları).
 
@@ -298,7 +305,8 @@ Yeni saklanan veri **yok**.
   seçildiği; görüntüden türetilmiş hiçbir şey değil. Sihirbaz proje saklamaz.
 - **Transkript metni:** altyazı izi olarak proje tarifinin içindedir (`captionTracks[0]`,
   `origin: 'transcript'`, EDL v3). Editörde (`/editor`) diğer altyazı satırları gibi IndexedDB'ye
-  saklanır ve proje yedeğine girer (§2.1); sihirbazda (`/yap/yazi`) hiçbir şey saklanmaz (§2.7).
+  saklanır ve proje yedeğine girer (§2.1); sihirbazın (`/yap/yazi`) sonuç ekranında hiçbir şey saklanmaz,
+  "Daha fazla ayar → editörde aç"a basılınca proje olarak saklanır (§2.7; 13 Ekim 2026).
   Kelime zamanları saklanmaz; yalnızca satırlar ve "anlaşılamadı" aralıkları.
 - **Kullanıcının tetiklediği yeni indirmeler:** "Metni indir" (TXT, zaman damgalı satırlar),
   "SRT / VTT indir", "Altyazılı videoyu indir" (MP4). Hepsi tarayıcının yazdığı yerel dosyalardır.
@@ -466,9 +474,11 @@ yalnızca `clip.cloudInvite`; sessionStorage boş) ve "the invite code can be re
 
 ### 8.4a İnternette yazılan yazı: editöre geçişte proje olarak saklanır (13 Ekim 2026, ADR-034 eki)
 
-Kurucu kararı (13 Ekim 2026): "Bulut yazısı editöre geçişte saklansın." Yeni bir depo, yeni bir alan
-ya da şema değişikliği **yok**: yazılan şey §2.1'deki `projects` kaydının aynısıdır (`ProjectRecord`,
-EDL v5), aynı anahtarla (`p_local_001`), aynı otomatik kayıtla.
+Kurucu kararı (13 Ekim 2026): "Bulut yazısı editöre geçişte saklansın." Aynı akşam: cihazda yazılan yazı
+da — yani bu tablo artık **her derlemede, her iki yol için** geçerlidir (§2.7); yalnızca `speaker` satırı
+internet yoluna özgüdür. Yeni bir depo, yeni bir alan ya da şema değişikliği **yok**: yazılan şey
+§2.1'deki `projects` kaydının aynısıdır (`ProjectRecord`, EDL v5), aynı anahtarla (`p_local_001`), aynı
+otomatik kayıtla.
 
 | Ne zaman | Depoda ne var |
 |---|---|
@@ -489,12 +499,13 @@ EDL v5), aynı anahtarla (`p_local_001`), aynı otomatik kayıtla.
 - **Adres:** saklanan geçişte adres çubuğu sayfa yüklenmeden `/editor` olur (`history.replaceState`);
   adrese kişisel hiçbir şey yazılmaz. Yenileme editörü açar, kayıtlı proje geri gelir ve video dosyası
   yeniden istenir (dosyanın kendisi hiçbir yerde saklanmaz, §2.3).
-- **Cihazda yazılan yazı** bu değişikliğin dışındadır: sihirbazda da, ondan açılan editörde de
-  saklanmaz (kurucu kararı bekliyor, ADR-034 eki).
+- **Cihazda yazılan yazı** (13 Ekim akşamı): aynı kural, aynı kayıt, aynı sorgu; sihirbazın sonuç
+  ekranında saklanmaz, editöre geçince saklanır. Satır çıkmamışsa saklanmaz. Vekile istek gitmez (e2e).
 
-Kod: `web/src/domain/wizardHandoff.ts` (kural), `web/src/components/transcript/CloudKeep.tsx` (soru),
-`web/src/components/wizard/TaskWizard.tsx`, `useProjectPersistence.ts` (`adopt`). Kanıt:
-`tests/cloud/cloud-keep.spec.ts`, `tests/unit/wizardHandoff.test.ts`.
+Kod: `web/src/domain/wizardHandoff.ts` (kural), `web/src/components/transcript/KeepOnHandoff.tsx` (soru;
+sabah `CloudKeep.tsx`, yalnız bulut derlemesinde), `web/src/components/wizard/TaskWizard.tsx`,
+`useProjectPersistence.ts` (`adopt`). Kanıt: `tests/e2e/transcript-keep.spec.ts` (yayındaki derleme,
+cihazda yazılan yazı), `tests/cloud/cloud-keep.spec.ts`, `tests/unit/wizardHandoff.test.ts`.
 
 ### 8.5 `/gizlilik` sayfası
 
@@ -520,8 +531,8 @@ derlemede doğrudur. Kanıt: `tests/cloud/cloud-keep.spec.ts` (son sınama), `te
 - Bulut dakikasının ücretli/ücretsiz/deneme oluşu (politika belgesi 15 — değişmedi).
 - ~~Konuşmacı etiketlerinin kalıcı olması (EDL v5).~~ — 13 Ekim 2026: yapıldı (ADR-043; §8.4).
 - ~~İnternette yazılan yazının kalıcılığı.~~ — 13 Ekim 2026: editöre geçişte saklanıyor (§8.4a).
-- Cihazda yazılan yazı da editöre geçişte saklansın mı (yayındaki derlemenin davranışını ve gizlilik
-  metnini değiştirir; ADR-034 eki).
+- ~~Cihazda yazılan yazı da editöre geçişte saklansın mı.~~ — 13 Ekim 2026 akşamı: evet, yapıldı (§2.7;
+  ADR-034 "Ek 2").
 - "İnternette yazıldı" bilgisi kayıtta tutulsun mu (şema eklemesi; ADR-043 madde 5).
 - Kişileri yeniden adlandırma (ADR-043): gelirse tarife **serbest metin** (bir ad) girer; bu envanter
   ve `/gizlilik` o değişiklikle birlikte güncellenmeli.

@@ -9,8 +9,9 @@
 > **Güncelleme 7 Ekim 2026:** dokuzuncu kart "Sesi kapat"; yapılamayan on istek aramada dürüst
 > yanıt alıyor; arama kuralları 5 ve 7; müzik artık indirmenin tamamına yayılıyor (aşağıda
 > ilgili yerler güncellendi, sonda "Güncelleme — 7 Ekim 2026"). Aynı gün onuncu kart "İyileştir" geldi ([ADR-037](ADR-037-enhance.md)).
-> **Ek, 13 Ekim 2026:** "sihirbaz proje saklamaz" kuralının **tek istisnası** — internette yazılan yazı
-> editöre geçişte saklanır (yalnız bulut yolu açık derlemede; sonda "Ek, 13 Ekim 2026").
+> **Ek, 13 Ekim 2026:** "sihirbaz proje saklamaz" kuralının **tek istisnası** — "Yazıya dök"ün yazısı
+> editöre geçişte saklanır: sabah internette yazılan yazı (yalnız bulut derlemesinde), akşam cihazda
+> yazılan yazı da, yani yayındaki derlemede (sonda "Ek, 13 Ekim 2026" ve "Ek 2, 13 Ekim 2026 akşamı").
 
 ## Neden
 
@@ -171,8 +172,8 @@ ayarlar, ikinci dosya penceresi yok. Sayfa yüklemesi bir `File` taşıyamaz ve 
 istemci içi gezinme tam sayfa yüklemesine düşer (ADR-031 testleri); yerinde değiştirmek ikisinden
 de bağımsızdır. Bu editörde **hiçbir şey saklanmaz** (`stored={false}`): tarayıcıdaki proje
 deposu okunmaz ve yazılmaz, yani `/editor`'de kayıtlı proje yerinde durur; başlıkta
-"Düzenleme saklandı" yerine "Bu düzenleme saklanmıyor" yazar. (Tek istisna, 13 Ekim 2026: internette
-yazılmış bir yazının üstünde açılan editör — sondaki ek.)
+"Düzenleme saklandı" yerine "Bu düzenleme saklanmıyor" yazar. (Tek istisna, 13 Ekim 2026: "Yazıya dök"ün
+yazısının — cihazda ya da internette yazılmış — üstünde açılan editör; sondaki iki ek.)
 
 ## Sihirbazlar
 
@@ -620,9 +621,9 @@ girebilirdi. Bu yüzden iki düğmesi de ne yaptığını ve bedelini söyleyen 
 
 ### Sonuç ekranı ne der
 
-Geçişten **önce** yazı saklanmış değildir ve ekran bunu söyler (yalnız bulut yolunda; `cloud.keep.note`,
-yazı panelinin ve dosya düğmelerinin altında, ayrıca "Altyazılı videoyu indir" bittikten sonra editör
-bağlantısının üstünde):
+Geçişten **önce** yazı saklanmış değildir ve ekran bunu söyler (sabah yalnız bulut yolunda, akşamdan
+beri her iki yolda — `wizard.yazi.keepNote`; yazı panelinin ve dosya düğmelerinin altında, ayrıca
+"Altyazılı videoyu indir" bittikten sonra editör bağlantısının üstünde):
 
 > Bu yazı henüz saklanmadı: editörde açarsan ya da metni indirirsen kalır, yoksa sayfa kapanınca gider.
 
@@ -647,7 +648,10 @@ geri yazılmaz (ADR-012 eki, 10 Ekim); sınama, silmeden sonra beklemeyle ve yen
 kaldığını doğrular. Video açıkken editörde ayrı bir "projeyi sil" düğmesi yoktur — var olan sınır, bu işte
 eklenmedi.
 
-### Cihazda yazılan yazı: **kapsam dışı bırakıldı** (kurucu kararı)
+### Cihazda yazılan yazı: **kapsam dışı bırakıldı** (kurucu kararı) — aynı akşam geri alındı, aşağıda "Ek 2"
+
+> Bu bölüm sabahki durumu anlatır; akşam kurucu "cihazda yazılan yazı da saklansın" dedi ve aşağıda
+> sayılan her sonuç (yayındaki derleme, gizlilik metni, olağan e2e) o ek'te üstlenildi.
 
 Cihazda yazılan yazı da sihirbazda aynı biçimde yenilemede gider. Aynı kod yolu onu da saklayabilirdi,
 ama bu **yayındaki** (bulut yolu kapalı) derlemenin davranışını değiştirir:
@@ -684,11 +688,11 @@ değişmedi ve orada doğrudur.
 | Dosya | Ne |
 |---|---|
 | `web/src/domain/wizardHandoff.ts` | Kural: `handoffAction`, `storedProjectHasWork`, `storedProjectName` |
-| `web/src/components/transcript/CloudKeep.tsx` | Depoya bakar; gerekirse soru penceresi (yalnız bulut derlemesi) |
-| `web/src/components/wizard/YaziWizard.tsx` | Bulut yazısı varken editör bağlantısını `CloudKeep`'e yönlendirir; sonuç cümlesi |
+| `web/src/components/transcript/KeepOnHandoff.tsx` (sabah `CloudKeep.tsx`, yalnız bulut derlemesi; akşam her derlemeye taşındı — Ek 2) | Depoya bakar; gerekirse soru penceresi |
+| `web/src/components/wizard/YaziWizard.tsx` | Satırı olan bir yazı varken editör bağlantısını `KeepOnHandoff`'a yönlendirir; sonuç cümlesi |
 | `web/src/components/wizard/TaskWizard.tsx`, `WizardFlow.tsx` | `onOpenEditor({ stored })`; adres `/editor`; `editorNote` |
 | `web/src/components/editor/useProjectPersistence.ts`, `EditorApp.tsx` | `adopt`: depodakini yükleme, eldekini hemen yaz |
-| `web/src/i18n/cloudMessages*.ts`, `PrivacyPage.tsx` | Sözler (TR + EN), gizlilik |
+| `web/src/i18n/messages*.ts` (`wizard.yazi.keep*`; sabah `cloudMessages*.ts` içindeydi), `PrivacyPage.tsx` | Sözler (TR + EN), gizlilik |
 
 ### Sınamalar (13 Ekim 2026, dal `worktree-agent-a2b52e38355c6d5f7`; hepsi yerel, son kodla)
 
@@ -723,8 +727,8 @@ kesit sayacını okuyordu); sınama düzeltildi, uygulama kodu o koşular arası
 
 ### Kurucu kararları gerekiyor
 
-1. **Cihazda yazılan yazı** da editöre geçişte saklansın mı? (Yayındaki siteyi, gizlilik metnini ve soru
-   penceresinin yayında görünmesini değiştirir; yukarıda.)
+1. ~~**Cihazda yazılan yazı** da editöre geçişte saklansın mı?~~ — Aynı akşam **evet** dendi ve yapıldı
+   (aşağıda "Ek 2").
 2. **Soru penceresinin sözleri** ve hangi düğmenin vurgulu olduğu (bugün: "Bu yazı saklansın" vurgulu).
 3. **"İş" eşiği:** yalnızca açılmış bir videonun kaydı sormadan değiştiriliyor (editörün kendi davranışı).
    Her kayıt için sorulsun istenirse tek satır.
@@ -733,3 +737,90 @@ kesit sayacını okuyordu); sınama düzeltildi, uygulama kodu o koşular arası
 6. **Adresin `/editor` olması:** yenileme editörü açsın diye. İstenmezse geri alınır; o zaman yenileme
    sihirbazı açar ve proje açılış ekranındaki "Kendim düzenleyeceğim"den bulunur.
 7. **Birden çok proje** saklamak (bu sorunun asıl çözümü; ADR-012 "Bilinen sınırlar").
+
+## Ek 2, 13 Ekim 2026 akşamı — cihazda yazılan yazı da editöre geçişte saklanır
+
+> Kurucu kararı (13 Ekim 2026, akşam): **"Evet: cihazda yazılan yazı da geçişte saklansın."**
+> Sabahki ek'in 1. açık sorusunun cevabı. İlgili: [ADR-036](ADR-036-on-device-transcript.md) (cihazda
+> yazıya dökme; kısa ek), [ADR-039](ADR-039-cloud-transcript-route.md). Şema, kayıt biçimi ve politika
+> yine **değişmedi**; hiçbir dış hizmete istek gitmedi (bulut sınamaları yerel sahte vekile karşı).
+
+### Karar
+
+"Yazıya dök"ün yazısı, **nerede yazılmış olursa olsun**, "Daha fazla ayar → editörde aç" ile açılan
+editörde **kayıtlı projedir**. Yayındaki (bulut yolu kapalı) derleme de artık böyle davranır. Öbür dokuz
+sihirbaz ve "Kes" için bu ADR aynen geçerli: saklamazlar (sınandı: `transcript-keep.spec.ts` "Kes",
+`wizards.spec.ts`).
+
+Kural sabahkiyle aynı (`handoffAction`); değişen tek şey sihirbazın kuralı **ne zaman** çağırdığı:
+`keepsOnHandoff = transcript !== undefined && hasLines` (`YaziWizard.tsx`). Sabah "bulut yazısı varken"
+idi. **Satırı olmayan yazı** (hiçbir şey yazılamadı) saklanmaz: saklanacak bir şey yok, geçiş öbür
+sihirbazlarınki gibi saklamadan olur ve cümle görünmez (sınandı). Bu, sabahki bulut davranışından küçük
+bir fark: o zaman satırsız bulut yazısı da saklanırdı; şimdi ikisi de saklanmaz.
+
+### Yayındaki derlemede geçişte ne olur
+
+| Depoda ne var | Ne olur | Kullanıcı ne okur |
+|---|---|---|
+| Hiçbir şey | Soru yok; editör açılır, proje hemen saklanır; adres `/editor` | "Düzenleme saklandı · saat" |
+| Yalnızca açılmış bir video (iş yok) | Soru yok; o kaydın yerine bu proje yazılır | Aynı |
+| Üstünde çalışılmış bir proje | Hiçbir şey yazılmaz; sorulur ("Saklanan bir projen var") | Pencere: "Eski proje kalsın (bu yazı saklanmaz)" / "Bu yazı saklansın (eski proje silinir)" / Vazgeç |
+| Okunamayan depo | Editör açılır; yazma reddedilir | "Düzenleme saklanamadı · neden" + "Yedek dosyasını indir" |
+| Daha yeni derlemenin kaydı | Açılmaz, üstüne yazılmaz (ADR-043) | Başlık bunu söyler |
+| Editör hiç açılmazsa | Hiçbir şey saklanmaz; yenileme yazıyı götürür | Sonuç ekranı: "Bu yazı henüz saklanmadı: editörde açarsan ya da metni indirirsen kalır, yoksa sayfa kapanınca gider." |
+| Satır yok | Saklanmaz (öbür sihirbazlar gibi) | "Bu düzenleme saklanmıyor"; cümle yok |
+| Kes, Dikey yap, … | Saklanmaz (değişmedi) | "Bu düzenleme saklanmıyor" |
+
+### Bulut modüllerinden çıkarılanlar ("tek satır" iddiası doğrulandı mı?)
+
+Sabahki ajan "tek satır (`keepsOnHandoff`)" demişti. Satır tek, ama **tek başına yeterli değildi**: soru
+penceresi (`CloudKeep.tsx`) ve bütün sözleri (`cloud.keep.*`) bulut yolunun derleme sabitinin arkasında ve
+`cloudMessages*.ts` içindeydi; varsayılan derleme onları atıyordu. Taşınanlar:
+
+- `components/transcript/CloudKeep.tsx` → `KeepOnHandoff.tsx`: aynı parça, `translator('tr')` ile; bulut
+  modülünden hiçbir şey almıyor (birim sınaması bunu kaynak üstünde denetler). `YaziWizard` onu derleme
+  sabiti olmadan `lazyPart` ile yüklüyor; sınama kimlikleri `keep-choice`, `keep-choice-name`, `keep-old`,
+  `keep-new`, `keep-cancel`, cümle `yazi-keep-note` (eski `cloud-keep*`, `yazi-cloud-keep-note`).
+- `cloud.keep.note / title / body / named / old / new / hint / cancel` → `wizard.yazi.keepNote` ve
+  `wizard.yazi.keep.*` (`messages.ts` + `messages.en.ts`, sözler aynı). `CloudApplied.keepNote` kalktı.
+- Varsayılan durağan dışa aktarma: `apply-csp`'nin bulut denetimi geçer; çıktıda `cloud-keep` kimliği
+  de kalmadı (aşağıda "Sınamalar").
+
+### Gizlilik: önce → sonra
+
+- `/gizlilik` "Proje tarifi" kartı (her derleme), TR: *"…ana ekrandaki bir işten (Kes, Dikey yap…)
+  başlattığın çalışma saklanmaz."* → aynı cümle **+** *"Tek istisna “Yazıya dök”: çıkan yazıyı “Daha fazla
+  ayar → editörde aç” ile açarsan o çalışma (satırların metni dahil) burada proje olarak saklanır; orada
+  daha önce sakladığın bir proje varsa hangisinin kalacağı sana sorulur. Silmesi aşağıdaki gibi."* (silme:
+  kartın kendi "Ne zaman silinir" satırı, "Kayıtlı projeyi sil"). EN aynı anlamda.
+- Bulut derlemesinin ek cümlesi (`cloud.privacy.stored.project.extra`): *"Tek istisna: internette yazılan
+  bir yazıyı…"* → *"İnternette yazılan yazı için de aynı: editörde açarsan satırların metni ve kimin
+  konuştuğu burada saklanır; ses, davet kodun ve şirketin yanıtı saklanmaz."* ("tek istisna" artık kartın
+  kendi cümlesinde; bulut cümlesi yalnızca fazladan ne saklandığını söylüyor.) "Yazı cihazında nerede durur"
+  maddesi olduğu gibi doğru kaldı.
+- Veri envanteri: üst not, §2.7, §2.8, §8.4a, §8.6.
+
+### Sınamalar
+
+(Bu ek'in sonundaki tablo, aynı değişiklikle son kodda koşulan sınamaların sonucudur; değişiklik
+kaydında da aynı sayılar.)
+
+SINAMA-TABLOSU
+
+### Doğrulanmayanlar
+
+- Sabahki ek'in listesi aynen geçerli: gerçek sağlayıcı/Worker, gerçek telefon, Safari, Firefox, ekran
+  okuyucu, iki sekme yarışı, depolama kotası.
+- Yayındaki sitede (GitHub Pages, `/capcut` taban yolu) adresin `/editor` olması yine yalnızca kod
+  okunarak; Pages duman sınaması bu geçişi yürümüyor.
+- Gerçek modelle (109 MB) geçiş: sınamalar betikli tanıyıcıyla; kalite yürüyüşü de öyle. Gerçek modelin
+  yazısı aynı tarife girer; saklama yolu aynıdır, ayrıca koşulmadı.
+
+### Kurucu kararları
+
+Sabahki listenin 2–7. maddeleri açık (soru penceresinin sözleri ve vurgulu düğme; "iş" eşiği; "İnternette
+yazıldı" etiketi; video açıkken "projeyi sil"; adresin `/editor` olması; birden çok proje). Yeni:
+
+8. **Satırsız yazı saklanmıyor** (bu ek'te seçildi: saklanacak şey yok). İstenirse `hasLines` kaldırılır.
+9. **Soru penceresi yayındaki sitede göründü**: önceki ek bunu "yeni bir ekran" diye saymıştı; sözleri
+   ve davranışı aynen alındı, ayrı bir tasarım turu yapılmadı.
