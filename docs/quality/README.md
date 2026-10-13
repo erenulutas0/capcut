@@ -280,12 +280,83 @@ silinmez, "düzeltildi (commit)" diye işaretlenir, sonraki koşuda sayısıyla 
 - **Yazıya dökmenin bugünkü doğruluğu.** Kayıtlı sayılar son ölçümün sayılarıdır.
 - **Okunabilirlik.** Ateşman puanı cümle ve kelime uzunluğunu ölçer; "kesit" kelimesinin bir çocuğa bir
   şey ifade edip etmediğini ölçmez.
-- **Diğer tarayıcılar.** Her şey Playwright'ın Chromium'undadır. Chrome, Edge, Firefox ve Safari farkları
-  dışa aktarma matrisinin işidir (`docs/SUPPORT_MATRIX.md`).
+- **Diğer tarayıcılar.** `npm run quality` içindeki her şey Playwright'ın Chromium'undadır. Chrome ve Edge
+  farkları dışa aktarma matrisinin işidir (`docs/SUPPORT_MATRIX.md`); Firefox ve WebKit **motor
+  derlemeleri** ayrı bir pakette yürünür (aşağıda, “Diğer tarayıcı motorları”). Gerçek Safari (macOS / iOS)
+  ve Android'deki Firefox hiçbir yerde ölçülmedi.
 - **e2e paketinin yerine geçmez** ve onu koşmaz.
 
 İlk gerçek kullanıcı testi yapıldığında bu raporun yanına konmalı: betiğin "sorun yok" dediği yerde bir
 insanın takıldığı her nokta, bu katmanın kör noktasıdır ve mümkünse yeni bir ölçüye çevrilmelidir.
+
+## Diğer tarayıcı motorları (`npm run browsers`)
+
+> 13 Ekim 2026'da kuruldu. Ayrı bir pakettir: `npm run quality`'nin, olağan e2e koşusunun ve CI'ın parçası
+> **değildir** ve hiçbir şeyi kapatmaz.
+
+Bir çocuğun cihazı iPad ya da Firefox'lu bir dizüstü olabilir. Bu paket on kartı ve çevresini Firefox ve
+WebKit motorlarında, masaüstü ve telefon boyunda, **insanların aldığı derlemede** (düz `npm run build` +
+`next start`; test kancası yok) yürür ve her hücreyi sınıflar:
+
+| Sınıf | Ne demek |
+|---|---|
+| **çalışıyor** | İş bitti; çıkan dosya ffprobe ile denetlendi ve kartın söz verdiği gibi |
+| **dürüst ret** | Uygulama durdu ve nedenini söyledi; metin kelimesi kelimesine raporda |
+| **BOZUK** | Sahte başarı, bitmeyen bekleme (sınırlı beklenir; takılma bir bulgudur), kimseye söylenmeyen hata, açıklamasız duruş |
+| **yok** | Tarayıcıda özellik yok, uygulama da vaat etmiyor (ör. yükleme önerisi) |
+| **koşulmadı** | Nedeniyle. Sonuç dosyası olmayan hücre de böyle yazılır; hiçbir şey tahmin edilmez |
+
+Paket yalnızca **BOZUK** bir hücrede kırmızıya döner. Bir işi yapamayan ama bunu söyleyen tarayıcı hata değildir.
+
+```
+cd web
+npx playwright install firefox webkit        # bir kez (Playwright'ın kendi derlemeleri; ücretsiz)
+npm run browsers                             # derle, hepsini koş, raporu yaz
+npm run browsers -- --no-build               # .next/ düz bir derlemeyse yeniden derleme
+npm run browsers -- --project=firefox-desktop,webkit-phone
+npm run browsers -- --grep=kart              # yalnızca adı uyan testler
+npm run browsers -- --report-only            # son sonuçlardan raporu yeniden yaz
+node scripts/lib/engine-walk-section.mjs --patch   # docs/SUPPORT_MATRIX.md içindeki bölümü yenile
+```
+
+Projeler (`web/playwright.browsers.config.ts`): `chromium-desktop` (**kontrol**: aynı yürüyüş, öteki
+testlerin motorunda — paketin kendi hatası motor bulgusundan böyle ayrılır), `firefox-desktop`,
+`firefox-phone`, `webkit-desktop`, `webkit-phone`. Sunucu 3196 numaralı portta açılır (`BROWSERS_PORT`),
+koşu makine genelindeki ölçüm kilidini alır, bitince sunucu kapanır. Süre bu makinede: derleme ≈ 1 dakika,
+105 test ≈ 6 dakika (kilit beklemesi hariç). `.next/` koşudan sonra **düz** derlemedir: olağan e2e'den önce
+`CLIP_TEST_HOOKS=1 npm run build` yeniden gerekir.
+
+**Bunlar motor derlemeleridir, tarayıcının kendisi değil — her bulgu böyle okunmalı:**
+
+- **WebKit** = Playwright'ın *Windows* için WebKit derlemesi. Safari değildir: bu derlemede WebCodecs,
+  OffscreenCanvas ve H.264 oynatma **hiç yok**, sayfanın özel deposu (OPFS) hata veriyor; gerçek Safari'de
+  bunlar var. Bu yüzden buradaki “hiçbir kart çalışmıyor” gerçek Safari hakkında bir şey söylemez; söylediği
+  şey, **hiçbir şeyi olmayan bir tarayıcıda uygulamanın dürüst kaldığıdır**.
+- **Firefox** = Playwright'ın yamalı *masaüstü* Firefox'u. Android'deki Firefox değildir (orada kodekler
+  işletim sisteminden gelir). Firefox'ta telefon öykünmesi yoktur: “telefon boyu” aynı masaüstü motorunun
+  390 × 844 dokunmatik görünümüdür.
+- Hangi bulgunun gerçek Safari'ye / Android Firefox'a taşınması **olası**, hangisinin **olası değil**
+  olduğu, nedeniyle, elle yazılan yorum dosyasındadır: `docs/quality/browsers-2026-10-13.md`.
+
+Ne yürünür: her kart için ana ekran → sihirbaz → video → “İndir” → dosya ya da ret (yürüyen,
+`tests/quality/lib/novice.ts`'in adıyla-bulan kullanıcısıdır; Firefox ve WebKit'te hiçbir şey taklit edilmez,
+dosya gerçek indirme yolundan alınır). Kartların dışında: tarayıcının gerçekte nesi olduğu (sayfanın
+içinde ölçülür, adından varsayılmaz), ana ekran ve arama, çevrimdışı kabuk, editör (klavye, kesit listesi,
+tam ekran), dosyanın tarayıcıdan çıkışı, “Paylaş”, yükleme önerisi, “Yazıya dök”ün model adımı (model
+dosyaları makinede yoksa “Modeli indir”e basılır ve uygulamanın bunu söylediği doğrulanır; yazıya dökmenin
+kendisi **koşulmaz**), HEVC ve HDR kaynak, axe (ana ekran + bir sihirbaz). Ayrıca 13 Ekim düzeltmelerinin
+testi (`advice.spec.ts`): dosyayı yapamayan tarayıcıda bunun **baştan** söylenmesi ve çıkış yolunun doğru
+olması — beklenti tarayıcının adından değil, sayfada ölçülen yeteneğinden türetilir.
+
+| Dosya | Ne |
+|---|---|
+| `docs/quality/browsers-latest.md` / `.json` | Son koşunun tabloları (üretilir; elle düzeltilmez) |
+| `docs/quality/browsers-2026-10-13.md` | **Elle yazılır.** İlk koşunun yorumu: bulgular, düzeltilenler, seçenekler, taşınabilirlik |
+| `web/playwright.browsers.config.ts` | Motorlar ve boyutlar |
+| `web/tests/browsers/` | `cards.spec.ts`, `platform.spec.ts`, `advice.spec.ts`, `lib/` |
+| `web/scripts/browsers/run.mjs`, `report.mjs` | Koşucu ve tablo yazarı |
+| `web/scripts/lib/engine-walk-section.mjs` | `docs/SUPPORT_MATRIX.md` içindeki “motor derlemeleri” bölümü |
+| `web/.scratch/browsers/` | Ham sonuçlar ve çıkan dosyalar (git'e girmez) |
 
 ## Dosyalar
 

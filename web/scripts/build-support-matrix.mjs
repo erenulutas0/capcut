@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { engineWalkSection } from './lib/engine-walk-section.mjs';
 import { CASES } from './lib/matrix-cases.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -307,6 +308,9 @@ if (realFiles.length === 0) {
 // Hand-written, not generated: the phone runs are not in matrix-results/*.json
 // of every checkout (the phone is driven by hand over adb). Kept here so that
 // regenerating the document does not drop it; update it with each phone run.
+// A section of its own, from a source of its own (the card walk of `npm run browsers`, not the export matrix).
+lines.push(...engineWalkSection(), '');
+
 lines.push(...PHONE_SECTION);
 
 const notRunCases = CASES.filter((c) => c.notRun);

@@ -1,0 +1,2740 @@
+{
+  "measuredFrom": "2026-10-13T08:17:11.501Z",
+  "measuredTo": "2026-10-13T08:23:01.949Z",
+  "commit": "baf4715",
+  "build": "plain npm run build + next start",
+  "cells": [
+    {
+      "area": "card",
+      "id": "bosluk",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "dosya çıktı: video:h264 + audio:aac, 3,605 sn",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı",
+        "kaydedildi",
+        "dosya alındı"
+      ],
+      "output": {
+        "bytes": 62140,
+        "durationS": 3.605,
+        "streams": [
+          "video:h264",
+          "audio:aac"
+        ],
+        "width": 256,
+        "height": 144
+      },
+      "checks": [
+        {
+          "name": "dosya boş değil",
+          "ok": true,
+          "value": "62140 bayt"
+        },
+        {
+          "name": "süre ≈ 3,6 sn",
+          "ok": true,
+          "value": "3,605 sn"
+        },
+        {
+          "name": "kaynaktan kısa",
+          "ok": true,
+          "value": "4,5 → 3,61 sn"
+        },
+        {
+          "name": "izler: video:h264 + audio:aac",
+          "ok": true,
+          "value": "video:h264 + audio:aac"
+        }
+      ],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 4.3,
+      "measuredAt": "2026-10-13T08:17:16.001Z"
+    },
+    {
+      "area": "card",
+      "id": "cevir",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "dosya çıktı: video:h264 + audio:aac, 2,005 sn",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı",
+        "kaydedildi",
+        "dosya alındı"
+      ],
+      "output": {
+        "bytes": 502990,
+        "durationS": 2.005,
+        "streams": [
+          "video:h264",
+          "audio:aac"
+        ],
+        "width": 640,
+        "height": 360
+      },
+      "checks": [
+        {
+          "name": "dosya boş değil",
+          "ok": true,
+          "value": "502990 bayt"
+        },
+        {
+          "name": "süre ≈ 2 sn",
+          "ok": true,
+          "value": "2,005 sn"
+        },
+        {
+          "name": "izler: video:h264 + audio:aac",
+          "ok": true,
+          "value": "video:h264 + audio:aac"
+        },
+        {
+          "name": "MP4",
+          "ok": true,
+          "value": "mov,mp4,m4a,3gp,3g2,mj2"
+        }
+      ],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 4.2,
+      "measuredAt": "2026-10-13T08:17:46.507Z"
+    },
+    {
+      "area": "card",
+      "id": "dikey",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "dosya çıktı: video:h264 + audio:aac, 8 sn",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı",
+        "kaydedildi",
+        "dosya alındı"
+      ],
+      "output": {
+        "bytes": 384942,
+        "durationS": 8,
+        "streams": [
+          "video:h264",
+          "audio:aac"
+        ],
+        "width": 202,
+        "height": 360
+      },
+      "checks": [
+        {
+          "name": "dosya boş değil",
+          "ok": true,
+          "value": "384942 bayt"
+        },
+        {
+          "name": "dikey (9:16) ve kaynaktan büyük değil",
+          "ok": true,
+          "value": "202 × 360"
+        },
+        {
+          "name": "süre ≈ 8 sn",
+          "ok": true,
+          "value": "8 sn"
+        },
+        {
+          "name": "izler: video:h264 + audio:aac",
+          "ok": true,
+          "value": "video:h264 + audio:aac"
+        }
+      ],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 4.7,
+      "measuredAt": "2026-10-13T08:17:20.866Z"
+    },
+    {
+      "area": "card",
+      "id": "iyilestir",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "dosya çıktı: video:h264 + audio:aac, 3,008 sn",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı",
+        "kaydedildi",
+        "dosya alındı"
+      ],
+      "output": {
+        "bytes": 2820875,
+        "durationS": 3.008,
+        "streams": [
+          "video:h264",
+          "audio:aac"
+        ],
+        "width": 1280,
+        "height": 720
+      },
+      "checks": [
+        {
+          "name": "dosya boş değil",
+          "ok": true,
+          "value": "2820875 bayt"
+        },
+        {
+          "name": "süre ≈ 3 sn",
+          "ok": true,
+          "value": "3,008 sn"
+        },
+        {
+          "name": "izler: video:h264 + audio:aac",
+          "ok": true,
+          "value": "video:h264 + audio:aac"
+        },
+        {
+          "name": "görüntü aydınlandı (ortalama parlaklık en az +10)",
+          "ok": true,
+          "value": "69,8 → 121"
+        },
+        {
+          "name": "boyut aynı",
+          "ok": true,
+          "value": "1280 × 720"
+        }
+      ],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": "webgl2"
+      },
+      "seconds": 7,
+      "measuredAt": "2026-10-13T08:17:54.035Z"
+    },
+    {
+      "area": "card",
+      "id": "kes",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "dosya çıktı: video:h264 + audio:aac, 3,008 sn",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı",
+        "kaydedildi",
+        "dosya alındı"
+      ],
+      "output": {
+        "bytes": 82744,
+        "durationS": 3.008,
+        "streams": [
+          "video:h264",
+          "audio:aac"
+        ],
+        "width": 1280,
+        "height": 720
+      },
+      "checks": [
+        {
+          "name": "dosya boş değil",
+          "ok": true,
+          "value": "82744 bayt"
+        },
+        {
+          "name": "süre ≈ 3 sn",
+          "ok": true,
+          "value": "3,008 sn"
+        },
+        {
+          "name": "izler: video:h264 + audio:aac",
+          "ok": true,
+          "value": "video:h264 + audio:aac"
+        },
+        {
+          "name": "görüntü kaynaktan büyük değil",
+          "ok": true,
+          "value": "1280 × 720 → 1280 × 720"
+        },
+        {
+          "name": "kesit, videonun tamamından küçük",
+          "ok": true,
+          "value": "472,91 KB → 82,74 KB"
+        }
+      ],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 5,
+      "measuredAt": "2026-10-13T08:17:11.501Z"
+    },
+    {
+      "area": "card",
+      "id": "kucult",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "dosya çıktı: video:h264 + audio:aac, 14,016 sn",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı",
+        "kaydedildi",
+        "dosya alındı"
+      ],
+      "output": {
+        "bytes": 14041215,
+        "durationS": 14.016,
+        "streams": [
+          "video:h264",
+          "audio:aac"
+        ],
+        "width": 1280,
+        "height": 720
+      },
+      "checks": [
+        {
+          "name": "dosya boş değil",
+          "ok": true,
+          "value": "14041215 bayt"
+        },
+        {
+          "name": "süre ≈ 14 sn",
+          "ok": true,
+          "value": "14,016 sn"
+        },
+        {
+          "name": "izler: video:h264 + audio:aac",
+          "ok": true,
+          "value": "video:h264 + audio:aac"
+        },
+        {
+          "name": "dosya kaynaktan küçük",
+          "ok": true,
+          "value": "24,74 MB → 14,04 MB"
+        },
+        {
+          "name": "WhatsApp sınırına (16 MB) sığıyor",
+          "ok": true,
+          "value": "14,04 MB"
+        }
+      ],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 7.3,
+      "measuredAt": "2026-10-13T08:17:28.918Z"
+    },
+    {
+      "area": "card",
+      "id": "muzik",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "dosya çıktı: video:h264 + audio:aac, 8 sn",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı",
+        "kaydedildi",
+        "dosya alındı"
+      ],
+      "output": {
+        "bytes": 183809,
+        "durationS": 8,
+        "streams": [
+          "video:h264",
+          "audio:aac"
+        ],
+        "width": 640,
+        "height": 360
+      },
+      "checks": [
+        {
+          "name": "dosya boş değil",
+          "ok": true,
+          "value": "183809 bayt"
+        },
+        {
+          "name": "süre ≈ 8 sn",
+          "ok": true,
+          "value": "8 sn"
+        },
+        {
+          "name": "izler: video:h264 + audio:aac",
+          "ok": true,
+          "value": "video:h264 + audio:aac"
+        }
+      ],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 4.3,
+      "measuredAt": "2026-10-13T08:17:33.426Z"
+    },
+    {
+      "area": "card",
+      "id": "ses",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "dosya çıktı: audio:aac, 24 sn",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı",
+        "kaydedildi",
+        "dosya alındı"
+      ],
+      "output": {
+        "bytes": 389662,
+        "durationS": 24,
+        "streams": [
+          "audio:aac"
+        ],
+        "width": null,
+        "height": null
+      },
+      "checks": [
+        {
+          "name": "dosya boş değil",
+          "ok": true,
+          "value": "389662 bayt"
+        },
+        {
+          "name": "süre ≈ 24 sn",
+          "ok": true,
+          "value": "24 sn"
+        },
+        {
+          "name": "izler: audio:aac",
+          "ok": true,
+          "value": "audio:aac"
+        }
+      ],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 4.2,
+      "measuredAt": "2026-10-13T08:17:37.845Z"
+    },
+    {
+      "area": "card",
+      "id": "sustur",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "dosya çıktı: video:h264, 24 sn",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı",
+        "kaydedildi",
+        "dosya alındı"
+      ],
+      "output": {
+        "bytes": 262213,
+        "durationS": 24,
+        "streams": [
+          "video:h264"
+        ],
+        "width": 1280,
+        "height": 720
+      },
+      "checks": [
+        {
+          "name": "dosya boş değil",
+          "ok": true,
+          "value": "262213 bayt"
+        },
+        {
+          "name": "süre ≈ 24 sn",
+          "ok": true,
+          "value": "24 sn"
+        },
+        {
+          "name": "izler: video:h264",
+          "ok": true,
+          "value": "video:h264"
+        }
+      ],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 4.1,
+      "measuredAt": "2026-10-13T08:17:42.101Z"
+    },
+    {
+      "area": "card",
+      "id": "yazi",
+      "project": "chromium-desktop",
+      "verdict": "not-run",
+      "summary": "“Modeli indir (≈108,8 MB, bir kez)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi.",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "note": "“Modeli indir (≈108,8 MB, bir kez)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi.",
+      "measuredAt": "2026-10-13T08:17:58.039Z"
+    },
+    {
+      "area": "platform",
+      "id": "ana-ekran",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "açıldı; 10 kart; “kucult” yazıp Enter → Küçült sihirbazı",
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "measuredAt": "2026-10-13T08:17:58.584Z"
+    },
+    {
+      "area": "platform",
+      "id": "axe",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "ana ekran ve Dikey yap sihirbazı: 0 bulgu",
+      "measuredAt": "2026-10-13T08:18:11.885Z"
+    },
+    {
+      "area": "platform",
+      "id": "cevrimdisi",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "sunucuya ulaşılamazken ana ekran ve Kes sihirbazı açıldı, düğmeleri çalışır durumda",
+      "measuredAt": "2026-10-13T08:17:59.218Z"
+    },
+    {
+      "area": "platform",
+      "id": "editor",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "video açıldı; oynatma çizgisi klavyeyle 2. saniyeye gitti; kesit listeye eklendi",
+      "measuredAt": "2026-10-13T08:17:59.678Z"
+    },
+    {
+      "area": "platform",
+      "id": "kaydetme",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "kaydetme penceresi var (testte yerine geçen pencere); dosya seçilen yere yazıldı",
+      "measuredAt": "2026-10-13T08:18:00.276Z"
+    },
+    {
+      "area": "platform",
+      "id": "kaynak-hdr",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "dosya çıktı: video:h264 + audio:aac, 2,005 sn",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı",
+        "kaydedildi",
+        "dosya alındı"
+      ],
+      "output": {
+        "bytes": 501317,
+        "durationS": 2.005,
+        "streams": [
+          "video:h264",
+          "audio:aac"
+        ],
+        "width": 640,
+        "height": 360
+      },
+      "checks": [
+        {
+          "name": "dosya boş değil",
+          "ok": true,
+          "value": "501317 bayt"
+        },
+        {
+          "name": "MP4",
+          "ok": true,
+          "value": "mov,mp4,m4a,3gp,3g2,mj2"
+        },
+        {
+          "name": "görüntü H.264",
+          "ok": true,
+          "value": "h264"
+        }
+      ],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 5.2,
+      "measuredAt": "2026-10-13T08:18:06.586Z"
+    },
+    {
+      "area": "platform",
+      "id": "kaynak-hevc",
+      "project": "chromium-desktop",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": ""
+      },
+      "text": "“telefon-hevc.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır. Bu video HEVC (H.265) biçiminde ve bu tarayıcıda HEVC çözücüsü yok. Windows’ta Edge kullanıyorsan Microsoft Store’daki “HEVC Video Uzantıları” gerekebilir; ya da videoyu Google Chrome’da açmayı dene.",
+      "measuredAt": "2026-10-13T08:18:01.240Z"
+    },
+    {
+      "area": "platform",
+      "id": "ortam",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "ölçüldü",
+      "facts": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.8010.12 Safari/537.36",
+        "secureContext": true,
+        "Worker": true,
+        "VideoEncoder": true,
+        "AudioEncoder": true,
+        "VideoDecoder": true,
+        "AudioDecoder": true,
+        "OffscreenCanvas": true,
+        "showSaveFilePicker": true,
+        "webShare": false,
+        "serviceWorker": true,
+        "fullscreenEnabled": true,
+        "opfs": true,
+        "opfsCreateWritable": true,
+        "storageQuotaBytes": 10737418240,
+        "storageUsageBytes": 0,
+        "webgl2": true,
+        "encodeH264": true,
+        "encodeAac": true,
+        "encodeOpus": true,
+        "decodeH264": true,
+        "decodeVp9": true,
+        "decodeHevc": false,
+        "decodeAac": true,
+        "playsMp4": "probably",
+        "playsWebm": "probably"
+      },
+      "measuredAt": "2026-10-13T08:17:58.281Z"
+    },
+    {
+      "area": "platform",
+      "id": "paylas",
+      "project": "chromium-desktop",
+      "verdict": "not-run",
+      "summary": "kaydetme pencereli yolda “Paylaş” sunulmaz",
+      "measuredAt": "2026-10-13T08:18:00.277Z"
+    },
+    {
+      "area": "platform",
+      "id": "sessiz-kodlama",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "dosya çıktı: video:h264, 2 sn",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı",
+        "kaydedildi",
+        "dosya alındı"
+      ],
+      "output": {
+        "bytes": 469615,
+        "durationS": 2,
+        "streams": [
+          "video:h264"
+        ],
+        "width": 640,
+        "height": 360
+      },
+      "checks": [
+        {
+          "name": "dosya boş değil",
+          "ok": true,
+          "value": "469615 bayt"
+        },
+        {
+          "name": "MP4",
+          "ok": true,
+          "value": "mov,mp4,m4a,3gp,3g2,mj2"
+        },
+        {
+          "name": "yalnızca H.264 görüntü, ses yok",
+          "ok": true,
+          "value": "video:h264"
+        },
+        {
+          "name": "süre ≈ 2 sn",
+          "ok": true,
+          "value": "2 sn"
+        },
+        {
+          "name": "boyut 640 × 360",
+          "ok": true,
+          "value": "640 × 360"
+        }
+      ],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 4.1,
+      "measuredAt": "2026-10-13T08:18:10.873Z"
+    },
+    {
+      "area": "platform",
+      "id": "tam-ekran",
+      "project": "chromium-desktop",
+      "verdict": "works",
+      "summary": "F tuşu tam ekrana geçti ve geri döndü",
+      "measuredAt": "2026-10-13T08:17:59.908Z"
+    },
+    {
+      "area": "platform",
+      "id": "yazi-model",
+      "project": "chromium-desktop",
+      "verdict": "refusal",
+      "summary": "“Modeli indir (≈108,8 MB, bir kez)” düğmesine basıldı; model dosyaları bu makinede yok, uygulama bunu söyledi (yazıya dökmenin kendisi KOŞULMADI)",
+      "text": "Model dosyası bu sitede bulunamadı. Biraz sonra tekrar dene.",
+      "measuredAt": "2026-10-13T08:18:00.803Z"
+    },
+    {
+      "area": "platform",
+      "id": "yukleme",
+      "project": "chromium-desktop",
+      "verdict": "absent",
+      "summary": "yükleme önerisi yok (bu tarayıcı sunmuyor); bir şey de vaat edilmiyor",
+      "measuredAt": "2026-10-13T08:18:00.319Z"
+    },
+    {
+      "area": "card",
+      "id": "bosluk",
+      "project": "firefox-desktop",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.2,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:18:23.910Z"
+    },
+    {
+      "area": "card",
+      "id": "cevir",
+      "project": "firefox-desktop",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.6,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:18:43.059Z"
+    },
+    {
+      "area": "card",
+      "id": "dikey",
+      "project": "firefox-desktop",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.6,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:18:26.756Z"
+    },
+    {
+      "area": "card",
+      "id": "iyilestir",
+      "project": "firefox-desktop",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": "webgl2"
+      },
+      "seconds": 3,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:18:46.839Z"
+    },
+    {
+      "area": "card",
+      "id": "kes",
+      "project": "firefox-desktop",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 5.2,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:18:21.493Z"
+    },
+    {
+      "area": "card",
+      "id": "kucult",
+      "project": "firefox-desktop",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.7,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:18:29.703Z"
+    },
+    {
+      "area": "card",
+      "id": "muzik",
+      "project": "firefox-desktop",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.7,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:18:32.575Z"
+    },
+    {
+      "area": "card",
+      "id": "ses",
+      "project": "firefox-desktop",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.5,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:18:35.318Z"
+    },
+    {
+      "area": "card",
+      "id": "sustur",
+      "project": "firefox-desktop",
+      "verdict": "works",
+      "summary": "dosya çıktı: video:h264, 24 sn",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı",
+        "dosya hazır",
+        "dosya alındı"
+      ],
+      "output": {
+        "bytes": 262213,
+        "durationS": 24,
+        "streams": [
+          "video:h264"
+        ],
+        "width": 1280,
+        "height": 720
+      },
+      "checks": [
+        {
+          "name": "dosya boş değil",
+          "ok": true,
+          "value": "262213 bayt"
+        },
+        {
+          "name": "süre ≈ 24 sn",
+          "ok": true,
+          "value": "24 sn"
+        },
+        {
+          "name": "izler: video:h264",
+          "ok": true,
+          "value": "video:h264"
+        }
+      ],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 4.5,
+      "measuredAt": "2026-10-13T08:18:40.251Z"
+    },
+    {
+      "area": "card",
+      "id": "yazi",
+      "project": "firefox-desktop",
+      "verdict": "not-run",
+      "summary": "“Modeli indir (≈108,8 MB, bir kez)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi.",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "note": "“Modeli indir (≈108,8 MB, bir kez)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi.",
+      "measuredAt": "2026-10-13T08:18:51.272Z"
+    },
+    {
+      "area": "platform",
+      "id": "ana-ekran",
+      "project": "firefox-desktop",
+      "verdict": "works",
+      "summary": "açıldı; 10 kart; “kucult” yazıp Enter → Küçült sihirbazı",
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "measuredAt": "2026-10-13T08:18:52.659Z"
+    },
+    {
+      "area": "platform",
+      "id": "axe",
+      "project": "firefox-desktop",
+      "verdict": "works",
+      "summary": "ana ekran ve Dikey yap sihirbazı: 0 bulgu",
+      "measuredAt": "2026-10-13T08:19:13.893Z"
+    },
+    {
+      "area": "platform",
+      "id": "cevrimdisi",
+      "project": "firefox-desktop",
+      "verdict": "works",
+      "summary": "sunucuya ulaşılamazken ana ekran ve Kes sihirbazı açıldı, düğmeleri çalışır durumda",
+      "measuredAt": "2026-10-13T08:18:57.769Z"
+    },
+    {
+      "area": "platform",
+      "id": "editor",
+      "project": "firefox-desktop",
+      "verdict": "works",
+      "summary": "video açıldı; oynatma çizgisi klavyeyle 2. saniyeye gitti; kesit listeye eklendi",
+      "measuredAt": "2026-10-13T08:18:58.625Z"
+    },
+    {
+      "area": "platform",
+      "id": "kaydetme",
+      "project": "firefox-desktop",
+      "verdict": "works",
+      "summary": "kaydetme penceresi yok → “Bilgisayara kaydet” bağlantısı dosyayı indirdi (sample-24s_00-03-00-05.mp4) — SESİ KAPATILMIŞ kesitle; sesli kesit reddedildi (metin aşağıda)",
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "note": "sesli kesit reddedildi; satır sesi kapatılmış kesitle ölçüldü",
+      "output": {
+        "bytes": 22466,
+        "durationS": 2,
+        "streams": [
+          "video:h264"
+        ],
+        "width": 1280,
+        "height": 720
+      },
+      "measuredAt": "2026-10-13T08:19:00.062Z"
+    },
+    {
+      "area": "platform",
+      "id": "kaynak-hdr",
+      "project": "firefox-desktop",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.5,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Bu video HDR. Bu tarayıcı HDR görüntüyü SDR’ye doğru çeviremedi (deneme karesiyle test edildi), bu yüzden renkleri bozuk bir dosya üretmemek için çıktı alınmıyor. Google Chrome’da deneyebilirsin. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:19:06.517Z"
+    },
+    {
+      "area": "platform",
+      "id": "kaynak-hevc",
+      "project": "firefox-desktop",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.5,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Bu tarayıcı kaynak videoyu çözemiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:19:03.781Z"
+    },
+    {
+      "area": "platform",
+      "id": "ortam",
+      "project": "firefox-desktop",
+      "verdict": "works",
+      "summary": "ölçüldü",
+      "facts": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0",
+        "secureContext": true,
+        "Worker": true,
+        "VideoEncoder": true,
+        "AudioEncoder": true,
+        "VideoDecoder": true,
+        "AudioDecoder": true,
+        "OffscreenCanvas": true,
+        "showSaveFilePicker": false,
+        "webShare": false,
+        "serviceWorker": true,
+        "fullscreenEnabled": true,
+        "opfs": true,
+        "opfsCreateWritable": true,
+        "storageQuotaBytes": 10737418240,
+        "storageUsageBytes": 627786,
+        "webgl2": true,
+        "encodeH264": true,
+        "encodeAac": false,
+        "encodeOpus": true,
+        "decodeH264": true,
+        "decodeVp9": true,
+        "decodeHevc": false,
+        "decodeAac": true,
+        "playsMp4": "probably",
+        "playsWebm": "probably"
+      },
+      "measuredAt": "2026-10-13T08:18:51.937Z"
+    },
+    {
+      "area": "platform",
+      "id": "paylas",
+      "project": "firefox-desktop",
+      "verdict": "absent",
+      "summary": "tarayıcıda dosya paylaşma yok; “Paylaş” gösterilmiyor, kaydetme yolu duruyor",
+      "measuredAt": "2026-10-13T08:19:00.071Z"
+    },
+    {
+      "area": "platform",
+      "id": "sessiz-kodlama",
+      "project": "firefox-desktop",
+      "verdict": "works",
+      "summary": "dosya çıktı: video:h264, 2 sn",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı",
+        "dosya hazır",
+        "dosya alındı"
+      ],
+      "output": {
+        "bytes": 270656,
+        "durationS": 2,
+        "streams": [
+          "video:h264"
+        ],
+        "width": 640,
+        "height": 360
+      },
+      "checks": [
+        {
+          "name": "dosya boş değil",
+          "ok": true,
+          "value": "270656 bayt"
+        },
+        {
+          "name": "MP4",
+          "ok": true,
+          "value": "mov,mp4,m4a,3gp,3g2,mj2"
+        },
+        {
+          "name": "yalnızca H.264 görüntü, ses yok",
+          "ok": true,
+          "value": "video:h264"
+        },
+        {
+          "name": "süre ≈ 2 sn",
+          "ok": true,
+          "value": "2 sn"
+        },
+        {
+          "name": "boyut 640 × 360",
+          "ok": true,
+          "value": "640 × 360"
+        }
+      ],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 4.5,
+      "measuredAt": "2026-10-13T08:19:11.396Z"
+    },
+    {
+      "area": "platform",
+      "id": "tam-ekran",
+      "project": "firefox-desktop",
+      "verdict": "works",
+      "summary": "F tuşu tam ekrana geçti ve geri döndü",
+      "measuredAt": "2026-10-13T08:18:58.695Z"
+    },
+    {
+      "area": "platform",
+      "id": "yazi-model",
+      "project": "firefox-desktop",
+      "verdict": "refusal",
+      "summary": "“Modeli indir (≈108,8 MB, bir kez)” düğmesine basıldı; model dosyaları bu makinede yok, uygulama bunu söyledi (yazıya dökmenin kendisi KOŞULMADI)",
+      "text": "Model dosyası bu sitede bulunamadı. Biraz sonra tekrar dene.",
+      "measuredAt": "2026-10-13T08:19:01.016Z"
+    },
+    {
+      "area": "platform",
+      "id": "yukleme",
+      "project": "firefox-desktop",
+      "verdict": "absent",
+      "summary": "yükleme önerisi yok (bu tarayıcı sunmuyor); bir şey de vaat edilmiyor",
+      "measuredAt": "2026-10-13T08:19:00.116Z"
+    },
+    {
+      "area": "card",
+      "id": "bosluk",
+      "project": "firefox-phone",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.6,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:19:26.259Z"
+    },
+    {
+      "area": "card",
+      "id": "cevir",
+      "project": "firefox-phone",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.6,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:19:45.233Z"
+    },
+    {
+      "area": "card",
+      "id": "dikey",
+      "project": "firefox-phone",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.5,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:19:29.029Z"
+    },
+    {
+      "area": "card",
+      "id": "iyilestir",
+      "project": "firefox-phone",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": "webgl2"
+      },
+      "seconds": 3,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:19:48.969Z"
+    },
+    {
+      "area": "card",
+      "id": "kes",
+      "project": "firefox-phone",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 5.1,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:19:23.403Z"
+    },
+    {
+      "area": "card",
+      "id": "kucult",
+      "project": "firefox-phone",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.7,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:19:31.926Z"
+    },
+    {
+      "area": "card",
+      "id": "muzik",
+      "project": "firefox-phone",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.6,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:19:34.800Z"
+    },
+    {
+      "area": "card",
+      "id": "ses",
+      "project": "firefox-phone",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.6,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:19:37.575Z"
+    },
+    {
+      "area": "card",
+      "id": "sustur",
+      "project": "firefox-phone",
+      "verdict": "works",
+      "summary": "dosya çıktı: video:h264, 24 sn",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı",
+        "dosya hazır",
+        "dosya alındı"
+      ],
+      "output": {
+        "bytes": 262213,
+        "durationS": 24,
+        "streams": [
+          "video:h264"
+        ],
+        "width": 1280,
+        "height": 720
+      },
+      "checks": [
+        {
+          "name": "dosya boş değil",
+          "ok": true,
+          "value": "262213 bayt"
+        },
+        {
+          "name": "süre ≈ 24 sn",
+          "ok": true,
+          "value": "24 sn"
+        },
+        {
+          "name": "izler: video:h264",
+          "ok": true,
+          "value": "video:h264"
+        }
+      ],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 4.5,
+      "measuredAt": "2026-10-13T08:19:42.450Z"
+    },
+    {
+      "area": "card",
+      "id": "yazi",
+      "project": "firefox-phone",
+      "verdict": "not-run",
+      "summary": "“Modeli indir (≈108,8 MB, bir kez)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi.",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "note": "“Modeli indir (≈108,8 MB, bir kez)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi.",
+      "measuredAt": "2026-10-13T08:19:53.362Z"
+    },
+    {
+      "area": "platform",
+      "id": "ana-ekran",
+      "project": "firefox-phone",
+      "verdict": "works",
+      "summary": "açıldı; 10 kart; “kucult” yazıp Enter → Küçült sihirbazı",
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "measuredAt": "2026-10-13T08:19:54.697Z"
+    },
+    {
+      "area": "platform",
+      "id": "axe",
+      "project": "firefox-phone",
+      "verdict": "works",
+      "summary": "ana ekran ve Dikey yap sihirbazı: 0 bulgu",
+      "measuredAt": "2026-10-13T08:20:15.996Z"
+    },
+    {
+      "area": "platform",
+      "id": "cevrimdisi",
+      "project": "firefox-phone",
+      "verdict": "works",
+      "summary": "sunucuya ulaşılamazken ana ekran ve Kes sihirbazı açıldı, düğmeleri çalışır durumda",
+      "measuredAt": "2026-10-13T08:19:59.764Z"
+    },
+    {
+      "area": "platform",
+      "id": "editor",
+      "project": "firefox-phone",
+      "verdict": "works",
+      "summary": "video açıldı; oynatma çizgisi klavyeyle 2. saniyeye gitti; kesit listeye eklendi",
+      "measuredAt": "2026-10-13T08:20:00.663Z"
+    },
+    {
+      "area": "platform",
+      "id": "kaydetme",
+      "project": "firefox-phone",
+      "verdict": "works",
+      "summary": "kaydetme penceresi yok → “Kaydet” bağlantısı dosyayı indirdi (sample-24s_00-03-00-05.mp4) — SESİ KAPATILMIŞ kesitle; sesli kesit reddedildi (metin aşağıda)",
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "note": "sesli kesit reddedildi; satır sesi kapatılmış kesitle ölçüldü",
+      "output": {
+        "bytes": 22466,
+        "durationS": 2,
+        "streams": [
+          "video:h264"
+        ],
+        "width": 1280,
+        "height": 720
+      },
+      "measuredAt": "2026-10-13T08:20:02.122Z"
+    },
+    {
+      "area": "platform",
+      "id": "kaynak-hdr",
+      "project": "firefox-phone",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.5,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Bu video HDR. Bu tarayıcı HDR görüntüyü SDR’ye doğru çeviremedi (deneme karesiyle test edildi), bu yüzden renkleri bozuk bir dosya üretmemek için çıktı alınmıyor. Google Chrome’da deneyebilirsin. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:20:08.501Z"
+    },
+    {
+      "area": "platform",
+      "id": "kaynak-hevc",
+      "project": "firefox-phone",
+      "verdict": "refusal",
+      "summary": "indirme başlamadan durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
+        "enhanceEngine": null
+      },
+      "seconds": 2.6,
+      "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Bu tarayıcı kaynak videoyu çözemiyor. Chrome ya da Edge ile dene. Sorun bildir",
+      "measuredAt": "2026-10-13T08:20:05.785Z"
+    },
+    {
+      "area": "platform",
+      "id": "ortam",
+      "project": "firefox-phone",
+      "verdict": "works",
+      "summary": "ölçüldü",
+      "facts": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0",
+        "secureContext": true,
+        "Worker": true,
+        "VideoEncoder": true,
+        "AudioEncoder": true,
+        "VideoDecoder": true,
+        "AudioDecoder": true,
+        "OffscreenCanvas": true,
+        "showSaveFilePicker": false,
+        "webShare": false,
+        "serviceWorker": true,
+        "fullscreenEnabled": true,
+        "opfs": true,
+        "opfsCreateWritable": true,
+        "storageQuotaBytes": 10737418240,
+        "storageUsageBytes": 611306,
+        "webgl2": true,
+        "encodeH264": true,
+        "encodeAac": false,
+        "encodeOpus": true,
+        "decodeH264": true,
+        "decodeVp9": true,
+        "decodeHevc": false,
+        "decodeAac": true,
+        "playsMp4": "probably",
+        "playsWebm": "probably"
+      },
+      "measuredAt": "2026-10-13T08:19:53.978Z"
+    },
+    {
+      "area": "platform",
+      "id": "paylas",
+      "project": "firefox-phone",
+      "verdict": "absent",
+      "summary": "tarayıcıda dosya paylaşma yok; “Paylaş” gösterilmiyor, kaydetme yolu duruyor",
+      "measuredAt": "2026-10-13T08:20:02.127Z"
+    },
+    {
+      "area": "platform",
+      "id": "sessiz-kodlama",
+      "project": "firefox-phone",
+      "verdict": "works",
+      "summary": "dosya çıktı: video:h264, 2 sn",
+      "reached": [
+        "ana ekran",
+        "sihirbaz",
+        "video kabul edildi",
+        "indir’e basıldı",
+        "dosya hazır",
+        "dosya alındı"
+      ],
+      "output": {
+        "bytes": 270656,
+        "durationS": 2,
+        "streams": [
+          "video:h264"
+        ],
+        "width": 640,
+        "height": 360
+      },
+      "checks": [
+        {
+          "name": "dosya boş değil",
+          "ok": true,
+          "value": "270656 bayt"
+        },
+        {
+          "name": "MP4",
+          "ok": true,
+          "value": "mov,mp4,m4a,3gp,3g2,mj2"
+        },
+        {
+          "name": "yalnızca H.264 görüntü, ses yok",
+          "ok": true,
+          "value": "video:h264"
+        },
+        {
+          "name": "süre ≈ 2 sn",
+          "ok": true,
+          "value": "2 sn"
+        },
+        {
+          "name": "boyut 640 × 360",
+          "ok": true,
+          "value": "640 × 360"
+        }
+      ],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "",
+        "noticeBeforeDownload": "",
+        "enhanceEngine": null
+      },
+      "seconds": 4.5,
+      "measuredAt": "2026-10-13T08:20:13.316Z"
+    },
+    {
+      "area": "platform",
+      "id": "tam-ekran",
+      "project": "firefox-phone",
+      "verdict": "works",
+      "summary": "F tuşu tam ekrana geçti ve geri döndü",
+      "measuredAt": "2026-10-13T08:20:00.751Z"
+    },
+    {
+      "area": "platform",
+      "id": "yazi-model",
+      "project": "firefox-phone",
+      "verdict": "refusal",
+      "summary": "“Modeli indir (≈108,8 MB, bir kez)” düğmesine basıldı; model dosyaları bu makinede yok, uygulama bunu söyledi (yazıya dökmenin kendisi KOŞULMADI)",
+      "text": "Model dosyası bu sitede bulunamadı. Biraz sonra tekrar dene.",
+      "measuredAt": "2026-10-13T08:20:02.996Z"
+    },
+    {
+      "area": "platform",
+      "id": "yukleme",
+      "project": "firefox-phone",
+      "verdict": "absent",
+      "summary": "yükleme önerisi yok (bu tarayıcı sunmuyor); bir şey de vaat edilmiyor",
+      "measuredAt": "2026-10-13T08:20:02.172Z"
+    },
+    {
+      "area": "card",
+      "id": "bosluk",
+      "project": "webkit-desktop",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
+      },
+      "text": "“bursts.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:20:20.501Z"
+    },
+    {
+      "area": "card",
+      "id": "cevir",
+      "project": "webkit-desktop",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
+      },
+      "text": "“tarayici-kaydi.webm” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:20:26.112Z"
+    },
+    {
+      "area": "card",
+      "id": "dikey",
+      "project": "webkit-desktop",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
+      },
+      "text": "“other-8s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:20:21.430Z"
+    },
+    {
+      "area": "card",
+      "id": "iyilestir",
+      "project": "webkit-desktop",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
+      },
+      "text": "“karanlik.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:20:27.182Z"
+    },
+    {
+      "area": "card",
+      "id": "kes",
+      "project": "webkit-desktop",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
+      },
+      "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:20:19.446Z"
+    },
+    {
+      "area": "card",
+      "id": "kucult",
+      "project": "webkit-desktop",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
+      },
+      "text": "“noisy-720p30-14s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:20:22.357Z"
+    },
+    {
+      "area": "card",
+      "id": "muzik",
+      "project": "webkit-desktop",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
+      },
+      "text": "“other-8s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:20:23.329Z"
+    },
+    {
+      "area": "card",
+      "id": "ses",
+      "project": "webkit-desktop",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
+      },
+      "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:20:24.226Z"
+    },
+    {
+      "area": "card",
+      "id": "sustur",
+      "project": "webkit-desktop",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
+      },
+      "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:20:25.163Z"
+    },
+    {
+      "area": "card",
+      "id": "yazi",
+      "project": "webkit-desktop",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": ""
+      },
+      "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:20:28.150Z"
+    },
+    {
+      "area": "platform",
+      "id": "ana-ekran",
+      "project": "webkit-desktop",
+      "verdict": "works",
+      "summary": "açıldı; 10 kart; “kucult” yazıp Enter → Küçült sihirbazı",
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "measuredAt": "2026-10-13T08:20:29.105Z"
+    },
+    {
+      "area": "platform",
+      "id": "axe",
+      "project": "webkit-desktop",
+      "verdict": "works",
+      "summary": "ana ekran ve Dikey yap sihirbazı: 0 bulgu",
+      "measuredAt": "2026-10-13T08:21:39.414Z"
+    },
+    {
+      "area": "platform",
+      "id": "cevrimdisi",
+      "project": "webkit-desktop",
+      "verdict": "works",
+      "summary": "sunucuya ulaşılamazken ana ekran ve Kes sihirbazı açıldı, düğmeleri çalışır durumda",
+      "measuredAt": "2026-10-13T08:20:33.930Z"
+    },
+    {
+      "area": "platform",
+      "id": "editor",
+      "project": "webkit-desktop",
+      "verdict": "refusal",
+      "summary": "editör videoyu açmadı ve nedenini söyledi",
+      "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:21:34.444Z"
+    },
+    {
+      "area": "platform",
+      "id": "kaydetme",
+      "project": "webkit-desktop",
+      "verdict": "not-run",
+      "summary": "editör videoyu açmadığı için denenemedi",
+      "measuredAt": "2026-10-13T08:21:34.445Z"
+    },
+    {
+      "area": "platform",
+      "id": "kaynak-hdr",
+      "project": "webkit-desktop",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
+      },
+      "text": "“pq-2s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:21:37.225Z"
+    },
+    {
+      "area": "platform",
+      "id": "kaynak-hevc",
+      "project": "webkit-desktop",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
+      },
+      "text": "“telefon-hevc.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:21:36.280Z"
+    },
+    {
+      "area": "platform",
+      "id": "ortam",
+      "project": "webkit-desktop",
+      "verdict": "works",
+      "summary": "ölçüldü",
+      "facts": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6 Safari/605.1.15",
+        "secureContext": true,
+        "Worker": true,
+        "VideoEncoder": false,
+        "AudioEncoder": false,
+        "VideoDecoder": false,
+        "AudioDecoder": false,
+        "OffscreenCanvas": false,
+        "showSaveFilePicker": false,
+        "webShare": false,
+        "serviceWorker": true,
+        "fullscreenEnabled": true,
+        "opfs": false,
+        "opfsError": "UnknownError: The operation failed for an unknown transient reason (e.g. out of memory).",
+        "storageQuotaBytes": 1048576000,
+        "storageUsageBytes": 0,
+        "webgl2": true,
+        "encodeH264": null,
+        "encodeAac": null,
+        "encodeOpus": null,
+        "decodeH264": null,
+        "decodeVp9": null,
+        "decodeHevc": null,
+        "decodeAac": null,
+        "playsMp4": "probably",
+        "playsWebm": "probably"
+      },
+      "measuredAt": "2026-10-13T08:20:28.646Z"
+    },
+    {
+      "area": "platform",
+      "id": "paylas",
+      "project": "webkit-desktop",
+      "verdict": "not-run",
+      "summary": "editör videoyu açmadığı için denenemedi",
+      "measuredAt": "2026-10-13T08:21:34.445Z"
+    },
+    {
+      "area": "platform",
+      "id": "sessiz-kodlama",
+      "project": "webkit-desktop",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
+      },
+      "text": "“tarayici-kaydi.webm” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:21:38.146Z"
+    },
+    {
+      "area": "platform",
+      "id": "tam-ekran",
+      "project": "webkit-desktop",
+      "verdict": "not-run",
+      "summary": "editör videoyu açmadığı için denenemedi",
+      "measuredAt": "2026-10-13T08:21:34.445Z"
+    },
+    {
+      "area": "platform",
+      "id": "yazi-model",
+      "project": "webkit-desktop",
+      "verdict": "refusal",
+      "summary": "model adımına gelmeden durdu ve nedenini söyledi",
+      "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:21:35.373Z"
+    },
+    {
+      "area": "platform",
+      "id": "yukleme",
+      "project": "webkit-desktop",
+      "verdict": "absent",
+      "summary": "yükleme önerisi yok (bu tarayıcı sunmuyor); bir şey de vaat edilmiyor",
+      "measuredAt": "2026-10-13T08:21:34.579Z"
+    },
+    {
+      "area": "card",
+      "id": "bosluk",
+      "project": "webkit-phone",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
+      },
+      "text": "“bursts.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:21:43.343Z"
+    },
+    {
+      "area": "card",
+      "id": "cevir",
+      "project": "webkit-phone",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
+      },
+      "text": "“tarayici-kaydi.webm” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:21:48.829Z"
+    },
+    {
+      "area": "card",
+      "id": "dikey",
+      "project": "webkit-phone",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
+      },
+      "text": "“other-8s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:21:44.245Z"
+    },
+    {
+      "area": "card",
+      "id": "iyilestir",
+      "project": "webkit-phone",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
+      },
+      "text": "“karanlik.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:21:49.830Z"
+    },
+    {
+      "area": "card",
+      "id": "kes",
+      "project": "webkit-phone",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
+      },
+      "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:21:42.418Z"
+    },
+    {
+      "area": "card",
+      "id": "kucult",
+      "project": "webkit-phone",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
+      },
+      "text": "“noisy-720p30-14s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:21:45.147Z"
+    },
+    {
+      "area": "card",
+      "id": "muzik",
+      "project": "webkit-phone",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
+      },
+      "text": "“other-8s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:21:46.078Z"
+    },
+    {
+      "area": "card",
+      "id": "ses",
+      "project": "webkit-phone",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
+      },
+      "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:21:46.989Z"
+    },
+    {
+      "area": "card",
+      "id": "sustur",
+      "project": "webkit-phone",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
+      },
+      "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:21:47.924Z"
+    },
+    {
+      "area": "card",
+      "id": "yazi",
+      "project": "webkit-phone",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": ""
+      },
+      "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:21:50.782Z"
+    },
+    {
+      "area": "platform",
+      "id": "ana-ekran",
+      "project": "webkit-phone",
+      "verdict": "works",
+      "summary": "açıldı; 10 kart; “kucult” yazıp Enter → Küçült sihirbazı",
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "measuredAt": "2026-10-13T08:21:51.714Z"
+    },
+    {
+      "area": "platform",
+      "id": "axe",
+      "project": "webkit-phone",
+      "verdict": "works",
+      "summary": "ana ekran ve Dikey yap sihirbazı: 0 bulgu",
+      "measuredAt": "2026-10-13T08:23:01.949Z"
+    },
+    {
+      "area": "platform",
+      "id": "cevrimdisi",
+      "project": "webkit-phone",
+      "verdict": "works",
+      "summary": "sunucuya ulaşılamazken ana ekran ve Kes sihirbazı açıldı, düğmeleri çalışır durumda",
+      "measuredAt": "2026-10-13T08:21:56.534Z"
+    },
+    {
+      "area": "platform",
+      "id": "editor",
+      "project": "webkit-phone",
+      "verdict": "refusal",
+      "summary": "editör videoyu açmadı ve nedenini söyledi",
+      "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:22:57.028Z"
+    },
+    {
+      "area": "platform",
+      "id": "kaydetme",
+      "project": "webkit-phone",
+      "verdict": "not-run",
+      "summary": "editör videoyu açmadığı için denenemedi",
+      "measuredAt": "2026-10-13T08:22:57.029Z"
+    },
+    {
+      "area": "platform",
+      "id": "kaynak-hdr",
+      "project": "webkit-phone",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
+      },
+      "text": "“pq-2s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:22:59.752Z"
+    },
+    {
+      "area": "platform",
+      "id": "kaynak-hevc",
+      "project": "webkit-phone",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
+      },
+      "text": "“telefon-hevc.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:22:58.831Z"
+    },
+    {
+      "area": "platform",
+      "id": "ortam",
+      "project": "webkit-phone",
+      "verdict": "works",
+      "summary": "ölçüldü",
+      "facts": {
+        "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6 Mobile/15E148 Safari/604.1",
+        "secureContext": true,
+        "Worker": true,
+        "VideoEncoder": false,
+        "AudioEncoder": false,
+        "VideoDecoder": false,
+        "AudioDecoder": false,
+        "OffscreenCanvas": false,
+        "showSaveFilePicker": false,
+        "webShare": false,
+        "serviceWorker": true,
+        "fullscreenEnabled": false,
+        "opfs": false,
+        "opfsError": "UnknownError: The operation failed for an unknown transient reason (e.g. out of memory).",
+        "storageQuotaBytes": 1048576000,
+        "storageUsageBytes": 0,
+        "webgl2": true,
+        "encodeH264": null,
+        "encodeAac": null,
+        "encodeOpus": null,
+        "decodeH264": null,
+        "decodeVp9": null,
+        "decodeHevc": null,
+        "decodeAac": null,
+        "playsMp4": "probably",
+        "playsWebm": "probably"
+      },
+      "measuredAt": "2026-10-13T08:21:51.275Z"
+    },
+    {
+      "area": "platform",
+      "id": "paylas",
+      "project": "webkit-phone",
+      "verdict": "not-run",
+      "summary": "editör videoyu açmadığı için denenemedi",
+      "measuredAt": "2026-10-13T08:22:57.030Z"
+    },
+    {
+      "area": "platform",
+      "id": "sessiz-kodlama",
+      "project": "webkit-phone",
+      "verdict": "refusal",
+      "summary": "video verildikten sonra durdu ve nedenini söyledi",
+      "reached": [
+        "ana ekran",
+        "sihirbaz"
+      ],
+      "output": null,
+      "checks": [],
+      "problems": {
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unhandledRejections": []
+      },
+      "facts": {
+        "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
+      },
+      "text": "“tarayici-kaydi.webm” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:23:00.747Z"
+    },
+    {
+      "area": "platform",
+      "id": "tam-ekran",
+      "project": "webkit-phone",
+      "verdict": "not-run",
+      "summary": "editör videoyu açmadığı için denenemedi",
+      "measuredAt": "2026-10-13T08:22:57.029Z"
+    },
+    {
+      "area": "platform",
+      "id": "yazi-model",
+      "project": "webkit-phone",
+      "verdict": "refusal",
+      "summary": "model adımına gelmeden durdu ve nedenini söyledi",
+      "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
+      "measuredAt": "2026-10-13T08:22:57.941Z"
+    },
+    {
+      "area": "platform",
+      "id": "yukleme",
+      "project": "webkit-phone",
+      "verdict": "works",
+      "summary": "iPhone / iPad için “Ana Ekrana Ekle” adımları gösteriliyor",
+      "text": "Ana ekrana ekle Safari’de Paylaş düğmesine bas, sonra “Ana Ekrana Ekle”yi seç.",
+      "measuredAt": "2026-10-13T08:22:57.168Z"
+    }
+  ]
+}
