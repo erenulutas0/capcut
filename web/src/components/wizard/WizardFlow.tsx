@@ -37,13 +37,22 @@ export function lengthText(us: number): string {
   return formatLengthShort(us, { second: t('time.secondShort'), decimalMark: t('time.decimalMark') });
 }
 
+/**
+ * How the editor opens over a wizard's work. `stored`: the work becomes the browser's stored project
+ * (only "Yazıya dök" asks for it, for a transcript written on the internet — ADR-034 addendum of
+ * 13 Oct 2026). Left out, as every wizard does: nothing is stored.
+ */
+export interface EditorHandoff {
+  stored: boolean;
+}
+
 /** What every wizard gets from the route (`TaskWizard`). */
 export interface WizardHostProps {
   task: TaskDefinition;
   /** The recipe and the open files: the same state the editor works on. */
   state: EditorState;
   /** Shows the editor over this very state: same video, same settings, no second file dialog. */
-  onOpenEditor: () => void;
+  onOpenEditor: (handoff?: EditorHandoff) => void;
 }
 
 /** What the choose step may want to know about the export side. */
@@ -82,6 +91,11 @@ interface Props extends WizardHostProps {
   beforeEditor?: () => void;
   /** The download button's words when "İndir" alone would not say what is saved ("Altyazılı videoyu indir"). */
   downloadLabelKey?: MessageKey;
+  /**
+   * Said above "Daha fazla ayar → editörde aç" once a download is over, when opening the editor does more
+   * than change settings ("Yazıya dök" over a transcript written on the internet: it is what keeps the text).
+   */
+  editorNote?: string | null;
   /** The one decision (or the one-line explanation) of this task. */
   children: ReactNode | ((info: FlowInfo) => ReactNode);
 }
@@ -117,6 +131,7 @@ export function WizardFlow({
   preview,
   beforeEditor,
   downloadLabelKey = 'wizard.download',
+  editorNote = null,
   children,
 }: Props) {
   const hydrated = useHydrated();
@@ -383,6 +398,11 @@ export function WizardFlow({
                   {t('wizard.result.backToChoice')}
                 </button>
               </div>
+            ) : null}
+            {moreSettings && editorNote ? (
+              <p className="wizard-hint" data-testid="wizard-editor-note">
+                {editorNote}
+              </p>
             ) : null}
             {moreSettings}
           </>

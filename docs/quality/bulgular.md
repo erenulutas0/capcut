@@ -1,5 +1,24 @@
 **Yazıldığı koşu:** 11 Ekim 2026 öğleden sonra, dal `worktree-agent-a511c0275d7647e51` (önceki bulgular: aynı gün, `b8e355f`). O raporda açık kalan üç şey üzerinde çalışıldı: aramanın yanlış karta göndermesi, editörün her videoyu 1080p’ye büyütmesi, 720p’den küçük kaynakların büyütülmesi. Aşağıda her biri için aynı ölçünün önceki → şimdiki değeri var. Açık kalanlar en başta.
 
+### 13 Ekim (akşam) — internette yazılan yazı editöre geçişte saklanır (ADR-034 eki; dal `worktree-agent-a2b52e38355c6d5f7`)
+
+Yayındaki sitede görünen bir şey değişmedi (bulut yolu kapalı). Aşağıdaki “açık bulgu” (yazı kalıcı projeye yalnızca
+yedek dosyasıyla geçiyor) **kapandı**: “Kim konuştu” tablosunda “sayfa yenilenince” artık yedek dosyası olmadan,
+editöre geçişin sakladığı projenin kendi sayfası yenilenerek ölçülüyor. Yeni sütun “editöre geçince depoda”; yedek
+dosyası deposu boş başka bir tarayıcıda açılıyor. Hepsi **4 / 4**, SRT **0** — masaüstü ve telefon (sahte sunucuya karşı).
+
+- 643 ölçü: 566 bütçe içinde, **8 dışında** (aynı yedi arama ölçüsü ve `out.notFaststart`; bu işten yeni bütçe dışı
+  ölçü yok), 5 ölçülemedi (model dosyaları yok), 64 bütçesiz.
+- Bulut akışının yazı ekranı **110 → 122 kelime** (bütçe ≤ 180): eklenen tek cümle “Bu yazı henüz saklanmadı: …”.
+  Tıklama, karar ekranı ve teknik terim sayıları değişmedi.
+- **Ekran tabanları:** ilk koşuda üç ekran “farklı” çıktı — hepsi eklenen cümle (`yol-yazi-bulut-yazi` iki görünüm,
+  `yol-yazi-bulut-sonuc` telefon). Ekranlara bakıldı; yalnızca bulut yürüyüşünün tabanları yenilendi
+  (`--only=walkthrough --grep="internet route" --update-baselines`), sonra bütün rapor tabanlarla karşılaştırılarak
+  yeniden koşuldu: farklı ekran 0. Depoya giren taban değişikliği dört resim: `yol-yazi-bulut-yazi` ve
+  `yol-yazi-bulut-sonuc`, iki görünüm (masaüstü `sonuc` %0,4 ile tolerans içindeydi; o da bir satır uzadı).
+  Yenileme sırasında yeniden yazılan seçim ekranı tabanları geri alındı (içerikleri değişmemişti).
+- Soru penceresi (“Saklanan bir projen var”) bu katmanda **ölçülmüyor** (yürüyüş boş depoyla başlar); bulut e2e’sinde sınanıyor.
+
 ### 13 Ekim — “kim konuştu” kalıcı (EDL v5, ADR-043; dal `worktree-agent-a08295f6ffb53c053`)
 
 Yayındaki sitede görünen bir şey değişmedi (bulut yolu kapalı). **Yerel sahte sunucuya karşı** ölçülen yeni tablo

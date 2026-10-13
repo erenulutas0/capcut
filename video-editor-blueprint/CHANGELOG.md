@@ -3,6 +3,34 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## İnternette yazılan yazı editöre geçişte saklanır — 13 Ekim 2026 (ADR-034 eki; ADR-043'ün "Bulunan"ı kapandı; şema, kayıt biçimi ve politika değişmedi; bulut yolu hâlâ KAPALI)
+
+Kurucu kararı: "Bulut yazısı editöre geçişte saklansın." Hiçbir dış hizmete istek gitmedi; bulut sınamaları yalnızca yerel sahte vekile karşı. `cloud/` altına dokunulmadı.
+
+**Sorun.** Bulut yolu yalnızca "Yazıya dök" sihirbazında; sihirbaz ve ondan açılan editör proje saklamıyordu (ADR-034). Dakika harcanmış, sesi başka bir şirkete gönderilmiş, beklenmiş bir yazı sayfa yenilenince tamamen gidiyordu; tek yol yedek dosyasıydı.
+
+**Şimdi.** Tarif internette yazılmış bir yazı taşıyorsa "Daha fazla ayar → editörde aç" ile açılan editör **kayıtlı projedir**: var olan depo, var olan kayıt, var olan otomatik kayıt (yeni seçenek `adopt`: depodaki yüklenmez, eldeki hemen yazılır). Adres sayfa yüklenmeden `/editor` olur; yenileme projeyi yazısı ve "1. kişi / 2. kişi" ile geri getirir, video dosyası her zamanki gibi yeniden seçilir (dosya hiçbir yerde saklanmaz; hatırlanan dosya izni yok). Öbür dokuz sihirbaz ve "Kes" **saklamaz** — ADR-034 onlar için aynen geçerli.
+
+**Var olan proje ezilmez.** Depo tek proje tutar (ADR-012). Geçişte depoya bakılır (`domain/wizardHandoff.ts`): boşsa ya da yalnızca açılmış bir video kaydı varsa soru yok; **üstünde çalışılmış bir proje** varsa (kesit, altyazı / yazı satırı, müzik ya da ad) hiçbir şey yazılmadan sorulur — "Saklanan bir projen var · Bu tarayıcıda yalnızca bir proje saklanabilir. Hangisi kalsın?" · **Eski proje kalsın (bu yazı saklanmaz)** / **Bu yazı saklansın (eski proje silinir)** · "Vazgeçersen hiçbir şey değişmez. Yazıyı “Metni indir” ile dosya olarak da alabilirsin." Eskisi seçilirse editör bugünkü gibi saklamadan açılır ve başlığı "Bu düzenleme saklanmıyor" der. Depo yazılamıyorsa başlık "Düzenleme saklanamadı" + neden + yedek dosyası; daha yeni bir derlemenin kaydına dokunulmaz (ADR-043). Editörün kendi onay kutusu (`sources.replaceWarning`) kullanılmadı: "Tamam / İptal" üç sonucu adlandıramıyor; eşiği ise aynı tutuldu (yalnızca kaybedilecek iş varsa sorulur).
+
+**Ekran doğruyu söyler.** Geçişten önce yazı saklı değildir; sonuç ekranı (yalnız bulut yolunda) bunu tek cümleyle söyler: "Bu yazı henüz saklanmadı: editörde açarsan ya da metni indirirsen kalır, yoksa sayfa kapanınca gider." Aynı cümle "Altyazılı videoyu indir" bittikten sonra editör bağlantısının üstünde de durur. Geçişten sonra editörün kendi "Düzenleme saklandı" göstergesi geçerli.
+
+**Silme.** Var olan yol: editör dosyayı istediğinde "Kayıtlı projeyi sil". Silinen kayıt geri yazılmaz (ADR-012 eki; sınandı: bekleme, yenileme, sihirbaza dönme).
+
+**Cihazda yazılan yazı: yapılmadı, kurucu kararı.** Aynı kural onu da saklayabilirdi, ama yayındaki derlemenin davranışını, gizlilik metnini ve olağan e2e'nin beklentilerini değiştirir, soru penceresini yayındaki siteye getirir. Değişiklik bütünüyle bulut derlemesinin içinde: yeni parça (`CloudKeep`) ve sözleri varsayılan çıktıda yok.
+
+**"İnternette yazıldı" etiketi: saklanmıyor (bilerek).** Şema alanı ister; eklenmedi. Saklanan projede ve editörde aynı iz "Otomatik yazıldı — yanlış olabilir" diye görünür.
+
+**Gizlilik.** `/gizlilik` (yalnız bulut derlemesi): "Yazı cihazında nerede durur" maddesi ve "Proje tarifi" kartında bir cümle; veri envanteri §8.4a. Varsayılan derlemenin metni değişmedi ve orada doğru.
+
+**Kalite katmanı.** "Kim konuştu" tablosunda "sayfa yenilenince" artık yedek dosyası olmadan, geçişin sakladığı projenin kendi sayfası yenilenerek ölçülüyor; yeni sütun "editöre geçince depoda"; yedek dosyası deposu boş başka bir tarayıcıda açılıyor. Bütçeler aynı (hepsi 4, SRT 0).
+
+**Açık kurucu kararları:** cihazda yazılan yazı da saklansın mı; soru penceresinin sözleri ve vurgulu düğme; "iş" eşiği (kesitsiz kayıt sormadan değişiyor); "İnternette yazıldı" etiketi (şema); video açıkken "projeyi sil" düğmesi; adresin `/editor` olması; birden çok proje.
+
+**Doğrulanmayan:** gerçek sağlayıcı ve Worker; gerçek telefon, Safari, Firefox; bulut yolu açık durağan çıktı ve Pages'te adres değişimi (yalnızca `next start` ile görüldü); soru penceresi telefon boyutunda ve ekran okuyucuyla; iki sekme yarışı; depolama kotası.
+
+**Sayılar (13 Ekim, dal `worktree-agent-a2b52e38355c6d5f7`; hepsi yerel, son kodla):** `tsc` ve `eslint` temiz; birim 1418/1418 (82 dosya; 12'si yeni); e2e (olağan derleme) 395 testte 391 geçti / 4 atlandı / 0 başarısız (sayı değişmedi), kendiliğinden kurtarma gerektiren yükleme **0** (bekçinin kendi testleri bilerek 9 kurtarma, 2 ölü sayfa yaptı); bulut e2e'si (sahte Worker'a karşı) 58 testte 54 geçti / 4 atlandı / 0 başarısız (11'i yeni), kurtarma 0, ölü sayfa 0; varsayılan durağan çıktı derlendi, bulut denetimi geçti, yeni sözler çıktıda yok; `npm run quality` 643 ölçü: 566 bütçe içinde, 8 dışında (önceki koşulardaki aynı sekiz madde), 5 ölçülemedi, 64 bütçesiz — "Kim konuştu" tablosunda her adım 4 / 4, SRT 0, bulut yazı ekranı 110 → 122 kelime (bütçe ≤ 180). **Koşulmayan:** Pages duman testi, tarayıcı matrisi, `cloud/` sınamaları, gerçek telefon.
+
 ## Sunulup da canlanmayan sayfa artık kendini bir kez yeniden yükler, olmazsa söyler — 13 Ekim 2026 (ADR-044; politika ve şema değişmedi; tarayıcıda saklananlara bir `sessionStorage` anahtarı eklendi)
 
 Kurucu yokken, özerk çalışma. Hiçbir dış hizmete istek gitmedi; `cloud/` altına dokunulmadı.

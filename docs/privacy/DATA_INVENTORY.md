@@ -10,6 +10,12 @@
 > `NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL` verilen bir derlemede vardır; yayındaki site ve CI onu
 > vermez. Yol açık bir derlemede neyin değiştiği **§8**'de yazılıdır; o derleme yayınlanırsa bu
 > belgenin §1, §2.4, §4.1 ve §6 satırları §8'e göre okunmalıdır.
+>
+> **13 Ekim 2026 — internette yazılan yazı editöre geçişte saklanır (ADR-034 eki).** Yalnızca yol açık
+> derlemede: "Yazıya dök"te internette yazılmış bir yazının üstünde "Daha fazla ayar → editörde aç"a
+> basılınca o çalışma tarayıcının proje deposuna yazılır (§8.4a). Yayındaki derlemede bu kod yoktur;
+> §2.7'nin "sihirbaz proje saklamaz" cümlesi orada olduğu gibi doğrudur. Yol açık derlemede §2.7 ve
+> §2.6'nın "sihirbazda hiçbir şey saklanmaz" satırları §8.4a'ya göre okunmalıdır.
 
 Bu belge "ne yapmayı planlıyoruz" değil, **kodun bugün ne yaptığıdır**. Her satır bir dosyaya
 dayanır; bir davranış değişirse önce bu belge ve `/gizlilik` sayfası (`web/src/components/PrivacyPage.tsx`,
@@ -253,6 +259,9 @@ Yeni saklanan veri **yok**.
   aç" ile açılan editörden) IndexedDB `projects` deposuna yazılmaz ve oradan okunmaz; `/editor`'de
   kayıtlı proje yerinde durur (e2e: `wizards.spec.ts`). Dışa aktarma günlüğü (§2.1) ve geçici
   dışa aktarma dosyası (§2.2) editördeki indirmeyle aynı yoldan yazılır.
+  **Tek istisna, yalnızca bulut yolu açık derlemede (13 Ekim 2026, §8.4a):** "Yazıya dök"te internette
+  yazılmış bir yazının üstünde açılan editör projeyi saklar. Öbür dokuz sihirbaz ve cihazda yazılan
+  yazı için yukarıdaki cümle değişmedi.
 - Çevrimdışı kopya (§2.5) artık `/yap/kes`, `/yap/bosluk`, `/yap/dikey`, `/yap/muzik`,
   `/yap/cevir` sayfalarını da içerir (yalnızca uygulamanın kendi dosyaları).
 
@@ -441,8 +450,8 @@ açılınca kalan dakikayı sorar (`GET /v1/quota`, kod başlıkta, gövde yok).
 - **Sınır:** yükleme sırasında durdurulan işte kayıt açılmaz; o ana kadar sağlayıcıya ulaşmış ses
   bizim elimizle silinemez, sağlayıcının kendi kuralıyla silinir (belgesine göre 24–48 saat).
   Ekran bu durumda "silindi" demez (ADR-039 "Bilinen sınır").
-- Yazı: sonuç geldikten sonra yalnızca bu tarayıcıdadır (tarif, §2.1 / §2.3; sihirbazda yalnızca
-  bellekte).
+- Yazı: sonuç geldikten sonra yalnızca bu tarayıcıdadır (tarif, §2.1 / §2.3). Sihirbazın sonuç
+  ekranında yalnızca bellekte; "Daha fazla ayar → editörde aç"a basılınca IndexedDB'de (§8.4a).
 
 ### 8.4 Bu tarayıcıda saklanan (yalnız açık derlemede)
 
@@ -450,10 +459,42 @@ açılınca kalan dakikayı sorar (`GET /v1/quota`, kod başlıkta, gövde yok).
 |---|---|---|---|
 | Davet kodu | `localStorage` → `clip.cloudInvite` | Yalnızca "Kodu kaydet"e basılınca **ve** Worker kodu kabul edince. Biçime uymayan kod hiçbir yere gönderilmez ve yazılmaz. | "Davet kodunu kaldır" (seçim ekranında ve `/gizlilik` sayfasında); kod geri çekilmişse bir sonraki açılışta kendiliğinden; tarayıcı verisini temizleyince. |
 | Seçilen yol (cihaz / internet) | **saklanmaz** | — | Her videoda yeniden sorulur. |
-| Kim konuştu (13 Ekim 2026, ADR-043) | Proje tarifinde, satırın kendisinde: `speaker`, 1–20 arası bir **sıra numarası** (ilk duyulan ses 1). Ad, ses izi ya da sağlayıcının kimliği **değil**. Sihirbazda yalnızca bellekte (sihirbaz proje saklamaz, §2.7); editörde (`/editor`) altyazı satırlarıyla birlikte IndexedDB'de ve proje yedeğinde (§2.1). | Sonuç geldiğinde tarife; depoya yalnızca editörün otomatik kaydıyla | Satır ya da proje silinince; tarayıcı verisi temizlenince. TXT ve VTT dosyalarına "1. kişi" olarak yazılır; SRT'ye ve videoya yazılmaz. |
+| Kim konuştu (13 Ekim 2026, ADR-043) | Proje tarifinde, satırın kendisinde: `speaker`, 1–20 arası bir **sıra numarası** (ilk duyulan ses 1). Ad, ses izi ya da sağlayıcının kimliği **değil**. Sihirbazın sonuç ekranında yalnızca bellekte; editöre geçince (§8.4a) ve `/editor`'de altyazı satırlarıyla birlikte IndexedDB'de ve proje yedeğinde (§2.1). | Sonuç geldiğinde tarife; depoya editöre geçişte ve editörün otomatik kaydıyla | Satır ya da proje silinince; tarayıcı verisi temizlenince. TXT ve VTT dosyalarına "1. kişi" olarak yazılır; SRT'ye ve videoya yazılmaz. |
 
 Kanıt: `cloud-flow.spec.ts` → "never chosen for the user and never remembered" (localStorage'da
 yalnızca `clip.cloudInvite`; sessionStorage boş) ve "the invite code can be removed…".
+
+### 8.4a İnternette yazılan yazı: editöre geçişte proje olarak saklanır (13 Ekim 2026, ADR-034 eki)
+
+Kurucu kararı (13 Ekim 2026): "Bulut yazısı editöre geçişte saklansın." Yeni bir depo, yeni bir alan
+ya da şema değişikliği **yok**: yazılan şey §2.1'deki `projects` kaydının aynısıdır (`ProjectRecord`,
+EDL v5), aynı anahtarla (`p_local_001`), aynı otomatik kayıtla.
+
+| Ne zaman | Depoda ne var |
+|---|---|
+| Yazı sonuç ekranında (editör açılmadı) | **Hiçbir şey.** Ekran bunu söyler: "Bu yazı henüz saklanmadı: editörde açarsan ya da metni indirirsen kalır, yoksa sayfa kapanınca gider." Sayfa yenilenirse yazı gider (e2e). |
+| "Daha fazla ayar → editörde aç"a basıldı, depoda proje yok (ya da yalnızca açılmış, üstünde çalışılmamış bir video kaydı var) | Proje kaydı hemen yazılır: satırların metni, zamanı, **kim konuştu** numarası (`speaker`), biçim ayarları, kaynak dosyanın adı / boyutu / tarihi / süresi / çözünürlüğü / türü (§2.1'deki `bindings`). Ses, görüntü, davet kodu, iş kimliği, sağlayıcının yanıtı, kelime zamanları **yok**. |
+| Aynı düğme, depoda üstünde çalışılmış bir proje var (kesit, altyazı / yazı satırı, müzik ya da proje adı) | Kullanıcıya sorulur; seçmeden hiçbir şey yazılmaz. "Eski proje kalsın (bu yazı saklanmaz)" → depoya dokunulmaz, editör saklamadan açılır ve başlığı "Bu düzenleme saklanmıyor" der. "Bu yazı saklansın (eski proje silinir)" → eski kaydın yerine yenisi yazılır. "Vazgeç" → hiçbir şey değişmez. |
+| Depo kullanılamıyor (gizli pencere, dolu disk) | Yazılamaz; editörün başlığı "Düzenleme saklanamadı" ve nedenini söyler, "Yedek dosyasını indir" sunulur. |
+| Depodaki kayıt daha yeni bir derlemenin | Açılmaz ve üstüne **yazılmaz** (ADR-043 Karar 3); başlık bunu söyler. |
+
+- **"İnternette yazıldı" bilgisi saklanmaz.** Tarifte yazının nerede yazıldığını tutan bir alan yok ve
+  eklenmedi (şema değişikliği olurdu). Depodaki kayıttan, yazının bir sunucuda yazıldığı **anlaşılmaz**;
+  cihazda yazılmış bir yazının kaydıyla aynı biçimdedir (fark: satırlarda `speaker`). Editör bu izi
+  "Otomatik yazıldı — yanlış olabilir" diye gösterir.
+- **Silme:** §2.1'deki proje silmenin aynısı — editör video dosyasını yeniden istediğinde "Kayıtlı
+  projeyi sil" (onaydan sonra kayıt silinir ve o sekmede geri yazılmaz, ADR-012 eki; e2e), ya da
+  tarayıcının site verisini temizlemek. Video açıkken editörde ayrı bir "projeyi sil" düğmesi **yoktur**
+  (var olan sınır; bu işte eklenmedi).
+- **Adres:** saklanan geçişte adres çubuğu sayfa yüklenmeden `/editor` olur (`history.replaceState`);
+  adrese kişisel hiçbir şey yazılmaz. Yenileme editörü açar, kayıtlı proje geri gelir ve video dosyası
+  yeniden istenir (dosyanın kendisi hiçbir yerde saklanmaz, §2.3).
+- **Cihazda yazılan yazı** bu değişikliğin dışındadır: sihirbazda da, ondan açılan editörde de
+  saklanmaz (kurucu kararı bekliyor, ADR-034 eki).
+
+Kod: `web/src/domain/wizardHandoff.ts` (kural), `web/src/components/transcript/CloudKeep.tsx` (soru),
+`web/src/components/wizard/TaskWizard.tsx`, `useProjectPersistence.ts` (`adopt`). Kanıt:
+`tests/cloud/cloud-keep.spec.ts`, `tests/unit/wizardHandoff.test.ts`.
 
 ### 8.5 `/gizlilik` sayfası
 
@@ -465,6 +506,12 @@ zaman silinir, başkalarının sesi, vekilin tuttuğu kayıt, dakika sorgusu, de
 "Davet kodu" kartı ve kaldırma düğmesi. Kanıt: `tests/cloud/cloud-choice.spec.ts`,
 `tests/e2e/cloud-off.spec.ts`.
 
+13 Ekim 2026 (ADR-034 eki): açıkken bölüme "Yazı cihazında nerede durur" maddesi (`cloud.privacy.kept`:
+önce yalnızca açık sayfada; editörde açılınca bu tarayıcıda proje olarak; önceki proje varsa sorulur;
+nasıl silinir) ve "Proje tarifi" kartına bir cümle (`cloud.privacy.stored.project.extra`) eklenir.
+Kapalıyken kartın cümlesi ("…ana ekrandaki bir işten başlattığın çalışma saklanmaz") değişmedi ve o
+derlemede doğrudur. Kanıt: `tests/cloud/cloud-keep.spec.ts` (son sınama), `tests/unit/wizardHandoff.test.ts`.
+
 ### 8.6 Açık kurucu kararları
 
 - Veri sorumlusu ve hukuki dayanak (K02): bulut yolu kişisel veriyi (sesi) üçüncü tarafa aktaran
@@ -472,5 +519,9 @@ zaman silinir, başkalarının sesi, vekilin tuttuğu kayıt, dakika sorgusu, de
 - Bölge AB kalacak mı (`PROVIDER_REGION`): ekran ve gizlilik metni "Avrupa" diyor.
 - Bulut dakikasının ücretli/ücretsiz/deneme oluşu (politika belgesi 15 — değişmedi).
 - ~~Konuşmacı etiketlerinin kalıcı olması (EDL v5).~~ — 13 Ekim 2026: yapıldı (ADR-043; §8.4).
+- ~~İnternette yazılan yazının kalıcılığı.~~ — 13 Ekim 2026: editöre geçişte saklanıyor (§8.4a).
+- Cihazda yazılan yazı da editöre geçişte saklansın mı (yayındaki derlemenin davranışını ve gizlilik
+  metnini değiştirir; ADR-034 eki).
+- "İnternette yazıldı" bilgisi kayıtta tutulsun mu (şema eklemesi; ADR-043 madde 5).
 - Kişileri yeniden adlandırma (ADR-043): gelirse tarife **serbest metin** (bir ad) girer; bu envanter
   ve `/gizlilik` o değişiklikle birlikte güncellenmeli.

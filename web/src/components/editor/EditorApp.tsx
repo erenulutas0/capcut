@@ -152,8 +152,13 @@ export function EditorApp() {
  * recipe it already holds — the same open video, the same settings, no second
  * file dialog — and that work is not stored (`stored` false): a wizard never
  * saves a project, and the one kept from `/editor` is not replaced.
+ *
+ * One hand-over IS stored (`stored` and `adopt`, ADR-034 addendum of 13 Oct
+ * 2026): a transcript written on the internet. There the given recipe becomes
+ * the browser's stored project instead of being replaced by it; the wizard has
+ * asked first when a project with work in it was already stored.
  */
-export function EditorView({ state, stored }: { state: EditorState; stored: boolean }) {
+export function EditorView({ state, stored, adopt = false }: { state: EditorState; stored: boolean; adopt?: boolean }) {
   const hydrated = useHydrated();
   const layout = useLayoutMode();
   const phone = layout === 'phone';
@@ -176,6 +181,7 @@ export function EditorView({ state, stored }: { state: EditorState; stored: bool
     bindings: state.bindings,
     onRestore: state.restoreFromRecord,
     enabled: stored,
+    adopt: stored && adopt,
   });
 
   const downloads = useDownloads({

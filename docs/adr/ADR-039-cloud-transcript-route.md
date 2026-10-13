@@ -2,7 +2,8 @@
 
 > Tarih: 10 Ekim 2026 · Durum: **ÖNERİ / TASLAK** — hiçbir şey yayında değil, politika değişmedi
 > · 11 Ekim 2026: ilk gerçek ölçüm (ek) · 11 Ekim 2026: **istemci yapıldı, KAPALI doğar** (ek, "İstemci yapıldı")
-> · 13 Ekim 2026: konuşmacılar kalıcı, EDL v5 (ek; [ADR-043](ADR-043-speakers-in-recipe.md));
+> · 13 Ekim 2026: konuşmacılar kalıcı, EDL v5 (ek; [ADR-043](ADR-043-speakers-in-recipe.md))
+> · 13 Ekim 2026: internette yazılan yazı editöre geçişte saklanır (ek; [ADR-034](ADR-034-task-first-home.md) eki);
 > Worker yayınlanmadı, durum kurucu yayınlayana kadar taslak kalır
 > İlgili: [ADR-036](ADR-036-on-device-transcript.md) (cihaz üstü yazıya dökme ve "Hâlâ zayıf olan"),
 > `docs/spikes/2026-10-03-asr-on-device-english.md`, `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md`,
@@ -555,7 +556,31 @@ rıza ekranı, giden ses, hata iletileri; yol varsayılan derlemede hâlâ kapal
 
 **Yolu açmadan önce bilinmesi gereken** (ADR-043 "Bulunan"): sihirbaz proje saklamadığı için internette
 yazılan yazı, sihirbazın (ya da ondan açılan editörün) sayfası yenilenince gider; kalıcı olmasının bugünkü
-tek yolu yedek dosyasıdır.
+tek yolu yedek dosyasıdır. — **Çözüldü, aynı gün** (aşağıdaki ek).
+
+## Ek, 13 Ekim 2026 — internette yazılan yazı editöre geçişte saklanır
+
+Kurucu kararı: "Bulut yazısı editöre geçişte saklansın." Ayrıntı ve gerekçe
+[ADR-034'ün 13 Ekim ekinde](ADR-034-task-first-home.md); burada yalnızca bu yolu ilgilendiren özet.
+
+- **Sonuç ekranı** (yazı geldi, editör açılmadı): yazı yalnızca açık sayfadadır ve ekran bunu söyler —
+  "Bu yazı henüz saklanmadı: editörde açarsan ya da metni indirirsen kalır, yoksa sayfa kapanınca gider."
+  (`cloud.keep.note`; rıza ekranının kuralları geçerli: kanıtlanamayan söz yok, uydurma sayı yok.)
+- **"Daha fazla ayar → editörde aç":** çalışma bu tarayıcının kayıtlı projesi olur (satırlar ve kim
+  konuştuğu; ses, davet kodu, iş kimliği, sağlayıcı yanıtı değil). Depoda üstünde çalışılmış bir proje
+  varsa önce sorulur; seçilmeden hiçbir şey yazılmaz. Adres `/editor` olur; yenileme projeyi geri getirir
+  ve video dosyasını yeniden ister.
+- **Sihirbazda kalan kullanıcı** için hiçbir şey değişmedi: hiçbir şey saklanmaz (sınandı).
+- **Cihazda yazılan yazı** bu derlemede de eskisi gibi saklanmadan geçer (kurucu kararı bekliyor).
+- **"İnternette yazıldı" etiketi** hâlâ tarife yazılmıyor: editörde ve yenilemeden sonra aynı iz "Otomatik
+  yazıldı — yanlış olabilir" diye görünür. Şema alanı ister; eklenmedi.
+- **Değişmeyenler:** Worker, sözleşme, rıza ekranının metni, giden ses, silme isteği, hata iletileri; yol
+  varsayılan derlemede hâlâ kapalı ve yeni kod (`CloudKeep`) o derlemenin çıktısında yok.
+- **Gizlilik:** `/gizlilik`'in bulut bölümüne "Yazı cihazında nerede durur" maddesi ve "Proje tarifi"
+  kartına bir cümle eklendi; veri envanteri §8.4a.
+
+"Sağlayıcıda silinir, yazı bundan sonra yalnızca bu tarayıcıda durur" cümlesi (`cloud.privacy.deletion`)
+doğru kalır; "bu tarayıcıda" artık iki hâli kapsar: açık sayfanın belleği ya da kayıtlı proje.
 
 ## Doğrulanmayanlar (10 Ekim taslağı)
 
