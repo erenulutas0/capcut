@@ -60,8 +60,10 @@ derlemeyi kullanmaz, yeniden derler.
 
 **"Kim konuştu" kalıcı mı (ADR-043; 13 Ekim 2026).** Aynı dosyanın ikinci ölçümü, yine sahte sunucuya
 karşı: betikteki iki kişinin dört konuşma sırasının etiketi ("1. kişi", "2. kişi", …) sonuç ekranında,
-editörde, yedek dosyasında, yedekten açılan editörde, sayfa yenilendikten sonra depoda ve ekranda, VTT
-dosyasında sayılır; SRT'de hiç geçmediği sayılır (bütçe: hepsi 4, SRT 0). Betiğin ulaşamadığı adım
+editörde, editöre geçince depoda, o sayfa yenilendikten sonra depoda ve ekranda, yedek dosyasında,
+yedeği açan başka bir tarayıcıda, VTT dosyasında sayılır; SRT'de hiç geçmediği sayılır (bütçe: hepsi 4,
+SRT 0). 13 Ekim'den beri "yenilemeden sonra" yedek dosyası olmadan ölçülür: internette yazılan yazı
+editöre geçişte saklanır (ADR-034 eki). Betiğin ulaşamadığı adım
 "ölçülemedi" yazılır. Sahte sunucu kimin konuştuğunu duymaz: bu ölçü **saklamanın ve göstermenin**
 ölçüsüdür, kişi ayrımının doğruluğunun değil. Akış ölçümünün (tıklama, ekran, kelime) sayılarına
 eklenmez.
