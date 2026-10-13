@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -275,6 +276,168 @@ test.describe('local persistence', () => {
     // A fresh project can be started right away.
     await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
     await expect(page.getByTestId('preview-video')).toBeVisible();
+  });
+});
+
+/** Puts a record into the browser's project store as an earlier (or later) build would have left it. */
+async function seedRecord(page: Page, record: unknown): Promise<void> {
+  await page.evaluate(
+    (value) =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open('clip-editor', 2);
+        open.onupgradeneeded = () => {
+          const db = open.result;
+          if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'projectId' });
+          if (!db.objectStoreNames.contains('exportLog')) db.createObjectStore('exportLog', { keyPath: 'id', autoIncrement: true });
+        };
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const db = open.result;
+          const transaction = db.transaction('projects', 'readwrite');
+          transaction.objectStore('projects').put(value);
+          transaction.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          transaction.onerror = () => reject(transaction.error);
+        };
+      }),
+    record,
+  );
+}
+
+const wholeRecord = (page: Page) => storedRecord(page) as unknown as Promise<Record<string, unknown> | null>;
+
+test.describe('a project stored by another build of the app (EDL v5, ADR-043)', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/editor');
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          const request = indexedDB.deleteDatabase('clip-editor');
+          request.onsuccess = () => resolve();
+          request.onerror = () => resolve();
+          request.onblocked = () => resolve();
+        }),
+    );
+  });
+
+  test('the build before this one (v4): it opens, and the first save changes the schema number and nothing else', async ({ page }) => {
+    // A transcript track with unclear spans, exactly as the v4 build wrote such a recipe (the shared fixture).
+    const v4 = JSON.parse(readFileSync(join(process.cwd(), 'fixtures', 'edl', 'legacy-v4', 'caption-transcript-unclear.json'), 'utf8')) as Record<string, unknown>;
+    expect(v4.schemaVersion).toBe(4);
+    const edl = { ...v4, projectId: 'p_local_001' };
+    const seeded = {
+      recordVersion: 1,
+      projectId: 'p_local_001',
+      title: 'Eski sürümden',
+      edl,
+      bindings: [
+        { assetId: 'a_video_001', kind: 'video', fileName: 'eski-kayit.mp4', sizeBytes: 1234, lastModified: 1_700_000_000_000, durationUs: 20_000_000, displayWidth: 1080, displayHeight: 1920, mimeType: 'video/mp4', fingerprint: 'fp_00000000', lastSeenAt: '2026-10-01T10:00:00.000Z' },
+      ],
+      createdAt: '2026-10-01T10:00:00.000Z',
+      updatedAt: '2026-10-01T10:05:00.000Z',
+    };
+    await seedRecord(page, seeded);
+
+    const errors = await openEditor(page);
+    // It is the project: its name, its kesit, and it asks for its video.
+    await expect(page.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId('relink-filename')).toHaveText('eski-kayit.mp4');
+    await expect(page.getByTestId('project-title')).toHaveValue('Eski sürümden');
+    await expect(page.getByTestId('moment-count')).toHaveText('(1)');
+
+    // The autosave that follows the first load: v5, and otherwise the recipe the old build stored.
+    await expect.poll(async () => ((await wholeRecord(page))?.edl as { schemaVersion?: number } | undefined)?.schemaVersion, { timeout: 15_000 }).toBe(5);
+    const after = (await wholeRecord(page)) as typeof seeded & { updatedAt: string };
+    expect({ ...after.edl, schemaVersion: 4 }).toEqual(edl);
+    expect(JSON.stringify({ ...after.edl, schemaVersion: 4 })).toBe(JSON.stringify(edl));
+    expect(after.bindings).toEqual(seeded.bindings);
+    expect(after.title).toBe(seeded.title);
+    expect(after.createdAt).toBe(seeded.createdAt);
+    expect(JSON.stringify(after)).not.toContain('speaker');
+    expect(errors).toEqual([]);
+  });
+
+  test('a backup file written by the v4 build is restored; one written by a newer build is refused in words', async ({ page }) => {
+    const v4 = JSON.parse(readFileSync(join(process.cwd(), 'fixtures', 'edl', 'legacy-v4', 'caption-transcript-unclear.json'), 'utf8')) as Record<string, unknown>;
+    const backup = {
+      recordVersion: 1,
+      projectId: 'p_fixture_001',
+      title: 'Eski yedek',
+      edl: v4,
+      bindings: [
+        { assetId: 'a_video_001', kind: 'video', fileName: 'eski-yedek.mp4', sizeBytes: 1234, lastModified: 1_700_000_000_000, durationUs: 20_000_000, displayWidth: 1080, displayHeight: 1920, mimeType: 'video/mp4', fingerprint: 'fp_00000000', lastSeenAt: '2026-10-01T10:00:00.000Z' },
+      ],
+      createdAt: '2026-10-01T10:00:00.000Z',
+      updatedAt: '2026-10-01T10:05:00.000Z',
+    };
+    const errors = await openEditor(page);
+
+    // From a later build first: nothing of it is taken, and the page says so (it stays the empty editor it was).
+    await page.getByTestId('backup-input').setInputFiles({
+      name: 'yarin.lilocut.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({ ...backup, edl: { ...v4, schemaVersion: 6, speakerNames: { 1: 'Ayşe' } } })),
+    });
+    await openMore(page);
+    await expect(page.getByTestId('backup-message')).toHaveText('Yedek dosyası okunamadı veya bu sürümle uyumlu değil.');
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('relink-video')).toHaveCount(0);
+    expect(await storedRecord(page)).toBeNull();
+
+    // The v4 file, under the name the app gives its backups.
+    await page.getByTestId('backup-input').setInputFiles({ name: 'eski.lilocut.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(backup, null, 2)) });
+    await expect(page.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId('relink-filename')).toHaveText('eski-yedek.mp4');
+    await expect(page.getByTestId('project-title')).toHaveValue('Eski yedek');
+    await expect(page.getByTestId('moment-count')).toHaveText('(1)');
+    // Stored as v5, the recipe otherwise as the file had it.
+    await expect.poll(async () => ((await wholeRecord(page))?.edl as { schemaVersion?: number } | undefined)?.schemaVersion, { timeout: 15_000 }).toBe(5);
+    const stored = (await wholeRecord(page)) as { edl: Record<string, unknown> };
+    expect({ ...stored.edl, schemaVersion: 4 }).toEqual(v4);
+    expect(errors).toEqual([]);
+  });
+
+  test('a NEWER build: the project is not opened, not written over, and the header says why', async ({ page }) => {
+    // What this build would find if the browser served it after a later one had saved (a saved shell, an old tab).
+    const newer = {
+      recordVersion: 1,
+      projectId: 'p_local_001',
+      title: 'Yarının projesi',
+      edl: { schemaVersion: 6, projectId: 'p_local_001', somethingThisBuildCannotKnow: { a: 1 } },
+      bindings: [],
+      createdAt: '2026-11-01T10:00:00.000Z',
+      updatedAt: '2026-11-01T10:05:00.000Z',
+    };
+    await seedRecord(page, newer);
+
+    const errors = await openEditor(page);
+    await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklanamadı', { timeout: 15_000 });
+    await expect(page.getByTestId('save-state')).toContainText('daha yeni bir sürümle saklanmış');
+    await expect(page.getByTestId('save-state')).toContainText('Sayfayı yenile');
+    await expect(page.getByTestId('save-state')).not.toContainText('bozulmuş');
+    // Nothing of it is shown as if it had been read.
+    await expect(page.getByTestId('relink-video')).toHaveCount(0);
+    await expect(page.getByTestId('project-title')).toHaveValue('');
+
+    // Working on in this old page does not write over it: not by the autosave, not on the way out.
+    await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
+    await expect(page.getByTestId('preview-video')).toBeVisible();
+    await addMoment(page, '00:00.000', '00:04.000');
+    await expect(page.getByTestId('moment-count')).toHaveText('(1)');
+    await page.waitForTimeout(1500); // three times the autosave delay
+    expect(await wholeRecord(page)).toEqual(newer);
+    await expect(page.getByTestId('save-state')).toContainText('daha yeni bir sürümle saklanmış');
+    // The way to keep this page's work is offered: the backup file.
+    await expect(page.getByTestId('save-recover')).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByTestId('save-state')).toContainText('daha yeni bir sürümle saklanmış', { timeout: 15_000 });
+    expect(await wholeRecord(page)).toEqual(newer);
+    expect(errors).toEqual([]);
   });
 });
 
