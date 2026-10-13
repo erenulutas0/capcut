@@ -418,7 +418,8 @@ const SPEECH_VIDEO = join(__dirname, '..', 'media', 'speech-fleurs-en-01.mp4');
 
 test('the model files are served under /capcut/models/: exact length, exact sha256, Range, licences', async ({ request }) => {
   test.skip(!BASE_PUBLISHED, 'out/models has no model files (node scripts/fetch-models.mjs --dest=out/models --copy) — NOT RUN');
-  test.setTimeout(900_000);
+  // 675 MB from the published site: minutes on a fast line, over a quarter of an hour on a slow evening one.
+  test.setTimeout(process.env.PAGES_SITE_ORIGIN ? 3_600_000 : 900_000);
   // Published site: every group must be there, and the bytes are read from the site itself.
   const live = process.env.PAGES_SITE_ORIGIN;
   const published = live ? ['runtime', 'vad', 'base', 'turbo'] : ['runtime', 'vad', 'base', 'turbo'].filter(groupPublished);
