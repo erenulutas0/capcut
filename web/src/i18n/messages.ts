@@ -40,6 +40,8 @@ export const tr = {
   'store.fail.blocked': 'Yerel kayıt başka bir sekme tarafından engellendi.',
   'store.fail.quota_exceeded': 'Tarayıcının depolama alanı dolu.',
   'store.fail.corrupt': 'Kayıtlı proje okunamadı; bozulmuş olabilir.',
+  'store.fail.newer':
+    'Bu proje daha yeni bir sürümle saklanmış. Sayfayı yenile. Bu sayfada yaptıkların saklanmaz.',
   'store.fail.unknown': 'Yerel kayıt sırasında bilinmeyen bir hata oluştu.',
 
   'relink.title': 'Bu projenin videosu açık değil.',

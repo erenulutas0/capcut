@@ -7,7 +7,7 @@
  * forbids. What survives is the recipe; the files are re-selected by the user.
  */
 
-import type { Project } from './edl';
+import { EDL_SCHEMA_VERSION, type Project } from './edl';
 import type { Micros } from './time';
 import { loadStoredProject } from './migration';
 
@@ -154,6 +154,12 @@ export function createRecord(
 export type RecordRejection =
   | 'not_an_object'
   | 'version_unsupported'
+  /**
+   * The recipe was written by a NEWER build than this one (a higher schema
+   * number). Nothing is wrong with it and nothing in it is read: this build
+   * must leave it alone — not load it, and not write over it (ADR-043).
+   */
+  | 'edl_newer'
   | 'edl_invalid'
   | 'bindings_invalid';
 
@@ -181,6 +187,8 @@ export function parseRecord(input: unknown): RecordResult {
   if (candidate.recordVersion !== PROJECT_RECORD_VERSION) {
     return { ok: false, reason: 'version_unsupported' };
   }
+
+  if (isNewerRecipe(candidate.edl)) return { ok: false, reason: 'edl_newer' };
 
   // Older builds stored v1 recipes; they are upgraded here, never refused.
   const validation = loadStoredProject(candidate.edl);
@@ -214,6 +222,19 @@ export function parseRecord(input: unknown): RecordResult {
       updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : new Date().toISOString(),
     },
   };
+}
+
+/**
+ * True for a recipe whose schema number is higher than this build's. That
+ * happens when the browser serves an older copy of the app (the service
+ * worker's saved shell, a tab left open across a release) after a newer one
+ * has saved: there is no way down, so the only honest answers are "not this
+ * build" and hands off.
+ */
+export function isNewerRecipe(edl: unknown): boolean {
+  if (typeof edl !== 'object' || edl === null) return false;
+  const version = (edl as { schemaVersion?: unknown }).schemaVersion;
+  return typeof version === 'number' && Number.isInteger(version) && version > EDL_SCHEMA_VERSION;
 }
 
 /** Assets referenced by the recipe that no open file currently satisfies. */
