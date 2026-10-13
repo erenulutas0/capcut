@@ -50,7 +50,8 @@ function plan(project: Project): RenderPlan {
 describe('the enhancement setting in the recipe (EDL v4)', () => {
   it('is off by default: a new recipe has no such field', () => {
     const project = opened();
-    expect(EDL_SCHEMA_VERSION).toBe(4);
+    // The setting came with v4; the schema has moved on since (v5, ADR-043) without touching it.
+    expect(EDL_SCHEMA_VERSION).toBeGreaterThanOrEqual(4);
     expect('enhance' in project).toBe(false);
     expect(validateProject(withKesit(project)).ok).toBe(true);
   });
@@ -122,7 +123,7 @@ describe('the enhancement setting in the recipe (EDL v4)', () => {
     const reopened = parseRecord(JSON.parse(JSON.stringify(old)));
     expect(reopened.ok).toBe(true);
     if (reopened.ok) {
-      expect(reopened.record.edl.schemaVersion).toBe(4);
+      expect(reopened.record.edl.schemaVersion).toBe(EDL_SCHEMA_VERSION);
       expect('enhance' in reopened.record.edl).toBe(false);
     }
   });
@@ -131,23 +132,23 @@ describe('the enhancement setting in the recipe (EDL v4)', () => {
 describe('older recipes (v1, v2, v3) open unchanged, with enhancement off', () => {
   const v4 = withKesit(opened());
 
-  it('v3 → v4 is the number alone', () => {
+  it('v3 → today is the number alone', () => {
     const v3 = { ...v4, schemaVersion: 3 };
     expect(validateProject(v3).ok).toBe(false);
     const loaded = loadProject(v3);
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
-    expect(loaded.project.schemaVersion).toBe(4);
+    expect(loaded.project.schemaVersion).toBe(EDL_SCHEMA_VERSION);
     expect('enhance' in loaded.project).toBe(false);
     expect({ ...loaded.project, schemaVersion: 3 }).toEqual(v3);
   });
 
   it('v2 and v1 still arrive at the current schema', () => {
     const v2 = loadProject({ ...v4, schemaVersion: 2 });
-    expect(v2.ok && v2.project.schemaVersion).toBe(4);
+    expect(v2.ok && v2.project.schemaVersion).toBe(EDL_SCHEMA_VERSION);
     const { captionTracks: _dropped, ...withoutCaptions } = v4;
     const v1 = loadProject({ ...withoutCaptions, schemaVersion: 1 });
-    expect(v1.ok && v1.project.schemaVersion).toBe(4);
+    expect(v1.ok && v1.project.schemaVersion).toBe(EDL_SCHEMA_VERSION);
     if (v1.ok) expect(v1.project.captionTracks).toEqual([]);
   });
 
@@ -160,7 +161,7 @@ describe('older recipes (v1, v2, v3) open unchanged, with enhancement off', () =
   });
 
   it('a later schema is refused, not guessed at', () => {
-    expect(issueCodes(loadProject({ ...v4, schemaVersion: 5 }))).toContain('schema_version_unsupported');
+    expect(issueCodes(loadProject({ ...v4, schemaVersion: EDL_SCHEMA_VERSION + 1 }))).toContain('schema_version_unsupported');
   });
 });
 

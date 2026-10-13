@@ -1,6 +1,6 @@
 /**
- * EDL v2 validation (doc 10 "Doğrulama kuralları"). v1 input is migrated
- * first (migration.ts); this validator only ever sees the current schema.
+ * EDL validation (doc 10 "Doğrulama kuralları"). Older input is migrated
+ * first (migration.ts); this validator only ever sees the current schema (v5).
  *
  * Deliberately hand-written and dependency-free: the same rules must later be
  * re-implemented in Dart and Python and checked against the SAME fixture files
@@ -28,6 +28,7 @@ import {
   CAPTION_SIZES,
   captionTextProblem,
   isCaptionLanguage,
+  isCaptionSpeaker,
   normalizeCaptionText,
 } from './captions';
 import { WEB_LOCAL_POLICY, maxTimelineDurationUs, type ExportPolicy } from './policy';
@@ -73,6 +74,7 @@ export type IssueCode =
   | 'caption_text_invalid'
   | 'caption_cue_too_short'
   | 'caption_cue_overlap'
+  | 'caption_speaker_invalid'
   | 'enhance_invalid';
 
 export interface ValidationIssue {
@@ -193,7 +195,7 @@ const EXPORT_KEYS = [
 const CAPTION_TRACK_KEYS = ['trackId', 'origin', 'timeBase', 'assetId', 'language', 'style', 'cues', 'unclear'] as const;
 const CAPTION_UNCLEAR_KEYS = ['startUs', 'endUs'] as const;
 const CAPTION_STYLE_KEYS = ['preset', 'position', 'size'] as const;
-const CAPTION_CUE_KEYS = ['cueId', 'startUs', 'endUs', 'text'] as const;
+const CAPTION_CUE_KEYS = ['cueId', 'startUs', 'endUs', 'text', 'speaker'] as const;
 
 /**
  * Caption tracks (v2, ADR-015/016). Output-time cues may lie partly or wholly
@@ -360,6 +362,19 @@ function validateCaptionTracks(bag: IssueBag, raw: unknown, assets: Map<string, 
           `${cuePath}.text`,
           `Metin boş olmayan, en çok ${CAPTION_LIMITS.maxTextChars} karakter ve ${CAPTION_LIMITS.maxLines} satır, normalleştirilmiş düz metin olmalı.`,
         );
+      }
+
+      // v5 (ADR-043): who said the line. Only a transcript can know, and only as a small position number.
+      if (cue.speaker !== undefined) {
+        if (track.origin !== 'transcript') {
+          bag.add('caption_track_invalid', `${cuePath}.speaker`, 'speaker yalnızca transkript izinin satırında bulunur.');
+        } else if (!isCaptionSpeaker(cue.speaker)) {
+          bag.add(
+            'caption_speaker_invalid',
+            `${cuePath}.speaker`,
+            `speaker 1 ile ${CAPTION_LIMITS.maxSpeakers} arasında bir tam sayı olmalı.`,
+          );
+        }
       }
 
       const startOk = checkMicros(bag, cue.startUs, `${cuePath}.startUs`);

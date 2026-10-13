@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "valid": [
     {
       "file": "valid/single-clip.json"
@@ -56,6 +56,12 @@
     },
     {
       "file": "valid/enhance-strong-with-captions.json"
+    },
+    {
+      "file": "valid/caption-transcript-speakers.json"
+    },
+    {
+      "file": "valid/caption-transcript-speaker-highest.json"
     }
   ],
   "invalid": [
@@ -141,6 +147,54 @@
       "file": "invalid/future-schema.json",
       "expectedIssueCodes": [
         "schema_version_unsupported"
+      ]
+    },
+    {
+      "file": "invalid/caption-speaker-zero.json",
+      "expectedIssueCodes": [
+        "caption_speaker_invalid"
+      ]
+    },
+    {
+      "file": "invalid/caption-speaker-too-high.json",
+      "expectedIssueCodes": [
+        "caption_speaker_invalid"
+      ]
+    },
+    {
+      "file": "invalid/caption-speaker-not-integer.json",
+      "expectedIssueCodes": [
+        "caption_speaker_invalid"
+      ]
+    },
+    {
+      "file": "invalid/caption-speaker-not-a-number.json",
+      "expectedIssueCodes": [
+        "caption_speaker_invalid"
+      ]
+    },
+    {
+      "file": "invalid/caption-speaker-null.json",
+      "expectedIssueCodes": [
+        "caption_speaker_invalid"
+      ]
+    },
+    {
+      "file": "invalid/caption-speaker-on-manual-track.json",
+      "expectedIssueCodes": [
+        "caption_track_invalid"
+      ]
+    },
+    {
+      "file": "invalid/caption-speaker-on-imported-track.json",
+      "expectedIssueCodes": [
+        "caption_track_invalid"
+      ]
+    },
+    {
+      "file": "invalid/caption-track-speakers-field.json",
+      "expectedIssueCodes": [
+        "unknown_field"
       ]
     },
     {
@@ -331,6 +385,26 @@
     },
     {
       "file": "legacy-v3/v3-with-enhance.json",
+      "expect": "invalid"
+    },
+    {
+      "file": "legacy-v4/single-clip.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v4/doc10-example.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v4/caption-transcript-unclear.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v4/enhance-light-with-music.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v4/v4-with-speaker.json",
       "expect": "invalid"
     }
   ]

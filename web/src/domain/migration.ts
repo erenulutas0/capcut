@@ -3,10 +3,14 @@
  *
  * v1 → v2 only adds `captionTracks` (ADR-015), so the migration is lossless
  * and mechanical: a v1 recipe gets an empty caption list and nothing else
- * changes. v2 → v3 (ADR-036) and v3 → v4 (ADR-037) change nothing in an
- * existing recipe but the number. Everything that reads stored or imported
- * recipes goes through `loadProject` or, for a project record,
+ * changes. v2 → v3 (ADR-036), v3 → v4 (ADR-037) and v4 → v5 (ADR-043) change
+ * nothing in an existing recipe but the number. Everything that reads stored
+ * or imported recipes goes through `loadProject` or, for a project record,
  * `loadStoredProject`; `validateProject` itself only knows the current schema.
+ *
+ * There is no way down: a recipe with a HIGHER number than this build knows
+ * is returned untouched and the validator refuses it
+ * (`schema_version_unsupported`) before reading anything else in it.
  */
 
 import { EDL_SCHEMA_VERSION } from './edl';
@@ -17,27 +21,44 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** True when any caption line carries the v5 field `speaker`. Looks only; judges nothing. */
+function carriesSpeaker(input: Record<string, unknown>): boolean {
+  if (!Array.isArray(input.captionTracks)) return false;
+  return input.captionTracks.some(
+    (track: unknown) =>
+      isPlainObject(track) && Array.isArray(track.cues) && track.cues.some((cue: unknown) => isPlainObject(cue) && 'speaker' in cue),
+  );
+}
+
 /**
  * Upgrades a recipe to the current schema without judging it; validation
- * happens afterwards. Anything that is not a recognisable v1 recipe is
+ * happens afterwards. Anything that is not a recognisable older recipe is
  * returned untouched so the validator reports it with the usual codes.
+ *
+ * A recipe that carries a field its own version never had was written by no
+ * build. It is not repaired by guessing: it keeps its old number and the
+ * validator refuses it.
  */
 export function migrateProject(input: unknown): unknown {
   if (!isPlainObject(input)) return input;
-  // v2 → v3 (ADR-036): the number only. v3 only ALLOWS more (transcript
-  // tracks, their unclear spans, more lines), so every valid v2 recipe is a
-  // valid v3 recipe. A v2 recipe without its caption list is left for the
-  // validator to refuse rather than repaired by guessing.
-  if (input.schemaVersion === 2) return 'enhance' in input ? input : { ...input, schemaVersion: EDL_SCHEMA_VERSION };
-  // v3 → v4 (ADR-037): the number only. v4 only ADDS the optional `enhance`
-  // setting, so every valid v3 recipe is a valid v4 recipe with enhancement
-  // off. An older recipe that already carries the field was written by no
-  // build: left for the validator to refuse.
-  if (input.schemaVersion === 3) return 'enhance' in input ? input : { ...input, schemaVersion: EDL_SCHEMA_VERSION };
-  if (input.schemaVersion !== 1) return input;
-  // A v1 recipe never had captions. If one claims to, it is not a v1 recipe
-  // this code understands: leave it for the validator to refuse.
-  if ('captionTracks' in input || 'enhance' in input) return input;
+  const version = input.schemaVersion;
+  if (version !== 1 && version !== 2 && version !== 3 && version !== 4) return input;
+  // `speaker` on a line is v5 (ADR-043): no older recipe has it.
+  if (carriesSpeaker(input)) return input;
+  // v4 → v5: the number only. v5 only ADDS the optional `speaker` of a
+  // transcript line, so every valid v4 recipe is a valid v5 recipe in which
+  // no line names a speaker.
+  if (version === 4) return { ...input, schemaVersion: EDL_SCHEMA_VERSION };
+  // `enhance` is v4 (ADR-037): no v1, v2 or v3 recipe has it.
+  if ('enhance' in input) return input;
+  // v2 → v3 (ADR-036) and v3 → v4 (ADR-037): the number only. v3 only ALLOWS
+  // more (transcript tracks, their unclear spans, more lines) and v4 only
+  // adds the optional `enhance` setting. A v2 or v3 recipe without its
+  // caption list is left for the validator to refuse rather than repaired.
+  if (version === 2 || version === 3) return { ...input, schemaVersion: EDL_SCHEMA_VERSION };
+  // v1 never had captions. If one claims to, it is not a v1 recipe this code
+  // understands: leave it for the validator to refuse.
+  if ('captionTracks' in input) return input;
   return { ...input, schemaVersion: EDL_SCHEMA_VERSION, captionTracks: [] };
 }
 

@@ -11,7 +11,7 @@ import {
   withWholeKesit,
 } from '@/application/commands';
 import { CAPTION_LIMITS, outputCues, primaryCaptionTrack } from '@/domain/captions';
-import type { AssetV1, Project } from '@/domain/edl';
+import { EDL_SCHEMA_VERSION, type AssetV1, type Project } from '@/domain/edl';
 import { loadProject } from '@/domain/migration';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import { compileRenderPlan } from '@/domain/renderPlan';
@@ -263,13 +263,13 @@ describe('schema v3: validation and old recipes', () => {
     const loaded = loadProject(v2);
     expect(loaded.ok).toBe(true);
     if (loaded.ok) {
-      expect(loaded.project.schemaVersion).toBe(4);
+      expect(loaded.project.schemaVersion).toBe(EDL_SCHEMA_VERSION);
       expect({ ...loaded.project, schemaVersion: 2 }).toEqual(v2);
     }
   });
 
   it('does not accept a later schema it cannot know', () => {
-    expect(issueCodes(loadProject({ ...baseProject(), schemaVersion: 5 }))).toContain('schema_version_unsupported');
+    expect(issueCodes(loadProject({ ...baseProject(), schemaVersion: EDL_SCHEMA_VERSION + 1 }))).toContain('schema_version_unsupported');
   });
 });
 
