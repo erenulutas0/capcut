@@ -197,6 +197,7 @@ function capabilityKey(plan: RenderPlan, withFont: boolean, videoFile: File, aud
     plan.fpsDen,
     plan.videoBitrate,
     plan.audioBitrate,
+    plan.audio.wantsSourceAudio || plan.audio.music !== null ? 'audio' : 'silent',
     withFont ? 'font' : '-',
     videoFile.name,
     videoFile.size,

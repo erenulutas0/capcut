@@ -103,6 +103,8 @@ export function probeConfigFromPlan(plan: RenderPlan): EncoderProbeConfig {
     sampleRate: plan.audio.sampleRate,
     channelCount: plan.audio.channelCount,
     audioBitrate: plan.audioBitrate,
+    // "Sesi kapat": every part muted and no music — the file has no sound, so no audio encoder is asked for.
+    audioRequired: plan.audio.wantsSourceAudio || plan.audio.music !== null,
   };
 }
 
@@ -166,7 +168,7 @@ export function buildReport(
 
   if (encoder) {
     if (!encoder.videoConfigSupported) blockers.push('video_encoder_unsupported');
-    if (!encoder.audioConfigSupported) blockers.push('audio_encoder_unsupported');
+    if (!encoder.audioConfigSupported && encoder.audioRequired !== false) blockers.push('audio_encoder_unsupported');
     if (!encoder.selfTestPassed && encoder.failure) blockers.push(encoder.failure);
     // Only asked when the plan burns in captions. A worker that cannot load
     // the bundled typeface would draw them in some other font, so the export

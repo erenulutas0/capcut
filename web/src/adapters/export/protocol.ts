@@ -23,6 +23,13 @@ export interface EncoderProbeConfig {
   sampleRate: number;
   channelCount: number;
   audioBitrate: number;
+  /**
+   * False when the download has no sound at all ("Sesi kapat": every part
+   * muted, no music). The audio encoder is then neither required nor used, so
+   * a browser without one (Firefox has no AAC encoder, 13 Oct 2026) is not
+   * refused for something the file does not contain. Absent means required.
+   */
+  audioRequired?: boolean;
 }
 
 /** Stage B + Stage C of the capability gate in doc 11. */
@@ -34,6 +41,8 @@ export interface CapabilityStageResult {
   selfTestPassed: boolean;
   selfTestDurationUs: number | null;
   selfTestHasAudio: boolean;
+  /** What the check was asked (see `EncoderProbeConfig.audioRequired`); absent means required. */
+  audioRequired?: boolean;
   /**
    * Whether the caption typeface really loaded inside the worker, the place
    * that draws it. `null` when the plan has no captions and nothing was tried.
