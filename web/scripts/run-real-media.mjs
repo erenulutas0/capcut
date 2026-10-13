@@ -240,7 +240,20 @@ for (const [index, fileName] of files.entries()) {
   const hdr = HDR_TRANSFERS.has(properties?.colorTransfer ?? '');
 
   // --native: the frame that matches the file (display orientation), 1080p or 720p.
+  // ADR-041: the picture is never enlarged. The frame is the cropped slice's own
+  // pixels, capped by the quality setting and held above the 144 px floor.
   let frame = { aspect: '9-16', quality: '720', size: [720, 1280], filter: COVER_9_16 };
+  if (!native && properties?.width && properties?.height) {
+    const quarter = Math.abs(properties.rotation) % 180 === 90;
+    const dw = quarter ? properties.height : properties.width;
+    const dh = quarter ? properties.width : properties.height;
+    const sliceShort = Math.min(dw, (dh * 9) / 16);
+    if (sliceShort < 720) {
+      const short = Math.max(144, Math.ceil(sliceShort / 2) * 2);
+      const long = Math.floor((short * 16) / 9 / 2) * 2;
+      frame = { ...frame, size: [short, long], filter: COVER_9_16.replace('scale=720:1280', `scale=${short}:${long}`) };
+    }
+  }
   if (native && properties?.width && properties?.height) {
     const quarter = Math.abs(properties.rotation) % 180 === 90;
     const dw = quarter ? properties.height : properties.width;

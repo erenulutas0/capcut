@@ -1,7 +1,7 @@
 # Diğer tarayıcı motorları: son koşu
 
 > Bu dosyayı `npm run browsers` yazar (`web/scripts/browsers/report.mjs`); elle düzeltilmez.
-> Ölçüm: 2026-10-13 08:17 – 2026-10-13 08:23 (UTC), commit `baf4715`, derleme: düz `npm run build` + `next start`.
+> Ölçüm: 2026-10-13 13:46 – 2026-10-13 13:52 (UTC), commit `2b459cb`, derleme: düz `npm run build` + `next start`.
 >
 > **Bunlar motor derlemeleridir, tarayıcının kendisi değil.** “WebKit” Playwright’ın Windows için WebKit derlemesidir: Safari değildir, medya katmanı (kodekler, WebCodecs, donanım kodlayıcıları) macOS / iOS’takinden farklıdır. “Firefox” Playwright’ın yamalı masaüstü Firefox’udur: Android’deki Firefox değildir; “telefon boyu” masaüstü motorunun 390 × 844 dokunmatik görünümüdür. Her satırın gerçek Safari’ye ya da Android Firefox’a taşınıp taşınmayacağı elle yazılan yorum dosyasındadır (`browsers-2026-10-13.md`).
 
@@ -106,23 +106,23 @@ Sınıflar: **çalışıyor** (iş bitti, çıkan dosya ffprobe ile denetlendi) 
 
 | Motor | Kart | İzler | Süre (sn) | Boyut | Bayt | Yoldan dosyaya (sn) |
 |---|---|---|---|---|---|---|
-| Chromium (kontrol), masaüstü | bosluk | video:h264 + audio:aac | 3,605 | 256 × 144 | 62.140 | 4,3 |
+| Chromium (kontrol), masaüstü | bosluk | video:h264 + audio:aac | 3,605 | 256 × 144 | 62.140 | 4,4 |
 | Chromium (kontrol), masaüstü | cevir | video:h264 + audio:aac | 2,005 | 640 × 360 | 502.990 | 4,2 |
 | Chromium (kontrol), masaüstü | dikey | video:h264 + audio:aac | 8 | 202 × 360 | 384.942 | 4,7 |
-| Chromium (kontrol), masaüstü | iyilestir | video:h264 + audio:aac | 3,008 | 1280 × 720 | 2.820.875 | 7 |
-| Chromium (kontrol), masaüstü | kes | video:h264 + audio:aac | 3,008 | 1280 × 720 | 82.744 | 5 |
-| Chromium (kontrol), masaüstü | kucult | video:h264 + audio:aac | 14,016 | 1280 × 720 | 14.041.215 | 7,3 |
+| Chromium (kontrol), masaüstü | iyilestir | video:h264 + audio:aac | 3,008 | 1280 × 720 | 2.821.419 | 6,5 |
+| Chromium (kontrol), masaüstü | kes | video:h264 + audio:aac | 3,008 | 1280 × 720 | 82.744 | 4,3 |
+| Chromium (kontrol), masaüstü | kucult | video:h264 + audio:aac | 14,016 | 1280 × 720 | 14.021.185 | 7,3 |
 | Chromium (kontrol), masaüstü | muzik | video:h264 + audio:aac | 8 | 640 × 360 | 183.809 | 4,3 |
 | Chromium (kontrol), masaüstü | ses | audio:aac | 24 | — | 389.662 | 4,2 |
-| Chromium (kontrol), masaüstü | sustur | video:h264 | 24 | 1280 × 720 | 262.213 | 4,1 |
+| Chromium (kontrol), masaüstü | sustur | video:h264 | 24 | 1280 × 720 | 262.213 | 4 |
 | Chromium (kontrol), masaüstü | kaynak-hdr | video:h264 + audio:aac | 2,005 | 640 × 360 | 501.317 | 5,2 |
-| Chromium (kontrol), masaüstü | sessiz-kodlama | video:h264 | 2 | 640 × 360 | 469.615 | 4,1 |
-| Firefox, masaüstü | sustur | video:h264 | 24 | 1280 × 720 | 262.213 | 4,5 |
+| Chromium (kontrol), masaüstü | sessiz-kodlama | video:h264 | 2 | 640 × 360 | 469.615 | 4 |
+| Firefox, masaüstü | sustur | video:h264 | 24 | 1280 × 720 | 262.213 | 4,6 |
 | Firefox, masaüstü | kaydetme | video:h264 | 2 | 1280 × 720 | 22.466 | — |
-| Firefox, masaüstü | sessiz-kodlama | video:h264 | 2 | 640 × 360 | 270.656 | 4,5 |
+| Firefox, masaüstü | sessiz-kodlama | video:h264 | 2 | 640 × 360 | 270.656 | 4,6 |
 | Firefox, telefon boyu | sustur | video:h264 | 24 | 1280 × 720 | 262.213 | 4,5 |
 | Firefox, telefon boyu | kaydetme | video:h264 | 2 | 1280 × 720 | 22.466 | — |
-| Firefox, telefon boyu | sessiz-kodlama | video:h264 | 2 | 640 × 360 | 270.656 | 4,5 |
+| Firefox, telefon boyu | sessiz-kodlama | video:h264 | 2 | 640 × 360 | 270.656 | 4,6 |
 
 ## Konsol hataları ve yakalanmamış hatalar
 

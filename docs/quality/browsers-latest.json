@@ -1,7 +1,7 @@
 {
-  "measuredFrom": "2026-10-13T08:17:11.501Z",
-  "measuredTo": "2026-10-13T08:23:01.949Z",
-  "commit": "baf4715",
+  "measuredFrom": "2026-10-13T13:46:47.231Z",
+  "measuredTo": "2026-10-13T13:52:36.815Z",
+  "commit": "2b459cb",
   "build": "plain npm run build + next start",
   "cells": [
     {
@@ -60,8 +60,8 @@
         "noticeBeforeDownload": "",
         "enhanceEngine": null
       },
-      "seconds": 4.3,
-      "measuredAt": "2026-10-13T08:17:16.001Z"
+      "seconds": 4.4,
+      "measuredAt": "2026-10-13T13:46:51.761Z"
     },
     {
       "area": "card",
@@ -120,7 +120,7 @@
         "enhanceEngine": null
       },
       "seconds": 4.2,
-      "measuredAt": "2026-10-13T08:17:46.507Z"
+      "measuredAt": "2026-10-13T13:47:22.073Z"
     },
     {
       "area": "card",
@@ -179,7 +179,7 @@
         "enhanceEngine": null
       },
       "seconds": 4.7,
-      "measuredAt": "2026-10-13T08:17:20.866Z"
+      "measuredAt": "2026-10-13T13:46:56.627Z"
     },
     {
       "area": "card",
@@ -196,7 +196,7 @@
         "dosya alındı"
       ],
       "output": {
-        "bytes": 2820875,
+        "bytes": 2821419,
         "durationS": 3.008,
         "streams": [
           "video:h264",
@@ -209,7 +209,7 @@
         {
           "name": "dosya boş değil",
           "ok": true,
-          "value": "2820875 bayt"
+          "value": "2821419 bayt"
         },
         {
           "name": "süre ≈ 3 sn",
@@ -242,8 +242,8 @@
         "noticeBeforeDownload": "",
         "enhanceEngine": "webgl2"
       },
-      "seconds": 7,
-      "measuredAt": "2026-10-13T08:17:54.035Z"
+      "seconds": 6.5,
+      "measuredAt": "2026-10-13T13:47:29.055Z"
     },
     {
       "area": "card",
@@ -306,8 +306,8 @@
         "noticeBeforeDownload": "",
         "enhanceEngine": null
       },
-      "seconds": 5,
-      "measuredAt": "2026-10-13T08:17:11.501Z"
+      "seconds": 4.3,
+      "measuredAt": "2026-10-13T13:46:47.231Z"
     },
     {
       "area": "card",
@@ -324,7 +324,7 @@
         "dosya alındı"
       ],
       "output": {
-        "bytes": 14041215,
+        "bytes": 14021185,
         "durationS": 14.016,
         "streams": [
           "video:h264",
@@ -337,7 +337,7 @@
         {
           "name": "dosya boş değil",
           "ok": true,
-          "value": "14041215 bayt"
+          "value": "14021185 bayt"
         },
         {
           "name": "süre ≈ 14 sn",
@@ -352,12 +352,12 @@
         {
           "name": "dosya kaynaktan küçük",
           "ok": true,
-          "value": "24,74 MB → 14,04 MB"
+          "value": "24,74 MB → 14,02 MB"
         },
         {
           "name": "WhatsApp sınırına (16 MB) sığıyor",
           "ok": true,
-          "value": "14,04 MB"
+          "value": "14,02 MB"
         }
       ],
       "problems": {
@@ -371,7 +371,7 @@
         "enhanceEngine": null
       },
       "seconds": 7.3,
-      "measuredAt": "2026-10-13T08:17:28.918Z"
+      "measuredAt": "2026-10-13T13:47:04.655Z"
     },
     {
       "area": "card",
@@ -425,7 +425,7 @@
         "enhanceEngine": null
       },
       "seconds": 4.3,
-      "measuredAt": "2026-10-13T08:17:33.426Z"
+      "measuredAt": "2026-10-13T13:47:09.147Z"
     },
     {
       "area": "card",
@@ -478,7 +478,7 @@
         "enhanceEngine": null
       },
       "seconds": 4.2,
-      "measuredAt": "2026-10-13T08:17:37.845Z"
+      "measuredAt": "2026-10-13T13:47:13.520Z"
     },
     {
       "area": "card",
@@ -530,8 +530,8 @@
         "noticeBeforeDownload": "",
         "enhanceEngine": null
       },
-      "seconds": 4.1,
-      "measuredAt": "2026-10-13T08:17:42.101Z"
+      "seconds": 4,
+      "measuredAt": "2026-10-13T13:47:17.663Z"
     },
     {
       "area": "card",
@@ -557,7 +557,7 @@
         "enhanceEngine": null
       },
       "note": "“Modeli indir (≈108,8 MB, bir kez)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi.",
-      "measuredAt": "2026-10-13T08:17:58.039Z"
+      "measuredAt": "2026-10-13T13:47:33.095Z"
     },
     {
       "area": "platform",
@@ -570,7 +570,7 @@
         "consoleErrors": [],
         "unhandledRejections": []
       },
-      "measuredAt": "2026-10-13T08:17:58.584Z"
+      "measuredAt": "2026-10-13T13:47:33.641Z"
     },
     {
       "area": "platform",
@@ -578,7 +578,7 @@
       "project": "chromium-desktop",
       "verdict": "works",
       "summary": "ana ekran ve Dikey yap sihirbazı: 0 bulgu",
-      "measuredAt": "2026-10-13T08:18:11.885Z"
+      "measuredAt": "2026-10-13T13:47:47.394Z"
     },
     {
       "area": "platform",
@@ -586,7 +586,7 @@
       "project": "chromium-desktop",
       "verdict": "works",
       "summary": "sunucuya ulaşılamazken ana ekran ve Kes sihirbazı açıldı, düğmeleri çalışır durumda",
-      "measuredAt": "2026-10-13T08:17:59.218Z"
+      "measuredAt": "2026-10-13T13:47:34.266Z"
     },
     {
       "area": "platform",
@@ -594,7 +594,7 @@
       "project": "chromium-desktop",
       "verdict": "works",
       "summary": "video açıldı; oynatma çizgisi klavyeyle 2. saniyeye gitti; kesit listeye eklendi",
-      "measuredAt": "2026-10-13T08:17:59.678Z"
+      "measuredAt": "2026-10-13T13:47:34.713Z"
     },
     {
       "area": "platform",
@@ -602,7 +602,7 @@
       "project": "chromium-desktop",
       "verdict": "works",
       "summary": "kaydetme penceresi var (testte yerine geçen pencere); dosya seçilen yere yazıldı",
-      "measuredAt": "2026-10-13T08:18:00.276Z"
+      "measuredAt": "2026-10-13T13:47:35.824Z"
     },
     {
       "area": "platform",
@@ -656,7 +656,7 @@
         "enhanceEngine": null
       },
       "seconds": 5.2,
-      "measuredAt": "2026-10-13T08:18:06.586Z"
+      "measuredAt": "2026-10-13T13:47:42.138Z"
     },
     {
       "area": "platform",
@@ -679,7 +679,7 @@
         "upfrontNotice": ""
       },
       "text": "“telefon-hevc.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır. Bu video HEVC (H.265) biçiminde ve bu tarayıcıda HEVC çözücüsü yok. Windows’ta Edge kullanıyorsan Microsoft Store’daki “HEVC Video Uzantıları” gerekebilir; ya da videoyu Google Chrome’da açmayı dene.",
-      "measuredAt": "2026-10-13T08:18:01.240Z"
+      "measuredAt": "2026-10-13T13:47:36.780Z"
     },
     {
       "area": "platform",
@@ -715,7 +715,7 @@
         "playsMp4": "probably",
         "playsWebm": "probably"
       },
-      "measuredAt": "2026-10-13T08:17:58.281Z"
+      "measuredAt": "2026-10-13T13:47:33.341Z"
     },
     {
       "area": "platform",
@@ -723,7 +723,7 @@
       "project": "chromium-desktop",
       "verdict": "not-run",
       "summary": "kaydetme pencereli yolda “Paylaş” sunulmaz",
-      "measuredAt": "2026-10-13T08:18:00.277Z"
+      "measuredAt": "2026-10-13T13:47:35.825Z"
     },
     {
       "area": "platform",
@@ -785,8 +785,8 @@
         "noticeBeforeDownload": "",
         "enhanceEngine": null
       },
-      "seconds": 4.1,
-      "measuredAt": "2026-10-13T08:18:10.873Z"
+      "seconds": 4,
+      "measuredAt": "2026-10-13T13:47:46.361Z"
     },
     {
       "area": "platform",
@@ -794,7 +794,7 @@
       "project": "chromium-desktop",
       "verdict": "works",
       "summary": "F tuşu tam ekrana geçti ve geri döndü",
-      "measuredAt": "2026-10-13T08:17:59.908Z"
+      "measuredAt": "2026-10-13T13:47:34.948Z"
     },
     {
       "area": "platform",
@@ -803,7 +803,7 @@
       "verdict": "refusal",
       "summary": "“Modeli indir (≈108,8 MB, bir kez)” düğmesine basıldı; model dosyaları bu makinede yok, uygulama bunu söyledi (yazıya dökmenin kendisi KOŞULMADI)",
       "text": "Model dosyası bu sitede bulunamadı. Biraz sonra tekrar dene.",
-      "measuredAt": "2026-10-13T08:18:00.803Z"
+      "measuredAt": "2026-10-13T13:47:36.355Z"
     },
     {
       "area": "platform",
@@ -811,7 +811,7 @@
       "project": "chromium-desktop",
       "verdict": "absent",
       "summary": "yükleme önerisi yok (bu tarayıcı sunmuyor); bir şey de vaat edilmiyor",
-      "measuredAt": "2026-10-13T08:18:00.319Z"
+      "measuredAt": "2026-10-13T13:47:35.882Z"
     },
     {
       "area": "card",
@@ -837,9 +837,9 @@
         "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
         "enhanceEngine": null
       },
-      "seconds": 2.2,
+      "seconds": 2.7,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:18:23.910Z"
+      "measuredAt": "2026-10-13T13:47:59.696Z"
     },
     {
       "area": "card",
@@ -867,7 +867,7 @@
       },
       "seconds": 2.6,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:18:43.059Z"
+      "measuredAt": "2026-10-13T13:48:18.925Z"
     },
     {
       "area": "card",
@@ -895,7 +895,7 @@
       },
       "seconds": 2.6,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:18:26.756Z"
+      "measuredAt": "2026-10-13T13:48:02.506Z"
     },
     {
       "area": "card",
@@ -923,7 +923,7 @@
       },
       "seconds": 3,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:18:46.839Z"
+      "measuredAt": "2026-10-13T13:48:22.588Z"
     },
     {
       "area": "card",
@@ -949,9 +949,9 @@
         "noticeBeforeDownload": "",
         "enhanceEngine": null
       },
-      "seconds": 5.2,
+      "seconds": 4.5,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:18:21.493Z"
+      "measuredAt": "2026-10-13T13:47:56.769Z"
     },
     {
       "area": "card",
@@ -979,7 +979,7 @@
       },
       "seconds": 2.7,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:18:29.703Z"
+      "measuredAt": "2026-10-13T13:48:05.412Z"
     },
     {
       "area": "card",
@@ -1007,7 +1007,7 @@
       },
       "seconds": 2.7,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:18:32.575Z"
+      "measuredAt": "2026-10-13T13:48:08.330Z"
     },
     {
       "area": "card",
@@ -1033,9 +1033,9 @@
         "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
         "enhanceEngine": null
       },
-      "seconds": 2.5,
+      "seconds": 2.6,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:18:35.318Z"
+      "measuredAt": "2026-10-13T13:48:11.189Z"
     },
     {
       "area": "card",
@@ -1087,8 +1087,8 @@
         "noticeBeforeDownload": "",
         "enhanceEngine": null
       },
-      "seconds": 4.5,
-      "measuredAt": "2026-10-13T08:18:40.251Z"
+      "seconds": 4.6,
+      "measuredAt": "2026-10-13T13:48:16.117Z"
     },
     {
       "area": "card",
@@ -1114,7 +1114,7 @@
         "enhanceEngine": null
       },
       "note": "“Modeli indir (≈108,8 MB, bir kez)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi.",
-      "measuredAt": "2026-10-13T08:18:51.272Z"
+      "measuredAt": "2026-10-13T13:48:27.024Z"
     },
     {
       "area": "platform",
@@ -1127,7 +1127,7 @@
         "consoleErrors": [],
         "unhandledRejections": []
       },
-      "measuredAt": "2026-10-13T08:18:52.659Z"
+      "measuredAt": "2026-10-13T13:48:28.325Z"
     },
     {
       "area": "platform",
@@ -1135,7 +1135,7 @@
       "project": "firefox-desktop",
       "verdict": "works",
       "summary": "ana ekran ve Dikey yap sihirbazı: 0 bulgu",
-      "measuredAt": "2026-10-13T08:19:13.893Z"
+      "measuredAt": "2026-10-13T13:48:49.671Z"
     },
     {
       "area": "platform",
@@ -1143,7 +1143,7 @@
       "project": "firefox-desktop",
       "verdict": "works",
       "summary": "sunucuya ulaşılamazken ana ekran ve Kes sihirbazı açıldı, düğmeleri çalışır durumda",
-      "measuredAt": "2026-10-13T08:18:57.769Z"
+      "measuredAt": "2026-10-13T13:48:33.451Z"
     },
     {
       "area": "platform",
@@ -1151,7 +1151,7 @@
       "project": "firefox-desktop",
       "verdict": "works",
       "summary": "video açıldı; oynatma çizgisi klavyeyle 2. saniyeye gitti; kesit listeye eklendi",
-      "measuredAt": "2026-10-13T08:18:58.625Z"
+      "measuredAt": "2026-10-13T13:48:34.320Z"
     },
     {
       "area": "platform",
@@ -1170,7 +1170,7 @@
         "width": 1280,
         "height": 720
       },
-      "measuredAt": "2026-10-13T08:19:00.062Z"
+      "measuredAt": "2026-10-13T13:48:35.768Z"
     },
     {
       "area": "platform",
@@ -1198,7 +1198,7 @@
       },
       "seconds": 2.5,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Bu video HDR. Bu tarayıcı HDR görüntüyü SDR’ye doğru çeviremedi (deneme karesiyle test edildi), bu yüzden renkleri bozuk bir dosya üretmemek için çıktı alınmıyor. Google Chrome’da deneyebilirsin. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:19:06.517Z"
+      "measuredAt": "2026-10-13T13:48:42.282Z"
     },
     {
       "area": "platform",
@@ -1226,7 +1226,7 @@
       },
       "seconds": 2.5,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Bu tarayıcı kaynak videoyu çözemiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:19:03.781Z"
+      "measuredAt": "2026-10-13T13:48:39.526Z"
     },
     {
       "area": "platform",
@@ -1250,7 +1250,7 @@
         "opfs": true,
         "opfsCreateWritable": true,
         "storageQuotaBytes": 10737418240,
-        "storageUsageBytes": 627786,
+        "storageUsageBytes": 627818,
         "webgl2": true,
         "encodeH264": true,
         "encodeAac": false,
@@ -1262,7 +1262,7 @@
         "playsMp4": "probably",
         "playsWebm": "probably"
       },
-      "measuredAt": "2026-10-13T08:18:51.937Z"
+      "measuredAt": "2026-10-13T13:48:27.633Z"
     },
     {
       "area": "platform",
@@ -1270,7 +1270,7 @@
       "project": "firefox-desktop",
       "verdict": "absent",
       "summary": "tarayıcıda dosya paylaşma yok; “Paylaş” gösterilmiyor, kaydetme yolu duruyor",
-      "measuredAt": "2026-10-13T08:19:00.071Z"
+      "measuredAt": "2026-10-13T13:48:35.773Z"
     },
     {
       "area": "platform",
@@ -1332,8 +1332,8 @@
         "noticeBeforeDownload": "",
         "enhanceEngine": null
       },
-      "seconds": 4.5,
-      "measuredAt": "2026-10-13T08:19:11.396Z"
+      "seconds": 4.6,
+      "measuredAt": "2026-10-13T13:48:47.200Z"
     },
     {
       "area": "platform",
@@ -1341,7 +1341,7 @@
       "project": "firefox-desktop",
       "verdict": "works",
       "summary": "F tuşu tam ekrana geçti ve geri döndü",
-      "measuredAt": "2026-10-13T08:18:58.695Z"
+      "measuredAt": "2026-10-13T13:48:34.384Z"
     },
     {
       "area": "platform",
@@ -1350,7 +1350,7 @@
       "verdict": "refusal",
       "summary": "“Modeli indir (≈108,8 MB, bir kez)” düğmesine basıldı; model dosyaları bu makinede yok, uygulama bunu söyledi (yazıya dökmenin kendisi KOŞULMADI)",
       "text": "Model dosyası bu sitede bulunamadı. Biraz sonra tekrar dene.",
-      "measuredAt": "2026-10-13T08:19:01.016Z"
+      "measuredAt": "2026-10-13T13:48:36.782Z"
     },
     {
       "area": "platform",
@@ -1358,7 +1358,7 @@
       "project": "firefox-desktop",
       "verdict": "absent",
       "summary": "yükleme önerisi yok (bu tarayıcı sunmuyor); bir şey de vaat edilmiyor",
-      "measuredAt": "2026-10-13T08:19:00.116Z"
+      "measuredAt": "2026-10-13T13:48:35.823Z"
     },
     {
       "area": "card",
@@ -1384,9 +1384,9 @@
         "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
         "enhanceEngine": null
       },
-      "seconds": 2.6,
+      "seconds": 2.7,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:19:26.259Z"
+      "measuredAt": "2026-10-13T13:49:01.986Z"
     },
     {
       "area": "card",
@@ -1414,7 +1414,7 @@
       },
       "seconds": 2.6,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:19:45.233Z"
+      "measuredAt": "2026-10-13T13:49:21.038Z"
     },
     {
       "area": "card",
@@ -1442,7 +1442,7 @@
       },
       "seconds": 2.5,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:19:29.029Z"
+      "measuredAt": "2026-10-13T13:49:04.765Z"
     },
     {
       "area": "card",
@@ -1470,7 +1470,7 @@
       },
       "seconds": 3,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:19:48.969Z"
+      "measuredAt": "2026-10-13T13:49:24.792Z"
     },
     {
       "area": "card",
@@ -1496,9 +1496,9 @@
         "noticeBeforeDownload": "",
         "enhanceEngine": null
       },
-      "seconds": 5.1,
+      "seconds": 4.5,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:19:23.403Z"
+      "measuredAt": "2026-10-13T13:48:59.071Z"
     },
     {
       "area": "card",
@@ -1526,7 +1526,7 @@
       },
       "seconds": 2.7,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:19:31.926Z"
+      "measuredAt": "2026-10-13T13:49:07.690Z"
     },
     {
       "area": "card",
@@ -1554,7 +1554,7 @@
       },
       "seconds": 2.6,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:19:34.800Z"
+      "measuredAt": "2026-10-13T13:49:10.545Z"
     },
     {
       "area": "card",
@@ -1580,9 +1580,9 @@
         "noticeBeforeDownload": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene.",
         "enhanceEngine": null
       },
-      "seconds": 2.6,
+      "seconds": 2.5,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:19:37.575Z"
+      "measuredAt": "2026-10-13T13:49:13.335Z"
     },
     {
       "area": "card",
@@ -1635,7 +1635,7 @@
         "enhanceEngine": null
       },
       "seconds": 4.5,
-      "measuredAt": "2026-10-13T08:19:42.450Z"
+      "measuredAt": "2026-10-13T13:49:18.225Z"
     },
     {
       "area": "card",
@@ -1661,7 +1661,7 @@
         "enhanceEngine": null
       },
       "note": "“Modeli indir (≈108,8 MB, bir kez)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi.",
-      "measuredAt": "2026-10-13T08:19:53.362Z"
+      "measuredAt": "2026-10-13T13:49:29.194Z"
     },
     {
       "area": "platform",
@@ -1674,7 +1674,7 @@
         "consoleErrors": [],
         "unhandledRejections": []
       },
-      "measuredAt": "2026-10-13T08:19:54.697Z"
+      "measuredAt": "2026-10-13T13:49:30.515Z"
     },
     {
       "area": "platform",
@@ -1682,7 +1682,7 @@
       "project": "firefox-phone",
       "verdict": "works",
       "summary": "ana ekran ve Dikey yap sihirbazı: 0 bulgu",
-      "measuredAt": "2026-10-13T08:20:15.996Z"
+      "measuredAt": "2026-10-13T13:49:51.124Z"
     },
     {
       "area": "platform",
@@ -1690,7 +1690,7 @@
       "project": "firefox-phone",
       "verdict": "works",
       "summary": "sunucuya ulaşılamazken ana ekran ve Kes sihirbazı açıldı, düğmeleri çalışır durumda",
-      "measuredAt": "2026-10-13T08:19:59.764Z"
+      "measuredAt": "2026-10-13T13:49:35.604Z"
     },
     {
       "area": "platform",
@@ -1698,7 +1698,7 @@
       "project": "firefox-phone",
       "verdict": "works",
       "summary": "video açıldı; oynatma çizgisi klavyeyle 2. saniyeye gitti; kesit listeye eklendi",
-      "measuredAt": "2026-10-13T08:20:00.663Z"
+      "measuredAt": "2026-10-13T13:49:36.465Z"
     },
     {
       "area": "platform",
@@ -1717,7 +1717,7 @@
         "width": 1280,
         "height": 720
       },
-      "measuredAt": "2026-10-13T08:20:02.122Z"
+      "measuredAt": "2026-10-13T13:49:37.423Z"
     },
     {
       "area": "platform",
@@ -1745,7 +1745,7 @@
       },
       "seconds": 2.5,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Bu video HDR. Bu tarayıcı HDR görüntüyü SDR’ye doğru çeviremedi (deneme karesiyle test edildi), bu yüzden renkleri bozuk bir dosya üretmemek için çıktı alınmıyor. Google Chrome’da deneyebilirsin. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:20:08.501Z"
+      "measuredAt": "2026-10-13T13:49:43.931Z"
     },
     {
       "area": "platform",
@@ -1773,7 +1773,7 @@
       },
       "seconds": 2.6,
       "text": "Bu tarayıcıda çıktı alınamıyor. Aşağıdaki kontrol geçmediği için dosya oluşturulmuyor. Sessizce başka bir codec kullanmıyoruz ve sesi atarak başarılı göstermiyoruz. Bu tarayıcıda AAC kodlama bu ayarla desteklenmiyor. Bu tarayıcı kaynak videoyu çözemiyor. Chrome ya da Edge ile dene. Sorun bildir",
-      "measuredAt": "2026-10-13T08:20:05.785Z"
+      "measuredAt": "2026-10-13T13:49:41.168Z"
     },
     {
       "area": "platform",
@@ -1797,7 +1797,7 @@
         "opfs": true,
         "opfsCreateWritable": true,
         "storageQuotaBytes": 10737418240,
-        "storageUsageBytes": 611306,
+        "storageUsageBytes": 627818,
         "webgl2": true,
         "encodeH264": true,
         "encodeAac": false,
@@ -1809,7 +1809,7 @@
         "playsMp4": "probably",
         "playsWebm": "probably"
       },
-      "measuredAt": "2026-10-13T08:19:53.978Z"
+      "measuredAt": "2026-10-13T13:49:29.811Z"
     },
     {
       "area": "platform",
@@ -1817,7 +1817,7 @@
       "project": "firefox-phone",
       "verdict": "absent",
       "summary": "tarayıcıda dosya paylaşma yok; “Paylaş” gösterilmiyor, kaydetme yolu duruyor",
-      "measuredAt": "2026-10-13T08:20:02.127Z"
+      "measuredAt": "2026-10-13T13:49:37.429Z"
     },
     {
       "area": "platform",
@@ -1879,8 +1879,8 @@
         "noticeBeforeDownload": "",
         "enhanceEngine": null
       },
-      "seconds": 4.5,
-      "measuredAt": "2026-10-13T08:20:13.316Z"
+      "seconds": 4.6,
+      "measuredAt": "2026-10-13T13:49:48.833Z"
     },
     {
       "area": "platform",
@@ -1888,7 +1888,7 @@
       "project": "firefox-phone",
       "verdict": "works",
       "summary": "F tuşu tam ekrana geçti ve geri döndü",
-      "measuredAt": "2026-10-13T08:20:00.751Z"
+      "measuredAt": "2026-10-13T13:49:36.570Z"
     },
     {
       "area": "platform",
@@ -1897,7 +1897,7 @@
       "verdict": "refusal",
       "summary": "“Modeli indir (≈108,8 MB, bir kez)” düğmesine basıldı; model dosyaları bu makinede yok, uygulama bunu söyledi (yazıya dökmenin kendisi KOŞULMADI)",
       "text": "Model dosyası bu sitede bulunamadı. Biraz sonra tekrar dene.",
-      "measuredAt": "2026-10-13T08:20:02.996Z"
+      "measuredAt": "2026-10-13T13:49:38.330Z"
     },
     {
       "area": "platform",
@@ -1905,7 +1905,7 @@
       "project": "firefox-phone",
       "verdict": "absent",
       "summary": "yükleme önerisi yok (bu tarayıcı sunmuyor); bir şey de vaat edilmiyor",
-      "measuredAt": "2026-10-13T08:20:02.172Z"
+      "measuredAt": "2026-10-13T13:49:37.476Z"
     },
     {
       "area": "card",
@@ -1928,7 +1928,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
       },
       "text": "“bursts.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:20:20.501Z"
+      "measuredAt": "2026-10-13T13:49:55.471Z"
     },
     {
       "area": "card",
@@ -1951,7 +1951,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
       },
       "text": "“tarayici-kaydi.webm” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:20:26.112Z"
+      "measuredAt": "2026-10-13T13:50:01.108Z"
     },
     {
       "area": "card",
@@ -1974,7 +1974,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
       },
       "text": "“other-8s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:20:21.430Z"
+      "measuredAt": "2026-10-13T13:49:56.439Z"
     },
     {
       "area": "card",
@@ -1997,7 +1997,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
       },
       "text": "“karanlik.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:20:27.182Z"
+      "measuredAt": "2026-10-13T13:50:02.174Z"
     },
     {
       "area": "card",
@@ -2020,7 +2020,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
       },
       "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:20:19.446Z"
+      "measuredAt": "2026-10-13T13:49:54.593Z"
     },
     {
       "area": "card",
@@ -2043,7 +2043,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
       },
       "text": "“noisy-720p30-14s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:20:22.357Z"
+      "measuredAt": "2026-10-13T13:49:57.371Z"
     },
     {
       "area": "card",
@@ -2066,7 +2066,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
       },
       "text": "“other-8s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:20:23.329Z"
+      "measuredAt": "2026-10-13T13:49:58.308Z"
     },
     {
       "area": "card",
@@ -2089,7 +2089,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
       },
       "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:20:24.226Z"
+      "measuredAt": "2026-10-13T13:49:59.242Z"
     },
     {
       "area": "card",
@@ -2112,7 +2112,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
       },
       "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:20:25.163Z"
+      "measuredAt": "2026-10-13T13:50:00.181Z"
     },
     {
       "area": "card",
@@ -2135,7 +2135,7 @@
         "upfrontNotice": ""
       },
       "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:20:28.150Z"
+      "measuredAt": "2026-10-13T13:50:03.160Z"
     },
     {
       "area": "platform",
@@ -2148,7 +2148,7 @@
         "consoleErrors": [],
         "unhandledRejections": []
       },
-      "measuredAt": "2026-10-13T08:20:29.105Z"
+      "measuredAt": "2026-10-13T13:50:04.166Z"
     },
     {
       "area": "platform",
@@ -2156,7 +2156,7 @@
       "project": "webkit-desktop",
       "verdict": "works",
       "summary": "ana ekran ve Dikey yap sihirbazı: 0 bulgu",
-      "measuredAt": "2026-10-13T08:21:39.414Z"
+      "measuredAt": "2026-10-13T13:51:14.317Z"
     },
     {
       "area": "platform",
@@ -2164,7 +2164,7 @@
       "project": "webkit-desktop",
       "verdict": "works",
       "summary": "sunucuya ulaşılamazken ana ekran ve Kes sihirbazı açıldı, düğmeleri çalışır durumda",
-      "measuredAt": "2026-10-13T08:20:33.930Z"
+      "measuredAt": "2026-10-13T13:50:08.949Z"
     },
     {
       "area": "platform",
@@ -2173,7 +2173,7 @@
       "verdict": "refusal",
       "summary": "editör videoyu açmadı ve nedenini söyledi",
       "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:21:34.444Z"
+      "measuredAt": "2026-10-13T13:51:09.440Z"
     },
     {
       "area": "platform",
@@ -2181,7 +2181,7 @@
       "project": "webkit-desktop",
       "verdict": "not-run",
       "summary": "editör videoyu açmadığı için denenemedi",
-      "measuredAt": "2026-10-13T08:21:34.445Z"
+      "measuredAt": "2026-10-13T13:51:09.441Z"
     },
     {
       "area": "platform",
@@ -2204,7 +2204,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
       },
       "text": "“pq-2s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:21:37.225Z"
+      "measuredAt": "2026-10-13T13:51:12.126Z"
     },
     {
       "area": "platform",
@@ -2227,7 +2227,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
       },
       "text": "“telefon-hevc.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:21:36.280Z"
+      "measuredAt": "2026-10-13T13:51:11.207Z"
     },
     {
       "area": "platform",
@@ -2263,7 +2263,7 @@
         "playsMp4": "probably",
         "playsWebm": "probably"
       },
-      "measuredAt": "2026-10-13T08:20:28.646Z"
+      "measuredAt": "2026-10-13T13:50:03.665Z"
     },
     {
       "area": "platform",
@@ -2271,7 +2271,7 @@
       "project": "webkit-desktop",
       "verdict": "not-run",
       "summary": "editör videoyu açmadığı için denenemedi",
-      "measuredAt": "2026-10-13T08:21:34.445Z"
+      "measuredAt": "2026-10-13T13:51:09.441Z"
     },
     {
       "area": "platform",
@@ -2294,7 +2294,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. Chrome ya da Edge ile dene."
       },
       "text": "“tarayici-kaydi.webm” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:21:38.146Z"
+      "measuredAt": "2026-10-13T13:51:13.039Z"
     },
     {
       "area": "platform",
@@ -2302,7 +2302,7 @@
       "project": "webkit-desktop",
       "verdict": "not-run",
       "summary": "editör videoyu açmadığı için denenemedi",
-      "measuredAt": "2026-10-13T08:21:34.445Z"
+      "measuredAt": "2026-10-13T13:51:09.440Z"
     },
     {
       "area": "platform",
@@ -2311,7 +2311,7 @@
       "verdict": "refusal",
       "summary": "model adımına gelmeden durdu ve nedenini söyledi",
       "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:21:35.373Z"
+      "measuredAt": "2026-10-13T13:51:10.300Z"
     },
     {
       "area": "platform",
@@ -2319,7 +2319,7 @@
       "project": "webkit-desktop",
       "verdict": "absent",
       "summary": "yükleme önerisi yok (bu tarayıcı sunmuyor); bir şey de vaat edilmiyor",
-      "measuredAt": "2026-10-13T08:21:34.579Z"
+      "measuredAt": "2026-10-13T13:51:09.590Z"
     },
     {
       "area": "card",
@@ -2342,7 +2342,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
       },
       "text": "“bursts.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:21:43.343Z"
+      "measuredAt": "2026-10-13T13:51:18.208Z"
     },
     {
       "area": "card",
@@ -2365,7 +2365,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
       },
       "text": "“tarayici-kaydi.webm” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:21:48.829Z"
+      "measuredAt": "2026-10-13T13:51:23.718Z"
     },
     {
       "area": "card",
@@ -2388,7 +2388,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
       },
       "text": "“other-8s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:21:44.245Z"
+      "measuredAt": "2026-10-13T13:51:19.095Z"
     },
     {
       "area": "card",
@@ -2411,7 +2411,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
       },
       "text": "“karanlik.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:21:49.830Z"
+      "measuredAt": "2026-10-13T13:51:24.801Z"
     },
     {
       "area": "card",
@@ -2434,7 +2434,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
       },
       "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:21:42.418Z"
+      "measuredAt": "2026-10-13T13:51:17.304Z"
     },
     {
       "area": "card",
@@ -2457,7 +2457,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
       },
       "text": "“noisy-720p30-14s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:21:45.147Z"
+      "measuredAt": "2026-10-13T13:51:20.015Z"
     },
     {
       "area": "card",
@@ -2480,7 +2480,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
       },
       "text": "“other-8s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:21:46.078Z"
+      "measuredAt": "2026-10-13T13:51:20.933Z"
     },
     {
       "area": "card",
@@ -2503,7 +2503,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
       },
       "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:21:46.989Z"
+      "measuredAt": "2026-10-13T13:51:21.890Z"
     },
     {
       "area": "card",
@@ -2526,7 +2526,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
       },
       "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:21:47.924Z"
+      "measuredAt": "2026-10-13T13:51:22.807Z"
     },
     {
       "area": "card",
@@ -2549,7 +2549,7 @@
         "upfrontNotice": ""
       },
       "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:21:50.782Z"
+      "measuredAt": "2026-10-13T13:51:25.751Z"
     },
     {
       "area": "platform",
@@ -2562,7 +2562,7 @@
         "consoleErrors": [],
         "unhandledRejections": []
       },
-      "measuredAt": "2026-10-13T08:21:51.714Z"
+      "measuredAt": "2026-10-13T13:51:26.701Z"
     },
     {
       "area": "platform",
@@ -2570,7 +2570,7 @@
       "project": "webkit-phone",
       "verdict": "works",
       "summary": "ana ekran ve Dikey yap sihirbazı: 0 bulgu",
-      "measuredAt": "2026-10-13T08:23:01.949Z"
+      "measuredAt": "2026-10-13T13:52:36.815Z"
     },
     {
       "area": "platform",
@@ -2578,7 +2578,7 @@
       "project": "webkit-phone",
       "verdict": "works",
       "summary": "sunucuya ulaşılamazken ana ekran ve Kes sihirbazı açıldı, düğmeleri çalışır durumda",
-      "measuredAt": "2026-10-13T08:21:56.534Z"
+      "measuredAt": "2026-10-13T13:51:31.527Z"
     },
     {
       "area": "platform",
@@ -2587,7 +2587,7 @@
       "verdict": "refusal",
       "summary": "editör videoyu açmadı ve nedenini söyledi",
       "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:22:57.028Z"
+      "measuredAt": "2026-10-13T13:52:31.981Z"
     },
     {
       "area": "platform",
@@ -2595,7 +2595,7 @@
       "project": "webkit-phone",
       "verdict": "not-run",
       "summary": "editör videoyu açmadığı için denenemedi",
-      "measuredAt": "2026-10-13T08:22:57.029Z"
+      "measuredAt": "2026-10-13T13:52:31.982Z"
     },
     {
       "area": "platform",
@@ -2618,7 +2618,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
       },
       "text": "“pq-2s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:22:59.752Z"
+      "measuredAt": "2026-10-13T13:52:34.643Z"
     },
     {
       "area": "platform",
@@ -2641,7 +2641,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
       },
       "text": "“telefon-hevc.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:22:58.831Z"
+      "measuredAt": "2026-10-13T13:52:33.778Z"
     },
     {
       "area": "platform",
@@ -2677,7 +2677,7 @@
         "playsMp4": "probably",
         "playsWebm": "probably"
       },
-      "measuredAt": "2026-10-13T08:21:51.275Z"
+      "measuredAt": "2026-10-13T13:51:26.260Z"
     },
     {
       "area": "platform",
@@ -2685,7 +2685,7 @@
       "project": "webkit-phone",
       "verdict": "not-run",
       "summary": "editör videoyu açmadığı için denenemedi",
-      "measuredAt": "2026-10-13T08:22:57.030Z"
+      "measuredAt": "2026-10-13T13:52:31.983Z"
     },
     {
       "area": "platform",
@@ -2708,7 +2708,7 @@
         "upfrontNotice": "Bu tarayıcı video dosyası hazırlayamıyor. Videonu seçip bakabilirsin ama indiremezsin. iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene."
       },
       "text": "“tarayici-kaydi.webm” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:23:00.747Z"
+      "measuredAt": "2026-10-13T13:52:35.582Z"
     },
     {
       "area": "platform",
@@ -2716,7 +2716,7 @@
       "project": "webkit-phone",
       "verdict": "not-run",
       "summary": "editör videoyu açmadığı için denenemedi",
-      "measuredAt": "2026-10-13T08:22:57.029Z"
+      "measuredAt": "2026-10-13T13:52:31.982Z"
     },
     {
       "area": "platform",
@@ -2725,7 +2725,7 @@
       "verdict": "refusal",
       "summary": "model adımına gelmeden durdu ve nedenini söyledi",
       "text": "“sample-24s.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.",
-      "measuredAt": "2026-10-13T08:22:57.941Z"
+      "measuredAt": "2026-10-13T13:52:32.810Z"
     },
     {
       "area": "platform",
@@ -2734,7 +2734,7 @@
       "verdict": "works",
       "summary": "iPhone / iPad için “Ana Ekrana Ekle” adımları gösteriliyor",
       "text": "Ana ekrana ekle Safari’de Paylaş düğmesine bas, sonra “Ana Ekrana Ekle”yi seç.",
-      "measuredAt": "2026-10-13T08:22:57.168Z"
+      "measuredAt": "2026-10-13T13:52:32.122Z"
     }
   ]
 }
