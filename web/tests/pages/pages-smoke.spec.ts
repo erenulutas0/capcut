@@ -24,6 +24,9 @@ const WIZARD_PAGES = availableTasks()
   .map((task) => `/capcut/yap/${task.id}/`)
   .sort();
 
+/** Where the site under test lives: the local static server, or the published site (playwright.live.config.ts). */
+const SITE_PREFIX = process.env.PAGES_SITE_ORIGIN ? process.env.PAGES_SITE_ORIGIN + '/' : 'http://127.0.0.1:';
+
 function watchRequests(page: Page) {
   const failures: string[] = [];
   const outside: string[] = [];
@@ -32,10 +35,10 @@ function watchRequests(page: Page) {
   });
   page.on('request', (request) => {
     const url = request.url();
-    if (!url.startsWith('http://127.0.0.1:') && !url.startsWith('blob:') && !url.startsWith('data:')) {
+    if (!url.startsWith(SITE_PREFIX) && !url.startsWith('blob:') && !url.startsWith('data:')) {
       outside.push(url);
     }
-    if (url.startsWith('http://127.0.0.1:') && !new URL(url).pathname.startsWith('/capcut/')) {
+    if (url.startsWith(SITE_PREFIX) && !new URL(url).pathname.startsWith('/capcut/')) {
       failures.push(`outside base path: ${url}`);
     }
   });
@@ -409,25 +412,42 @@ const MODEL_MANIFEST = JSON.parse(readFileSync(join(process.cwd(), 'src', 'domai
 const OUT_MODELS = join(process.cwd(), 'out', 'models');
 const groupPublished = (id: string) =>
   MODEL_MANIFEST.groups[id]!.files.every((file) => existsSync(join(OUT_MODELS, MODEL_MANIFEST.groups[id]!.dir, file.path)));
-const BASE_PUBLISHED = ['runtime', 'vad', 'base'].every(groupPublished);
+// Against the published site the models are on the site itself, not in a local out/ folder.
+const BASE_PUBLISHED = Boolean(process.env.PAGES_SITE_ORIGIN) || ['runtime', 'vad', 'base'].every(groupPublished);
 const SPEECH_VIDEO = join(__dirname, '..', 'media', 'speech-fleurs-en-01.mp4');
 
 test('the model files are served under /capcut/models/: exact length, exact sha256, Range, licences', async ({ request }) => {
   test.skip(!BASE_PUBLISHED, 'out/models has no model files (node scripts/fetch-models.mjs --dest=out/models --copy) — NOT RUN');
-  test.setTimeout(300_000);
-  const published = ['runtime', 'vad', 'base', 'turbo'].filter(groupPublished);
+  test.setTimeout(900_000);
+  // Published site: every group must be there, and the bytes are read from the site itself.
+  const live = process.env.PAGES_SITE_ORIGIN;
+  const published = live ? ['runtime', 'vad', 'base', 'turbo'] : ['runtime', 'vad', 'base', 'turbo'].filter(groupPublished);
   expect(published).toEqual(expect.arrayContaining(['runtime', 'vad', 'base']));
   let bytes = 0;
   for (const id of published) {
     const group = MODEL_MANIFEST.groups[id]!;
     for (const file of group.files) {
       // What is on disk in the export is what the pin says (the published bytes).
-      const body = readFileSync(join(OUT_MODELS, group.dir, file.path));
-      expect(body.length, `${group.dir}/${file.path}`).toBe(file.bytes);
-      expect(createHash('sha256').update(body).digest('hex'), `${group.dir}/${file.path}`).toBe(file.sha256);
-      bytes += body.length;
+      if (live) {
+        const response = await fetch(new URL(`capcut/models/${group.dir}/${file.path}`, `${live}/`));
+        expect(response.status, `${group.dir}/${file.path}`).toBe(200);
+        const hash = createHash('sha256');
+        let length = 0;
+        for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+          hash.update(chunk);
+          length += chunk.length;
+        }
+        expect(length, `${group.dir}/${file.path}`).toBe(file.bytes);
+        expect(hash.digest('hex'), `${group.dir}/${file.path}`).toBe(file.sha256);
+        bytes += length;
+      } else {
+        const body = readFileSync(join(OUT_MODELS, group.dir, file.path));
+        expect(body.length, `${group.dir}/${file.path}`).toBe(file.bytes);
+        expect(createHash('sha256').update(body).digest('hex'), `${group.dir}/${file.path}`).toBe(file.sha256);
+        bytes += body.length;
+      }
       // And the server hands it out under the sub-path, in ranges.
-      const part = await request.get(`models/${group.dir}/${file.path}`, { headers: { Range: 'bytes=0-15' } });
+      const part = await request.get(`models/${group.dir}/${file.path}`, { headers: { Range: 'bytes=0-15', 'Accept-Encoding': 'identity' } });
       expect([200, 206], `${group.dir}/${file.path}`).toContain(part.status());
       if (part.status() === 206) expect((await part.body()).length).toBe(Math.min(16, file.bytes));
     }
