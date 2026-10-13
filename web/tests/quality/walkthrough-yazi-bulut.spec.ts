@@ -97,9 +97,10 @@ test('walkthrough: yazi, internet route (against the local fake)', async ({ page
  * The scripted transcript has two voices in four turns, so four labels
  * ("1. kişi", "2. kişi", "1. kişi", "2. kişi") are expected wherever the
  * transcript is shown. Counted at every place a user can meet it again: the
- * result screen, the editor, the backup file, an editor that reads the
- * backup (the only way a wizard's work reaches the browser's store, ADR-034),
- * and that editor after its page was reloaded. A place the script could not
+ * result screen, the editor, the browser's store right after the editor was
+ * opened (that hand-over stores the project — ADR-034 addendum, 13 Oct 2026),
+ * the store and the screen after THAT page was reloaded, the backup file,
+ * and another browser that reads the backup. A place the script could not
  * reach is written as "not measured" (null), never as a pass.
  */
 const EXPECTED_TURNS = ['1. kişi', '2. kişi', '1. kişi', '2. kişi'];
@@ -113,12 +114,16 @@ interface SpeakerCounts {
   /** Times "kişi" appears in the downloaded SRT (must be none: SRT carries the words alone). */
   srtMentions: number | null;
   editor: number | null;
+  /** Lines in the browser's own store that carry a speaker number, once the editor was opened from the wizard. */
+  storedAfterHandoff: number | null;
   /** Lines of the backup file that carry a speaker number. */
   backupFile: number | null;
-  restoredEditor: number | null;
-  /** Lines in the browser's own store that carry a speaker number, after the reload. */
+  /** Lines in the browser's own store that carry a speaker number, after the editor's page was reloaded. */
   storedAfterReload: number | null;
+  /** Labels on screen after that reload (the video picked again). No backup file is involved. */
   afterReload: number | null;
+  /** Labels in ANOTHER browser (an empty store) that was given the backup file. */
+  restoredEditor: number | null;
   stopped: string | null;
 }
 
@@ -161,7 +166,7 @@ const storedSpeakerLines = (page: Page): Promise<number | null> =>
       }),
   );
 
-test('speakers that survive: result, editor, backup, restored editor, reload (against the local fake)', async ({ page }, testInfo) => {
+test('speakers that survive: result, editor, the stored project, reload, backup, another browser (against the local fake)', async ({ page, browser }, testInfo) => {
   test.setTimeout(300_000);
   const invite = fake.newInvite(60);
   fake.provider({ words: SCRIPT_WORDS, pollsUntilDone: 1, languageCode: 'tr' });
@@ -171,10 +176,11 @@ test('speakers that survive: result, editor, backup, restored editor, reload (ag
     vttVoices: null,
     srtMentions: null,
     editor: null,
+    storedAfterHandoff: null,
     backupFile: null,
-    restoredEditor: null,
     storedAfterReload: null,
     afterReload: null,
+    restoredEditor: null,
     stopped: 'ölçüm betiği yarıda kaldı (zaman aşımı)',
   };
   const write = () => writeResult('walkthrough-yazi-bulut-kisiler', testInfo.project.name, { speakers: counts, fakeServer: true });
@@ -194,22 +200,17 @@ test('speakers that survive: result, editor, backup, restored editor, reload (ag
     await expect(page.getByTestId('download-all')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('transcript-panel')).toBeVisible({ timeout: 30_000 });
     counts.editor = await labelsRight(page);
+    // Opening the editor stored the project: read from the store itself, once the write has had its time.
+    await expect.poll(() => storedSpeakerLines(page), { timeout: 15_000 }).not.toBeNull();
+    counts.storedAfterHandoff = await storedSpeakerLines(page);
 
     await openMore(page);
     const backupText = await downloadedText(page, testInfo, () => page.getByTestId('backup-download').click());
     const backup = JSON.parse(backupText) as { edl: { captionTracks: { cues: { speaker?: unknown }[] }[] } };
     counts.backupFile = (backup.edl.captionTracks[0]?.cues ?? []).filter((cue) => typeof cue.speaker === 'number').length;
+    await page.keyboard.press('Escape');
 
-    await page.goto('/editor');
-    await expect(page.getByTestId('download-all')).toBeVisible();
-    await page.getByTestId('backup-input').setInputFiles({ name: 'yedek.lilocut.json', mimeType: 'application/json', buffer: Buffer.from(backupText) });
-    await expect(page.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
-    await page.getByTestId('relink-video-input').setInputFiles(SAMPLE);
-    await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 30_000 });
-    await page.getByTestId('side-tab-yazi').click();
-    counts.restoredEditor = await labelsRight(page);
-    await expect.poll(() => storedSpeakerLines(page), { timeout: 15_000 }).toBe(EXPECTED_TURNS.length);
-
+    // The reload of THIS page — no backup file on the way: the stored project, its video picked again.
     await page.reload();
     await expect(page.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
     counts.storedAfterReload = await storedSpeakerLines(page);
@@ -217,6 +218,23 @@ test('speakers that survive: result, editor, backup, restored editor, reload (ag
     await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 30_000 });
     await page.getByTestId('side-tab-yazi').click();
     counts.afterReload = await labelsRight(page);
+
+    // The backup file, in another browser that has nothing stored.
+    const { baseURL, viewport, locale, userAgent, deviceScaleFactor, isMobile, hasTouch } = testInfo.project.use;
+    const elsewhere = await browser.newContext({ baseURL, viewport, locale, userAgent, deviceScaleFactor, isMobile, hasTouch, storageState: { cookies: [], origins: [] } });
+    try {
+      const other = await elsewhere.newPage();
+      await other.goto('/editor');
+      await expect(other.getByTestId('download-all')).toBeVisible();
+      await other.getByTestId('backup-input').setInputFiles({ name: 'yedek.lilocut.json', mimeType: 'application/json', buffer: Buffer.from(backupText) });
+      await expect(other.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
+      await other.getByTestId('relink-video-input').setInputFiles(SAMPLE);
+      await expect(other.getByTestId('preview-video')).toBeVisible({ timeout: 30_000 });
+      await other.getByTestId('side-tab-yazi').click();
+      counts.restoredEditor = await labelsRight(other);
+    } finally {
+      await elsewhere.close();
+    }
     counts.stopped = null;
   } catch (error) {
     counts.stopped = `betik ilerleyemedi: ${String((error as Error).message).split('\n')[0]?.slice(0, 240)}`;

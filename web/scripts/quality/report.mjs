@@ -381,15 +381,16 @@ function sectionWalkthrough(results, M) {
   } else {
     out.push(
       'Betikteki yazıda iki kişi dört sırayla konuşur; yazının gösterildiği her yerde dört etiket beklenir (“1. kişi”, “2. kişi”, “1. kişi”, “2. kişi”). ' +
-        'Sayılan: doğru yerde duran doğru etiket. Sihirbazın işi tarayıcıya kaydedilmez (ADR-034); yazı kalıcı projeye **yedek dosyasıyla** geçer — ' +
-        '“yedekten açılan editör” ve “sayfa yenilenince” sütunları o yolu ölçer. Altyazı dosyalarında: VTT konuşanı ses etiketiyle taşır, SRT taşımaz (ADR-043). ' +
+        'Sayılan: doğru yerde duran doğru etiket. İnternette yazılan yazı, sihirbazdan **editöre geçince** bu tarayıcıda proje olarak saklanır (ADR-034 eki, 13 Ekim 2026): ' +
+        '“editöre geçince depoda”, “yenilemeden sonra depoda” ve “sayfa yenilenince” sütunları o yolu ölçer — arada yedek dosyası yoktur. ' +
+        '“Yedekten açılan editör” ayrı bir yoldur: yedek dosyası, deposu boş başka bir tarayıcıda açılır. Altyazı dosyalarında: VTT konuşanı ses etiketiyle taşır, SRT taşımaz (ADR-043). ' +
         'Sahte sunucu kimin konuştuğunu DUYMAZ; betikte yazanı döndürür — gerçek sunucunun kişileri ne kadar doğru ayırdığı hakkında hiçbir şey söylemez.\n',
     );
     const speakerCell = (project, key, label, value) =>
       M.cell('walkthrough', `walk.fakecloud.${project}.speakers.${key}`, `“Kim konuştu” (sahte sunucu): ${label}`, value, { format: (v) => num(v, 0), note: 'betik bu adıma ulaşamadı' });
     out.push(
       table(
-        ['Görünüm', 'Beklenen', 'Sonuç ekranı', 'Editör', 'Yedek dosyası (satır)', 'Yedekten açılan editör', 'Yenilemeden sonra depoda (satır)', 'Sayfa yenilenince', 'VTT ses etiketi', 'SRT’de “kişi”'],
+        ['Görünüm', 'Beklenen', 'Sonuç ekranı', 'Editör', 'Editöre geçince depoda (satır)', 'Yenilemeden sonra depoda (satır)', 'Sayfa yenilenince', 'Yedek dosyası (satır)', 'Yedekten açılan editör (başka tarayıcı)', 'VTT ses etiketi', 'SRT’de “kişi”'],
         fakeCloudSpeakers.map((part) => {
           const s = part.data.speakers;
           const project = part.part;
@@ -398,10 +399,11 @@ function sectionWalkthrough(results, M) {
             num(s.expected, 0),
             speakerCell(project, 'wizard', 'sonuç ekranında etiket', s.wizard),
             speakerCell(project, 'editor', 'editörde etiket', s.editor),
-            speakerCell(project, 'backupFile', 'yedek dosyasında konuşanı yazılı satır', s.backupFile),
-            speakerCell(project, 'restoredEditor', 'yedekten açılan editörde etiket', s.restoredEditor),
+            speakerCell(project, 'storedAfterHandoff', 'editöre geçince depoda konuşanı yazılı satır', s.storedAfterHandoff ?? null),
             speakerCell(project, 'storedAfterReload', 'yenilemeden sonra depoda konuşanı yazılı satır', s.storedAfterReload),
-            speakerCell(project, 'afterReload', 'sayfa yenilenince etiket', s.afterReload),
+            speakerCell(project, 'afterReload', 'sayfa yenilenince etiket (yedek dosyası olmadan)', s.afterReload),
+            speakerCell(project, 'backupFile', 'yedek dosyasında konuşanı yazılı satır', s.backupFile),
+            speakerCell(project, 'restoredEditor', 'yedekten açılan editörde etiket (başka tarayıcı)', s.restoredEditor),
             speakerCell(project, 'vttVoices', 'VTT dosyasında ses etiketi', s.vttVoices),
             speakerCell(project, 'srtMentions', 'SRT dosyasında “kişi”', s.srtMentions),
           ];

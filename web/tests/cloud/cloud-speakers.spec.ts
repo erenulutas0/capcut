@@ -8,8 +8,9 @@ import { SAMPLE, SCRIPT_LINES, SCRIPT_WORDS, lineTexts, openReady, startFake, ty
  * Speakers that survive (EDL v5, ADR-043), against the LOCAL FAKE of our
  * proxy (cloudKit.ts): the voices the provider told apart are stored on the
  * lines, so "1. kişi / 2. kişi" are there in the editor, after a line is
- * edited, in a backup file, in another editor that reads the backup, and
- * after that editor's page is reloaded.
+ * edited, in the project the hand-over stores (ADR-034 addendum, 13 Oct
+ * 2026) and after its page is reloaded, in a backup file, and in another
+ * browser that reads the backup.
  *
  * The fake hears nothing: who "spoke" is what this file's script says.
  * Nothing here says how well a real provider tells voices apart.
@@ -87,7 +88,7 @@ function storedRecord(page: Page): Promise<Stored | null> {
 
 const storedVoices = async (page: Page) => (await storedRecord(page))?.edl.captionTracks[0]?.cues.map((cue) => cue.speaker ?? null) ?? null;
 
-test('who spoke stays with the lines: wizard, files, edit, editor, kesit, backup, another editor, reload', async ({ page }, testInfo) => {
+test('who spoke stays with the lines: wizard, files, edit, editor, kesit, the stored project, reload, backup, another browser', async ({ page, browser }, testInfo) => {
   test.setTimeout(240_000);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -160,9 +161,18 @@ test('who spoke stays with the lines: wizard, files, edit, editor, kesit, backup
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
+  // ---- the hand-over stored the project (ADR-034 addendum, 13 Oct 2026): the store holds the lines with their voices
+  await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
+  await expect
+    .poll(async () => (await storedRecord(page))?.edl.captionTracks[0]?.cues.map((cue) => [cue.text.split('\n').join(' '), cue.speaker]), { timeout: 15_000 })
+    .toEqual([
+      [final[0], 1],
+      [final[1], 2],
+      [final[2], 1],
+      [final[3], 2],
+    ]);
+
   // ---- the backup file: numbers on the lines, schema v5, no label text
-  // A wizard's work is never stored in the browser (ADR-034): the backup file is how it is kept.
-  expect(await storedRecord(page)).toBeNull();
   await openMore(page);
   const backupDownload = page.waitForEvent('download');
   await page.getByTestId('backup-download').click();
@@ -180,20 +190,6 @@ test('who spoke stays with the lines: wizard, files, edit, editor, kesit, backup
   expect(backupText).not.toContain('kişi');
   expect(backupText).not.toContain('blob:');
   await page.keyboard.press('Escape');
-
-  // ---- another editor reads the backup: the project is stored now, with its voices
-  await page.goto('/editor');
-  await expect(page.getByTestId('download-all')).toBeVisible();
-  await expect(page.getByTestId('save-state')).toContainText('Düzenleme henüz saklanmadı');
-  await page.getByTestId('backup-input').setInputFiles({ name: 'gorusme.lilocut.json', mimeType: 'application/json', buffer: Buffer.from(backupText) });
-  await expect(page.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
-  await page.getByTestId('relink-video-input').setInputFiles(SAMPLE);
-  await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId('side-tab-yazi').click();
-  await expect(page.getByTestId('transcript-panel')).toBeVisible();
-  await expect.poll(() => lineTexts(page), { timeout: 30_000 }).toEqual(final);
-  await expect(page.getByTestId('transcript-speaker')).toHaveText(TURNS);
-  await expect.poll(() => storedVoices(page), { timeout: 15_000 }).toEqual([1, 2, 1, 2]);
 
   // ---- reload: the stored project comes back, asks for its video, and the voices are still there
   await page.reload();
@@ -213,6 +209,27 @@ test('who spoke stays with the lines: wizard, files, edit, editor, kesit, backup
     .toMatchObject({ text: 'Merhaba, bugün videoyu yazıya döküyoruz!', speaker: 1 });
   expect(await storedVoices(page)).toEqual([1, 2, 1, 2]);
   await expect(page.getByTestId('transcript-speaker')).toHaveText(TURNS);
+
+  // ---- the backup file in ANOTHER browser (nothing stored there): the project is stored there too, with its voices
+  const elsewhere = await browser.newContext({ locale: 'tr-TR', viewport: { width: 1440, height: 900 }, baseURL: testInfo.project.use.baseURL });
+  try {
+    const other = await elsewhere.newPage();
+    other.on('pageerror', (error) => errors.push(error.message));
+    await other.goto('/editor');
+    await expect(other.getByTestId('download-all')).toBeVisible();
+    await expect(other.getByTestId('save-state')).toContainText('Düzenleme henüz saklanmadı');
+    await other.getByTestId('backup-input').setInputFiles({ name: 'gorusme.lilocut.json', mimeType: 'application/json', buffer: Buffer.from(backupText) });
+    await expect(other.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
+    await other.getByTestId('relink-video-input').setInputFiles(SAMPLE);
+    await expect(other.getByTestId('preview-video')).toBeVisible({ timeout: 30_000 });
+    await other.getByTestId('side-tab-yazi').click();
+    await expect(other.getByTestId('transcript-panel')).toBeVisible();
+    await expect.poll(() => lineTexts(other), { timeout: 30_000 }).toEqual(final);
+    await expect(other.getByTestId('transcript-speaker')).toHaveText(TURNS);
+    await expect.poll(() => storedVoices(other), { timeout: 15_000 }).toEqual([1, 2, 1, 2]);
+  } finally {
+    await elsewhere.close();
+  }
 
   expect(errors).toEqual([]);
 });

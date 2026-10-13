@@ -20,7 +20,7 @@
   "walk.fakecloud.*.yazi.leftAtProvider": { "max": 0, "why": "ADR-039: yazı gelince sunucuda kayıt kalmamalı" },
 
   "walk.fakecloud.*.speakers.srtMentions": { "equals": 0, "why": "ADR-043: SRT konuşanı taşımaz — metnin önüne yazılan ad, dosyayı okuyan her program için metnin kendisi olurdu" },
-  "walk.fakecloud.*.speakers.*": { "equals": 4, "why": "ADR-043: betikte iki kişi dört sırayla konuşur; yazının gösterildiği ve saklandığı her yerde dördü de durmalı (sonuç ekranı, editör, yedek dosyası, yedekten açılan editör, yenilemeden sonra depo ve ekran, VTT)" },
+  "walk.fakecloud.*.speakers.*": { "equals": 4, "why": "ADR-043: betikte iki kişi dört sırayla konuşur; yazının gösterildiği ve saklandığı her yerde dördü de durmalı (sonuç ekranı, editör, editöre geçince depo — ADR-034 eki —, yenilemeden sonra depo ve ekran, yedek dosyası, yedekten açılan editör, VTT)" },
 
   "walk.*.*.completed": { "equals": true, "why": "kart ne söz verdiyse dosya o olmalı" },
   "walk.desktop.*.clicks": { "max": 4, "why": "ölçülen en çok: Kes ve Müzik ekle 4; ötekiler 3 (kart, video, indir)" },
