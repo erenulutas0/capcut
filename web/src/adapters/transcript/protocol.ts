@@ -7,9 +7,11 @@
  * real counts of the work done — never a made-up percentage.
  */
 
+import type { ExportFailureDetail } from '@/domain/exportFailureDetail';
 import type { TranscriptSegment } from '@/domain/transcript';
 import type { ModelManifest, TranscriptModelId } from '@/domain/transcriptModels';
 import type { EngineProbe, EngineSettings } from '@/domain/transcriptSettings';
+import type { WorkerTestFault } from '../workerWatch';
 import type { DownloadFailure } from './modelStore';
 
 /**
@@ -49,9 +51,16 @@ export type TranscribeFailure =
   | 'out_of_memory'
   | 'internal_error';
 
+/** Test builds only (`window.__clipWorkerFault`, see `workerWatch.ts`). Ignored in every other build. */
+interface FaultFields {
+  testFault?: WorkerTestFault | null;
+  /** Something that cannot be copied to a worker, so the request cannot be sent. */
+  unsendable?: unknown;
+}
+
 export type TranscriptWorkerRequest =
-  | { type: 'download'; requestId: string; model: TranscriptModelId; test?: TranscriptTestOptions }
-  | {
+  | ({ type: 'download'; requestId: string; model: TranscriptModelId; test?: TranscriptTestOptions } & FaultFields)
+  | ({
       type: 'transcribe';
       requestId: string;
       model: TranscriptModelId;
@@ -59,7 +68,9 @@ export type TranscriptWorkerRequest =
       test?: TranscriptTestOptions;
       /** Measuring scripts only (see `transcriptClient.ts`); absent in normal use. */
       probe?: EngineProbe;
-    };
+    } & FaultFields)
+  /** "Where are you?" — asked by the page when the job has stood still (ADR-042). */
+  | { type: 'where'; requestId: string };
 
 export type TranscribeProgress =
   /** The model is being started (read from this browser's storage). */
@@ -122,8 +133,11 @@ export interface EngineTrace {
 export type TranscriptWorkerResponse =
   | { type: 'download-progress'; requestId: string; bytesDone: number; bytesTotal: number; phase: 'downloading' | 'checking' }
   | { type: 'download-done'; requestId: string }
-  | { type: 'download-failed'; requestId: string; reason: DownloadFailure }
+  /** `detail` (here and in `failed`): only for a failure nobody planned for; enums and counts, never the error's text. */
+  | { type: 'download-failed'; requestId: string; reason: DownloadFailure; detail?: ExportFailureDetail }
   | { type: 'progress'; requestId: string; progress: TranscribeProgress }
   | { type: 'segment'; requestId: string; segment: TranscriptSegment }
   | { type: 'done'; requestId: string; stats: TranscribeStats }
-  | { type: 'failed'; requestId: string; reason: TranscribeFailure };
+  | { type: 'failed'; requestId: string; reason: TranscribeFailure; detail?: ExportFailureDetail }
+  /** The answer to `where`: the stage the job stands in. */
+  | { type: 'where'; requestId: string; detail: ExportFailureDetail };

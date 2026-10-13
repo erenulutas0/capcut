@@ -129,7 +129,7 @@ export const en: Record<MessageKey, string> = {
     'When you close the export dialog, start a new export or leave the editor. If the tab closes or crashes, the editor deletes files older than 6 hours the next time it opens.',
   'privacy.stored.memory.name': 'Session memory',
   'privacy.stored.memory.body':
-    'Temporary addresses for the files you opened, the loudness summaries of the silence finder, the result of the last export check and the error codes seen in this session.',
+    'Temporary addresses for the files you opened, the loudness summaries of the silence finder, the result of the last export check and the error codes seen in this session. For an unexpected error also its kind and the stage it happened in; the text of the error is not kept.',
   'privacy.stored.memory.where': 'Only the memory of the open tab',
   'privacy.stored.memory.delete': 'When you close the tab.',
   'privacy.stored.hint.name': 'First-use hint',
@@ -202,7 +202,8 @@ export const en: Record<MessageKey, string> = {
     'Browser features (WebCodecs, OPFS, WebGPU), the stage results of the last export check, storage space (MB)',
   'support.contains.project':
     'The shape of the open project: number of clips and caption lines, aspect, output duration',
-  'support.contains.log': 'The last 20 export attempts in this browser and the error codes seen in this session',
+  'support.contains.log':
+    'The last 20 export attempts in this browser and the error codes seen in this session (for an unexpected error also its kind and stage; not its text)',
   'support.excludes': 'No file names, project name, caption text, video, audio or pictures.',
   'support.preview': 'Full content of the file',
   'support.previewLoading': 'Preparing…',
@@ -1168,6 +1169,9 @@ export const en: Record<MessageKey, string> = {
   'transcript.model.failed.storage_failed': 'The browser could not store the model file. You may be in a private window; try again in a normal one.',
   'transcript.model.failed.unavailable': 'This browser cannot store the model; writing speech down does not work here.',
   'transcript.model.failed.worker_unavailable': 'The download could not start in this browser. Reload the page and try again.',
+  'transcript.model.failed.stalled':
+    'The download stopped: nothing has arrived for a while. What was downloaded is kept; try again and it continues from there.',
+  'transcript.model.failed.internal_error': 'The download stopped with an unexpected error. What was downloaded is kept; try again.',
   'transcript.start': 'Turn speech into text',
   'transcript.retry': 'Try again',
   'transcript.startHint':

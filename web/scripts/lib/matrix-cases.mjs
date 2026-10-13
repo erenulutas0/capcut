@@ -90,8 +90,13 @@ export const CASES = [
       exports: true,
       durationSeconds: 5,
       frames: 150,
-      size: [720, 1280],
-      reference: { filter: 'crop=ih*9/16:ih,scale=720:1280', trims: [[2, 7]] },
+      // ADR-041 (11 Oct 2026), "Kırpma": the picture is never enlarged, and the
+      // quality setting is a ceiling ("en çok 720p"), not the size. The 9:16
+      // slice of a 1920×1080 source has 608×1080 pixels of its own, under the
+      // ceiling, so that is the frame. Until then this row expected the slice
+      // enlarged to 720×1280 (1,18 times).
+      size: [608, 1080],
+      reference: { filter: 'crop=ih*9/16:ih,scale=608:1080', trims: [[2, 7]] },
       minSsim: 0.9,
     },
   },
@@ -427,6 +432,68 @@ export const CASES = [
       audioCodec: 'aac',
       reference: { filter: 'scale=1920:1080', trims: [[1.1, 5], [7.5, 12]] },
       minSsim: 0.95,
+      tonePresent: [TONE.source],
+    },
+  },
+  // ---------------------------------------------------------------- ADR-041
+  {
+    // The editor's default ceiling ("en çok 1080p") on a source far under it.
+    // Until 11 Oct 2026 this came out as 1920x1080 (nine times the pixels),
+    // fully re-encoded; now the frame is the source's own and the pictures
+    // are copied (ADR-041, "Hızlı kesim": every source at or under the
+    // ceiling, in one of the three shapes, is eligible).
+    id: 'M24',
+    title: 'Büyütme yok: 640×360 kaynak, varsayılan sınır (en çok 1080p)',
+    expectation: 'Çıktı kaynağın kendi boyutunda (640×360), büyütülmüyor; görüntü yeniden kodlanmıyor (ADR-041)',
+    setup: {
+      video: 'm24-360p.mp4',
+      moments: [['00:01.000', '00:05.000']],
+      aspect: '16-9',
+      quality: '1080',
+    },
+    expect: {
+      exports: true,
+      method: ['copy', 'smart'],
+      durationSeconds: 4,
+      frames: 120,
+      size: [640, 360],
+      constantFrameRate: 30,
+      videoCodec: 'h264',
+      audioCodec: 'aac',
+      reference: { filter: 'scale=640:360', trims: [[1, 5]] },
+      minSsim: 0.95,
+      tonePresent: [TONE.source],
+    },
+  },
+  {
+    // ADR-041 "Kırpma" + "Ölçülmeyenler": the 9:16 slice of a 640x360 source
+    // is 202x360 — a frame under 360p, which the hardware H.264 encoders of
+    // Chrome and Edge had not been measured at. The picture must be encoded
+    // at that size (by whichever encoder the browser picks), never enlarged.
+    id: 'M24b',
+    title: 'Büyütme yok: 640×360 kaynak → 9:16 kırpma, 202×360 kodlanıyor',
+    expectation:
+      'Çıktı kırpılan dilimin kendi pikselleri (202×360); 1080×1920’ye büyütülmüyor; 360p’nin altındaki kare bu tarayıcının kodlayıcısında kodlanıyor (ADR-041)',
+    setup: {
+      video: 'm24-360p.mp4',
+      moments: [['00:01.000', '00:05.000']],
+      aspect: '9-16',
+      quality: '1080',
+    },
+    expect: {
+      exports: true,
+      method: 'encode',
+      durationSeconds: 4,
+      frames: 120,
+      size: [202, 360],
+      constantFrameRate: 30,
+      videoCodec: 'h264',
+      audioCodec: 'aac',
+      reference: { filter: 'crop=ih*9/16:ih,scale=202:360', trims: [[1, 5]] },
+      // The matrix's usual bar. Measured 13 Oct 2026, three runs each, the same every time:
+      // Chrome 155 and Edge 155 0.9681; Playwright's Chromium (software encoder) 0.9001 —
+      // on the bar, not over it by any margin. A drop there is a real change, not noise.
+      minSsim: 0.9,
       tonePresent: [TONE.source],
     },
   },

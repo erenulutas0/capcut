@@ -78,6 +78,19 @@ export const EXPORT_STAGES = [
   'verify',
   /** The worker itself stopped: an uncaught error or a script that did not load. */
   'worker_crash',
+  // The other workers (ADR-042 addendum): the transcript model and the recogniser.
+  /** Fetching and storing the transcript model's files. */
+  'model_download',
+  /** Reading the stored model files back through their checksum. */
+  'model_check',
+  /** Reading the model from this browser's store and starting it. */
+  'model_load',
+  /** Pass 1 of "Yazıya dök": searching the sound for speech. */
+  'speech_detect',
+  /** Pass 2: a stretch of speech in the recogniser. */
+  'recognise',
+  /** Measuring loudness ("Boşlukları at"). */
+  'loudness',
   'unknown',
 ] as const;
 export type ExportStage = (typeof EXPORT_STAGES)[number];
@@ -95,7 +108,20 @@ export const FAILURE_VIAS = ['exception', 'worker_error_event', 'worker_message_
 export type FailureVia = (typeof FAILURE_VIAS)[number];
 
 /** The last thing the page was told before the failure. */
-export const FAILURE_PHASES = ['waiting', 'preparing', 'analysing', 'encoding', 'finalizing', 'verifying'] as const;
+export const FAILURE_PHASES = [
+  'waiting',
+  'preparing',
+  'analysing',
+  'encoding',
+  'finalizing',
+  'verifying',
+  // The other workers: the transcript model's download, and the three steps of a transcription.
+  'downloading',
+  'checking',
+  'loading',
+  'listening',
+  'writing',
+] as const;
 export type FailurePhase = (typeof FAILURE_PHASES)[number];
 
 export const HARDWARE_ACCELERATIONS = ['no-preference', 'prefer-hardware', 'prefer-software'] as const;
@@ -145,6 +171,11 @@ export const KNOWN_ERROR_NAMES: ReadonlySet<string> = new Set([
   'DecoderHoldUnavailable',
   'EnhanceFailed',
   'FastCutFallback',
+  'AnalysisError',
+  'AudioFeedError',
+  'EngineError',
+  'DownloadError',
+  'PreviewRefusal',
   /** Something that is not an Error object was thrown. */
   'NonError',
   /** The worker's `error` event carries no error object the page may read. */
@@ -333,6 +364,29 @@ export function pageSideFailureDetail(via: Exclude<FailureVia, 'exception'>, err
 }
 
 /**
+ * The detail one of the small workers (loudness, transcript, cloud sound,
+ * the "İyileştir" preview) makes for an error it caught: the error's name if
+ * it is a known one, the stage the worker's own code was in, the label of a
+ * known sentence. Nothing else of the error is read. `stage` is the caller's
+ * own word; an error a step tagged more exactly is the caller's to resolve
+ * (`stageOf`).
+ */
+export function caughtFailureDetail(error: unknown, stage: ExportStage): ExportFailureDetail {
+  return {
+    ...pageSideFailureDetail('stalled'),
+    errorName: safeErrorName(error),
+    stage,
+    via: 'exception',
+    hint: failureHint(error),
+  };
+}
+
+/** What a small worker answers to "where are you?": no error, only the stage it stands in. */
+export function stalledFailureDetail(stage: ExportStage): ExportFailureDetail {
+  return { ...pageSideFailureDetail('stalled'), stage };
+}
+
+/**
  * The detail as one line of small technical text for "Ayrıntılar"
  * (`EncodingError · encode · kare 12/7590 · avc1.640028 no-preference`).
  * Engineering words on purpose; every part is one of the checked values.
@@ -342,6 +396,8 @@ export function failureDetailLine(detail: ExportFailureDetail, frameWord: string
   if (detail.hint) parts.push(detail.hint);
   if (detail.via !== 'exception') parts.push(detail.via);
   if (detail.framesDone !== null && detail.totalFrames !== null) parts.push(`${frameWord} ${detail.framesDone}/${detail.totalFrames}`);
+  // No frame count (the small workers have none; an export before its first frame): the last step the page saw.
+  else if (detail.phase && detail.phase !== 'waiting') parts.push(detail.phase);
   if (detail.videoEncoder) {
     const kind = detail.hardwareEncoderAvailable === null ? '' : detail.hardwareEncoderAvailable ? ' hw+' : ' hw-';
     parts.push(`enc ${detail.videoEncoder.codec} ${detail.videoEncoder.hardwareAcceleration}${kind}`);

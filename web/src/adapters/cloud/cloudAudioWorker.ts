@@ -24,7 +24,10 @@
 
 import { AudioSample, AudioSampleSource, BufferTarget, Mp4OutputFormat, Output, WebMOutputFormat, canEncodeAudio } from 'mediabunny';
 
+import { originOf, stageOf, staged } from '@/adapters/export/failureStage';
 import { AudioFeedError, openAudio, streamMono16k } from '@/adapters/transcript/audioFeed';
+import { applyWorkerFault } from '@/adapters/workerFault';
+import { caughtFailureDetail, stalledFailureDetail, type ExportStage } from '@/domain/exportFailureDetail';
 import type { CloudAudioRequest, CloudAudioResponse } from './cloudAudio.types';
 
 const scope = self as unknown as DedicatedWorkerGlobalScope;
@@ -42,8 +45,12 @@ const FORMATS = [
 
 const post = (message: CloudAudioResponse, transfer: Transferable[] = []) => scope.postMessage(message, transfer);
 
-async function extract(request: CloudAudioRequest): Promise<void> {
+/** Where the running work is, for the day it fails or stands still (ADR-042): one of our own words, nothing of the video. */
+let stage: ExportStage = 'unknown';
+
+async function extract(request: Extract<CloudAudioRequest, { type: 'extract' }>): Promise<void> {
   const { requestId } = request;
+  stage = 'setup';
   // Test builds only: lets a test ask for the fallback container on a browser that has both encoders.
   const only = TEST_HOOKS ? request.testCodec : undefined;
   let format: (typeof FORMATS)[number] | null = null;
@@ -59,13 +66,21 @@ async function extract(request: CloudAudioRequest): Promise<void> {
     return;
   }
 
+  stage = 'open_source';
   const opened = await openAudio(request.file);
   try {
+    stage = 'mux';
     const target = new BufferTarget();
     const output = new Output({ format: format.make(), target });
     const source = new AudioSampleSource({ codec: format.codec, bitrate: format.bitrate });
     output.addAudioTrack(source);
     await output.start();
+    stage = 'audio';
+    if (TEST_HOOKS && request.testFault) {
+      // A test asked this run to break (test builds only): after its first sign of life, as a real one would.
+      post({ type: 'progress', requestId, doneS: 0, totalS: opened.durationS });
+      await applyWorkerFault(request.testFault);
+    }
 
     const block = new Float32Array(BLOCK);
     let filled = 0;
@@ -78,7 +93,8 @@ async function extract(request: CloudAudioRequest): Promise<void> {
       written += filled;
       filled = 0;
       try {
-        await source.add(sample);
+        // Named for "Ayrıntılar": an error here is the encoder's, not the decoder's that is feeding it.
+        await staged('audio_encode', () => source.add(sample));
       } finally {
         sample.close();
       }
@@ -104,6 +120,7 @@ async function extract(request: CloudAudioRequest): Promise<void> {
       post({ type: 'failed', requestId, reason: 'no_audio' });
       return;
     }
+    stage = 'finalize';
     await output.finalize();
     const buffer = target.buffer;
     if (!buffer || buffer.byteLength === 0) {
@@ -118,9 +135,24 @@ async function extract(request: CloudAudioRequest): Promise<void> {
 
 scope.onmessage = (message: MessageEvent<CloudAudioRequest>) => {
   const request = message.data;
+  if (request.type === 'where') {
+    // The work stands still somewhere in an `await`; this handler still runs. Nothing was thrown.
+    post({ type: 'where', requestId: request.requestId, detail: stalledFailureDetail(stage) });
+    return;
+  }
   if (request.type !== 'extract') return;
+  stage = 'unknown';
   extract(request).catch((error: unknown) => {
-    // Never a raw error text: it can contain file paths.
-    post({ type: 'failed', requestId: request.requestId, reason: error instanceof AudioFeedError ? error.reason : 'internal_error' });
+    // Never a raw error text: it can contain file paths. For an error that is not one of our own
+    // refusals, what is sent is its name (if it is a known one) and the stage it was raised in.
+    const origin = originOf(error);
+    const cause = origin ?? error;
+    const planned = error instanceof AudioFeedError && origin === undefined;
+    post({
+      type: 'failed',
+      requestId: request.requestId,
+      reason: error instanceof AudioFeedError ? error.reason : 'internal_error',
+      ...(planned ? {} : { detail: caughtFailureDetail(cause, stageOf(cause) ?? stage) }),
+    });
   });
 };

@@ -127,11 +127,28 @@ Silme: `/gizlilik` sayfasında ve "Sorun bildir" penceresinde **"Günlüğü tem
 | Seçilen dosyalar için `blob:` URL'leri (önizleme) | `web/src/adapters/browserMedia.ts` |
 | Sessizlik bulucunun ses yüksekliği zarfları; anahtar `dosyaAdı|boyut|lastModified|aralık`, en çok 200 | `web/src/adapters/silence/silenceClient.ts` (`sessionCache`) |
 | Bellek rotasında üretilen MP4 baytları (indirme sunulduğu sürece) | `useExport.ts` |
-| Son yetenek kontrolünün aşama sonuçları ve bu oturumda görülen hata **kodları** (en çok 30) | `web/src/adapters/diagnostics.ts` |
+| Son yetenek kontrolünün aşama sonuçları ve bu oturumda görülen hata **kodları** (en çok 30); arka plan işlerinin beklenmeyen hatasında ayrıca hatanın **nerede ve ne tür** olduğu (`detail`, 13 Ekim 2026 — aşağıda) | `web/src/adapters/diagnostics.ts` |
 | Undo/redo geçmişi, editör durumu | `web/src/application/history.ts`, `useEditorState.ts` |
 
 Oturum hata kodları: medya (`error.*` sebepleri), düzenleme, depolama, sessizlik, dışa aktarma,
-yetenek engelleri, plan retleri ve yakalanmamış hatalar. Yakalanmamış hatalarda **mesaj
+yetenek engelleri, plan retleri ve yakalanmamış hatalar; 13 Ekim 2026'dan beri ayrıca cihazda yazıya
+dökme (`transcript`), model indirme (`model_download`), bulut yolunun ses dosyası (`cloud_audio`,
+yalnızca o yolun açık olduğu derlemede) ve "İyileştir" önizlemesi (`enhance_preview`).
+
+**`detail`** (ADR-042 eki, 13 Ekim 2026). Bu beş arka plan işinden biri **kimsenin öngörmediği** bir
+hatayla biterse — işin içinde beklenmeyen bir hata, işleyicinin çökmesi, okunamayan ileti, gönderilemeyen
+istek ya da yerinde sayma — satır, kodun yanında §2.1'deki `failureDetail` ile **aynı türü** taşır
+(`ExportFailureDetail`): izin listesinden hata adı, kendi aşama etiketimiz (`open_source`, `audio_decode`,
+`audio_encode`, `loudness`, `model_download`, `model_check`, `model_load`, `speech_detect`, `recognise`,
+`worker_crash`…), geliş yolu, bilinen cümlenin etiketi, sayfanın gördüğü son adım (`downloading`,
+`checking`, `loading`, `listening`, `writing`, `analysing`, `preparing`…), sayfa hiç gizlendi mi. Bu işlerde
+kare sayısı, codec ve yazma yolu alanları boştur (`null`). Hatanın metni, yığını, dosya adı, yol, altyazı
+metni **yok**: metin işleyiciden çıkmaz; nesne hem kayda girerken (`recordFailure`) hem dosyaya yazılırken
+(`sanitizeSessionError`) alan alan yeniden kurulur. Kendi kararımız olan retlerde ("ses yok", "model
+eksik") `detail` yoktur. Yalnız açık sekmenin belleğindedir; sekme kapanınca gider. Testler: birim
+`workerWatch.test.ts` (her işin her alanına dosya adı, yol, altyazı cümlesi, `blob:` adresi konup çıktıda
+aranır), e2e `worker-failure.spec.ts` ve `tests/cloud/cloud-audio-failure.spec.ts` (bilerek yol içeren hata
+fırlatılır; sayfada, saklananlarda, konsolda ve tanı dosyasında aranır). Yakalanmamış hatalarda **mesaj
 tutulmaz**, yalnızca sınıf adı (`TypeError` → `type_error`), çünkü mesaj dosya adı veya altyazı
 alıntılayabilir. Kod olmayan her değer (`^[a-z][a-z0-9_]{0,63}$` dışı) kayda girmeden atılır.
 
@@ -318,7 +335,7 @@ Alan listesi bir izin listesidir (`web/src/domain/diagnostics.ts` `buildDiagnost
 | `capabilityGate` | son kontrolün aşama sonuçları (ortam, encoder yapılandırması, öz-test, altyazı fontu, kaynak çözülebilirliği, kaynak codec'leri, HDR, engel kodları) — yoksa `null` |
 | `project` | yalnızca yapı: an sayısı, altyazı satırı sayısı, müzik var mı, oran, kısa kenar, çıktı süresi |
 | `exportLog` | §2.1'deki günlük (başarısız denemede `failureDetail` ile: hatanın adı, aşaması, codec'ler — metni değil) |
-| `sessionErrors` | §2.3'teki kodlar |
+| `sessionErrors` | §2.3'teki kodlar; arka plan işlerinin beklenmeyen hatasında `detail` ile (hatanın adı, aşaması, geliş yolu — metni değil) |
 
 Dosya adı, proje adı, altyazı metni, proje/asset kimlikleri **yok**; birim testi projeye ve
 girdilere bunları özellikle koyup çıktıda aramaz (`web/tests/unit/diagnostics.test.ts`).

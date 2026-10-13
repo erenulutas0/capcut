@@ -13,11 +13,20 @@
 
 import { ALL_FORMATS, AudioSampleSink, BlobSource, Input, type InputAudioTrack } from 'mediabunny';
 
+import { originOf, stageOf, tagStage, withOrigin } from '@/adapters/export/failureStage';
+import { applyWorkerFault } from '@/adapters/workerFault';
+import { caughtFailureDetail, stalledFailureDetail, type ExportStage } from '@/domain/exportFailureDetail';
 import { ENVELOPE_FRAME_US, LoudnessMeter, splitMeterRange, type MeterPart } from '@/domain/loudness';
 import { US_PER_SECOND } from '@/domain/time';
 import type { AnalysisFailure, SilenceWorkerRequest, SilenceWorkerResponse } from './protocol';
 
 const scope = self as unknown as DedicatedWorkerGlobalScope;
+
+/** '1' only in a test build (`CLIP_TEST_HOOKS=1`); the published site is built with ''. */
+const TEST_HOOKS = process.env.NEXT_PUBLIC_CLIP_TEST_HOOKS === '1';
+
+/** Where the running analysis is, for the day it fails or stands still (ADR-042): this file's own word, nothing of the video. */
+let stage: ExportStage = 'unknown';
 
 /**
  * Decoding starts this far before each range. A transform codec (AAC, Opus)
@@ -56,8 +65,8 @@ async function openTrack(input: Input): Promise<InputAudioTrack> {
   let track: InputAudioTrack | null;
   try {
     track = await input.getPrimaryAudioTrack();
-  } catch {
-    throw new AnalysisError('unreadable');
+  } catch (error) {
+    throw withOrigin(new AnalysisError('unreadable'), tagStage(error, 'open_source'));
   }
   if (!track) throw new AnalysisError('no_audio');
   if (!(await track.canDecode().catch(() => false))) throw new AnalysisError('undecodable');
@@ -107,7 +116,7 @@ async function measurePart(
   return meter ?? new LoudnessMeter(part.startUs, part.endUs, fallbackRate);
 }
 
-async function analyze(request: SilenceWorkerRequest): Promise<void> {
+async function analyze(request: Extract<SilenceWorkerRequest, { type: 'analyze' }>): Promise<void> {
   const { requestId, ranges } = request;
   // Exact reads (ADR-028): mediabunny's default stream reader opens a new
   // read-ahead stream to the end of the file whenever a read lands more than
@@ -120,6 +129,7 @@ async function analyze(request: SilenceWorkerRequest): Promise<void> {
     source: new BlobSource(request.file, { useStreamReader: false }),
   });
   try {
+    stage = 'open_source';
     const track = await openTrack(input);
     const sink = new AudioSampleSink(track);
     const framesTotal = ranges.reduce(
@@ -129,6 +139,8 @@ async function analyze(request: SilenceWorkerRequest): Promise<void> {
     let framesBefore = 0;
     let lastPost = 0;
     post({ type: 'progress', requestId, framesDone: 0, framesTotal });
+    stage = 'audio_decode';
+    if (TEST_HOOKS) await applyWorkerFault(request.testFault);
 
     for (const range of ranges) {
       const parts = splitMeterRange(range.startUs, range.endUs, PARALLEL_PARTS, MIN_PART_US);
@@ -161,8 +173,10 @@ async function analyze(request: SilenceWorkerRequest): Promise<void> {
         );
       } catch (error) {
         if (error instanceof AnalysisError) throw error;
-        throw new AnalysisError('undecodable');
+        // What really happened stays beside the plain-word reason (its name and stage, never its text).
+        throw withOrigin(new AnalysisError('undecodable'), tagStage(error, 'audio_decode'));
       }
+      stage = 'loudness';
       // The parts' envelopes end to end are the range's envelope.
       let frameCount = 0;
       const values: number[] = [];
@@ -178,6 +192,7 @@ async function analyze(request: SilenceWorkerRequest): Promise<void> {
       );
       framesBefore += frameCount;
       post({ type: 'progress', requestId, framesDone: framesBefore, framesTotal });
+      stage = 'audio_decode';
     }
     post({ type: 'done', requestId });
   } finally {
@@ -187,13 +202,25 @@ async function analyze(request: SilenceWorkerRequest): Promise<void> {
 
 scope.onmessage = (message: MessageEvent<SilenceWorkerRequest>) => {
   const request = message.data;
+  if (request.type === 'where') {
+    // The analysis stands still somewhere in an `await`; this handler still runs. Nothing was thrown.
+    post({ type: 'where', requestId: request.requestId, detail: stalledFailureDetail(stage) });
+    return;
+  }
   if (request.type !== 'analyze') return;
+  stage = 'unknown';
   analyze(request).catch((error: unknown) => {
+    // Never forward a raw error message: it can contain file paths. For an
+    // error that is not one of this file's own refusals, what is sent is its
+    // name (if it is a known one) and the stage — `caughtFailureDetail`.
+    const origin = originOf(error);
+    const planned = error instanceof AnalysisError && origin === undefined;
+    const cause = origin ?? error;
     post({
       type: 'failed',
       requestId: request.requestId,
-      // Never forward a raw error message: it can contain file paths.
       reason: error instanceof AnalysisError ? error.reason : 'internal_error',
+      ...(planned ? {} : { detail: caughtFailureDetail(cause, stageOf(cause) ?? stage) }),
     });
   });
 };

@@ -2,11 +2,12 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import type { CapabilityReportV1 } from '@/adapters/exportCapability';
 import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
 import { Icon, Wordmark } from '@/components/Icon';
+import { ReportProblemProvider } from '@/components/ReportProblem';
 import { DownloadStatus } from '@/components/editor/DownloadStatus';
 import { MediaErrorNotice } from '@/components/editor/MediaErrorNotice';
 import type { ExportExtras, TargetSizePreview } from '@/components/editor/useDownloads';
@@ -126,6 +127,7 @@ export function WizardFlow({
   const [picking, setPicking] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const openReport = useCallback(() => setReportOpen(true), []);
 
   const exporter = useWizardExport({
     project: recipe ?? state.project,
@@ -237,6 +239,7 @@ export function WizardFlow({
     ) : null;
 
   return (
+    <ReportProblemProvider value={openReport}>
     <div className="wizard" data-step={step} data-task={task.id} data-testid="wizard">
       <header className="wizard-bar">
         {step === 'pick' ? (
@@ -405,6 +408,7 @@ export function WizardFlow({
       ) : null}
       {reportOpen ? <ReportDialog t={t} project={recipe ?? state.project} onClose={() => setReportOpen(false)} /> : null}
     </div>
+    </ReportProblemProvider>
   );
 }
 

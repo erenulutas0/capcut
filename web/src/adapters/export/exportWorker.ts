@@ -111,6 +111,7 @@ import { encoderKindLookup } from './encoderKind';
 import { analyseForEnhance, analysisKey, pictureRects } from './enhanceAnalysis';
 import { EnhanceFailed, createFrameEnhancer, glEnhancerCheck, type FrameEnhancer } from './frameEnhancer';
 import { stageOf, stagedIterable, tagStage } from './failureStage';
+import { applyWorkerFault } from '../workerFault';
 import { FastCutFallback, prepareFastCut, type FastCutJob } from './fastCut';
 import { pickFrames } from './framePicker';
 import { createHdrContext, readHdrPixels, softClippedImage } from './hdrCanvas';
@@ -2075,6 +2076,16 @@ async function runEnhancePreview(
 ): Promise<EnhancePreviewResult> {
   const { requestId, plan, videoFile } = request;
   if (!plan.enhance) throw new PreviewRefusal('not_enhanced');
+  // What is known about this preview for the day it fails or stands still (ADR-042). A preview
+  // has a worker of its own (`useEnhancePreview`), so these are not a running download's facts.
+  facts = freshFacts();
+  enter('open_source');
+  if (TEST_HOOKS && request.testFault) {
+    // A test asked this preview to break (test builds only): after its first sign of life, as a real one would.
+    const first: WorkerResponse = { type: 'enhancePreviewProgress', requestId, progress: 0 };
+    scope.postMessage(first);
+    await applyWorkerFault(request.testFault);
+  }
   const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(videoFile) });
   const track = await input.getPrimaryVideoTrack();
   if (!track) throw new PreviewRefusal('no_video_track');
@@ -2088,6 +2099,7 @@ async function runEnhancePreview(
   await correctAvcReorder(track, plan.segments).catch(() => false);
 
   let lastProgressAt = Number.NEGATIVE_INFINITY;
+  enter('analyse');
   const found = await enhanceAnalysisFor(
     plan,
     videoFile,
@@ -2109,6 +2121,7 @@ async function runEnhancePreview(
   const frame = Math.min(plan.totalFrames - 1, Math.max(0, Math.round(request.frame)));
   const segment = plan.segments.find((item) => frame >= item.startFrame && frame < item.endFrame);
   if (!segment) throw new PreviewRefusal('no_frame');
+  enter('setup');
   const canvas = new OffscreenCanvas(plan.width, plan.height);
   const context = canvas.getContext('2d', { alpha: false });
   if (!context) throw new PreviewRefusal('internal_error');
@@ -2127,11 +2140,13 @@ async function runEnhancePreview(
     throw new PreviewRefusal('internal_error');
   }
   let drawn = false;
+  enter('decode');
   try {
     const usable = () => !hold.decoderClosed();
     for await (const picked of pickFrames(sink.samples(time, time + 0.001), [time], plan.fpsDen / plan.fpsNum, usable)) {
       checkCanceled(requestId);
       if (!picked.frame || picked.missing) continue;
+      enter('draw');
       frameContext.fillStyle = plan.background;
       frameContext.fillRect(0, 0, plan.width, plan.height);
       drawSegmentFrame(frameContext, picked.frame, segment, plan);
@@ -2147,7 +2162,9 @@ async function runEnhancePreview(
     context.putImageData(clipped, 0, 0);
   }
 
+  enter('frame_capture');
   const before = await createImageBitmap(canvas);
+  enter('enhance');
   const params = paramsAtFrame(timeline, frame);
   const enhancer = createFrameEnhancer(plan.width, plan.height, request.enhanceEngine === 'cpu');
   let after: ImageBitmap;
@@ -2212,7 +2229,8 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
           : error instanceof PreviewRefusal
             ? error.reason
             : 'internal_error';
-      result = { ok: false, reason };
+      // An unexpected failure says where it broke and with what kind of error; never its text.
+      result = { ok: false, reason, ...(reason === 'internal_error' ? { detail: failureDetail(error) } : {}) };
     } finally {
       if (cancelRequestedFor === request.requestId) cancelRequestedFor = null;
     }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { canvasMeasure, loadCaptionFont } from '@/adapters/captionRender';
+import { recordFailure } from '@/adapters/diagnostics';
 import { deleteStoredModels, modelStatus, type ModelStatus } from '@/adapters/transcript/modelStore';
 import {
   TranscriptClient,
@@ -18,6 +19,7 @@ import type { CaptionImportResult, ImportedCueInput } from '@/application/comman
 import { fitsEveryFrame } from '@/domain/captionFrames';
 import { DEFAULT_CAPTION_STYLE } from '@/domain/captions';
 import type { CaptionStyleV2, CaptionUnclearV3 } from '@/domain/edl';
+import type { ExportFailureDetail } from '@/domain/exportFailureDetail';
 import { CUE_RULES, transcriptToCues, type FitsFrame } from '@/domain/subtitleSegmentation';
 import type { Micros } from '@/domain/time';
 import { transcriptCoverage, type Coverage } from '@/domain/transcript';
@@ -26,9 +28,10 @@ import { RECOMMENDED_MODEL, preselectedModel, type TranscriptModelId } from '@/d
 export type TranscriptionJob =
   | { kind: 'idle' }
   | { kind: 'downloading'; progress: DownloadProgress | null }
-  | { kind: 'download-failed'; reason: DownloadFailure | 'worker_unavailable' }
+  /** `detail` (here and in `failed`): for "Ayrıntılar", when the failure was not a planned refusal (ADR-042). */
+  | { kind: 'download-failed'; reason: DownloadFailure | 'worker_unavailable' | 'internal_error' | 'stalled'; detail?: ExportFailureDetail }
   | { kind: 'transcribing'; progress: TranscribeProgress | null; startedAt: number }
-  | { kind: 'failed'; reason: TranscribeFailure | 'worker_unavailable' | 'nothing_heard' }
+  | { kind: 'failed'; reason: TranscribeFailure | 'worker_unavailable' | 'nothing_heard'; detail?: ExportFailureDetail }
   | {
       kind: 'done';
       stats: TranscribeStats;
@@ -152,7 +155,11 @@ export function useTranscription() {
     if (!aliveRef.current) return;
     await refresh(model);
     if (outcome.ok || outcome.reason === 'canceled') setJob({ kind: 'idle' });
-    else setJob({ kind: 'download-failed', reason: outcome.reason });
+    else {
+      // For "Sorun bildir": the code, and the detail of an unexpected failure.
+      recordFailure('model_download', outcome.reason, outcome.detail);
+      setJob({ kind: 'download-failed', reason: outcome.reason, ...(outcome.detail ? { detail: outcome.detail } : {}) });
+    }
   }, [model, refresh]);
 
   const start = useCallback(
@@ -165,7 +172,10 @@ export function useTranscription() {
       if (!aliveRef.current) return;
       if (!outcome.ok) {
         if (outcome.reason === 'canceled') setJob({ kind: 'idle' });
-        else setJob({ kind: 'failed', reason: outcome.reason });
+        else {
+          recordFailure('transcript', outcome.reason, outcome.detail);
+          setJob({ kind: 'failed', reason: outcome.reason, ...(outcome.detail ? { detail: outcome.detail } : {}) });
+        }
         if (outcome.reason === 'model_missing') void refresh(model);
         return;
       }

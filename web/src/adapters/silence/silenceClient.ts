@@ -10,15 +10,18 @@
  * last-modified), so a relinked copy of the same file reuses the cache.
  */
 
+import { sanitizeExportFailureDetail, type ExportFailureDetail } from '@/domain/exportFailureDetail';
 import type { LoudnessEnvelope } from '@/domain/silence';
 import type { Micros } from '@/domain/time';
+import { STALL_LIMITS_MS, gaveUpCode, takeWorkerFault, unsendable, unsentDetail, watchWorker } from '../workerWatch';
 import type { AnalysisFailure, AnalysisRange, SilenceWorkerRequest, SilenceWorkerResponse } from './protocol';
 
 export type { AnalysisFailure } from './protocol';
 
 export type AnalysisOutcome =
   | { ok: true }
-  | { ok: false; reason: AnalysisFailure | 'worker_unavailable' | 'canceled' };
+  /** `detail`: where it broke and with what kind of error, for a failure nobody planned for (ADR-042). */
+  | { ok: false; reason: AnalysisFailure | 'worker_unavailable' | 'canceled'; detail?: ExportFailureDetail };
 
 /** ~100 numbers per second each; a few hundred ranges stay well under a few MB. */
 const CACHE_LIMIT = 200;
@@ -101,15 +104,39 @@ export class SilenceAnalyzer {
     const requestId = `sil_${Date.now().toString(36)}_${this.counter}`;
 
     return new Promise<AnalysisOutcome>((resolve) => {
+      let settled = false;
       const finish = (outcome: AnalysisOutcome) => {
+        if (settled) return;
+        settled = true;
+        watch.stop();
         worker.removeEventListener('message', onMessage);
-        worker.removeEventListener('error', onError);
         if (this.finishActive === finish) this.finishActive = null;
         resolve(outcome);
       };
+      // The worker broke, its message could not be read, or it stood still: it
+      // is stopped (the next analysis starts a new one) and the run ends as a
+      // failure that says so. Before this, a silent worker meant "analysing…" for ever.
+      const watch = watchWorker(worker, {
+        limitMs: () => STALL_LIMITS_MS.silence,
+        askWhere: () => {
+          const where: SilenceWorkerRequest = { type: 'where', requestId };
+          worker.postMessage(where);
+        },
+        onGiveUp: (via, detail) => {
+          const heard = watch.hasHeard();
+          if (this.worker === worker) this.dispose();
+          else worker.terminate();
+          finish({ ok: false, reason: gaveUpCode(via, heard), detail: watch.pageSide(detail, heard ? 'analysing' : 'waiting') });
+        },
+      });
       const onMessage = (event: MessageEvent<SilenceWorkerResponse>) => {
         const data = event.data;
         if (data.requestId !== requestId) return;
+        if (data.type === 'where') {
+          watch.answer(data.detail);
+          return;
+        }
+        watch.heard();
         if (data.type === 'progress') {
           onProgress({ framesDone: data.framesDone, framesTotal: data.framesTotal });
         } else if (data.type === 'envelope') {
@@ -117,18 +144,27 @@ export class SilenceAnalyzer {
         } else if (data.type === 'done') {
           finish({ ok: true });
         } else {
-          finish({ ok: false, reason: data.reason });
+          const detail = sanitizeExportFailureDetail(data.detail);
+          finish({ ok: false, reason: data.reason, ...(detail ? { detail: watch.pageSide(detail, 'analysing') } : {}) });
         }
-      };
-      const onError = () => {
-        this.dispose();
-        finish({ ok: false, reason: 'worker_unavailable' });
       };
       this.finishActive = finish;
       worker.addEventListener('message', onMessage);
-      worker.addEventListener('error', onError);
-      const request: SilenceWorkerRequest = { type: 'analyze', requestId, file, ranges: [...missing.values()] };
-      worker.postMessage(request);
+      const fault = takeWorkerFault('silence');
+      const request: SilenceWorkerRequest = {
+        type: 'analyze',
+        requestId,
+        file,
+        ranges: [...missing.values()],
+        ...(fault && fault.kind !== 'unsendable' ? { testFault: fault } : {}),
+        ...(fault?.kind === 'unsendable' ? { unsendable: unsendable() } : {}),
+      };
+      try {
+        worker.postMessage(request);
+      } catch (error) {
+        // Nothing was sent, so nothing would ever answer.
+        finish({ ok: false, reason: 'internal_error', detail: unsentDetail(error) });
+      }
     });
   }
 

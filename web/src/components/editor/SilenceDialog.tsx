@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { FailureDetails } from '@/components/FailureDetails';
 import { Icon } from '@/components/Icon';
 import type { SilenceCutReport, SilenceCutResult } from '@/application/commands';
 import {
@@ -293,6 +294,7 @@ export function SilenceDialog({
             <Icon name={run.status === 'failed' ? 'alert' : 'info'} />
             {run.status === 'failed' ? t(`silence.failed.${run.reason}` as MessageKey) : t('silence.canceled')}
           </p>
+          {run.status === 'failed' ? <FailureDetails t={t} detail={run.detail} testId="silence-failed" /> : null}
           {run.status === 'failed' && run.reason === 'no_audio' ? null : (
             <button type="button" className="btn" style={{ marginTop: 10 }} onClick={onRetry} data-testid="silence-retry">
               {t('silence.retry')}

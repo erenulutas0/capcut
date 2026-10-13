@@ -22,6 +22,37 @@ export function stageOf(error: unknown): ExportStage | null {
   return typeof error === 'object' && error !== null ? (stages.get(error) ?? null) : null;
 }
 
+/**
+ * A worker often answers with an error of its own that names the reason in
+ * plain words ("undecodable") — and the error that really happened is gone.
+ * `withOrigin` keeps it beside the new one (never inside it, never as text),
+ * so the failure's detail can still say its name and stage.
+ */
+const origins = new WeakMap<object, unknown>();
+
+/** Notes that `wrapper` stands for `origin`, and returns `wrapper`, to be thrown. */
+export function withOrigin<T extends object>(wrapper: T, origin: unknown): T {
+  // The first origin is the real one: a wrapper of a wrapper leads back to it.
+  origins.set(wrapper, originOf(origin) ?? origin);
+  return wrapper;
+}
+
+/**
+ * `wrapper` replaces `from`, which is one of our own plain-word errors: if
+ * `from` stood for a real error, `wrapper` now stands for the same one; if it
+ * was a refusal of its own (no sound track), `wrapper` is one too.
+ */
+export function passOrigin<T extends object>(wrapper: T, from: unknown): T {
+  const origin = originOf(from);
+  if (origin !== undefined) origins.set(wrapper, origin);
+  return wrapper;
+}
+
+/** The error `error` stands for; undefined when it stands for nothing but itself. */
+export function originOf(error: unknown): unknown {
+  return typeof error === 'object' && error !== null && origins.has(error) ? origins.get(error) : undefined;
+}
+
 /** Runs one step; an error out of it is tagged with `stage`. */
 export async function staged<T>(stage: ExportStage, work: () => Promise<T> | T): Promise<T> {
   try {

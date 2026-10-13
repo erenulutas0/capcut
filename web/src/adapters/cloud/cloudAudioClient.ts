@@ -5,6 +5,8 @@
  * it is done or cancelled (nothing of a cancelled run is kept).
  */
 
+import { sanitizeExportFailureDetail, type ExportFailureDetail } from '@/domain/exportFailureDetail';
+import { STALL_LIMITS_MS, gaveUpCode, takeWorkerFault, unsendable, unsentDetail, watchWorker } from '../workerWatch';
 import type { CloudAudioFailure, CloudAudioRequest, CloudAudioResponse } from './cloudAudio.types';
 
 export type { CloudAudioFailure } from './cloudAudio.types';
@@ -17,7 +19,10 @@ export interface SoundOnlyFile {
   durationS: number;
 }
 
-export type ExtractOutcome = ({ ok: true } & SoundOnlyFile) | { ok: false; reason: CloudAudioFailure | 'worker_unavailable' | 'canceled' };
+/** `detail`: where it broke and with what kind of error, for a failure nobody planned for (ADR-042); never the error's text. */
+export type ExtractOutcome =
+  | ({ ok: true } & SoundOnlyFile)
+  | { ok: false; reason: CloudAudioFailure | 'worker_unavailable' | 'canceled'; detail?: ExportFailureDetail };
 
 /** '1' only in a test build (`CLIP_TEST_HOOKS=1`); the published site is built with ''. */
 const TEST_HOOKS = process.env.NEXT_PUBLIC_CLIP_TEST_HOOKS === '1';
@@ -47,22 +52,57 @@ export function extractSound(file: File, onProgress: (doneS: number, totalS: num
     const finish = (outcome: ExtractOutcome) => {
       if (settled) return;
       settled = true;
+      watch.stop();
       signal.removeEventListener('abort', onAbort);
       worker.terminate();
       resolve(outcome);
     };
+    // The worker broke, its message could not be read, or it stood still: it is stopped and the
+    // attempt ends as a failure that says so (nothing was sent yet). Before this, a silent worker
+    // meant "preparing the sound…" for ever.
+    const watch = watchWorker(worker, {
+      limitMs: () => STALL_LIMITS_MS.cloudAudio,
+      askWhere: () => {
+        const where: CloudAudioRequest = { type: 'where', requestId };
+        worker.postMessage(where);
+      },
+      onGiveUp: (via, detail) => {
+        const heard = watch.hasHeard();
+        finish({ ok: false, reason: gaveUpCode(via, heard), detail: watch.pageSide(detail, heard ? 'preparing' : 'waiting') });
+      },
+    });
     const onAbort = () => finish({ ok: false, reason: 'canceled' });
     signal.addEventListener('abort', onAbort, { once: true });
     worker.addEventListener('message', (event: MessageEvent<CloudAudioResponse>) => {
       const data = event.data;
       if (data.requestId !== requestId) return;
+      if (data.type === 'where') {
+        watch.answer(data.detail);
+        return;
+      }
+      watch.heard();
       if (data.type === 'progress') onProgress(data.doneS, data.totalS);
       else if (data.type === 'done') finish({ ok: true, blob: new Blob([data.buffer], { type: data.mime }), mime: data.mime, codec: data.codec, durationS: data.durationS });
-      else finish({ ok: false, reason: data.reason });
+      else {
+        const detail = sanitizeExportFailureDetail(data.detail);
+        finish({ ok: false, reason: data.reason, ...(detail ? { detail: watch.pageSide(detail, 'preparing') } : {}) });
+      }
     });
-    worker.addEventListener('error', () => finish({ ok: false, reason: 'worker_unavailable' }));
     const codec = testCodec();
-    const request: CloudAudioRequest = { type: 'extract', requestId, file, ...(codec ? { testCodec: codec } : {}) };
-    worker.postMessage(request);
+    const fault = takeWorkerFault('cloud_audio');
+    const request: CloudAudioRequest = {
+      type: 'extract',
+      requestId,
+      file,
+      ...(codec ? { testCodec: codec } : {}),
+      ...(fault && fault.kind !== 'unsendable' ? { testFault: fault } : {}),
+      ...(fault?.kind === 'unsendable' ? { unsendable: unsendable() } : {}),
+    };
+    try {
+      worker.postMessage(request);
+    } catch (error) {
+      // Nothing was sent, so nothing would ever answer.
+      finish({ ok: false, reason: 'internal_error', detail: unsentDetail(error) });
+    }
   });
 }

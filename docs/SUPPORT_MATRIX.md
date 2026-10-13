@@ -18,9 +18,9 @@ Her satır `video-editor-blueprint/docs/22_QA_TEST_MATRIX.md` içindeki bir fixt
 
 | Tarayıcı | Sürüm | Encoder kabiliyeti | Çalıştırma |
 |---|---|---|---|
-| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-10-08 18:03 UTC |
-| Google Chrome | 154.0.0.0 | H.264 var · AAC var | 2026-10-08 18:08 UTC |
-| Microsoft Edge | 154.0.0.0 | H.264 var · AAC var | 2026-10-08 18:13 UTC |
+| Chromium (Playwright) | 153.0.8010.12 | H.264 var · AAC var | 2026-10-13 07:38 UTC |
+| Google Chrome | 155.0.0.0 | H.264 var · AAC var | 2026-10-13 07:41 UTC |
+| Microsoft Edge | 155.0.0.0 | H.264 var · AAC var | 2026-10-13 07:44 UTC |
 | Firefox (Playwright) | çalıştırılmadı | çalıştırılmadı | — |
 | WebKit (Playwright) | çalıştırılmadı | çalıştırılmadı | — |
 
@@ -50,6 +50,8 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Bu matris gerç
 | M16 | Gain toplamı / fade sınırları | ✅ | ✅ | ✅ | — | — |
 | M16b | Kesit yokken eklenen müzik, bütün videonun altında | ✅ | ✅ | ✅ | — | — |
 | M19 | Hızlı kesim: 1080p30 H.264, anahtar kare dışında iki kesim | ✅ | ✅ | ✅ | — | — |
+| M24 | Büyütme yok: 640×360 kaynak, varsayılan sınır (en çok 1080p) | ✅ | ✅ | ✅ | — | — |
+| M24b | Büyütme yok: 640×360 kaynak → 9:16 kırpma, 202×360 kodlanıyor | ✅ | ✅ | ✅ | — | — |
 | M17 | Altyazı videoya işleniyor | ✅ | ✅ | ✅ | — | — |
 | M20 | Hedef boyut: 8 s kırpılmış video 1 MB’a sığdırılıyor | ✅ | ✅ | ✅ | — | — |
 | M20b | Hedef boyut: sığmayan hedef kodlamadan önce reddediliyor | ✅ | ✅ | ✅ | — | — |
@@ -61,7 +63,7 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Bu matris gerç
 | M22 | Transkriptten gelen altyazı videoya işleniyor | ✅ | ✅ | ✅ | — | — |
 | M23 | İyileştirilmiş çıktı: karanlık kamera görüntüsü, Otomatik, iki kesit | ✅ | ✅ | ✅ | — | — |
 
-| Toplam | | 30✅ 0⛔ 0❌ 0💥 0— | 30✅ 0⛔ 0❌ 0💥 0— | 30✅ 0⛔ 0❌ 0💥 0— | — | — |
+| Toplam | | 32✅ 0⛔ 0❌ 0💥 0— | 32✅ 0⛔ 0❌ 0💥 0— | 32✅ 0⛔ 0❌ 0💥 0— | — | — |
 
 ## Ölçülen değerler (Chromium)
 
@@ -69,7 +71,7 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Bu matris gerç
 |---|---|---|---|---|---|
 | M01 | 10.005333 s | 300 | 720x1280 | 0.9991 | an sesleri -22.1 / -22.1 dB |
 | M02 | 5.013333 s | 150 | 720x1280 | 0.9993 | — |
-| M03 | 5.013333 s | 150 | 720x1280 | 0.9219 | — |
+| M03 | 5.013333 s | 150 | 608x1080 | 0.9227 | — |
 | M04 | 6.016 s | 180 | 1280x720 | — | 440 Hz -56.3 / 330 Hz -36.1 dB |
 | M05 | 5.013333 s | 150 | 720x1280 | — | perde -36.1 / -55.4 dB |
 | M06 | 6.016 s | 180 | 1280x720 | — | — |
@@ -77,16 +79,18 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Bu matris gerç
 | M08 | 10.005333 s | 300 | 720x1280 | — | müzik önce -69.5 → sonra -36.1 dB |
 | M09 | 6.016 s | 180 | 1280x720 | — | sınır -24.4 / genel -24.1 dB |
 | M10-hevc | — | — | — | — | sonuç: import_rejected |
-| M10-hdr | 3.008 s | 90 | 1280x720 | 0.9698 | HDR→SDR: en yakın ref-hable, ΔE00 3.072, kayma 3.618, doygunluk 1.004..1.005, ton 1.95°, kırpma -0.047 |
-| M10-hdr-hlg | 3.008 s | 90 | 720x1280 | 0.9729 | HDR→SDR: en yakın placebo-spline, ΔE00 3.257, kayma 2.241, doygunluk 1.038..1.038, ton 2.349°, kırpma -0.001 |
-| M12 | 4.010667 s | 120 | 1280x720 | — | — |
+| M10-hdr | 3.008 s | 90 | 1280x720 | 0.9699 | HDR→SDR: en yakın ref-hable, ΔE00 3.077, kayma 3.625, doygunluk 1.004..1.005, ton 1.955°, kırpma -0.047 |
+| M10-hdr-hlg | 3.008 s | 90 | 720x1280 | 0.9728 | HDR→SDR: en yakın placebo-spline, ΔE00 3.258, kayma 2.248, doygunluk 1.038..1.038, ton 2.347°, kırpma -0.001 |
+| M12 | 4.010667 s | 120 | 720x406 | — | — |
 | M14 | 10.005333 s | 300 | 720x1280 | — | — |
-| M15 | 6.016 s | 180 | 1280x720 | — | — |
-| M16 | 6.016 s | 180 | 1280x720 | — | tepe -19.8 dB; fade -43 → -28.2 dB |
+| M15 | 6.016 s | 180 | 720x406 | — | — |
+| M16 | 6.016 s | 180 | 720x406 | — | tepe -19.8 dB; fade -43 → -28.2 dB |
 | M16b | 12.010667 s | 360 | 1280x720 | — | — |
 | M19 | 8.405333 s | 252 | 1920x1080 | 0.9842 | — |
+| M24 | 4.010667 s | 120 | 640x360 | 0.9986 | — |
+| M24b | 4.010667 s | 120 | 202x360 | 0.9001 | — |
 | M17 | 10.005333 s | 300 | 720x1280 | — | — |
-| M20 | 8 s | 240 | 720x1280 | 0.9219 | — |
+| M20 | 8 s | 240 | 608x1080 | 0.9228 | — |
 | M20b | — | — | — | — | sonuç: refused_before_save |
 | M20c | 20.010667 s | 600 | 720x1280 | — | — |
 | M21 | 10 s | — | — | — | — |

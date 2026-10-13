@@ -226,6 +226,13 @@ if (wanted('M23')) {
   record('M23', 'm23-dark-natural.mp4', '1280x720 camera-like synthetic picture, about two stops underexposed, bt709');
 }
 
+// M24 — a small landscape source for the "never enlarged" rows (ADR-041): 640x360,
+// a size hardware H.264 encoders had not been measured at.
+if (wanted('M24')) {
+  ff([...videoIn('640x360', 30, 8), ...toneIn(440, 8), ...H264, ...AAC, '-shortest', p('m24-360p.mp4')], 'M24');
+  record('M24', 'm24-360p.mp4', '640x360, 30 fps, H.264/AAC, 440 Hz tone');
+}
+
 // L01 — dense 1080p content for memory measurements.
 // The test pattern above compresses so well that the encoder never spends its
 // bitrate budget, which hid the real cost of holding the output in memory.

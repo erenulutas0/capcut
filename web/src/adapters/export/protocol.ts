@@ -9,6 +9,7 @@
 import type { AnalysisPoint, EnhanceParams, EnhanceSummary } from '@/domain/enhance';
 import type { ExportEvent, ExportFailureCode } from '@/domain/exportEvents';
 import type { ExportFailureDetail } from '@/domain/exportFailureDetail';
+import type { WorkerTestFault } from '../workerWatch';
 import type { ExportMode } from '@/domain/fastPath';
 import type { HdrTransfer } from '@/domain/hdr';
 import type { RenderPlan } from '@/domain/renderPlan';
@@ -126,7 +127,11 @@ export type EnhancePreviewResult =
       /** Whether a graphics card does the work (see `FrameEnhancer.accelerated`). */
       accelerated: boolean;
     }
-  | { ok: false; reason: EnhancePreviewFailure };
+  /**
+   * `detail`: only for a failure nobody planned for (`internal_error`) — where it broke and with
+   * what kind of error; enums and counts, never the error's text (ADR-042).
+   */
+  | { ok: false; reason: EnhancePreviewFailure; detail?: ExportFailureDetail };
 
 export type EnhancePreviewFailure =
   | 'no_video_track'
@@ -219,6 +224,10 @@ export type WorkerRequest =
       frame: number;
       enhanceAnalysis?: EnhanceAnalysis | null;
       enhanceEngine?: 'cpu' | null;
+      /** Test builds only (`window.__clipWorkerFault`, see `workerWatch.ts`). Ignored in every other build. */
+      testFault?: WorkerTestFault | null;
+      /** Test builds only: something that cannot be copied to a worker, so the request cannot be sent. */
+      unsendable?: unknown;
     }
   | { type: 'cancel'; requestId: string }
   /**

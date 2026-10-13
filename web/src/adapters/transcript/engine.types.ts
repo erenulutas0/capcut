@@ -4,6 +4,7 @@
  * Transformers.js; the stand-in must not).
  */
 
+import type { ExportStage } from '@/domain/exportFailureDetail';
 import type { TranscriptSegment } from '@/domain/transcript';
 import type { TranscribeFailure, TranscribeProgress } from './protocol';
 
@@ -17,4 +18,6 @@ export class EngineError extends Error {
 export interface EngineSink {
   progress(progress: TranscribeProgress): void;
   segment(segment: TranscriptSegment): void;
+  /** Which part of the work has begun (for a failure's detail and for "where are you?"; ADR-042). */
+  stage?(stage: ExportStage): void;
 }

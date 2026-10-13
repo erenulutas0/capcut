@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { recordFailure } from '@/adapters/diagnostics';
 import {
   SilenceAnalyzer,
   cachedEnvelope,
@@ -9,6 +10,7 @@ import {
   fileFingerprint,
   type AnalysisFailure,
 } from '@/adapters/silence/silenceClient';
+import type { ExportFailureDetail } from '@/domain/exportFailureDetail';
 import type { LoudnessEnvelope } from '@/domain/silence';
 import type { Micros } from '@/domain/time';
 
@@ -18,7 +20,8 @@ export type SilenceRun =
   | { status: 'running'; framesDone: number; framesTotal: number }
   | { status: 'done' }
   | { status: 'canceled' }
-  | { status: 'failed'; reason: AnalysisFailure | 'worker_unavailable' };
+  /** `detail`: for "Ayrıntılar", when the failure was not a planned refusal (ADR-042). */
+  | { status: 'failed'; reason: AnalysisFailure | 'worker_unavailable'; detail?: ExportFailureDetail };
 
 type Range = { sourceInUs: Micros; sourceOutUs: Micros };
 
@@ -87,7 +90,11 @@ export function useSilenceAnalysis() {
         setEnvelopes(collect());
         if (outcome.ok) setRun({ status: 'done' });
         else if (outcome.reason === 'canceled') setRun({ status: 'canceled' });
-        else setRun({ status: 'failed', reason: outcome.reason });
+        else {
+          // For "Sorun bildir": the code, and the detail of an unexpected failure.
+          recordFailure('silence', outcome.reason, outcome.detail);
+          setRun({ status: 'failed', reason: outcome.reason, ...(outcome.detail ? { detail: outcome.detail } : {}) });
+        }
       });
   }, []);
 
