@@ -473,3 +473,86 @@ svg.icon {
   color: var(--muted);
   cursor: not-allowed;
 }
+
+/* ------------------- a page that did not come alive, a part that did not arrive (ADR-044) */
+
+/*
+ * The alert region is always in the page and has no size of its own; the
+ * panel inside it is shown by the page's watchdog script. `[hidden]` must
+ * win over `.update-notice`'s `display: flex`.
+ */
+.page-dead [hidden] {
+  display: none;
+}
+
+.page-dead-panel {
+  z-index: 1001;
+}
+
+.page-dead-text b ~ span {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.page-dead-actions,
+.part-failed .update-notice-actions {
+  flex-wrap: wrap;
+}
+
+.part-failed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.part-failed-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--danger);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* The app's own word when a page stops with an error (app/error.tsx, app/global-error.tsx). */
+.page-crash {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.page-crash-words {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-crash h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.25;
+}
+
+.page-crash p {
+  margin: 0;
+  max-width: 44ch;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.page-crash .update-notice-button {
+  margin-top: 8px;
+  padding: 0 20px;
+}

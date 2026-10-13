@@ -1,6 +1,5 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
@@ -8,6 +7,7 @@ import type { CapabilityReportV1 } from '@/adapters/exportCapability';
 import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
 import { BrowserNotice } from '@/components/BrowserNotice';
 import { Icon, Wordmark } from '@/components/Icon';
+import { lazyPart } from '@/components/LazyPart';
 import { ReportProblemProvider } from '@/components/ReportProblem';
 import { DownloadStatus } from '@/components/editor/DownloadStatus';
 import { MediaErrorNotice } from '@/components/editor/MediaErrorNotice';
@@ -21,12 +21,13 @@ import type { TargetSizeRequest } from '@/domain/targetSize';
 import type { TaskDefinition } from '@/domain/tasks';
 import { formatLengthShort } from '@/domain/time';
 import { translator, type MessageKey } from '@/i18n/messages';
+import { PAGE_PENDING_ATTRIBUTE } from '@/pageWatchdog';
 import { useWizardExport } from './useWizardExport';
 
 const t = translator('tr');
 
 /** "Sorun bildir": opened by a press after a failure, so its code comes with that press, not with the page. */
-const ReportDialog = dynamic(() => import('@/components/editor/ReportDialog').then((module) => module.ReportDialog), { ssr: false });
+const ReportDialog = lazyPart(() => import('@/components/editor/ReportDialog').then((module) => module.ReportDialog), { close: (props) => props.onClose });
 
 export function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
@@ -241,7 +242,7 @@ export function WizardFlow({
 
   return (
     <ReportProblemProvider value={openReport}>
-    <div className="wizard" data-step={step} data-task={task.id} data-testid="wizard">
+    <div className="wizard" data-step={step} data-task={task.id} data-testid="wizard" {...(hydrated ? {} : { [PAGE_PENDING_ATTRIBUTE]: '' })}>
       <header className="wizard-bar">
         {step === 'pick' ? (
           <Link href="/" prefetch={false} className="wizard-back" onClick={guardLeave} data-testid="wizard-back">

@@ -109,7 +109,7 @@ describe('the route is not in the build unless it is on', () => {
   it('the two places that load it compare the build\'s literal themselves (an imported flag is not folded before chunking)', () => {
     for (const file of [['src', 'components', 'wizard', 'YaziWizard.tsx'], ['src', 'components', 'transcript', 'CloudInviteSlot.tsx']]) {
       const source = read(...file);
-      expect(source, file.join('/')).toMatch(/process\.env\.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1'\s*\? dynamic/);
+      expect(source, file.join('/')).toMatch(/process\.env\.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1'\s*\? lazyPart/);
       // Nothing of the route is imported for its value (types only: they are erased).
       expect(source.match(/^import (?!type)[^;]*from '@\/(adapters\/cloud|components\/transcript\/Cloud(Route|InvitePanel)|i18n\/cloudMessages)[^']*';/gm) ?? [], file.join('/')).toEqual([]);
     }

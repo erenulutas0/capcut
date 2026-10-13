@@ -135,6 +135,12 @@ export const tr = {
     'Editördeki “Nasıl kesilir?” ipucunu “Anladım” ile kapattığın bilgisi: tek bir değer (1). Kim olduğunu ya da ne düzenlediğini içermez; hiçbir yere gönderilmez.',
   'privacy.stored.hint.where': 'localStorage, “clip.firstRunHint.dismissed” anahtarı (yalnızca “Anladım”a basınca yazılır)',
   'privacy.stored.hint.delete': 'Tarayıcının bu siteye ait verisini temizleyince. Uygulama kendisi silmez.',
+  // ADR-044: the one sessionStorage value, written only when a page had to reload itself.
+  'privacy.stored.recovery.name': 'Sayfa yeniden yükleme notu',
+  'privacy.stored.recovery.body':
+    'Bir sayfa açılamayıp kendiliğinden bir kez yeniden yüklendiğinde yazılan tek not: ne zaman, hangi sayfada ve neden (örneğin “dosya gelmedi”). Sayfanın ikinci kez kendiliğinden yeniden yüklenmemesi içindir. Kim olduğunu ya da ne düzenlediğini içermez; hiçbir yere gönderilmez. Sayfalar sorunsuz açıldıkça hiç yazılmaz.',
+  'privacy.stored.recovery.where': 'sessionStorage, “clip:page-recovery” anahtarı (yalnızca bu sekme)',
+  'privacy.stored.recovery.delete': 'Sekmeyi kapatınca.',
   'privacy.stored.offline.name': 'Çevrimdışı kopya (uygulamanın dosyaları)',
   'privacy.stored.offline.body':
     'Siteyi internetsiz de açabilmen için uygulamanın kendi dosyaları: sayfalar, kod, stil dosyaları, altyazı yazı tipi, simgeler. Yalnızca bu sürümün dosya listesindekiler saklanır; videon, dışa aktarılan dosyalar, projen ya da başka bir sitenin dosyası asla. Sitenin hizmet çalışanı (service worker) da bu tarayıcıya kayıtlı kalır: yalnızca bu dosyaları sunar, kendiliğinden hiçbir yere bir şey göndermez.',
@@ -151,7 +157,8 @@ export const tr = {
     'Sen silene ya da tarayıcının bu siteye ait verisini temizleyene kadar kalır. Aşağıdaki “Modeli sil” ile silebilirsin; editörde “Kısayollar ve sınırlar” penceresinde de aynı düğme var.',
   'privacy.model.checking':
     'Bakılıyor…',
-  'privacy.stored.none': 'Çerez ve sessionStorage kullanılmaz; localStorage’da yalnızca yukarıdaki ipucu bilgisi durur.',
+  'privacy.stored.none':
+    'Çerez kullanılmaz. localStorage’da yalnızca yukarıdaki ipucu bilgisi, sessionStorage’da yalnızca yukarıdaki yeniden yükleme notu durur.',
 
   'privacy.downloads.title': 'Senin indirdiğin dosyalar',
   'privacy.downloads.body':
@@ -934,6 +941,22 @@ export const tr = {
   'pwa.update.reload': 'Yenile',
   'pwa.update.later': 'Sonra',
   'pwa.update.busy': 'İndirme bitince yenileyebilirsin.',
+  // A page that did not come alive, or a part of it that did not arrive (ADR-044).
+  'page.dead.title': 'Sayfa tam açılamadı.',
+  'page.dead.note': 'İnternet bağlantın takılmış olabilir.',
+  'page.dead.reload': 'Yeniden yükle',
+  'page.dead.reset': 'Uygulamayı baştan indir',
+  'page.dead.resetNote': '“Uygulamayı baştan indir” videolarını ve projelerini silmez.',
+  'page.dead.close': 'Kapat',
+  'page.late.title': 'Uygulamanın bir parçası açılamadı.',
+  'page.late.note': 'Yeniden yüklersen videonu yeniden seçmen gerekebilir.',
+  'part.failed': 'Bu bölüm açılamadı. İnternet bağlantın takılmış olabilir.',
+  'part.retry': 'Tekrar dene',
+  'part.close': 'Kapat',
+  'crash.title': 'Bir şey ters gitti',
+  'crash.note': 'Sayfa beklenmedik bir yerde durdu. Yeniden yüklemek çoğu zaman düzeltir.',
+  'crash.partNote': 'Sayfanın bir parçası açılamadı. İnternet bağlantın takılmış olabilir.',
+  'crash.reload': 'Yeniden yükle',
   'silence.scope.whole': 'Aranan: videonun tamamı. Kalan bölümler kesit olur.',
   'silence.scope.all': 'Aranan: bütün kesitler.',
   'silence.scope.kesit': 'Aranan: Kesit {n}.',

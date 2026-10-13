@@ -90,7 +90,7 @@ export const cloudEn: Record<CloudMessageKey, string> = {
     'The one exception is “Writing on the internet”: if you choose it, your browser also makes requests to our relay server. Details are below.',
   'cloud.privacy.notCollected.body':
     'An account or e-mail address, analytics or usage statistics, cookies, an advertising ID, a device fingerprint, location, automatic error or crash reports. The picture of your video is not collected either. The sound of your video and its written text leave your device only if you choose “On the internet”; if you choose “On my device”, neither does.',
-  'cloud.privacy.stored.none': 'Cookies and sessionStorage are not used; localStorage holds only the hint above and (if you saved one) your invite code.',
+  'cloud.privacy.stored.none': 'Cookies are not used. localStorage holds only the hint above and (if you saved one) your invite code; sessionStorage holds only the reload note above.',
   'cloud.privacy.title': 'Writing on the internet (optional, invited trial)',
   'cloud.privacy.intro':
     '“Yazıya dök” has two ways: “On my device” and “On the internet”. The internet way works only with an invite code and starts each time only when you press “Sesi gönder ve yaz”; it is never chosen for you, and your choice is not remembered.',

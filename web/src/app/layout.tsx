@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 
 import { APP_NAME, APP_THEME, pageTitle } from '@/appIdentity';
+import { PageAlive } from '@/components/PageAlive';
+import { PageWatchdogNotice } from '@/components/PageWatchdog';
 import { PwaClient } from '@/components/pwa/PwaClient';
 
 import './globals.css';
@@ -32,6 +34,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <PwaClient />
+        {/*
+          A page that never comes alive says so and reloads once (ADR-044). The script that watches is
+          written into <head> after the build (scripts/apply-csp.mjs); here are the sign that React has
+          taken the page over, and the notice the script shows when it has not.
+        */}
+        <PageAlive />
+        <PageWatchdogNotice />
       </body>
     </html>
   );

@@ -137,6 +137,11 @@ export const en: Record<MessageKey, string> = {
     'That you closed the editor’s “How to cut” hint with “Got it”: a single value (1). It says nothing about who you are or what you edit, and is never sent anywhere.',
   'privacy.stored.hint.where': 'localStorage, key “clip.firstRunHint.dismissed” (written only when you press “Got it”)',
   'privacy.stored.hint.delete': 'When you clear this site’s data in the browser. The app itself does not delete it.',
+  'privacy.stored.recovery.name': 'Page reload note',
+  'privacy.stored.recovery.body':
+    'The one note written when a page did not open and reloaded itself once: when, on which page and why (for example “a file did not arrive”). It is there so that the page does not reload itself a second time. It does not say who you are or what you are editing; it is sent nowhere. As long as pages open without trouble it is never written.',
+  'privacy.stored.recovery.where': 'sessionStorage, key “clip:page-recovery” (this tab only)',
+  'privacy.stored.recovery.delete': 'When you close the tab.',
   'privacy.stored.offline.name': 'Offline copy (the app’s files)',
   'privacy.stored.offline.body':
     'The app’s own files, so the site opens without internet: pages, code, style sheets, the caption typeface, icons. Only the files on this version’s list are kept; never your video, exported files, your project or another site’s files. The site’s service worker also stays registered in this browser: it only serves these files and never sends anything anywhere by itself.',
@@ -153,7 +158,7 @@ export const en: Record<MessageKey, string> = {
     'It stays until you delete it or clear this site’s data in the browser. “Delete the model” below removes it; the same button is in the editor’s “Shortcuts and limits” window.',
   'privacy.model.checking':
     'Checking…',
-  'privacy.stored.none': 'No cookies or sessionStorage are used; localStorage holds only the hint value above.',
+  'privacy.stored.none': 'No cookies are used. localStorage holds only the hint value above; sessionStorage holds only the reload note above.',
 
   'privacy.downloads.title': 'Files you download',
   'privacy.downloads.body':
@@ -912,6 +917,21 @@ export const en: Record<MessageKey, string> = {
   'pwa.update.reload': 'Reload',
   'pwa.update.later': 'Later',
   'pwa.update.busy': 'You can reload when the download has finished.',
+  'page.dead.title': 'The page did not open fully.',
+  'page.dead.note': 'Your internet connection may have stalled.',
+  'page.dead.reload': 'Reload',
+  'page.dead.reset': 'Download the app again',
+  'page.dead.resetNote': '“Download the app again” does not delete your videos or projects.',
+  'page.dead.close': 'Close',
+  'page.late.title': 'A part of the app did not open.',
+  'page.late.note': 'If you reload, you may have to choose your video again.',
+  'part.failed': 'This part did not open. Your internet connection may have stalled.',
+  'part.retry': 'Try again',
+  'part.close': 'Close',
+  'crash.title': 'Something went wrong',
+  'crash.note': 'The page stopped somewhere unexpected. Reloading usually fixes it.',
+  'crash.partNote': 'A part of the page did not open. Your internet connection may have stalled.',
+  'crash.reload': 'Reload',
   'silence.scope.whole': 'Searching: the whole video. The parts that remain become clips.',
   'silence.scope.all': 'Searching: all clips.',
   'silence.scope.kesit': 'Searching: clip {n}.',
