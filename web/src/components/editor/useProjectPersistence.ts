@@ -35,6 +35,16 @@ interface Args {
    * file still works. Fixed for the component's life.
    */
   enabled?: boolean;
+  /**
+   * True when this recipe TAKES the stored project's place instead of being
+   * replaced by it: the editor opened from "Yazıya dök" over a transcript
+   * written on the internet (ADR-034 addendum, 13 Oct 2026). What the store
+   * holds is not loaded into the editor; this recipe is written at once. The
+   * caller has already made sure nothing of the user's is replaced unasked
+   * (`domain/wizardHandoff.ts`). A NEWER build's project is still left alone.
+   * Fixed for the component's life.
+   */
+  adopt?: boolean;
 }
 
 /**
@@ -46,7 +56,7 @@ interface Args {
  * - "saved" means a transaction committed in THIS browser, which can still be
  *   cleared or evicted. The UI copy says exactly that.
  */
-export function useProjectPersistence({ project, title, bindings, onRestore, enabled = true }: Args) {
+export function useProjectPersistence({ project, title, bindings, onRestore, enabled = true, adopt = false }: Args) {
   const storeRef = useRef(createIndexedDbStore());
   const [saveState, setSaveState] = useState<SaveState>({ kind: 'idle' });
   const [restored, setRestored] = useState(false);
@@ -105,6 +115,17 @@ export function useProjectPersistence({ project, title, bindings, onRestore, ena
         setLoadFailure(result.reason);
         setRestored(true);
         restoredRef.current = true;
+        // Adopting: the write is tried now, so the header says at once whether this work is stored
+        // (it is not when the store cannot be written, or holds a newer build's project).
+        if (adopt) void persist();
+        return;
+      }
+      if (adopt) {
+        // This recipe is the project now. Written at once, not after the debounce: the user was just
+        // told it would be kept.
+        setRestored(true);
+        restoredRef.current = true;
+        void persist();
         return;
       }
       if (result.record) {

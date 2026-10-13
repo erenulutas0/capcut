@@ -6,6 +6,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { ownSizeRecipe } from '@/application/taskRecipes';
 import { Icon } from '@/components/Icon';
 import { lazyPart } from '@/components/LazyPart';
+import type { CloudKeepProps } from '@/components/transcript/CloudKeep';
 import type { CloudApplied, CloudRouteProps } from '@/components/transcript/CloudRoute';
 import { TranscribeSteps } from '@/components/transcript/TranscribeSteps';
 import { TranscriptDownloads } from '@/components/transcript/TranscriptDownloads';
@@ -36,6 +37,16 @@ const CloudRoute = process.env.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1'
   : null;
 
 /**
+ * Asked for when the editor is opened over a transcript written on the
+ * internet (ADR-034 addendum, 13 Oct 2026): it makes that work the browser's
+ * stored project, after asking when a project is stored already. Only in a
+ * build that has the route; every other build hands over as before, unsaved.
+ */
+const CloudKeep = process.env.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1'
+  ? lazyPart<CloudKeepProps>(() => import('@/components/transcript/CloudKeep').then((module) => module.default), { close: (props) => props.onClose })
+  : null;
+
+/**
  * "Yazıya dök" (ADR-036): the video's English speech as time-stamped text,
  * written on this device. The model is downloaded once, by an explicit
  * button that says its size; then "Yazıya dök" runs with real progress.
@@ -54,6 +65,8 @@ export default function YaziWizard(host: WizardHostProps) {
   /** Cloud route only (ADR-039): what its screen asks the frame to say, and the words of a result it wrote. */
   const [cloudView, setCloudView] = useState<{ title: string | null; footer: string | null }>({ title: null, footer: null });
   const [cloud, setCloud] = useState<CloudApplied | null>(null);
+  /** "Editörde aç" was pressed over a transcript written on the internet: the store is being asked, or the user is. */
+  const [keeping, setKeeping] = useState(false);
   const track = primaryCaptionTrack(project);
   const transcript = track?.origin === 'transcript' ? track : undefined;
   const lines = useMemo(() => transcriptLines(transcript), [transcript]);
@@ -76,14 +89,21 @@ export default function YaziWizard(host: WizardHostProps) {
     setTimeUs(us);
   }, []);
 
+  // The recipe carries a transcript written on the internet: opening the editor keeps it (see `CloudKeep`).
+  // An on-device transcript hands over as every wizard does — unsaved (a founder decision, ADR-034 addendum).
+  const keepsOnHandoff = CloudKeep !== null && cloud !== null && transcript !== undefined;
+
   return (
+    <>
     <WizardFlow
       {...host}
+      onOpenEditor={keepsOnHandoff ? () => setKeeping(true) : host.onOpenEditor}
       titleKey="wizard.yazi.title"
       chooseTitle={transcript ? null : cloudView.title}
       footerText={transcript ? (cloud?.footer ?? null) : cloudView.footer}
       fileTag="altyazili"
       downloadLabelKey="wizard.yazi.downloadVideo"
+      editorNote={keepsOnHandoff ? (cloud?.keepNote ?? null) : null}
       recipe={video && hasLines ? project : null}
       working={!transcript}
       blockedText={transcript && !hasLines ? t('wizard.yazi.noLines') : null}
@@ -185,6 +205,12 @@ export default function YaziWizard(host: WizardHostProps) {
               videoName={video.fileName}
               header={cloud?.fileHeader}
             />
+            {cloud ? (
+              // True until the editor is opened: nothing of this screen is stored (ADR-034).
+              <p className="wizard-hint" data-testid="yazi-cloud-keep-note">
+                {cloud.keepNote}
+              </p>
+            ) : null}
             <p className="wizard-hint">{t('wizard.yazi.editorHint')}</p>
           </>
         ) : silent ? (
@@ -212,5 +238,16 @@ export default function YaziWizard(host: WizardHostProps) {
         )
       ) : null}
     </WizardFlow>
+    {keeping && keepsOnHandoff && CloudKeep ? (
+      <CloudKeep
+        projectId={project.projectId}
+        onDecide={(stored) => {
+          setKeeping(false);
+          host.onOpenEditor({ stored });
+        }}
+        onClose={() => setKeeping(false)}
+      />
+    ) : null}
+    </>
   );
 }

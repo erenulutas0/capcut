@@ -180,7 +180,7 @@ function BoslukWizard(host: WizardHostProps) {
                     {t('wizard.bosluk.retry')}
                   </button>
                 ) : null}
-                <button type="button" className="btn" onClick={host.onOpenEditor} data-testid="bosluk-open-editor">
+                <button type="button" className="btn" onClick={() => host.onOpenEditor()} data-testid="bosluk-open-editor">
                   {t('wizard.bosluk.openEditor')}
                 </button>
               </div>
@@ -193,7 +193,7 @@ function BoslukWizard(host: WizardHostProps) {
                 {t(status === 'too_short' ? 'wizard.bosluk.tooShort' : 'wizard.bosluk.unclear')}
               </p>
               <div className="wizard-after">
-                <button type="button" className="btn" onClick={host.onOpenEditor} data-testid="bosluk-open-editor">
+                <button type="button" className="btn" onClick={() => host.onOpenEditor()} data-testid="bosluk-open-editor">
                   {t('wizard.bosluk.openEditor')}
                 </button>
               </div>

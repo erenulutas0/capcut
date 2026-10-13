@@ -36,6 +36,7 @@ const CLOUD_FACTS: CloudMessageKey[] = [
   'cloud.privacy.who',
   'cloud.privacy.region',
   'cloud.privacy.deletion',
+  'cloud.privacy.kept',
   'cloud.privacy.others',
   'cloud.privacy.ledger',
   'cloud.privacy.quota',
@@ -208,6 +209,8 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
             <article className="legal-card" key={item.id} data-testid={`stored-${item.id}`}>
               <h3>{t(item.name)}</h3>
               <p>{t(item.body)}</p>
+              {/* The one wizard hand-over that IS stored exists only in a build that has the route (ADR-034 addendum). */}
+              {CLOUD_ON && item.id === 'project' ? <p data-testid="stored-project-cloud">{ct('cloud.privacy.stored.project.extra')}</p> : null}
               <dl>
                 <dt>{t('privacy.stored.where')}</dt>
                 <dd>{t(item.where)}</dd>

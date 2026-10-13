@@ -59,6 +59,8 @@ export interface CloudApplied {
   fileHeader: string;
   /** Said at the foot of the result screen instead of "Videon cihazından çıkmaz." */
   footer: string;
+  /** Said near the result until the editor is opened: the text is not stored yet, and what keeps it. */
+  keepNote: string;
 }
 
 export interface CloudRouteProps {
@@ -399,6 +401,7 @@ export default function CloudRoute({ video, transcription, apply, deviceSteps, s
       machineNote: ct('cloud.machine'),
       fileHeader: ct('cloud.file.header'),
       footer: ct('cloud.footer.sent'),
+      keepNote: ct('cloud.keep.note'),
     };
     // This attempt is over: the wizard now shows the transcript and takes this screen away, which must not
     // read as "stopped in the middle".

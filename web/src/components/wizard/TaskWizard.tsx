@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { useEffect, useState, type ComponentType } from 'react';
 
+import { BASE_PATH } from '@/basePath';
 import { useEditorState } from '@/components/editor/useEditorState';
 import { PartFailed, lazyPart } from '@/components/LazyPart';
 import { taskById, type TaskId } from '@/domain/tasks';
 import { translator } from '@/i18n/messages';
-import type { WizardHostProps } from './WizardFlow';
+import type { EditorHandoff, WizardHostProps } from './WizardFlow';
 import { WIZARDS } from './wizards';
 
 const t = translator('tr');
@@ -43,6 +44,21 @@ const EditorView = lazyPart(() => loadEditor().then((module) => module.EditorVie
 });
 
 /**
+ * The address bar says `/editor` from here on, without loading a page (the open `File` cannot survive
+ * one). Only the address changes: what is on screen is already the editor. With or without the
+ * trailing slash, as the page was served (the static export serves folders).
+ */
+function showEditorAddress(): void {
+  try {
+    const slash = window.location.pathname.endsWith('/') ? '/' : '';
+    window.history.replaceState(null, '', `${BASE_PATH}/editor${slash}`);
+  } catch {
+    // An address that could not be changed loses nothing now: the project is stored either way, and
+    // "Kendim düzenleyeceğim" on the opening screen opens it.
+  }
+}
+
+/**
  * One task's wizard (`/yap/<id>/`, ADR-034).
  *
  * It owns the recipe and the open files — the editor's own state hook, with
@@ -52,10 +68,15 @@ const EditorView = lazyPart(() => loadEditor().then((module) => module.EditorVie
  * same settings, no second file dialog, no navigation that could lose them
  * (a page load cannot carry a `File`, and offline there is no soft
  * navigation to rely on).
+ *
+ * That editor stores nothing — except when the wizard asks for it (`stored`, ADR-034 addendum of
+ * 13 Oct 2026: "Yazıya dök" over a transcript written on the internet). Then the recipe becomes the
+ * browser's stored project, and the address becomes the editor's own: the stored project lives at
+ * `/editor`, so a reload must land there, not on the wizard's "Videonu seç".
  */
 export function TaskWizard({ taskId }: { taskId: TaskId }) {
   const state = useEditorState();
-  const [inEditor, setInEditor] = useState(false);
+  const [editor, setEditor] = useState<EditorHandoff | null>(null);
   const task = taskById(taskId);
   const Wizard = (WIZARDS as Partial<Record<TaskId, ComponentType<WizardHostProps>>>)[taskId];
 
@@ -82,6 +103,16 @@ export function TaskWizard({ taskId }: { taskId: TaskId }) {
     );
   }
 
-  if (inEditor) return <EditorView state={state} stored={false} />;
-  return <Wizard task={task} state={state} onOpenEditor={() => setInEditor(true)} />;
+  if (editor) return <EditorView state={state} stored={editor.stored} adopt={editor.stored} />;
+  return (
+    <Wizard
+      task={task}
+      state={state}
+      onOpenEditor={(handoff) => {
+        const stored = handoff?.stored === true;
+        if (stored) showEditorAddress();
+        setEditor({ stored });
+      }}
+    />
+  );
 }

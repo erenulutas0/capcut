@@ -111,7 +111,7 @@ describe('the route is not in the build unless it is on', () => {
       const source = read(...file);
       expect(source, file.join('/')).toMatch(/process\.env\.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1'\s*\? lazyPart/);
       // Nothing of the route is imported for its value (types only: they are erased).
-      expect(source.match(/^import (?!type)[^;]*from '@\/(adapters\/cloud|components\/transcript\/Cloud(Route|InvitePanel)|i18n\/cloudMessages)[^']*';/gm) ?? [], file.join('/')).toEqual([]);
+      expect(source.match(/^import (?!type)[^;]*from '@\/(adapters\/cloud|components\/transcript\/Cloud(Route|InvitePanel|Keep)|i18n\/cloudMessages)[^']*';/gm) ?? [], file.join('/')).toEqual([]);
     }
   });
 
