@@ -125,7 +125,7 @@ export const tr = {
     'Dışa aktarma penceresini kapatınca, yeni dışa aktarma başlayınca veya editörden çıkınca. Sekme kapanır ya da çökerse, editör bir sonraki açılışında 6 saatten eski dosyayı siler.',
   'privacy.stored.memory.name': 'Oturum belleği',
   'privacy.stored.memory.body':
-    'Açtığın dosyalar için geçici adresler, sessizlik bulucunun ses yüksekliği özetleri, son dışa aktarma kontrolünün sonucu ve bu oturumda görülen hata kodları.',
+    'Açtığın dosyalar için geçici adresler, sessizlik bulucunun ses yüksekliği özetleri, son dışa aktarma kontrolünün sonucu ve bu oturumda görülen hata kodları. Beklenmeyen bir hatada ayrıca hatanın türü ve hangi aşamada olduğu; hatanın metni saklanmaz.',
   'privacy.stored.memory.where': 'Yalnızca açık sekmenin belleği',
   'privacy.stored.memory.delete': 'Sekmeyi kapatınca.',
   'privacy.stored.hint.name': 'İlk kullanım ipucu',
@@ -197,7 +197,8 @@ export const tr = {
   'support.contains.features':
     'Tarayıcı özellikleri (WebCodecs, OPFS, WebGPU) ve son dışa aktarma kontrolünün aşama sonuçları, depolama alanı (MB)',
   'support.contains.project': 'Açık projenin yapısı: kesit ve altyazı satırı sayısı, oran, çıktı süresi',
-  'support.contains.log': 'Bu tarayıcıdaki son 20 dışa aktarma denemesi ve bu oturumda görülen hata kodları',
+  'support.contains.log':
+    'Bu tarayıcıdaki son 20 dışa aktarma denemesi ve bu oturumda görülen hata kodları (beklenmeyen bir hatada türü ve aşaması da; metni değil)',
   'support.excludes': 'Dosya adı, proje adı, altyazı metni, video, ses veya görüntü yoktur.',
   'support.preview': 'Dosyanın tam içeriği',
   'support.previewLoading': 'Hazırlanıyor…',
@@ -1191,6 +1192,10 @@ export const tr = {
   'transcript.model.failed.storage_failed': 'Tarayıcı model dosyasını saklayamadı. Gizli sekmede olabilirsin; normal bir sekmede tekrar dene.',
   'transcript.model.failed.unavailable': 'Bu tarayıcıda model saklanamıyor; yazıya dökme burada çalışmaz.',
   'transcript.model.failed.worker_unavailable': 'İndirme bu tarayıcıda başlatılamadı. Sayfayı yenileyip tekrar dene.',
+  // ADR-042 addendum: nothing arrived for two minutes (the page was visible), or the download's worker broke.
+  'transcript.model.failed.stalled':
+    'İndirme durdu: bir süredir hiçbir şey inmedi. İndirilen kısım duruyor; tekrar denersen kaldığı yerden devam eder.',
+  'transcript.model.failed.internal_error': 'İndirme beklenmedik bir hatayla durdu. İndirilen kısım duruyor; tekrar dene.',
   'transcript.start': 'Yazıya dök',
   'transcript.retry': 'Tekrar dene',
   'transcript.startHint':

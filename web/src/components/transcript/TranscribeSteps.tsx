@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import { activeManifest } from '@/adapters/transcript/transcriptClient';
+import { FailureDetails } from '@/components/FailureDetails';
 import { Icon } from '@/components/Icon';
 import { formatBytes } from '@/domain/policy';
 import { lineClock } from '@/domain/transcript';
@@ -157,11 +158,14 @@ export function TranscribeSteps({
       ) : null}
 
       {job.kind === 'download-failed' ? (
-        <p className="wizard-blocked" role="alert" data-testid="model-failed" data-reason={job.reason}>
-          {fillText(t(`transcript.model.failed.${job.reason}` as MessageKey), {
-            size: size(status?.missingBytes ?? downloadBytes(model, manifest)),
-          })}
-        </p>
+        <>
+          <p className="wizard-blocked" role="alert" data-testid="model-failed" data-reason={job.reason}>
+            {fillText(t(`transcript.model.failed.${job.reason}` as MessageKey), {
+              size: size(status?.missingBytes ?? downloadBytes(model, manifest)),
+            })}
+          </p>
+          <FailureDetails t={t} detail={job.detail} testId="model-failed" />
+        </>
       ) : null}
 
       {!busy && status !== null && !ready ? (
@@ -230,9 +234,12 @@ export function TranscribeSteps({
       ) : null}
 
       {job.kind === 'failed' ? (
-        <p className="wizard-blocked" role="alert" data-testid="transcribe-failed" data-reason={job.reason}>
-          {t(`transcript.failed.${job.reason}` as MessageKey)}
-        </p>
+        <>
+          <p className="wizard-blocked" role="alert" data-testid="transcribe-failed" data-reason={job.reason}>
+            {t(`transcript.failed.${job.reason}` as MessageKey)}
+          </p>
+          <FailureDetails t={t} detail={job.detail} testId="transcribe-failed" />
+        </>
       ) : null}
 
       {!busy && ready && job.kind !== 'done' ? (

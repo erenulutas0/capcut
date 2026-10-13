@@ -3,11 +3,13 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 
 import { extractSound } from '@/adapters/cloud/cloudAudioClient';
+import { recordFailure } from '@/adapters/diagnostics';
 import { deleteJob, fetchQuota, fetchResult, fetchStatus, startJob } from '@/adapters/cloud/cloudClient';
 import { CLOUD_ORIGIN } from '@/adapters/cloud/cloudConfig';
 import { readInvite, removeInvite, saveInvite, subscribeInvite, tidyInvite } from '@/adapters/cloud/inviteStore';
 import type { CaptionImportResult, ImportedCueInput } from '@/application/commands';
 import { withBasePath } from '@/basePath';
+import { FailureDetails } from '@/components/FailureDetails';
 import { Icon } from '@/components/Icon';
 import { DEFAULT_CAPTION_STYLE, primaryCaptionTrack } from '@/domain/captions';
 import {
@@ -21,6 +23,7 @@ import {
   type CloudQuota,
 } from '@/domain/cloudTranscript';
 import type { CaptionUnclearV3 } from '@/domain/edl';
+import type { ExportFailureDetail } from '@/domain/exportFailureDetail';
 import { formatBytes } from '@/domain/policy';
 import { CUE_RULES } from '@/domain/subtitleSegmentation';
 import type { Micros } from '@/domain/time';
@@ -91,6 +94,8 @@ type Phase =
 /** What the last attempt ended with, said above the two cards. */
 interface Notice {
   text: string;
+  /** For "Ayrıntılar": where the sound file's making broke, when nobody planned for it (ADR-042). Never the error's text. */
+  detail?: ExportFailureDetail;
   /**
    * What became of the sound that had been sent; null when nothing was passed on.
    * - `deleted`: the job had started, and the proxy deleted it (and its sound) at the provider;
@@ -275,11 +280,11 @@ export default function CloudRoute({ video, transcription, apply, deviceSteps, s
   }, []);
 
   /** An attempt ended without a transcript: delete what was sent, then say what happened. */
-  const end = async (run: Run, text: string) => {
+  const end = async (run: Run, text: string, detail?: ExportFailureDetail) => {
     const cleanup = await deleteRun(run);
     if (runRef.current === run) runRef.current = null;
     if (!aliveRef.current) return;
-    setNotice({ text, cleanup });
+    setNotice({ text, cleanup, ...(detail ? { detail } : {}) });
     setPhase({ kind: 'idle' });
     // Minutes may have changed (a job that ran is counted): ask again.
     setAsked((n) => n + 1);
@@ -298,7 +303,8 @@ export default function CloudRoute({ video, transcription, apply, deviceSteps, s
     runRef.current = run;
     const signal = abort.signal;
     const call = { origin: CLOUD_ORIGIN, invite, signal };
-    const fail = (reason: CloudFailure | 'canceled') => end(run, reason === 'canceled' ? ct('cloud.stopped') : ct(`cloud.failed.${reason}` as CloudMessageKey));
+    const fail = (reason: CloudFailure | 'canceled', detail?: ExportFailureDetail) =>
+      end(run, reason === 'canceled' ? ct('cloud.stopped') : ct(`cloud.failed.${reason}` as CloudMessageKey), detail);
     setNotice(null);
     setInviteNote(null);
     setPhase({ kind: 'preparing', doneS: null, totalS: null });
@@ -313,6 +319,8 @@ export default function CloudRoute({ video, transcription, apply, deviceSteps, s
     );
     if (!sound.ok) {
       const reason = sound.reason;
+      // For "Sorun bildir": the code, and the detail of an unexpected failure. Nothing was sent.
+      if (reason !== 'canceled') recordFailure('cloud_audio', reason, sound.detail);
       return fail(
         reason === 'canceled'
           ? 'canceled'
@@ -321,6 +329,7 @@ export default function CloudRoute({ video, transcription, apply, deviceSteps, s
             : reason === 'internal_error'
               ? 'internal_error'
               : 'audio_unreadable',
+        sound.detail,
       );
     }
 
@@ -520,6 +529,7 @@ export default function CloudRoute({ video, transcription, apply, deviceSteps, s
       {notice ? (
         <div className="wizard-blocked route-notice" role="alert" tabIndex={-1} ref={noticeRef} data-testid="cloud-notice">
           <p>{notice.text}</p>
+          <FailureDetails t={t} detail={notice.detail} testId="cloud-failed" />
           {notice.cleanup ? (
             <p data-testid="cloud-cleanup" data-cleanup={notice.cleanup}>
               {ct(`cloud.cleanup.${notice.cleanup}` as CloudMessageKey)}

@@ -44,6 +44,8 @@ import {
   type StoredFileRef,
   type TranscriptModelId,
 } from '@/domain/transcriptModels';
+import { passOrigin, tagStage, withOrigin } from '@/adapters/export/failureStage';
+import type { ExportStage } from '@/domain/exportFailureDetail';
 import { AudioFeedError, openAudio, streamMono16k } from './audioFeed';
 import { EngineError, type EngineSink } from './engine.types';
 import { readModelFile } from './modelStore';
@@ -161,12 +163,22 @@ export async function transcribeFile(
   const runtime = MODEL_RUNTIME[model];
   const settings = settingsFromProbe(probe);
 
+  // Where the work is, for the day it fails or stands still (ADR-042): this file's own words.
+  let stage: ExportStage = 'open_source';
+  const enter = (next: ExportStage) => {
+    stage = next;
+    sink.stage?.(next);
+  };
+  enter('open_source');
+
   // ---- the sound first: a video without sound needs no model at all
   let audio;
   try {
     audio = await openAudio(file);
   } catch (error) {
-    throw new EngineError(error instanceof AudioFeedError ? error.reason : 'unreadable');
+    throw error instanceof AudioFeedError
+      ? passOrigin(new EngineError(error.reason), error)
+      : withOrigin(new EngineError('unreadable'), tagStage(error, 'open_source'));
   }
 
   let transcriber: Transcriber | null = null;
@@ -174,6 +186,7 @@ export async function transcribeFile(
   try {
     // ---- the model files, from this browser's store only
     sink.progress({ phase: 'loading' });
+    enter('model_load');
     const files = filesFor(model, manifest);
     const blobs = new Map<string, Blob>();
     for (const ref of files) {
@@ -222,7 +235,7 @@ export async function transcribeFile(
       });
     } catch (error) {
       if (error instanceof EngineError) throw error;
-      throw new EngineError(isOutOfMemory(error) ? 'out_of_memory' : 'engine_unavailable');
+      throw withOrigin(new EngineError(isOutOfMemory(error) ? 'out_of_memory' : 'engine_unavailable'), tagStage(error, 'model_load'));
     }
     trackDecoderCaches(transcriber.model);
     const loadMs = performance.now() - loadStart;
@@ -262,6 +275,7 @@ export async function transcribeFile(
     // The detector hears a level-normalised copy (quiet speech after loud sound is not skipped);
     // what the recogniser is given later is cut from the sound as decoded.
     const leveller = settings.level ? new LevelNormaliser(VAD_SAMPLE_RATE, settings.level) : null;
+    enter('speech_detect');
     sink.progress({ phase: 'listening', doneUs: 0, totalUs });
     const totalSamples = await streamMono16k(audio.track, async (samples) => {
       await hear(leveller ? leveller.push(samples) : samples);
@@ -352,10 +366,14 @@ export async function transcribeFile(
           logits_processor: list,
         });
       } catch (error) {
-        throw new EngineError(isOutOfMemory(error) ? 'out_of_memory' : 'internal_error');
+        throw withOrigin(new EngineError(isOutOfMemory(error) ? 'out_of_memory' : 'internal_error'), tagStage(error, 'recognise'));
       } finally {
         await freeDecoderCaches();
       }
+      // A recogniser call came back: said to the page even when the span is not finished yet (a span
+      // the guard drops is looked at again, several calls deep). A call cannot report from inside, so
+      // this is the only sign of life the page gets between two spans — its stall watch counts from it.
+      sink.progress({ phase: 'writing', spansDone, spansTotal: pieces.length });
       const text = out.text ?? '';
       const chunks: RecognisedChunk[] = (out.chunks ?? []).map((chunk) => ({
         text: chunk.text,
@@ -505,6 +523,7 @@ export async function transcribeFile(
       sink.progress({ phase: 'writing', spansDone, spansTotal: pieces.length });
     };
 
+    enter('recognise');
     sink.progress({ phase: 'writing', spansDone: 0, spansTotal: pieces.length });
     if (pieces.length > 0) {
       let index = 0;
@@ -545,8 +564,8 @@ export async function transcribeFile(
     };
   } catch (error) {
     if (error instanceof EngineError) throw error;
-    if (error instanceof AudioFeedError) throw new EngineError(error.reason);
-    throw new EngineError(isOutOfMemory(error) ? 'out_of_memory' : 'internal_error');
+    if (error instanceof AudioFeedError) throw passOrigin(new EngineError(error.reason), error);
+    throw withOrigin(new EngineError(isOutOfMemory(error) ? 'out_of_memory' : 'internal_error'), tagStage(error, stage));
   } finally {
     await freeDecoderCaches();
     await transcriber?.dispose().catch(() => undefined);

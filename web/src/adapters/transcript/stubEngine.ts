@@ -12,6 +12,7 @@
  * finish a static export that contains the marker below.
  */
 
+import { passOrigin, tagStage, withOrigin } from '@/adapters/export/failureStage';
 import { AudioFeedError, openAudio } from './audioFeed';
 import { EngineError, type EngineSink } from './engine.types';
 import type { StubScript, TranscribeStats } from './protocol';
@@ -34,7 +35,9 @@ export async function runStubTranscription(
   try {
     audio = await openAudio(file);
   } catch (error) {
-    throw new EngineError(error instanceof AudioFeedError ? error.reason : 'unreadable');
+    throw error instanceof AudioFeedError
+      ? passOrigin(new EngineError(error.reason), error)
+      : withOrigin(new EngineError('unreadable'), tagStage(error, 'open_source'));
   }
   const audioUs = Math.round(audio.durationS * US_PER_SECOND);
   audio.input.dispose();
@@ -42,10 +45,13 @@ export async function runStubTranscription(
   const stepMs = script.stepMs ?? 0;
 
   sink.progress({ phase: 'loading' });
+  sink.stage?.('model_load');
   await wait(stepMs);
+  sink.stage?.('speech_detect');
   sink.progress({ phase: 'listening', doneUs: 0, totalUs: audioUs });
   await wait(stepMs);
   sink.progress({ phase: 'listening', doneUs: audioUs, totalUs: audioUs });
+  sink.stage?.('recognise');
   sink.progress({ phase: 'writing', spansDone: 0, spansTotal: script.segments.length });
   let done = 0;
   for (const segment of script.segments) {

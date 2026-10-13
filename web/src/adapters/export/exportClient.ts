@@ -19,6 +19,7 @@ import {
 import type { HdrTransfer } from '@/domain/hdr';
 import { TERMINAL_EXPORT_TYPES } from '@/domain/exportEvents';
 import type { RenderPlan } from '@/domain/renderPlan';
+import { STALL_LIMITS_MS, takeWorkerFault, unsendable, unsentDetail, watchWorker } from '../workerWatch';
 import { EXPORT_PROFILE_WORKER_SUFFIX } from './exportProfile';
 import type {
   CapabilityStageResult,
@@ -429,21 +430,64 @@ export class ExportWorkerClient {
     const requestId = this.nextId('enh');
     this.activeRequestId = requestId;
     return new Promise<EnhancePreviewResult>((resolve) => {
+      let settled = false;
+      /** Which part was last heard of, for a failure's detail. */
+      let phase: FailurePhase = 'waiting';
       const done = (result: EnhancePreviewResult) => {
+        if (settled) return;
+        settled = true;
+        watch.stop();
+        this.previewEnds.delete(done);
         worker.removeEventListener('message', onMessage);
-        worker.removeEventListener('error', onError);
         if (this.activeRequestId === requestId) this.activeRequestId = null;
         resolve(result);
       };
+      // The worker broke, its message could not be read, or it stood still (ADR-042): it is
+      // stopped — a worker in that state cannot be told to stop, and a later preview would wait
+      // behind it — and every preview still waiting on it ends as a failure that says so.
+      // Before this, a silent worker meant "preparing the preview…" for ever.
+      const watch = watchWorker(worker, {
+        limitMs: () => STALL_LIMITS_MS.enhancePreview,
+        askWhere: () => {
+          const where: WorkerRequest = { type: 'where', requestId };
+          worker.postMessage(where);
+        },
+        onGiveUp: (_via, detail) => {
+          const result: EnhancePreviewResult = { ok: false, reason: 'internal_error', detail: watch.pageSide(detail, phase) };
+          const waiting = [...this.previewEnds];
+          // Taken out first: `dispose` ends what is still listed as canceled, and these did not cancel.
+          this.previewEnds.clear();
+          if (this.worker === worker) this.dispose();
+          else worker.terminate();
+          for (const end of waiting) end(result);
+        },
+      });
       const onMessage = (event: MessageEvent<WorkerResponse>) => {
         const data = event.data;
         if (data.requestId !== requestId) return;
-        if (data.type === 'enhancePreviewProgress') options.onProgress?.(data.progress);
-        else if (data.type === 'enhancePreview') done(data.result);
+        if (data.type === 'where') {
+          watch.answer(data.detail);
+          return;
+        }
+        if (data.type !== 'enhancePreviewProgress' && data.type !== 'enhancePreview') return;
+        watch.heard();
+        if (data.type === 'enhancePreviewProgress') {
+          phase = 'analysing';
+          options.onProgress?.(data.progress);
+          return;
+        }
+        const result = data.result;
+        if (result.ok || !result.detail) {
+          done(result);
+          return;
+        }
+        // Checked again field by field, with the page's part filled in.
+        const detail = sanitizeExportFailureDetail(result.detail);
+        done(detail ? { ok: false, reason: result.reason, detail: watch.pageSide(detail, phase) } : { ok: false, reason: result.reason });
       };
-      const onError = () => done({ ok: false, reason: 'internal_error' });
+      this.previewEnds.add(done);
       worker.addEventListener('message', onMessage);
-      worker.addEventListener('error', onError);
+      const fault = takeWorkerFault('enhance_preview');
       const request: WorkerRequest = {
         type: 'enhancePreview',
         requestId,
@@ -452,10 +496,20 @@ export class ExportWorkerClient {
         frame,
         enhanceAnalysis: options.analysis ?? null,
         enhanceEngine: enhanceEngineHook(),
+        ...(fault && fault.kind !== 'unsendable' ? { testFault: fault } : {}),
+        ...(fault?.kind === 'unsendable' ? { unsendable: unsendable() } : {}),
       };
-      worker.postMessage(request);
+      try {
+        worker.postMessage(request);
+      } catch (error) {
+        // Nothing was sent, so nothing would ever answer.
+        done({ ok: false, reason: 'internal_error', detail: unsentDetail(error) });
+      }
     });
   }
+
+  /** Previews still waiting for their worker: each ends when the worker is stopped under it. */
+  private readonly previewEnds = new Set<(result: EnhancePreviewResult) => void>();
 
   private activeRequestId: string | null = null;
   /** When "İptal et" was passed to the worker for the running export (see CANCEL_GRACE_MS). */
@@ -472,5 +526,7 @@ export class ExportWorkerClient {
     this.worker?.terminate();
     this.worker = null;
     this.activeRequestId = null;
+    // A preview that was waiting on the stopped worker would wait for ever.
+    for (const end of [...this.previewEnds]) end({ ok: false, reason: 'canceled' });
   }
 }

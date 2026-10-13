@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 
+import { FailureDetails } from '@/components/FailureDetails';
 import type { MessageKey } from '@/i18n/messages';
 import type { EnhancePreviewPicture, EnhancePreviewState } from './useEnhancePreview';
 
@@ -73,6 +74,7 @@ export function BeforeAfter({ t, state, onOtherFrame, onRetry, disabled = false,
         <p className="ba-failed" role="alert" data-testid="enhance-preview-failed" data-reason={state.reason}>
           {failureText(t, state.reason)}
         </p>
+        <FailureDetails t={t} detail={state.detail} testId="enhance-preview-failed" />
         {state.reason === 'hdr_source_unsupported' || state.reason === 'source_undecodable' ? null : (
           <button type="button" className="btn" onClick={onRetry} data-testid="enhance-preview-retry">
             {t('enhance.preview.retry')}

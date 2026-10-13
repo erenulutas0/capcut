@@ -15,6 +15,7 @@
 
 import { APP_SLUG } from '../appIdentity';
 import type { Project } from './edl';
+import { sanitizeExportFailureDetail, type ExportFailureDetail } from './exportFailureDetail';
 import { sanitizeExportLogEntry, type ExportLogEntry } from './exportLog';
 import { totalOutputDurationUs } from './timeline';
 
@@ -30,7 +31,12 @@ export type ErrorArea =
   | 'storage'
   | 'silence'
   | 'edit'
-  | 'uncaught';
+  | 'uncaught'
+  // The other background jobs (ADR-042 addendum, 13 Oct 2026).
+  | 'transcript'
+  | 'model_download'
+  | 'cloud_audio'
+  | 'enhance_preview';
 
 const AREAS: ReadonlySet<string> = new Set([
   'export',
@@ -41,12 +47,22 @@ const AREAS: ReadonlySet<string> = new Set([
   'silence',
   'edit',
   'uncaught',
+  'transcript',
+  'model_download',
+  'cloud_audio',
+  'enhance_preview',
 ]);
 
 export interface SessionError {
   at: string;
   area: ErrorArea;
   code: string;
+  /**
+   * For a failure of a background job nobody planned for: where it broke and
+   * with what kind of error (`ExportFailureDetail` — enums, counts and codec
+   * strings; never the error's text). Absent for every other code.
+   */
+  detail?: ExportFailureDetail;
 }
 
 /** Error codes are snake_case enums. A file name or a sentence never matches. */
@@ -179,7 +195,9 @@ export function sanitizeSessionError(raw: unknown): SessionError | null {
   if (typeof row.area !== 'string' || !AREAS.has(row.area)) return null;
   if (typeof row.code !== 'string' || !ERROR_CODE_PATTERN.test(row.code)) return null;
   if (typeof row.at !== 'string' || Number.isNaN(Date.parse(row.at))) return null;
-  return { at: new Date(row.at).toISOString(), area: row.area as ErrorArea, code: row.code };
+  // Rebuilt field by field: nothing but the known fields with checked values comes through.
+  const detail = sanitizeExportFailureDetail(row.detail);
+  return { at: new Date(row.at).toISOString(), area: row.area as ErrorArea, code: row.code, ...(detail ? { detail } : {}) };
 }
 
 function capabilityCopy(summary: CapabilitySummary): CapabilitySummary {

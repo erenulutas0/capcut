@@ -21,6 +21,7 @@ import {
   withMusicDefaults,
   type GapChoice,
 } from '@/application/taskRecipes';
+import { FailureDetails } from '@/components/FailureDetails';
 import { Icon } from '@/components/Icon';
 import type { TargetSizePreview } from '@/components/editor/useDownloads';
 import { useSilenceAnalysis } from '@/components/editor/useSilenceAnalysis';
@@ -166,6 +167,7 @@ function BoslukWizard(host: WizardHostProps) {
                   {t(`silence.failed.${silence.run.reason}` as MessageKey)}
                 </p>
               ) : null}
+              {silence.run.status === 'failed' ? <FailureDetails t={t} detail={silence.run.detail} testId="bosluk-failed" /> : null}
               <div className="wizard-after">
                 {/* A video without sound cannot be searched again with a different answer. */}
                 {video && !(silence.run.status === 'failed' && silence.run.reason === 'no_audio') ? (

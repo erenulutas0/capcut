@@ -10,6 +10,7 @@
 import type { CapabilityReportV1 } from './exportCapability';
 import { exportLog } from './exportLogStore';
 import type { Project } from '@/domain/edl';
+import { sanitizeExportFailureDetail, type ExportFailureDetail } from '@/domain/exportFailureDetail';
 import {
   ERROR_CODE_PATTERN,
   buildDiagnostics,
@@ -45,6 +46,25 @@ export function recordError(area: ErrorArea, code: string, now: Date = new Date(
   const last = sessionErrors[sessionErrors.length - 1];
   if (last && last.area === area && last.code === code) return;
   sessionErrors.push({ at: now.toISOString(), area, code });
+  if (sessionErrors.length > SESSION_ERROR_LIMIT) sessionErrors.splice(0, sessionErrors.length - SESSION_ERROR_LIMIT);
+}
+
+/**
+ * A failure of a background job (loudness, transcript, model download, cloud
+ * sound, "İyileştir" preview): its code, and — when nobody planned for it —
+ * where it broke and with what kind of error. The detail is rebuilt field by
+ * field here, so whatever a worker sent, only checked values are kept; the
+ * error's text never reaches this file.
+ *
+ * Called once per failure, from the place the job ended (never from a
+ * render), so every call is a row: two failures in a row with the same code
+ * can differ in where they broke. A bare code recorded right after for the
+ * same failure (`recordError` from an effect) is still dropped there.
+ */
+export function recordFailure(area: ErrorArea, code: string, detail?: ExportFailureDetail | null, now: Date = new Date()): void {
+  if (!ERROR_CODE_PATTERN.test(code)) return;
+  const checked = sanitizeExportFailureDetail(detail);
+  sessionErrors.push({ at: now.toISOString(), area, code, ...(checked ? { detail: checked } : {}) });
   if (sessionErrors.length > SESSION_ERROR_LIMIT) sessionErrors.splice(0, sessionErrors.length - SESSION_ERROR_LIMIT);
 }
 
@@ -88,7 +108,7 @@ export function listenForUncaughtErrors(): void {
 
 /** A copy of what this tab has recorded; callers cannot change the originals. */
 export function sessionSnapshot(): { errors: SessionError[]; capability: CapabilitySummary | null } {
-  return { errors: [...sessionErrors], capability: lastCapability };
+  return { errors: sessionErrors.map((entry) => ({ ...entry })), capability: lastCapability };
 }
 
 async function storageEstimate(): Promise<{ quotaBytes: number; usageBytes: number } | null> {

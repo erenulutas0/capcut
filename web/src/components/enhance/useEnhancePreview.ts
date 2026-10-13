@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { recordFailure } from '@/adapters/diagnostics';
 import { ExportWorkerClient } from '@/adapters/export/exportClient';
 import type { EnhanceAnalysis, EnhancePreviewFailure, EnhancePreviewResult } from '@/adapters/export/protocol';
 import { enhancePreviewFrame } from '@/application/taskRecipes';
 import type { Project } from '@/domain/edl';
 import type { EnhanceParams, EnhanceSummary } from '@/domain/enhance';
+import type { ExportFailureDetail } from '@/domain/exportFailureDetail';
 import { downloadRecipe, type KesitSettings } from '@/domain/kesit';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 import { compileRenderPlan } from '@/domain/renderPlan';
@@ -37,7 +39,8 @@ export type EnhancePreviewState =
   /** `progress`: the share of the frames looked at so far (real), null while the frame itself is made. */
   | { status: 'loading'; progress: number | null; previous: EnhancePreviewPicture | null }
   | { status: 'ready'; picture: EnhancePreviewPicture }
-  | { status: 'failed'; reason: PreviewFailure };
+  /** `detail`: for "Ayrıntılar", when the failure was not a planned refusal (ADR-042). */
+  | { status: 'failed'; reason: PreviewFailure; detail?: ExportFailureDetail };
 
 interface Args {
   /** The recipe as the editor state holds it; the whole video while it has no kesit. */
@@ -56,6 +59,7 @@ interface Answer {
   file: File;
   picture: EnhancePreviewPicture | null;
   failure: PreviewFailure | null;
+  detail?: ExportFailureDetail;
   analysis: EnhanceAnalysis | null;
 }
 
@@ -118,7 +122,9 @@ export function useEnhancePreview({ project, settings, videoFile, shot, enabled 
         }
         if (!result.ok) {
           if (result.reason === 'canceled' || result.reason === 'not_enhanced') return;
-          setAnswer({ request, file: videoFile, picture: null, failure: result.reason, analysis: known });
+          // For "Sorun bildir": the code, and the detail of an unexpected failure.
+          recordFailure('enhance_preview', result.reason, result.detail);
+          setAnswer({ request, file: videoFile, picture: null, failure: result.reason, ...(result.detail ? { detail: result.detail } : {}), analysis: known });
           return;
         }
         const picture: EnhancePreviewPicture = {
@@ -168,7 +174,7 @@ export function useEnhancePreview({ project, settings, videoFile, shot, enabled 
   let state: EnhancePreviewState;
   if (request === null) state = { status: 'idle' };
   else if (answered && answer.picture) state = { status: 'ready', picture: answer.picture };
-  else if (answered && answer.failure) state = { status: 'failed', reason: answer.failure };
+  else if (answered && answer.failure) state = { status: 'failed', reason: answer.failure, ...(answer.detail ? { detail: answer.detail } : {}) };
   else {
     state = {
       status: 'loading',

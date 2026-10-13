@@ -20,6 +20,7 @@
  * transcript worker, off the UI thread).
  */
 
+import { caughtFailureDetail, type ExportFailureDetail } from '@/domain/exportFailureDetail';
 import { BASE_PATH } from '@/basePath';
 import { Sha256 } from '@/domain/sha256';
 import {
@@ -48,7 +49,8 @@ export type DownloadFailure =
   | 'storage_failed'
   | 'unavailable';
 
-export type DownloadOutcome = { ok: true } | { ok: false; reason: DownloadFailure; file?: string };
+/** `detail`: for a failure nobody planned for — the error's name and where it was raised, never its text (ADR-042). */
+export type DownloadOutcome = { ok: true } | { ok: false; reason: DownloadFailure; file?: string; detail?: ExportFailureDetail };
 
 export interface DownloadProgress {
   /** Bytes of this model already stored, parts of unfinished files included. */
@@ -283,8 +285,8 @@ async function downloadFile(cache: Cache, file: StoredFileRef, onBytes: (count: 
   }
 }
 
-/** Reads the stored parts back through SHA-256. */
-async function verifyFile(cache: Cache, file: StoredFileRef): Promise<boolean> {
+/** Reads the stored parts back through SHA-256. `onRead` is called as the reading advances (a sign of life for the page). */
+async function verifyFile(cache: Cache, file: StoredFileRef, onRead: () => void = () => undefined): Promise<boolean> {
   const hash = new Sha256();
   let bytes = 0;
   for (const part of partsOf(file.bytes)) {
@@ -297,6 +299,7 @@ async function verifyFile(cache: Cache, file: StoredFileRef): Promise<boolean> {
       if (value) {
         hash.update(value);
         bytes += value.length;
+        onRead();
       }
     }
   }
@@ -338,8 +341,8 @@ export async function downloadModel(
   try {
     await pruneStale(manifest);
     cache = await openStore(manifest);
-  } catch {
-    return { ok: false, reason: 'storage_failed' };
+  } catch (error) {
+    return { ok: false, reason: 'storage_failed', detail: caughtFailureDetail(error, 'model_download') };
   }
   const files = filesFor(model, manifest);
   const bytesTotal = files.reduce((sum, file) => sum + file.bytes, 0);
@@ -376,14 +379,20 @@ export async function downloadModel(
   };
   report('downloading', true);
 
+  let checking = false;
   try {
     for (const file of pending) {
+      checking = false;
       await downloadFile(cache, file, (count) => {
         bytesDone += count;
         report('downloading');
       });
+      checking = true;
       report('checking', true);
-      if (!(await verifyFile(cache, file))) {
+      // Hashing a large file takes a while and changes no byte count: the same numbers are
+      // reported again as the reading advances (at most every 100 ms), so the page can tell
+      // checking from standing still.
+      if (!(await verifyFile(cache, file, () => report('checking')))) {
         await deleteFile(cache, file);
         return { ok: false, reason: 'hash_mismatch', file: file.key };
       }
@@ -397,7 +406,7 @@ export async function downloadModel(
     }
   } catch (error) {
     if (error instanceof DownloadError) return { ok: false, reason: error.reason, ...(error.file ? { file: error.file } : {}) };
-    return { ok: false, reason: 'storage_failed' };
+    return { ok: false, reason: 'storage_failed', detail: caughtFailureDetail(error, checking ? 'model_check' : 'model_download') };
   }
   report('downloading', true);
   return { ok: true };

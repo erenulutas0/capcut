@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Icon, Wordmark } from '@/components/Icon';
+import { ReportProblemProvider } from '@/components/ReportProblem';
 import { InstallEntry } from '@/components/pwa/InstallEntry';
 import { useHydrated } from '@/components/useHydrated';
 import { withWholeKesit } from '@/application/commands';
@@ -191,6 +192,7 @@ export function EditorView({ state, stored }: { state: EditorState; stored: bool
   const [moreOpen, setMoreOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const openReport = useCallback(() => setReportOpen(true), []);
   const [silenceScope, setSilenceScope] = useState<SilenceScope | null>(null);
   const [backupMessage, setBackupMessage] = useState<MessageKey | null>(null);
   const [fullscreenRequest, setFullscreenRequest] = useState(0);
@@ -789,6 +791,7 @@ export function EditorView({ state, stored }: { state: EditorState; stored: bool
   );
 
   return (
+    <ReportProblemProvider value={openReport}>
     <div
       className="editor-root"
       data-mode={layout}
@@ -1459,5 +1462,6 @@ export function EditorView({ state, stored }: { state: EditorState; stored: bool
         <audio ref={musicElementRef} src={state.audio.objectUrl} preload="metadata" className="visually-hidden" />
       ) : null}
     </div>
+    </ReportProblemProvider>
   );
 }

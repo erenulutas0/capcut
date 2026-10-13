@@ -14,6 +14,7 @@
 
 import { ALL_FORMATS, AudioSampleSink, BlobSource, Input, type InputAudioTrack } from 'mediabunny';
 
+import { tagStage, withOrigin } from '@/adapters/export/failureStage';
 import { MonoResampler, downmixToMono } from '@/domain/resample';
 import { VAD_SAMPLE_RATE } from '@/domain/speechSpans';
 
@@ -45,9 +46,10 @@ export async function openAudio(file: File): Promise<OpenedAudio> {
   let track: InputAudioTrack | null;
   try {
     track = await input.getPrimaryAudioTrack();
-  } catch {
+  } catch (error) {
     input.dispose();
-    throw new AudioFeedError('unreadable');
+    // The real error stays beside the plain-word one (its name and stage for "Ayrıntılar", never its text).
+    throw withOrigin(new AudioFeedError('unreadable'), tagStage(error, 'open_source'));
   }
   if (!track) {
     input.dispose();
@@ -141,7 +143,7 @@ export async function streamMono16k(
   } catch (error) {
     if (error instanceof ConsumerError) throw error.inner;
     if (error instanceof AudioFeedError) throw error;
-    throw new AudioFeedError('undecodable');
+    throw withOrigin(new AudioFeedError('undecodable'), tagStage(error, 'audio_decode'));
   }
   if (resampler) {
     try {

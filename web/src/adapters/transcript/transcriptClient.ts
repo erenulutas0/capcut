@@ -6,9 +6,11 @@
  * a decode or a model call in flight cannot be interrupted any other way.
  */
 
+import { sanitizeExportFailureDetail, type ExportFailureDetail, type FailurePhase } from '@/domain/exportFailureDetail';
 import type { TranscriptSegment } from '@/domain/transcript';
 import { MODEL_MANIFEST, isModelManifest, type ModelManifest, type TranscriptModelId } from '@/domain/transcriptModels';
 import type { EngineProbe } from '@/domain/transcriptSettings';
+import { STALL_LIMITS_MS, gaveUpCode, takeWorkerFault, unsendable, unsentDetail, watchWorker, type GaveUpVia, type WatchedWorker } from '../workerWatch';
 import type { DownloadFailure, DownloadProgress } from './modelStore';
 import type {
   TranscribeFailure,
@@ -22,13 +24,19 @@ import type {
 export type { DownloadFailure, DownloadProgress } from './modelStore';
 export type { TranscribeFailure, TranscribeProgress, TranscribeStats } from './protocol';
 
+/**
+ * `stalled`: nothing arrived for longer than a download may be silent (the
+ * stored parts are kept). `internal_error`: the worker broke while working.
+ * `detail`: where and with what kind of error, for a failure nobody planned
+ * for (ADR-042) — enums and counts, never the error's text.
+ */
 export type ModelDownloadOutcome =
   | { ok: true }
-  | { ok: false; reason: DownloadFailure | 'worker_unavailable' | 'canceled' };
+  | { ok: false; reason: DownloadFailure | 'worker_unavailable' | 'internal_error' | 'stalled' | 'canceled'; detail?: ExportFailureDetail };
 
 export type TranscribeOutcome =
   | { ok: true; segments: TranscriptSegment[]; stats: TranscribeStats }
-  | { ok: false; reason: TranscribeFailure | 'worker_unavailable' | 'canceled' };
+  | { ok: false; reason: TranscribeFailure | 'worker_unavailable' | 'canceled'; detail?: ExportFailureDetail };
 
 /** '1' only in a test build (`CLIP_TEST_HOOKS=1`); the published site is built with ''. */
 const TEST_HOOKS = process.env.NEXT_PUBLIC_CLIP_TEST_HOOKS === '1';
@@ -74,11 +82,24 @@ export class TranscriptClient {
   private counter = 0;
   private stopActive: (() => void) | null = null;
 
+  /**
+   * One job in a worker of its own. It always ends: with the worker's answer,
+   * with a cancel (the worker is stopped at once), or — when the worker
+   * breaks, cannot be read, cannot be given the request, or says nothing for
+   * longer than its step allows (`limitMs`, counted only while the page is
+   * visible) — with `gaveUp`.
+   */
   private run<T>(
+    kind: WatchedWorker,
     build: (requestId: string) => TranscriptWorkerRequest,
-    onMessage: (data: TranscriptWorkerResponse, finish: (value: T) => void) => void,
-    unavailable: T,
-    canceled: T,
+    onMessage: (data: TranscriptWorkerResponse, finish: (value: T) => void, side: (detail: unknown) => ExportFailureDetail | undefined) => void,
+    ends: {
+      canceled: T;
+      /** The worker could not be created at all. */
+      unavailable: T;
+      gaveUp: (via: GaveUpVia | 'request_not_sent', heard: boolean, detail: ExportFailureDetail) => T;
+    },
+    watching: { limitMs: () => number | null; phase: () => FailurePhase },
   ): Promise<T> {
     this.cancel();
     let worker: Worker;
@@ -86,7 +107,7 @@ export class TranscriptClient {
       worker = createWorker();
       this.worker = worker;
     } catch {
-      return Promise.resolve(unavailable);
+      return Promise.resolve(ends.unavailable);
     }
     this.counter += 1;
     const requestId = `tr_${Date.now().toString(36)}_${this.counter}`;
@@ -95,37 +116,82 @@ export class TranscriptClient {
       const finish = (value: T) => {
         if (settled) return;
         settled = true;
+        watch.stop();
         this.stopActive = null;
         // One job per worker: the model's memory goes back with it.
         worker.terminate();
         if (this.worker === worker) this.worker = null;
         resolve(value);
       };
-      worker.addEventListener('message', (event: MessageEvent<TranscriptWorkerResponse>) => {
-        if (event.data.requestId === requestId) onMessage(event.data, finish);
+      const watch = watchWorker(worker, {
+        limitMs: watching.limitMs,
+        askWhere: () => {
+          const where: TranscriptWorkerRequest = { type: 'where', requestId };
+          worker.postMessage(where);
+        },
+        onGiveUp: (via, detail) => {
+          const heard = watch.hasHeard();
+          finish(ends.gaveUp(via, heard, watch.pageSide(detail, heard ? watching.phase() : 'waiting')));
+        },
       });
-      worker.addEventListener('error', () => finish(unavailable));
-      this.stopActive = () => finish(canceled);
-      worker.postMessage(build(requestId));
+      const side = (raw: unknown): ExportFailureDetail | undefined => {
+        const detail = sanitizeExportFailureDetail(raw);
+        return detail ? watch.pageSide(detail, watching.phase()) : undefined;
+      };
+      worker.addEventListener('message', (event: MessageEvent<TranscriptWorkerResponse>) => {
+        const data = event.data;
+        if (data.requestId !== requestId) return;
+        if (data.type === 'where') {
+          watch.answer(data.detail);
+          return;
+        }
+        watch.heard();
+        onMessage(data, finish, side);
+      });
+      this.stopActive = () => finish(ends.canceled);
+      try {
+        const fault = takeWorkerFault(kind);
+        const request = build(requestId);
+        if (fault && request.type !== 'where') {
+          if (fault.kind === 'unsendable') request.unsendable = unsendable();
+          else request.testFault = fault;
+        }
+        worker.postMessage(request);
+      } catch (error) {
+        // Nothing was sent, so nothing would ever answer.
+        finish(ends.gaveUp('request_not_sent', false, unsentDetail(error)));
+      }
     });
   }
 
   /** Fetches and checks the files `model` still lacks. Stored parts survive a cancel. */
   download(model: TranscriptModelId, onProgress: (progress: DownloadProgress) => void): Promise<ModelDownloadOutcome> {
     const test = transcriptTestOptions();
+    let phase: FailurePhase = 'downloading';
     return this.run<ModelDownloadOutcome>(
+      'model_download',
       (requestId) => ({ type: 'download', requestId, model, ...(test ? { test } : {}) }),
-      (data, finish) => {
+      (data, finish, side) => {
         if (data.type === 'download-progress') {
+          phase = data.phase;
           onProgress({ bytesDone: data.bytesDone, bytesTotal: data.bytesTotal, phase: data.phase });
         } else if (data.type === 'download-done') {
           finish({ ok: true });
         } else if (data.type === 'download-failed') {
-          finish({ ok: false, reason: data.reason });
+          const detail = side(data.detail);
+          finish({ ok: false, reason: data.reason, ...(detail ? { detail } : {}) });
         }
       },
-      { ok: false, reason: 'worker_unavailable' },
-      { ok: false, reason: 'canceled' },
+      {
+        canceled: { ok: false, reason: 'canceled' },
+        unavailable: { ok: false, reason: 'worker_unavailable' },
+        gaveUp: (via, heard, detail) => ({
+          ok: false,
+          reason: via === 'stalled' ? 'stalled' : via === 'request_not_sent' ? 'internal_error' : gaveUpCode(via, heard),
+          detail,
+        }),
+      },
+      { limitMs: () => STALL_LIMITS_MS.modelDownload, phase: () => phase },
     );
   }
 
@@ -138,10 +204,14 @@ export class TranscriptClient {
     const test = transcriptTestOptions();
     const probe = measuringProbe();
     const segments: TranscriptSegment[] = [];
+    /** The step the worker last reported: it decides how long a silence is still normal. */
+    let step: 'opening' | 'loading' | 'listening' | 'writing' = 'opening';
     return this.run<TranscribeOutcome>(
+      'transcript',
       (requestId) => ({ type: 'transcribe', requestId, model, file, ...(test ? { test } : {}), ...(probe ? { probe } : {}) }),
-      (data, finish) => {
+      (data, finish, side) => {
         if (data.type === 'progress') {
+          step = data.progress.phase;
           onProgress(data.progress);
         } else if (data.type === 'segment') {
           segments.push(data.segment);
@@ -153,11 +223,29 @@ export class TranscriptClient {
           if (Array.isArray(probe)) probe.push({ fileName: file.name, segments, stats: data.stats });
           finish({ ok: true, segments, stats: data.stats });
         } else if (data.type === 'failed') {
-          finish({ ok: false, reason: data.reason });
+          const detail = side(data.detail);
+          finish({ ok: false, reason: data.reason, ...(detail ? { detail } : {}) });
         }
       },
-      { ok: false, reason: 'worker_unavailable' },
-      { ok: false, reason: 'canceled' },
+      {
+        canceled: { ok: false, reason: 'canceled' },
+        unavailable: { ok: false, reason: 'worker_unavailable' },
+        gaveUp: (via, heard, detail) => ({
+          ok: false,
+          reason: via === 'stalled' || via === 'request_not_sent' ? 'internal_error' : gaveUpCode(via, heard),
+          detail,
+        }),
+      },
+      {
+        // Before the first message the worker only opens the file's sound: the listening limit.
+        limitMs: () =>
+          step === 'loading'
+            ? STALL_LIMITS_MS.transcribeLoading
+            : step === 'writing'
+              ? STALL_LIMITS_MS.transcribeWriting
+              : STALL_LIMITS_MS.transcribeListening,
+        phase: () => (step === 'opening' ? 'preparing' : step),
+      },
     );
   }
 
