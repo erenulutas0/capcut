@@ -19,3 +19,16 @@ export function isChromiumBrowser(): boolean {
   const agent = navigator.userAgent ?? '';
   return /\b(Chrome|Chromium|CriOS|Edg)\//.test(agent);
 }
+
+/**
+ * iPhone or iPad, whichever browser (iPadOS calls itself a Mac with a touch
+ * screen). Asked for one reason only: every browser there runs on the same
+ * engine, so "try another browser" is wrong advice on these devices
+ * (domain/browserAdvice.ts). Unknown (no navigator) counts as no.
+ */
+export function isIosDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return (
+    /\b(iPhone|iPad|iPod)\b/.test(navigator.userAgent ?? '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+}

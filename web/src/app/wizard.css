@@ -671,3 +671,10 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
+
+/* "Bu tarayıcı video dosyası hazırlayamıyor": said under the heading, before the user picks or chooses anything. */
+.browser-notice {
+  align-items: flex-start;
+  margin: 0 0 12px;
+  font-size: 15px;
+}

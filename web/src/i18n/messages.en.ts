@@ -637,6 +637,11 @@ export const en: Record<MessageKey, string> = {
   'export.fail.source_incomplete':
     'This video looks incomplete: its end is not in the file. The download or the copy may have stopped half way. Download or copy the video again, then retry.',
   'export.fail.tryChromium': 'If the video plays fine elsewhere, the problem may be this browser: try Chrome or Edge.',
+  'browser.cannotExport': 'This browser cannot make video files.',
+  'browser.cannotExportNote': 'You can pick your video and look at it, but you cannot download it.',
+  'browser.advice.try_chromium': 'Try Chrome or Edge.',
+  'browser.advice.other_device':
+    'On iPhone and iPad, installing another browser mostly does not help. Try Chrome on a computer or on an Android phone.',
   'export.fail.source_reorder_unfixable':
     'This video understates its frame reordering, so this browser’s decoder skips frames. It stopped instead of producing a file whose picture lags behind its sound.',
   'export.fail.caption_font_unavailable':

@@ -1,6 +1,7 @@
 'use client';
 
 import { enhanceItems } from '@/components/enhance/enhanceItems';
+import { adviceFor } from '@/components/BrowserNotice';
 import { Icon } from '@/components/Icon';
 import { isChromiumBrowser } from '@/adapters/browserKind';
 import { environmentPasses } from '@/adapters/exportCapability';
@@ -532,6 +533,8 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
     const overrunKey: MessageKey =
       kind === 'kesit' ? 'download.overLimit.kesit' : kind === 'merged' ? 'download.overLimit.merged' : 'download.overLimit.whole';
     const report = entry.report;
+    const blockedAdvice =
+      entry.reason === 'capability' && report ? adviceFor(!environmentPasses(report.environment), report.blockers) : 'none';
     return (
       <div className="dl-status dl-problem" data-phase="blocked" data-testid={entry.overrun ? 'export-over-limit' : 'export-blocked'}>
         {status}
@@ -565,6 +568,12 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
                       <li key={code}>{t(`export.fail.${code}` as MessageKey)}</li>
                     ))}
                   </ul>
+                ) : null}
+                {/* The way forward, only for a refusal that is the browser's and never inside Chrome / Edge. */}
+                {blockedAdvice !== 'none' ? (
+                  <span className="dl-sub" data-testid="export-blocked-advice" data-advice={blockedAdvice}>
+                    {t(`browser.advice.${blockedAdvice}` as MessageKey)}
+                  </span>
                 ) : null}
               </>
             )}
