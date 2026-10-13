@@ -64,9 +64,17 @@ export function useProjectPersistence({ project, title, bindings, onRestore, ena
   // Set by `forget`: the user deleted the stored project, so neither the
   // autosave timer nor the flush on leaving the page may write it back.
   const forgottenRef = useRef(false);
+  // Set when the stored project turned out to be a NEWER build's (ADR-043):
+  // this older copy of the app cannot read it and must not write over it.
+  const newerRef = useRef(false);
 
   const persist = useCallback(async (): Promise<void> => {
     if (!enabled || forgottenRef.current) return;
+    if (newerRef.current) {
+      // Said, not done: the work in this tab is not stored, and the badge offers the backup file.
+      setSaveState({ kind: 'failed', reason: 'newer' });
+      return;
+    }
     const { project: current, title: currentTitle, bindings: currentBindings } = latest.current;
     if (current.clips.length === 0 && currentBindings.length === 0 && currentTitle === '') {
       return;
@@ -90,6 +98,10 @@ export function useProjectPersistence({ project, title, bindings, onRestore, ena
       if (cancelled) return;
 
       if (!result.ok) {
+        if (result.reason === 'newer') {
+          newerRef.current = true;
+          setSaveState({ kind: 'failed', reason: 'newer' });
+        }
         setLoadFailure(result.reason);
         setRestored(true);
         restoredRef.current = true;
@@ -143,7 +155,8 @@ export function useProjectPersistence({ project, title, bindings, onRestore, ena
    * one the browser refused. A saved project needs no warning, and the browser
    * decides whether to show this at all — we never promise recovery.
    */
-  const atRisk = saveState.kind === 'saving' || saveState.kind === 'failed';
+  // Not for 'newer': there the way out IS reloading the page, and nothing was refused that a retry could save.
+  const atRisk = saveState.kind === 'saving' || (saveState.kind === 'failed' && saveState.reason !== 'newer');
   useEffect(() => {
     if (!atRisk) return undefined;
     const handler = (event: BeforeUnloadEvent) => {
@@ -191,7 +204,11 @@ export function useProjectPersistence({ project, title, bindings, onRestore, ena
     const result = await storeRef.current.remove(latest.current.project.projectId);
     // Not deleted: saving goes on, so the header keeps telling the truth.
     if (!result.ok) forgottenRef.current = false;
-    else setSaveState({ kind: 'idle' });
+    else {
+      // The user deleted the stored project themselves: there is nothing newer left to protect.
+      newerRef.current = false;
+      setSaveState({ kind: 'idle' });
+    }
   }, [enabled]);
 
   return { saveState, restored, loadFailure, downloadBackup, importBackup, forget, persist };

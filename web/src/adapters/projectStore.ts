@@ -24,6 +24,8 @@ export type StoreFailure =
   | 'quota_exceeded'
   /** Read back something that is not a project we can load. */
   | 'corrupt'
+  /** The stored project was written by a newer build of the app: not loaded, and not to be written over. */
+  | 'newer'
   | 'unknown';
 
 export type SaveResult = { ok: true } | { ok: false; reason: StoreFailure };
@@ -86,7 +88,7 @@ export function createIndexedDbStore(): ProjectStore {
         // Stored data is input: an older build or a corrupted row must not be
         // loaded into the editor just because it came from our own database.
         const parsed = parseRecord(raw);
-        if (!parsed.ok) return { ok: false, reason: 'corrupt' };
+        if (!parsed.ok) return { ok: false, reason: parsed.reason === 'edl_newer' ? 'newer' : 'corrupt' };
         return { ok: true, record: parsed.record };
       } catch (error) {
         const message = error instanceof Error ? error.message : '';

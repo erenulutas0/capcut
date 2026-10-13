@@ -167,7 +167,6 @@ export default function YaziWizard(host: WizardHostProps) {
               videoDurationUs={video.durationUs}
               machineMade
               machineNote={cloud?.machineNote}
-              speakers={cloud?.speakers}
               onSeek={seek}
               onEdit={(cueId, text) => {
                 const result = state.updateCaption(cueId, { text });
@@ -185,7 +184,6 @@ export default function YaziWizard(host: WizardHostProps) {
               lines={lines}
               videoName={video.fileName}
               header={cloud?.fileHeader}
-              speakers={cloud?.speakers}
             />
             <p className="wizard-hint">{t('wizard.yazi.editorHint')}</p>
           </>

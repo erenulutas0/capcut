@@ -1,7 +1,8 @@
 # ADR-039 — Bulut yazıya dökme yolu (isteğe bağlı, davetli): yalnız ses çıkar, anahtar bir Worker'da durur
 
 > Tarih: 10 Ekim 2026 · Durum: **ÖNERİ / TASLAK** — hiçbir şey yayında değil, politika değişmedi
-> · 11 Ekim 2026: ilk gerçek ölçüm (ek) · 11 Ekim 2026: **istemci yapıldı, KAPALI doğar** (ek, "İstemci yapıldı");
+> · 11 Ekim 2026: ilk gerçek ölçüm (ek) · 11 Ekim 2026: **istemci yapıldı, KAPALI doğar** (ek, "İstemci yapıldı")
+> · 13 Ekim 2026: konuşmacılar kalıcı, EDL v5 (ek; [ADR-043](ADR-043-speakers-in-recipe.md));
 > Worker yayınlanmadı, durum kurucu yayınlayana kadar taslak kalır
 > İlgili: [ADR-036](ADR-036-on-device-transcript.md) (cihaz üstü yazıya dökme ve "Hâlâ zayıf olan"),
 > `docs/spikes/2026-10-03-asr-on-device-english.md`, `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md`,
@@ -542,6 +543,19 @@ sınırı) hiçbir şey sağlayıcıya geçmediği için böyle bir cümle çık
 7. **Gerçek doğrulama sırası:** önce kurucunun kendi telefonunda, kendi davet koduyla, tek bir
    kısa videoyla (bedeli < 0,01 $) uçtan uca deneme önerilir — yukarıdaki "Doğrulanmayanlar"ın
    ilk dördünü kapatır.
+
+## Ek, 13 Ekim 2026 — konuşmacılar kalıcı (EDL v5, ADR-043)
+
+Yukarıdaki "Konuşmacı etiketleri ve şema" satırı ve "Kurucu kararları"nın 2. maddesi **kapandı**: kurucu
+onayıyla konuşan artık satırın kendisinde saklanıyor (`speaker`, 1–20; [ADR-043](ADR-043-speakers-in-recipe.md)).
+"1. kişi / 2. kişi" editörün "Yazı" panelinde, yedek dosyasında ve yenilemeden sonra da var; TXT ve VTT
+taşır, SRT ve yakılan altyazı taşımaz. `speakersByCue` (etiketleri sihirbazın belleğinde tutan eşleme)
+kaldırıldı. "İnternette yazıldı" etiketi hâlâ tarife yazılmıyor. Bu ekte değişmeyenler: Worker, sözleşme,
+rıza ekranı, giden ses, hata iletileri; yol varsayılan derlemede hâlâ kapalı.
+
+**Yolu açmadan önce bilinmesi gereken** (ADR-043 "Bulunan"): sihirbaz proje saklamadığı için internette
+yazılan yazı, sihirbazın (ya da ondan açılan editörün) sayfası yenilenince gider; kalıcı olmasının bugünkü
+tek yolu yedek dosyasıdır.
 
 ## Doğrulanmayanlar (10 Ekim taslağı)
 

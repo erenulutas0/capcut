@@ -42,6 +42,8 @@ export const en: Record<MessageKey, string> = {
   'store.fail.blocked': 'Local saving was blocked by another tab.',
   'store.fail.quota_exceeded': 'The browser has run out of storage.',
   'store.fail.corrupt': 'The saved project could not be read; it may be corrupted.',
+  'store.fail.newer':
+    'This project was saved by a newer version. Reload the page. What you do on this page is not saved.',
   'store.fail.unknown': 'An unknown error occurred while saving locally.',
 
   'relink.title': 'This project\u2019s video is not open.',

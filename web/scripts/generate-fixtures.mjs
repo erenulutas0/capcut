@@ -57,15 +57,20 @@ const captionTrack = (cues, patch = {}) => ({
   ...patch,
 });
 
-const cue = (cueId, inS, outS, text) => ({
+const cue = (cueId, inS, outS, text, extra = {}) => ({
   cueId,
   startUs: Math.round(inS * S),
   endUs: Math.round(outS * S),
   text,
+  ...extra,
 });
 
+/** A source-anchored transcript track (v3), as the cloud route writes it: Turkish, no unclear spans. */
+const spokenTrack = (cues, patch = {}) =>
+  captionTrack(cues, { timeBase: 'source', assetId: 'a_video_001', origin: 'transcript', ...patch });
+
 const project = (patch = {}) => ({
-  schemaVersion: 4,
+  schemaVersion: 5,
   projectId: 'p_fixture_001',
   revision: 1,
   assets: [videoAsset],
@@ -78,7 +83,7 @@ const project = (patch = {}) => ({
 
 /** The canonical doc-10 example: two ranges -> 10 s, music 5-15 s. */
 const docExample = {
-  schemaVersion: 4,
+  schemaVersion: 5,
   projectId: 'p_example_001',
   revision: 3,
   assets: [videoAsset, musicAsset],
@@ -206,6 +211,30 @@ const valid = {
     captionTracks: [captionTrack([cue('q_001', 0, 2, 'Daha net')])],
     enhance: { strength: 'strong' },
   }),
+  // v5 (ADR-043): a transcript that told voices apart. Each line may name its
+  // speaker by position (1 = the first voice heard); a line typed by hand
+  // afterwards (q_004) names none.
+  'caption-transcript-speakers': project({
+    clips: [clip('c_001', 0, 14)],
+    captionTracks: [
+      spokenTrack([
+        cue('q_001', 1, 3.2, 'Merhaba, başlayalım mı?', { speaker: 1 }),
+        cue('q_002', 3.4, 5, 'Olur, hazırım.', { speaker: 2 }),
+        cue('q_003', 5.2, 8, `Önce sesi ayırıyoruz,${LF}sonra yazı geliyor.`, { speaker: 1 }),
+        cue('q_004', 9, 11, 'Elle yazılan satır'),
+      ]),
+    ],
+  }),
+  // The highest speaker number there is, on an output-time transcript track
+  // (a transcript converted to the joined video keeps its speakers), with
+  // lines that were removed around it: numbers need not start at 1 or be dense.
+  'caption-transcript-speaker-highest': project({
+    captionTracks: [
+      captionTrack([cue('q_001', 0, 2, 'Son konuşan', { speaker: 20 }), cue('q_002', 2, 3.5, 'Üçüncü konuşan', { speaker: 3 })], {
+        origin: 'transcript',
+      }),
+    ],
+  }),
 };
 
 const invalid = {
@@ -303,7 +332,45 @@ const invalid = {
     }),
     ['asset_kind_mismatch'],
   ],
-  'future-schema': [project({ schemaVersion: 5 }), ['schema_version_unsupported']],
+  'future-schema': [project({ schemaVersion: 6 }), ['schema_version_unsupported']],
+  // v5 (ADR-043): a line's speaker is a whole number from 1 to 20, and only a transcript track has one.
+  'caption-speaker-zero': [
+    project({ captionTracks: [spokenTrack([cue('q_001', 0, 2, 'sıfır', { speaker: 0 })])] }),
+    ['caption_speaker_invalid'],
+  ],
+  'caption-speaker-too-high': [
+    project({ captionTracks: [spokenTrack([cue('q_001', 0, 2, 'yirmi bir', { speaker: 21 })])] }),
+    ['caption_speaker_invalid'],
+  ],
+  'caption-speaker-not-integer': [
+    project({ captionTracks: [spokenTrack([cue('q_001', 0, 2, 'buçuk', { speaker: 1.5 })])] }),
+    ['caption_speaker_invalid'],
+  ],
+  'caption-speaker-not-a-number': [
+    project({ captionTracks: [spokenTrack([cue('q_001', 0, 2, 'ad', { speaker: 'Ayşe' })])] }),
+    ['caption_speaker_invalid'],
+  ],
+  'caption-speaker-null': [
+    project({ captionTracks: [spokenTrack([cue('q_001', 0, 2, 'boş', { speaker: null })])] }),
+    ['caption_speaker_invalid'],
+  ],
+  'caption-speaker-on-manual-track': [
+    project({ captionTracks: [captionTrack([cue('q_001', 0, 2, 'elle', { speaker: 1 })])] }),
+    ['caption_track_invalid'],
+  ],
+  'caption-speaker-on-imported-track': [
+    project({
+      captionTracks: [
+        captionTrack([cue('q_001', 0, 2, 'dosyadan', { speaker: 1 })], { timeBase: 'source', assetId: 'a_video_001', origin: 'imported' }),
+      ],
+    }),
+    ['caption_track_invalid'],
+  ],
+  // The speaker is on the line, not on the track: there is no track-level list or count.
+  'caption-track-speakers-field': [
+    project({ captionTracks: [spokenTrack([cue('q_001', 0, 2, 'iz', { speaker: 1 })], { speakers: 2 })] }),
+    ['unknown_field'],
+  ],
   // v4 (ADR-037): the enhancement setting is `{ strength }` with a known strength, nothing else.
   'enhance-unknown-strength': [project({ enhance: { strength: 'max' } }), ['enhance_invalid']],
   'enhance-unknown-field': [project({ enhance: { strength: 'auto', sharpen: 2 } }), ['unknown_field']],
@@ -445,8 +512,9 @@ mkdirSync(join(root, 'invalid'), { recursive: true });
 mkdirSync(join(root, 'legacy-v1'), { recursive: true });
 mkdirSync(join(root, 'legacy-v2'), { recursive: true });
 mkdirSync(join(root, 'legacy-v3'), { recursive: true });
+mkdirSync(join(root, 'legacy-v4'), { recursive: true });
 
-const manifest = { schemaVersion: 4, valid: [], invalid: [], legacy: [] };
+const manifest = { schemaVersion: 5, valid: [], invalid: [], legacy: [] };
 
 // Valid recipes the export refuses as they are (ADR-021): the reason the
 // render plan gives. Every other valid fixture is not checked for export here.
@@ -514,6 +582,24 @@ const legacyV3 = {
 for (const [name, [value, expect]] of Object.entries(legacyV3)) {
   writeFileSync(join(root, 'legacy-v3', `${name}.json`), `${JSON.stringify(value, null, 2)}${LF}`);
   manifest.legacy.push({ file: `legacy-v3/${name}.json`, expect });
+}
+
+// v4 recipes (ADR-037), as every build before ADR-043 wrote them — the
+// build that is live at the time of writing among them. v5 only adds the
+// optional `speaker` of a transcript line, so migration changes the number
+// and nothing else.
+const asV4 = (value) => ({ ...value, schemaVersion: 4 });
+const legacyV4 = {
+  'single-clip': [asV4(project()), 'valid'],
+  'doc10-example': [asV4(docExample), 'valid'],
+  'caption-transcript-unclear': [asV4(valid['caption-transcript-unclear']), 'valid'],
+  'enhance-light-with-music': [asV4(valid['enhance-light-with-music']), 'valid'],
+  // A "v4" whose line names a speaker is not something any build wrote.
+  'v4-with-speaker': [asV4(valid['caption-transcript-speakers']), 'invalid'],
+};
+for (const [name, [value, expect]] of Object.entries(legacyV4)) {
+  writeFileSync(join(root, 'legacy-v4', `${name}.json`), `${JSON.stringify(value, null, 2)}${LF}`);
+  manifest.legacy.push({ file: `legacy-v4/${name}.json`, expect });
 }
 
 for (const [name, [value, codes]] of Object.entries(invalid)) {

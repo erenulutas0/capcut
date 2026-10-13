@@ -51,7 +51,7 @@ const option = (name) => {
 /** Where the fake Worker of the cloud walkthrough listens (tests/cloud/cloudKit.ts): the cloud build is given this origin. */
 const FAKE_WORKER_ORIGIN = 'http://127.0.0.1:38197';
 export const SECTIONS = [
-  { id: 'walkthrough', results: ['walkthrough', 'walkthrough-yazi', 'walkthrough-yazi-bulut'], runs: [
+  { id: 'walkthrough', results: ['walkthrough', 'walkthrough-yazi', 'walkthrough-yazi-bulut', 'walkthrough-yazi-bulut-kisiler'], runs: [
     { build: 'cloud', spec: 'walkthrough-yazi-bulut.spec.ts', projects: ['desktop', 'phone'] },
     { build: 'hooks', spec: 'walkthrough-yazi.spec.ts', projects: ['desktop', 'phone'] },
     { build: 'static', spec: 'walkthrough.spec.ts', projects: ['desktop', 'phone'] },

@@ -9,14 +9,13 @@ import { readInvite, removeInvite, saveInvite, subscribeInvite, tidyInvite } fro
 import type { CaptionImportResult, ImportedCueInput } from '@/application/commands';
 import { withBasePath } from '@/basePath';
 import { Icon } from '@/components/Icon';
-import { DEFAULT_CAPTION_STYLE, primaryCaptionTrack } from '@/domain/captions';
+import { DEFAULT_CAPTION_STYLE } from '@/domain/captions';
 import {
   cloudCues,
   cloudEstimateMinutes,
   cloudGiveUpMs,
   minutesVerdict,
   parseCloudResult,
-  speakersByCue,
   type CloudFailure,
   type CloudQuota,
 } from '@/domain/cloudTranscript';
@@ -57,8 +56,6 @@ export interface CloudApplied {
   fileHeader: string;
   /** Said at the foot of the result screen instead of "Videon cihazından çıkmaz." */
   footer: string;
-  /** Which voice said which line (line id → 1, 2, …). Lives with the open wizard, not in the recipe. */
-  speakers: ReadonlyMap<string, number>;
 }
 
 export interface CloudRouteProps {
@@ -376,11 +373,11 @@ export default function CloudRoute({ video, transcription, apply, deviceSteps, s
     const cues = cloudCues(result, video.durationUs, CUE_RULES, fits);
     if (signal.aborted) return fail('canceled');
     if (cues.length === 0) return fail('empty');
+    // Each line goes in with the voice that said it: the recipe stores it (EDL v5, ADR-043).
     const applied = apply(cues, [], result.language ?? undefined);
     if (!applied.ok) return fail(applied.reason === 'caption_import_empty' ? 'empty' : 'internal_error');
 
     // The result is on screen from this moment (the wizard shows the transcript): its words go with it at once.
-    const stored = primaryCaptionTrack(applied.project)?.cues ?? [];
     const sentences = [
       fill(ct('cloud.done'), { lines: String(applied.report.imported) }),
       applied.report.skipped.length > 0 ? fill(ct('cloud.done.skipped'), { n: String(applied.report.skipped.length) }) : '',
@@ -393,7 +390,6 @@ export default function CloudRoute({ video, transcription, apply, deviceSteps, s
       machineNote: ct('cloud.machine'),
       fileHeader: ct('cloud.file.header'),
       footer: ct('cloud.footer.sent'),
-      speakers: speakersByCue(cues, stored),
     };
     // This attempt is over: the wizard now shows the transcript and takes this screen away, which must not
     // read as "stopped in the middle".

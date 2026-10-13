@@ -237,7 +237,8 @@ describe('stored records', () => {
         [{ ...videoOnly, clips: undefined }, 'missing_field'],
         [{ ...videoOnly, clips: 'none' }, 'missing_field'],
         [{ ...videoOnly, extra: true }, 'unknown_field'],
-        [{ ...videoOnly, schemaVersion: 99 }, 'schema_version_unsupported'],
+        [{ ...videoOnly, schemaVersion: 0 }, 'schema_version_unsupported'],
+        [{ ...videoOnly, schemaVersion: '5' }, 'schema_version_unsupported'],
         [{ ...videoOnly, music: { ...edl.music, assetId: 'a_missing' } }, 'asset_unknown'],
         [{ ...videoOnly, assets: [{ ...videoOnly.assets[0], durationUs: 0 }] }, 'asset_duration_invalid'],
         [{ ...videoOnly, enhance: { mode: 'everything' } }, 'enhance_invalid'],
@@ -267,7 +268,7 @@ describe('stored records', () => {
     });
 
     it('upgrades every older schema the same way', () => {
-      for (const schemaVersion of [2, 3]) {
+      for (const schemaVersion of [2, 3, 4]) {
         const loaded = loadStoredProject({ ...videoOnly, schemaVersion });
         expect(loaded.ok, `v${schemaVersion}`).toBe(true);
         if (loaded.ok) expect(loaded.project.schemaVersion).toBe(edl.schemaVersion);

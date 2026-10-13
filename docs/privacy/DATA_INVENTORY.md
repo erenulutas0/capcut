@@ -404,7 +404,7 @@ açılınca kalan dakikayı sorar (`GET /v1/quota`, kod başlıkta, gövde yok).
 |---|---|---|---|
 | Davet kodu | `localStorage` → `clip.cloudInvite` | Yalnızca "Kodu kaydet"e basılınca **ve** Worker kodu kabul edince. Biçime uymayan kod hiçbir yere gönderilmez ve yazılmaz. | "Davet kodunu kaldır" (seçim ekranında ve `/gizlilik` sayfasında); kod geri çekilmişse bir sonraki açılışta kendiliğinden; tarayıcı verisini temizleyince. |
 | Seçilen yol (cihaz / internet) | **saklanmaz** | — | Her videoda yeniden sorulur. |
-| Konuşmacı etiketleri | yalnızca açık sihirbazın belleği | Sonuç geldiğinde | Sayfa kapanınca; tarife yazılmaz. |
+| Kim konuştu (13 Ekim 2026, ADR-043) | Proje tarifinde, satırın kendisinde: `speaker`, 1–20 arası bir **sıra numarası** (ilk duyulan ses 1). Ad, ses izi ya da sağlayıcının kimliği **değil**. Sihirbazda yalnızca bellekte (sihirbaz proje saklamaz, §2.7); editörde (`/editor`) altyazı satırlarıyla birlikte IndexedDB'de ve proje yedeğinde (§2.1). | Sonuç geldiğinde tarife; depoya yalnızca editörün otomatik kaydıyla | Satır ya da proje silinince; tarayıcı verisi temizlenince. TXT ve VTT dosyalarına "1. kişi" olarak yazılır; SRT'ye ve videoya yazılmaz. |
 
 Kanıt: `cloud-flow.spec.ts` → "never chosen for the user and never remembered" (localStorage'da
 yalnızca `clip.cloudInvite`; sessionStorage boş) ve "the invite code can be removed…".
@@ -425,4 +425,6 @@ zaman silinir, başkalarının sesi, vekilin tuttuğu kayıt, dakika sorgusu, de
   ilk özelliktir; belirlenmeden davetli deneme dışına açılmamalı.
 - Bölge AB kalacak mı (`PROVIDER_REGION`): ekran ve gizlilik metni "Avrupa" diyor.
 - Bulut dakikasının ücretli/ücretsiz/deneme oluşu (politika belgesi 15 — değişmedi).
-- Konuşmacı etiketlerinin kalıcı olması (EDL v5).
+- ~~Konuşmacı etiketlerinin kalıcı olması (EDL v5).~~ — 13 Ekim 2026: yapıldı (ADR-043; §8.4).
+- Kişileri yeniden adlandırma (ADR-043): gelirse tarife **serbest metin** (bir ad) girer; bu envanter
+  ve `/gizlilik` o değişiklikle birlikte güncellenmeli.

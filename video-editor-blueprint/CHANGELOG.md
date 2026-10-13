@@ -3,6 +3,28 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Kim konuştu, kalıcı: EDL v5 — satırda `speaker` — 13 Ekim 2026 (ADR-043; **şema v4 → v5**, politika değişmedi; bulut yolu hâlâ KAPALI)
+
+Kurucu onayıyla (bulut yolunu açmanın parçası). Hiçbir dış hizmete istek gitmedi; bulut sınamaları yalnızca yerel sahte vekile karşı.
+
+**Şema:** transkript izinin satırına isteğe bağlı `speaker` (1–20 arası tam sayı; ilk duyulan ses 1; ad değil sıra). İz düzeyinde alan yok. Yeni hata kodu `caption_speaker_invalid`; transkript olmayan izde `caption_track_invalid`. v1…v4 kayıpsız okunur: **yalnızca numara değişir**, hiçbir geçiş konuşan eklemez. Yeni fixture'lar: 2 geçerli, 8 geçersiz, `legacy-v4/` (5). Belge 10'a "EDL v5" bölümü eklendi.
+
+**Mevcut kullanıcı için:** kayıtlı her proje ilk açılışta v5 olarak yeniden yazılır (otomatik kayıt; v3 → v4'teki ile aynı davranış) — değişen tek şey numara. Bulut yolu kapalı olduğu için hiçbir proje konuşan kazanmaz; ekranda fark yok. v4 yedek dosyaları açılır. **Geri yol yok.**
+
+**Eski kabuk, yeni kayıt:** yayındaki (v4) derleme yüksek numaralı kaydı yüklemez ama "bozuk" sayar, kullanıcıya söylemez ve o sekmede yeni video açılırsa üstüne yazar (dar pencere: yarıda kalmış service worker kurulumu + çevrimdışı açılış; ADR-043 Karar 3). Geriye dönük düzeltilemez. **Bu derlemeden itibaren:** daha yeni bir derlemenin kaydı bozuk kayıttan ayrılır (`edl_newer`), başlık "Bu proje daha yeni bir sürümle saklanmış. Sayfayı yenile. Bu sayfada yaptıkların saklanmaz." der ve otomatik kayıt o sekmede üstüne **yazmaz**.
+
+**Nerede görünür:** "1. kişi / 2. kişi" artık editörün "Yazı" panelinde, yedek dosyasında, yedekten açılan projede ve sayfa yenilenince de var (var olan sunum; yeni arayüz kavramı yok). En az iki ayrı konuşan yoksa etiket yok. **Kurallar:** metni/zamanı değişen satır konuşanını korur; kesit sınırında parçalanan satırın her parçası aynı konuşanı taşır; yalnızca aynı satırın parçaları birleşir; elle eklenen satırın konuşanı yok; altyazı dosyası içe aktarmak ya da cihazda yeniden yazmak konuşanları götürür; "Bunlardan kesit yap" satırlara dokunmaz.
+
+**Dosyalar:** TXT ses değişen satırda adı yazar (değişmedi). **VTT** konuşanı ses etiketiyle taşır (`<v 2. kişi>…`; etiket metnin parçası değildir). **SRT taşımaz** — bayt bayt eskisiyle aynı (SRT'de metnin önüne yazılan ad, dosyayı okuyan her program için metnin kendisi olurdu). **Yakılan altyazı değişmedi:** render planı ve parmak izi alanı okumaz.
+
+**Bulunan (yolu açmadan önce bilinmeli):** bulut yolu yalnızca sihirbazda ve sihirbaz proje saklamıyor (ADR-034); internette yazılan yazı sihirbazın ya da ondan açılan editörün sayfası yenilenince **tamamen** gider. Kalıcı olmasının bugünkü tek yolu yedek dosyası (indir → `/editor`'de geri yükle); konuşanlar bu yolda korunur ve sınanır. Kısaltmak arayüz kararı ister — yapılmadı.
+
+**Açık kurucu kararları:** kişileri yeniden adlandırma (kapsam dışı; şema hazır); SRT'de ve yakılan altyazıda konuşan (bugün yok); bulut yazısının kalıcılığı (yukarıda); "İnternette yazıldı" etiketinin kalıcılığı; v4 → v5 penceresi için ara yayın istenip istenmediği.
+
+**Doğrulanmayan:** gerçek sağlayıcının kişi ayrımı (sahte sunucu duymaz); yayındaki v4 derlemesinin v5 kayıtla davranışı kod okunarak yazıldı, çalıştırılmadı; service worker penceresi gerçek yayınla sınanmadı; VTT ses etiketinin başka oynatıcılardaki görünüşü; gerçek telefon, Safari, Firefox.
+
+**Sayılar (13 Ekim, dal `worktree-agent-a08295f6ffb53c053`; hepsi yerel):** `tsc` ve `eslint` temiz; birim 1341/1341 (77 dosya; 30'u yeni); e2e (olağan derleme) 370 testte 366 geçti / 4 atlandı / 0 başarısız (3'ü yeni); bulut e2e'si (sahte Worker'a karşı) 41 geçti / 4 atlandı (2'si yeni; yeni sınamanın kendisi iki kez düzeltildi, uygulama kodu değişmeden); kalite raporu 641 ölçü: 564 bütçe içinde / 8 dışında (önceki koşulardaki yedi arama ölçüsü ve `out.notFaststart`; yenisi yok) / 5 ölçülemedi, "kim konuştu" tablosu masaüstü ve telefonda 4/4, SRT 0, ekran tabanları değişmedi; durağan çıktı (`/capcut`) derlendi, bulut kodu çıktıda yok. **Koşulmayan:** Pages duman sınaması, tarayıcı matrisi, `cloud/` sınamaları (kod değişmedi), gerçek telefon, gerçek Worker ve sağlayıcı. Mevcut kullanıcı haklarına etkisi: fiyat, kota, süre değişmedi; kayıtlı projeler ilk açılışta v5 numarasıyla yeniden yazılır ve yayındaki (v4) derlemeye geri okunamaz.
+
 ## Beklenmeyen indirme hatası artık okunur; yerinde sayan indirme hata olarak biter — 12 Ekim 2026 (ADR-042; politika ve şema değişmedi)
 
 **Olay (11 Ekim):** kurucunun makinesinde bulutta yazılan 4 dk 13 sn'lik videonun "Altyazılı videoyu indir"i bir kez "Beklenmeyen bir hata oluştu" ile bitti, ikinci basışta kaydedildi. Geriye bilgi kalmamıştı. **Neden bulunamadı:** 161 taze sayfa denemesinde (Chrome 154 ve Edge 155 donanım kodlayıcısıyla, Playwright Chromium; oynayan önizleme, işlemci yükü, koşut sayfalar, cihazda yazılmış yazı, 1080p dosya, bekletilmiş yazı) **0 hata**. Kendiliğinden yeniden deneme **eklenmedi** (hangi hatanın geçici olduğu bilinmiyor).

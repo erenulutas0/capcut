@@ -194,12 +194,42 @@ function escapeVtt(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/** A cue to write: times, text, and — for a transcript that told voices apart — who said it (EDL v5). */
+export interface WrittenCue extends ParsedCue {
+  speaker?: number;
+}
+
+/**
+ * The name of a voice inside a WebVTT voice tag (`<v name>`): one line, and
+ * none of the characters that would end the tag or start an entity.
+ */
+function voiceName(label: string): string {
+  return label.replace(/[<>&\r\n]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 /**
  * Writes cues (already on the clock the file is meant for, sorted, non
  * overlapping) as SRT (CRLF, the most compatible form) or WebVTT (LF).
  * Styling is not written: SRT/VTT cannot promise it in every player.
+ *
+ * Speakers (ADR-043). `voice` names a speaker ("1. kişi"); give it only for
+ * a transcript that tells voices apart.
+ * - WebVTT has a place for it: every line with a speaker is written as a
+ *   voice span, `<v 1. kişi>text`. A player shows the text; one that knows
+ *   voices can show or style the name. It is not part of the text — this
+ *   app's own reader (`stripSubtitleMarkup`) and every other one drops the
+ *   tag — so a VTT that is read back in, or burned in elsewhere, shows the
+ *   words only.
+ * - SRT has no such place. A "1. kişi: " in front of the words would BE the
+ *   words for every program that reads the file (and would be burned into
+ *   the picture by one that does that). So SRT is written without speakers:
+ *   byte for byte what it was before v5.
  */
-export function serializeSubtitles(cues: readonly ParsedCue[], format: SubtitleFormat): string {
+export function serializeSubtitles(
+  cues: readonly WrittenCue[],
+  format: SubtitleFormat,
+  voice?: (speaker: number) => string,
+): string {
   if (format === 'srt') {
     const eol = CR + LF;
     return cues
@@ -211,11 +241,14 @@ export function serializeSubtitles(cues: readonly ParsedCue[], format: SubtitleF
       .join(eol);
   }
   const body = cues
-    .map(
-      (cue) =>
+    .map((cue) => {
+      const name = voice && cue.speaker !== undefined ? voiceName(voice(cue.speaker)) : '';
+      // The span covers the whole cue, so its end tag may be left out (WebVTT, "cue voice span").
+      return (
         `${formatSubtitleTimestamp(cue.startUs, 'vtt')} --> ${formatSubtitleTimestamp(cue.endUs, 'vtt')}${LF}` +
-        `${escapeVtt(cue.text)}${LF}`,
-    )
+        `${name ? `<v ${name}>` : ''}${escapeVtt(cue.text)}${LF}`
+      );
+    })
     .join(LF);
   return `WEBVTT${LF}${LF}${body}`;
 }

@@ -12,6 +12,7 @@
  * english.md), fixed before its validation clips were made.
  */
 
+import { tellsVoicesApart } from './captions';
 import type { CaptionTrackV2 } from './edl';
 import type { SpeechSpan } from './speechSpans';
 import { US_PER_SECOND, type Micros } from './time';
@@ -165,7 +166,16 @@ export interface UnclearRange {
 }
 
 export type TranscriptLine =
-  | { kind: 'cue'; key: string; cueId: string; startUs: Micros; endUs: Micros; text: string }
+  | {
+      kind: 'cue';
+      key: string;
+      cueId: string;
+      startUs: Micros;
+      endUs: Micros;
+      text: string;
+      /** The voice that said the line, as the recipe stores it (v5, ADR-043); absent when not known. */
+      speaker?: number;
+    }
   | { kind: 'unclear'; key: string; startUs: Micros; endUs: Micros };
 
 /**
@@ -182,6 +192,7 @@ export function transcriptLines(track: Pick<CaptionTrackV2, 'cues' | 'unclear'> 
     startUs: cue.startUs,
     endUs: cue.endUs,
     text: cue.text,
+    ...(cue.speaker === undefined ? {} : { speaker: cue.speaker }),
   }));
   for (const range of track.unclear ?? []) {
     const covered = track.cues.some((cue) => cue.startUs < range.endUs && range.startUs < cue.endUs);
@@ -289,24 +300,26 @@ export function transcriptText(
 }
 
 /**
- * Where the voice changes (ADR-039): the lines at which a speaker's number is
- * shown — the first line of every turn, nothing on the lines that follow it.
- * Empty unless at least two voices are told apart: "1. kişi" on a video with
- * one speaker says nothing.
+ * Where the voice changes (ADR-039, ADR-043): the lines at which a speaker's
+ * number is shown — the first line of every turn, nothing on the lines that
+ * follow it. The numbers are the lines' own (`speaker`, stored in the recipe
+ * since v5), so the same labels show in the wizard, in the editor and after
+ * a reload. Empty unless at least two voices are told apart: "1. kişi" on a
+ * video with one speaker says nothing.
+ *
+ * A line without a speaker (typed by hand, or an unclear span) neither shows
+ * a label nor ends a turn: the next line of the same voice is not labelled
+ * again.
  */
-export function speakerTurns(
-  lines: readonly TranscriptLine[],
-  speakers: ReadonlyMap<string, number> | undefined,
-): Map<string, number> {
+export function speakerTurns(lines: readonly TranscriptLine[]): Map<string, number> {
   const turns = new Map<string, number>();
-  if (!speakers || new Set(speakers.values()).size < 2) return turns;
+  const said = lines.filter((line) => line.kind === 'cue');
+  if (!tellsVoicesApart(said)) return turns;
   let previous: number | null = null;
-  for (const line of lines) {
-    if (line.kind !== 'cue') continue;
-    const speaker = speakers.get(line.cueId);
-    if (speaker === undefined || speaker === previous) continue;
-    turns.set(line.key, speaker);
-    previous = speaker;
+  for (const line of said) {
+    if (line.speaker === undefined || line.speaker === previous) continue;
+    turns.set(line.key, line.speaker);
+    previous = line.speaker;
   }
   return turns;
 }

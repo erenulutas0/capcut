@@ -36,6 +36,7 @@ import {
 } from '@/domain/subtitleFormats';
 import type { Micros } from '@/domain/time';
 import { totalOutputDurationUs } from '@/domain/timeline';
+import { voiceNames } from '@/components/transcript/speakerLabel';
 import type { MessageKey } from '@/i18n/messages';
 import { Dialog } from './Dialog';
 
@@ -663,7 +664,7 @@ export function CaptionExportSection({ t, project, title }: { t: T; project: Pro
 
   const download = (format: SubtitleFormat) => {
     if (empty) return;
-    const blob = new Blob([serializeSubtitles(cues, format)], { type: MIME[format] });
+    const blob = new Blob([serializeSubtitles(cues, format, voiceNames(t, project))], { type: MIME[format] });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;

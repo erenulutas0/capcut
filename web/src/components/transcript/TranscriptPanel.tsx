@@ -25,6 +25,7 @@ import {
 import type { Micros } from '@/domain/time';
 import { WINDOW_FROM_ROWS, nextMatch, rowOffsets, searchLines, visibleRows } from '@/domain/virtualList';
 import type { MessageKey } from '@/i18n/messages';
+import { speakerLabel } from './speakerLabel';
 import { fillText } from './TranscribeSteps';
 
 type T = (key: MessageKey) => string;
@@ -47,11 +48,6 @@ interface Props {
   machineMade: boolean;
   /** Said instead of the usual machine note (the cloud route: "İnternette yazıldı — …"). */
   machineNote?: string;
-  /**
-   * Which voice said which line (line id → 1, 2, …), when the transcript tells voices apart (the cloud
-   * route, ADR-039). Shown where the voice changes. Not part of the recipe: it lives with the open result.
-   */
-  speakers?: ReadonlyMap<string, number>;
   onSeek: (us: Micros) => void;
   /** Fixes a line's text. Absent: the lines cannot be edited here. */
   onEdit?: (cueId: string, text: string) => LineEditOutcome;
@@ -304,14 +300,14 @@ export function TranscriptPanel({
   videoDurationUs,
   machineMade,
   machineNote,
-  speakers,
   onSeek,
   onEdit,
   onWriteUnclear,
   onMakeKesitler,
   headingId,
 }: Props) {
-  const turns = useMemo(() => speakerTurns(lines, speakers), [lines, speakers]);
+  // Who speaks is on the lines themselves (the recipe stores it, ADR-043): the same labels here, in the editor and after a reload.
+  const turns = useMemo(() => speakerTurns(lines), [lines]);
   const listRef = useRef<HTMLUListElement | null>(null);
   const [focusRow, setFocusRow] = useState(0);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
@@ -798,7 +794,7 @@ export function TranscriptPanel({
                 editable={line.kind === 'cue' ? onEdit !== undefined : onWriteUnclear !== undefined}
                 editing={editing?.key === line.key}
                 editError={editing?.key === line.key ? editing.error : null}
-                speaker={turns.has(line.key) ? fillText(t('transcript.speaker'), { n: String(turns.get(line.key)) }) : null}
+                speaker={turns.has(line.key) ? speakerLabel(t, turns.get(line.key) as number) : null}
                 match={matchSet.has(index)}
                 found={foundRow === index}
                 pinnedTop={offsets && outside(index) ? (offsets[index] as number) : null}

@@ -26,6 +26,7 @@ import {
   DEFAULT_CAPTION_STYLE,
   captionTextProblem,
   isCaptionLanguage,
+  isCaptionSpeaker,
   normalizeCaptionText,
   outputCues,
   overlappingCue,
@@ -555,7 +556,8 @@ export function updateCaptionCue(
     cueId,
     project: withTrack(project, (track) => ({
       ...track,
-      cues: track.cues.map((cue) => (cue.cueId === cueId ? { cueId, ...resolved.cue } : cue)),
+      // The words or the times of the line changed; who said it did not (v5, ADR-043).
+      cues: track.cues.map((cue) => (cue.cueId === cueId ? { ...cue, ...resolved.cue } : cue)),
     })),
   };
 }
@@ -610,14 +612,24 @@ export type CaptionConversionResult =
 
 type CuePiece = Omit<CaptionCueV2, 'cueId'> & { from: string };
 
-/** Keeps the original id on the first piece of each cue; later pieces get fresh ids. */
+/**
+ * Keeps the original id on the first piece of each cue; later pieces get fresh ids.
+ * Every piece of a line keeps the line's speaker (v5, ADR-043): cutting a
+ * sentence in two does not change who said it.
+ */
 function reassignIds(pieces: readonly CuePiece[]): CaptionCueV2[] {
   const used = new Set<string>();
   const taken = pieces.map((piece) => piece.from);
   return pieces.map((piece) => {
     const cueId = used.has(piece.from) ? nextId('q', [...taken, ...used]) : piece.from;
     used.add(cueId);
-    return { cueId, startUs: piece.startUs, endUs: piece.endUs, text: piece.text };
+    return {
+      cueId,
+      startUs: piece.startUs,
+      endUs: piece.endUs,
+      text: piece.text,
+      ...(piece.speaker === undefined ? {} : { speaker: piece.speaker }),
+    };
   });
 }
 
@@ -651,7 +663,15 @@ export function convertCaptionTimeBase(
     for (const cue of shown) appearances.set(cue.cueId, (appearances.get(cue.cueId) ?? 0) + 1);
     const unused = track.cues.filter((cue) => !appearances.has(cue.cueId)).length;
     const split = [...appearances.values()].filter((count) => count > 1).length;
-    const cues = reassignIds(kept.map((cue) => ({ ...cue, from: cue.cueId })));
+    const cues = reassignIds(
+      kept.map((cue) => ({
+        from: cue.cueId,
+        startUs: cue.startUs,
+        endUs: cue.endUs,
+        text: cue.text,
+        ...(cue.speaker === undefined ? {} : { speaker: cue.speaker }),
+      })),
+    );
     return {
       ok: true,
       report: { split, dropped: unused + (shown.length - kept.length) },
@@ -684,7 +704,7 @@ export function convertCaptionTimeBase(
       const previous = mine[mine.length - 1];
       // Consecutive moments that are contiguous in the file: one line again.
       if (previous && previous.endUs === startUs) previous.endUs = endUs;
-      else mine.push({ from: cue.cueId, startUs, endUs, text: cue.text });
+      else mine.push({ from: cue.cueId, startUs, endUs, text: cue.text, ...(cue.speaker === undefined ? {} : { speaker: cue.speaker }) });
     }
     const long = mine.filter((piece) => piece.endUs - piece.startUs >= CAPTION_LIMITS.minCueDurationUs);
     dropped += mine.length === 0 ? 1 : mine.length - long.length;
@@ -746,6 +766,13 @@ export interface ImportedCueInput {
   startUs: Micros;
   endUs: Micros;
   text: string;
+  /**
+   * Transcripts only (v5, ADR-043): the voice that said the line, 1 for the
+   * first one heard. Kept when it is a number the recipe can hold; anything
+   * else (null, 0, 21, 1.5) is left off rather than bent into range. A
+   * subtitle file never sets it.
+   */
+  speaker?: number | null;
 }
 
 export type ImportSkipReason =
@@ -793,7 +820,8 @@ export function importCaptionTrack(
  * could be written" is a result, not a failure. One undo step.
  *
  * `language`: the on-device recogniser writes English only; the cloud route
- * (ADR-039) passes the language the provider named.
+ * (ADR-039) passes the language the provider named — and, on each line, the
+ * voice that said it (`speaker`, v5), which is stored with the line.
  */
 export function applyTranscriptTrack(
   project: Project,
@@ -852,7 +880,7 @@ function replaceCaptionTrack(
     else if (accepted.length >= CAPTION_LIMITS.maxCuesPerTrack) reason = 'caption_limit_exceeded';
 
     if (reason) skipped.push({ index, reason });
-    else accepted.push({ startUs, endUs, text });
+    else accepted.push({ startUs, endUs, text, ...(transcript && isCaptionSpeaker(cue.speaker) ? { speaker: cue.speaker } : {}) });
   }
   skipped.sort((a, b) => a.index - b.index);
   const report = { imported: accepted.length, skipped };

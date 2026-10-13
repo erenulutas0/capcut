@@ -1,11 +1,12 @@
 /**
- * EDL v4 — the canonical, portable editing recipe (doc 10).
+ * EDL v5 — the canonical, portable editing recipe (doc 10).
  *
  * v2 = v1 + `captionTracks` (ADR-015). v3 = v2 + caption tracks written by
  * the on-device transcript (ADR-036): `origin: 'transcript'`, the spans that
  * could not be written (`unclear`), and a higher line limit. v4 = v3 + the
- * optional `enhance` setting ("İyileştir", ADR-037). Everything else is
- * unchanged, so v1, v2 and v3 recipes are read through `migrateProject`
+ * optional `enhance` setting ("İyileştir", ADR-037). v5 = v4 + an optional
+ * `speaker` on a line of a transcript track (ADR-043). Everything else is
+ * unchanged, so v1 … v4 recipes are read through `migrateProject`
  * (migration.ts) and never rejected.
  *
  * It carries asset *identities* and edit semantics only. Local URIs, blob URLs,
@@ -15,7 +16,7 @@
 
 import type { Micros } from './time';
 
-export const EDL_SCHEMA_VERSION = 4;
+export const EDL_SCHEMA_VERSION = 5;
 
 export type AssetKind = 'video' | 'audio';
 export type AspectRatio = '9:16' | '16:9' | '1:1';
@@ -99,6 +100,15 @@ export interface CaptionCueV2 {
   endUs: Micros;
   /** Plain text, canonical form (see `normalizeCaptionText`); never markup. */
   text: string;
+  /**
+   * v5 (ADR-043), transcript tracks only: which voice said this line, when
+   * the transcript told voices apart (the cloud route, ADR-039). A position,
+   * not a name: 1 is the first voice heard in the video, 2 the next, … up to
+   * `CAPTION_LIMITS.maxSpeakers`. Absent: not known (every line written on
+   * the device, typed by hand or read from a file). It is shown beside the
+   * line and written to the text and VTT files; it is never drawn on the video.
+   */
+  speaker?: number;
 }
 
 /**
@@ -157,6 +167,11 @@ export interface EnhanceV4 {
 }
 
 export const ENHANCE_STRENGTHS_V4: readonly EnhanceStrengthV4[] = ['light', 'auto', 'strong'];
+
+/** The v4 recipe (ADR-037): the same shape, before a line could name its speaker. */
+export interface LegacyProjectV4 extends Omit<Project, 'schemaVersion'> {
+  schemaVersion: 4;
+}
 
 /** The v3 recipe (ADR-036): the same shape, before `enhance` existed. */
 export interface LegacyProjectV3 extends Omit<Project, 'schemaVersion' | 'enhance'> {

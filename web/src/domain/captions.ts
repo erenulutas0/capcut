@@ -26,7 +26,33 @@ export const CAPTION_LIMITS = {
   maxLines: 2,
   /** Below this a line flashes by unread. */
   minCueDurationUs: 200_000,
+  /**
+   * v5 (ADR-043): a line's `speaker` is 1 … this. More voices than this are
+   * not told apart (a label per line would say nothing any more); the cloud
+   * route leaves the speaker off the lines of a twenty-first voice.
+   */
+  maxSpeakers: 20,
 } as const;
+
+/** A stored `speaker` (v5): a whole number from 1 to `maxSpeakers`. */
+export function isCaptionSpeaker(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= CAPTION_LIMITS.maxSpeakers;
+}
+
+/**
+ * Whether the lines tell voices apart at all: at least two different
+ * speakers among them. Below that no label is shown or written anywhere —
+ * "1. kişi" on a video with one voice says nothing.
+ */
+export function tellsVoicesApart(cues: readonly { speaker?: number | undefined }[]): boolean {
+  let first: number | null = null;
+  for (const cue of cues) {
+    if (cue.speaker === undefined) continue;
+    if (first === null) first = cue.speaker;
+    else if (cue.speaker !== first) return true;
+  }
+  return false;
+}
 
 export const DEFAULT_CAPTION_STYLE: CaptionStyleV2 = {
   preset: 'box',
@@ -139,6 +165,8 @@ export interface OutputCue {
   startUs: Micros;
   endUs: Micros;
   text: string;
+  /** The line's speaker (v5), carried for the files that can name a voice (VTT). The video never draws it. */
+  speaker?: number;
 }
 
 /**
@@ -173,6 +201,7 @@ export function outputCues(project: Project): OutputCue[] {
         startUs: entry.startUs + (from - entry.sourceInUs),
         endUs: entry.startUs + (to - entry.sourceInUs),
         text: cue.text,
+        ...(cue.speaker === undefined ? {} : { speaker: cue.speaker }),
       });
     }
   }

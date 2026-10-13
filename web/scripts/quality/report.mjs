@@ -159,6 +159,7 @@ function sectionWalkthrough(results, M) {
   const parts = partsOf(results, 'walkthrough');
   const standIn = partsOf(results, 'walkthrough-yazi');
   const fakeCloud = partsOf(results, 'walkthrough-yazi-bulut');
+  const fakeCloudSpeakers = partsOf(results, 'walkthrough-yazi-bulut-kisiler');
   if (parts.length === 0) {
     M.add('walkthrough', 'walk.run', 'Görev yürüyüşleri', null, { note: 'bu bölümün sonuç dosyası yok (koşulmadı)' });
     return { md: '_Bu bölüm koşulmadı._\n', head };
@@ -370,6 +371,45 @@ function sectionWalkthrough(results, M) {
       ...task.unreachable.map((item) => `- ${task.project}: adıyla bulunamadı: ${item}`),
     ]);
     if (notes.length > 0) out.push(`\n${[...new Set(notes)].join('\n')}\n`);
+  }
+
+  // Speakers that survive (EDL v5, ADR-043): the same fake, the same build.
+  out.push('\n**“Kim konuştu” kalıcı mı — SAHTE SUNUCUYA KARŞI (bulut derlemesi; yayındaki sitede bu yol yok)**\n');
+  if (fakeCloudSpeakers.length === 0) {
+    out.push('_Koşulmadı._\n');
+    M.add('walkthrough', 'walk.fakecloud.speakers.run', '“Kim konuştu” kalıcılığı (sahte sunucuya karşı)', null, { note: 'sonuç dosyası yok (koşulmadı)' });
+  } else {
+    out.push(
+      'Betikteki yazıda iki kişi dört sırayla konuşur; yazının gösterildiği her yerde dört etiket beklenir (“1. kişi”, “2. kişi”, “1. kişi”, “2. kişi”). ' +
+        'Sayılan: doğru yerde duran doğru etiket. Sihirbazın işi tarayıcıya kaydedilmez (ADR-034); yazı kalıcı projeye **yedek dosyasıyla** geçer — ' +
+        '“yedekten açılan editör” ve “sayfa yenilenince” sütunları o yolu ölçer. Altyazı dosyalarında: VTT konuşanı ses etiketiyle taşır, SRT taşımaz (ADR-043). ' +
+        'Sahte sunucu kimin konuştuğunu DUYMAZ; betikte yazanı döndürür — gerçek sunucunun kişileri ne kadar doğru ayırdığı hakkında hiçbir şey söylemez.\n',
+    );
+    const speakerCell = (project, key, label, value) =>
+      M.cell('walkthrough', `walk.fakecloud.${project}.speakers.${key}`, `“Kim konuştu” (sahte sunucu): ${label}`, value, { format: (v) => num(v, 0), note: 'betik bu adıma ulaşamadı' });
+    out.push(
+      table(
+        ['Görünüm', 'Beklenen', 'Sonuç ekranı', 'Editör', 'Yedek dosyası (satır)', 'Yedekten açılan editör', 'Yenilemeden sonra depoda (satır)', 'Sayfa yenilenince', 'VTT ses etiketi', 'SRT’de “kişi”'],
+        fakeCloudSpeakers.map((part) => {
+          const s = part.data.speakers;
+          const project = part.part;
+          return [
+            project === 'phone' ? 'telefon' : 'masaüstü',
+            num(s.expected, 0),
+            speakerCell(project, 'wizard', 'sonuç ekranında etiket', s.wizard),
+            speakerCell(project, 'editor', 'editörde etiket', s.editor),
+            speakerCell(project, 'backupFile', 'yedek dosyasında konuşanı yazılı satır', s.backupFile),
+            speakerCell(project, 'restoredEditor', 'yedekten açılan editörde etiket', s.restoredEditor),
+            speakerCell(project, 'storedAfterReload', 'yenilemeden sonra depoda konuşanı yazılı satır', s.storedAfterReload),
+            speakerCell(project, 'afterReload', 'sayfa yenilenince etiket', s.afterReload),
+            speakerCell(project, 'vttVoices', 'VTT dosyasında ses etiketi', s.vttVoices),
+            speakerCell(project, 'srtMentions', 'SRT dosyasında “kişi”', s.srtMentions),
+          ];
+        }),
+      ),
+    );
+    const stops = fakeCloudSpeakers.filter((part) => part.data.speakers.stopped).map((part) => `- ${part.part}: ${part.data.speakers.stopped}`);
+    if (stops.length > 0) out.push(`\n${stops.join('\n')}\n`);
   }
   return { md: out.join(''), head };
 }
@@ -1338,7 +1378,7 @@ const SECTION_TITLES = [
 
 /** Which result files feed which report section (for "when was this measured"). */
 const SECTION_RESULTS = {
-  walkthrough: ['walkthrough', 'walkthrough-yazi', 'walkthrough-yazi-bulut'],
+  walkthrough: ['walkthrough', 'walkthrough-yazi', 'walkthrough-yazi-bulut', 'walkthrough-yazi-bulut-kisiler'],
   search: ['search'],
   errors: ['errors'],
   honesty: ['honesty'],

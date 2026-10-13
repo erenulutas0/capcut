@@ -17,7 +17,6 @@ import {
   minutesVerdict,
   parseCloudResult,
   parseQuota,
-  speakersByCue,
   type CloudFailure,
 } from '@/domain/cloudTranscript';
 import { EDL_SCHEMA_VERSION, type AssetV1 } from '@/domain/edl';
@@ -248,7 +247,7 @@ describe('the provider\'s words → the app\'s words', () => {
   });
 });
 
-describe('in the recipe: an ordinary transcript track — the schema is not touched', () => {
+describe('in the recipe: a transcript track whose lines name their voice (EDL v5, ADR-043)', () => {
   const video: AssetV1 = { assetId: 'a_video', kind: 'video', durationUs: 24 * S, displayWidth: 1280, displayHeight: 720, hasAudio: true };
   const opened = () => setVideoAsset(createEmptyProject(), video);
   const words = [...['Merhaba,', 'nasılsın?'].map((text, index) => w(text, 1000 + index * 400, 1350 + index * 400, 'A')), ...['İyiyim,', 'teşekkürler.'].map((text, index) => w(text, 2500 + index * 400, 2850 + index * 400, 'B'))];
@@ -263,19 +262,45 @@ describe('in the recipe: an ordinary transcript track — the schema is not touc
     expect(track).toMatchObject({ origin: 'transcript', timeBase: 'source', assetId: 'a_video', language: 'tr' });
     expect(track?.cues).toEqual([
       // Until 0,15 s after its last word (the on-device rule), well before the other voice begins.
-      { cueId: 'q_001', startUs: 1_000_000, endUs: 1_900_000, text: 'Merhaba, nasılsın?' },
-      { cueId: 'q_002', startUs: 2_500_000, endUs: 3_400_000, text: 'İyiyim, teşekkürler.' },
+      // Who said the line is ON the line: the first voice heard is 1.
+      { cueId: 'q_001', startUs: 1_000_000, endUs: 1_900_000, text: 'Merhaba, nasılsın?', speaker: 1 },
+      { cueId: 'q_002', startUs: 2_500_000, endUs: 3_400_000, text: 'İyiyim, teşekkürler.', speaker: 2 },
     ]);
-    // Nothing of the route is in the recipe: no speaker field, no new key, the same schema number as before.
+    // The line is the only place the route leaves anything: the track has no new key.
     expect(Object.keys(track ?? {}).sort()).toEqual(['assetId', 'cues', 'language', 'origin', 'style', 'timeBase', 'trackId']);
     expect(applied.project.schemaVersion).toBe(EDL_SCHEMA_VERSION);
-    expect(EDL_SCHEMA_VERSION).toBe(4);
+    expect(EDL_SCHEMA_VERSION).toBe(5);
     const withKesit = addClip(applied.project, { sourceInUs: 0, sourceOutUs: 5 * S });
     expect(withKesit.ok && validateProject(withKesit.project).ok).toBe(true);
+    // The panel reads the voices from the stored lines — nothing lives beside the recipe any more.
+    expect([...speakerTurns(transcriptLines(track))]).toEqual([['q_001', 1], ['q_002', 2]]);
+  });
 
-    // Who said which line lives beside the recipe, matched by the lines the command kept.
-    const speakers = speakersByCue(cues, track?.cues ?? []);
-    expect([...speakers]).toEqual([['q_001', 1], ['q_002', 2]]);
+  it('one voice, or none named: the lines carry what was heard, and nobody is labelled', () => {
+    const one = parseCloudResult(result(words.map((word) => ({ ...word, speaker: 'A' }))), video.durationUs);
+    const single = applyTranscriptTrack(opened(), cloudCues(one ?? { words: [] }, video.durationUs), [], 'tr');
+    expect(single.ok && primaryCaptionTrack(single.project)?.cues.map((cue) => cue.speaker)).toEqual([1, 1]);
+    if (single.ok) expect(speakerTurns(transcriptLines(primaryCaptionTrack(single.project))).size).toBe(0);
+
+    const none = parseCloudResult(result(words.map((word) => ({ ...word, speaker: null }))), video.durationUs);
+    const unnamed = applyTranscriptTrack(opened(), cloudCues(none ?? { words: [] }, video.durationUs), [], 'tr');
+    expect(unnamed.ok).toBe(true);
+    if (!unnamed.ok) return;
+    // A line whose voice is not known has NO speaker field (not null, not 0): the recipe is valid.
+    expect(JSON.stringify(unnamed.project)).not.toContain('speaker');
+    const kesit = addClip(unnamed.project, { sourceInUs: 0, sourceOutUs: 5 * S });
+    expect(kesit.ok && validateProject(kesit.project).ok).toBe(true);
+  });
+
+  it('the on-device transcript never names a voice, whatever it is handed', () => {
+    const cue = [{ startUs: S, endUs: 2 * S, text: 'Hello.' }];
+    const plain = applyTranscriptTrack(opened(), cue, []);
+    expect(plain.ok && JSON.stringify(plain.project)).not.toContain('speaker');
+    // A number the recipe cannot hold is left off, never bent into range.
+    for (const speaker of [0, 21, 1.5, -1, Number.NaN, null]) {
+      const odd = applyTranscriptTrack(opened(), [{ ...cue[0]!, speaker }], [], 'tr');
+      expect(odd.ok && JSON.stringify(odd.project), String(speaker)).not.toContain('speaker');
+    }
   });
 
   it('the on-device transcript still says English unless told otherwise; a language that is not one is not stored', () => {
@@ -295,36 +320,37 @@ describe('in the recipe: an ordinary transcript track — the schema is not touc
     const applied = applyTranscriptTrack(opened(), cues, [], 'tr');
     expect(applied.ok && applied.report).toMatchObject({ imported: 2, skipped: [{ index: 1 }] });
     if (!applied.ok) return;
-    expect([...speakersByCue(cues, primaryCaptionTrack(applied.project)?.cues ?? [])]).toEqual([['q_001', 1], ['q_002', 2]]);
+    expect(primaryCaptionTrack(applied.project)?.cues.map((cue) => [cue.cueId, cue.speaker])).toEqual([['q_001', 1], ['q_002', 2]]);
   });
 });
 
 describe('who spoke, on the result screen and in the text file', () => {
-  const track = {
-    cues: [
-      { cueId: 'q_001', startUs: 1 * S, endUs: 2 * S, text: 'Merhaba.' },
-      { cueId: 'q_002', startUs: 2 * S, endUs: 3 * S, text: 'Nasılsın?' },
-      { cueId: 'q_003', startUs: 4 * S, endUs: 5 * S, text: 'İyiyim.' },
-      { cueId: 'q_004', startUs: 6 * S, endUs: 7 * S, text: 'Elle yazıldı.' },
-      { cueId: 'q_005', startUs: 8 * S, endUs: 9 * S, text: 'Güzel.' },
-    ],
-    unclear: [{ startUs: 10 * S, endUs: 11 * S }],
-  };
-  const lines = transcriptLines(track);
+  const plainCues = [
+    { cueId: 'q_001', startUs: 1 * S, endUs: 2 * S, text: 'Merhaba.' },
+    { cueId: 'q_002', startUs: 2 * S, endUs: 3 * S, text: 'Nasılsın?' },
+    { cueId: 'q_003', startUs: 4 * S, endUs: 5 * S, text: 'İyiyim.' },
+    { cueId: 'q_004', startUs: 6 * S, endUs: 7 * S, text: 'Elle yazıldı.' },
+    { cueId: 'q_005', startUs: 8 * S, endUs: 9 * S, text: 'Güzel.' },
+  ];
+  const unclear = [{ startUs: 10 * S, endUs: 11 * S }];
+  /** The same lines with the voices the recipe stores on them (q_004 was typed by hand: none). */
+  const voiced = (speakers: ReadonlyMap<string, number> | undefined) =>
+    transcriptLines({ cues: plainCues.map((cue) => (speakers?.has(cue.cueId) ? { ...cue, speaker: speakers.get(cue.cueId) as number } : cue)), unclear });
   const speakers = new Map([['q_001', 1], ['q_002', 1], ['q_003', 2], ['q_005', 1]]);
+  const lines = voiced(speakers);
 
   it('a voice is named where it changes, not on every line; a line without a voice names none', () => {
-    expect([...speakerTurns(lines, speakers)]).toEqual([['q_001', 1], ['q_003', 2], ['q_005', 1]]);
+    expect([...speakerTurns(lines)]).toEqual([['q_001', 1], ['q_003', 2], ['q_005', 1]]);
   });
 
   it('one voice only, or none: nobody is named', () => {
-    expect(speakerTurns(lines, new Map([['q_001', 1], ['q_002', 1]])).size).toBe(0);
-    expect(speakerTurns(lines, new Map()).size).toBe(0);
-    expect(speakerTurns(lines, undefined).size).toBe(0);
+    expect(speakerTurns(voiced(new Map([['q_001', 1], ['q_002', 1]]))).size).toBe(0);
+    expect(speakerTurns(voiced(new Map())).size).toBe(0);
+    expect(speakerTurns(voiced(undefined)).size).toBe(0);
   });
 
   it('the text file names the voice where it changes, and is unchanged without voices', () => {
-    const turns = speakerTurns(lines, speakers);
+    const turns = speakerTurns(lines);
     const label = (line: (typeof lines)[number]) => (turns.has(line.key) ? `${turns.get(line.key)}. kişi` : null);
     expect(transcriptText(lines, '(anlaşılamadı)', 'Başlık', label).split('\r\n')).toEqual([
       'Başlık',
