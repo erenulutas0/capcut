@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test, type Download, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Download, type Page, type TestInfo } from '../e2e/fixtures';
 
 import { openMore, openSettings } from '../e2e/kesitFlow';
 import { SAMPLE, SCRIPT_LINES, SCRIPT_WORDS, lineTexts, openReady, startFake, type FakeWorker } from './cloudKit';

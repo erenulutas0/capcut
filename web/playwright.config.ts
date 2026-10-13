@@ -8,7 +8,9 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
   workers: 1,
-  reporter: [['list']],
+  // The second reporter says how many page loads needed the watchdog's automatic reload (ADR-044,
+  // tests/e2e/fixtures.ts). There are no `retries` here, on purpose: they would hide exactly that.
+  reporter: [['list'], ['./tests/e2e/recoveryReporter.ts']],
   use: {
     baseURL: `http://127.0.0.1:${port}`,
     trace: 'off',

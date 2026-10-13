@@ -1,11 +1,11 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
 
 import { ownSizeRecipe } from '@/application/taskRecipes';
 import { Icon } from '@/components/Icon';
+import { lazyPart } from '@/components/LazyPart';
 import type { CloudApplied, CloudRouteProps } from '@/components/transcript/CloudRoute';
 import { TranscribeSteps } from '@/components/transcript/TranscribeSteps';
 import { TranscriptDownloads } from '@/components/transcript/TranscriptDownloads';
@@ -32,7 +32,7 @@ const t = translator('tr');
  * (scripts/apply-csp.mjs stops such an export).
  */
 const CloudRoute = process.env.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1'
-  ? dynamic<CloudRouteProps>(() => import('@/components/transcript/CloudRoute'), { ssr: false })
+  ? lazyPart<CloudRouteProps>(() => import('@/components/transcript/CloudRoute').then((module) => module.default), { variant: 'inline' })
   : null;
 
 /**

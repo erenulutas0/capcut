@@ -79,6 +79,14 @@ const STORED: Array<{ name: MessageKey; body: MessageKey; where: MessageKey; del
     delete: 'privacy.stored.hint.delete',
   },
   {
+    // ADR-044: written only when a page did not come alive and reloaded itself once.
+    id: 'recovery',
+    name: 'privacy.stored.recovery.name',
+    body: 'privacy.stored.recovery.body',
+    where: 'privacy.stored.recovery.where',
+    delete: 'privacy.stored.recovery.delete',
+  },
+  {
     id: 'offline',
     name: 'privacy.stored.offline.name',
     body: 'privacy.stored.offline.body',

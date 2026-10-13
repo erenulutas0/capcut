@@ -3,6 +3,36 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Sunulup da canlanmayan sayfa artık kendini bir kez yeniden yükler, olmazsa söyler — 13 Ekim 2026 (ADR-044; politika ve şema değişmedi; tarayıcıda saklananlara bir `sessionStorage` anahtarı eklendi)
+
+Kurucu yokken, özerk çalışma. Hiçbir dış hizmete istek gitmedi; `cloud/` altına dokunulmadı.
+
+**Sorun.** İki kez (11 Ekim yerel, 13 Ekim CI koşusu 38371421148) bir sayfanın HTML'i geldi, `load` ateşlendi ve React sayfayı hiç devralmadı: "Video seç" 300 sn boyunca `disabled`, ekranda tek kelime yok. Kötü bağlantıdaki gerçek kullanıcı için aynı ölü sayfa.
+
+**Olay yeniden üretilemedi; mekanizması kanıtlandı.** Yeni arıza sondası (`web/scripts/soak/fault-probe.mjs`: derlemenin önüne konan bir vekil tek bir isteği yedi biçimde bozar) değişiklikten önceki derlemede 395 durum ölçtü: `/yap/cevir`'in ilk HTML'indeki 13 betikten **herhangi biri** kopma / 500 / 404 / yarıda kesilme ile gelmezse sayfa tam olarak CI dökümündeki hâlde kalır — **52/52** (`load` ateşlenir, başlık görünür, düğme `disabled`, Next'in hata ekranı yok, sayfa hatası yok). Nedeni çatının parça yükleyicisi: HTML'de zaten duran bir betik, dinleyici takılmadan önce başarısız olursa söz hiç sonuçlanmaz; hata yok, zaman aşımı yok. Kendi kodumuzda hidratlamayı bekleten bir şey bulunmadı. O iki koşuda olanın bu olduğu **kanıtlanmadı** (ağ kaydı yok). Tablo: `docs/quality/2026-10-13-hydration-faults.md`.
+
+**Bekçi.** Her sayfanın `<head>`'ine, derlemeden sonra, ilk betik olarak yazılan 6,1 kB'lık düz JavaScript (`web/scripts/lib/page-watchdog.js`; özeti sayfanın güvenlik politikasında, `'unsafe-inline'` yok). Sayfa "canlıyım" demezse (kök düzenin `effect`'i): bir derleme betiği başarısız olduktan **4 sn** sonra ya da `load`'dan **15 sn** sonra **bir kez** kendiliğinden yeniden yükler; yine canlanmazsa önceden çizilmiş düz HTML uyarıyı gösterir: "**Sayfa tam açılamadı.** İnternet bağlantın takılmış olabilir. · **Yeniden yükle**". `load` 45 sn'de bile gelmediyse yalnızca uyarı (yeniden yükleme yok; dosya gelirse uyarı kalkar). Canlı sayfada asla yeniden yüklemez. Eşiklerin gerekçesi (hidratlanma ortancası 0,3–0,8 sn, ağır yükte 99. yüzdelik 6,5 sn) ADR'de.
+
+**Döngü yok.** Yeniden yüklemeden önce sekmeye not düşülür (`sessionStorage` → `clip:page-recovery`); gelen sayfa ikinci deneme olduğunu bilir ve ne olursa olsun kendiliğinden yeniden yüklenmez. Not yazılamıyorsa otomatik yeniden yükleme hiç yok. e2e: betikler hiç gelmezken bir yeniden yükleme, uyarı, bir dakika sonra hâlâ ikinci yükleme.
+
+**Bozuk saklanan kopya.** Service worker dosyaları önce kopyadan verdiği için kopyadaki bozuk bir dosyada "Yeniden yükle" işe yaramaz (gösterildi). Yalnızca o durumda (sayfayı service worker yönetiyor ve tarayıcı çevrimdışı demiyor) ikinci düğme: "**Uygulamayı baştan indir**" — yalnızca bu uygulamanın service worker kaydını ve `clip-app-*` önbelleklerini siler; projeler, günlük, OPFS, konuşma modeli ve localStorage yerinde (e2e).
+
+**Sonradan gelmeyen parça.** Sihirbazdan açılan editör, "Sorun bildir", "Sessizlikleri bul", editörün yazı paneli ve bulut yolunun parçaları artık `lazyPart` ile gelir: parça gelmezse Next'in İngilizce ham hata ekranı (sayfanın tamamı, açık videoyla birlikte giderdi) yerine yerinde "Bu bölüm açılamadı. İnternet bağlantın takılmış olabilir. · **Tekrar dene**"; sayfa, video ve seçim yerinde. Yanıtı hiç gelmeyen parça 30 sn sonra aynı cümleyle. Yakalanmayan çizim hatalarında Next'in ham ekranı yerine "Bir şey ters gitti · Yeniden yükle" (`app/error.tsx`, `app/global-error.tsx`).
+
+**Çevrimdışı.** Kopya tamsa bekçi susar (e2e: 20 sn, yeniden yükleme yok, uyarı yok). Kopyada dosya eksikse bir yeniden yükleme + uyarı ("baştan indir" olmadan). Hiçbir şey saklı değilse görünen tarayıcının kendi sayfasıdır; yapılacak bir şey yok.
+
+**Testler susmuyor.** Kendini kurtaran bir yükleme e2e'de de kendini kurtarır; görünür olsun diye bütün e2e dosyaları `tests/e2e/fixtures.ts`'ten içe aktarır: `PAGE-RECOVERED <adres> — <test>` / `PAGE-DEAD …` satırı ve koşu sonunda toplam (sıfırken de). Playwright'a `retries` **eklenmedi**. `hydration-soak.mjs` artık depoda ve kurtarmaları sayar.
+
+**Gizlilik.** Veri envanteri §2.4a ve `/gizlilik` ("Sayfa yeniden yükleme notu" kartı; "sessionStorage kullanılmaz" cümlesi düzeltildi) aynı değişiklikte. Not: durum, zaman, sayfanın yolu, görülen şey; kimlik / dosya adı yok; hiçbir yere gönderilmez; sekme kapanınca silinir.
+
+**Değişmeyen (bilinen sınırlar).** Açılış ekranında karta basınca yanıtı hiç gelmeyen `?_rsc` isteği (kart hiçbir şey yapmamış gibi kalır); yanıtı hiç gelmeyen `import('mediabunny')` ("Video açılıyor…" kalır); yarım gelen stil dosyası. `next dev`'de bekçi yoktur.
+
+**Açık kurucu kararları:** eşikler; uyarı ve gizlilik cümleleri (gizlilik sayfasının "Son güncelleme" tarihi değiştirilmedi); yerinde sayan kart gezinmesi için koruma; dayanıklılık koşusunun CI'a eklenmesi; kurtarma sayısı sıfırdan büyükse CI'ın kırılıp kırılmayacağı.
+
+**Doğrulanmayan:** 11 ve 13 Ekim olaylarının nedeni; gerçek kötü bağlantı ve gerçek ortak ağ giriş sayfası (bozulmalar yerel vekilde / Playwright yönlendirmesinde); Chromium dışı motorlar; gerçek telefon; gerçek ekran okuyucu; yayındaki site.
+
+**Sayılar (13 Ekim, dal `worktree-agent-ac320ffd570cfb61c`; hepsi yerel, son kodla):** `tsc` ve `eslint` temiz; birim 1406/1406 (81 dosya; 32'si yeni); e2e (olağan derleme) 395 testte 391 geçti / 4 atlandı / 0 başarısız (20'si yeni), kendiliğinden kurtarma gerektiren yükleme **0** (bekçinin kendi testleri bilerek 9 kurtarma, 2 ölü sayfa yaptı); bulut e2e'si (sahte Worker'a karşı) 43 geçti / 4 atlandı; statik dışa aktarma + Pages duman testi 7 geçti / 2 atlandı (model dosyaları bu makinede yok; 1'i yeni); dayanıklılık: boşta 1 000 yükleme → 1 000 temiz, 0 kurtarma, 0 başarısız (ortanca 257 ms, p99 387 ms), 16 paralel sayfa + 10 CPU yakıcıyla 1 500 yükleme → 1 500 temiz, 0 kurtarma, 0 başarısız (ortanca 754 ms, p99 6,2 sn, en uzun 10,6 sn) — bu koşularda bekçiyi gerektiren hiçbir şey olmadı, kurtarmayı e2e gösterir; arıza sondası önce 395, sonra 360 durum; kalite katmanı (yalnız görsel + yükleme): görsel bölümde 26 ekranın 26'sı tabanıyla aynı (taban görüntüleri değişmedi), yükleme bölümünde 4/4; 28 ölçü bütçe içinde, 0 bütçe dışı. Kısmi koşu olduğu için `latest.*` dosyaları depoya yazılmadı.
+
 ## Kim konuştu, kalıcı: EDL v5 — satırda `speaker` — 13 Ekim 2026 (ADR-043; **şema v4 → v5**, politika değişmedi; bulut yolu hâlâ KAPALI)
 
 Kurucu onayıyla (bulut yolunu açmanın parçası). Hiçbir dış hizmete istek gitmedi; bulut sınamaları yalnızca yerel sahte vekile karşı.

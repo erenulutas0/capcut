@@ -1,10 +1,10 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Icon, Wordmark } from '@/components/Icon';
+import { lazyPart } from '@/components/LazyPart';
 import { ReportProblemProvider } from '@/components/ReportProblem';
 import { InstallEntry } from '@/components/pwa/InstallEntry';
 import { useHydrated } from '@/components/useHydrated';
@@ -71,11 +71,12 @@ const t = translator('tr');
  * Three screens of the editor that exist only after a press — the transcript beside the video, the
  * "Boşlukları bul" dialog and "Sorun bildir" — come with that press, not with the page (10 Oct 2026:
  * the editor's main-thread work at load was over the 200 ms budget under phone throttling). The
- * service worker holds their chunks like every other file of the build.
+ * service worker holds their chunks like every other file of the build. One that does not arrive says
+ * so in its place and can be asked for again (components/LazyPart.tsx, ADR-044).
  */
-const TranscriptPanel = dynamic(() => import('@/components/transcript/TranscriptPanel').then((module) => module.TranscriptPanel), { ssr: false });
-const ReportDialog = dynamic(() => import('./ReportDialog').then((module) => module.ReportDialog), { ssr: false });
-const SilenceDialog = dynamic(() => import('./SilenceDialog').then((module) => module.SilenceDialog), { ssr: false });
+const TranscriptPanel = lazyPart(() => import('@/components/transcript/TranscriptPanel').then((module) => module.TranscriptPanel), { variant: 'inline' });
+const ReportDialog = lazyPart(() => import('./ReportDialog').then((module) => module.ReportDialog), { close: (props) => props.onClose });
+const SilenceDialog = lazyPart(() => import('./SilenceDialog').then((module) => module.SilenceDialog), { close: (props) => props.onClose });
 
 const CANVAS_ASPECT_CSS: Record<string, string> = {
   '9:16': '9 / 16',

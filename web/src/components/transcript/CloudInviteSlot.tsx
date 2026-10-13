@@ -1,7 +1,6 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-
+import { lazyPart } from '@/components/LazyPart';
 import type { CloudInviteWords } from './CloudInvitePanel';
 
 /**
@@ -12,7 +11,7 @@ import type { CloudInviteWords } from './CloudInvitePanel';
  * bundler drops the import with it).
  */
 const Panel = process.env.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1'
-  ? dynamic<{ words: CloudInviteWords; buttonClassName: string }>(() => import('./CloudInvitePanel'), { ssr: false })
+  ? lazyPart<{ words: CloudInviteWords; buttonClassName: string }>(() => import('./CloudInvitePanel').then((module) => module.default), { variant: 'inline' })
   : null;
 
 export function CloudInviteSlot(props: { words: CloudInviteWords; buttonClassName: string }) {

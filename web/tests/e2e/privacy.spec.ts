@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page } from './fixtures';
 
 import { APP_SLUG } from '../../src/appIdentity';
 import { closeSheet, noSavePicker, openMore, openSettings } from './kesitFlow';
@@ -142,8 +142,11 @@ test.describe('privacy page', () => {
     // The offline copy (ADR-031): Cache Storage with app files only, and the service worker.
     await expect(page.getByTestId('stored-offline')).toContainText('“clip-app-”');
     await expect(page.getByTestId('stored-offline')).toContainText('service worker');
+    // The one sessionStorage value (ADR-044: a page that had to reload itself), named with its key.
+    await expect(page.getByTestId('stored-recovery')).toContainText('“clip:page-recovery”');
+    await expect(page.getByTestId('stored-recovery')).toContainText('Sekmeyi kapatınca.');
     await expect(
-      page.getByText('Çerez ve sessionStorage kullanılmaz; localStorage’da yalnızca yukarıdaki ipucu bilgisi durur.'),
+      page.getByText('Çerez kullanılmaz. localStorage’da yalnızca yukarıdaki ipucu bilgisi, sessionStorage’da yalnızca yukarıdaki yeniden yükleme notu durur.'),
     ).toBeVisible();
     await expect(page.getByTestId('export-log-count')).toHaveText('Bu tarayıcıda kayıtlı dışa aktarma denemesi yok.');
     await expect(page.getByTestId('privacy-updated')).toContainText('sürüm 0.1.0');

@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { expect, expectPageRecovery, test, type Locator, type Page, type TestInfo } from './fixtures';
 
 import { tr } from '../../src/i18n/messages';
 import { browserDecodesHevc, hevcFixture } from './hevc-media';
@@ -1057,7 +1057,11 @@ test.describe('a11y: the audit refuses a page without its styles', () => {
     const sheets = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map((match) => match[1] ?? '');
     expect(sheets.length, 'the opening screen links two stylesheets').toBe(2);
     await page.route(`**${sheets[1]}`, (route) => route.abort('connectionreset'));
+    // Since ADR-044 the page notices this itself: it reloads once, and when the sheet still does not
+    // come it says that a part of it is missing. The audit below is of that settled page.
+    expectPageRecovery();
     await page.goto('/');
+    await expect(page.getByTestId('page-dead')).toHaveAttribute('data-state', 'late', { timeout: 30_000 });
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ne yapmak istiyorsun?');
 
     // What the failed run reported: axe sees contrast failures on the links and the controls.

@@ -12,12 +12,18 @@
  *
  * `next dev` has no policy: its hot reload needs eval and changing inline
  * scripts. Tests and the published site always run a build.
+ *
+ * The same pass writes the page watchdog (ADR-044, scripts/lib/page-watchdog.js)
+ * into every page, as the first script of <head> — before the policy is
+ * computed, so its hash is in the policy like every other inline script's.
+ * `next dev` has no watchdog either.
  */
 import { readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 import { cloudOriginFromEnv } from './lib/cloudOrigin.mjs';
 import { applyCsp } from './lib/csp.mjs';
+import { insertWatchdog, watchdogScript } from './lib/pageWatchdogScript.mjs';
 
 const root = process.cwd();
 const staticExport = process.env.STATIC_EXPORT === '1';
@@ -25,6 +31,10 @@ const dir = join(root, staticExport ? 'out' : join('.next', 'server', 'app'));
 // '' unless this build was given the transcript proxy's origin (ADR-039): then, and only then, one more
 // origin in connect-src. A malformed value stops the build here (and in next.config.ts before it).
 const connectOrigin = cloudOriginFromEnv();
+// The site's sub-path ('' locally and in e2e, '/capcut' on GitHub Pages): the watchdog must know which
+// files are the app's own and which service worker is its own.
+const base = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/+$/, '');
+const watchdog = watchdogScript(base);
 
 function walk(folder) {
   return readdirSync(folder).flatMap((name) => {
@@ -41,11 +51,12 @@ if (pages.length === 0) {
 }
 
 for (const file of pages) {
-  const { html, policy } = applyCsp(readFileSync(file, 'utf8'), { connectOrigin });
+  const { html, policy } = applyCsp(insertWatchdog(readFileSync(file, 'utf8'), watchdog), { connectOrigin });
   writeFileSync(file, html);
   const hashes = (policy.match(/'sha256-/g) ?? []).length;
   console.log(`apply-csp: ${relative(root, file)} (${hashes} hashes)`);
 }
+console.log(`apply-csp: page watchdog in every page (${watchdog.length} characters, base "${base}")`);
 console.log(connectOrigin ? `apply-csp: connect-src 'self' ${connectOrigin} (cloud transcript route ON in this build)` : "apply-csp: connect-src 'self' (no other origin)");
 
 if (staticExport) {

@@ -1,10 +1,10 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useEffect, useState, type ComponentType } from 'react';
 
 import { useEditorState } from '@/components/editor/useEditorState';
+import { PartFailed, lazyPart } from '@/components/LazyPart';
 import { taskById, type TaskId } from '@/domain/tasks';
 import { translator } from '@/i18n/messages';
 import type { WizardHostProps } from './WizardFlow';
@@ -20,16 +20,23 @@ const loadEditor = () => import('@/components/editor/EditorApp');
  * wizard page downloaded the whole editor — 422 KB of script against the opening screen's 193 KB —
  * although nine of the ten wizards show it only after "Daha fazla ayar → editörde aç"). It is loaded
  * when it is first wanted; the service worker holds the chunk like every other file of the build, so
- * this works offline too. While it arrives the screen says so.
+ * this works offline too. While it arrives the screen says so; when it does not arrive the screen says
+ * that, with "Tekrar dene" — the wizard's state (the open video, the choice) stays as it is (ADR-044).
  */
-const EditorView = dynamic(() => loadEditor().then((module) => module.EditorView), {
-  ssr: false,
+const EditorView = lazyPart(() => loadEditor().then((module) => module.EditorView), {
   loading: () => (
     <div className="wizard" data-testid="editor-loading">
       <main className="wizard-main">
         <p className="wizard-panel-title" role="status">
           {t('wizard.editorLoading')}
         </p>
+      </main>
+    </div>
+  ),
+  failed: (retry) => (
+    <div className="wizard" data-testid="editor-failed">
+      <main className="wizard-main">
+        <PartFailed t={t} variant="inline" onRetry={retry} />
       </main>
     </div>
   ),

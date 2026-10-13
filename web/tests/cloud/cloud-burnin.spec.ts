@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e/fixtures';
 
 import { installSavePicker, probeMp4, readSaved } from '../e2e/kesitFlow';
 import { LONG_SECONDS, SCRIPT_WORDS, enterInvite, longSample, openChoice, realisticWords, startFake, type FakeWorker } from './cloudKit';

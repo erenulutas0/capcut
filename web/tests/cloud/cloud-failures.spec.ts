@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e/fixtures';
 
 import { STUB_LINES, STUB_SCRIPT, installTranscriptTest, longVideo, serveModels, testModels } from '../e2e/transcriptKit';
 import {

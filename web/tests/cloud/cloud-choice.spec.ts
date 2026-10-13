@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '../e2e/fixtures';
 
 import { watchCsp } from '../e2e/cspWatch';
 import { expectStylesApplied } from '../e2e/stylesReady';

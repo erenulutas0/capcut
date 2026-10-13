@@ -110,7 +110,7 @@ export const cloudTr = {
     'Bunun tek istisnası “İnternette yazıya dökme”dir: onu sen seçersen tarayıcın bizim aracı sunucumuza da istek yapar. Ayrıntısı aşağıda.',
   'cloud.privacy.notCollected.body':
     'Hesap veya e-posta, analitik ya da kullanım istatistiği, çerez, reklam kimliği, cihaz parmak izi, konum, otomatik hata veya çökme raporu. Videonun görüntüsü de toplanmaz. Videonun sesi ve yazıya dökülmüş metni yalnızca sen “İnternette”yi seçersen cihazından çıkar; “Cihazımda”yı seçersen hiçbiri çıkmaz.',
-  'cloud.privacy.stored.none': 'Çerez ve sessionStorage kullanılmaz; localStorage’da yalnızca yukarıdaki ipucu bilgisi ve (kaydettiysen) davet kodun durur.',
+  'cloud.privacy.stored.none': 'Çerez kullanılmaz. localStorage’da yalnızca yukarıdaki ipucu bilgisi ve (kaydettiysen) davet kodun, sessionStorage’da yalnızca yukarıdaki yeniden yükleme notu durur.',
   'cloud.privacy.title': 'İnternette yazıya dökme (isteğe bağlı, davetli deneme)',
   'cloud.privacy.intro':
     '“Yazıya dök”te iki yol vardır: “Cihazımda” ve “İnternette”. İnternette yolu yalnızca davet koduyla çalışır ve her seferinde sen “Sesi gönder ve yaz”a basınca başlar; kendiliğinden seçilmez, seçimin hatırlanmaz.',

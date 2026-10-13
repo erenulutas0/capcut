@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 import { hdrFixture } from './hdr-media';
 import { closeSheet, openSettings, installSavePicker } from './kesitFlow';

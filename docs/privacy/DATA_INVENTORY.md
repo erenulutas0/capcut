@@ -24,7 +24,7 @@ doğrulanır (`web/tests/e2e/privacy.spec.ts` → "nothing leaves the machine").
 | Hesap / oturum? | Yok. | Kodda auth yok |
 | Analitik, hata raporlama servisi, reklam? | Yok. Üçüncü taraf script yok. | `web/next.config.ts`, `web/src/app/layout.tsx`, `package.json` bağımlılıkları |
 | Çevrimdışı kopya? | Evet, 30 Eylül 2026'dan beri (ADR-031): bir service worker uygulamanın **kendi dosyalarını** (sayfalar, derleme dosyaları, altyazı yazı tipi, simgeler, manifest) Cache Storage'da tutar ki site internetsiz açılsın. Medya, dışa aktarılan dosya, proje ya da başka bir origin'in dosyası bu önbelleğe girmez (§2.5). | `web/scripts/lib/service-worker.js`, `web/scripts/lib/precache.mjs`, e2e `pwa.spec.ts` |
-| Çerez, localStorage, sessionStorage? | Çerez ve sessionStorage kullanılmıyor. localStorage'da yalnızca ilk kullanım ipucunun kapatıldığı (`clip.firstRunHint.dismissed` = `1`) durur, o da yalnızca kullanıcı "Anladım"a basınca yazılır (§2.4). e2e testi ipucu kapatılmamış oturumun sonunda üçünün de boş olduğunu, kapatınca yalnızca o anahtarın yazıldığını doğrular. | `web/src/components/editor/FirstRunHint.tsx` + e2e testleri |
+| Çerez, localStorage, sessionStorage? | Çerez kullanılmıyor. **13 Ekim 2026 (ADR-044):** sessionStorage'da tek anahtar olabilir — `clip:page-recovery`, yalnızca bir sayfa açılamayıp kendini yeniden yüklediğinde yazılır (§2.4a); sorunsuz oturumda sessionStorage boştur. localStorage'da yalnızca ilk kullanım ipucunun kapatıldığı (`clip.firstRunHint.dismissed` = `1`) durur, o da yalnızca kullanıcı "Anladım"a basınca yazılır (§2.4). e2e testi ipucu kapatılmamış oturumun sonunda üçünün de boş olduğunu, kapatınca yalnızca o anahtarın yazıldığını doğrular. | `web/src/components/editor/FirstRunHint.tsx` + e2e testleri |
 | Cihaz parmak izi? | Yok. Tanı dosyasındaki tarayıcı bilgisi yalnızca kullanıcı indirirse oluşur ve kendiliğinden gönderilmez. | `web/src/adapters/diagnostics.ts` |
 | Model dosyası / AI? | Bu sürümde yok. | — |
 | Kendiliğinden gönderilen bir şey? | Yok. Yayındaki derlemenin kodunda başka bir adrese giden `fetch`/XHR/WebSocket/beacon yok: `fetch` yalnızca kendi origin'imizden okur (yazı tipi — `useCaptionFont.ts`; "Modeli indir"e basılınca model dosyaları — §2.8). Bulut yolunun istemcisi (`web/src/adapters/cloud/`) depoda durur ama yayındaki derlemeye **girmez** (§8.1). | e2e testleri; `scripts/apply-csp.mjs` (durağan çıktıda bulut kodu bulursa derlemeyi durdurur); `tests/e2e/cloud-off.spec.ts` |
@@ -162,6 +162,32 @@ kaldıkça gizler. Silinmesi: tarayıcının site verisini temizlemek. Kaynak:
 `web/src/components/editor/FirstRunHint.tsx`; test: `web/tests/e2e/kesit.spec.ts` → "first-time
 user".
 
+### 2.4a sessionStorage — sayfa yeniden yükleme notu (2026-10-13, ADR-044)
+
+Tek anahtar: `clip:page-recovery`. **Yalnızca** bir sayfa açılamadığında (sunulan HTML'i React
+devralmadığında) ve sayfanın bekçisi (`web/src/pageWatchdog.ts`) onu bir kez kendiliğinden yeniden
+yüklediğinde ya da kullanıcı "Yeniden yükle" / "Uygulamayı baştan indir"e bastığında yazılır. Sayfalar
+sorunsuz açıldıkça hiç yazılmaz. Değeri küçük bir JSON'dur:
+
+| Alan | Ne | Örnek |
+|---|---|---|
+| `s` | durum: `reloading` (yeniden yüklemeden hemen önce), `retried` (ikinci deneme başladı), `recovered` (ikinci deneme açıldı) | `recovered` |
+| `t` | yeniden yüklemenin zamanı (epoch ms) | `1791892815000` |
+| `p` | sayfanın yolu — uygulamanın kendi sayfası; sorgu dizgisi, dosya adı yok | `/capcut/yap/cevir/` |
+| `why` | ne görüldü: `file` (derleme dosyası gelmedi), `style` (stil dosyası gelmedi), `timeout` (15 sn'de açılmadı), `button`, `reset`, `second try` | `file` |
+
+Ne içindir: aynı sekmede **ikinci** otomatik yeniden yüklemeyi engellemek (döngü koruması) ve bir
+sonraki 5 dakikada yeni bir otomatik yeniden yükleme yapmamak. Kimlik, proje, video ya da dosya adı
+içermez; hiçbir yere gönderilmez; tanı dosyasına ("Sorun bildir") girmez. Sekmeye özeldir, sekme
+kapanınca tarayıcı siler. Tarayıcı depolamayı reddederse (gizli pencere, site verisi engelli) okuma ve
+yazma `try/catch` içindedir: o zaman otomatik yeniden yükleme **hiç yapılmaz**, yalnızca uyarı
+gösterilir. "Uygulamayı baştan indir" düğmesi yalnızca bu uygulamanın service worker kaydını (kapsam
+`<base>/`) ve `clip-app-` ile başlayan önbellekleri siler; IndexedDB'ye (projeler, günlük), OPFS'ye,
+`clip-models-*` önbelleğine (konuşma modeli) ve localStorage'a dokunmaz. Kaynak: `web/src/pageWatchdog.ts`,
+`web/src/components/PageWatchdog.tsx`; testler: `web/tests/unit/pageWatchdog.test.ts`,
+`web/tests/e2e/page-watchdog.spec.ts` ("touches nothing else the browser keeps"); `/gizlilik` sayfasındaki
+"Sayfa yeniden yükleme notu" kartı aynı değişiklikte eklendi.
+
 ### 2.5 Cache Storage ve service worker — çevrimdışı kopya (2026-09-30, ADR-031)
 
 - **Ne:** tek önbellek, adı `clip-app-<sürüm>` (sürüm = saklanan dosyaların baytlarından ve
@@ -188,8 +214,9 @@ user".
 
 ### 2.6 Kullanılmayanlar
 
-`sessionStorage`, çerez: kodda yok (`grep`); e2e oturum testi çerezlerin, `document.cookie`'nin ve
-iki web depolamanın (ipucu kapatılmadığı için localStorage da) boş olduğunu doğrular.
+Çerez: kodda yok (`grep`). `sessionStorage`: 13 Ekim 2026'dan beri tek anahtar, yalnızca bir sayfa
+kendini yeniden yüklediğinde (§2.4a). e2e oturum testi çerezlerin, `document.cookie`'nin ve iki web
+depolamanın (ipucu kapatılmadığı ve hiçbir sayfa yeniden yüklenmediği için ikisi de) boş olduğunu doğrular.
 
 ## 3. Kullanıcının tetiklediği indirmeler
 
@@ -287,7 +314,9 @@ MP4 indirme, proje yedeği indirme, "Sorun bildir" ve tanı dosyası indirme. İ
   ADR-031 ile `/manifest.webmanifest`, `/icons/{icon-192,icon-512,maskable-512}.png`, `/apple-icon.png`
   ve `/sw.js` (worker'ın kurulum istekleri de bu listenin içindedir);
 - oturum sonunda çerez yok, localStorage/sessionStorage boş (bu oturumda ilk kullanım ipucu
-  kapatılmaz; kapatılınca yazılan tek anahtar §2.4'te);
+  kapatılmaz; kapatılınca yazılan tek anahtar §2.4'te; bir sayfa kendini yeniden yüklemek zorunda
+  kalırsa sessionStorage'a yazılan tek anahtar §2.4a'da — o zaman bu test bilerek kırılır ve koşu
+  `PAGE-RECOVERED` satırıyla nedenini söyler);
 - oturum sonunda Cache Storage'daki her girdi `clip-app-*` önbelleğinde ve izinli bir uygulama yolu;
   `.mp4`, `.json`, `.srt`, `blob:` yok (§2.5).
 
