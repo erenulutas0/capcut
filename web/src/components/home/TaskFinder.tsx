@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Icon } from '@/components/Icon';
 import { searchTasks } from '@/domain/taskSearch';
@@ -57,6 +57,13 @@ export function TaskFinder() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const gridRef = useRef<HTMLHeadingElement | null>(null);
   const [query, setQuery] = useState('');
+  // The page is static HTML first: words typed before React owns it stay in the box, but no change event
+  // ever told React about them — the box said "kucult" and nothing was found until the next key
+  // (13 Oct 2026, seen in WebKit, where the page is usable well before it is hydrated). Read them once.
+  useEffect(() => {
+    const typed = inputRef.current?.value ?? '';
+    if (typed !== '') setQuery(typed);
+  }, []);
   /** The highlighted row; null: wherever the answer puts it (the first row when sure, none when asking). */
   const [active, setActive] = useState<number | null>(null);
   /** Enter was pressed on a list of choices before one was picked. */

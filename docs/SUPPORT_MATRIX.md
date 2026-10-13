@@ -125,6 +125,31 @@ Hepsi win32 x64 üzerinde, headless olarak çalıştırıldı. **Bu matris gerç
 - R09 HDR→SDR: en yakın ref-hable, ΔE00 5.316, kayma 1.049, doygunluk 1.082..1.092, ton 1.356°, kırpma 0.016
 - R11 HDR→SDR: en yakın placebo-spline, ΔE00 5.278, kayma 1.123, doygunluk 1.019..1.154, ton 8.447°, kırpma 0
 
+<!-- engine-walk:start (web/scripts/lib/engine-walk-section.mjs yazar) -->
+## Firefox ve WebKit motor derlemeleri (kart yürüyüşü)
+
+> Ölçüm: **2026-10-13**, commit `baf4715`, plain npm run build + next start; win32 x64, headless. Kaynak: `npm run browsers` (`web/tests/browsers/`), ayrıntı ve ret metinleri [quality/browsers-latest.md](quality/browsers-latest.md), yorum [quality/browsers-2026-10-13.md](quality/browsers-2026-10-13.md).
+>
+> **Bunlar motor derlemeleridir.** Playwright’ın Windows WebKit derlemesi Safari değildir (bu derlemede WebCodecs ve H.264 oynatma hiç yok; gerçek Safari’de var) ve Safari sonucu yerine geçmez. Playwright’ın Firefox’u yamalı masaüstü Firefox’tur; Android’deki Firefox değildir. “Telefon boyu” bir telefon değil, aynı motorun 390 × 844 dokunmatik görünümüdür. Yukarıdaki dışa aktarma matrisi (D01…) bu motorlarda koşulmadı.
+
+| Kart | Firefox derlemesi, masaüstü (Firefox/155.0) | Firefox derlemesi, telefon boyu (Firefox/155.0) | WebKit derlemesi, masaüstü (WebKit (Safari sürüm dizgisi)/26.6) | WebKit derlemesi, telefon boyu (WebKit (Safari sürüm dizgisi)/26.6) |
+|---|---|---|---|---|
+| Kes | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret |
+| Boşlukları at | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret |
+| Dikey yap | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret |
+| Küçült | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret |
+| Yazıya dök | · koşulmadı | · koşulmadı | 🚫 dürüst ret | 🚫 dürüst ret |
+| Müzik ekle | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret |
+| Sesini al | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret |
+| Sesi kapat | ✅ çalışıyor | ✅ çalışıyor | 🚫 dürüst ret | 🚫 dürüst ret |
+| Her yerde açılsın | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret |
+| İyileştir | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret | 🚫 dürüst ret |
+| **Toplam** | 1 çalışıyor, 8 dürüst ret, 0 bozuk, 1 koşulmadı | 1 çalışıyor, 8 dürüst ret, 0 bozuk, 1 koşulmadı | 0 çalışıyor, 10 dürüst ret, 0 bozuk, 0 koşulmadı | 0 çalışıyor, 10 dürüst ret, 0 bozuk, 0 koşulmadı |
+
+“Dürüst ret”: uygulama dosya üretmedi, bunu söyledi ve ne yapılacağını yazdı (metinler `quality/browsers-latest.md` içinde, kelimesi kelimesine). “Yazıya dök” Firefox derlemesinde model adımına kadar yürüdü (model dosyaları bu makinede olmadığı için yazıya dökmenin kendisi koşulmadı); WebKit derlemesinde video açılamadığı için oraya gelinmedi.
+
+<!-- engine-walk:end -->
+
 ## Gerçek telefon
 
 > Elle yazıldı (üretilmedi): `web/scripts/android/phone-run.mjs` ile adb + CDP üzerinden, kurucunun telefonunda. Tek cihaz, tek tarayıcı; ayrıntı ve kanıt [ADR-032](adr/ADR-032-android-samsung-media.md) (ses) ve [ADR-033](adr/ADR-033-android-stale-kesit-ends.md) (kare kimliği).

@@ -471,6 +471,9 @@ async function runSelfTest(
     hdrToneMap: null,
     failure: null,
   };
+  // A download without any sound neither needs nor uses the audio encoder.
+  const audioRequired = config.audioRequired !== false;
+  result.audioRequired = audioRequired;
 
   // Checked first so the answer is reported even when the encoder stages
   // below refuse; it is loaded in the same worker that will later draw it.
@@ -506,7 +509,7 @@ async function runSelfTest(
     result.failure = 'video_encoder_unsupported';
     return result;
   }
-  if (!result.audioConfigSupported) {
+  if (audioRequired && !result.audioConfigSupported) {
     result.failure = 'audio_encoder_unsupported';
     return result;
   }
@@ -528,11 +531,13 @@ async function runSelfTest(
     const videoSource = new CanvasSource(canvas, { codec: 'avc', bitrate: 300_000 });
     output.addVideoTrack(videoSource, { frameRate: fps });
 
-    const audioSource = new AudioSampleSource({
-      codec: 'aac',
-      bitrate: config.audioBitrate,
-    });
-    output.addAudioTrack(audioSource);
+    const audioSource = audioRequired
+      ? new AudioSampleSource({
+          codec: 'aac',
+          bitrate: config.audioBitrate,
+        })
+      : null;
+    if (audioSource) output.addAudioTrack(audioSource);
 
     await output.start();
 
@@ -543,24 +548,26 @@ async function runSelfTest(
     }
     videoSource.close();
 
-    // One second of silence at the target rate/channel count.
-    const frameCount = config.sampleRate;
-    const silence = new Float32Array(frameCount * config.channelCount);
-    // Ours to close: `add` copies it into the encoder (until 10 Oct 2026 it was left to the garbage
-    // collector, which is what "An AudioSample was garbage collected without first being closed" was).
-    const second = new AudioSample({
-      data: silence,
-      format: 'f32',
-      numberOfChannels: config.channelCount,
-      sampleRate: config.sampleRate,
-      timestamp: 0,
-    });
-    try {
-      await audioSource.add(second);
-    } finally {
-      second.close();
+    if (audioSource) {
+      // One second of silence at the target rate/channel count.
+      const frameCount = config.sampleRate;
+      const silence = new Float32Array(frameCount * config.channelCount);
+      // Ours to close: `add` copies it into the encoder (until 10 Oct 2026 it was left to the garbage
+      // collector, which is what "An AudioSample was garbage collected without first being closed" was).
+      const second = new AudioSample({
+        data: silence,
+        format: 'f32',
+        numberOfChannels: config.channelCount,
+        sampleRate: config.sampleRate,
+        timestamp: 0,
+      });
+      try {
+        await audioSource.add(second);
+      } finally {
+        second.close();
+      }
+      audioSource.close();
     }
-    audioSource.close();
 
     await output.finalize();
     const buffer = output.target.buffer;
@@ -569,7 +576,7 @@ async function runSelfTest(
     const probe = await probeProduced(new Uint8Array(buffer));
     result.selfTestDurationUs = probe.durationUs;
     result.selfTestHasAudio = probe.hasAudio;
-    result.selfTestPassed = probe.width === width && probe.height === height && probe.hasAudio;
+    result.selfTestPassed = probe.width === width && probe.height === height && probe.hasAudio === audioRequired;
     if (!result.selfTestPassed) result.failure = 'output_probe_failed';
   } catch (error) {
     result.failure = error instanceof ExportFailure ? error.code : 'internal_error';

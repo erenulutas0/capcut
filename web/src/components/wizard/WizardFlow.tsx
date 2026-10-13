@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import type { CapabilityReportV1 } from '@/adapters/exportCapability';
 import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
+import { BrowserNotice } from '@/components/BrowserNotice';
 import { Icon, Wordmark } from '@/components/Icon';
 import { ReportProblemProvider } from '@/components/ReportProblem';
 import { DownloadStatus } from '@/components/editor/DownloadStatus';
@@ -276,6 +277,11 @@ export function WizardFlow({
         <h1 className="wizard-title" ref={headingRef} tabIndex={-1} data-testid="wizard-title">
           {title}
         </h1>
+        {/*
+          Said before the user spends time on a task this browser cannot finish. Not on "Yazıya dök": its text and
+          subtitle files need no video file to be made; only its burned-in download does, and that one says so itself.
+        */}
+        {step !== 'result' && task.id !== 'yazi' ? <BrowserNotice t={t} capability={video ? exporter.capability : null} /> : null}
 
         {step === 'pick' ? (
           <>

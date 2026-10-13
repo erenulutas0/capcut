@@ -653,6 +653,13 @@ export const tr = {
     'Bu video yarım kalmış görünüyor: sonu dosyada yok. İnerken ya da kopyalanırken yarıda kesilmiş olabilir. Videoyu yeniden indir ya da yeniden kopyala, sonra tekrar dene.',
   // Only where the browser may really be the problem: shown outside Chrome / Edge, never inside them.
   'export.fail.tryChromium': 'Video başka yerde sorunsuz oynuyorsa sorun bu tarayıcıda olabilir: Chrome ya da Edge ile dene.',
+  // The browser itself cannot make the file (domain/browserAdvice.ts): what it is, in plain words, and the way forward.
+  // Shown only outside Chrome / Edge; on iPhone / iPad another browser would not help, so another device is named.
+  'browser.cannotExport': 'Bu tarayıcı video dosyası hazırlayamıyor.',
+  'browser.cannotExportNote': 'Videonu seçip bakabilirsin ama indiremezsin.',
+  'browser.advice.try_chromium': 'Chrome ya da Edge ile dene.',
+  'browser.advice.other_device':
+    'iPhone ve iPad’de başka bir tarayıcı yüklemek çoğunlukla işe yaramaz. Bir bilgisayarda ya da Android telefonda Chrome ile dene.',
   'export.fail.source_reorder_unfixable':
     'Bu video kare sırasını olduğundan az bildiriyor ve bu tarayıcının çözücüsü bu yüzden kare atlıyor. Görüntüsü sesinden geri kalan bir dosya üretmek yerine durduruldu.',
   'export.fail.caption_font_unavailable':
