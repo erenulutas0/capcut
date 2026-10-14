@@ -387,6 +387,11 @@ export function createDriver({ mediaDir, outDir, baseURL }) {
       reported.videoBitrate = askedBitrate ? Number(askedBitrate) : null;
       reported.bitrateMode = (await method.getAttribute('data-bitrate-mode')) || null;
       reported.bitrateModeAsked = (await method.getAttribute('data-bitrate-mode-asked')) || null;
+      if (reported.bitrateMode) {
+        notes.push(
+          `video kodlayıcısı: ${reported.bitrateMode} bit hızı modu (istenen ${reported.bitrateModeAsked}), ${reported.videoBitrate} bit/s`,
+        );
+      }
     }
     // ADR-035: what the app says about a target-size download.
     const targetLine = succeeded.locator('[data-testid="target-size-result"]');

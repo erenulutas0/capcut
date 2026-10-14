@@ -18,6 +18,8 @@ Kurucu kararı (koşullu): telefonda olağan indirme istenen bit hızının orta
 - Depolama tahmini (ADR-023, ×1,1 + 32 MiB) değişmedi: değişken mod için ayrıca konmuş bir pay değildi; donanımda sabit modla artık telefonda da tutuyor.
 - Kancalar: `__clipBitrateMode` (ölçüm), `__clipRefuseConstantBitrate` (yalnızca sınama derlemesi). `scripts/measure-bitrate-mode.mjs`; `phone-run.mjs --bitrate-mode=variable|constant`.
 
+**Sayılar (14 Ekim, dal `worktree-agent-a81a3063721796a75`; son kodla, yerel):** `tsc` ve `eslint` temiz; birim 1445, tam koşuda 1444 geçti + 1 zaman aşımı (`appIdentity.test.ts` "withdrawn name", depo dosyalarını okuyan test, yük altında 5 sn sınırını ~5,4 sn ile aşıyor; tek başına ve `--testTimeout=20000` ile 1445/1445 geçti; bu değişiklik o teste dokunmadı); e2e (sınama derlemesi) 418 testte 414 geçti / 4 atlandı / 0 başarısız (6'sı yeni: `bitrate-mode.spec.ts`), kendiliğinden kurtarma gerektiren yükleme **0** (bekçinin kendi testleri bilerek 9 kurtarma, 2 ölü sayfa); matris (olağan derleme) Chromium / Chrome / Edge **32/32 PASS** her biri — Chrome ve Edge satırları sabit modla kodladı (17 ve 16 tam kodlama `constant`), Chromium değişkenle (15; hedef boyut satırı `constant`); varsayılan durağan çıktı derlendi. **Koşulmayan:** `npm run quality`, Pages duman testi, gerçek telefon.
+
 **Doğrulanmayan:** telefonda iki modun kalitesi (ana oturum ölçecek); Intel/AMD/Apple/VA-API kodlayıcıları; gerçek kamera kayıtları; `isConfigSupported` "evet" deyip sonra sabit modu reddeden bir tarayıcı.
 
 ## "Yazıya dök" telefonda küçük modeli önerir; büyük model durursa "Küçük modelle dene" — 14 Ekim 2026 (ADR-036 eki; şema ve politika değişmedi; tarayıcıda saklananlara bir `localStorage` anahtarı eklendi)

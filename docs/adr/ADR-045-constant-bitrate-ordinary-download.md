@@ -69,8 +69,9 @@ Küçült'ün tahmini (`VIDEO_EXPECTED_RATIO`) zaten sabit moddu; değişmedi.
   kayıtlarda dosya küçülür (masaüstünde %1–20; telefonda değişkenin fazladan yazdığı ~%6–51 gider).
 - Bedel: değişken modun fazladan yazdığı bitlerin getirdiği kalite gider. Masaüstünde ölçülen en büyük kayıp
   VMAF −1,85 (karanlık kayıt, 720p) — kuralın sınırı içinde ama sıfır değil.
-- Matris: Chrome ve Edge satırları artık sabit modla kodlar (`data-bitrate-mode` raporlanır); Chromium
-  değişmedi.
+- Matris (son kod, 14 Ekim): Chromium, Chrome, Edge 32/32 PASS; Chrome ve Edge tam kodlamaları `constant`
+  (sonuç satırından, matrisin notlarında), Chromium `variable`. Hiçbir boyut beklentisi değişmedi (matrisin
+  boyut sınırları yalnızca hedef boyut satırlarında, onlar zaten sabit moddu).
 
 ## Ölçülmeyen
 
