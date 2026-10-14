@@ -1,8 +1,46 @@
 # Beta kullanıcı testi kiti
 
-> Tarih: 2026-09-22 · Kaynak: `transcript_araştırma/04` §Gerçek kullanıcı deneyi,
-> belge 03 (hedef kitle doğrulama), belge 34 §E. Maliyet: 0 (görüşmeler çevrim içi ya da
+> Tarih: 2026-09-22 · **Güncelleme: 2026-10-14** (bugünkü ürün: on kart, arama ve "Bunu mu demek istedin?",
+> "Yazıya dök"ün iki yolu, editöre geçişte saklama, telefon) · Kaynak: `transcript_araştırma/04` §Gerçek
+> kullanıcı deneyi, belge 03 (hedef kitle doğrulama), belge 34 §E. Maliyet: 0 (görüşmeler çevrim içi ya da
 > yüz yüze; kayıt isteğe bağlı ve katılımcı izniyle).
+>
+> **Kısa oturum (10 dakika, bir çocukla ya da bir arkadaşla):** [IZLE-VE-NOT-AL.md](IZLE-VE-NOT-AL.md) — beş
+> görev, ne söylenir, neye bakılır, tek sayfalık not kâğıdı. Bu kit uzun (30–40 dk) oturum içindir.
+
+## Bugünkü ürün (14 Ekim 2026) — görüşmeyi yapan kişi için
+
+Katılımcıya bunlar **anlatılmaz**; görüşmeyi yapan kişi ekranda ne göreceğini bilsin diye yazılıdır.
+
+- **Açılış ekranı** (https://erenulutas0.github.io/capcut/): "Ne yapmak istiyorsun?", bir yazı kutusu ve **on
+  kart**: Kes · Boşlukları at · Dikey yap · Küçült ("WhatsApp'a sığdır") · Yazıya dök · Müzik ekle · Sesini al ·
+  Sesi kapat · Her yerde açılsın · İyileştir. Sağ üstte "Kendim düzenleyeceğim" (editör).
+- **Arama:** kutuya yazılan cümle cihazda bir kelime listesiyle eşleşir (yapay zekâ yok, hiçbir yere gitmez).
+  Sonuçlar **"Bunu mu demek istedin?"** başlığıyla gelir; Enter ilkini başlatır. Arama emin değilse "Tam emin
+  olamadım. Hangisini istiyorsan ona bas." der ve Enter hiçbirini başlatmaz. Yapılamayan on istek (döndür,
+  hızlandır, birleştir, GIF, filigran, filtre, arka plan, tersten, fotoğraf, titreme) "Bunu henüz yapamıyoruz.",
+  hiç eşleşmeyen "Bunu bulamadım." alır.
+- **Sihirbaz:** kart → "Video seç" → en çok bir seçim → "İndir" → kaydetme penceresi (telefonda "Kaydet" ve
+  "Paylaş"). "Daha fazla ayar → editörde aç" aynı videoyla editöre geçer.
+- **Yazıya dök — cihazda:** yalnızca İngilizce konuşma; ilk kullanımda model bir kez iner. Masaüstü Chrome /
+  Edge'de büyük model (≈595,6 MB) önerilir; **telefonda ve tablette küçük model (≈108,8 MB)** önerilir ve ön
+  seçilidir (büyük model telefonda durabiliyor; durursa "Küçük modelle dene" çıkar).
+- **Yazıya dök — internette (davetli deneme, 14 Ekim 2026 kurucu kararı; sitede açıldıysa):** video seçilince önce
+  **"Yazıyı nerede çıkaralım?"** ekranı gelir: eş ağırlıkta iki kart, **"Cihazımda"** ("Hiçbir şey gitmez…") ve
+  **"İnternette"** ("Daha doğru, çok daha hızlı. Kimin konuştuğunu da ayırır." + dört madde: yalnızca ses gider;
+  AssemblyAI adlı bir şirkete, bilgisayarları Avrupa'da; yazı gelince oradaki ses ve yazı silinir; başka
+  insanların sesi de gider). İnternette **davet kodu** ister ("Kodu kaydet"; kod bu cihazda saklanır, "Davet
+  kodunu kaldır" ile gider), sonra "Yaklaşık N dakika sürer · X dakika düşer, Y dakikan kalır" ve **"Sesi gönder
+  ve yaz"**. Türkçe dahil başka dilleri de yazar; konuşanları "1. kişi / 2. kişi" diye ayırır. Ücretsizdir;
+  davet başına dakika vardır; aylık tavan dolunca "Şu an internette yazamıyoruz. Cihazında yazabiliriz." der.
+  Sitede açık mı: açılış ekranının alt yazısı "…yalnızca sen seçersen sesi gider." diyorsa açıktır.
+- **Editöre geçişte saklama:** "Yazıya dök"te çıkan yazı sonuç ekranında **saklanmaz** ("Bu yazı henüz
+  saklanmadı: editörde açarsan ya da metni indirirsen kalır, yoksa sayfa kapanınca gider."); "Daha fazla ayar →
+  editörde aç"a basılınca bu tarayıcıda proje olur. Daha önce üstünde çalışılmış bir proje varsa hangisinin
+  kalacağı sorulur. Öbür dokuz kart hiçbir şey saklamaz.
+- **Telefon:** Android'de Chrome ile ölçüldü (Galaxy S23, 14 Ekim 2026; `docs/phone/2026-10-14-s23.md`): on
+  kartın hepsi dosya kaydetti. Site ana ekrana eklenebilir ve bir kez açıldıktan sonra internetsiz açılır;
+  internette yazıya dökme internet ister. **iPhone / Safari ölçülmedi.**
 
 ## Amaç
 
@@ -14,7 +52,8 @@ tıkanılan yerleri görmek. Memnuniyet sözü ödeme isteği değildir (araşt�
 
 - 5–10 yetişkin; düzenleme deneyimi az. Farklı teknik rahatlık düzeyleri.
 - Kendi bilgisayarında Chrome ya da Edge (desteklenen tarayıcılar; Firefox'ta dışa
-  aktarma kapalı, Safari test edilmedi).
+  aktarma kapalı, Safari test edilmedi). **14 Ekim 2026'dan beri** kendi Android telefonunda Chrome da olur
+  (bir telefonda ölçüldü); iPhone ile yapılan oturumda bulunan her şey "ölçülmemiş tarayıcı" diye ayrı yazılır.
 - Kendi videosu: telefonla çekilmiş 1–3 dakikalık, konuşmalı bir kayıt. Video hiçbir
   yere yüklenmez; görüşmeyi yapan kişi de dosyayı istemez ve görmek zorunda değildir.
 
@@ -98,11 +137,27 @@ yazdı, "Kendim düzenleyeceğim"e mi gitti — hangisini neden seçtiği not al
    - Satıra dokununca videonun oraya gittiğini fark etti mi; kalemi buldu mu?
    - Sonuç: "Bu altyazılı videoyu paylaşır mıydın?" (evet / hayır, neden — okunabilirlik,
      satır uzunluğu, zamanlama).
+   **14 Ekim 2026 notu:** telefonda küçük model "Önerilen" ve ön seçilidir; masaüstünde büyük model. Sitede
+   internet yolu açıksa video seçilince önce "Yazıyı nerede çıkaralım?" gelir — o zaman görev 4c'ye bak.
 4b. **Yazıdan kesit:** "Şimdi yalnızca şu cümlenin geçtiği yeri ayrı bir video yap." Beklenen
    yol: "Daha fazla ayar → editörde aç" → "Yazı" sekmesi → satır(lar)ı işaretle → "Bunlardan
    kesit yap" → "Kesitler" sekmesi → kesitin "İndir"i. Not al: işaret kutularını ve düğmeyi
    buldu mu; bitişik satırların tek kesit olmasını bekledi mi; kesitin başı/sonu sözü kesiyor mu
    (zaman hatası: ölçümde p95 ~0,2–0,25 s).
+4c. **İki yol (yalnızca sitede internet yolu açıksa; 14 Ekim 2026):** aynı görev, aynı söz. Görüşmeyi yapan kişi
+   **önceden kendi davet kodunu girmez** ve katılımcıya kod vermez, ta ki katılımcı "İnternette"yi seçip kod
+   isteyene kadar; o zaman katılımcıya sor: "Sesin bir şirkete gidecek; istiyor musun?" — evet derse ve video
+   **yalnızca katılımcının ya da konuşanların izin verdiği sesleri** taşıyorsa kodu ver. Not al:
+   - Hangi kartı seçti, **neden** (sesli söylediği)? İki kartın farkını kendi sözüyle anlatabildi mi?
+   - Dört maddeyi okudu mu? "Yalnızca ses gider" ile "başka insanların sesi de gider"i nasıl anladı?
+   - Davet kodunu nereye yazacağını buldu mu; "Kodu kaydet"ten sonra "X dakika düşer, Y dakikan kalır"ı anladı mı?
+   - "Sesi gönder ve yaz"dan sonra beklerken ne yaptı; **süreyi yaz**. "1. kişi / 2. kişi" ayrımı doğru muydu?
+   - Türkçe bir videoyla denediyse: yazı ne kadar doğruydu (kabaca yanlış kelime sayısı)? (Türkçe sohbet
+     ölçülmedi; bu oturum ilk gerçek bulgudur.)
+   - Gizlilik sayfası bağlantısına bastı mı?
+4d. **Saklama:** sonuç ekranından sonra "Bu yazıyı yarın da görmek istersen ne yaparsın?" Beklenen: "Daha fazla
+   ayar → editörde aç" ya da metni indirmek. Not al: "Bu yazı henüz saklanmadı…" cümlesini okudu mu; editörde
+   açınca sayfayı yenileyip yazının geri geldiğini gördü mü; önceki bir projesi varsa sorulan soruyu anladı mı.
 
 5. **İyileştir (yeni, 7 Ekim 2026 — [ADR-037](../adr/ADR-037-enhance.md)):** katılımcının kendi
    telefonuyla çektiği, **karanlık, soluk ya da kumlu** bulduğu bir videoyla (yoksa görüşmeyi
@@ -163,8 +218,12 @@ Tutmazsa yeni özellik değil, akışın yeniden tasarımı.
 > videonu kullanacaksın; video bilgisayarından çıkmaz ve biz görmeyiz. Ekranını
 > paylaşman ya da görüşmenin kaydedilmesi isteğe bağlıdır; istemezsen yalnızca not
 > alınır. Notlarda adın yazılmaz. İstediğin an bırakabilirsin.
+> *(Sitede internet yolu açıksa ekle:)* Programın "Yazıya dök" işinde iki yol var. "İnternette"yi
+> seçersen videonun yalnızca sesi, yazıya dökülmek için Avrupa'daki bir şirkete gider; bunu ancak
+> sen seçersen ve sana sorduktan sonra yaparız. Videoda başka insanlar konuşuyorsa onların sesi de gider.
 
-(Hukuki metin değildir; K02 kararından sonra gözden geçirilir.)
+(Hukuki metin değildir; 14 Ekim 2026'dan beri veri sorumlusu kurucunun kendisidir, kişi olarak; hukuki dayanak
+belirlenmedi — `/gizlilik`.)
 
 ## Not şablonu
 
@@ -182,6 +241,9 @@ Görev 1  başarı: E/Y/B   aktif süre:   export süresi:   takıldığı yer:
 Görev 1b başarı: E/Y/B   takıldığı yer:
 Görev 2  başarı: E/Y/B   aktif süre:   takıldığı yer:
 Görev 3  başarı: E/Y/B   aktif süre:   takıldığı yer:
+Görev 4  başarı: E/Y/B   model: küçük / büyük (önerilen hangisiydi:      )   indirme süresi:   yazma süresi:   yanlış kelime ≈
+Görev 4c seçtiği kart: Cihazımda / İnternette   neden (aynen):   kod: sorunsuz / takıldı   bekleme süresi:   kişi ayrımı doğru: E/H
+Görev 4d saklamayı buldu: editörde aç / metni indir / bulamadı   "henüz saklanmadı" cümlesini okudu: E/H
 Görev 5  yol: kart / yazarak (yazdığı aynen):   güç: Hafif / Otomatik / Güçlü   çizgiyi kullandı: E/H
 Görev 5  bakma süresi:   indirme süresi:   video uzunluğu:   cihaz:   sonucu daha iyi buldu: E/H/aynı (neden):
 Görev 5b başarı: E/Y/B   takıldığı yer:
@@ -194,4 +256,5 @@ Tekrar kullanır mıydı, ne için:
 ## Sonrası
 
 Notlar `docs/beta/sessions/` altında (katılımcı adı olmadan) toplanır. Her tıkanma bir
-ADR ya da iş kalemi olur; aynı tıkanma iki kişide görülürse önceliklidir.
+ADR ya da iş kalemi olur; aynı tıkanma iki kişide görülürse önceliklidir. Notların kalite katmanının
+ölçebileceği bulgulara nasıl çevrileceği: [IZLE-VE-NOT-AL.md](IZLE-VE-NOT-AL.md), "Notlardan bulguya".
