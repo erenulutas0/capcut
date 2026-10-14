@@ -61,7 +61,7 @@ test('the whole way: invite code, send, the transcript with speakers, deleted at
   await expect(page.getByTestId('transcript-panel')).toBeVisible({ timeout: 120_000 });
 
   // The transcript: the app's own lines, said to be written on the internet, each turn with its voice.
-  expect(await lineTexts(page)).toEqual(SCRIPT_LINES);
+  await expect.poll(() => lineTexts(page)).toEqual(SCRIPT_LINES);
   await expect(page.getByTestId('transcript-machine-note')).toContainText(ct('cloud.machine'));
   await expect(page.getByTestId('yazi-cloud-summary')).toContainText(`${fill(ct('cloud.done'), { lines: 4 })} ${fill(ct('cloud.done.speakers'), { n: 2 })}`);
   // Minutes left come from the proxy, after the job.
@@ -99,7 +99,7 @@ test('the whole way: invite code, send, the transcript with speakers, deleted at
   // The editor gets the same track as an on-device transcript: its "Yazı" panel, search and kesit work on it unchanged.
   await page.getByTestId('wizard-open-editor').click();
   await expect(page.getByTestId('transcript-panel')).toBeVisible({ timeout: 30_000 });
-  expect(await lineTexts(page)).toEqual(SCRIPT_LINES);
+  await expect.poll(() => lineTexts(page)).toEqual(SCRIPT_LINES);
   await page.getByTestId('transcript-check').nth(1).click();
   await page.getByTestId('transcript-make-kesit').click();
   await expect(page.getByTestId('transcript-status')).toHaveText('1 kesit eklendi. Geri al ile vazgeçebilirsin.');

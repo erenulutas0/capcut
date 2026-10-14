@@ -81,7 +81,7 @@ test('every way the sound file\'s making can break ends as a failure that says w
   // The same page, no fault: the sound is made, sent, and the text comes back.
   await page.getByTestId('route-online-go').click();
   await expect(page.getByTestId('transcript-panel')).toBeVisible({ timeout: 120_000 });
-  expect(await lineTexts(page)).toEqual(SCRIPT_LINES);
+  await expect.poll(() => lineTexts(page)).toEqual(SCRIPT_LINES);
   expect(fake.uploads).toHaveLength(1);
 });
 

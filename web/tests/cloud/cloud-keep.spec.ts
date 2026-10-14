@@ -195,7 +195,7 @@ test.describe('a project is already stored', () => {
     await page.keyboard.press('Escape');
     await expect(choice).toHaveCount(0);
     await expect(page.getByTestId('wizard')).toBeVisible();
-    expect(await lineTexts(page)).toEqual(SCRIPT_LINES);
+    await expect.poll(() => lineTexts(page)).toEqual(SCRIPT_LINES);
     await page.getByTestId('wizard-open-editor').click();
     await expect(choice).toBeVisible();
     await page.getByTestId('keep-cancel').click();
@@ -245,7 +245,7 @@ test.describe('a project is already stored', () => {
     await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
     // What is on screen is the transcript's project, not the earlier one loaded over it.
     await expect(page.getByTestId('transcript-panel')).toBeVisible({ timeout: 30_000 });
-    expect(await lineTexts(page)).toEqual(SCRIPT_LINES);
+    await expect.poll(() => lineTexts(page)).toEqual(SCRIPT_LINES);
     await expect(page.getByTestId('side-tab-kesit')).toHaveText('Kesitler (0)');
     await expect.poll(() => storedShape(page), { timeout: 15_000 }).toEqual(TRANSCRIPT_SHAPE);
     expect(pathOf(page)).toBe('/editor');

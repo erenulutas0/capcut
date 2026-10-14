@@ -99,7 +99,7 @@ test('who spoke stays with the lines: wizard, files, edit, editor, kesit, the st
   await openReady(page, invite);
   await page.getByTestId('route-online-go').click();
   await expect(page.getByTestId('transcript-panel')).toBeVisible({ timeout: 120_000 });
-  expect(await lineTexts(page)).toEqual(SCRIPT_LINES);
+  await expect.poll(() => lineTexts(page)).toEqual(SCRIPT_LINES);
   await expect(page.getByTestId('transcript-speaker')).toHaveText(TURNS);
 
   // ---- the files: VTT names the voice in a voice tag, SRT does not carry it at all
