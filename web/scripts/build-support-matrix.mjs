@@ -32,15 +32,19 @@ const BROWSERS = [
  * `frameIdentity` (barcode N–R, the source's own frames A–M).
  */
 const PHONE_ROWS = [
-  '| A | add1.mp4 (1080×1920 30 fps H.264), 2–10 sn | ✅ 8,021 sn, 240 kare (kaynak sessiz) | ✅ 8,000 sn, 240 kare; kare 0/240 | ✅ aynı; kare 0/240 |',
-  '| B | R15 Samsung H.264 60 fps −90°, 0,5–4 sn | ❌ “süre uyuşmadı” | ✅ 3,520 sn, 105 kare, ses 0 ms; kare 0/105 (ilk koşuda **5 bayat**) | ✅ aynı; kare 0/105 |',
-  '| C | R14 Samsung HEVC ağır çekim −90°, 1–8 sn | ❌ “süre uyuşmadı” | ✅ 7,019 sn, 210 kare (ton); kare 0/210 (ilk koşuda **10 bayat**) | ✅ aynı; kare 0/210 |',
-  '| D | R11 iPhone 12 Pro HEVC HLG −90°, 2–10 sn | ✅ 8,021 sn, 240 kare, **ses +42,67 ms** | ✅ 8,000 sn, 240 kare, ses 0 ms; kare **1/240 bayat** (son) | ✅ aynı; kare 0/240 |',
-  '| E–G | 3 dk 1080×1920: hızlı kesim / tam kodlama / iki kesit | ✅ 180,032 / 180,032 / 60,032 sn | ✅ 180,011 / 180,011 / 60,011 sn, 5400 / 5400 / 1800 kare; kare 0 / **12 bayat** (F sonu) / 0 | ✅ aynı; kare 0 / 0 / 0 |',
-  '| H–J | R15: tüm dosya / 1,2–2,9 sn / iki kesit | çalıştırılmadı | ✅ 4,416 / 1,707 / 3,605 sn, 132 / 51 / 108 kare, ses 0 ms; kare **6** / 0 / **3 bayat** (kesit sonları; ilk koşuda I **3**) | ✅ aynı; kare 0 / 0 / 0 |',
-  '| K–M | R14: tüm dosya / 2,5–5,1 sn / iki kesit | çalıştırılmadı | ✅ 11,819 / 2,603 / 6,507 sn, 354 / 78 / 195 kare (ton); kare **5** / 0 / **3 bayat** (ilk koşuda L **11**) | ✅ aynı; kare 0 / 0 / 0 |',
-  '| N–Q | Senkron klibi (flaş + cıvıltı): hızlı kesim / tam kodlama / iki kesit / tümü | — | ✅ ses 0 ms, flaş–cıvıltı 0,08–0,10 ms; barkod 0 / 0 / 0 / **6 bayat** (Q: 354–359 → 353) | ✅ aynı; barkod 0 / 0 / 0 / 0 |',
-  '| R | 24 fps senkron klibi, iki kesit (ikincisi klibin sonuna), tam kodlama | — | ✅ 5,419 sn, 162 kare, ses 0 ms; barkod **21/162 bayat** (2. kesitin son 21 karesi → 270) | ✅ aynı; barkod 0/162 |',
+  '| A | Telefon kaydı K1 (1080×1920 30 fps H.264, 14 sn’de tek anahtar kare), 2–10 sn | ✅ 8,021 sn, 240 kare (kaynak sessiz) | ✅ 8,000 sn, 240 kare; kare 0/240 | ✅ aynı; kare 0/240 | ✅ 8,000 sn, 240 kare, kodlandı (`no_keyframe`: aralıkta anahtar kare yok); kare 0/240 |',
+  '| B | R15 Samsung H.264 60 fps −90°, 0,5–4 sn | ❌ “süre uyuşmadı” | ✅ 3,520 sn, 105 kare, ses 0 ms; kare 0/105 (ilk koşuda **5 bayat**) | ✅ aynı; kare 0/105 | ✅ 3,520 sn, 105 kare, ses 0 ms; kare 0/105 |',
+  '| C | R14 Samsung HEVC ağır çekim −90°, 1–8 sn | ❌ “süre uyuşmadı” | ✅ 7,019 sn, 210 kare (ton); kare 0/210 (ilk koşuda **10 bayat**) | ✅ aynı; kare 0/210 | ✅ 7,019 sn, 210 kare; kare 0/210 |',
+  '| D | R11 iPhone 12 Pro HEVC HLG −90°, 2–10 sn | ✅ 8,021 sn, 240 kare, **ses +42,67 ms** | ✅ 8,000 sn, 240 kare, ses 0 ms; kare **1/240 bayat** (son) | ✅ aynı; kare 0/240 | ✅ 8,000 sn, 240 kare, ses 0 ms; kare 0/240 |',
+  '| E–G | 3 dk 1080×1920: hızlı kesim / tam kodlama / iki kesit | ✅ 180,032 / 180,032 / 60,032 sn | ✅ 180,011 / 180,011 / 60,011 sn, 5400 / 5400 / 1800 kare; kare 0 / **12 bayat** (F sonu) / 0 | ✅ aynı; kare 0 / 0 / 0 | ✅ 180,011 / 180,011 / 60,011 sn (kopya / kodlama 38,4 sn / kopya); kare 0 / 0 / 0 |',
+  '| H–J | R15: tüm dosya / 1,2–2,9 sn / iki kesit | çalıştırılmadı | ✅ 4,416 / 1,707 / 3,605 sn, 132 / 51 / 108 kare, ses 0 ms; kare **6** / 0 / **3 bayat** (kesit sonları; ilk koşuda I **3**) | ✅ aynı; kare 0 / 0 / 0 | ✅ 4,416 / 1,707 / 3,605 sn, ses 0 ms; kare 0 / 0 / 0 |',
+  '| K–M | R14: tüm dosya / 2,5–5,1 sn / iki kesit | çalıştırılmadı | ✅ 11,819 / 2,603 / 6,507 sn, 354 / 78 / 195 kare (ton); kare **5** / 0 / **3 bayat** (ilk koşuda L **11**) | ✅ aynı; kare 0 / 0 / 0 | ✅ 11,819 / 2,603 / 6,507 sn; kare 0 / 0 / 0 |',
+  '| N–Q | Senkron klibi (flaş + cıvıltı): hızlı kesim / tam kodlama / iki kesit / tümü | — | ✅ ses 0 ms, flaş–cıvıltı 0,08–0,10 ms; barkod 0 / 0 / 0 / **6 bayat** (Q: 354–359 → 353) | ✅ aynı; barkod 0 / 0 / 0 / 0 | ✅ ses 0 ms, flaş–cıvıltı 0,08–0,10 ms; barkod 0 / 0 / 0 / 0 |',
+  '| R | 24 fps senkron klibi, iki kesit (ikincisi klibin sonuna), tam kodlama | — | ✅ 5,419 sn, 162 kare, ses 0 ms; barkod **21/162 bayat** (2. kesitin son 21 karesi → 270) | ✅ aynı; barkod 0/162 | ✅ 5,419 sn, 162 kare, ses 0 ms; barkod 0/162 |',
+  '| S–U | Hedef boyut: R15 1 MB / 3 dk klip 16 MB / 30 sn 4 MB | — | — | — | ✅ 911 760 / 14 667 113 / 3 646 053 bayt; üçü de sığdı, 1’er deneme; kare 0 / 0 / 0 |',
+  '| V–W | Yalnızca ses (M4A): senkron klibi / R15 | — | — | — | ✅ 5,300 / 3,500 sn, ses 0 ms |',
+  '| X–Z3 | Zorla 720p 1,5 Mbit/s: R15 sabit / R15 değişken / 30 sn sabit / 30 sn değişken | — | — | — | ✅ yazılan ÷ istenen video bit hızı 1,003 / **1,974** / 0,999 / 1,234; kare 0 |',
+  '| Z2 | Zorla 1080p 3 Mbit/s, ses 96 kbit/s | — | — | — | ⛔ reddedildi (beklenen, ADR-035: bu telefonda 96 kbit/s AAC gecikmesi ölçülemiyor; dosya yazılmadı) |',
 ];
 
 /**
@@ -57,17 +61,21 @@ const PHONE_SECTION = [
   '| Cihaz | Android | Tarayıcı | Tarih |',
   '|---|---|---|---|',
   '| Samsung Galaxy S23 (SM-S911B) | 16 | Chrome 154.0.8037.57 | 2026-09-30 / 2026-10-02 |',
+  '| aynı cihaz | 16 | Chrome 155.0.8059.39 | 2026-10-14 (canlı site; on görev kartı ayrıca: [docs/phone/2026-10-14-s23.md](phone/2026-10-14-s23.md)) |',
   '| aynı cihaz | 16 | Samsung Internet 30.0.0.67 | **ölçülmedi** (DevTools soketi kapalı; telefonun ayarı değiştirilmedi) |',
   '',
   'Kaydetme penceresi betikte bir yer tutucuyla (OPFS dosyası) geçildi; uygulamanın yazma yolu gerçek. Kalite 1080p. ' +
     '“ADR-032’den önce”: canlı site, eylül sonu. “Canlı, ADR-032”: canlı site 2 Ekim (bu tablonun ADR-033’ten önceki hâli). ' +
     '“Bu dal, ADR-033”: kesit sonu düzeltmesinin yerel derlemesi (`next start` + `adb reverse`), 2 Ekim. ' +
+    '“Canlı, 14 Ekim”: canlı site (ADR-040–044 ve EDL v5 sonrası), Chrome 155; indirmenin boyutu artık kaynağın kendisi ' +
+    '(ADR-041), bu kaynaklarda yine 1080×1920. K1 yerel, özel bir telefon kaydı (adı yazılmaz), R11/R14/R15 internetten alınmış ' +
+    'kayıtlar (`tests/media/real/SOURCES-web.md`). ' +
     'Ses kayması ffmpeg ile, dosya baştan okunarak, kaynağın aynı anına karşı (+ = ses geç); tarayıcıların kendi oynatıcısında ' +
     '(telefonda Chrome dahil) de senkron (`player-sync.mjs`). “Kare”: her çıktı karesinin kaynağın doğru karesini gösterip ' +
     'göstermediği (yanlış / beklenen), N–R’de kare numarası barkodundan, A–M’de kaynağın kendi karelerine karşı.',
   '',
-  '| # | Kaynak, kesit | ADR-032’den önce | Canlı, ADR-032 | Bu dal, ADR-033 |',
-  '|---|---|---|---|---|',
+  '| # | Kaynak, kesit | ADR-032’den önce | Canlı, ADR-032 | Bu dal, ADR-033 | Canlı, 14 Ekim |',
+  '|---|---|---|---|---|---|',
   ...PHONE_ROWS,
   '',
   'ADR-032’den önce telefondaki Chrome’un AAC kodlayıcısı sesin önüne 2048 hazırlık karesi koyuyordu: her çıktının sesi ' +
