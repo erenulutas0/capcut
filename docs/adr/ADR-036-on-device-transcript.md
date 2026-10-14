@@ -15,6 +15,11 @@
 > kısmı yazılmıyordu. Ölçüm, sebep, değişen ayarlar, önerilen model ve pencereli panel aşağıda
 > "7 Ekim 2026 — gerçek kullanımdan sonra" bölümündedir; o bölüm, çeliştiği yerde aşağıdaki
 > 4–5 Ekim metninin yerini alır (bulucu ayarları, model seçimi metni, panelin çizimi).
+>
+> **14 Ekim 2026 eki:** büyük model gerçek bir telefonda (Galaxy S23) indi ama 3 denemede 3 kez
+> yazarken durdu. "Önerilen" artık yalnızca ölçüldüğü yerde (masaüstü Chrome / Edge); telefonda ve
+> denenmemiş tarayıcıda küçük model önerilir; büyük model durursa ekran "Küçük modelle dene" der.
+> Sondaki "Ek — 14 Ekim 2026" bölümü, çeliştiği yerde "Önerilen model" bölümünün yerini alır.
 
 ## Kurucu kararları (4 Ekim 2026) ve ne yapıldığı
 
@@ -674,6 +679,9 @@ yer atıyor (%0,5'e karşı %6,3; aksanlı çağrıda WER %10,9'a karşı %15,7)
   indirme kullanıcının kendi kararı olarak kalır (büyük model yine "Önerilen" diye görünür).
   İkisi de varsa ya da hiçbiri yoksa `turbo` ön seçilidir.
 - WebGPU'suz tarayıcıda tek model vardır, seçim gösterilmez.
+- **14 Ekim 2026'dan beri** bu kural yalnızca masaüstü Chromium'da (Chrome, Edge) geçerli: telefonda,
+  Chromium olmayan tarayıcıda ve büyük modelin daha önce durduğu tarayıcıda küçük model önerilir ve
+  ön seçilidir (sondaki "Ek — 14 Ekim 2026").
 - Hiçbir indirme kendiliğinden başlamaz: düğme, basılmadan önce indireceği baytı söyler.
   Tarayıcıya sormak (ekran kartı, saklı modeller) bitmeden hiçbir düğme çizilmez — düğmede önce bir
   modelin, sonra ötekinin boyutu görünmez.
@@ -924,3 +932,181 @@ Hepsi 4–5 Ekim 2026'da bu makinede, son kaynakla koşuldu.
 7. **Uzun video süresi:** 60 ve 120 dakika masaüstü Chromium'da bitti (37,7 ve 54,5 dakika;
    bellek ~1,2 GiB). Ayrı bir sınır konmadı. Telefonda uzun video ölçülmedi: telefon için daha
    kısa bir sınır ya da "bu uzun sürecek" uyarısı istenir mi? (Önce gerçek cihaz ölçümü gerekir.)
+
+## Ek — 14 Ekim 2026: büyük model telefonda çalışmadı; "Önerilen" artık ölçüldüğü yerde
+
+> Dayanak: [docs/phone/2026-10-14-s23.md](../phone/2026-10-14-s23.md) §2 (gerçek telefon, canlı
+> site). Şema, politika, model dosyaları ve tanıyıcı ayarları **değişmedi**. Tarayıcıda saklananlara
+> bir `localStorage` anahtarı eklendi (aşağıda Karar 3; veri envanteri §2.8a).
+
+### Ölçülen
+
+Galaxy S23 (SM-S911B, Android 16, Chrome 155): WebGPU var, `shader-f16` var → 7 Ekim kuralı gereği
+büyük model ön seçili ve "Önerilen" geldi. İndirme çalıştı (605 577 327 bayt, Wi-Fi'da 55–81 sn).
+"Yazıya dök" ~11 sn sonra durdu: `internal_error`, ayrıntı satırı `Error · recognise · writing`;
+"Tekrar dene" aynı yerde aynı hata — iki koşuda **3 denemede 3**. Konsolda onnxruntime'ın WebGPU
+arka ucu: `BufferManager::Download … map_async_result.status` — kod çözücü (`decoder_model_merged`)
+adımında ekran kartındaki tampon geri okunamıyor. Aynı telefonda küçük model (WASM, 108,8 MB) aynı
+11,6 sn'lik klibi **10,5 sn'de** yazdı. Sonuç: yeni bir kullanıcı varsayılanla ~600 MB indirip yazı
+alamıyordu ve ekran ona küçük modeli önermiyordu.
+
+7 Ekim'deki "Önerilen: büyük model" kararı (yukarıda "Önerilen model") yalnızca **masaüstü
+Chromium'da** ölçülmüştü; telefon, Safari ve Firefox'ta büyük model hiç ölçülmemişti.
+
+### Karar 1 — "Önerilen" yalnızca ölçüldüğü yerde
+
+`domain/transcriptModels.ts`: `largeModelStanding`, `recommendedModel`, `preselectedModel`. Büyük
+modelin bir cihazdaki yeri dört değerden biridir; yalnızca `proven` olduğu yerde önerilir:
+
+| Cihaz / tarayıcı (WebGPU + `shader-f16` var) | Yeri | "Önerilen" ve ön seçili | Büyük modelin satırı |
+|---|---|---|---|
+| Masaüstü Chromium (Chrome, Edge) | `proven` — 7 Ekim ölçümü | **büyük** (değişmedi; yalnızca küçük model saklıysa küçük, değişmedi) | "Önerilen: büyük model (≈595,6 MB, bir kez iner)" — değişmedi |
+| Telefon ya da tablet | `phone` — 14 Ekim: 3/3 başarısız | **küçük**, saklı ne olursa olsun | "Büyük model (≈595,6 MB, bir kez iner)" · "Konuşmayı daha iyi anlar ama telefonda çalışmayabilir: denediğimiz bir telefonda indi, sonra yazıya dökemedi. İndirmesi çok büyüktür." |
+| Chromium olmayan tarayıcı (Safari, Firefox) | `untested` — hiç ölçülmedi | **küçük** | "… ama bu tarayıcıda hiç denenmedi; çalışmayabilir. İndirmesi çok büyüktür." |
+| Büyük model bu tarayıcıda daha önce yazarken durdu | `failed_here` (Karar 3) | **küçük** | "Bu cihazda daha önce yazıya dökerken durdu. Yine de seçebilirsin. İndirmesi çok büyüktür." |
+| WebGPU + `shader-f16` yok | — | küçük; seçim gösterilmez (değişmedi) | — |
+
+- Küçük model önerildiğinde etiketi "Önerilen: küçük model (≈108,8 MB, bir kez iner)" olur ve
+  listede ilk sıradadır; ipucu aynı ("İndirmesi küçüktür, her cihazda çalışır. …").
+- Büyük model telefonda **gizlenmedi**: seçilebilir, satırı neden önerilmediğini sade sözle söyler
+  (teknik kelime yok — kalite katmanının listesiyle birim testinde denetlenir).
+- "Önerilen modelle yeniden yaz" (kapsam notu, yukarıda "Dürüst geri bildirim") yalnızca büyük
+  model **bu cihazın önerisiyse** çıkar: telefonda çalışmadığı görülen bir modele yönlendirmez.
+
+**Telefon nasıl anlaşılır** (`domain/deviceClass.ts`, saf; okuyan `transcriptClient.ts`
+`currentDevice`): önce `navigator.userAgentData` (`mobile`, `platform`, marka listesi) — yalnızca
+marka listesi doluysa güvenilir (değiştirilmiş bir user agent boş bir nesne bırakabiliyor); yoksa
+User-Agent dizgisi. **Herhangi bir sinyaldeki** telefon/tablet işareti yeter (`mobile: true`,
+platform Android/iOS, dizgide Android/iPhone/iPad/Mobile/Tablet). Chromium: markalarda "Chromium",
+"Google Chrome" ya da "Microsoft Edge"; dizgide `Chrome/` (iOS'taki Chrome WebKit'tir, `CriOS/` der).
+Hiçbir şey saklanmaz ya da gönderilmez.
+
+**Sınırlar (bilerek söyleniyor):** Chrome'un "masaüstü sitesi" kipindeki Android tablet (büyük
+tabletlerde varsayılan) ve masaüstü sitesi isteyen telefon, sayfanın okuyabildiği her sinyalde
+masaüstü görünür → büyük model önerilir; orada Karar 2 ve 3 devreye girer. iPad'in Safari'si
+"Macintosh" der ama Chromium değildir → `untested`, yine önerilmez. Kendini başka gösteren
+tarayıcıya inanılır. Playwright'ın Pixel 7 öykünmesi `userAgentData.mobile = true` ve platform
+"Android" verir; yalnızca user agent değiştirildiğinde `mobile` false, platform "Android" kalır —
+ikisi de telefon sayılır (ölçüldü, Chromium 153).
+
+### Karar 2 — büyük model yazarken durursa: "Küçük modelle dene"
+
+`classifyLargeModelFailure`: büyük modelin `internal_error`, `out_of_memory` ya da
+`engine_unavailable` ile biten her koşusu. Sayılmayanlar: küçük model, videonun kendi sorunları
+(ses yok, çözülemiyor, okunamıyor), eksik model dosyası, kullanıcının durdurması, hiç başlamayan
+işleyici (küçük model de aynı işleyiciyi ister).
+
+Ekran (`TranscribeSteps.tsx`; sihirbazda ve editörün penceresinde aynı):
+
+- uyarı: "Büyük model bu cihazda yazıya dökemedi. Küçük modelle deneyebilirsin: daha küçüktür ve
+  her cihazda çalışır." (eski genel cümlenin yerine; "Ayrıntılar" yerinde);
+- **"Küçük modelle dene"** (vurgulu düğme), altında ne olacağı: "Önce küçük model iner (≈108,8 MB,
+  bir kez), sonra yazıya döker." ya da "Küçük model bu tarayıcıda hazır; hemen başlar." Tek basış:
+  küçük modeli seçer, yoksa indirir, sonra yazıya döker. Basılmadan hiçbir şey inmez;
+- **"Tekrar dene"** kalır (düz düğme): büyük modelle bir daha.
+
+Türü ADR-042 ayrıntısından okunur: `gpu` (yeni ipucu `gpu_buffer_read` — onnxruntime'ın tampon
+okuma cümlesi; ya da `gpu_or_context_lost`), `memory`, `engine`, `stalled`, `crashed`, `other`.
+`failureHint`'e iki etiket eklendi: `gpu_buffer_read` (`BufferManager::Download`,
+`map_async_result`, `MapAsyncStatus`) ve `ort_run_failed` (onnxruntime'ın "failed to call OrtRun()"
+sarmalayıcısı; asıl sebep taranan ilk 400 karakterin dışında kalırsa). Cümlenin kendisi yine hiçbir
+yerde tutulmaz (ADR-042). **Telefonda fırlatılan hatanın metni görülmedi** (yalnızca konsol
+satırı); ilk 400 karakterde bu sözcükler geçmezse ayrıntı `ort_run_failed` ya da ipucusuz olur —
+"Küçük modelle dene" ipucuna bağlı değildir, her durumda çıkar.
+
+**Tanı dosyası ("Sorun bildir")** — yalnızca kodlar (ADR-042 kuralları; şema değişmedi):
+
+| Satır (`transcript` alanı) | Ne zaman |
+|---|---|
+| `large_model_failed_<tür>` | büyük model durunca, hata satırından **önce** (`gpu`, `memory`, `engine`, `stalled`, `crashed`, `other`) |
+| `internal_error` (vb.) + ayrıntı | her zamanki hata satırı, değişmedi |
+| `large_model_retry` | "Tekrar dene"ye basıldı |
+| `large_model_fallback_small` | "Küçük modelle dene"ye basıldı |
+| `large_model_fallback_small_done` | küçük model ardından yazıyı bitirdi |
+| `large_model_deleted` | "Büyük modeli sil"e basıldı |
+
+### Karar 3 — bu tarayıcı hatırlar: `localStorage` → `clip.transcriptLargeFailed` = `1`
+
+**Neden saklanıyor.** Telefon kuralı S23'ü kapsıyor; ama "kanıtlanmış" sayılan bir cihazda da
+(zayıf ekran kartlı dizüstü, masaüstü kipindeki tablet) büyük model durabilir. Not olmadan bir
+sonraki açılışta büyük model — dosyaları saklıysa — yine ön seçili ve "Önerilen" olurdu, aynı hata
+yine yaşanırdı; "Önerilen modelle yeniden yaz" da kullanıcıyı burada çalışmayan modele geri
+çağırırdı. Bedeli küçük: tek anahtar, değeri `1`; zaman, dosya, hata ya da cihaz bilgisi yok.
+
+- **Yazılır:** yalnızca Karar 2'deki bir hatada (`largeModelNote.ts`). Depolamayı reddeden
+  tarayıcıda (gizli pencere) yalnızca açık sekme için bellekte.
+- **Silinir:** büyük model bu tarayıcıda bir kez yazıya dökebilirse kendiliğinden (kullanıcı onu
+  yine seçti ve çalıştı); `/gizlilik` "Konuşma modeli" kartında ve editörde "Kısayollar ve
+  sınırlar"da **"Bu notu sil"**; tarayıcının site verisini temizleyince. Başka sekmedeki değişiklik
+  (`storage` olayı) açık adımı günceller.
+- Tek seferlik bir sorun da (ör. o an başka sekmeler belleği doldurmuştu) not bırakır: büyük model
+  yine seçilebilir, yalnızca önerilmez; seçilip çalışınca not gider.
+- Hiçbir yere gönderilmez; tanı dosyasına girmez. `/gizlilik`'te "Büyük model notu" kartı ve
+  "localStorage'da yalnızca …" cümlesi aynı değişiklikte güncellendi; veri envanteri §2.8a.
+
+### Karar 4 — yer: büyük modelin dosyaları silinebilir, kendiliğinden silinmez
+
+Büyük model bu tarayıcıda durmuşsa (`failed_here`) ve kendi dosyaları duruyorsa adımda (hata
+ekranında da, sonraki açılışlarda da): "Büyük model bu tarayıcıda ≈566,5 MB yer kaplıyor." +
+**"Büyük modeli sil"**. Yalnızca büyük modelin **kendi** dosyaları silinir (`modelStore.ts`
+`deleteModelFiles`; çalışma zamanı ve konuşma bulucu iki modelin ortak dosyalarıdır ve kalır):
+küçük model hemen çalışmaya devam eder. Sonra "Büyük model silindi." Var olan "Modeli sil"
+(`/gizlilik` ve "Kısayollar ve sınırlar"; bütün `clip-models-*` önbelleklerini siler) aynen duruyor.
+Önbelleğin adı (`clip-models-v1`) ve biçimi değişmedi.
+
+### Test ikizi
+
+`StubScript.failAs` (yalnızca `CLIP_TEST_HOOKS=1` derlemesi): ilk konuşma parçasından sonra, **yalnızca
+istenen model çalışırken**, testin verdiği ad ve metinle bir `Error` fırlatır ve onu gerçek motorun bir
+tanıyıcı hatasını etiketlediği gibi etiketler (`internal_error`, aşama `recognise`). e2e testi metne
+telefonun cümlesini ve ADR-042'nin "sızmamalı" dizgilerini (yol, altyazı satırı, blob adresi) koyar.
+
+### Testler (bu ek)
+
+Hepsi 14 Ekim 2026'da bu makinede, son kodla (dal `worktree-agent-a0749dbc7d42a7e89`):
+
+- `tsc` ve `eslint` temiz.
+- **Birim: 1436 / 1436** (83 dosya). Yeni `largeModelChoice.test.ts` (18): cihaz sınıfı (S23'ün
+  istemci ipuçları, masaüstü Chrome/Edge/başsız Chromium, Android tablet, boş marka listesi, Firefox,
+  Safari, iOS Chrome, Samsung Internet, iPad sınırı), dört yer ve öneri / ön seçim (telefonda saklı ne
+  olursa olsun küçük; masaüstü değişmedi; WebGPU yok), hata türleri (telefonun cümlesi `gpu_buffer_read`
+  olur, cümle ayrıntıda yok; küçük model, video sorunları, durdurma sayılmaz), ekran sözleri (kalite
+  katmanının teknik kelime listesi, iki dil, aynı yer tutucular). `transcriptQuality.test.ts`: ön seçim
+  testleri masaüstü Chromium girdisiyle, sonuçları aynı.
+- **e2e (olağan `CLIP_TEST_HOOKS=1` derlemesi, port 3194, kilit altında): 400 testte 396 geçti / 4
+  atlandı / 0 başarısız** (önce 395; 5'i yeni). Kendiliğinden kurtarma gerektiren yükleme **1**
+  (`transcript-long.spec.ts`, `/yap/yazi`, test geçti); bu iki yazı dosyası (26 test) yeniden koşulunca
+  **0**. Bekçinin kendi testleri bilerek 9 kurtarma, 2 ölü sayfa yaptı. Yeni
+  `transcript-large-fallback.spec.ts` (5): Pixel 7 öykünmesinde küçük model önerili ve seçili, büyük
+  modelin satırı, hiçbir şey kendiliğinden inmez, küçük model yazar ve büyük modele yönlendirmez;
+  masaüstü değişmedi; büyük model telefonun hatasıyla durunca ekran, "Ayrıntılar" (`Error · recognise
+  · gpu_buffer_read · writing`), tanı dosyasının satır sırası, hata metninin, yolun, altyazı satırının,
+  blob adresinin hiçbir yerde olmaması, "Tekrar dene" aynı hatayı verir, "Küçük modelle dene" yalnızca
+  küçük modelin iki dosyasını indirir ve yazıyı yazar, sonraki açılışta küçük model seçili, "Büyük
+  modeli sil" yalnızca büyük modeli siler, `/gizlilik`'te not silinir ve büyük model yeniden önerilir;
+  editörün penceresinde aynı yol ve tanı dosyasında `large_model_fallback_small_done`; büyük model
+  çalışınca not kendiliğinden gider. `privacy.spec.ts`: "Büyük model notu" kartı ve yeni localStorage
+  cümlesi.
+- Varsayılan durağan çıktı (`STATIC_EXPORT=1`, `/capcut`) derlendi; test ikizinin izi yok (apply-csp).
+- **Koşulmayan:** Pages duman testi, tarayıcı matrisi, `npm run quality`, gerçek modelle testler
+  (model dosyaları bu çalışma ağacında yok), gerçek telefon.
+
+### Doğrulanmayan
+
+- **Gerçek telefonda yeni davranış** (küçük modelin ön seçimi, büyük modelin satırı, hata ekranı):
+  bu çalışma telefonu kullanmadı; ana oturum yeniden deneyecek.
+- Telefonda fırlatılan hatanın metninin ilk 400 karakterinde `BufferManager` / `map_async` geçip
+  geçmediği (yukarıda).
+- Android tablet (normal ve masaüstü kipi), Samsung Internet, iOS/iPadOS Safari'nin WebGPU'su,
+  masaüstü Firefox/Safari'de büyük model: hiçbiri ölçülmedi.
+- Masaüstü Chrome/Edge'de gerçek büyük modelle hata yolu: yalnızca test ikiziyle sınandı.
+
+### Açık kurucu kararları
+
+1. Telefonda büyük model hiç gösterilmesin mi? (Şimdi: seçilebilir, uyarıyla.)
+2. Not süresiz mi kalsın? (Şimdi: evet; ör. 30 gün sonra kendiliğinden unutulabilir.)
+3. Büyük model durunca küçük model **kendiliğinden** mi denensin? (Şimdi: hayır, bir basış; çünkü
+   indirme gerekebilir.)
+4. Safari ve Firefox'ta büyük model ölçülene kadar önerilmesin — onay.
+5. "her cihazda çalışır" cümlesi: küçük model masaüstünde ve bir telefonda ölçüldü; daha temkinli
+   bir söz mü istenir?
