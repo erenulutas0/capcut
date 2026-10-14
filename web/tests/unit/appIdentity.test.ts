@@ -1,4 +1,5 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -123,7 +124,15 @@ describe('the product name has one source', () => {
   });
 
   it('the withdrawn name is nowhere in the repository', () => {
-    const offenders = textFiles(repoDir).filter((file) => WITHDRAWN_NAME.test(readFileSync(file, 'utf8')));
+    // What git tracks or would add (not ignored): a walk of the whole folder also read local raw
+    // results and agent worktrees, and timed out under a busy full run.
+    const listed = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: repoDir, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+      .split(String.fromCharCode(0))
+      .filter((name) => name !== '' && TEXT_FILE.test(name) && !name.endsWith('package-lock.json') && !name.startsWith('.claude/'))
+      .map((name) => join(repoDir, name))
+      .filter((path) => existsSync(path));
+    expect(listed.length).toBeGreaterThan(100);
+    const offenders = listed.filter((file) => WITHDRAWN_NAME.test(readFileSync(file, 'utf8')));
     expect(offenders).toEqual([]);
   });
 });
