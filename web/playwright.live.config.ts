@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+import { PUBLISHED_PROXY_ORIGIN } from './tests/pages/proxyOrigin';
+
 /**
  * The Pages smoke test against the PUBLISHED site (no local server, no build):
  *
@@ -15,6 +17,10 @@ const baseURL = process.env.LIVE_URL ?? 'https://erenulutas0.github.io/capcut/';
 
 // The smoke test counts requests to any other origin as leaving the site.
 process.env.PAGES_SITE_ORIGIN = new URL(baseURL).origin;
+// The published site may or may not carry the internet route of "Yazıya dök" (ADR-039): its policy's
+// connect-src must be 'self', or 'self' and exactly this one origin (tests/e2e/cspWatch.ts). With the
+// route on, the pre-flight test runs too; it blocks every request to this origin (none is sent to it).
+process.env.LIVE_CLOUD_ORIGIN ??= PUBLISHED_PROXY_ORIGIN;
 
 export default defineConfig({
   testDir: './tests/pages',

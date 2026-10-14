@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
-import { expectPolicy, expectedConnectSrc, watchCsp } from '../e2e/cspWatch';
+import { allowedConnectSrc, expectPolicy, expectedConnectSrc, watchCsp } from '../e2e/cspWatch';
 import { enhanceFixture, frameLumas } from '../e2e/enhance-media';
 import { addKesit, closeSheet, openMore, openSettings, installSavePicker, probeMp4, readSaved } from '../e2e/kesitFlow';
 import { APP_NAME } from '../../src/appIdentity';
@@ -371,11 +371,32 @@ test('the export publishes compiled files only: no source maps, no TypeScript so
 /**
  * The cloud transcript route (ADR-039) is in the published site only when the
  * build was given our proxy's origin — and then with exactly that origin in
- * the policy. Without it (today's site): no other origin in any page's
- * policy, none of the route's code, and no word about a service the site
- * does not use.
+ * the policy. Without it: no other origin in any page's policy, none of the
+ * route's code, and no word about a service the site does not use.
+ *
+ * Against the published site (playwright.live.config.ts) there is no `out/`
+ * folder to read: the pages' own policies are read from the site, and they
+ * must say one thing — absent everywhere, or exactly one extra origin, the
+ * configured proxy, everywhere — and the privacy page must match.
  */
-test('the cloud transcript route: absent from the export unless the build names the proxy; then one origin, exactly', () => {
+test('the cloud transcript route: absent from the export unless the build names the proxy; then one origin, exactly', async ({ request }) => {
+  if (process.env.PAGES_SITE_ORIGIN) {
+    const seen = new Map<string, string>();
+    for (const path of ['./', 'editor/', 'gizlilik/', 'gizlilik/en/', ...WIZARD_PAGES]) {
+      const response = await request.get(path);
+      expect(response.status(), path).toBe(200);
+      const policy = /http-equiv="Content-Security-Policy"[^>]*content="([^"]*)"/.exec(await response.text())?.[1] ?? '';
+      seen.set(path, /connect-src ([^;]*);/.exec(policy.replace(/&#x27;/g, "'"))?.[1] ?? '(none)');
+    }
+    const values = [...new Set(seen.values())];
+    expect(values, JSON.stringify(Object.fromEntries(seen))).toHaveLength(1);
+    expect(allowedConnectSrc()).toContain(values[0]);
+    const routeOn = values[0] !== "'self'";
+    console.log(`LIVE-CLOUD-ROUTE ${routeOn ? `on (${values[0]})` : 'off'}`);
+    const privacy = await (await request.get('gizlilik/')).text();
+    expect(privacy.includes('AssemblyAI'), 'the privacy page names the provider exactly when the route is on').toBe(routeOn);
+    return;
+  }
   const walk = (dir: string): string[] =>
     readdirSync(dir).flatMap((name) => {
       const path = join(dir, name);
@@ -483,6 +504,14 @@ test('Yazıya dök under /capcut/ with the real model: download from this site, 
   await page.goto('yap/yazi/');
   await expectPolicy(page);
   await page.getByTestId('video-input').setInputFiles(SPEECH_VIDEO);
+  // With the internet route in the site (ADR-039) "Yazıyı nerede çıkaralım?" comes first; this test is the
+  // on-device way, and nothing may leave the site on the way (`seen.outside` below).
+  const routeChoice = page.getByTestId('route-choice');
+  await expect(page.getByTestId('model-download').or(routeChoice)).toBeVisible({ timeout: 60_000 });
+  if (await routeChoice.isVisible()) {
+    expect(allowedConnectSrc().some((value) => value !== "'self'"), 'a choice screen in a build without the route').toBe(true);
+    await page.getByTestId('route-device-go').click();
+  }
   await expect(page.getByTestId('model-download')).toBeVisible({ timeout: 60_000 });
   // Where this browser can run the large model it is the pre-selected, recommended one (ADR-036, 7 Oct):
   // this test is about the small one, so it says so.

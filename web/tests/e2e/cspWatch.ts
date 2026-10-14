@@ -32,6 +32,32 @@ export function expectedConnectSrc(): string {
   return origin ? `'self' ${origin}` : "'self'";
 }
 
+/**
+ * Against the PUBLISHED site (playwright.live.config.ts) the test run is not told how the site was built:
+ * the route may be off or on there. Then `connect-src` may be `'self'`, or `'self'` and exactly one more
+ * origin — the proxy Worker the live config names (`LIVE_CLOUD_ORIGIN`) — and nothing else. Everywhere
+ * else this is the one exact value above.
+ */
+export function allowedConnectSrc(): string[] {
+  const live = (process.env.LIVE_CLOUD_ORIGIN ?? '').trim();
+  if (cloudOriginFromEnv() || !live) return [expectedConnectSrc()];
+  return ["'self'", `'self' ${live}`];
+}
+
+/** The value a live run has seen: every page of one published site must carry the same one. */
+let liveConnectSrc: string | null = null;
+
+function expectConnectSrc(value: string | undefined): void {
+  const allowed = allowedConnectSrc();
+  if (allowed.length === 1) {
+    expect(value, 'connect-src').toBe(allowed[0]);
+    return;
+  }
+  expect(allowed, `connect-src "${value}" of the published site`).toContain(value);
+  liveConnectSrc ??= value ?? null;
+  expect(value, 'connect-src: the same on every page of the published site').toBe(liveConnectSrc);
+}
+
 const MARKER = '[csp-violation]';
 const CSP_TEXT = /Content Security Policy|\[csp-violation\]/i;
 
@@ -103,7 +129,7 @@ export async function expectPolicy(page: Page): Promise<string> {
   expect(script).not.toContain('unsafe-inline');
   expect(script).not.toContain('unsafe-eval');
   expect(script).not.toContain('*');
-  expect(/connect-src ([^;]*);/.exec(policy)?.[1], 'connect-src').toBe(expectedConnectSrc());
+  expectConnectSrc(/connect-src ([^;]*);/.exec(policy)?.[1]);
   expect(policy).toContain("object-src 'none'");
   expect(policy).toContain("base-uri 'self'");
   expect(policy).toContain("form-action 'none'");
