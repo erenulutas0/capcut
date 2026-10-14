@@ -140,6 +140,39 @@ export async function storedModelBytes(): Promise<number> {
   return total;
 }
 
+/**
+ * Bytes this browser holds of ONE model's own files (not the runtime and the
+ * speech detector, which both models share), parts of unfinished files included.
+ */
+export async function storedOwnBytes(model: TranscriptModelId, manifest: ModelManifest = MODEL_MANIFEST): Promise<number> {
+  if (!storageAvailable() || !(await caches.has(modelCacheName(manifest)))) return 0;
+  const cache = await openStore(manifest);
+  const prefix = modelFileUrl(`${manifest.groups[model].dir}/`);
+  let total = 0;
+  for (const request of await cache.keys()) {
+    if (!request.url.startsWith(prefix) || !request.url.includes('?part=')) continue;
+    const response = await cache.match(request);
+    const length = Number(response?.headers.get('content-length') ?? Number.NaN);
+    total += Number.isFinite(length) ? length : ((await response?.blob())?.size ?? 0);
+  }
+  return total;
+}
+
+/**
+ * Deletes ONE model's own files — parts and marks — and keeps the shared
+ * runtime and speech detector, so the other model still works (ADR-036
+ * addendum: freeing the large model's ~566 MB after it failed here). Only
+ * ever from the user's press.
+ */
+export async function deleteModelFiles(model: TranscriptModelId, manifest: ModelManifest = MODEL_MANIFEST): Promise<void> {
+  if (!storageAvailable() || !(await caches.has(modelCacheName(manifest)))) return;
+  const cache = await openStore(manifest);
+  const prefix = modelFileUrl(`${manifest.groups[model].dir}/`);
+  for (const request of await cache.keys()) {
+    if (request.url.startsWith(prefix)) await cache.delete(request);
+  }
+}
+
 /** "Modeli sil": every model cache of this app, and only those. */
 export async function deleteStoredModels(): Promise<void> {
   if (!storageAvailable()) return;

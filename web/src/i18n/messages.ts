@@ -155,10 +155,17 @@ export const tr = {
     'Cache Storage, adı “clip-models-” ile başlayan önbellek (uygulamanın çevrimdışı kopyasından ayrı)',
   'privacy.stored.model.delete':
     'Sen silene ya da tarayıcının bu siteye ait verisini temizleyene kadar kalır. Aşağıdaki “Modeli sil” ile silebilirsin; editörde “Kısayollar ve sınırlar” penceresinde de aynı düğme var.',
+  // ADR-036 addendum (14 Oct 2026): written only when the large model failed while writing here.
+  'privacy.stored.largeNote.name': 'Büyük model notu',
+  'privacy.stored.largeNote.body':
+    'Büyük konuşma modeli bu tarayıcıda yazıya dökerken durursa yazılan tek bir değer (1): uygulama bu yüzden burada büyük modeli önermez, küçüğünü önerir. Kim olduğunu, hangi videoyu ya da hatanın kendisini içermez; hiçbir yere gönderilmez. Böyle bir şey olmadıkça hiç yazılmaz.',
+  'privacy.stored.largeNote.where': 'localStorage, “clip.transcriptLargeFailed” anahtarı (yalnızca büyük model burada durunca yazılır)',
+  'privacy.stored.largeNote.delete':
+    'Büyük model bu tarayıcıda bir kez yazıya dökebilirse kendiliğinden silinir. “Konuşma modeli” kartındaki “Bu notu sil” ile ya da tarayıcının bu siteye ait verisini temizleyerek de silebilirsin.',
   'privacy.model.checking':
     'Bakılıyor…',
   'privacy.stored.none':
-    'Çerez kullanılmaz. localStorage’da yalnızca yukarıdaki ipucu bilgisi, sessionStorage’da yalnızca yukarıdaki yeniden yükleme notu durur.',
+    'Çerez kullanılmaz. localStorage’da yalnızca yukarıdaki ipucu bilgisi ve (büyük model burada durduysa) büyük model notu, sessionStorage’da yalnızca yukarıdaki yeniden yükleme notu durur.',
 
   'privacy.downloads.title': 'Senin indirdiğin dosyalar',
   'privacy.downloads.body':
@@ -1215,6 +1222,18 @@ export const tr = {
   'transcript.model.turbo': 'Önerilen: büyük model (≈{size}, bir kez iner)',
   'transcript.model.turboHint':
     'Konuşmayı çok daha iyi anlar; sohbette ve gürültüde de. İndirmesi büyüktür, ekran kartını kullanır ve çok bellek ister.',
+  // ADR-036 addendum (14 Oct 2026): where the large model is not proven (a phone, an untested browser, or it failed here).
+  'transcript.model.baseRecommended': 'Önerilen: küçük model (≈{size}, bir kez iner)',
+  'transcript.model.turboPlain': 'Büyük model (≈{size}, bir kez iner)',
+  'transcript.model.turboHint.phone':
+    'Konuşmayı daha iyi anlar ama telefonda çalışmayabilir: denediğimiz bir telefonda indi, sonra yazıya dökemedi. İndirmesi çok büyüktür.',
+  'transcript.model.turboHint.untested':
+    'Konuşmayı daha iyi anlar ama bu tarayıcıda hiç denenmedi; çalışmayabilir. İndirmesi çok büyüktür.',
+  'transcript.model.turboHint.failed_here':
+    'Bu cihazda daha önce yazıya dökerken durdu. Yine de seçebilirsin. İndirmesi çok büyüktür.',
+  'transcript.model.largeSpace': 'Büyük model bu tarayıcıda ≈{size} yer kaplıyor.',
+  'transcript.model.deleteLarge': 'Büyük modeli sil',
+  'transcript.model.largeDeleted': 'Büyük model silindi.',
   'transcript.model.failed.offline':
     'İndirme yarıda kaldı: bağlantı kesildi. İndirilen kısım duruyor; tekrar denersen kaldığı yerden devam eder.',
   'transcript.model.failed.not_found': 'Model dosyası bu sitede bulunamadı. Biraz sonra tekrar dene.',
@@ -1247,6 +1266,11 @@ export const tr = {
   'transcript.failed.internal_error': 'Yazıya dökme beklenmedik bir hatayla durdu. Tekrar dene.',
   'transcript.failed.worker_unavailable': 'Yazıya dökme bu tarayıcıda başlatılamadı. Sayfayı yenileyip tekrar dene.',
   'transcript.failed.nothing_heard': 'Bu videoda konuşma bulunamadı; yazılacak bir şey çıkmadı.',
+  // ADR-036 addendum: the large model failed while writing; the way forward is the small one.
+  'transcript.failed.large': 'Büyük model bu cihazda yazıya dökemedi. Küçük modelle deneyebilirsin: daha küçüktür ve her cihazda çalışır.',
+  'transcript.fallback.small': 'Küçük modelle dene',
+  'transcript.fallback.smallDownload': 'Önce küçük model iner (≈{size}, bir kez), sonra yazıya döker.',
+  'transcript.fallback.smallReady': 'Küçük model bu tarayıcıda hazır; hemen başlar.',
   'transcript.machine': 'Otomatik yazıldı — yanlış olabilir, düzeltebilirsin.',
   'transcript.unclear': '(anlaşılamadı)',
   'transcript.speaker': '{n}. kişi',
@@ -1298,6 +1322,10 @@ export const tr = {
   'help.model.none': 'Bu tarayıcıda konuşma modeli yok.',
   'help.model.delete': 'Modeli sil',
   'help.model.deleted': 'Model silindi.',
+  // ADR-036 addendum: the note that the large model failed in this browser.
+  'help.model.largeNote': 'Bu tarayıcı, büyük modelin burada yazıya dökerken durduğunu not etti; bu yüzden onu önermiyor.',
+  'help.model.forgetNote': 'Bu notu sil',
+  'help.model.noteForgotten': 'Not silindi.',
 } as const;
 
 export type MessageKey = keyof typeof tr;

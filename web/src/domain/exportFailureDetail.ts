@@ -202,6 +202,13 @@ export function safeErrorName(error: unknown): string {
  * mean. Only the key on the left ever leaves this function.
  */
 const HINTS = [
+  /**
+   * ADR-036 addendum (14 Oct 2026): onnxruntime's WebGPU backend could not read a
+   * buffer back from the graphics card (`BufferManager::Download … map_async_result
+   * .status == wgpu::MapAsyncStatus::Success was false`) — the large model on a phone.
+   * First: the same text can also say "device lost" or "failed".
+   */
+  ['gpu_buffer_read', /BufferManager::Download|map_?async_?result|MapAsyncStatus/i],
   /** Chromium closes a codec a background page left idle; it arrives as a QuotaExceededError. */
   ['codec_reclaimed', /codec reclaimed/i],
   ['encoder_config_unsupported', /encoder configuration .* is not supported/i],
@@ -220,6 +227,8 @@ const HINTS = [
   ['assertion', /assertion failed/i],
   ['source_closed', /source is closed|output has been (canceled|finalized)|not started/i],
   ['frame_detached', /detached|frame (is|was|has been) closed|already closed|source image.* (closed|unusable|invalid)/i],
+  /** onnxruntime's own wrapper of a failed model run, when nothing above says more (its cause can come after the scanned part). */
+  ['ort_run_failed', /failed to call OrtRun/i],
 ] as const;
 export type FailureHint = (typeof HINTS)[number][0];
 const HINT_NAMES: ReadonlySet<string> = new Set(HINTS.map(([name]) => name));

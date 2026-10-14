@@ -102,6 +102,14 @@ const STORED: Array<{ name: MessageKey; body: MessageKey; where: MessageKey; del
     where: 'privacy.stored.model.where',
     delete: 'privacy.stored.model.delete',
   },
+  {
+    // ADR-036 addendum (14 Oct 2026): written only when the large model failed while writing here.
+    id: 'largeNote',
+    name: 'privacy.stored.largeNote.name',
+    body: 'privacy.stored.largeNote.body',
+    where: 'privacy.stored.largeNote.where',
+    delete: 'privacy.stored.largeNote.delete',
+  },
 ];
 
 const DOWNLOADS: MessageKey[] = [

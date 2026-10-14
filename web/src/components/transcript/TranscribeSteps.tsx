@@ -7,7 +7,7 @@ import { FailureDetails } from '@/components/FailureDetails';
 import { Icon } from '@/components/Icon';
 import { formatBytes } from '@/domain/policy';
 import { lineClock } from '@/domain/transcript';
-import { RECOMMENDED_MODEL, downloadBytes } from '@/domain/transcriptModels';
+import { downloadBytes, type TranscriptModelId } from '@/domain/transcriptModels';
 import type { MessageKey } from '@/i18n/messages';
 import type { Transcription } from './useTranscription';
 
@@ -61,7 +61,7 @@ export function TranscribeSteps({
   /** Said above the start button when lines exist that the transcript would replace. */
   replaceNote?: string | null;
 }) {
-  const { job, status, model, largeOffered } = transcription;
+  const { job, status, model, largeOffered, standing, recommended, largeStoredBytes, smallStatus } = transcription;
   const mark = t('time.decimalMark');
   const manifest = activeManifest();
   const size = (bytes: number) => formatBytes(bytes, mark);
@@ -70,6 +70,22 @@ export function TranscribeSteps({
 
   const ready = status?.ready === true;
   const partial = status !== null && !status.ready && status.missingBytes < status.totalBytes;
+  /** The large model failed while writing (ADR-036 addendum): the small one is the way forward on this screen. */
+  const largeFailure = job.kind === 'failed' ? job.largeFailure : undefined;
+  /** On that screen with the small model selected, "Küçük modelle dene" is the one button that starts it. */
+  const smallLeads = largeFailure !== undefined && model === 'base';
+  const [largeDeleted, setLargeDeleted] = useState(false);
+  const order: readonly TranscriptModelId[] = recommended === 'turbo' ? ['turbo', 'base'] : ['base', 'turbo'];
+  const optionLabel = (id: TranscriptModelId): MessageKey =>
+    id === 'base'
+      ? recommended === 'base'
+        ? 'transcript.model.baseRecommended'
+        : 'transcript.model.base'
+      : recommended === 'turbo'
+        ? 'transcript.model.turbo'
+        : 'transcript.model.turboPlain';
+  const optionHint = (id: TranscriptModelId): MessageKey =>
+    id === 'base' ? 'transcript.model.baseHint' : standing === 'proven' ? 'transcript.model.turboHint' : `transcript.model.turboHint.${standing}`;
 
   return (
     <div
@@ -88,11 +104,15 @@ export function TranscribeSteps({
       </p>
 
       {largeOffered && !busy ? (
-        <fieldset className="wizard-choice" data-testid="transcribe-quality">
+        <fieldset className="wizard-choice" data-testid="transcribe-quality" data-standing={standing}>
           <legend>{t('transcript.model.quality')}</legend>
-          {/* The recommended model first; the small one stays, as the smaller download. */}
-          {([RECOMMENDED_MODEL, 'base'] as const).map((id) => (
-            <label className="wizard-option" data-checked={model === id} data-recommended={id === RECOMMENDED_MODEL || undefined} key={id}>
+          {/*
+            The recommended model first. Where the large model is proven (desktop Chrome / Edge) that is the
+            large one; on a phone, in an untested browser, or where it failed before, the small one — and the
+            large one stays a choice whose line says why it is not recommended (ADR-036 addendum).
+          */}
+          {order.map((id) => (
+            <label className="wizard-option" data-checked={model === id} data-recommended={id === recommended || undefined} key={id}>
               <input
                 type="radio"
                 name="transcript-model"
@@ -102,10 +122,10 @@ export function TranscribeSteps({
                 data-testid={`option-model-${id}`}
               />
               <span className="wizard-option-text">
-                <span className="wizard-option-label">
-                  {fillText(t(`transcript.model.${id}` as MessageKey), { size: size(downloadBytes(id, manifest)) })}
+                <span className="wizard-option-label">{fillText(t(optionLabel(id)), { size: size(downloadBytes(id, manifest)) })}</span>
+                <span className="wizard-option-hint" data-testid={`option-model-${id}-hint`}>
+                  {t(optionHint(id))}
                 </span>
-                <span className="wizard-option-hint">{t(`transcript.model.${id}Hint` as MessageKey)}</span>
               </span>
             </label>
           ))}
@@ -168,7 +188,7 @@ export function TranscribeSteps({
         </>
       ) : null}
 
-      {!busy && status !== null && !ready ? (
+      {!busy && status !== null && !ready && !smallLeads ? (
         <div className="wizard-panel" data-testid="model-needed">
           <p className="wizard-panel-title">{t('transcript.model.need')}</p>
           <button
@@ -235,14 +255,44 @@ export function TranscribeSteps({
 
       {job.kind === 'failed' ? (
         <>
-          <p className="wizard-blocked" role="alert" data-testid="transcribe-failed" data-reason={job.reason}>
-            {t(`transcript.failed.${job.reason}` as MessageKey)}
+          <p
+            className="wizard-blocked"
+            role="alert"
+            data-testid="transcribe-failed"
+            data-reason={job.reason}
+            data-large-failure={job.largeFailure}
+          >
+            {t(job.largeFailure ? 'transcript.failed.large' : (`transcript.failed.${job.reason}` as MessageKey))}
           </p>
           <FailureDetails t={t} detail={job.detail} testId="transcribe-failed" />
         </>
       ) : null}
 
-      {!busy && ready && job.kind !== 'done' ? (
+      {largeFailure ? (
+        // The way forward after the large model failed: the small model, in one press (its download first if
+        // it is not here — said with its size before the press). "Tekrar dene" stays below for the large one.
+        <div className="wizard-actions" data-testid="transcribe-fallback" data-kind={largeFailure}>
+          <button
+            type="button"
+            className="btn btn-accent wizard-go"
+            onClick={() => void transcription.trySmallModel(onStart)}
+            disabled={!canStart}
+            data-testid="transcribe-try-small"
+          >
+            <Icon name="taskText" />
+            {t('transcript.fallback.small')}
+          </button>
+          <p className="wizard-hint" data-testid="transcribe-try-small-note">
+            {smallStatus?.ready
+              ? t('transcript.fallback.smallReady')
+              : fillText(t('transcript.fallback.smallDownload'), {
+                  size: size(smallStatus?.missingBytes ?? downloadBytes('base', manifest)),
+                })}
+          </p>
+        </div>
+      ) : null}
+
+      {!busy && ready && job.kind !== 'done' && !smallLeads ? (
         <div className="wizard-actions">
           {replaceNote ? (
             <p className="wizard-hint" data-testid="transcribe-replace-note">
@@ -251,15 +301,43 @@ export function TranscribeSteps({
           ) : null}
           <button
             type="button"
-            className="btn btn-accent wizard-go"
-            onClick={onStart}
+            className={largeFailure ? 'btn' : 'btn btn-accent wizard-go'}
+            onClick={largeFailure ? () => transcription.retryAfterLargeFailure(onStart) : onStart}
             disabled={!canStart}
             data-testid="transcribe-start"
           >
             <Icon name="taskText" />
             {t(job.kind === 'failed' ? 'transcript.retry' : 'transcript.start')}
           </button>
-          <p className="wizard-hint">{t('transcript.startHint')}</p>
+          {largeFailure ? null : <p className="wizard-hint">{t('transcript.startHint')}</p>}
+        </div>
+      ) : null}
+
+      {!busy && standing === 'failed_here' && (largeStoredBytes > 0 || largeDeleted) ? (
+        // The large model did not work here and still takes its room: freeing it is offered, never done alone.
+        <div className="wizard-panel" data-testid="large-space">
+          {largeStoredBytes > 0 ? (
+            <>
+              <p className="wizard-hint" data-testid="large-space-size">
+                {fillText(t('transcript.model.largeSpace'), { size: size(largeStoredBytes) })}
+              </p>
+              <button
+                type="button"
+                className="btn"
+                onClick={() =>
+                  void transcription.removeLargeModel().then(() => {
+                    setLargeDeleted(true);
+                  })
+                }
+                data-testid="large-delete"
+              >
+                {t('transcript.model.deleteLarge')}
+              </button>
+            </>
+          ) : null}
+          <p className="wizard-hint" role="status" data-testid="large-deleted">
+            {largeDeleted && largeStoredBytes === 0 ? t('transcript.model.largeDeleted') : ''}
+          </p>
         </div>
       ) : null}
     </div>

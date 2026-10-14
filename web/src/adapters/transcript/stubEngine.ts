@@ -12,8 +12,7 @@
  * finish a static export that contains the marker below.
  */
 
-import { passOrigin, tagStage, withOrigin } from '@/adapters/export/failureStage';
-import { AudioFeedError, openAudio } from './audioFeed';
+import { passOrigin, tagStage, withOrigin } from '@/adapters/export/failureStage';import { AudioFeedError, openAudio } from './audioFeed';
 import { EngineError, type EngineSink } from './engine.types';
 import type { StubScript, TranscribeStats } from './protocol';
 import type { TranscriptModelId } from '@/domain/transcriptModels';
@@ -60,6 +59,12 @@ export async function runStubTranscription(
     done += 1;
     sink.progress({ phase: 'writing', spansDone: done, spansTotal: script.segments.length });
     if (script.failWith && done === 1) throw new EngineError(script.failWith);
+    if (script.failAs && script.failAs.model === model && done === 1) {
+      // As engine.ts does for an error out of the recogniser call.
+      const raw = new Error(script.failAs.message);
+      raw.name = script.failAs.errorName;
+      throw withOrigin(new EngineError('internal_error'), tagStage(raw, 'recognise'));
+    }
   }
   return {
     model,
