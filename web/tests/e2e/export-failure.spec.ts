@@ -81,7 +81,8 @@ test('an unexpected failure says where it broke, keeps nothing of the error text
   await expect(page.getByTestId('export-failed-detail')).toBeHidden();
   await details.locator('summary').click();
   await expect(page.getByTestId('export-failed-detail')).toHaveText(
-    /^EncodingError · encode · encoding_error · kare 12\/240 · enc avc1\.[0-9a-f]{6} no-preference hw[+-] · dec avc1\.[0-9A-Fa-f]{6} no-preference · file$/,
+    // ADR-045: the rate control follows the encoder kind (hardware: constant, software: variable).
+    /^EncodingError · encode · encoding_error · kare 12\/240 · enc avc1\.[0-9a-f]{6} no-preference (?:hw\+ constant|hw- variable) · dec avc1\.[0-9A-Fa-f]{6} no-preference · file$/,
   );
 
   // The diagnostics file: the same facts, as checked values.
@@ -183,7 +184,7 @@ test('a download that stands still (no error, no progress) is ended as a failure
   await page.getByTestId('export-failed-details').locator('summary').click();
   // The worker still answered "where": the stage and the frame it stood at, the codecs it had configured.
   await expect(page.getByTestId('export-failed-detail')).toHaveText(
-    /^Stalled · encode · stalled · kare 40\/240 · enc avc1\.[0-9a-f]{6} no-preference hw[+-] · dec avc1\.[0-9A-Fa-f]{6} no-preference · file$/,
+    /^Stalled · encode · stalled · kare 40\/240 · enc avc1\.[0-9a-f]{6} no-preference (?:hw\+ constant|hw- variable) · dec avc1\.[0-9A-Fa-f]{6} no-preference · file$/,
   );
   const report = await diagnostics(page);
   expect(report.exportLog.at(-1)).toMatchObject({

@@ -34,7 +34,7 @@ kapalı duran **"Ayrıntılar"** açılınca tek satır olarak da görünür:
 | `via` | `exception` (işleyicide yakalandı) · `worker_error_event` (işleyicinin kendisi çöktü) · `worker_message_error` · `request_not_sent` · `stalled` (hata yok: yerinde saydı) |
 | `hint` | Hata metni bilinen birkaç cümleyle karşılaştırılır; eşleşenin **etiketi** yazılır (`codec_reclaimed`, `encoding_error`, `decoding_error`, `encoder_creation`, `write_blocked`…), cümlenin kendisi değil |
 | `phase`, `framesDone`, `totalFrames`, `videoPacketsOut` | Sayfanın gördüğü son adım; kaçıncı karede kaldığı; kodlayıcıdan kaç paket çıkmıştı |
-| `videoEncoder`, `videoDecoder`, `audioEncoder` | **Gerçekten yapılandırılan** codec dizgisi ve `hardwareAcceleration` isteği (kodlayıcı: mediabunny'nin `onEncoderConfig` çağrısından; çözücü: mediabunny'nin kurduğu sarmalayıcıdan, kendi tarayıcı düzeltmelerinden sonra) |
+| `videoEncoder`, `videoDecoder`, `audioEncoder` | **Gerçekten yapılandırılan** codec dizgisi ve `hardwareAcceleration` isteği; video kodlayıcısında 14 Ekim'den beri bit hızı modu da (`bitrateMode`, ADR-045) (kodlayıcı: mediabunny'nin `onEncoderConfig` çağrısından; çözücü: mediabunny'nin kurduğu sarmalayıcıdan, kendi tarayıcı düzeltmelerinden sonra) |
 | `hardwareEncoderAvailable` | Tarayıcı bu görüntü için donanım kodlayıcısı sunuyor mu (`no-preference` neyi seçerdi) |
 | `route` | `opfs` / `memory` / `file` |
 | `pageWasHidden`, `attemptInSession` | Deneme sırasında sayfa hiç gizlendi mi; bu sayfadaki kaçıncı indirme (0: ilki) |

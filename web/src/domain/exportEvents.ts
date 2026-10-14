@@ -117,6 +117,19 @@ export interface ExportResult {
   targetSize?: TargetSizeOutcome;
   /** ADR-037: set when the picture was enhanced — what was really done to it. */
   enhance?: EnhanceOutcome;
+  /**
+   * ADR-045: set for a full encode — the video bitrate and rate control the
+   * encoder was really configured with, and the rate control that was asked
+   * for (they differ when the browser refused `constant`).
+   */
+  videoEncoding?: VideoEncodingOutcome;
+}
+
+/** How the encoder was configured in a full encode (ADR-045). */
+export interface VideoEncodingOutcome {
+  bitrate: number;
+  bitrateMode: 'constant' | 'variable';
+  askedBitrateMode: 'constant' | 'variable';
 }
 
 /** What "İyileştir" did in one download (ADR-037). */

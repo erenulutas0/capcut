@@ -46,8 +46,17 @@ import type {
   ExportResult,
   StorageShortfall,
   TargetSizeShortfall,
+  VideoEncodingOutcome,
 } from '@/domain/exportEvents';
-import { encoderVideoBitrate, sourceBoundedBitrate, type VideoEncoderKind } from '@/domain/encoderBitrate';
+import {
+  chooseBitrateMode,
+  encoderVideoBitrate,
+  ORDINARY_BITRATE_MODE,
+  sourceBoundedBitrate,
+  type BitrateModeChoice,
+  type VideoBitrateMode,
+  type VideoEncoderKind,
+} from '@/domain/encoderBitrate';
 import { sourceIntegrity } from '@/adapters/sourceIntegrity';
 import { audioDurationWithinTolerance, durationWithinTolerance, missingFramesAllowed } from '@/domain/exportEvents';
 import {
@@ -730,11 +739,14 @@ async function videoEncoderKind(plan: RenderPlan): Promise<VideoEncoderKind> {
  * source: brightening and sharpening bring out detail the source's own bits
  * did not have to carry.
  */
-async function exportVideoBitrate(plan: RenderPlan, sourceBitrate: number | null): Promise<number> {
+async function exportVideoBitrate(
+  plan: RenderPlan,
+  sourceBitrate: number | null,
+): Promise<{ bitrate: number; kind: VideoEncoderKind }> {
   const kind = await videoEncoderKind(plan);
   const planned = plan.enhance ? plan.videoBitrate : sourceBoundedBitrate(plan.videoBitrate, sourceBitrate);
   const bitrate = encoderVideoBitrate(planned, kind);
-  if (bitrate === planned) return bitrate;
+  if (bitrate === planned) return { bitrate, kind };
   // A software encoder that would refuse the higher bitrate keeps the plan's.
   const supported = await canEncodeVideo('avc', {
     width: plan.width,
@@ -742,7 +754,32 @@ async function exportVideoBitrate(plan: RenderPlan, sourceBitrate: number | null
     bitrate,
     frameRate: plan.fpsNum / plan.fpsDen,
   }).catch(() => false);
-  return supported ? bitrate : planned;
+  return { bitrate: supported ? bitrate : planned, kind };
+}
+
+/**
+ * ADR-045: the rate control of a full encode, settled before the encoder
+ * exists. `constant` is asked of the browser for exactly this picture and
+ * bitrate (the configuration mediabunny will build); where it is refused the
+ * encode runs in `variable` and the result says so.
+ */
+function settleBitrateMode(
+  plan: RenderPlan,
+  bitrate: number,
+  asked: VideoBitrateMode,
+  refuseConstant: boolean,
+): Promise<BitrateModeChoice> {
+  return chooseBitrateMode(asked, async (mode) => {
+    // Test builds only: a browser that refuses constant rate control.
+    if (refuseConstant && mode === 'constant') return false;
+    return canEncodeVideo('avc', {
+      width: plan.width,
+      height: plan.height,
+      bitrate,
+      frameRate: plan.fpsNum / plan.fpsDen,
+      bitrateMode: mode,
+    });
+  });
 }
 
 /** How long the export waits to learn the source's length (for its bitrate) before going on without it. */
@@ -787,6 +824,10 @@ interface ExportRequestOptions {
   enhanceAnalysis: EnhanceAnalysis | null;
   /** ADR-037, test hook: the reference renderer instead of the GPU. */
   enhanceForceCpu: boolean;
+  /** ADR-045, measurement hook: the rate control an ordinary download asks for instead of `ORDINARY_BITRATE_MODE`. */
+  bitrateModeOverride: VideoBitrateMode | null;
+  /** ADR-045, test builds only: the encoder is taken to refuse `constant` (false everywhere else). */
+  refuseConstantBitrate: boolean;
   /** Test builds only: break this export on purpose (`ExportTestFault`); null everywhere else. */
   testFault: ExportTestFault | null;
 }
@@ -1396,11 +1437,30 @@ async function produceOutput(
   // The fast cut's video is the source's own bytes; the full encode's is the
   // encoder's bitrate (ADR-024). A target-size attempt's bitrate is the
   // planner's, as it is: the size decides, no factor is put on top (ADR-035).
+  const ordinary = fastJob || target ? null : await exportVideoBitrate(plan, sources.sourceBitrate);
   const videoBitrate = fastJob
     ? Math.ceil((fastJob.videoBytes * 8) / Math.max(durationSeconds, 0.001))
     : target
       ? plan.videoBitrate
-      : await exportVideoBitrate(plan, sources.sourceBitrate);
+      : (ordinary?.bitrate ?? plan.videoBitrate);
+  // ADR-045 / ADR-035: the rate control of a full encode. A target-size encode
+  // asks for `constant` (the size decides); the measurement hook `forced`
+  // keeps exactly what it names (`variable` when it names nothing) and is not
+  // second-guessed. An ordinary download asks for its encoder kind's mode
+  // (`ORDINARY_BITRATE_MODE`). Every mode but a forced one falls back to
+  // `variable` where the browser refuses `constant`.
+  let bitrateMode: BitrateModeChoice | null = null;
+  if (!fastJob) {
+    if (target?.request.forced) {
+      const forcedMode = target.request.forced.bitrateMode ?? 'variable';
+      bitrateMode = { asked: forcedMode, used: forcedMode };
+    } else {
+      const asked: VideoBitrateMode = target
+        ? 'constant'
+        : (options.bitrateModeOverride ?? ORDINARY_BITRATE_MODE[ordinary?.kind ?? 'hardware']);
+      bitrateMode = await settleBitrateMode(plan, videoBitrate, asked, options.refuseConstantBitrate);
+    }
+  }
 
   // ADR-035: the encoded video bytes, counted as the encoder hands them over.
   let videoBytes = fastJob ? fastJob.videoBytes : 0;
@@ -1487,16 +1547,14 @@ async function produceOutput(
     // The canvas is snapshotted into a sample here rather than by mediabunny's
     // CanvasSource: the same `new VideoSample(canvas)` it makes, but the
     // snapshot and the encoder hand-off can be timed apart (ADR-028).
-    // ADR-035: a target-size encode asks for a constant bitrate. Measured on
-    // the hardware encoder, the file then stays within 0.99–1.06 of what was
-    // asked (variable: 1.07–1.30) at the same picture quality per byte. The
-    // ordinary download is untouched (mediabunny's default, variable).
-    const bitrateMode = !target ? undefined : target.request.forced ? target.request.forced.bitrateMode : 'constant';
+    // ADR-035 / ADR-045: the rate control settled above. Measured on the
+    // hardware encoder, a constant-bitrate file stays within 0.99–1.06 of what
+    // was asked (variable: 1.07–1.30; the phone 1.06–1.97).
     videoSource = new VideoSampleSource({
       codec: 'avc',
       bitrate: videoBitrate,
       keyFrameInterval: 2,
-      ...(bitrateMode ? { bitrateMode } : {}),
+      bitrateMode: bitrateMode?.used ?? 'variable',
       // The configuration the encoder is really given (the last one tried is the one used, or the one refused).
       onEncoderConfig: (config: VideoEncoderConfig) => {
         facts.videoEncoder = sanitizeCodecUse(config);
@@ -1910,6 +1968,15 @@ async function produceOutput(
             } satisfies EnhanceOutcome,
           }
         : {}),
+      ...(!fastJob && bitrateMode
+        ? {
+            videoEncoding: {
+              bitrate: videoBitrate,
+              bitrateMode: bitrateMode.used,
+              askedBitrateMode: bitrateMode.asked,
+            } satisfies VideoEncodingOutcome,
+          }
+        : {}),
       ...(target
         ? {
             targetSize: {
@@ -1953,6 +2020,7 @@ async function produceOutput(
           audio: wantsAudio,
           route: sink.route,
           videoBitrate,
+          videoBitrateMode: bitrateMode,
           videoBytes,
           targetSize: target ? { ...target.decision, retrying } : null,
           enhance:
@@ -2274,6 +2342,9 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
         target: null,
         enhanceAnalysis: request.enhanceAnalysis ?? null,
         enhanceForceCpu: request.enhanceEngine === 'cpu',
+        bitrateModeOverride:
+          request.bitrateMode === 'constant' || request.bitrateMode === 'variable' ? request.bitrateMode : null,
+        refuseConstantBitrate: TEST_HOOKS && request.refuseConstantBitrate === true,
         testFault: TEST_HOOKS ? (request.testFault ?? null) : null,
       });
     } catch (error) {

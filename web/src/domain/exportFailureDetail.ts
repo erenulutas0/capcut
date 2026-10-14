@@ -255,7 +255,13 @@ export interface CodecUse {
   codec: string;
   /** What was asked for; `no-preference` lets the browser choose. */
   hardwareAcceleration: HardwareAccelerationHint;
+  /** ADR-045: the rate control the encoder was configured with, when the configuration names one. */
+  bitrateMode?: CodecBitrateMode;
 }
+
+/** WebCodecs' `bitrateMode` values. */
+export type CodecBitrateMode = 'constant' | 'variable' | 'quantizer';
+const BITRATE_MODES: ReadonlySet<string> = new Set(['constant', 'variable', 'quantizer']);
 
 export interface ExportFailureDetail {
   /** The error's `name` when it is a known one, else `Other`. */
@@ -323,7 +329,13 @@ export function sanitizeCodecUse(raw: unknown): CodecUse | null {
     typeof row.hardwareAcceleration === 'string' && ACCELERATIONS.has(row.hardwareAcceleration)
       ? (row.hardwareAcceleration as HardwareAccelerationHint)
       : 'no-preference';
-  return { codec: row.codec, hardwareAcceleration: acceleration };
+  return {
+    codec: row.codec,
+    hardwareAcceleration: acceleration,
+    ...(typeof row.bitrateMode === 'string' && BITRATE_MODES.has(row.bitrateMode)
+      ? { bitrateMode: row.bitrateMode as CodecBitrateMode }
+      : {}),
+  };
 }
 
 /** The detail again, field by field, from anything: only known fields with checked values come out. */
@@ -409,7 +421,8 @@ export function failureDetailLine(detail: ExportFailureDetail, frameWord: string
   else if (detail.phase && detail.phase !== 'waiting') parts.push(detail.phase);
   if (detail.videoEncoder) {
     const kind = detail.hardwareEncoderAvailable === null ? '' : detail.hardwareEncoderAvailable ? ' hw+' : ' hw-';
-    parts.push(`enc ${detail.videoEncoder.codec} ${detail.videoEncoder.hardwareAcceleration}${kind}`);
+    const mode = detail.videoEncoder.bitrateMode ? ` ${detail.videoEncoder.bitrateMode}` : '';
+    parts.push(`enc ${detail.videoEncoder.codec} ${detail.videoEncoder.hardwareAcceleration}${kind}${mode}`);
   }
   if (detail.videoDecoder) parts.push(`dec ${detail.videoDecoder.codec} ${detail.videoDecoder.hardwareAcceleration}`);
   if (detail.route) parts.push(detail.route);

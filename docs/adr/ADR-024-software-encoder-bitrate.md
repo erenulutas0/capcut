@@ -145,3 +145,11 @@ düşük bit hızlı gerçek kayıtlarda SSIM ile ölçülmedi (aşağıda).
 **Ölçülmeyen:** düşük bit hızlı (≤ 2 Mbit/s) gerçek kayıtlarda 2 katın görüntü kalitesine etkisi; matris
 (`run-matrix.mjs`) ve gerçek kayıt koşucusu bu değişiklikten sonra yeniden koşulmadı. Kalite katmanının
 kamera benzeri kaynakları 16 Mbit/s'tir: orada sınır devreye girmez, o sayılar bu kuralı sınamaz.
+
+## Güncelleme — 14 Ekim 2026 (ADR-045)
+
+"Donanım: hiçbir şey değişmez" kuralı bit hızı için geçerli kalır (planın bit hızı, 3 kat yalnızca
+yazılımda). Bit hızı **modu** değişti: olağan indirmede donanım kodlayıcısı artık `constant` ister
+([ADR-045](ADR-045-constant-bitrate-ordinary-download.md)); yazılım kodlayıcısı `variable` kaldı. Yukarıdaki
+"bit hızı modu etkisiz" bulgusu yazılım kodlayıcısı içindi ve 14 Ekim ölçüsünde de öyle çıktı (kalite iki modda
+aynı, boyut farkı koşudan koşuya gürültü içinde).

@@ -220,6 +220,20 @@ export type WorkerRequest =
        * enhance with the reference renderer even where the GPU path works.
        */
       enhanceEngine?: 'cpu' | null;
+      /**
+       * Measurement hook only (`window.__clipBitrateMode`, ADR-045): the rate
+       * control an ordinary download asks for instead of the app's own choice
+       * (`ORDINARY_BITRATE_MODE`), so the two can be compared on the same edit.
+       * Ignored for a target-size download. The app never sets it.
+       */
+      bitrateMode?: 'constant' | 'variable' | null;
+      /**
+       * Test builds only (`window.__clipRefuseConstantBitrate = true`, ADR-045):
+       * the worker answers its own "can this encoder do `constant`?" with no,
+       * as a browser without constant rate control would. Ignored in every
+       * other build.
+       */
+      refuseConstantBitrate?: boolean;
       /** Test builds only (`window.__clipExportFault`): see `ExportTestFault`. Ignored in every other build. */
       testFault?: ExportTestFault | null;
     }

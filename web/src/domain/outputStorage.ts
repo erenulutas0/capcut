@@ -29,6 +29,15 @@ const MIB = 1_048_576;
  * hardware and software encoders, ADR-023); 10% on top for content that was
  * not measured. A file that still outgrows it keeps writing, it only fails if
  * the disk is really full.
+ *
+ * Kept at 1.1 after ADR-045 (14 Oct 2026). The variable mode it was measured
+ * with wrote up to 1.29 of the asked video bitrate on the desktop's hardware
+ * encoder and 1.06–1.51 on a phone (1.97 on a 3.5 s clip, which the fixed
+ * headroom covers); the hardware encoder now runs in constant mode, measured
+ * at 0.95–1.00 on the desktop and 0.999–1.003 on the phone. So the estimate
+ * now holds where it did not always before; it is not lowered, because the
+ * software encoder (still variable) and unmeasured hardware encoders keep
+ * their own spread.
  */
 export const ENCODER_OVERSHOOT = 1.1;
 

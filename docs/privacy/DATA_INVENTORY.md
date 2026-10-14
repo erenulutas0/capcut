@@ -103,7 +103,7 @@ dosyadaki sabit bir listeden değerdir:
 | `hint` | Hata metni **saklanmaz**; yalnızca bilinen birkaç cümleyle karşılaştırılır ve eşleşenin **etiketi** yazılır (`codec_reclaimed`, `encoding_error`, `decoding_error`…); eşleşmezse `null` |
 | `phase` | Sayfanın gördüğü son adım (`preparing`, `encoding`, `finalizing`…) |
 | `framesDone`, `totalFrames`, `videoPacketsOut` | Kaçıncı karede kaldığı |
-| `videoEncoder`, `videoDecoder`, `audioEncoder` | Gerçekten yapılandırılan codec dizgisi (`avc1.640028`, `mp4a.40.2`) ve `hardwareAcceleration` isteği. Dizgi, codec dizgilerinin kendi dil bilgisine uymuyorsa atılır ("harf, rakam, nokta" yetmez: `tatil-2025.mp4` da öyledir) |
+| `videoEncoder`, `videoDecoder`, `audioEncoder` | Gerçekten yapılandırılan codec dizgisi (`avc1.640028`, `mp4a.40.2`) ve `hardwareAcceleration` isteği; video kodlayıcısında bit hızı modu (`bitrateMode`: `constant` / `variable` / `quantizer`, başka bir değer atılır; ADR-045). Dizgi, codec dizgilerinin kendi dil bilgisine uymuyorsa atılır ("harf, rakam, nokta" yetmez: `tatil-2025.mp4` da öyledir) |
 | `hardwareEncoderAvailable` | Bu tarayıcı bu görüntü için donanım kodlayıcısı sunuyor mu |
 | `route` | `opfs` / `memory` / `file` |
 | `pageWasHidden` | Deneme sırasında sayfa hiç gizlendi mi (başka sekme, küçültülmüş pencere) |
