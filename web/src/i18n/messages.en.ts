@@ -1187,7 +1187,7 @@ export const en: Record<MessageKey, string> = {
   'transcript.model.quality': 'Which model?',
   'transcript.model.base': 'Small model (≈{size})',
   'transcript.model.baseHint':
-    'A small download that works on every device. Good on clear, unhurried speech; in conversation, noise or quiet sound it makes many mistakes and cannot make out many places.',
+    'A small download that needs no special graphics chip; it worked on the computers and the phone we tried. Good on clear, unhurried speech; in conversation, noise or quiet sound it makes many mistakes and cannot make out many places.',
   'transcript.model.turbo': 'Recommended: large model (≈{size}, downloaded once)',
   'transcript.model.turboHint':
     'Understands speech far better, in conversation and noise too. It is a large download, uses the graphics card and needs a lot of memory.',
@@ -1233,7 +1233,7 @@ export const en: Record<MessageKey, string> = {
   'transcript.failed.internal_error': 'The writing stopped with an unexpected error. Try again.',
   'transcript.failed.worker_unavailable': 'The writing could not start in this browser. Reload the page and try again.',
   'transcript.failed.nothing_heard': 'No speech was found in this video; there was nothing to write.',
-  'transcript.failed.large': 'The large model could not write on this device. You can try the small model: it is smaller and works on every device.',
+  'transcript.failed.large': 'The large model could not write on this device. You can try the small model: it is smaller and it worked on the phone we tried.',
   'transcript.fallback.small': 'Try the small model',
   'transcript.fallback.smallDownload': 'The small model is downloaded first (≈{size}, once), then it writes.',
   'transcript.fallback.smallReady': 'The small model is ready in this browser; it starts at once.',

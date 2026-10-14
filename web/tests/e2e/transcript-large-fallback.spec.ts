@@ -112,7 +112,7 @@ test.describe('on a computer (desktop Chromium)', () => {
     await expect(failed).toBeVisible({ timeout: 60_000 });
     await expect(failed).toHaveAttribute('data-reason', 'internal_error');
     await expect(failed).toHaveAttribute('data-large-failure', 'gpu');
-    await expect(failed).toHaveText('Büyük model bu cihazda yazıya dökemedi. Küçük modelle deneyebilirsin: daha küçüktür ve her cihazda çalışır.');
+    await expect(failed).toHaveText('Büyük model bu cihazda yazıya dökemedi. Küçük modelle deneyebilirsin: daha küçüktür ve denediğimiz telefonda da çalıştı.');
     // The way forward, with what it downloads first (the shared files are already here).
     await expect(page.getByTestId('transcribe-try-small')).toHaveText('Küçük modelle dene');
     await expect(page.getByTestId('transcribe-try-small-note')).toHaveText('Önce küçük model iner (≈300 KB, bir kez), sonra yazıya döker.');

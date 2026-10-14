@@ -1218,7 +1218,7 @@ export const tr = {
   'transcript.model.quality': 'Hangi model?',
   'transcript.model.base': 'Küçük model (≈{size})',
   'transcript.model.baseHint':
-    'İndirmesi küçüktür, her cihazda çalışır. Temiz ve tane tane konuşmada iyidir; sohbette, gürültüde ve kısık seste çok hata yapar, birçok yeri de anlayamaz.',
+    'İndirmesi küçüktür ve özel bir ekran kartı istemez; denediğimiz bilgisayarlarda ve telefonda çalıştı. Temiz ve tane tane konuşmada iyidir; sohbette, gürültüde ve kısık seste çok hata yapar, birçok yeri de anlayamaz.',
   'transcript.model.turbo': 'Önerilen: büyük model (≈{size}, bir kez iner)',
   'transcript.model.turboHint':
     'Konuşmayı çok daha iyi anlar; sohbette ve gürültüde de. İndirmesi büyüktür, ekran kartını kullanır ve çok bellek ister.',
@@ -1267,7 +1267,7 @@ export const tr = {
   'transcript.failed.worker_unavailable': 'Yazıya dökme bu tarayıcıda başlatılamadı. Sayfayı yenileyip tekrar dene.',
   'transcript.failed.nothing_heard': 'Bu videoda konuşma bulunamadı; yazılacak bir şey çıkmadı.',
   // ADR-036 addendum: the large model failed while writing; the way forward is the small one.
-  'transcript.failed.large': 'Büyük model bu cihazda yazıya dökemedi. Küçük modelle deneyebilirsin: daha küçüktür ve her cihazda çalışır.',
+  'transcript.failed.large': 'Büyük model bu cihazda yazıya dökemedi. Küçük modelle deneyebilirsin: daha küçüktür ve denediğimiz telefonda da çalıştı.',
   'transcript.fallback.small': 'Küçük modelle dene',
   'transcript.fallback.smallDownload': 'Önce küçük model iner (≈{size}, bir kez), sonra yazıya döker.',
   'transcript.fallback.smallReady': 'Küçük model bu tarayıcıda hazır; hemen başlar.',
