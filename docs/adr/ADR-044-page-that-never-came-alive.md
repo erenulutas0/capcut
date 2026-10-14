@@ -283,7 +283,8 @@ Hepsi 13 Ekim 2026, bu makine (Windows 11), dal `worktree-agent-ac320ffd570cfb61
 
 - **Yerinde sayan `?_rsc` isteği.** Açılış ekranında bir karta basılınca Next sayfa verisini ister; istek
   başarısız olursa Next kendisi tam sayfa gezinmesine düşer (çalışıyor), ama **yanıt hiç gelmezse** kart
-  hiçbir şey yapmamış gibi kalır. Bu değişiklik ona dokunmadı (aşağıda kurucu kararı).
+  hiçbir şey yapmamış gibi kalır. Bu değişiklik ona dokunmadı (aşağıda kurucu kararı). **14 Ekim:
+  kapandı** — basılan kart "Açılıyor…" der, 10 sn sonra sayfa bir kez tam yüklenir (aşağıda "Ek").
 - **Yerinde sayan `import('mediabunny')`.** Video seçildikten sonra medya kitaplığının parçası hiç yanıt
   almazsa "Video açılıyor…" kalır. Dokunulmadı.
 - **Yarım gelen stil dosyası** (200, yarım gövde): tarayıcı hata vermez, sayfa kısmen biçimsiz kalır;
@@ -306,7 +307,66 @@ Hepsi 13 Ekim 2026, bu makine (Windows 11), dal `worktree-agent-ac320ffd570cfb61
    indir") ve `/gizlilik`'e eklenen "Sayfa yeniden yükleme notu" kartı kurucu onayından geçmedi. Gizlilik
    sayfasının "Son güncelleme" tarihi (30 Eylül) **değiştirilmedi**.
 3. **Yerinde sayan kart gezinmesi** (`?_rsc`): birkaç saniye sonra tam sayfa gezinmesine düşen küçük bir
-   koruma yazılabilir; istenip istenmediği.
+   koruma yazılabilir; istenip istenmediği. — **Kapandı (14 Ekim): istendi, yazıldı** (aşağıda "Ek").
 4. **CI'da dayanıklılık koşusu**: `hydration-soak.mjs` şimdilik elle koşulur; CI'a (ör. 300 yükleme)
    eklenip eklenmeyeceği.
 5. **Kurtarma sayısı sıfırdan büyükse CI kırılsın mı?** Şu an yalnızca yazılır.
+
+## Ek — 14 Ekim 2026: yerinde sayan kart gezinmesi (`?_rsc`) — 10 sn sonra tam yükleme, bir kez
+
+**Kurucu kararı** (yukarıdaki 3. açık karar): açılış ekranında bir karttan ya da arama sonucundan başlayan
+gezinme sınırlı bir sürede bitmezse aynı adres bir kez tam yüklenir; bu arada basılan kart "Açılıyor…" der.
+
+**Önce yeniden üretildi** (bu değişiklikten önceki derleme, `CLIP_TEST_HOOKS=1`, `next start`): Playwright
+`?_rsc` isteğini yanıtsız tuttu, "Kes" kartına basıldı. **25 sn sonra** adres hâlâ `/`, tutulan `?_rsc`
+isteği 1, belge isteği 0, sihirbaz yok, kartın yazısı değişmemiş ("Kes · İstediğin yerleri al"). Kullanıcı
+için: kart hiçbir şey yapmamış.
+
+**Karar** (`web/src/components/home/navigationFallback.ts`, `TaskFinder.tsx`):
+
+- Kart (`next/link`) ya da sonuç satırı (`router.push`) basılınca o kartın alt yazısı / satırın "Başla"sı
+  hemen **"Açılıyor…"** olur (`aria-busy`; sayfanın görünmez durum bölgesi de "Açılıyor…" der). Yeni
+  sekme/pencere açan basışlar (Ctrl, ⌘, Shift, Alt, orta tuş) izlenmez: onlar tarayıcınındır.
+- Açılış ekranı basıştan **10 sn** sonra hâlâ oradaysa aynı adres `location.assign` ile tam yüklenir
+  (taban yolu ve durağan çıktıdaki sondaki `/` ile — `next/link`'in yazdığı adresin aynısı;
+  `NEXT_PUBLIC_TRAILING_SLASH`). "Bitti"nin ayrı bir işareti yok: gezinme bitince açılış ekranı gider,
+  sayacı da onunla.
+- **Döngü yok:** açılış ekranı başına **bir kez**. Tam yükleme istendikten sonra yeni bir basış yalnızca
+  istemci yönlendiricisine gider, sayaç kurulmaz; gelen sayfa başka bir sayfadır ve sayacı yoktur.
+  Geri/ileri önbelleğinden (bfcache) dönülürse yeni ziyaret sayılır: "Açılıyor…" kalkar, koruma yeniden
+  bir kez çalışabilir.
+
+**Neden 10 sn.** Elimizdeki tek ölçüm bu ADR'nin dayanıklılık koşusu ve bir **tam** sayfa yüklemesini
+ölçer (gezinmenin başından React'in sayfayı devralmasına; istemci gezinmesi bundan azını yapar: çatı zaten
+çalışıyor): boşta ortanca 257 ms, en uzun 437 ms; 16 paralel sayfa + 10 CPU yakıcıyla ortanca 754 ms,
+**p99 6,2 sn**, en uzun 10,6 sn. 10 sn, o p99'un 1,6 katıdır ve bu ADR'nin kendi kuralına uyar ("10 sn'nin
+altı ölçülen 6,5 sn'ye fazla yakın"). Daha uzun beklemek gereksiz: bekleme artık sessiz değil, ama ölü
+bağlantıdaki kullanıcı yine bekliyor. Yanlış alarmın bedeli: açılmak üzere olan sayfanın bir kez tam
+yüklenmesi; açılış ekranında kaybolacak iş yok. Ağır yükte en uzun tam yükleme (10,6 sn) sınırın üstünde
+kaldığı için böyle bir anda istemci gezinmesi yerine tam yükleme olabilir — zararsız.
+
+**Kapsam.** Yalnızca açılış ekranındaki görev kartları ve arama sonuçları. "Kendim düzenleyeceğim"
+bağlantısı ve öbür sayfalardaki bağlantılar değişmedi (karar kart için; aynı koruma istenirse aynı kanca).
+Next'in kendi davranışı aynen: istek **başarısız** olursa çatı kendisi tam yüklemeye düşer (bu koruma
+devreye girmeden); bekçinin (Karar 1) ilk yüklemedeki davranışı değişmedi.
+
+**Sınananlar** — `web/tests/e2e/card-navigation.spec.ts` (4, gerçek 10 sn ile):
+
+1. kartın `?_rsc`'si hiç yanıt almıyor: 1 sn içinde "Açılıyor…", `aria-busy`, durum bölgesi; başka kart
+   değişmez; basıştan ≥ 9,8 sn ve < 13 sn sonra tek belge isteği `/yap/kes`; sihirbaz açılır;
+2. arama sonucu satırı (`yazıya dök`): satırda "Açılıyor…", sonra tam yükleme, "Yazıya dök" açılır;
+3. normal gezinme (hızlı) ve verisi 3 sn geciken ama gelen gezinme: sihirbaz açılır, 12 sn daha
+   beklenir, **hiç** belge isteği yok;
+4. tam yükleme de yanıtsız (service worker kapalı — ilk ziyaret; varsa sayfayı kendi kopyasından verir):
+   10 sn'de bir belge isteği, 30 sn daha **yalnızca o bir**; bırakılınca sihirbaz açılır, ikinci istek yok.
+   Aynı ekranda ikinci basışın tam yükleme istememesi birim testinde (Playwright, bekleyen bir belge
+   yüklemesi varken sayfayı okumadan önce onu bekliyor).
+
+Birim `tests/unit/navigationFallback.test.ts` (7, elle sürülen saatle): 9 999 ms'de yok, 10 000 ms'de bir
+kez; tamamlanan gezinme tetiklemez; ikinci basış yeni adres ve tam 10 sn ile yeniden kurar; tam yüklemeden
+sonra basışlar hiçbir şey kurmaz (10 dk boyunca tek çağrı); bfcache dönüşü yeniden bir kez; adres (taban
+yolu, sondaki `/`); izlenen basışlar.
+
+**Doğrulanmayan:** gerçek kötü bağlantı (yalnızca Playwright yönlendirmesi); GitHub Pages'te (`/capcut/…/`)
+tam yükleme adresi yalnızca birim testi ve durağan derlemeyle; gerçek telefon; ekran okuyucunun
+"Açılıyor…"yu okuması; bfcache dönüşü yalnızca birim testinde.

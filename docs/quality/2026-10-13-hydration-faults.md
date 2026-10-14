@@ -64,7 +64,7 @@ istenen parçasının hiç yanıt almaması (4/4).
 | "Sorun bildir" penceresinin kodu | koptu · 500 · 404 · kesildi | Next'in ham hata ekranı; editörün tamamı gider | "Bu bölüm açılamadı" + Tekrar dene + Kapat; editör yerinde |
 | aynı | yanıtsız · durdu · yarım | düğmeye basılır, **hiçbir şey olmaz** | 30 sn sonra "Bu bölüm açılamadı" + Tekrar dene + Kapat |
 | Açılış ekranında karta basınca `?_rsc` isteği | koptu · 500 · 404 · kesildi · yarım | Next kendisi tam sayfa gezinmesine düşer; sihirbaz açılır | değişmedi (çalışıyor) |
-| aynı | yanıtsız · durdu | kart hiçbir şey yapmamış gibi kalır | **değişmedi** (ADR-044, kurucu kararı 3) |
+| aynı | yanıtsız · durdu | kart hiçbir şey yapmamış gibi kalır | **değişmedi** (ADR-044, kurucu kararı 3). **14 Ekim eki:** kart hemen "Açılıyor…" der, 10 sn sonra aynı adres bir kez tam yüklenir (e2e `card-navigation.spec.ts`; bu sonda yeniden koşulmadı) |
 | Açılış ekranından "Yazıya dök"e geçerken sihirbazın parçaları | koptu (e2e) | (ölçülmedi; mekanizma yukarıdaki ham ekranla aynı) | "Bir şey ters gitti. Sayfanın bir parçası açılamadı…" + Yeniden yükle; kendiliğinden yeniden yükleme yok |
 
 Sihirbazdan açılan editörün o sırada istediği 10 dosyanın 6'sı o adım için gerekli değildi ya da başka
