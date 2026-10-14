@@ -84,7 +84,7 @@ export function ssim(fileA, fileB, { gridFps = null } = {}) {
  * Builds the same edit independently with ffmpeg, so the browser's picture can
  * be compared against something our code had no hand in producing.
  */
-export function buildReference(sourceFile, { filter, trims }, width, height, outFile, preInput = []) {
+export function buildReference(sourceFile, { filter, trims, lossless = false }, width, height, outFile, preInput = []) {
   // Each output instant must show the frame a player shows there: the latest
   // source frame that started at or before it. The old `trim=from,setpts=
   // PTS-STARTPTS` dropped the frame covering `from` and restarted the clock on
@@ -114,7 +114,9 @@ export function buildReference(sourceFile, { filter, trims }, width, height, out
     'ffmpeg',
     ['-y', '-hide_banner', '-loglevel', 'error', ...preInput, '-i', sourceFile,
      '-filter_complex', graph, '-map', '[outv]', '-an',
-     '-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p', '-s', `${width}x${height}`, outFile],
+     // `lossless`: x264 at qp 0, so a quality score is not capped by the reference's own loss.
+     '-c:v', 'libx264', ...(lossless ? ['-qp', '0', '-preset', 'ultrafast'] : ['-crf', '18']),
+     '-pix_fmt', 'yuv420p', '-s', `${width}x${height}`, outFile],
     { encoding: 'utf8' },
   );
   if (result.status !== 0) {

@@ -59,3 +59,46 @@ export function sourceBoundedBitrate(planBitrate: number, sourceBitrate: number 
   const ceiling = Math.max(MIN_REENCODE_BITRATE, Math.round(sourceBitrate * SOURCE_BITRATE_HEADROOM));
   return Math.min(planBitrate, ceiling);
 }
+
+/* ------------------------------------------------------------ rate control */
+
+/** WebCodecs' `VideoEncoderConfig.bitrateMode`, as far as a download asks for one. */
+export type VideoBitrateMode = 'constant' | 'variable';
+
+/**
+ * The rate control an ORDINARY (re-encoded) download asks for, by encoder kind.
+ * A target-size download always asks for `constant` (ADR-035); copies and the
+ * fast cut's seams are not touched by this.
+ */
+export const ORDINARY_BITRATE_MODE: Record<VideoEncoderKind, VideoBitrateMode> = {
+  hardware: 'variable',
+  software: 'variable',
+};
+
+/** The rate control asked for, and the one the encoder is really configured with. */
+export interface BitrateModeChoice {
+  asked: VideoBitrateMode;
+  used: VideoBitrateMode;
+}
+
+/**
+ * Settles the rate control before the encoder exists. `variable` is what an
+ * encoder without a mode is given anyway (mediabunny's and WebCodecs' default),
+ * so it is not asked about. `constant` is used only where the browser says it
+ * can encode this picture that way; otherwise — a refusal, or no answer — the
+ * download goes on in `variable` and says so (`asked` differs from `used`).
+ * The choice never ends a download.
+ */
+export async function chooseBitrateMode(
+  asked: VideoBitrateMode,
+  supports: (mode: VideoBitrateMode) => Promise<boolean>,
+): Promise<BitrateModeChoice> {
+  if (asked === 'variable') return { asked, used: 'variable' };
+  let supported = false;
+  try {
+    supported = (await supports(asked)) === true;
+  } catch {
+    supported = false;
+  }
+  return { asked, used: supported ? asked : 'variable' };
+}

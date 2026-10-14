@@ -67,6 +67,16 @@ function enhanceEngineHook(): 'cpu' | null {
   return (globalThis as { __clipEnhanceEngine?: unknown }).__clipEnhanceEngine === 'cpu' ? 'cpu' : null;
 }
 
+/**
+ * Measurement hook only (`window.__clipBitrateMode = 'constant' | 'variable'`,
+ * ADR-045): the rate control an ordinary download asks for, in place of the
+ * app's own choice. The app never sets it.
+ */
+function bitrateModeHook(): 'constant' | 'variable' | null {
+  const value = (globalThis as { __clipBitrateMode?: unknown }).__clipBitrateMode;
+  return value === 'constant' || value === 'variable' ? value : null;
+}
+
 /** '1' only in a test build (`CLIP_TEST_HOOKS=1`); the published site is built with ''. */
 const TEST_HOOKS = process.env.NEXT_PUBLIC_CLIP_TEST_HOOKS === '1';
 
@@ -317,6 +327,9 @@ export class ExportWorkerClient {
       targetSize: options.targetSize ?? null,
       enhanceAnalysis: options.enhanceAnalysis ?? null,
       enhanceEngine: enhanceEngineHook(),
+      bitrateMode: bitrateModeHook(),
+      refuseConstantBitrate:
+        TEST_HOOKS && (globalThis as { __clipRefuseConstantBitrate?: unknown }).__clipRefuseConstantBitrate === true,
       testFault: takeTestFault(),
     };
     const stallMs = waitHook('__clipExportStallMs', STALL_MS);

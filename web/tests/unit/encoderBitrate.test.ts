@@ -4,6 +4,7 @@ import {
   MIN_REENCODE_BITRATE,
   SOFTWARE_ENCODER_BITRATE_FACTOR,
   SOURCE_BITRATE_HEADROOM,
+  chooseBitrateMode,
   encoderVideoBitrate,
   sourceBoundedBitrate,
 } from '@/domain/encoderBitrate';
@@ -59,5 +60,43 @@ describe('encoder bitrate by encoder kind (ADR-024)', () => {
     expect(SOFTWARE_ENCODER_BITRATE_FACTOR).toBe(3);
     expect(encoderVideoBitrate(2_488_320, 'software')).toBe(7_464_960);
     expect(encoderVideoBitrate(5_598_720, 'software')).toBe(16_796_160);
+  });
+});
+
+describe('the rate control is settled before the encoder exists (ADR-045)', () => {
+  it('uses constant where the browser can encode that way, asking once for constant only', async () => {
+    const asked: string[] = [];
+    const choice = await chooseBitrateMode('constant', async (mode) => {
+      asked.push(mode);
+      return true;
+    });
+    expect(choice).toEqual({ asked: 'constant', used: 'constant' });
+    expect(asked).toEqual(['constant']);
+  });
+
+  it('falls back to variable, and says so, where constant is refused', async () => {
+    expect(await chooseBitrateMode('constant', async () => false)).toEqual({ asked: 'constant', used: 'variable' });
+  });
+
+  it('never ends the download: a question that throws or rejects is a refusal', async () => {
+    expect(await chooseBitrateMode('constant', () => Promise.reject(new TypeError('unknown member')))).toEqual({
+      asked: 'constant',
+      used: 'variable',
+    });
+    expect(
+      await chooseBitrateMode('constant', () => {
+        throw new Error('synchronous');
+      }),
+    ).toEqual({ asked: 'constant', used: 'variable' });
+  });
+
+  it('variable is the default every encoder takes: nothing is asked', async () => {
+    let calls = 0;
+    const choice = await chooseBitrateMode('variable', async () => {
+      calls += 1;
+      return false;
+    });
+    expect(choice).toEqual({ asked: 'variable', used: 'variable' });
+    expect(calls).toBe(0);
   });
 });

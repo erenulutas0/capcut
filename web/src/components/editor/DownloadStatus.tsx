@@ -250,6 +250,9 @@ function MethodLine({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase:
       data-fallback={result.fallbackReason ?? ''}
       data-frames-encoded={result.framesEncoded}
       data-frames-copied={result.framesCopied}
+      data-video-bitrate={result.videoEncoding?.bitrate}
+      data-bitrate-mode={result.videoEncoding?.bitrateMode ?? ''}
+      data-bitrate-mode-asked={result.videoEncoding?.askedBitrateMode ?? ''}
     >
       {methodText(t, entry)}
     </span>

@@ -16,6 +16,10 @@
  * `--desktop=chrome|msedge|chromium` runs the same cases in a desktop browser
  * launched here instead of the phone, for a side-by-side comparison.
  *
+ * `--bitrate-mode=variable|constant` (ADR-045): every ordinary download of the run asks for that
+ * rate control instead of the app's own choice; rows record `bitrateMode` (what the encoder was
+ * configured with), `bitrateModeAsked` and `videoBitrate` from the result line either way.
+ *
  * `--profile` switches on the export stage clock (ADR-028) and records the
  * worker's console and its phase events (never the file bytes) in the row.
  *
@@ -70,6 +74,8 @@ const real = join(media, 'real');
 const android = join(media, 'android');
 const profile = process.argv.includes('--profile');
 const desktop = arg('desktop', '');
+// ADR-045: the rate control every ordinary download of this run asks for (measurement hook); '' = the app's own.
+const bitrateModeArg = ['variable', 'constant'].includes(arg('bitrate-mode', '')) ? arg('bitrate-mode', '') : '';
 // `--label=live`: a separate folder, so a second run (e.g. a local build) does not overwrite the files.
 const label = arg('label', '');
 const outDir = join(web, 'matrix-results', `${desktop ? `android-compare-${desktop}` : 'android'}${label ? `-${label}` : ''}`);
@@ -353,6 +359,14 @@ async function runCase(testCase) {
       window.__clipExportOptions = options;
     }, testCase.exportOptions);
   }
+  // ADR-045: `--bitrate-mode=variable|constant` makes every ORDINARY download of this run ask for
+  // that rate control (`window.__clipBitrateMode`), so the app's own choice can be compared with
+  // the other one on the same cases. Target-size and forced cases keep their own.
+  if (bitrateModeArg) {
+    await page.addInitScript((value) => {
+      window.__clipBitrateMode = value;
+    }, bitrateModeArg);
+  }
   const row = { id: testCase.id, source: basename(testCase.file), kesits: testCase.kesits, expect: testCase.expect };
   try {
     await page.goto(url, { waitUntil: 'load' });
@@ -408,6 +422,10 @@ async function runCase(testCase) {
       row.method = await method.getAttribute('data-method');
       row.fallback = (await method.getAttribute('data-fallback')) || null;
       row.methodText = (await method.textContent())?.trim();
+      // ADR-045: the encoder's bitrate and rate control in a full encode, as the result line reports them.
+      row.videoBitrate = Number(await method.getAttribute('data-video-bitrate')) || null;
+      row.bitrateMode = (await method.getAttribute('data-bitrate-mode')) || null;
+      row.bitrateModeAsked = (await method.getAttribute('data-bitrate-mode-asked')) || null;
       const name = await lastPickedName(page);
       const local = join(outDir, `${testCase.id}-${name.replace(/^picked-\d+-/, '')}`);
       row.sizeBytes = await readPickedFile(page, name, local);

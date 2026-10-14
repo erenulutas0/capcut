@@ -205,6 +205,29 @@ describe('failureDetailLine', () => {
     );
     expect(failureDetailLine(pageSideFailureDetail('worker_error_event'), 'kare')).toBe('WorkerError · worker_crash · worker_error_event');
   });
+
+  it('names the rate control the video encoder was configured with (ADR-045)', () => {
+    const constant = { ...full, videoEncoder: { codec: 'avc1.640028', hardwareAcceleration: 'no-preference' as const, bitrateMode: 'constant' as const } };
+    expect(failureDetailLine(constant, 'kare')).toContain('enc avc1.640028 no-preference hw+ constant ·');
+  });
+});
+
+describe('the configured rate control in a failure detail (ADR-045)', () => {
+  it('keeps a known bitrateMode and drops anything else', () => {
+    expect(sanitizeCodecUse({ codec: 'avc1.640028', bitrateMode: 'constant' })).toEqual({
+      codec: 'avc1.640028',
+      hardwareAcceleration: 'no-preference',
+      bitrateMode: 'constant',
+    });
+    expect(sanitizeCodecUse({ codec: 'avc1.640028', bitrateMode: 'variable' })?.bitrateMode).toBe('variable');
+    expect(sanitizeCodecUse({ codec: 'avc1.640028', bitrateMode: 'quantizer' })?.bitrateMode).toBe('quantizer');
+    for (const bad of ['CBR', 'tatil.mp4', '', 3, null]) {
+      expect(sanitizeCodecUse({ codec: 'avc1.640028', bitrateMode: bad })).toEqual({ codec: 'avc1.640028', hardwareAcceleration: 'no-preference' });
+    }
+    // The whole detail goes through the same check.
+    const detail = sanitizeExportFailureDetail({ ...full, videoEncoder: { codec: 'avc1.640028', hardwareAcceleration: 'no-preference', bitrateMode: 'constant' } });
+    expect(detail?.videoEncoder?.bitrateMode).toBe('constant');
+  });
 });
 
 describe('stage tagging', () => {
