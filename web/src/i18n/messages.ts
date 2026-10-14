@@ -1261,7 +1261,7 @@ export const tr = {
   // Second addendum: on a phone it is not offered at all; `largePhone` is the one line said instead.
   'transcript.model.baseRecommended': 'Önerilen: küçük model (≈{size}, bir kez iner)',
   'transcript.model.turboPlain': 'Büyük model (≈{size}, bir kez iner)',
-  'transcript.model.largePhone': 'Büyük model telefonda henüz yok.',
+  'transcript.model.largePhone': 'Büyük model telefon ve tablette yok.',
   'transcript.model.turboHint.untested':
     'Konuşmayı daha iyi anlar ama bu tarayıcıda hiç denenmedi; çalışmayabilir. İndirmesi çok büyüktür.',
   'transcript.model.turboHint.failed_here':

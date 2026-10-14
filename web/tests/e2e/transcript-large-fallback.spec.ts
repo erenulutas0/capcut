@@ -12,7 +12,7 @@ import { SECRET_LINE, SECRET_PATH, SECRET_URL, diagnosticsFrom, expectDetail, wa
  *
  * - On a phone the large model is not offered at all (second addendum, same
  *   day: it failed 3 of 3 on the S23): no choice, one line "Büyük model
- *   telefonda henüz yok.", the small model. A large model stored there from
+ *   telefon ve tablette yok.", the small model. A large model stored there from
  *   before is still not offered, and its room can be freed.
  * - On desktop Chromium nothing changed: the large model leads.
  * - When the large model fails while writing, the screen offers "Küçük
@@ -66,7 +66,7 @@ test.describe('on a phone', () => {
 
   test('the large model is not offered: no choice, one plain line, the small model writes', async ({ page, context }) => {
     const server = await openStep(page, context);
-    await expect(page.getByTestId('transcribe-large-phone')).toHaveText('Büyük model telefonda henüz yok.');
+    await expect(page.getByTestId('transcribe-large-phone')).toHaveText('Büyük model telefon ve tablette yok.');
     // No choice at all: no radio for either model, and nothing that names the large one's size.
     await expect(page.getByTestId('transcribe-quality')).toHaveCount(0);
     await expect(page.getByTestId('option-model-turbo')).toHaveCount(0);
@@ -110,7 +110,7 @@ test.describe('on a phone', () => {
     await page.evaluate(() => window.sessionStorage.removeItem('e2e.looksLikeComputer'));
     await page.reload();
     await page.getByTestId('video-input').setInputFiles(SAMPLE);
-    await expect(page.getByTestId('transcribe-large-phone')).toHaveText('Büyük model telefonda henüz yok.', { timeout: 60_000 });
+    await expect(page.getByTestId('transcribe-large-phone')).toHaveText('Büyük model telefon ve tablette yok.', { timeout: 60_000 });
     await expect(page.getByTestId('transcribe-quality')).toHaveCount(0);
     await expect(page.getByTestId('option-model-turbo')).toHaveCount(0);
     // The small model is what runs (its own files are not here yet; the shared ones came with the large one).

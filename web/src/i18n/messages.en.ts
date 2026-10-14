@@ -1221,7 +1221,7 @@ export const en: Record<MessageKey, string> = {
     'Understands speech far better, in conversation and noise too. It is a large download, uses the graphics card and needs a lot of memory.',
   'transcript.model.baseRecommended': 'Recommended: small model (≈{size}, downloaded once)',
   'transcript.model.turboPlain': 'Large model (≈{size}, downloaded once)',
-  'transcript.model.largePhone': 'The large model is not on phones yet.',
+  'transcript.model.largePhone': 'The large model is not available on phones and tablets.',
   'transcript.model.turboHint.untested':
     'Understands speech better, but it has never been tried in this browser and may not work. It is a very large download.',
   'transcript.model.turboHint.failed_here':

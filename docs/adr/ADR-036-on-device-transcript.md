@@ -1146,9 +1146,9 @@ hatasıyla durdu; küçük model aynı klibi 10,5 sn'de yazdı.
   sıra aynı: not → `failed_here`, Chromium değilse `untested`, yoksa `proven`.
 - Yeni `largeModelOffered(standing)`: büyük model burada başlayabiliyor **ve** telefon değil. Kanca
   (`useTranscription`) seçimi buna göre gösterir; `chooseModel('turbo')` sunulmayan yerde hiçbir şey yapmaz.
-- Telefonda ekran: seçim kutusu (iki radyo) **yok**; yerine tek düz satır — **"Büyük model telefonda henüz
-  yok."** / "The large model is not on phones yet." (`transcript.model.largePhone`; 4 kelime, kalite
-  katmanının teknik kelime listesinden temiz, okunabilirlik ölçüsünün 5 kelime alt sınırının altında).
+- Telefonda ekran: seçim kutusu (iki radyo) **yok**; yerine tek düz satır — **"Büyük model telefon ve
+  tablette yok."** / "The large model is not available on phones and tablets." (`transcript.model.largePhone`; 6 kelime, kalite
+  katmanının teknik kelime listesinden temiz, okunabilirlik ölçüsü kısa satırları ölçmez). 14 Ekim akşamı ana oturum "henüz" sözünü çıkardı (söz vermemek için) ve tableti de adlandırdı.
   Satır WebGPU olmayan telefonda da çıkar: söz orada da doğrudur ve tek seçeneğin nedenini söyler.
   Küçük model seçili; indirme düğmesi yalnızca onun boyutunu söyler. Artık kullanılmayan
   `transcript.model.turboHint.phone` cümlesi kaldırıldı.

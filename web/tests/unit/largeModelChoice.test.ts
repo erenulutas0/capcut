@@ -243,8 +243,8 @@ describe('what the screen says (plain words, both languages)', () => {
   });
 
   it('says plainly, in one short line, that the large model is not on phones yet; the failure screen names the way forward', () => {
-    expect(tr['transcript.model.largePhone']).toBe('Büyük model telefonda henüz yok.');
-    expect(en['transcript.model.largePhone']).toBe('The large model is not on phones yet.');
+    expect(tr['transcript.model.largePhone']).toBe('Büyük model telefon ve tablette yok.');
+    expect(en['transcript.model.largePhone']).toBe('The large model is not available on phones and tablets.');
     expect(tr['transcript.model.baseRecommended']).toMatch(/^Önerilen: küçük model/);
     expect(tr['transcript.model.turboPlain']).not.toMatch(/Önerilen/);
     expect(tr['transcript.fallback.small']).toBe('Küçük modelle dene');
