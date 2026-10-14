@@ -967,7 +967,7 @@ modelin bir cihazdaki yeri dört değerden biridir; yalnızca `proven` olduğu y
 | WebGPU + `shader-f16` yok | — | küçük; seçim gösterilmez (değişmedi) | — |
 
 - Küçük model önerildiğinde etiketi "Önerilen: küçük model (≈108,8 MB, bir kez iner)" olur ve
-  listede ilk sıradadır; ipucu aynı ("İndirmesi küçüktür, her cihazda çalışır. …").
+  listede ilk sıradadır; ipucu aynı ("İndirmesi küçüktür ve özel bir ekran kartı istemez; denediğimiz bilgisayarlarda ve telefonda çalıştı. …").
 - Büyük model telefonda **gizlenmedi**: seçilebilir, satırı neden önerilmediğini sade sözle söyler
   (teknik kelime yok — kalite katmanının listesiyle birim testinde denetlenir).
 - "Önerilen modelle yeniden yaz" (kapsam notu, yukarıda "Dürüst geri bildirim") yalnızca büyük
@@ -1110,3 +1110,24 @@ Hepsi 14 Ekim 2026'da bu makinede, son kodla (dal `worktree-agent-a0749dbc7d42a7
 4. Safari ve Firefox'ta büyük model ölçülene kadar önerilmesin — onay.
 5. "her cihazda çalışır" cümlesi: küçük model masaüstünde ve bir telefonda ölçüldü; daha temkinli
    bir söz mü istenir?
+
+## Ek, 13 Ekim 2026 akşamı — yazı editöre geçişte saklanır
+
+Kurucu kararı: cihazda yazılan yazı da, internette yazılan gibi, "Daha fazla ayar → editörde aç" ile
+açılan editörde **kayıtlı proje** olur. Kural, soru penceresi, gizlilik metni ve sınamalar
+[ADR-034'ün 13 Ekim ekleri](ADR-034-task-first-home.md); burada yalnızca bu yolu ilgilendiren özet.
+
+- **Sonuç ekranı** (yazı çıktı, editör açılmadı): yazı yalnızca açık sayfadadır ve ekran bunu söyler —
+  "Bu yazı henüz saklanmadı: editörde açarsan ya da metni indirirsen kalır, yoksa sayfa kapanınca gider."
+  (`wizard.yazi.keepNote`; "Altyazılı videoyu indir" bittikten sonra editör bağlantısının üstünde de.)
+  Sihirbazda kalan kullanıcı için hiçbir şey değişmedi: sayfa yenilenince yazı gider (sınandı).
+- **"Daha fazla ayar → editörde aç":** proje tarifi (satırlar, "anlaşılamadı" aralıkları, kaynak dosyanın
+  tanıtıcı bilgileri) tarayıcının tek kayıtlı projesi olur; model dosyaları ve kelime zamanları saklanmaz
+  (zaten saklanmıyordu). Depoda üstünde çalışılmış bir proje varsa önce sorulur; adres `/editor` olur;
+  yenileme projeyi geri getirir ve video dosyasını yeniden ister.
+- **Satır çıkmadıysa** ("Yazılabilen bir satır çıkmadı") saklanacak bir şey yoktur: geçiş öbür
+  sihirbazlarınki gibi saklamadan olur, cümle görünmez.
+- **Değişmeyenler:** motor, model deposu, satır kuralları, EDL v3 altyazı izi, test ikizi, paket boyutu
+  (yeni parça `KeepOnHandoff` `lazyPart` ile ayrı bir yığında; bu işte ölçülmedi).
+- **Gizlilik:** `/gizlilik` "Proje tarifi" kartına tek istisna cümlesi eklendi (her derleme); veri
+  envanteri §2.7, §2.8, §8.4a.

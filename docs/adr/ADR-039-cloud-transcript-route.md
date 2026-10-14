@@ -565,17 +565,21 @@ Kurucu kararı: "Bulut yazısı editöre geçişte saklansın." Ayrıntı ve ger
 
 - **Sonuç ekranı** (yazı geldi, editör açılmadı): yazı yalnızca açık sayfadadır ve ekran bunu söyler —
   "Bu yazı henüz saklanmadı: editörde açarsan ya da metni indirirsen kalır, yoksa sayfa kapanınca gider."
-  (`cloud.keep.note`; rıza ekranının kuralları geçerli: kanıtlanamayan söz yok, uydurma sayı yok.)
+  (sabah `cloud.keep.note`; aynı akşam sihirbazın kendi sözü oldu, `wizard.yazi.keepNote` — rıza ekranının
+  kuralları geçerli: kanıtlanamayan söz yok, uydurma sayı yok.)
 - **"Daha fazla ayar → editörde aç":** çalışma bu tarayıcının kayıtlı projesi olur (satırlar ve kim
   konuştuğu; ses, davet kodu, iş kimliği, sağlayıcı yanıtı değil). Depoda üstünde çalışılmış bir proje
   varsa önce sorulur; seçilmeden hiçbir şey yazılmaz. Adres `/editor` olur; yenileme projeyi geri getirir
   ve video dosyasını yeniden ister.
 - **Sihirbazda kalan kullanıcı** için hiçbir şey değişmedi: hiçbir şey saklanmaz (sınandı).
-- **Cihazda yazılan yazı** bu derlemede de eskisi gibi saklanmadan geçer (kurucu kararı bekliyor).
+- **Cihazda yazılan yazı:** sabah bu derlemede de saklanmadan geçiyordu; aynı akşam kurucu kararıyla o
+  da saklanır oldu — her derlemede, vekile tek istek gitmeden (ADR-034 "Ek 2"; sınandı:
+  `cloud-keep.spec.ts`, `transcript-keep.spec.ts`).
 - **"İnternette yazıldı" etiketi** hâlâ tarife yazılmıyor: editörde ve yenilemeden sonra aynı iz "Otomatik
   yazıldı — yanlış olabilir" diye görünür. Şema alanı ister; eklenmedi.
 - **Değişmeyenler:** Worker, sözleşme, rıza ekranının metni, giden ses, silme isteği, hata iletileri; yol
-  varsayılan derlemede hâlâ kapalı ve yeni kod (`CloudKeep`) o derlemenin çıktısında yok.
+  varsayılan derlemede hâlâ kapalı. Saklama parçası (`KeepOnHandoff`, sabahki adıyla `CloudKeep`) akşamdan
+  beri bulut modülü değil: her derlemede var, bulut yolundan hiçbir şey almıyor.
 - **Gizlilik:** `/gizlilik`'in bulut bölümüne "Yazı cihazında nerede durur" maddesi ve "Proje tarifi"
   kartına bir cümle eklendi; veri envanteri §8.4a.
 

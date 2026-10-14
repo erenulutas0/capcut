@@ -1,6 +1,6 @@
-# Kalite raporu — 2026-10-13
+# Kalite raporu — 2026-10-14
 
-> Üreten: `npm run quality` (`web/scripts/quality/run.mjs`). Ölçüm koşusu: 2026-10-13 18:13 UTC, commit `66c7eb6` + kaydedilmemiş değişiklikler, 9 dk; ölçülen bölümler: search, text, walkthrough, errors, honesty, output, perf, visual, a11y. Raporun metni 2026-10-13 18:13 UTC tarihinde ölçüm yapılmadan yeniden yazıldı (`--report-only`).
+> Üreten: `npm run quality` (`web/scripts/quality/run.mjs`). Commit `cefa6b0` + kaydedilmemiş değişiklikler. Rapor 2026-10-14 11:26 UTC; bu koşu 10 dk sürdü ve şu bölümleri yeniden ölçtü: search, text, walkthrough, errors, honesty, output, perf, visual, a11y.
 > Makine: Windows_NT 10.0.26200, 12th Gen Intel(R) Core(TM) i5-12500 × 12, 64 GB bellek. Tarayıcı: Playwright’ın Chromium’u. Bütün medya üretilmiş (ffmpeg) ya da depodaki haklı örneklerdir; hiçbir şey makineden çıkmadı.
 > Bu rapor bir kullanıcı testinin yerini TUTMAZ; neyi söylemediği en altta ve `docs/quality/README.md` içinde.
 
@@ -9,6 +9,37 @@
 _Bu bölüm elle yazılır (`docs/quality/bulgular.md`); sayılar aşağıdaki tablolardan gelir. Rapor yeniden üretildiğinde olduğu gibi yerine konur — tarihine bakın._
 
 **Yazıldığı koşu:** 11 Ekim 2026 öğleden sonra, dal `worktree-agent-a511c0275d7647e51` (önceki bulgular: aynı gün, `b8e355f`). O raporda açık kalan üç şey üzerinde çalışıldı: aramanın yanlış karta göndermesi, editörün her videoyu 1080p’ye büyütmesi, 720p’den küçük kaynakların büyütülmesi. Aşağıda her biri için aynı ölçünün önceki → şimdiki değeri var. Açık kalanlar en başta.
+
+### 14 Ekim — cihazda yazılan yazı da editöre geçişte saklanır (ADR-034 “Ek 2”; dal `worktree-agent-a52e453bcc58fbe27`)
+
+**Yayındaki sitede görünen bir şey değişti:** “Yazıya dök”ün sonuç ekranında, editör bağlantısının üstünde artık
+“Bu yazı henüz saklanmadı: editörde açarsan ya da metni indirirsen kalır, yoksa sayfa kapanınca gider.” yazıyor
+(sabah yalnızca bulut yolundaydı); editörde açılan yazı kayıtlı proje oluyor.
+
+- 643 ölçü: 564 bütçe içinde, **10 dışında**, 5 ölçülemedi (model dosyaları yok), 64 bütçesiz. Sekizi önceki
+  koşulardaki açık maddeler (yedi arama ölçüsü ve `out.notFaststart`). **İkisi yeni: telefon kısıtlamasında TBT** —
+  editör 268 ms (233–322), sihirbaz 202 ms (174–250); bütçe ≤ 200 ms. Aşağıda “Gürültü mü, bu iş mi?”.
+- Sözler bulut tablosundan sihirbazın tablosuna taşındı (`cloud.keep.*` → `wizard.yazi.keep*`); ikisi de varsayılan
+  yol sayılıyordu, metin ölçüleri aynı: Ateşman ortancası 82,7, zor metin %1,9, “çok zor” 0, 20 kelimeden uzun cümle 1,
+  teknik terimli satır 9. Yazıya dök yürüyüşü (betikli tanıyıcı): masaüstü 5 / telefon 6 basış, en kalabalık ekran
+  105 kelime, teknik terim 0 — değişmedi.
+- **Ekran tabanları:** ilk koşuda bir ekran “farklı” çıktı: `yol-yazi-kancali-sonuc` telefon (%1,53) — eklenen cümle,
+  bağlantı bir satır aşağıda; masaüstü %0,4 ile tolerans içindeydi ama o da cümleyi gösteriyor. Ekranlara bakıldı,
+  `--update-baselines` ile yenilendi; depoya giren taban değişikliği yalnızca bu iki resim. Aynı yenilemede yeniden
+  yazılan, tolerans içindeki ve bu işle ilgisi olmayan altı taban geri alındı (`editor-bos` telefon, `yol-kes-sonuc`
+  masaüstü, `yol-yazi-bulut-secim` / `-kodsuz` iki görünüm). Sonra rapor tabanlarla karşılaştırılarak yeniden koşuldu: farklı ekran **0**. Bu rapor o koşudur.
+- **Gürültü mü, bu iş mi?** Aynı kodla üç tam koşuda editör TBT'si 248 → 157 → 268 ms çıktı (önceki rapor: 167). Bu
+  yüzden yalnızca `--only=perf` ile, bu işin `web/src` + `web/tests`'i ile öncekinin (`5911725`) sırayla üçer kez
+  ölçüldü (aynı makine, aynı saat; makinede başka işler de vardı). Editör: bu iş 165 / 226 / 229 ms, önceki 228 / 186 /
+  171 ms; sihirbaz: bu iş 163 / 156 / 184, önceki 146 / 149 / 129; ana ekran (bu işin dokunmadığı sayfa): bu iş 124 /
+  168 / 134, önceki 137 / 246 / 143. Aynı kodun iki ölçümü arasındaki fark (≈ 60–110 ms) iki kod arasındaki farktan
+  büyük; önceki kod da bu koşullarda bütçeyi aştı (228 ms). JS: editör 293 KB / 16 dosya (önce 294 KB / 17), sihirbaz
+  ve ana ekran aynı. Ölçülen sihirbaz sayfası `/yap/dikey/`: Yazıya dök'ün kodunu hiç yüklemez; bu işten ona giden tek
+  şey her sayfanın taşıdığı söz tablosuna eklenen ≈ 2 KB cümle. Yine de orada bu iş üç çiftin üçünde de biraz yüksek
+  (17, 7 ve 55 ms). Sonuç: bu işe bağlanabilen bir yavaşlama **gösterilemedi**, ama yokluğu da kanıtlanmadı — boş bir
+  makinede yeniden bakılmalı. Bütçe gevşetilmedi; iki ölçü raporda bütçe dışı duruyor.
+- Soru penceresi (“Saklanan bir projen var”) bu katmanda da **ölçülmüyor** (yürüyüş boş depoyla başlar); olağan
+  e2e'de (`transcript-keep.spec.ts`) sınanıyor.
 
 ### 13 Ekim (akşam) — internette yazılan yazı editöre geçişte saklanır (ADR-034 eki; dal `worktree-agent-a2b52e38355c6d5f7`)
 
@@ -99,20 +130,20 @@ Yayındaki sitede bir şey değişmedi; aşağıdakiler yalnızca yolun açık o
 
 ## Özet
 
-643 ölçü: **566 bütçe içinde**, **8 bütçe dışı**, **5 ölçülemedi**, 64 bütçesiz (yalnızca bildirilir). Bütçeler: `web/scripts/quality/budgets.json`.
+643 ölçü: **564 bütçe içinde**, **10 bütçe dışı**, **5 ölçülemedi**, 64 bütçesiz (yalnızca bildirilir). Bütçeler: `web/scripts/quality/budgets.json`.
 
 
 | Bölüm | Ölçüm zamanı | Derleme | Bütçe içinde | Bütçe dışı | Ölçülemedi | Bütçesiz |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1. Görev tamamlama yürüyüşleri | 2026-10-13 18:06 UTC | statik çıktı + test kancalı + bulut (sahte sunucu) | 222 | 0 | **4** | 0 |
-| 2. Arama kalitesi | 2026-10-13 18:04 UTC | tarayıcısız | 5 | **7** | 0 | 32 |
-| 3. Hata yolları | 2026-10-13 18:06 UTC | statik çıktı | 5 | 0 | 0 | 2 |
-| 4. Dürüstlük denetimleri | 2026-10-13 18:07 UTC | statik çıktı | 22 | 0 | 0 | 0 |
-| 5. Çıktı kalitesi | 2026-10-13 18:10 UTC | statik çıktı | 71 | **1** | 0 | 0 |
+| 1. Görev tamamlama yürüyüşleri | 2026-10-14 11:18 UTC | statik çıktı + test kancalı + bulut (sahte sunucu) | 222 | 0 | **4** | 0 |
+| 2. Arama kalitesi | 2026-10-14 11:16 UTC | tarayıcısız | 5 | **7** | 0 | 32 |
+| 3. Hata yolları | 2026-10-14 11:19 UTC | statik çıktı | 5 | 0 | 0 | 2 |
+| 4. Dürüstlük denetimleri | 2026-10-14 11:20 UTC | statik çıktı | 22 | 0 | 0 | 0 |
+| 5. Çıktı kalitesi | 2026-10-14 11:23 UTC | statik çıktı | 71 | **1** | 0 | 0 |
 | 6. Yazıya dökme kalitesi | koşulmadı | — | 0 | 0 | **1** | 8 |
-| 7. Performans bütçeleri | 2026-10-13 18:12 UTC | statik çıktı | 39 | 0 | 0 | 0 |
-| 8. Görsel regresyon | 2026-10-13 18:12 UTC | statik çıktı + bulut (sahte sunucu) + test kancalı | 2 | 0 | 0 | 2 |
-| 9. Erişilebilirlik ve çocuk-dostu ölçüler | 2026-10-13 18:13 UTC | statik çıktı + tarayıcısız | 200 | 0 | 0 | 20 |
+| 7. Performans bütçeleri | 2026-10-14 11:25 UTC | statik çıktı | 37 | **2** | 0 | 0 |
+| 8. Görsel regresyon | 2026-10-14 11:25 UTC | statik çıktı + bulut (sahte sunucu) + test kancalı | 2 | 0 | 0 | 2 |
+| 9. Erişilebilirlik ve çocuk-dostu ölçüler | 2026-10-14 11:26 UTC | statik çıktı + tarayıcısız | 200 | 0 | 0 | 20 |
 
 **Başlık sayıları**
 
@@ -129,15 +160,15 @@ Yayındaki sitede bir şey değişmedi; aşağıdakiler yalnızca yolun açık o
 | İlerleme çubuğu geri gitti (kez) · iptalden sonra kalan bayt | 0 · 0 |
 | Kaynağından büyük çıkan dosya (9 yol × 360p, 480p, 720p kaynak) | 0 / 27 |
 | Eklenen ses–görüntü sapması (en kötü) · süre hatası (en kötü) | 1 ms · 16 ms |
-| Görüntü sadakati, en düşük: SSIM · VMAF | 0,9658 · 84,6 |
+| Görüntü sadakati, en düşük: SSIM · VMAF | 0,9658 · 84,7 |
 | Küçült → WhatsApp hedefe sığdı | evet |
-| Ana ekran: LCP (mobil kısıtlama) · aktarılan JS | 612 ms · 180 KB |
-| En yavaş yeniden işleme hızı | 2,2 × gerçek zaman |
+| Ana ekran: LCP (mobil kısıtlama) · aktarılan JS | 636 ms · 180 KB |
+| En yavaş yeniden işleme hızı | 2 × gerçek zaman |
 | Tabanından farklı ekran | 0 |
 | Telefonda 44 px’ten küçük dokunma hedefi · adsız kontrol | 0 · 0 |
 | Okunabilirlik (varsayılan yol): ortanca Ateşman · zor metin payı | 82,7 · %1,9 |
 
-**Bütçe dışı ölçüler** (8)
+**Bütçe dışı ölçüler** (10)
 
 
 | Ölçü | Değer | Bütçe |
@@ -150,6 +181,8 @@ Yayındaki sitede bir şey değişmedi; aşağıdakiler yalnızca yolun açık o
 | Listede hiç olmayan isteğe dürüst cevap (yapamıyoruz ya da bulamadım) | %65 | ≥ %80 |
 | Anlamsız yazı / sohbete kart önerilmedi | %88,9 | ≥ %90 |
 | Dizini (moov) sonda olan dosya — “faststart” değil | 10 / 10 | ≤ 0 |
+| Editör, mobil kısıtlama: TBT | 268 ms (233–322) | ≤ 200 ms |
+| Sihirbaz, mobil kısıtlama: TBT | 202 ms (174–250) | ≤ 200 ms |
 
 **Ölçülemeyenler** (5)
 
@@ -172,16 +205,16 @@ Betikli “ilk kez kullanan”: ana ekrandan başlar, yalnızca görünen ve ad�
 
 | Görev | Dosya çıktı ve doğru | Tıklama | Yazılan alan | Karar ekranı | Ekran | En kalabalık ekran (kelime) | Toplam kelime | Karttan dosyaya | Teknik terim | Adıyla bulunamayan | Konsol hatası |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Kes | evet | 4 | 2 | 1 | 3 | 152 | 280 | 1,9 sn | 0 | 0 | 0 |
-| Boşlukları at | evet | 3 | 0 | 1 | 4 | 105 | 235 | 1,4 sn | 0 | 0 | 0 |
-| Dikey yap | evet | 3 | 0 | 1 | 4 | 105 | 233 | 1,3 sn | 0 | 0 | 0 |
+| Kes | evet | 4 | 2 | 1 | 3 | 152 | 280 | 1,6 sn | 0 | 0 | 0 |
+| Boşlukları at | evet | 3 | 0 | 1 | 4 | 105 | 235 | 1,5 sn | 0 | 0 | 0 |
+| Dikey yap | evet | 3 | 0 | 1 | 4 | 105 | 233 | 1,6 sn | 0 | 0 | 0 |
 | Küçült | evet | 3 | 0 | 1 | 4 | 105 | 270 | 4 sn | 0 | 0 | 0 |
 | Yazıya dök | ölçülemedi | 2 | 0 | 1 | 3 | 105 | 196 | ölçülemedi | 0 | 0 | 0 |
 | Müzik ekle | evet | 4 | 0 | 1 | 4 | 105 | 226 | 1,5 sn | 0 | 0 | 0 |
 | Sesini al | evet | 3 | 0 | 0 | 4 | 105 | 227 | 1,4 sn | 0 | 0 | 0 |
-| Sesi kapat | evet | 3 | 0 | 0 | 4 | 105 | 218 | 0,9 sn | 0 | 0 | 0 |
-| Her yerde açılsın | evet | 3 | 0 | 0 | 4 | 105 | 234 | 1,3 sn | 0 | 0 | 0 |
-| İyileştir | evet | 3 | 0 | 1 | 4 | 136 | 322 | 4,7 sn | 0 | 0 | 0 |
+| Sesi kapat | evet | 3 | 0 | 0 | 4 | 105 | 218 | 1,5 sn | 0 | 0 | 0 |
+| Her yerde açılsın | evet | 3 | 0 | 0 | 4 | 105 | 234 | 1,6 sn | 0 | 0 | 0 |
+| İyileştir | evet | 3 | 0 | 1 | 4 | 136 | 322 | 5,3 sn | 0 | 0 | 0 |
 
 Notlar (masaüstü (1440 × 900)):
 
@@ -191,13 +224,13 @@ Notlar (masaüstü (1440 × 900)):
 
 | Görev | Dosya çıktı ve doğru | Tıklama | Yazılan alan | Karar ekranı | Ekran | En kalabalık ekran (kelime) | Toplam kelime | Karttan dosyaya | Teknik terim | Adıyla bulunamayan | Konsol hatası |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Kes | evet | 5 | 2 | 1 | 3 | 105 | 224 | 1,6 sn | 0 | 0 | 0 |
-| Boşlukları at | evet | 4 | 0 | 1 | 4 | 105 | 248 | 0,9 sn | 0 | 0 | 0 |
-| Dikey yap | evet | 4 | 0 | 1 | 4 | 105 | 245 | 1,4 sn | 0 | 0 | 0 |
-| Küçült | evet | 4 | 0 | 1 | 4 | 105 | 282 | 4 sn | 0 | 0 | 0 |
+| Kes | evet | 5 | 2 | 1 | 3 | 105 | 224 | 1,8 sn | 0 | 0 | 0 |
+| Boşlukları at | evet | 4 | 0 | 1 | 4 | 105 | 248 | 1,6 sn | 0 | 0 | 0 |
+| Dikey yap | evet | 4 | 0 | 1 | 4 | 105 | 245 | 2,2 sn | 0 | 0 | 0 |
+| Küçült | evet | 4 | 0 | 1 | 4 | 105 | 282 | 8,1 sn | 0 | 0 | 0 |
 | Yazıya dök | ölçülemedi | 2 | 0 | 1 | 3 | 105 | 192 | ölçülemedi | 0 | 0 | 0 |
-| Müzik ekle | evet | 5 | 0 | 1 | 4 | 105 | 238 | 1,5 sn | 0 | 0 | 0 |
-| Sesini al | evet | 4 | 0 | 0 | 4 | 105 | 239 | 1,4 sn | 0 | 0 | 0 |
+| Müzik ekle | evet | 5 | 0 | 1 | 4 | 105 | 238 | 1,7 sn | 0 | 0 | 0 |
+| Sesini al | evet | 4 | 0 | 0 | 4 | 105 | 239 | 1,5 sn | 0 | 0 | 0 |
 | Sesi kapat | evet | 4 | 0 | 0 | 4 | 105 | 230 | 0,9 sn | 0 | 0 | 0 |
 | Her yerde açılsın | evet | 4 | 0 | 0 | 4 | 105 | 246 | 1,4 sn | 0 | 0 | 0 |
 | İyileştir | evet | 4 | 0 | 1 | 4 | 136 | 336 | 4,7 sn | 0 | 0 | 0 |
@@ -221,8 +254,8 @@ Yarı teknik (sayıldı, yargılanmadı): MP4 / MOV / WebM × 65 · 9:16 / 1080 
 | Boşlukları at | telefon | bursts.mp4 (4,5 sn, içinde 1,2 sn’lik bir sessizlik) | 62 KB, 256 × 144 | 3,61 sn | video:h264 + audio:aac | tuttu: dosya boş değil (62.140 bayt); tuttu: süre ≈ 3,6 sn (3,605 sn); tuttu: kaynaktan kısa (4,5 → 3,61 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
 | Dikey yap | masaüstü | other-8s.mp4 (640 × 360 yatay, 8 sn) | 385 KB, 202 × 360 | 8 sn | video:h264 + audio:aac | tuttu: dosya boş değil (384.942 bayt); tuttu: dikey (9:16) ve kaynaktan büyük değil (202 × 360); tuttu: süre ≈ 8 sn (8 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
 | Dikey yap | telefon | other-8s.mp4 (640 × 360 yatay, 8 sn) | 385 KB, 202 × 360 | 8 sn | video:h264 + audio:aac | tuttu: dosya boş değil (384.942 bayt); tuttu: dikey (9:16) ve kaynaktan büyük değil (202 × 360); tuttu: süre ≈ 8 sn (8 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
-| Küçült | masaüstü | noisy-720p30-14s.mp4 (yaklaşık 25 MB, 14 sn); seçim değiştirilmeden | 14.036 KB, 1280 × 720 | 14,02 sn | video:h264 + audio:aac | tuttu: dosya boş değil (14.035.752 bayt); tuttu: süre ≈ 14 sn (14,016 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: dosya kaynaktan küçük (24,74 MB → 14,04 MB); tuttu: WhatsApp sınırına (16 MB) sığıyor (14,04 MB) |
-| Küçült | telefon | noisy-720p30-14s.mp4 (yaklaşık 25 MB, 14 sn); seçim değiştirilmeden | 14.023 KB, 1280 × 720 | 14,02 sn | video:h264 + audio:aac | tuttu: dosya boş değil (14.023.116 bayt); tuttu: süre ≈ 14 sn (14,016 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: dosya kaynaktan küçük (24,74 MB → 14,02 MB); tuttu: WhatsApp sınırına (16 MB) sığıyor (14,02 MB) |
+| Küçült | masaüstü | noisy-720p30-14s.mp4 (yaklaşık 25 MB, 14 sn); seçim değiştirilmeden | 14.035 KB, 1280 × 720 | 14,02 sn | video:h264 + audio:aac | tuttu: dosya boş değil (14.035.262 bayt); tuttu: süre ≈ 14 sn (14,016 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: dosya kaynaktan küçük (24,74 MB → 14,04 MB); tuttu: WhatsApp sınırına (16 MB) sığıyor (14,04 MB) |
+| Küçült | telefon | noisy-720p30-14s.mp4 (yaklaşık 25 MB, 14 sn); seçim değiştirilmeden | 14.007 KB, 1280 × 720 | 14,02 sn | video:h264 + audio:aac | tuttu: dosya boş değil (14.006.805 bayt); tuttu: süre ≈ 14 sn (14,016 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: dosya kaynaktan küçük (24,74 MB → 14,01 MB); tuttu: WhatsApp sınırına (16 MB) sığıyor (14,01 MB) |
 | Yazıya dök | masaüstü | sample-24s.mp4; yayınlanan derleme, model dosyaları bu makinede yok | — | — | — | — |
 | Yazıya dök | telefon | sample-24s.mp4; yayınlanan derleme, model dosyaları bu makinede yok | — | — | — | — |
 | Müzik ekle | masaüstü | other-8s.mp4 + tone-30s.m4a | 184 KB, 640 × 360 | 8 sn | video:h264 + audio:aac | tuttu: dosya boş değil (183.809 bayt); tuttu: süre ≈ 8 sn (8 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
@@ -233,8 +266,8 @@ Yarı teknik (sayıldı, yargılanmadı): MP4 / MOV / WebM × 65 · 9:16 / 1080 
 | Sesi kapat | telefon | sample-24s.mp4 | 262 KB, 1280 × 720 | 24 sn | video:h264 | tuttu: dosya boş değil (262.213 bayt); tuttu: süre ≈ 24 sn (24 sn); tuttu: izler: video:h264 (video:h264) |
 | Her yerde açılsın | masaüstü | tarayici-kaydi.webm (VP9 + Opus, 640 × 360, 2 sn) | 503 KB, 640 × 360 | 2,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (502.990 bayt); tuttu: süre ≈ 2 sn (2,005 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: MP4 (mov,mp4,m4a,3gp,3g2,mj2) |
 | Her yerde açılsın | telefon | tarayici-kaydi.webm (VP9 + Opus, 640 × 360, 2 sn) | 503 KB, 640 × 360 | 2,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (502.990 bayt); tuttu: süre ≈ 2 sn (2,005 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: MP4 (mov,mp4,m4a,3gp,3g2,mj2) |
-| İyileştir | masaüstü | karanlik.mp4 (yaklaşık iki durak karanlık, 1280 × 720, 3 sn) | 2.821 KB, 1280 × 720 | 3,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (2.820.571 bayt); tuttu: süre ≈ 3 sn (3,008 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: görüntü aydınlandı (ortalama parlaklık en az +10) (69,8 → 121); tuttu: boyut aynı (1280 × 720) |
-| İyileştir | telefon | karanlik.mp4 (yaklaşık iki durak karanlık, 1280 × 720, 3 sn) | 2.822 KB, 1280 × 720 | 3,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (2.821.523 bayt); tuttu: süre ≈ 3 sn (3,008 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: görüntü aydınlandı (ortalama parlaklık en az +10) (69,8 → 121); tuttu: boyut aynı (1280 × 720) |
+| İyileştir | masaüstü | karanlik.mp4 (yaklaşık iki durak karanlık, 1280 × 720, 3 sn) | 2.820 KB, 1280 × 720 | 3,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (2.820.142 bayt); tuttu: süre ≈ 3 sn (3,008 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: görüntü aydınlandı (ortalama parlaklık en az +10) (69,8 → 121); tuttu: boyut aynı (1280 × 720) |
+| İyileştir | telefon | karanlik.mp4 (yaklaşık iki durak karanlık, 1280 × 720, 3 sn) | 2.820 KB, 1280 × 720 | 3,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (2.819.559 bayt); tuttu: süre ≈ 3 sn (3,008 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: görüntü aydınlandı (ortalama parlaklık en az +10) (69,8 → 121); tuttu: boyut aynı (1280 × 720) |
 
 **Yazıya dök, baştan sona — TEST KANCALI derleme, betikli tanıyıcı**
 Bu satırlar `CLIP_TEST_HOOKS=1` derlemesinde, küçük bir model listesi ve konuşmayı DUYMAYAN betikli bir tanıyıcıyla alındı. Ölçülen şey akıştır (tıklama, ekran, kelime, dosyanın çıkması). **Yazının doğruluğu hakkında hiçbir şey söylemez** (bkz. bölüm 6).
@@ -242,8 +275,8 @@ Bu satırlar `CLIP_TEST_HOOKS=1` derlemesinde, küçük bir model listesi ve kon
 
 | Görünüm | Dosya çıktı | Tıklama | Karar ekranı | Ekran | En kalabalık ekran (kelime) | Karttan dosyaya | Teknik terim | Adıyla bulunamayan |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| masaüstü | evet | 5 | 1 | 4 | 105 | 5,1 sn (model 360 KB’lık test dosyası) | 0 | 0 |
-| telefon | evet | 6 | 1 | 4 | 105 | 5,6 sn (model 360 KB’lık test dosyası) | 0 | 0 |
+| masaüstü | evet | 5 | 1 | 4 | 105 | 6,3 sn (model 360 KB’lık test dosyası) | 0 | 0 |
+| telefon | evet | 6 | 1 | 4 | 105 | 7,2 sn (model 360 KB’lık test dosyası) | 0 | 0 |
 
 **Yazıya dök → İnternette, baştan sona — SAHTE SUNUCUYA KARŞI (bulut derlemesi; yayındaki sitede bu yol yok)**
 Bu satırlar, vekil sunucumuzun **yerel bir sahtesine** (`cloud/fake-worker/`, 127.0.0.1) karşı, bulut yolunun açık olduğu test kancalı derlemede alındı. Hiçbir dış hizmete istek atılmadı. Sahte sunucu konuşmayı DUYMAZ; betikte yazan kelimeleri döndürür. Ölçülen şey rıza ekranının ve akışın kendisidir (tıklama, ekran, okunacak kelime, sade dil, dosyanın çıkması, giden şeyin yalnız ses olması). **Yazının doğruluğu, hızı ya da gerçek sunucunun davranışı hakkında hiçbir şey söylemez.**
@@ -502,15 +535,15 @@ Her sihirbaza sekiz tür sorunlu dosya verildi; ekranda görülen metin kelimesi
 | İçi rastgele bayt olan .mp4 | hepsi | iyi | ““bozuk.mp4” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.” | ne olduğunu ve ne yapılacağını söylüyor | 0,3 sn |
 | Yarıda kesilmiş MP4 (baytların %55’i) | Boşlukları at, Her yerde açılsın, Dikey yap, Kes, Küçült, Müzik ekle, Sesini al, Sesi kapat, Yazıya dök | iyi | ““yarim-inmis.mp4” açılamadı: bu video yarım kalmış görünüyor: 24,0 sn uzunluğunda olması gerekirken dosyada yalnızca ilk 12,3 sn var. İnerken ya da kopyalanırken yarıda kesilmiş olabilir. Videoyu yeniden indir ya da yeniden kopyala, sonra tekrar dene.” | ne olduğunu ve ne yapılacağını söylüyor | 0,3 sn |
 | Yarıda kesilmiş MP4 (baytların %55’i) | İyileştir | iyi | ““yarim-inmis.mp4” açılamadı: bu video yarım kalmış görünüyor: 3,0 sn uzunluğunda olması gerekirken dosyada yalnızca ilk 1,5 sn var. İnerken ya da kopyalanırken yarıda kesilmiş olabilir. Videoyu yeniden indir ya da yeniden kopyala, sonra tekrar dene.” | ne olduğunu ve ne yapılacağını söylüyor | 0,5 sn |
-| Yalnızca ses dosyası (.m4a) | hepsi | iyi | ““tone-30s.m4a” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.” | ne olduğunu ve ne yapılacağını söylüyor | 0,3 sn |
-| Sesi olmayan video | Her yerde açılsın, Dikey yap, İyileştir, Kes | geçerli değil | (metin yok) | bu iş videonun sesine ihtiyaç duymaz; video açıldı | 0,2 sn |
+| Yalnızca ses dosyası (.m4a) | hepsi | iyi | ““tone-30s.m4a” açılamadı: bu dosyanın önizlemesi bu tarayıcıda açılamadı. Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor. Başka bir video dene; telefonla çekilmiş MP4 ya da MOV dosyaları genelde açılır.” | ne olduğunu ve ne yapılacağını söylüyor | 0,2 sn |
+| Sesi olmayan video | Her yerde açılsın, Dikey yap, İyileştir, Kes | geçerli değil | (metin yok) | bu iş videonun sesine ihtiyaç duymaz; video açıldı | 0,3 sn |
 | Sesi olmayan video | Küçült | geçerli değil | “Bu video zaten 73 KB; buraya sığıyor. Küçültmene gerek yok.” | bu iş videonun sesine ihtiyaç duymaz; video açıldı, adım indirme sunmadı ve nedenini söyledi (“Bu video zaten 73 KB; buraya sığıyor. Küçültmene gerek yok.”) | 0,2 sn |
 | Sesi olmayan video | Müzik ekle | geçerli değil | “Önce müziğini seç.” | bu iş videonun sesine ihtiyaç duymaz; video açıldı | 0,2 sn |
 | Sesi olmayan video | Boşlukları at | iyi | “Bu videoda ses yok; sessizlik aranamaz.” | ses olmadığını söylüyor; indirme kapalı; geri dönüş ve başka video seçme var | 0,2 sn |
 | Sesi olmayan video | Sesini al | iyi | “Bu videoda ses yok; kaydedilecek bir ses dosyası çıkmaz.” | ses olmadığını söylüyor; indirme kapalı; geri dönüş ve başka video seçme var | 0,2 sn |
 | Sesi olmayan video | Sesi kapat | iyi | “Bu videoda zaten ses yok; kapatılacak bir şey yok.” | ses olmadığını söylüyor; indirme kapalı; geri dönüş ve başka video seçme var | 0,2 sn |
 | Sesi olmayan video | Yazıya dök | iyi | “Bu videoda ses yok; yazıya dökülecek bir konuşma yok.” | ses olmadığını söylüyor; indirme kapalı; geri dönüş ve başka video seçme var | 0,2 sn |
-| Sınırın üstünde dosya (5 GiB gibi gösterildi; sınır 4 GiB) | hepsi | iyi | ““kalite-cok-buyuk.mp4” açılamadı: dosya 5,37 GB; bu sürümün sınırı 4,29 GB. Daha küçük bir video seç; ya da bu videoyu önce başka bir uygulamayla parçalara böl.” | ne olduğunu ve ne yapılacağını söylüyor | 0 sn |
+| Sınırın üstünde dosya (5 GiB gibi gösterildi; sınır 4 GiB) | hepsi | iyi | ““kalite-cok-buyuk.mp4” açılamadı: dosya 5,37 GB; bu sürümün sınırı 4,29 GB. Daha küçük bir video seç; ya da bu videoyu önce başka bir uygulamayla parçalara böl.” | ne olduğunu ve ne yapılacağını söylüyor | 0,1 sn |
 | Sınırın üstünde süre (3 saat gibi gösterildi; sınır 120 dakika) | hepsi | iyi | ““kalite-cok-uzun.mp4” açılamadı: video bu sürümdeki 120 dakika sınırının üzerinde. Daha kısa bir video seç; ya da bu videoyu önce başka bir uygulamayla parçalara böl.” | ne olduğunu ve ne yapılacağını söylüyor | 0,3 sn |
 
 **Konsola düşen hatalar** (aynı satır bir kez)
@@ -524,9 +557,9 @@ Her sihirbaza sekiz tür sorunlu dosya verildi; ekranda görülen metin kelimesi
 
 | Senaryo | Sonuç | Örnek / farklı değer | İlk → son | Geri gitti | Geçiş arasında geri gitti | %100’de bekleme | “Kaydedildi” anında dosya | Dosyasız başarı |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Dikey yap: 12 sn’lik 1920 × 1080 video yeniden işlenir | saved | 69 / 11 | %0 → %96 | 0 kez | 0 kez | 0 ms | 8.154 KB, 12,01 sn, video:h264 + audio:aac | hayır |
-| İyileştir: ışığı değişen 10 sn’lik video | saved | 186 / 24 | %0 → %97 | 0 kez | 0 kez | 0 ms | 9.425 KB, 10,01 sn, video:h264 + audio:aac | hayır |
-| Küçült → WhatsApp: yaklaşık 24 MB’lık video 16 MB’ın altına iner | saved | 126 / 19 | %0 → %97 | 0 kez | 0 kez | 0 ms | 15.475 KB, 12,01 sn, video:h264 + audio:aac | hayır |
+| Dikey yap: 12 sn’lik 1920 × 1080 video yeniden işlenir | saved | 83 / 13 | %0 → %97 | 0 kez | 0 kez | 0 ms | 8.140 KB, 12,01 sn, video:h264 + audio:aac | hayır |
+| İyileştir: ışığı değişen 10 sn’lik video | saved | 219 / 30 | %0 → %100 | 0 kez | 0 kez | 40 ms | 9.450 KB, 10,01 sn, video:h264 + audio:aac | hayır |
+| Küçült → WhatsApp: yaklaşık 24 MB’lık video 16 MB’ın altına iner | saved | 181 / 24 | %0 → %96 | 0 kez | 0 kez | 0 ms | 15.480 KB, 12,01 sn, video:h264 + audio:aac | hayır |
 
 Kaydetme penceresi olmayan yol (telefon, Firefox, Safari): “hazır” dendiğinde bağlantının arkasındaki dosya 503 KB; dosyasız başarı: hayır (bütçe içinde).
 
@@ -535,8 +568,8 @@ Kaydetme penceresi olmayan yol (telefon, Firefox, Safari): “hazır” dendiği
 
 | Yol | Durdu | Durma süresi | Ekrandaki metin | İş sürerken sayfa deposunda | İptalden 4 sn sonra kalan | Kalan bayt | İptalden sonra “kaydedildi” |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| kaydetme penceresiz (telefon, Firefox, Safari) | evet | 69 ms | “İndirme durduruldu; yarım dosya bırakılmadı.” | clip-export-exp_mv6ztzz0_2.mp4 (38.927 KB) | hiçbir şey | 0 | hayır |
-| kaydetme pencereli (Chrome / Edge) | evet | 72 ms | “İndirme durduruldu; yarım dosya bırakılmadı.” | saved-sample-24s_dikey.mp4.crswap (38.927 KB), saved-sample-24s_dikey.mp4 (0 KB) | hiçbir şey | 0 | hayır |
+| kaydetme penceresiz (telefon, Firefox, Safari) | evet | 85 ms | “İndirme durduruldu; yarım dosya bırakılmadı.” | clip-export-exp_mv80q4v1_2.mp4 (38.927 KB) | hiçbir şey | 0 | hayır |
+| kaydetme pencereli (Chrome / Edge) | evet | 75 ms | “İndirme durduruldu; yarım dosya bırakılmadı.” | saved-sample-24s_dikey.mp4.crswap (38.927 KB), saved-sample-24s_dikey.mp4 (0 KB) | hiçbir şey | 0 | hayır |
 
 Not: kaydetme pencereli yolda testin “kaydetme penceresi” kullanıcının seçtiği dosya yerine sayfa deposunda bir dosya verir. İptalden sonra o dosyanın 0 bayt olarak kalması, gerçek pencerede kullanıcının seçtiği adda boş bir dosya kalması demektir; bayt kalması yarım dosya demektir.
 
@@ -589,10 +622,10 @@ Kaynakların kendi sapması: H.264 MP4 0,08 ms (37 olay), VP9 WebM 0,1 ms (37 ol
 
 | Durum | Yol | Çıktı | Karşılaştırma boyutu | SSIM | PSNR | VMAF | Süre hatası | Hedef boyut | Her yerde açılır (dizin yeri hariç) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Her yerde açılsın, kamera benzeri 720p VP9 WebM | yeniden işlendi | 1280 × 720, 5,7 MB | 1280 × 720 | 0,9766 | 42,59 dB | 84,6 | 8 ms | — | 10 denetimin hepsi tuttu |
-| Dikey yap (Doldur), kamera benzeri 1080p | yeniden işlendi | 608 × 1080, 8,2 MB | 608 × 1080 | 0,9714 | 43,83 dB | 89,8 | 11 ms | — | 10 denetimin hepsi tuttu |
+| Her yerde açılsın, kamera benzeri 720p VP9 WebM | yeniden işlendi | 1280 × 720, 5,7 MB | 1280 × 720 | 0,9766 | 42,61 dB | 84,7 | 8 ms | — | 10 denetimin hepsi tuttu |
+| Dikey yap (Doldur), kamera benzeri 1080p | yeniden işlendi | 608 × 1080, 8,2 MB | 608 × 1080 | 0,9713 | 43,83 dB | 89,8 | 11 ms | — | 10 denetimin hepsi tuttu |
 | Kes 2,5–5,5 sn, kamera benzeri 1080p | karma (kesim yerleri yeniden işlendi, arası kopya) | 1920 × 1080, 6,7 MB | 1920 × 1080 | 0,9978 | 55,19 dB | 99,2 | 8 ms | — | 10 denetimin hepsi tuttu |
-| Küçült → WhatsApp (16 MB), kamera benzeri 1080p, yaklaşık 24 MB | yeniden işlendi | 1920 × 1080, 15,5 MB | 1920 × 1080 | 0,9658 | 42,83 dB | 87,3 | 11 ms | 15,5 MB / 16 MB: sığdı: evet; hedefin kullanılan payı %96,7 (kaynak 24,3 MB) | 10 denetimin hepsi tuttu |
+| Küçült → WhatsApp (16 MB), kamera benzeri 1080p, yaklaşık 24 MB | yeniden işlendi | 1920 × 1080, 15,5 MB | 1920 × 1080 | 0,9658 | 42,84 dB | 87,3 | 11 ms | 15,5 MB / 16 MB: sığdı: evet; hedefin kullanılan payı %96,7 (kaynak 24,3 MB) | 10 denetimin hepsi tuttu |
 
 **Dizin başta mı (faststart)?** Dizini dosyanın sonunda olan: 10 / 10 dosya (BÜTÇE DIŞI, bütçe ≤ 0). Dizin sondaysa dosya indirilirken ya da bir sayfaya gömülüyken tamamı gelmeden oynatılamaz; yerel oynatmayı etkilemez. Yukarıdaki “her yerde açılır” sütunu bu denetimi saymaz.
 
@@ -616,10 +649,10 @@ Kaynakların kendi sapması: H.264 MP4 0,08 ms (37 olay), VP9 WebM 0,1 ms (37 ol
 
 | Video | Uygulamanın dediği | İndirme sunuldu | Parlaklık önce → sonra | Keskinlik önce → sonra | Eklenen en büyük parlaklık sıçraması | Kare |
 | --- | --- | --- | --- | --- | --- | --- |
-| karanlık | “Yapılacaklar: video belirgin biçimde aydınlatılır, renkler toparlanır.” | evet | 69,2 → 120 (+50,8) | 50,7 → 109,2 | 0,16 | 90 / 90 |
-| bulanık | “Yapılacaklar: renkler toparlanır, kenarlar keskinleştirilir.” | evet | 140,3 → 141,6 | 24,7 → 28,2 (× 1,14) | 0,05 | 90 / 90 |
-| kumlu | “Yapılacaklar: ışık ve kontrast biraz düzeltilir, renkler toparlanır, kumlanma azaltılır.” | evet | 104,8 → 119,1 | 373,9 → 116,4 | 0,15 | 90 / 90 |
-| iyi (doğru pozlanmış, keskin) | “Yapılacaklar: renkler toparlanır.” | evet | 140,3 → 141,7 (1,4 kaydı) | 198 → 176,7 (× 0,89) | 0,1 | 90 / 90 |
+| karanlık | “Yapılacaklar: video belirgin biçimde aydınlatılır, renkler toparlanır.” | evet | 69,2 → 120 (+50,8) | 50,7 → 108,9 | 0,16 | 90 / 90 |
+| bulanık | “Yapılacaklar: renkler toparlanır, kenarlar keskinleştirilir.” | evet | 140,3 → 141,6 | 24,7 → 28,3 (× 1,15) | 0,05 | 90 / 90 |
+| kumlu | “Yapılacaklar: ışık ve kontrast biraz düzeltilir, renkler toparlanır, kumlanma azaltılır.” | evet | 104,8 → 119,1 | 373,9 → 115,8 | 0,16 | 90 / 90 |
+| iyi (doğru pozlanmış, keskin) | “Yapılacaklar: renkler toparlanır.” | evet | 140,3 → 141,7 (1,4 kaydı) | 198 → 176,4 (× 0,89) | 0,08 | 90 / 90 |
 
 Gerçek kayıtlardaki “zarar verme” ölçümü (ADR-037, Ölçüm 2; `web/scripts/enhance-eval/no-harm.mjs`) kurucunun kendi videolarını gerektirir; bu betik onlara dokunmaz ve o ölçümü yeniden koşmaz.
 
@@ -655,34 +688,34 @@ Statik çıktı, gzip’li yerel sunucu (GitHub Pages gibi), her ölçüm yeni t
 
 | Sayfa | Profil | Aktarılan JS | Toplam aktarılan | FCP | LCP | TBT | load | JS yığını (yükleme sonrası) | Dış istek |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Ana ekran `/` | bu makine | 180 KB (9 dosya) | 192 KB | 84 ms | 84 ms (76–116) | 0 ms | 117 ms | 2,6 MB | 0 |
-| Ana ekran `/` | mobil kısıtlama (150 ms, 1,6 Mbit/s, 4× yavaş CPU) | 180 KB (9 dosya) | 192 KB | 612 ms | 612 ms (604–628) | 123 ms (109–223) | 1.508 ms | 2,6 MB | 0 |
-| Editör `/editor/` | bu makine | 294 KB (17 dosya) | 380 KB | 92 ms | 92 ms (88–120) | 0 ms | 131 ms | 3,5 MB | 0 |
-| Editör `/editor/` | mobil kısıtlama (150 ms, 1,6 Mbit/s, 4× yavaş CPU) | 294 KB (17 dosya) | 380 KB | 844 ms | 844 ms (824–852) | 167 ms (149–173) | 1.936 ms | 3,5 MB | 0 |
-| Sihirbaz `/yap/dikey/` | bu makine | 243 KB (15 dosya) | 263 KB | 64 ms | 64 ms (64–68) | 0 ms | 105 ms | 2,9 MB | 0 |
-| Sihirbaz `/yap/dikey/` | mobil kısıtlama (150 ms, 1,6 Mbit/s, 4× yavaş CPU) | 243 KB (15 dosya) | 263 KB | 656 ms | 656 ms (648–672) | 131 ms (128–135) | 1.874 ms | 2,9 MB | 0 |
+| Ana ekran `/` | bu makine | 180 KB (9 dosya) | 192 KB | 128 ms | 128 ms (84–144) | 0 ms | 195 ms | 2,6 MB | 0 |
+| Ana ekran `/` | mobil kısıtlama (150 ms, 1,6 Mbit/s, 4× yavaş CPU) | 180 KB (9 dosya) | 192 KB | 636 ms | 636 ms (624–664) | 165 ms (131–169) | 1.513 ms | 2,6 MB | 0 |
+| Editör `/editor/` | bu makine | 293 KB (16 dosya) | 380 KB | 120 ms | 120 ms (116–156) | 0 ms | 152 ms | 3,5 MB | 0 |
+| Editör `/editor/` | mobil kısıtlama (150 ms, 1,6 Mbit/s, 4× yavaş CPU) | 293 KB (16 dosya) | 380 KB | 896 ms | 896 ms (872–916) | **268 ms (233–322)** (bütçe ≤ 200 ms) | 1.985 ms | 3,5 MB | 0 |
+| Sihirbaz `/yap/dikey/` | bu makine | 243 KB (15 dosya) | 263 KB | 72 ms | 72 ms (72–80) | 0 ms | 125 ms | 2,9 MB | 0 |
+| Sihirbaz `/yap/dikey/` | mobil kısıtlama (150 ms, 1,6 Mbit/s, 4× yavaş CPU) | 243 KB (15 dosya) | 263 KB | 636 ms | 636 ms (632–640) | **202 ms (174–250)** (bütçe ≤ 200 ms) | 1.891 ms | 2,9 MB | 0 |
 
-**Bellek:** 12 sn’lik 1920 × 1080 video dikey yapılırken ana iş parçacığının JS yığını — boşta 2,8 MB, video açıkken 5,5 MB, tepe 6,6 MB (bütçe içinde, bütçe ≤ 150 MB), bittikten sonra 5,6 MB; 32 örnek. Dışa aktarmanın işçileri (worker) ve kodlayıcı bu sayının DIŞINDADIR; bütün süreç ağacının belleği `web/scripts/measure-export-memory.mjs` ile ölçülür (ADR-029), burada yeniden koşulmadı.
+**Bellek:** 12 sn’lik 1920 × 1080 video dikey yapılırken ana iş parçacığının JS yığını — boşta 2,8 MB, video açıkken 5,4 MB, tepe 6,7 MB (bütçe içinde, bütçe ≤ 150 MB), bittikten sonra 5,6 MB; 39 örnek. Dışa aktarmanın işçileri (worker) ve kodlayıcı bu sayının DIŞINDADIR; bütün süreç ağacının belleği `web/scripts/measure-export-memory.mjs` ile ölçülür (ADR-029), burada yeniden koşulmadı.
 
 **Dışa aktarma hızı** — “İndir”e basıştan dosyanın hazır olmasına; × gerçek zaman = çıktı süresi / geçen süre. Ölçüm kilidi altında, bu makinede.
 
 
 | Durum | Yol | Çıktı | Geçen süre | × gerçek zaman |
 | --- | --- | --- | --- | --- |
-| Her yerde açılsın, senkron klibi (H.264 MP4) | kopya | 12 sn, 1080 × 1920 | 0,84 sn | 14,3 × |
-| Her yerde açılsın, senkron klibi (VP9 WebM) | yeniden işlendi | 12 sn, 1080 × 1920 | 3,95 sn | 3 × |
-| Dikey yap, senkron klibi (zaten 9:16) | kopya | 12 sn, 1080 × 1920 | 0,87 sn | 13,9 × |
-| Kes 2–8 sn, senkron klibi (H.264 MP4) | kopya | 6 sn, 1080 × 1920 | 0,9 sn | 6,7 × |
-| Kes 2–8 sn, senkron klibi (VP9 WebM) | yeniden işlendi | 6 sn, 1080 × 1920 | 2,43 sn | 2,5 × |
-| Küçült (seçim değişmeden: WhatsApp), ağır senkron klibi (H.264, yaklaşık 33 MB) | yeniden işlendi | 12 sn, 1080 × 1920 | 5,01 sn | 2,4 × |
-| Her yerde açılsın, kamera benzeri 720p VP9 WebM | yeniden işlendi | 6 sn, 1280 × 720 | 1,88 sn | 3,2 × |
-| Dikey yap (Doldur), kamera benzeri 1080p | yeniden işlendi | 12 sn, 608 × 1080 | 3,45 sn | 3,5 × |
-| Kes 2,5–5,5 sn, kamera benzeri 1080p | karma | 3 sn, 1920 × 1080 | 1,37 sn | 2,2 × |
-| Küçült → WhatsApp (16 MB), kamera benzeri 1080p, yaklaşık 24 MB | yeniden işlendi | 12 sn, 1920 × 1080 | 5,48 sn | 2,2 × |
-| İyileştir, karanlık video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 2,87 sn | 1,1 × |
-| İyileştir, bulanık video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 4,47 sn | 0,7 × |
-| İyileştir, kumlu video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 9,28 sn | 0,3 × |
-| İyileştir, iyi video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 2,91 sn | 1 × |
+| Her yerde açılsın, senkron klibi (H.264 MP4) | kopya | 12 sn, 1080 × 1920 | 0,83 sn | 14,5 × |
+| Her yerde açılsın, senkron klibi (VP9 WebM) | yeniden işlendi | 12 sn, 1080 × 1920 | 3,85 sn | 3,1 × |
+| Dikey yap, senkron klibi (zaten 9:16) | kopya | 12 sn, 1080 × 1920 | 0,84 sn | 14,4 × |
+| Kes 2–8 sn, senkron klibi (H.264 MP4) | kopya | 6 sn, 1080 × 1920 | 0,86 sn | 7 × |
+| Kes 2–8 sn, senkron klibi (VP9 WebM) | yeniden işlendi | 6 sn, 1080 × 1920 | 2,38 sn | 2,5 × |
+| Küçült (seçim değişmeden: WhatsApp), ağır senkron klibi (H.264, yaklaşık 33 MB) | yeniden işlendi | 12 sn, 1080 × 1920 | 4,9 sn | 2,5 × |
+| Her yerde açılsın, kamera benzeri 720p VP9 WebM | yeniden işlendi | 6 sn, 1280 × 720 | 2,49 sn | 2,4 × |
+| Dikey yap (Doldur), kamera benzeri 1080p | yeniden işlendi | 12 sn, 608 × 1080 | 4,95 sn | 2,4 × |
+| Kes 2,5–5,5 sn, kamera benzeri 1080p | karma | 3 sn, 1920 × 1080 | 1,36 sn | 2,2 × |
+| Küçült → WhatsApp (16 MB), kamera benzeri 1080p, yaklaşık 24 MB | yeniden işlendi | 12 sn, 1920 × 1080 | 5,88 sn | 2 × |
+| İyileştir, karanlık video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 2,86 sn | 1,1 × |
+| İyileştir, bulanık video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 4,85 sn | 0,6 × |
+| İyileştir, kumlu video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 10,12 sn | 0,3 × |
+| İyileştir, iyi video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 2,83 sn | 1,1 × |
 
 İyileştir satırları grafik hızlandırma olmadan alındı: Playwright’ın Chromium’u bu makinede WebGL’i yazılımla çiziyor (uygulama da bunu söylüyor). Grafik kartı kullanan gerçek bir tarayıcıdaki hız BURADA ÖLÇÜLMEDİ; bu sayı en kötü durumdur.
 
@@ -735,8 +768,8 @@ Taban resimler: `web/tests/quality/baselines/` (78 PNG; Windows’ta Chromium’
 | `yol-sustur-ilk` | aynı | aynı |
 | `yol-sustur-sonuc` | aynı | aynı |
 | `yol-yazi-bulut-ilk` | aynı | aynı |
-| `yol-yazi-bulut-secim` | aynı | aynı |
-| `yol-yazi-bulut-secim-kodsuz` | aynı | aynı |
+| `yol-yazi-bulut-secim` | aynı (%0,19) | aynı (%0,5) |
+| `yol-yazi-bulut-secim-kodsuz` | aynı (%0,18) | aynı (%0,45) |
 | `yol-yazi-bulut-sonuc` | aynı | aynı |
 | `yol-yazi-bulut-yazi` | aynı | aynı |
 | `yol-yazi-ilk` | aynı | aynı |
@@ -800,7 +833,7 @@ Kontrast, rol ve ad kuralları axe ile zaten denetleniyor (`web/tests/e2e/a11y.s
 | Metinler | Metin | Puanlanan (5+ kelime) | Ortanca puan | Zor + çok zor | Çok zor | 20 kelimeden uzun cümle | En uzun cümle | En uzun kelime |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Varsayılan yol (ana ekran, kartlar, sihirbazlar, yazıya dökme, indirme, hata) | 506 | 260 | 82,7 | %1,9 | 0 | 1 | 22 kelime | birleştirilebiliyor |
-| Bütün metinler (editör dahil) | 1.171 | 557 | 78,6 | %4,1 | 2 | 5 | 22 kelime | birleştirilebiliyor |
+| Bütün metinler (editör dahil) | 1.171 | 557 | 78,7 | %4,1 | 2 | 5 | 22 kelime | birleştirilebiliyor |
 
 Varsayılan yolun metinlerinden teknik terim içeren: 9 (bütçesiz). Bu, metin tablosunun taramasıdır: bir metnin ekrana hangi koşulda geldiğini bilmez (bir kısmı yalnızca hata olduğunda ya da “Ayrıntılar” açıldığında görünür). Gerçekten görülenler bölüm 1’dedir.
 

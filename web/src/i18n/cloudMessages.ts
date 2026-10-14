@@ -101,17 +101,8 @@ export const cloudTr = {
   'cloud.footer.sending': 'Yalnızca ses gönderilir; görüntü cihazından çıkmaz.',
   'cloud.footer.sent': 'Bu videonun sesi yazıya dökülmek için internete gönderildi; görüntüsü cihazından çıkmadı.',
 
-  // ------------------------------------------------------------ keeping it (ADR-034 addendum, 13 Oct 2026)
-  // On the result screen, before the editor was opened: the text is in the open page only. One sentence, and true.
-  'cloud.keep.note': 'Bu yazı henüz saklanmadı: editörde açarsan ya da metni indirirsen kalır, yoksa sayfa kapanınca gider.',
-  // Asked only when a project with work in it is already stored (the store holds one project, ADR-012).
-  'cloud.keep.title': 'Saklanan bir projen var',
-  'cloud.keep.body': 'Bu tarayıcıda yalnızca bir proje saklanabilir. Hangisi kalsın?',
-  'cloud.keep.named': 'Saklanan proje: {name}',
-  'cloud.keep.old': 'Eski proje kalsın (bu yazı saklanmaz)',
-  'cloud.keep.new': 'Bu yazı saklansın (eski proje silinir)',
-  'cloud.keep.hint': 'Vazgeçersen hiçbir şey değişmez. Yazıyı “Metni indir” ile dosya olarak da alabilirsin.',
-  'cloud.keep.cancel': 'Vazgeç',
+  // Keeping the text at the hand-over to the editor (ADR-034 addendum, 13 Oct 2026) is the wizard's own,
+  // for the on-device transcript too: its words are `wizard.yazi.keep*` in messages.ts.
 
   // ------------------------------------------------------------ the privacy page (only in a build that has the route)
   'cloud.privacy.summary.local':
@@ -136,7 +127,7 @@ export const cloudTr = {
   'cloud.privacy.kept':
     'Yazı cihazında nerede durur: önce yalnızca açık sayfada; sayfayı kapatırsan gider. “Daha fazla ayar → editörde aç”a basarsan, satırları ve kimin konuştuğu bu tarayıcıda proje olarak saklanır (aşağıda “Proje tarifi”). Orada daha önce sakladığın bir proje varsa hangisinin kalacağı sana sorulur. Silmek için: editör video dosyasını yeniden istediğinde “Kayıtlı projeyi sil”e bas ya da tarayıcı ayarlarından bu sitenin verilerini temizle.',
   'cloud.privacy.stored.project.extra':
-    'Tek istisna: “Yazıya dök”te internette yazılan bir yazıyı editörde açarsan o çalışma da burada saklanır (satırların metni ve kimin konuştuğu dahil).',
+    'İnternette yazılan yazı için de aynı: editörde açarsan satırların metni ve kimin konuştuğu burada saklanır; ses, davet kodun ve şirketin yanıtı saklanmaz.',
   'cloud.privacy.others': 'Videoda başka insanlar konuşuyorsa onların sesi de gider. Göndermeden önce bunu düşün.',
   'cloud.privacy.ledger':
     'Aracı sunucumuzun tuttuğu kayıt: davet kodunun özeti, sesin süresi ve boyutu, işin durumu ve zamanı (90 gün); aşırı kullanımı önlemek için IP adresinin özeti (en çok yaklaşık bir saat). Ses, yazı ve dosya adı tutulmaz. Her internet sunucusu gibi Cloudflare de isteği taşırken IP adresini görür.',

@@ -112,7 +112,7 @@ export const en: Record<MessageKey, string> = {
   'privacy.stored.howLong': 'When it is deleted',
   'privacy.stored.project.name': 'Project recipe',
   'privacy.stored.project.body':
-    'Project name, your clips and their order, frame/aspect settings, music settings, the text and style of caption lines. To recognise the source file again: its name, size, modification date, duration, resolution and type. The video and audio files themselves are not stored. Only edits made in the editor (“I will edit it myself”) are stored; work started from a task on the home screen (Cut, Make it vertical…) is not.',
+    'Project name, your clips and their order, frame/aspect settings, music settings, the text and style of caption lines. To recognise the source file again: its name, size, modification date, duration, resolution and type. The video and audio files themselves are not stored. Only edits made in the editor (“I will edit it myself”) are stored; work started from a task on the home screen (Cut, Make it vertical…) is not. One exception, “Yazıya dök”: if you open the text it wrote with “More settings → open in the editor”, that work (the text of its lines included) is kept here as the project; if a project you kept earlier is there, you are asked which one stays. Deleting it: as below.',
   'privacy.stored.project.where': 'IndexedDB “clip-editor”, store “projects”',
   'privacy.stored.project.delete':
     'Until you delete it. You can clear this site’s data in your browser settings; when the editor asks for the file again, “Delete the saved project” also works. The browser may also evict it to free space.',
@@ -1173,6 +1173,14 @@ export const en: Record<MessageKey, string> = {
   'wizard.yazi.done': '{lines} lines written (it took {time}).',
   'wizard.yazi.skipped': '{n} lines broke a rule and were left out.',
   'wizard.yazi.editorHint': 'Open it in the editor to select lines and make clips from them, or to change how the subtitles look.',
+  'wizard.yazi.keepNote': 'This text is not kept yet: it stays if you open it in the editor or download the text, otherwise it is gone when the page closes.',
+  'wizard.yazi.keep.title': 'You have a kept project',
+  'wizard.yazi.keep.body': 'Only one project can be kept in this browser. Which one should stay?',
+  'wizard.yazi.keep.named': 'Kept project: {name}',
+  'wizard.yazi.keep.old': 'Keep the old project (this text is not kept)',
+  'wizard.yazi.keep.new': 'Keep this text (the old project is deleted)',
+  'wizard.yazi.keep.hint': 'If you cancel, nothing changes. You can also save the text as a file with “Metni indir”.',
+  'wizard.yazi.keep.cancel': 'Cancel',
   'transcript.english': 'For now it only writes down English speech.',
   'transcript.onDevice': 'The writing happens on this device; your video and its sound are not sent anywhere.',
   'transcript.model.need':

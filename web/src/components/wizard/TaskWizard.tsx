@@ -70,7 +70,7 @@ function showEditorAddress(): void {
  * navigation to rely on).
  *
  * That editor stores nothing — except when the wizard asks for it (`stored`, ADR-034 addendum of
- * 13 Oct 2026: "Yazıya dök" over a transcript written on the internet). Then the recipe becomes the
+ * 13 Oct 2026: "Yazıya dök" over a transcript, however it was written). Then the recipe becomes the
  * browser's stored project, and the address becomes the editor's own: the stored project lives at
  * `/editor`, so a reload must land there, not on the wizard's "Videonu seç".
  */

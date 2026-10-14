@@ -39,8 +39,8 @@ export function lengthText(us: number): string {
 
 /**
  * How the editor opens over a wizard's work. `stored`: the work becomes the browser's stored project
- * (only "Yazıya dök" asks for it, for a transcript written on the internet — ADR-034 addendum of
- * 13 Oct 2026). Left out, as every wizard does: nothing is stored.
+ * (only "Yazıya dök" asks for it, over a transcript — ADR-034 addendum of 13 Oct 2026). Left out, as
+ * every other wizard does: nothing is stored.
  */
 export interface EditorHandoff {
   stored: boolean;
@@ -93,7 +93,7 @@ interface Props extends WizardHostProps {
   downloadLabelKey?: MessageKey;
   /**
    * Said above "Daha fazla ayar → editörde aç" once a download is over, when opening the editor does more
-   * than change settings ("Yazıya dök" over a transcript written on the internet: it is what keeps the text).
+   * than change settings ("Yazıya dök" over a transcript: it is what keeps the text).
    */
   editorNote?: string | null;
   /** The one decision (or the one-line explanation) of this task. */

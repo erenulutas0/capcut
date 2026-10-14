@@ -2,9 +2,10 @@
  * What becomes of a wizard's work when the editor opens over it (ADR-034, addendum of 13 Oct 2026).
  *
  * A wizard never stores a project, and neither does the editor it opens — with ONE exception: a
- * transcript that was written on the internet (ADR-039). The user spent invited minutes on it, sent
- * the sound of their video to another company for it, and waited; losing it to a reload is not a small
- * loss. So that hand-over makes the work the browser's stored project.
+ * transcript ("Yazıya dök", ADR-036 on this device, ADR-039 on the internet). The user waited minutes
+ * for it — and for the internet one spent invited minutes and sent the sound of their video to another
+ * company; losing it to a reload is not a small loss. So that hand-over makes the work the browser's
+ * stored project (the cloud one since the morning of 13 Oct 2026, the on-device one since that evening).
  *
  * The store holds one project (ADR-012). What is already there is never written over without the user
  * saying so — this file is that rule, kept pure so it can be tested without a browser.
@@ -55,8 +56,8 @@ export function storedProjectName(record: ProjectRecord): string {
 }
 
 /**
- * The rule. `keep`: the recipe carries something worth storing (today: a transcript written on the
- * internet). Every other hand-over stays unsaved, whatever the store holds.
+ * The rule. `keep`: the recipe carries something worth storing (today: a transcript with lines in it,
+ * whichever way it was written). Every other hand-over stays unsaved, whatever the store holds.
  *
  * An unreadable store is not asked about: the editor's own saving meets it and tells the truth in its
  * header — "Düzenleme saklanamadı" with the reason when the store cannot be written, and for a NEWER
