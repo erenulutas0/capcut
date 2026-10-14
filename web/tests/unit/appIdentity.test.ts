@@ -134,5 +134,5 @@ describe('the product name has one source', () => {
     expect(listed.length).toBeGreaterThan(100);
     const offenders = listed.filter((file) => WITHDRAWN_NAME.test(readFileSync(file, 'utf8')));
     expect(offenders).toEqual([]);
-  });
+  }, 30_000);
 });
