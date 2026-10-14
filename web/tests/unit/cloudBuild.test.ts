@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { cloudOriginFromEnv, normalizeCloudOrigin } from '../../scripts/lib/cloudOrigin.mjs';
+import { controllerNameFromEnv, normalizeControllerName } from '../../scripts/lib/dataController.mjs';
 import { applyCsp, buildPolicy, inlineHashes } from '../../scripts/lib/csp.mjs';
 import { tr } from '@/i18n/messages';
 import { en } from '@/i18n/messages.en';
@@ -65,6 +66,37 @@ describe('the one setting', () => {
     expect(() => cloudOriginFromEnv({ NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL: 'http://127.0.0.1:38197' })).toThrow();
     // The static export refuses test hooks (next.config.ts), so a published site can only carry an https origin.
     expect(read('next.config.ts')).toMatch(/if \(testHooks && staticExport\) \{\s*throw new Error/);
+  });
+});
+
+describe('the data controller (doc 30 K02; founder decision 14 Oct 2026)', () => {
+  it('a plain name from the deploy build, or nothing — and never an address', () => {
+    for (const value of [undefined, '', '  ']) expect(normalizeControllerName(value)).toBe('');
+    expect(controllerNameFromEnv({})).toBe('');
+    expect(normalizeControllerName('  Ad Soyad ')).toBe('Ad Soyad');
+    expect(normalizeControllerName('Çağrı Öztürk-Işık')).toBe('Çağrı Öztürk-Işık');
+    for (const bad of ['ad@example.com', 'Ad Soyad <ad@example.com>', 'https://example.com', 'www.example.com', 'x'.repeat(121)]) {
+      expect(() => normalizeControllerName(bad), bad).toThrow(/NEXT_PUBLIC_DATA_CONTROLLER_NAME/);
+    }
+    // The build checks it; the page reads it, and its contact is the support contact.
+    expect(read('next.config.ts')).toContain('controllerNameFromEnv()');
+    const page = read('src', 'components', 'PrivacyPage.tsx');
+    expect(page).toContain('process.env.NEXT_PUBLIC_DATA_CONTROLLER_NAME');
+    expect(page).toMatch(/\['privacy\.controller\.contact', controllerName && supportContact \? supportContact : null\]/);
+  });
+
+  it('the deploy build is handed the repository variable, and nothing breaks while it is undefined', () => {
+    const ci = read('..', '.github', 'workflows', 'ci.yml');
+    expect(ci.match(/NEXT_PUBLIC_DATA_CONTROLLER_NAME: \$\{\{ vars\.DATA_CONTROLLER_NAME \}\}/g)).toHaveLength(2);
+    // The cloud suite stops the deploy exactly when the route is in the site.
+    expect(ci).toContain("continue-on-error: ${{ vars.CLOUD_TRANSCRIPT_URL == '' }}");
+  });
+
+  it('says who it is in both languages, as a person, until a company exists', () => {
+    expect(tr['privacy.controller.person']).toBe('{name} — kişi olarak; şirket kurulunca güncellenecek');
+    expect(en['privacy.controller.person']).toContain('{name}');
+    expect(en['privacy.controller.person']).toContain('private person');
+    for (const locale of [tr, en]) expect(locale['privacy.controller.note.named']).not.toMatch(/@/);
   });
 });
 

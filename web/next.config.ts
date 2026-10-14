@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { NextConfig } from 'next';
 
 import { cloudOriginFromEnv } from './scripts/lib/cloudOrigin.mjs';
+import { controllerNameFromEnv } from './scripts/lib/dataController.mjs';
 
 /**
  * Build identity for the diagnostics file ("Sorun bildir"). Read once at
@@ -55,6 +56,12 @@ if (testHooks && staticExport) {
  * A value that is not one https origin stops the build (cloudOrigin.mjs).
  */
 const cloudOrigin = cloudOriginFromEnv();
+
+/**
+ * The data controller's name for /gizlilik (doc 30 K02), read by the page itself. Checked here so an
+ * e-mail address or a link in it stops the build instead of being published (dataController.mjs).
+ */
+controllerNameFromEnv();
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

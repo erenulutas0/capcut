@@ -100,7 +100,14 @@ export const cloudEn: Record<CloudMessageKey, string> = {
     'Who receives it: the sound passes through our relay server (it runs on Cloudflare) to a company called AssemblyAI, which writes the text. Our relay server does not keep the sound or the text; it only passes them on.',
   'cloud.privacy.region': 'Where it is processed: on AssemblyAI’s servers in the European Union.',
   'cloud.privacy.deletion':
-    'When it is deleted: once the text has arrived on your device, a request to delete the sound and the text there is sent. If the request fails, our server tries again. After that the text exists only in this browser.',
+    'When it is deleted: once the text has arrived on your device, a request to delete the sound and the text there is sent. If the request fails, our server tries again: 60 minutes later if the text was not collected, within 24 hours at the latest in any case; if that fails, every 10 minutes. After that the text exists only in this browser.',
+  'cloud.privacy.retention':
+    'If the deletion never happens (for example, the sending was cut off), AssemblyAI’s own rule applies. According to its documentation, the sound sent is deleted within 48 hours at the latest; the text starts being deleted automatically after 30 days. The ID and length of a deleted job stay there for billing.',
+  'cloud.privacy.training':
+    'We cannot promise that the sound will not be used to train this company’s AI models; that is decided by the company’s own rules.',
+  'cloud.privacy.provider': 'AssemblyAI’s own documents (in English):',
+  'cloud.privacy.provider.retention': 'Data retention and model training',
+  'cloud.privacy.provider.dpa': 'Data processing addendum',
   'cloud.privacy.kept':
     'Where the text is on your device: at first only in the open page; if you close the page it is gone. If you press “Daha fazla ayar → editörde aç”, its lines and who spoke are kept in this browser as a project (see “Project recipe” below). If a project you kept earlier is there, you are asked which one stays. To delete it: press “Delete the saved project” when the editor asks for the video file again, or clear this site’s data in the browser settings.',
   'cloud.privacy.stored.project.extra':
@@ -111,7 +118,11 @@ export const cloudEn: Record<CloudMessageKey, string> = {
   'cloud.privacy.quota':
     'If your invite code is saved, it is sent to our relay server when the “Yazıyı nerede çıkaralım?” screen opens, to ask how many minutes you have left. That request carries no sound.',
   'cloud.privacy.trial':
-    'This way is an invited trial. The data controller and the legal basis are shown as “not decided” below; it will not be opened beyond the trial before they are decided.',
+    'This way is an invited trial and it is free. Each invite code has a set number of minutes; one video may be at most 120 minutes long. We have a monthly spending limit: when it is reached, this way closes for that month. “On my device” always works.',
+  'cloud.privacy.controller.unset':
+    'The data controller and the legal basis are shown as “not decided” below; this way will not be opened beyond the trial before they are decided.',
+  'cloud.privacy.controller.named':
+    'The data controller is named below: until a company is founded, the founder, as a private person. The legal basis has not been decided yet; this way will not be opened beyond the invited trial before it is.',
   'cloud.privacy.stored.invite.name': 'Invite code (writing on the internet)',
   'cloud.privacy.stored.invite.body':
     'Kept in this browser so you only type your invite code once. It is written only when you press “Kodu kaydet” and the code is accepted.',

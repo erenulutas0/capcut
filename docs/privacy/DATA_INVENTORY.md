@@ -4,6 +4,17 @@
 > Kapsam: `web/` (Next.js, yalnızca istemci tarafı editör). Roadmap P2-04, lansman listesi §B
 > "Privacy/terms ve SDK veri envanteri gerçek davranışla eşleşiyor".
 > Veri sorumlusu, iletişim, hukuki dayanak ve barındırma sağlayıcısı **belirlenmedi** (belge 30 K02).
+> **14 Ekim 2026 (kurucu kararı):** veri sorumlusu, şirket kurulana kadar **kurucunun kendisi, kişi olarak**.
+> Adı yalnızca yayın derlemesine verilir (`NEXT_PUBLIC_DATA_CONTROLLER_NAME`, CI'da depo değişkeni
+> `DATA_CONTROLLER_NAME`); iletişim adresi destek iletişimidir (`NEXT_PUBLIC_SUPPORT_CONTACT`, CI'da GitHub
+> Issues). Ad verilmeyen her derlemede `/gizlilik` "belirlenmedi" der; ad hiçbir yerde uydurulmaz, e-posta adresi
+> ya da bağlantı içeren bir ad derlemeyi durdurur (`web/scripts/lib/dataController.mjs`). Faaliyet yeri, hukuki
+> dayanak ve başvuru yolu hâlâ **belirlenmedi**. Barındırma: GitHub Pages (yayın derlemesi söyler).
+
+> **14 Ekim 2026 — bulut yazıya dökme yolu yayında DAVETLİ DENEME olarak açılıyor (kurucu kararı).** Yol,
+> depo değişkeni `CLOUD_TRANSCRIPT_URL` gerçek vekilin kökenini alınca yayındaki derlemeye girer (§8.7).
+> O andan sonra bu belgenin §1, §2.4, §4.1 ve §6 satırları **§8'e göre okunur**: cihazdan yalnızca kullanıcı
+> "Sesi gönder ve yaz"a bastığında ve yalnızca ses çıkar (§8.2).
 
 > **11 Ekim 2026 — bulut yazıya dökme yolu (ADR-039): yazıldı, KAPALI.** Bu belgenin geri kalanı
 > **yayındaki derlemeyi** anlatır ve o derlemede hiçbir şey değişmedi: yol, yalnızca
@@ -422,7 +433,9 @@ uygulama dosyası dışında bir şey girmesi ya da çalışırken ağ yanıtlar
 
 - Bulut yazıya dökme yolu için: §8.6.
 
-- Veri sorumlusu (kişi/şirket), faaliyet yeri, gizlilik iletişim adresi — belge 30 K02.
+- ~~Veri sorumlusu (kişi/şirket)~~ — 14 Ekim 2026: kurucu, kişi olarak, şirket kurulana kadar (adı yayın
+  derlemesinin ayarından; yukarıdaki not). ~~Gizlilik iletişim adresi~~ — destek iletişimi (GitHub Issues; herkese
+  açıktır, `/gizlilik` bunu söyler). Açık kalan: faaliyet yeri — belge 30 K02.
 - Hukuki dayanak ve başvuru/hak kullanma yolu — hukuki inceleme.
 - Barındırma sağlayıcısı ve sunucu erişim kaydı saklama süresi.
 - Destek iletişim adresi (`NEXT_PUBLIC_SUPPORT_CONTACT`) ve kullanıcının gönderdiği tanı
@@ -432,7 +445,7 @@ uygulama dosyası dışında bir şey girmesi ya da çalışırken ağ yanıtlar
   bilerek değişmedi (`clip-editor`, `clip-export-`, `clip-app-`, `clip-models-`, `clip.firstRunHint.dismissed`):
   değişseydi kayıtlı projeler ve indirilmiş modeller sahipsiz kalırdı. Açık kalan: marka/alan adı incelemesi.
 
-## 8. Bulut yazıya dökme yolu (ADR-039) — yazıldı, KAPALI (2026-10-11)
+## 8. Bulut yazıya dökme yolu (ADR-039) — yazıldı, KAPALI (2026-10-11); 14 Ekim 2026: yayında davetli deneme olarak açılıyor (§8.7)
 
 > Durum: istemci depoda, **yayındaki derlemede yok**. Vekil sunucu (Worker) yayınlanmadı. Bu
 > bölümdeki her şey vekilin **yerel bir sahtesine** karşı sınandı (`web/tests/cloud/`,
@@ -481,6 +494,13 @@ açılınca kalan dakikayı sorar (`GET /v1/quota`, kod başlıkta, gövde yok).
 - **Sınır:** yükleme sırasında durdurulan işte kayıt açılmaz; o ana kadar sağlayıcıya ulaşmış ses
   bizim elimizle silinemez, sağlayıcının kendi kuralıyla silinir (belgesine göre 24–48 saat).
   Ekran bu durumda "silindi" demez (ADR-039 "Bilinen sınır").
+- **Silme hiç yapılamazsa** sağlayıcının kendi saklama kuralı geçer (belgeleri, 10 Ekim 2026'da okundu;
+  ADR-039): yüklenen ses için silme 24 saatte başlar, en geç 48 saat; yazı 30 gün sonra kendiliğinden
+  silinmeye başlar; silinen kaydın kimliği ve süresi faturalama için sağlayıcıda kalır. Model eğitimi: biz
+  bir söz vermeyiz (sağlayıcının belgesi AB sunucularını kullananların verisini eğitimde kullanmadığını
+  söylüyor; ücretsiz hesap için ayrıca doğrulanmadı — ADR-039 "Doğrulanmayanlar"). 14 Ekim 2026'dan beri
+  `/gizlilik` bunları söyler (`cloud.privacy.deletion`, `cloud.privacy.retention`, `cloud.privacy.training`)
+  ve sağlayıcının iki belgesine bağlantı verir (saklama ve model eğitimi; veri işleme sözleşmesi).
 - Yazı: sonuç geldikten sonra yalnızca bu tarayıcıdadır (tarif, §2.1 / §2.3). Sihirbazın sonuç
   ekranında yalnızca bellekte; "Daha fazla ayar → editörde aç"a basılınca IndexedDB'de (§8.4a).
 
@@ -548,10 +568,13 @@ derlemede doğrudur. Kanıt: `tests/cloud/cloud-keep.spec.ts` (son sınama), `te
 
 ### 8.6 Açık kurucu kararları
 
-- Veri sorumlusu ve hukuki dayanak (K02): bulut yolu kişisel veriyi (sesi) üçüncü tarafa aktaran
-  ilk özelliktir; belirlenmeden davetli deneme dışına açılmamalı.
-- Bölge AB kalacak mı (`PROVIDER_REGION`): ekran ve gizlilik metni "Avrupa" diyor.
-- Bulut dakikasının ücretli/ücretsiz/deneme oluşu (politika belgesi 15 — değişmedi).
+- ~~Veri sorumlusu~~ — 14 Ekim 2026: kurucu, kişi olarak (yukarıdaki not). **Hukuki dayanak (K02) hâlâ
+  açık:** bulut yolu kişisel veriyi (sesi) üçüncü tarafa aktaran ilk özelliktir; belirlenmeden davetli deneme
+  dışına açılmamalı (sayfa bunu söyler).
+- ~~Bölge~~ — 14 Ekim 2026: AB (Worker `PROVIDER_REGION=eu`; kurucu kararı). `us` yapılırsa ekran ve gizlilik
+  metni yanlış olur.
+- ~~Bulut dakikasının ücretli/ücretsiz/deneme oluşu~~ — 14 Ekim 2026: ücretsiz davetli deneme, davet başına
+  dakika, aylık tavan (politika `2026-10-14.v10`, belge 15).
 - ~~Konuşmacı etiketlerinin kalıcı olması (EDL v5).~~ — 13 Ekim 2026: yapıldı (ADR-043; §8.4).
 - ~~İnternette yazılan yazının kalıcılığı.~~ — 13 Ekim 2026: editöre geçişte saklanıyor (§8.4a).
 - ~~Cihazda yazılan yazı da editöre geçişte saklansın mı.~~ — 13 Ekim 2026 akşamı: evet, yapıldı (§2.7;
@@ -559,3 +582,37 @@ derlemede doğrudur. Kanıt: `tests/cloud/cloud-keep.spec.ts` (son sınama), `te
 - "İnternette yazıldı" bilgisi kayıtta tutulsun mu (şema eklemesi; ADR-043 madde 5).
 - Kişileri yeniden adlandırma (ADR-043): gelirse tarife **serbest metin** (bir ad) girer; bu envanter
   ve `/gizlilik` o değişiklikle birlikte güncellenmeli.
+
+### 8.7 Yayın anı: davetli deneme (14 Ekim 2026, kurucu kararı)
+
+Kurucu kararı: yol yayındaki sitede **davetli, ücretsiz deneme** olarak açılır; davet başına dakika, iş başına
+en çok 120 dakika, Worker'da aylık 1 $ kesin tavan, AB bölgesi (politika `2026-10-14.v10`). Vekil Worker
+kurucu tarafından yayınlandı; anahtarı ve defteri oradadır. **Siteye geçiş tek bir depo değişkeniyle olur**
+(`CLOUD_TRANSCRIPT_URL`); bu çalışma değişkeni **ayarlamadı** ve Worker'a **hiç istek göndermedi**.
+
+Geçiş anında yayındaki derlemede değişen (yukarıdaki tablolar zaten açık derlemeyi anlatıyordu):
+
+| Nerede | Kapalıyken (bugün) | Açıkken |
+|---|---|---|
+| Her sayfanın `connect-src`'si | `'self'` | `'self'` + vekilin tek kökeni; başka hiçbir yönerge onu anmaz |
+| "Yazıya dök" | Doğrudan cihaz üstü adımlar | Önce "Yazıyı nerede çıkaralım?" (kurucu onaylı B ekranı) |
+| `/gizlilik` | Bugünkü cümleler | §8.5'teki değişiklikler + 14 Ekim'de eklenen: silme süreleri (bizim yeniden denememiz: 60 dk / en geç 24 saat / 10 dakikada bir), silinemezse sağlayıcının kuralı (48 saat / 30 gün), model eğitimi için söz verilmemesi, sağlayıcının iki belgesine bağlantı, denemenin ücretsiz ve sınırlı oluşu, veri sorumlusu cümlesi |
+| Açılış ekranı alt yazısı (`home.trust`, `landing.note`) | "Videon cihazından çıkmaz." · "…bulut yükleme yok; her şey cihazında çalışır." | "Videon cihazından çıkmaz; yalnızca sen seçersen sesi gider." · "…Tek istisna: “Yazıya dök”te “İnternette”yi seçersen videonun yalnızca sesi gönderilir." |
+| Editörün şeridi, alt çubuğu, "Kısayollar ve sınırlar" | "…bulut yok", "…bulut yüklemesi yok", "Bulut, hesap ve ödeme yok…" | "bulut yok" demez; yardım penceresi internet yolunu ve yalnızca sesin gittiğini söyler (`*.online` anahtarları, `messages.ts`) |
+| Bu tarayıcıda saklanan | §2 | + davet kodu (`clip.cloudInvite`, yalnızca "Kodu kaydet"le) |
+
+Değişmeyen: editördeki "Videoyu yazıya dök" yalnız cihaz üstüdür; sihirbazların "Videon cihazından çıkmaz"
+alt yazısı o sihirbazda doğrudur (öbür sihirbazlar hiçbir şey göndermez).
+
+**Ön uçuş sınaması** (`web/tests/pages/cloud-preflight.spec.ts`, Pages duman sınamasıyla birlikte koşar; yol
+kapalı derlemede atlanır): her sayfada `connect-src` tam olarak `'self'` + vekil; seçim ekranı kurucunun
+sözleriyle; `/gizlilik`'te bulut bölümü ve **adı verilmiş veri sorumlusu ile iletişim adresi** (yol açıkken
+ad verilmemişse sınama — ve CI'da yayın — durur); sayfalar gezilirken, seçim ekranı açıkken ve "Cihazımda
+yaz"dan sonra vekile **tek istek gitmez**; "Kodu kaydet"e basınca giden tek şey kalan dakika sorusudur (kod
+yalnızca başlıkta). Sınamada vekile giden her istek yakalanır (durdurulur ya da sınamanın kendi sahte
+yanıtıyla karşılanır); gerçek vekile hiçbir şey ulaşmaz.
+
+Doğrulanmayan (geçişten sonra kurucunun kendi telefonunda, kendi davetiyle bakılmalı; ADR-039 "Kabul" eki):
+gerçek Worker'ın CORS'u ve akıtılan yükleme, tarayıcının ürettiği ses dosyasının gerçek sağlayıcıda kabulü,
+Worker'ın gerçekten `PROVIDER_REGION=eu` ve `MONTHLY_CAP_USD=1` ile çalıştığı (depodaki `wrangler.jsonc` öyle;
+yayındaki ayarlar bu çalışmada okunmadı).

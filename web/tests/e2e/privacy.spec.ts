@@ -132,6 +132,15 @@ test.describe('privacy page', () => {
     await expect(controller.getByTestId('undecided')).toHaveCount(8);
     await expect(controller.getByTestId('undecided').first()).toHaveText('belirlenmedi');
     await expect(controller.getByTestId('undecided').first()).toBeVisible();
+    // This build was given no data controller's name (only the deploy build is): the name and its contact stay
+    // open, never guessed, and the note says what is missing (doc 30 K02).
+    await expect(controller.getByTestId('controller-name').getByTestId('undecided')).toHaveText('belirlenmedi');
+    await expect(controller.getByTestId('controller-contact').getByTestId('undecided')).toHaveText('belirlenmedi');
+    await expect(page.getByTestId('privacy-controller-note')).toHaveText(
+      'Bu bilgiler kurucu kararı ve hukuki inceleme bekliyor (belge 30 K02). Belirlenmeden bu metin yayına hazır sayılmaz.',
+    );
+    await expect(page.getByTestId('privacy-contact-public')).toHaveCount(0);
+    await expect(page.getByTestId('privacy-updated')).toContainText('Son güncelleme: 14 Ekim 2026');
 
     // The stored items name the real stores and the real deletion rules.
     await expect(page.getByTestId('stored-project')).toContainText('“projects”');

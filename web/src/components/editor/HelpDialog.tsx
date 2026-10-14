@@ -24,7 +24,8 @@ const LIMITS: MessageKey[] = [
   'help.limit.export',
   'help.limit.mix',
   'help.limit.save',
-  'help.limit.cloud',
+  // A build with the internet route of "Yazıya dök" (ADR-039) cannot say "no cloud".
+  process.env.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1' ? 'help.limit.cloud.online' : 'help.limit.cloud',
 ];
 
 export function HelpDialog({

@@ -4,7 +4,7 @@ import { Wordmark } from '@/components/Icon';
 import { ExportLogPanel } from '@/components/ExportLogPanel';
 import { CloudInviteSlot } from '@/components/transcript/CloudInviteSlot';
 import { ModelStoragePanel } from '@/components/transcript/ModelStoragePanel';
-import { cloudTranslator, type CloudMessageKey } from '@/i18n/cloudMessages';
+import { PROVIDER_PAGES, cloudTranslator, type CloudMessageKey } from '@/i18n/cloudMessages';
 import { translator, type Locale, type MessageKey } from '@/i18n/messages';
 
 /**
@@ -36,10 +36,12 @@ const CLOUD_FACTS: CloudMessageKey[] = [
   'cloud.privacy.who',
   'cloud.privacy.region',
   'cloud.privacy.deletion',
+  'cloud.privacy.retention',
   'cloud.privacy.kept',
   'cloud.privacy.others',
   'cloud.privacy.ledger',
   'cloud.privacy.quota',
+  'cloud.privacy.training',
   'cloud.privacy.trial',
 ];
 
@@ -133,6 +135,10 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
   const ct = cloudTranslator(locale);
   const undecided = t('privacy.undecided');
   const supportContact = (process.env.NEXT_PUBLIC_SUPPORT_CONTACT ?? '').trim();
+  // The data controller (doc 30 K02; founder decision 14 Oct 2026): the founder, as a private person, until a
+  // company exists. Only the deploy build names them; the contact is the support contact above. Without the
+  // name the page says "belirlenmedi" — it never guesses one.
+  const controllerName = (process.env.NEXT_PUBLIC_DATA_CONTROLLER_NAME ?? '').trim();
   // Set by the deploy build only (language-neutral values: a name and a URL).
   // Without them the page keeps saying "belirlenmedi" instead of guessing.
   const hostingProvider = (process.env.NEXT_PUBLIC_HOSTING_PROVIDER ?? '').trim();
@@ -142,8 +148,8 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
     .replace('{commit}', process.env.NEXT_PUBLIC_GIT_COMMIT ?? 'unknown');
 
   const controller: Array<[MessageKey, string | null]> = [
-    ['privacy.controller.name', null],
-    ['privacy.controller.contact', null],
+    ['privacy.controller.name', controllerName ? t('privacy.controller.person').replace('{name}', controllerName) : null],
+    ['privacy.controller.contact', controllerName && supportContact ? supportContact : null],
     ['privacy.controller.country', null],
     ['privacy.controller.basis', null],
     ['privacy.controller.rights', null],
@@ -177,7 +183,7 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
         <h1>{t('privacy.heading')}</h1>
 
         <div className="legal-draft" role="note" data-testid="privacy-draft">
-          <b>{t('privacy.draftBadge')}</b>
+          <b>{t(controllerName ? 'privacy.draftBadge.named' : 'privacy.draftBadge')}</b>
           <p>{t('privacy.draftBody')}</p>
         </div>
 
@@ -206,6 +212,19 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
               {CLOUD_FACTS.map((key) => (
                 <li key={key}>{ct(key)}</li>
               ))}
+              <li data-testid="privacy-cloud-provider">
+                {ct('cloud.privacy.provider')}{' '}
+                <a href={PROVIDER_PAGES.retention} rel="noopener noreferrer" hrefLang="en">
+                  {ct('cloud.privacy.provider.retention')}
+                </a>
+                {' · '}
+                <a href={PROVIDER_PAGES.dpa} rel="noopener noreferrer" hrefLang="en">
+                  {ct('cloud.privacy.provider.dpa')}
+                </a>
+              </li>
+              <li data-testid="privacy-cloud-controller">
+                {ct(controllerName ? 'cloud.privacy.controller.named' : 'cloud.privacy.controller.unset')}
+              </li>
             </ul>
           </section>
         ) : null}
@@ -279,13 +298,21 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
           <h2 id="privacy-controller">{t('privacy.controller.title')}</h2>
           <dl className="legal-facts" data-testid="privacy-controller">
             {controller.map(([key, value]) => (
-              <div key={key}>
+              <div key={key} data-testid={`controller-${key.slice(key.lastIndexOf('.') + 1)}`}>
                 <dt>{t(key)}</dt>
                 <dd>{value ?? <Undecided label={undecided} />}</dd>
               </div>
             ))}
           </dl>
-          <p className="legal-muted">{t('privacy.controller.note')}</p>
+          {/* The contact is the support contact; when that is a public issue tracker, say so (as "Sorun bildir" does). */}
+          {controllerName && /^https:\/\/github\.com\/[^/]+\/[^/]+\/issues/.test(supportContact) ? (
+            <p className="legal-muted" data-testid="privacy-contact-public">
+              {t('support.publicWarning')}
+            </p>
+          ) : null}
+          <p className="legal-muted" data-testid="privacy-controller-note">
+            {t(controllerName ? 'privacy.controller.note.named' : 'privacy.controller.note')}
+          </p>
         </section>
 
         <p className="legal-muted" data-testid="privacy-updated">

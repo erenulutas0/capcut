@@ -3,8 +3,11 @@ import { expect, test, type Page, type TestInfo } from '../e2e/fixtures';
 
 import { watchCsp } from '../e2e/cspWatch';
 import { expectStylesApplied } from '../e2e/stylesReady';
+import { openMore } from '../e2e/kesitFlow';
+import { PROVIDER_PAGES } from '../../src/i18n/cloudMessages';
 import { cloudEn } from '../../src/i18n/cloudMessages.en';
-import { FAKE_ORIGIN, SCRIPT_WORDS, ct, fill, openChoice, openReady, plain, startFake, watchNetwork, type FakeWorker } from './cloudKit';
+import { tr } from '../../src/i18n/messages';
+import { FAKE_ORIGIN, SAMPLE, SCRIPT_WORDS, ct, fill, openChoice, openReady, plain, startFake, watchNetwork, type FakeWorker } from './cloudKit';
 
 /**
  * "Yazıyı nerede çıkaralım?" — the consent screen the founder chose on
@@ -249,12 +252,19 @@ test('the privacy page of this build describes the route — what goes, to whom,
   const section = page.getByTestId('privacy-cloud');
   await expect(section.getByRole('heading', { level: 2 })).toHaveText(ct('cloud.privacy.title'));
   const text = await section.innerText();
-  for (const key of ['cloud.privacy.what', 'cloud.privacy.who', 'cloud.privacy.region', 'cloud.privacy.deletion', 'cloud.privacy.others', 'cloud.privacy.ledger', 'cloud.privacy.quota', 'cloud.privacy.trial'] as const) {
+  for (const key of ['cloud.privacy.what', 'cloud.privacy.who', 'cloud.privacy.region', 'cloud.privacy.deletion', 'cloud.privacy.retention', 'cloud.privacy.others', 'cloud.privacy.ledger', 'cloud.privacy.quota', 'cloud.privacy.training', 'cloud.privacy.trial'] as const) {
     expect(text).toContain(ct(key));
   }
   expect(text).toContain('AssemblyAI');
   expect(text).toContain('Avrupa Birliği');
   expect(text).not.toMatch(UNPROVABLE);
+  // The provider's own pages, the ones ADR-039 quotes; plain links, nothing is fetched from them.
+  await expect(section.getByRole('link', { name: ct('cloud.privacy.provider.retention') })).toHaveAttribute('href', PROVIDER_PAGES.retention);
+  await expect(section.getByRole('link', { name: ct('cloud.privacy.provider.dpa') })).toHaveAttribute('href', PROVIDER_PAGES.dpa);
+  // This build was not given a data controller's name: the section says it is undecided, and so does the list below.
+  await expect(page.getByTestId('privacy-cloud-controller')).toHaveText(ct('cloud.privacy.controller.unset'));
+  await expect(page.getByTestId('controller-name').getByTestId('undecided')).toHaveCount(1);
+  await expect(page.getByTestId('controller-contact').getByTestId('undecided')).toHaveCount(1);
   // The sentences that would now be untrue are not on the page any more.
   const whole = await page.locator('main').innerText();
   expect(whole).not.toContain('hiçbir sunucuya gönderilmez');
@@ -277,4 +287,24 @@ test('the privacy page of this build describes the route — what goes, to whom,
   await expect(page.getByTestId('privacy-cloud')).toContainText(cloudEn['cloud.privacy.region']);
   await expect(page.getByTestId('invite-storage-status')).toHaveText(cloudEn['cloud.privacy.invite.absent']);
   expect(fill('{n}', { n: 1 })).toBe('1');
+});
+
+test('the rest of the site does not say "no cloud" in a build that has the route', async ({ page }) => {
+  // The opening screen: the sound may leave, if the user chooses it.
+  await page.goto('/');
+  await expect(page.getByTestId('home-trust')).toHaveText(tr['home.trust.online']);
+  await expect(page.locator('.home-note')).toContainText(tr['landing.note.online']);
+  const home = await page.locator('body').innerText();
+  expect(home).not.toContain(tr['home.trust']);
+  expect(home).not.toMatch(/bulut yükleme yok|bulut yok/);
+  // The editor: its own transcript stays on the device, but the banner, the footer and the help do not say "no cloud".
+  await page.goto('/editor');
+  await page.getByTestId('video-input').setInputFiles(SAMPLE);
+  await expect(page.getByTestId('preview-video')).toBeVisible();
+  await expect(page.locator('.prototype-banner')).toContainText(tr['banner.prototype.online']);
+  await expect(page.locator('.status-bar')).toContainText(tr['footer.local.online']);
+  await openMore(page);
+  await page.getByTestId('open-help').click();
+  await expect(page.getByRole('dialog', { name: tr['help.title'] })).toContainText(tr['help.limit.cloud.online']);
+  expect(await page.locator('body').innerText()).not.toMatch(/bulut yok|bulut yüklemesi yok|Bulut, hesap ve ödeme yok/);
 });

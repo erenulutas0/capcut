@@ -105,12 +105,13 @@ jobs:
         run: |
           npm run build
           npx playwright test
-      # The cloud transcript route (ADR-039) is NOT in the published site. Its client is tested here against a
-      # local fake of our proxy Worker (cloud/fake-worker, 127.0.0.1): no external service is contacted. The
-      # route needs its own build (it does not exist in the build above). While the route is off this step
-      # reports and does not stop the deploy; make it gating (remove continue-on-error) when the route is turned on.
-      - name: Cloud transcript route against the local fake Worker (does not gate the deploy while the route is off)
-        continue-on-error: true
+      # The cloud transcript route (ADR-039) is in the published site only when the repository variable
+      # CLOUD_TRANSCRIPT_URL is set. Its client is tested here against a local fake of our proxy Worker
+      # (cloud/fake-worker, 127.0.0.1): no external service is contacted. The route needs its own build (it does
+      # not exist in the build above). While the variable is unset this step reports and does not stop the
+      # deploy; once it is set (the route is in the site) a failure here stops the deploy.
+      - name: Cloud transcript route against the local fake Worker (gates the deploy only while the route is on)
+        continue-on-error: ${{ vars.CLOUD_TRANSCRIPT_URL == '' }}
         env:
           GIT_COMMIT: ${{ github.sha }}
           CLIP_TEST_HOOKS: '1'
@@ -133,6 +134,10 @@ jobs:
           # our proxy Worker's origin (Settings → Secrets and variables → Actions → Variables). Undefined = empty
           # = the route is not in the site and connect-src stays 'self'.
           NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL: ${{ vars.CLOUD_TRANSCRIPT_URL }}
+          # The data controller on /gizlilik (doc 30 K02): the founder, as a private person, until a company exists.
+          # A NAME only (an e-mail address or a link stops the build); the contact shown is NEXT_PUBLIC_SUPPORT_CONTACT.
+          # Repository variable DATA_CONTROLLER_NAME; undefined = empty = the page says "belirlenmedi".
+          NEXT_PUBLIC_DATA_CONTROLLER_NAME: ${{ vars.DATA_CONTROLLER_NAME }}
         run: |
           if (Test-Path out) { Remove-Item -Recurse -Force out }
           npm run build
@@ -145,8 +150,12 @@ jobs:
           node scripts/fetch-models.mjs --models=base,turbo --dest=out/models --check
       - name: Smoke test the export under /capcut/
         env:
-          # The same value the export was built with: the smoke test expects exactly that policy (connect-src).
+          # The same values the export was built with: the smoke test expects exactly that policy (connect-src),
+          # and with the route on, the pre-flight test (tests/pages/cloud-preflight.spec.ts) expects the data
+          # controller and the contact named on /gizlilik, and no request to the Worker before a button is pressed.
           NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL: ${{ vars.CLOUD_TRANSCRIPT_URL }}
+          NEXT_PUBLIC_DATA_CONTROLLER_NAME: ${{ vars.DATA_CONTROLLER_NAME }}
+          NEXT_PUBLIC_SUPPORT_CONTACT: https://github.com/erenulutas0/capcut/issues
         run: npx playwright test -c playwright.pages.config.ts
       - name: Keep the tested export for the deploy job
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

@@ -805,7 +805,8 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
       style={{ ['--canvas-aspect' as string]: CANVAS_ASPECT_CSS[project.canvas.aspect] ?? '16 / 9' }}
     >
       <aside className="prototype-banner" aria-label={t('a11y.prototypeNotice')}>
-        <span>{t('banner.prototype')}</span>
+        {/* A build with the internet route of "Yazıya dök" (ADR-039) cannot say "bulut yok". */}
+        <span>{t(process.env.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1' ? 'banner.prototype.online' : 'banner.prototype')}</span>
         <Link href="/" style={{ color: 'inherit' }}>
           {t('app.name')}
         </Link>
@@ -1135,7 +1136,7 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
 
       {phone ? null : (
         <footer className="status-bar">
-          <span>{t('footer.local')}</span>
+          <span>{t(process.env.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1' ? 'footer.local.online' : 'footer.local')}</span>
           <span className="shortcut-hints">{t('footer.shortcuts')}</span>
         </footer>
       )}

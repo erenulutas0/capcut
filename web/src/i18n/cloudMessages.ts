@@ -123,7 +123,16 @@ export const cloudTr = {
     'Kime gider: ses bizim aracı sunucumuzdan (Cloudflare üzerinde çalışır) geçerek AssemblyAI adlı şirkete gider; yazıyı o çıkarır. Aracı sunucumuz sesi ve yazıyı saklamaz, yalnızca geçirir.',
   'cloud.privacy.region': 'Nerede işlenir: AssemblyAI’nin Avrupa Birliği’ndeki sunucularında.',
   'cloud.privacy.deletion':
-    'Ne zaman silinir: yazı cihazına gelince oradaki ses ve yazı için silme isteği gönderilir. İstek başarısız olursa sunucumuz yeniden dener. Yazı bundan sonra yalnızca bu tarayıcıda durur.',
+    'Ne zaman silinir: yazı cihazına gelince oradaki ses ve yazı için silme isteği gönderilir. İstek başarısız olursa sunucumuz yeniden dener: yazı alınmadıysa 60 dakika sonra, her durumda en geç 24 saat içinde; olmazsa 10 dakikada bir. Yazı bundan sonra yalnızca bu tarayıcıda durur.',
+  // What the provider does when our deletion never happens: ITS documented rule (ADR-039 quotes the pages, read 10 Oct 2026), said as such.
+  'cloud.privacy.retention':
+    'Silme hiç yapılamazsa (örneğin gönderme yarıda kesildiyse) AssemblyAI’nin kendi kuralı geçer. Şirketin belgesine göre gönderilen ses en geç 48 saatte silinir; yazı 30 gün sonra kendiliğinden silinmeye başlar. Silinen işin kimliği ve süresi faturalama için orada kalır.',
+  // No promise we cannot keep either way (ADR-039 "Rıza ekranı": never "eğitimde kullanılmaz").
+  'cloud.privacy.training':
+    'Sesin bu şirketin yapay zekâ modellerini eğitmekte kullanılmayacağına dair biz bir söz veremiyoruz; bunu şirketin kendi kuralları belirler.',
+  'cloud.privacy.provider': 'AssemblyAI’nin kendi belgeleri (İngilizce):',
+  'cloud.privacy.provider.retention': 'Saklama ve model eğitimi',
+  'cloud.privacy.provider.dpa': 'Veri işleme sözleşmesi',
   'cloud.privacy.kept':
     'Yazı cihazında nerede durur: önce yalnızca açık sayfada; sayfayı kapatırsan gider. “Daha fazla ayar → editörde aç”a basarsan, satırları ve kimin konuştuğu bu tarayıcıda proje olarak saklanır (aşağıda “Proje tarifi”). Orada daha önce sakladığın bir proje varsa hangisinin kalacağı sana sorulur. Silmek için: editör video dosyasını yeniden istediğinde “Kayıtlı projeyi sil”e bas ya da tarayıcı ayarlarından bu sitenin verilerini temizle.',
   'cloud.privacy.stored.project.extra':
@@ -134,7 +143,12 @@ export const cloudTr = {
   'cloud.privacy.quota':
     'Davet kodun kayıtlıysa, “Yazıyı nerede çıkaralım?” ekranı açıldığında kalan dakikanı sormak için kodun aracı sunucumuza gider. Bu istekte ses yoktur.',
   'cloud.privacy.trial':
-    'Bu yol davetli bir denemedir. Veri sorumlusu ve hukuki dayanak aşağıda “belirlenmedi” olarak durur; belirlenmeden deneme dışına açılmaz.',
+    'Bu yol davetli bir denemedir ve ücretsizdir. Her davet kodunun belli bir dakika hakkı vardır; bir video en çok 120 dakika olabilir. Aylık bir harcama sınırımız var: dolunca bu yol o ay kapanır. “Cihazımda” yolu her zaman çalışır.',
+  // Who answers for it (doc 30 K02). The name comes from the build (NEXT_PUBLIC_DATA_CONTROLLER_NAME); without it, said as undecided.
+  'cloud.privacy.controller.unset':
+    'Veri sorumlusu ve hukuki dayanak aşağıda “belirlenmedi” olarak durur; belirlenmeden deneme dışına açılmaz.',
+  'cloud.privacy.controller.named':
+    'Veri sorumlusu aşağıda yazılıdır: şirket kurulana kadar kurucunun kendisi, kişi olarak. Hukuki dayanak henüz belirlenmedi; belirlenmeden bu yol davetli deneme dışına açılmaz.',
   'cloud.privacy.stored.invite.name': 'Davet kodu (İnternette yazıya dökme)',
   'cloud.privacy.stored.invite.body':
     'Davet kodunu bir kez yazman yetsin diye bu tarayıcıda saklanır. Yalnızca sen “Kodu kaydet”e basınca ve kod kabul edilince yazılır.',
@@ -145,6 +159,15 @@ export const cloudTr = {
 } as const;
 
 export type CloudMessageKey = keyof typeof cloudTr;
+
+/**
+ * The provider's own pages the privacy page links to: the ones ADR-039 quotes (read 10 Oct 2026) for
+ * retention, model training and the data processing addendum. Not fetched by the app; plain links.
+ */
+export const PROVIDER_PAGES = {
+  retention: 'https://www.assemblyai.com/docs/data-retention-and-model-training',
+  dpa: 'https://www.assemblyai.com/legal/data-processing-addendum',
+} as const;
 
 const dictionaries: Partial<Record<Locale, Record<CloudMessageKey, string>>> = { tr: cloudTr };
 
