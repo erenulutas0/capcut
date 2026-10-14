@@ -61,6 +61,13 @@ export function useProjectPersistence({ project, title, bindings, onRestore, ena
   const [saveState, setSaveState] = useState<SaveState>({ kind: 'idle' });
   const [restored, setRestored] = useState(false);
   const [loadFailure, setLoadFailure] = useState<StoreFailure | null>(null);
+  /** This browser holds this project now (restored, or a save committed): "Kayıtlı projeyi sil" has something to delete. */
+  const [hasStoredRecord, setHasStoredRecord] = useState(false);
+  /**
+   * The user deleted the stored project in this tab (ADR-012 addendum, 14 Oct 2026): nothing of this tab
+   * is written any more, and the header says so ("Bu düzenleme saklanmıyor") until the page is opened again.
+   */
+  const [forgotten, setForgotten] = useState(false);
 
   // The save loop reads the latest values through a ref so that typing in the
   // title field does not reschedule the timer on every keystroke.
@@ -96,6 +103,14 @@ export function useProjectPersistence({ project, title, bindings, onRestore, ena
     else createdAtRef.current = record.createdAt;
 
     const result = await storeRef.current.save(record);
+    if (forgottenRef.current) {
+      // Deleted while this write was on its way: the delete wins. The write is undone (the store keeps one
+      // project under a fixed id, so this is the same record) and nothing says "saved".
+      if (result.ok) await storeRef.current.remove(current.projectId);
+      setSaveState({ kind: 'idle' });
+      return;
+    }
+    if (result.ok) setHasStoredRecord(true);
     setSaveState(result.ok ? { kind: 'saved', at: Date.now() } : { kind: 'failed', reason: result.reason });
   }, [enabled]);
 
@@ -130,6 +145,7 @@ export function useProjectPersistence({ project, title, bindings, onRestore, ena
       }
       if (result.record) {
         createdAtRef.current = result.record.createdAt;
+        setHasStoredRecord(true);
         onRestore(result.record);
         setSaveState({ kind: 'saved', at: new Date(result.record.updatedAt).getTime() });
       }
@@ -219,18 +235,27 @@ export function useProjectPersistence({ project, title, bindings, onRestore, ena
     [onRestore],
   );
 
-  const forget = useCallback(async () => {
-    if (!enabled) return;
+  /**
+   * "Kayıtlı projeyi sil": deletes the stored project. True when it is gone. From then on this tab writes
+   * nothing — not the 500 ms timer, not the flush on leaving (ADR-012 addendum: a deleted project is not
+   * written back); the work on screen stays until the page closes. Not deleted: saving goes on as before.
+   */
+  const forget = useCallback(async (): Promise<boolean> => {
+    if (!enabled) return false;
     forgottenRef.current = true;
     const result = await storeRef.current.remove(latest.current.project.projectId);
     // Not deleted: saving goes on, so the header keeps telling the truth.
-    if (!result.ok) forgottenRef.current = false;
-    else {
-      // The user deleted the stored project themselves: there is nothing newer left to protect.
-      newerRef.current = false;
-      setSaveState({ kind: 'idle' });
+    if (!result.ok) {
+      forgottenRef.current = false;
+      return false;
     }
+    // The user deleted the stored project themselves: there is nothing newer left to protect.
+    newerRef.current = false;
+    setSaveState({ kind: 'idle' });
+    setHasStoredRecord(false);
+    setForgotten(true);
+    return true;
   }, [enabled]);
 
-  return { saveState, restored, loadFailure, downloadBackup, importBackup, forget, persist };
+  return { saveState, restored, loadFailure, hasStoredRecord, forgotten, downloadBackup, importBackup, forget, persist };
 }

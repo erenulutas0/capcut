@@ -67,6 +67,14 @@ export const en: Record<MessageKey, string> = {
   'relink.discardConfirm':
     'The project recipe saved in this browser will be deleted. Your video files are not touched. Continue?',
 
+  'project.delete.title': 'Saved project',
+  'project.delete.body': 'This editing is saved on this device. Deleting it does not touch your video file.',
+  'project.delete.confirm':
+    'The saved project on this device will be deleted: the clips, the text, the settings and the project name. The video file on your device is not touched. The open video stays on screen, but this editing is no longer saved; it goes when you close the page. Delete it?',
+  'project.deleted': 'The saved project was deleted. This editing is no longer saved; it goes when you close the page.',
+  'project.deleted.hint':
+    'You deleted the saved project: the editing in this tab is no longer saved in this browser and goes when you close the page. If you open the editor again and pick a video, a new project is saved. Videos you downloaded stay with you.',
+  'project.delete.failed': 'The saved project could not be deleted; the editing is still being saved. Try again.',
   'backup.title': 'Project backup',
   'backup.body':
     'Download the editing recipe as a file. It does not contain your video; it carries your clips, settings, caption text, the project name and the source file name. Keep that in mind before sharing it.',
@@ -115,7 +123,7 @@ export const en: Record<MessageKey, string> = {
     'Project name, your clips and their order, frame/aspect settings, music settings, the text and style of caption lines. To recognise the source file again: its name, size, modification date, duration, resolution and type. The video and audio files themselves are not stored. Only edits made in the editor (“I will edit it myself”) are stored; work started from a task on the home screen (Cut, Make it vertical…) is not. One exception, “Yazıya dök”: if you open the text it wrote with “More settings → open in the editor”, that work (the text of its lines included) is kept here as the project; if a project you kept earlier is there, you are asked which one stays. Deleting it: as below.',
   'privacy.stored.project.where': 'IndexedDB “clip-editor”, store “projects”',
   'privacy.stored.project.delete':
-    'Until you delete it. You can clear this site’s data in your browser settings; when the editor asks for the file again, “Delete the saved project” also works. The browser may also evict it to free space.',
+    'Until you delete it. You can clear this site’s data in your browser settings; “More → Delete the saved project” in the editor also works (it also appears when the editor asks for the file again). The browser may also evict it to free space.',
   'privacy.stored.log.name': 'Export log',
   'privacy.stored.log.body':
     'The last 20 export attempts: time, outcome (succeeded, failed, canceled), failure code, output duration, resolution, write route (disk or memory), elapsed time and a short code summarising the recipe. For a failed attempt also the kind of error, the stage it happened in, the frame it had reached and the names of the encoder and decoder in use; the error’s text is not kept. No file names, caption text or pictures. It is added to a diagnostics file only if you download one.',

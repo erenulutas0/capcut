@@ -202,6 +202,8 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
   const openReport = useCallback(() => setReportOpen(true), []);
   const [silenceScope, setSilenceScope] = useState<SilenceScope | null>(null);
   const [backupMessage, setBackupMessage] = useState<MessageKey | null>(null);
+  /** What "Kayıtlı projeyi sil" in "Diğer" did: said under it. */
+  const [projectDeleteMessage, setProjectDeleteMessage] = useState<'project.deleted' | 'project.delete.failed' | null>(null);
   const [fullscreenRequest, setFullscreenRequest] = useState(0);
   /** The refusal the marks themselves caused, so only that one gets a next step. */
   const [markRefusal, setMarkRefusal] = useState<MessageKey | null>(null);
@@ -841,10 +843,15 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
                 onChange={(event) => state.setTitle(event.target.value)}
                 data-testid="project-title"
               />
-              {stored ? (
+              {stored && !persistence.forgotten ? (
                 <SaveStateBadge t={t} state={persistence.saveState} onDownloadBackup={persistence.downloadBackup} />
               ) : (
-                <span className="save-state" title={t('wizard.editor.unsavedHint')} data-testid="save-state-off">
+                // Not stored: work from a task wizard, or the user deleted the saved project in this tab.
+                <span
+                  className="save-state"
+                  title={t(persistence.forgotten ? 'project.deleted.hint' : 'wizard.editor.unsavedHint')}
+                  data-testid="save-state-off"
+                >
                   <span className="save-dot" data-kind="idle" aria-hidden="true" />
                   {t('wizard.editor.unsaved')}
                 </span>
@@ -1202,7 +1209,7 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
               data-testid="project-title"
             />
             <p className="hint-small" style={{ marginBottom: 14 }}>
-              {t(stored ? 'topbar.saveState.hint' : 'wizard.editor.unsavedHint')}
+              {t(persistence.forgotten ? 'project.deleted.hint' : stored ? 'topbar.saveState.hint' : 'wizard.editor.unsavedHint')}
             </p>
           </>
         ) : null}
@@ -1264,6 +1271,44 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
               </p>
             ) : null}
           </div>
+          {stored && (persistence.hasStoredRecord || persistence.forgotten) ? (
+            // The same action as the relink panel's, while a video is open (ADR-012 addendum, 14 Oct 2026).
+            // Deleting stops saving in this tab: the work stays on screen, and is not written back.
+            <div data-testid="project-delete-panel">
+              <p className="field-label">{t('project.delete.title')}</p>
+              {persistence.forgotten ? null : (
+                <>
+                  <p className="hint-small" style={{ marginBottom: 10 }}>
+                    {t('project.delete.body')}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn-block btn-danger"
+                    onClick={() => {
+                      if (!window.confirm(t('project.delete.confirm'))) return;
+                      void persistence.forget().then((deleted) => {
+                        setProjectDeleteMessage(deleted ? 'project.deleted' : 'project.delete.failed');
+                      });
+                    }}
+                    data-testid="project-delete"
+                  >
+                    <Icon name="trash" />
+                    {t('relink.discard')}
+                  </button>
+                </>
+              )}
+              {projectDeleteMessage ? (
+                <p
+                  className={projectDeleteMessage === 'project.deleted' ? 'hint-small' : 'inline-error'}
+                  role={projectDeleteMessage === 'project.deleted' ? 'status' : 'alert'}
+                  data-testid="project-delete-message"
+                  data-outcome={projectDeleteMessage === 'project.deleted' ? 'deleted' : 'failed'}
+                >
+                  {t(projectDeleteMessage)}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <InstallEntry t={t} />
           <hr className="divider" />
           <button
