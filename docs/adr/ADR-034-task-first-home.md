@@ -805,7 +805,16 @@ penceresi (`CloudKeep.tsx`) ve bütün sözleri (`cloud.keep.*`) bulut yolunun d
 (Bu ek'in sonundaki tablo, aynı değişiklikle son kodda koşulan sınamaların sonucudur; değişiklik
 kaydında da aynı sayılar.)
 
-SINAMA-TABLOSU
+(14 Ekim 2026, dal `worktree-agent-a52e453bcc58fbe27`, kod commit'i `fab30c5`; hepsi yerel, son kodla.)
+
+| Ne | Sonuç |
+|---|---|
+| `tsc --noEmit`, `eslint .` | hatasız |
+| Birim (vitest) | **1420 / 1420** (82 dosya; `wizardHandoff.test.ts` 14 sınama: kural tablosu her iki yol için aynı cevap, "iş" eşiği, kimin saklama isteyebildiği — `KeepOnHandoff` bulut modülünden bir şey almıyor, sözler her derlemenin tablosunda ve bulut sözü taşımıyor, gizlilik metni) |
+| e2e, olağan derleme (yol **kapalı**; `CLIP_TEST_HOOKS=1`) | 407 sınama: **403 geçti, 4 atlandı, 0 başarısız** (önce 395 / 391; +12 yeni `transcript-keep.spec.ts`). `PAGE-RECOVERED-TOTAL 0`, `PAGE-DEAD-TOTAL 0` (bekçinin kendi sınamaları bilerek 9 kurtarma, 2 ölü sayfa). Yeni sınamalar betikli tanıyıcıyla: geçiş → saklandı → yenileme → yazı geri; editör hiç açılmazsa depo boş; indirmeden sonra cümle; soru penceresi, Esc ve "Vazgeç"; "Eski proje kalsın"; "Bu yazı saklansın"; kesitsiz kayıt sorulmadan; silme ve geri gelmeme; kullanılamayan depo; satırsız yazı saklanmaz; "Kes" saklamaz; gizlilik sayfası TR + EN. Var olan `transcript*.spec.ts`, `cloud-off.spec.ts`, `wizards.spec.ts`, `a11y.spec.ts` değiştirilmeden geçti (hiçbiri Yazıya dök için "saklanmıyor" beklemiyordu; depoları her sınamada boş başladığı için soru penceresi çıkmıyor) |
+| e2e, bulut derlemesi, yerel sahte Worker'a karşı | 58 sınama: **54 geçti, 4 atlandı, 0 başarısız**; `PAGE-RECOVERED-TOTAL 0`, `PAGE-DEAD-TOTAL 0`. `cloud-keep.spec.ts` 11 sınama yeni kimliklerle; "cihazda yazılan yazı saklanmadan geçer" sınaması tersine döndü: bu derlemede de saklanır, vekile istek gitmez |
+| Durağan çıktı, varsayılan (`STATIC_EXPORT=1`, `/capcut`) | derlendi; `apply-csp` bulut denetimi geçti; çıktıda `/v1/jobs`, `/v1/quota`, `AssemblyAI`, `cloud-keep`, `cloud.keep`, "İnternette yazıldı", "davet kodu" **yok**; yeni cümle, soru penceresi ve gizlilik cümlesi **var** |
+| `npm run quality` | 643 ölçü: **564 bütçe içinde, 10 dışında**, 5 ölçülemedi, 64 bütçesiz. Sekizi önceki koşulardaki açık maddeler (yedi arama ölçüsü, `out.notFaststart`). İkisi yeni: telefon kısıtlamasında TBT, editör 268 ms ve sihirbaz (`/yap/dikey/`) 202 ms (bütçe ≤ 200). Aynı kodla üç tam koşuda editör 248 / 157 / 268 ms; bu işin ve öncekinin (`5911725`) sırayla üçer `--only=perf` ölçümü: editör 165 / 226 / 229 ve 228 / 186 / 171 ms. Bu işe bağlanabilen bir yavaşlama gösterilemedi, yokluğu da kanıtlanmadı (ayrıntı `docs/quality/bulgular.md`); bütçe gevşetilmedi. Yazıya dök yürüyüşü (betikli tanıyıcı) 5 / 6 basış, teknik terim 0; metin ölçüleri değişmedi. Bir ekran farklı çıktı (`yol-yazi-kancali-sonuc`, eklenen cümle): bakıldı, iki görünümün tabanı yenilendi; karşılaştırmalı son koşuda farklı ekran 0 |
 
 ### Doğrulanmayanlar
 
