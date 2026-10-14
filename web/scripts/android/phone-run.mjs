@@ -80,7 +80,9 @@ if (!existsSync(join(android, SYNC_CLIP_24))) writeSyncClip(join(android, SYNC_C
 
 /** id, file, kesitler (seconds), options, what we expect. */
 const CASES = [
-  { id: 'A', file: join(real, 'add1.mp4'), kesits: [[2, 10]], expect: 'fast cut (1080x1920 30 fps H.264)' },
+  // The source has a single keyframe (at 0 s) in its 14 s: a 2–10 s kesit holds no IDR, so ADR-027's
+  // rule ("at least one IDR in the range", fallback `no_keyframe`) re-encodes it. It was never a fast cut.
+  { id: 'A', file: join(real, 'add1.mp4'), kesits: [[2, 10]], expect: 'encode (no_keyframe): 1080x1920 30 fps H.264, 240 frames' },
   { id: 'B', file: join(real, 'web-samsung-s21-h264-60fps-rot90.mp4'), kesits: [[0.5, 4]], expect: 'encode: 60 fps' },
   { id: 'C', file: join(real, 'web-samsung-hevc-slowmo-sef-rot90.mp4'), kesits: [[1, 8]], expect: 'encode: HEVC source' },
   { id: 'D', file: join(real, 'web-iphone12pro-hevc-hlg-dv-rot90.mov'), kesits: [[2, 10]], expect: 'encode: HDR HLG → SDR' },
@@ -112,7 +114,16 @@ const CASES = [
   { id: 'X', file: join(real, 'web-samsung-s21-h264-60fps-rot90.mp4'), kesits: [[0.5, 4]], exportOptions: { forced: { shortEdge: 720, videoBitrate: 1_500_000, audioBitrate: 128_000, bitrateMode: 'constant' } }, expect: 'forced 720p 1.5 Mbit/s constant' },
   { id: 'Y', file: join(real, 'web-samsung-s21-h264-60fps-rot90.mp4'), kesits: [[0.5, 4]], exportOptions: { forced: { shortEdge: 720, videoBitrate: 1_500_000, audioBitrate: 128_000 } }, expect: 'forced 720p 1.5 Mbit/s variable' },
   { id: 'Z', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [[10, 40]], exportOptions: { forced: { shortEdge: 720, videoBitrate: 1_500_000, audioBitrate: 128_000, bitrateMode: 'constant' } }, expect: 'forced 720p 1.5 Mbit/s constant, 30 s' },
-  { id: 'Z2', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [[10, 40]], exportOptions: { forced: { shortEdge: 1080, videoBitrate: 3_000_000, audioBitrate: 96_000, bitrateMode: 'constant' } }, expect: 'forced 1080p 3 Mbit/s constant, 96 kbit/s audio, 30 s' },
+  // Z's variable-mode twin: the same 30 s at the same asked bitrate, so the variable/constant gap is
+  // measured on a second kind of picture besides the S21 recording (X/Y). Added 14 Oct 2026.
+  { id: 'Z3', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [[10, 40]], exportOptions: { forced: { shortEdge: 720, videoBitrate: 1_500_000, audioBitrate: 128_000 } }, expect: 'forced 720p 1.5 Mbit/s variable, 30 s' },
+  // Q's constant-mode twin (Q asks the 500 kbit/s floor in variable mode and gets ~0.34 of it on this flat
+  // picture): does constant mode fill a simple picture up to the asked bitrate? Added 14 Oct 2026.
+  { id: 'Q2', file: join(android, SYNC_CLIP), kesits: [], sync: true, exportOptions: { forced: { shortEdge: 1080, videoBitrate: 500_000, audioBitrate: 128_000, bitrateMode: 'constant' } }, expect: 'whole clip, forced 1080p 500 kbit/s constant, clicks' },
+  // ADR-035 (phone table): this phone's AAC encoder accepts 96 kbit/s but its delay cannot be measured
+  // there, so a forced 96 kbit/s is refused ("ses kodlayıcısı sesi görüntüyle hizalı yazamadı"), no file
+  // written. The planner itself only offers 96 where the delay is measurable; `forced` bypasses it.
+  { id: 'Z2', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [[10, 40]], exportOptions: { forced: { shortEdge: 1080, videoBitrate: 3_000_000, audioBitrate: 96_000, bitrateMode: 'constant' } }, expect: 'phone: refused (96 kbit/s AAC not alignable, ADR-035); elsewhere forced 1080p 3 Mbit/s constant, 30 s' },
 ];
 
 /** ADR-035: the bytes of one stream's packets (the encoder's real output, without the container). */
@@ -400,6 +411,7 @@ async function runCase(testCase) {
       const name = await lastPickedName(page);
       const local = join(outDir, `${testCase.id}-${name.replace(/^picked-\d+-/, '')}`);
       row.sizeBytes = await readPickedFile(page, name, local);
+      row.localFile = local;
       row.probe = probe(local);
       // ADR-035: what the app said about a target-size download, and the encoder's real/asked size.
       row.output = await method.getAttribute('data-output');
@@ -460,7 +472,24 @@ async function runCase(testCase) {
   if (profile) {
     row.workerEvents = await page.evaluate(() => window.__workerEvents ?? []).catch(() => []);
     row.workerLog = workerLog;
+    // ADR-035 side finding (the phone's hardware encoder writes ~2× the asked bitrate in an
+    // ordinary, variable-mode download): the bitrate the worker asked for, from its profile
+    // line, against the video bytes really written (ffprobe's packet sizes over the duration).
+    const line = workerLog.find((text) => text.startsWith('[clip-export-profile] ') && text.includes('"videoBitrate"'));
+    const saved = row.localFile;
+    if (line && saved && row.method === 'encode') {
+      try {
+        const asked = JSON.parse(line.slice('[clip-export-profile] '.length)).videoBitrate;
+        const written = (packetBytes(saved, 'v:0') * 8) / row.probe.durationS;
+        row.videoAskedBitrate = asked;
+        row.videoWrittenBitrate = Math.round(written);
+        row.videoWrittenRatio = Number((written / asked).toFixed(4));
+      } catch {
+        /* no profile line for this export */
+      }
+    }
   }
+  delete row.localFile;
   // Clean up what this run left on the phone: saved files and site data.
   await clearSiteData(page);
   await page.close().catch(() => undefined);
