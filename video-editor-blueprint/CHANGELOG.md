@@ -3,6 +3,23 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Olağan indirmede donanım kodlayıcısı sabit bit hızıyla kodlar — 14 Ekim 2026 (ADR-045; şema ve politika değişmedi)
+
+Kurucu kararı (koşullu): telefonda olağan indirme istenen bit hızının ortanca 1,17 katını (1,06–1,51; kısa klipte 1,97) yazıyordu, sabit modda 0,999–1,003 — "olağan indirme de sabit mod istesin, masaüstünde anlamlı kalite kaybı göstermezse". Hiçbir dış hizmete istek gitmedi; telefon kullanılmadı.
+
+**Sınama** (`docs/quality/2026-10-14-cbr.md`; kural ve dokuz durum ölçümden önce commit `3a56db1`'de kaydedildi): aynı indirme iki modda, aynı bit hızıyla; kayıpsız ffmpeg referansına karşı SSIM, en kötü kare SSIM, VMAF; dosya boyutu. Kural: VMAF düşüşü ≤ 2, en kötü kare SSIM düşüşü ≤ 0,02, dosya büyümez (%1).
+- **Donanım (Chrome 155, Edge 155; NVIDIA): 9/9 geçti.** En büyük VMAF düşüşü 1,85, en kötü kare SSIM düşüşü en çok 0,006; sabit dosyalar değişkenin 0,80–0,99'u; yazılan ÷ istenen 1,04–1,29 → 0,95–1,00; düz resim doldurulmadı.
+- **Yazılım (Playwright Chromium): geçmedi** — düz test deseninde sabit dosya %1,9–2,5 büyük (içerik; kodlamadan önce bilinemez). Kalite iki modda aynı, yazılan ÷ istenen zaten ~0,99.
+
+**Şimdi.**
+- Olağan (yeniden kodlanan) indirmede **donanım kodlayıcısı `constant`**, yazılım kodlayıcısı `variable` (değişmedi) — `ORDINARY_BITRATE_MODE`. Bit hızı, kaynağın 2 katı tavanı, yazılımda 3 kat (ADR-024) ve hedef boyut (ADR-035) aynen; kopya ve hızlı kesim dokunulmadı.
+- Sabit mod kodlayıcı kurulmadan sorulur (`canEncodeVideo`, aynı yapılandırma); reddedilirse indirme `variable` ile sürer, asla başarısız olmaz. Aynı soru Küçült'e de kondu (önceden reddeden tarayıcıda dururdu).
+- Sonuç satırı söyler: `data-video-bitrate`, `data-bitrate-mode`, `data-bitrate-mode-asked`; "Ayrıntılar"daki hata satırı ve tanı dosyası video kodlayıcısının `bitrateMode`'unu taşır (yalnızca bilinen üç değer; veri envanteri satırı güncellendi).
+- Depolama tahmini (ADR-023, ×1,1 + 32 MiB) değişmedi: değişken mod için ayrıca konmuş bir pay değildi; donanımda sabit modla artık telefonda da tutuyor.
+- Kancalar: `__clipBitrateMode` (ölçüm), `__clipRefuseConstantBitrate` (yalnızca sınama derlemesi). `scripts/measure-bitrate-mode.mjs`; `phone-run.mjs --bitrate-mode=variable|constant`.
+
+**Doğrulanmayan:** telefonda iki modun kalitesi (ana oturum ölçecek); Intel/AMD/Apple/VA-API kodlayıcıları; gerçek kamera kayıtları; `isConfigSupported` "evet" deyip sonra sabit modu reddeden bir tarayıcı.
+
 ## "Yazıya dök" telefonda küçük modeli önerir; büyük model durursa "Küçük modelle dene" — 14 Ekim 2026 (ADR-036 eki; şema ve politika değişmedi; tarayıcıda saklananlara bir `localStorage` anahtarı eklendi)
 
 Kurucu yokken, özerk çalışma. Hiçbir dış hizmete istek gitmedi; telefon kullanılmadı; `cloud/` altına dokunulmadı.
