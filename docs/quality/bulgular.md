@@ -1,5 +1,36 @@
 **Yazıldığı koşu:** 11 Ekim 2026 öğleden sonra, dal `worktree-agent-a511c0275d7647e51` (önceki bulgular: aynı gün, `b8e355f`). O raporda açık kalan üç şey üzerinde çalışıldı: aramanın yanlış karta göndermesi, editörün her videoyu 1080p’ye büyütmesi, 720p’den küçük kaynakların büyütülmesi. Aşağıda her biri için aynı ölçünün önceki → şimdiki değeri var. Açık kalanlar en başta.
 
+### 14 Ekim — cihazda yazılan yazı da editöre geçişte saklanır (ADR-034 “Ek 2”; dal `worktree-agent-a52e453bcc58fbe27`)
+
+**Yayındaki sitede görünen bir şey değişti:** “Yazıya dök”ün sonuç ekranında, editör bağlantısının üstünde artık
+“Bu yazı henüz saklanmadı: editörde açarsan ya da metni indirirsen kalır, yoksa sayfa kapanınca gider.” yazıyor
+(sabah yalnızca bulut yolundaydı); editörde açılan yazı kayıtlı proje oluyor.
+
+- 643 ölçü: 564 bütçe içinde, **10 dışında**, 5 ölçülemedi (model dosyaları yok), 64 bütçesiz. Sekizi önceki
+  koşulardaki açık maddeler (yedi arama ölçüsü ve `out.notFaststart`). **İkisi yeni: telefon kısıtlamasında TBT** —
+  editör 268 ms (233–322), sihirbaz 202 ms (174–250); bütçe ≤ 200 ms. Aşağıda “Gürültü mü, bu iş mi?”.
+- Sözler bulut tablosundan sihirbazın tablosuna taşındı (`cloud.keep.*` → `wizard.yazi.keep*`); ikisi de varsayılan
+  yol sayılıyordu, metin ölçüleri aynı: Ateşman ortancası 82,7, zor metin %1,9, “çok zor” 0, 20 kelimeden uzun cümle 1,
+  teknik terimli satır 9. Yazıya dök yürüyüşü (betikli tanıyıcı): masaüstü 5 / telefon 6 basış, en kalabalık ekran
+  105 kelime, teknik terim 0 — değişmedi.
+- **Ekran tabanları:** ilk koşuda bir ekran “farklı” çıktı: `yol-yazi-kancali-sonuc` telefon (%1,53) — eklenen cümle,
+  bağlantı bir satır aşağıda; masaüstü %0,4 ile tolerans içindeydi ama o da cümleyi gösteriyor. Ekranlara bakıldı,
+  `--update-baselines` ile yenilendi; depoya giren taban değişikliği yalnızca bu iki resim. Aynı yenilemede yeniden
+  yazılan, tolerans içindeki ve bu işle ilgisi olmayan altı taban geri alındı (`editor-bos` telefon, `yol-kes-sonuc`
+  masaüstü, `yol-yazi-bulut-secim` / `-kodsuz` iki görünüm). Sonra rapor tabanlarla karşılaştırılarak yeniden koşuldu: farklı ekran **0**. Bu rapor o koşudur.
+- **Gürültü mü, bu iş mi?** Aynı kodla üç tam koşuda editör TBT'si 248 → 157 → 268 ms çıktı (önceki rapor: 167). Bu
+  yüzden yalnızca `--only=perf` ile, bu işin `web/src` + `web/tests`'i ile öncekinin (`5911725`) sırayla üçer kez
+  ölçüldü (aynı makine, aynı saat; makinede başka işler de vardı). Editör: bu iş 165 / 226 / 229 ms, önceki 228 / 186 /
+  171 ms; sihirbaz: bu iş 163 / 156 / 184, önceki 146 / 149 / 129; ana ekran (bu işin dokunmadığı sayfa): bu iş 124 /
+  168 / 134, önceki 137 / 246 / 143. Aynı kodun iki ölçümü arasındaki fark (≈ 60–110 ms) iki kod arasındaki farktan
+  büyük; önceki kod da bu koşullarda bütçeyi aştı (228 ms). JS: editör 293 KB / 16 dosya (önce 294 KB / 17), sihirbaz
+  ve ana ekran aynı. Ölçülen sihirbaz sayfası `/yap/dikey/`: Yazıya dök'ün kodunu hiç yüklemez; bu işten ona giden tek
+  şey her sayfanın taşıdığı söz tablosuna eklenen ≈ 2 KB cümle. Yine de orada bu iş üç çiftin üçünde de biraz yüksek
+  (17, 7 ve 55 ms). Sonuç: bu işe bağlanabilen bir yavaşlama **gösterilemedi**, ama yokluğu da kanıtlanmadı — boş bir
+  makinede yeniden bakılmalı. Bütçe gevşetilmedi; iki ölçü raporda bütçe dışı duruyor.
+- Soru penceresi (“Saklanan bir projen var”) bu katmanda da **ölçülmüyor** (yürüyüş boş depoyla başlar); olağan
+  e2e'de (`transcript-keep.spec.ts`) sınanıyor.
+
 ### 13 Ekim (akşam) — internette yazılan yazı editöre geçişte saklanır (ADR-034 eki; dal `worktree-agent-a2b52e38355c6d5f7`)
 
 Yayındaki sitede görünen bir şey değişmedi (bulut yolu kapalı). Aşağıdaki “açık bulgu” (yazı kalıcı projeye yalnızca
