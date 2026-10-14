@@ -524,3 +524,13 @@ Tabanın (360) altındaki bir görüntünün tek basamağı kendi boyutudur; tab
 
 **Ölçülmeyen:** standart olmayan ilk basamakta (480, 406) bit / piksel tabanlarının (0,04 / 0,07)
 doğruluğu — tabanlar 1080 / 720 / 540 / 360 üzerinde ölçülmüştü.
+
+## Güncelleme — 14 Ekim 2026: olağan indirme de sabit mod (donanımda), sabit mod önce sorulur (ADR-045)
+
+Hedef boyutun davranışı aynı: kodlayıcıdan `constant` istenir. İki ek: (1) olağan indirme de donanım
+kodlayıcısında `constant` ister ([ADR-045](ADR-045-constant-bitrate-ordinary-download.md); yazılımda
+değişken kaldı); (2) `constant` artık kodlayıcı kurulmadan sorulur (`canEncodeVideo`, aynı boyut ve bit
+hızı) — reddeden bir tarayıcıda Küçült önceden mediabunny'nin "yapılandırma desteklenmiyor" hatasıyla
+dururdu, şimdi `variable` ile kodlar, düzeltme denemeleri boyutu tutturur ve sonuç satırı
+(`data-bitrate-mode` / `data-bitrate-mode-asked`) bunu söyler. Ölçülen tarayıcıların hepsi `constant`'ı
+destekliyor; orada hiçbir şey değişmedi. `forced` ölçüm kancası sorulmaz.

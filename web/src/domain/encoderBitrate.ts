@@ -12,7 +12,8 @@
  * making no difference. 3x is the smallest measured step that matches the
  * hardware encoder's quality there with margin.
  *
- * Hardware encoders are left exactly as they were: same config, same files.
+ * Hardware encoders keep the plan's bitrate (their rate control is ADR-045's,
+ * `ORDINARY_BITRATE_MODE` below).
  */
 
 export type VideoEncoderKind = 'hardware' | 'software';
@@ -66,12 +67,25 @@ export function sourceBoundedBitrate(planBitrate: number, sourceBitrate: number 
 export type VideoBitrateMode = 'constant' | 'variable';
 
 /**
- * The rate control an ORDINARY (re-encoded) download asks for, by encoder kind.
- * A target-size download always asks for `constant` (ADR-035); copies and the
- * fast cut's seams are not touched by this.
+ * The rate control an ORDINARY (re-encoded) download asks for, by encoder kind
+ * (ADR-045). A target-size download always asks for `constant` (ADR-035);
+ * copies and the fast cut's seams are not touched by this.
+ *
+ * - hardware: `constant`. On the phone (S23) the variable mode wrote 1.06–1.51
+ *   times the asked bitrate (1.97 on a short detailed clip), constant 0.999–
+ *   1.003. On this desktop's hardware encoder (Chrome and Edge, nine cases,
+ *   docs/quality/2026-10-14-cbr.md) constant passed the rule registered before
+ *   measuring on every case: mean VMAF at most 1.85 lower, worst-frame SSIM at
+ *   most 0.006 lower, every file smaller (0.80–0.99 of the variable one), and a
+ *   flat picture is not padded up (0.05 of the asked bitrate in both modes).
+ * - software: `variable`, by the same rule: on a flat test pattern the
+ *   constant file came out 1.9–2.5 % larger (the rule allowed 1 %), a matter
+ *   of content the app cannot know before encoding. The software encoder
+ *   already writes 0.99 of what it is asked in either mode, so constant would
+ *   gain it nothing.
  */
 export const ORDINARY_BITRATE_MODE: Record<VideoEncoderKind, VideoBitrateMode> = {
-  hardware: 'variable',
+  hardware: 'constant',
   software: 'variable',
 };
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MIN_REENCODE_BITRATE,
+  ORDINARY_BITRATE_MODE,
   SOFTWARE_ENCODER_BITRATE_FACTOR,
   SOURCE_BITRATE_HEADROOM,
   chooseBitrateMode,
@@ -64,6 +65,11 @@ describe('encoder bitrate by encoder kind (ADR-024)', () => {
 });
 
 describe('the rate control is settled before the encoder exists (ADR-045)', () => {
+  it('an ordinary download asks the hardware encoder for constant, the software encoder for variable', () => {
+    // docs/quality/2026-10-14-cbr.md: hardware passed the pre-registered rule on 9/9 cases, software did not.
+    expect(ORDINARY_BITRATE_MODE).toEqual({ hardware: 'constant', software: 'variable' });
+  });
+
   it('uses constant where the browser can encode that way, asking once for constant only', async () => {
     const asked: string[] = [];
     const choice = await chooseBitrateMode('constant', async (mode) => {
