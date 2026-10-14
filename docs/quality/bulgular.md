@@ -1,5 +1,18 @@
 **Yazıldığı koşu:** 11 Ekim 2026 öğleden sonra, dal `worktree-agent-a511c0275d7647e51` (önceki bulgular: aynı gün, `b8e355f`). O raporda açık kalan üç şey üzerinde çalışıldı: aramanın yanlış karta göndermesi, editörün her videoyu 1080p’ye büyütmesi, 720p’den küçük kaynakların büyütülmesi. Aşağıda her biri için aynı ölçünün önceki → şimdiki değeri var. Açık kalanlar en başta.
 
+### 14 Ekim akşamı — telefonda büyük model yok, ölü görünen kart, video açıkken proje silme (ADR-036 Ek 2, ADR-044 eki, ADR-012 eki; dal `worktree-agent-a47f69274849b8c7a`)
+
+- 643 ölçü: **566 bütçe içinde, 8 dışında** (hepsi önceki koşulardaki açık maddeler: yedi arama ölçüsü ve
+  `out.notFaststart`), 5 ölçülemedi (model dosyaları yok), 64 bütçesiz. Sabahki iki TBT ölçüsü bu koşuda bütçe
+  içinde (editör 193 ms, sihirbaz 157 ms); aynı kodla ilk tam koşuda ikisi yine dışarıdaydı (218 / 208 ms) —
+  sınırın iki yanına düşen gürültü, "düzeldi" sayılmaz.
+- **Ekran tabanları:** ilk koşuda bir ekran “farklı”: `sihirbaz-yazi-model` telefon (%10,83) — eklenen
+  “Büyük model telefonda henüz yok.” satırı, altındaki kutu bir satır aşağıda. Ekrana bakıldı, `--update-baselines`
+  ile yenilendi; depoya giren taban değişikliği yalnızca bu resim. Sonra tam koşu: farklı ekran **0**. Bu rapor o koşudur.
+- Aktarılan JS: ana ekran 180 → 181 KB, editör 293 → 299 KB (16 → 18 dosya), sihirbaz 243 → 244 KB. Önceki rapor
+  `a1c068c`'nin; arada bu dalın dışındaki üç commit var (`bb3c860` editöre yeni bir parça ekledi), editördeki
+  farkın ne kadarının bu işten olduğu ayrıca ölçülmedi.
+
 ### 14 Ekim — cihazda yazılan yazı da editöre geçişte saklanır (ADR-034 “Ek 2”; dal `worktree-agent-a52e453bcc58fbe27`)
 
 **Yayındaki sitede görünen bir şey değişti:** “Yazıya dök”ün sonuç ekranında, editör bağlantısının üstünde artık

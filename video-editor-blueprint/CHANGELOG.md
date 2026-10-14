@@ -3,6 +3,22 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Telefonda büyük model yok; ölü görünen kart açılır; video açıkken "Kayıtlı projeyi sil" — 14 Ekim 2026 akşamı (ADR-036 Ek 2, ADR-044 eki, ADR-012 eki; şema ve politika değişmedi; tarayıcıda saklananlar değişmedi)
+
+Kurucu kararları, özerk çalışma. Hiçbir dış hizmete istek gitmedi; telefon kullanılmadı; `cloud/` altına dokunulmadı.
+
+**1. "Yazıya dök": büyük model telefonda hiç sunulmaz.** Önce: telefonda küçük model önerili ve seçili, büyük model uyarılı bir seçenekti (S23'te 3 denemede 3 kez durdu). Şimdi: telefon ve tablette seçim yok; tek satır **"Büyük model telefonda henüz yok."** (EN "The large model is not on phones yet."), yalnızca küçük model. Daha önce "burada durdu" notu olan telefon da telefondur (cihaz notun önüne geçti). Telefonda önceden saklanmış büyük model yine sunulmaz; adım "Büyük model bu tarayıcıda ≈… yer kaplıyor." + **Büyük modeli sil** gösterir; "Modeli sil" aynen. Masaüstü Chromium, Safari/Firefox masaüstü ve "burada durdu" aynen. `transcript.model.turboHint.phone` kaldırıldı.
+
+**2. Açılış ekranı: ölü görünen kart.** Önce (yeniden üretildi): kartın sayfa verisi isteği (`?_rsc`) hiç yanıt almazsa kart 25 sn sonra bile hiçbir şey yapmamış gibi duruyordu. Şimdi: basılan kart ya da arama sonucu hemen **"Açılıyor…"** der (durum bölgesi de); açılış ekranı basıştan **10 sn** sonra hâlâ oradaysa aynı adres bir kez tam yüklenir. Hızlı ya da yavaş ama tamamlanan gezinme tetiklemez; tam yükleme de takılırsa yeniden istenmez. 10 sn: ADR-044 dayanıklılık koşusunda tam yüklemenin ağır yükteki p99'u 6,2 sn (ADR-044 eki).
+
+**3. Editör: video açıkken "Kayıtlı projeyi sil".** Önce: yalnızca sayfa yenilenip dosya istendiğinde. Şimdi ayrıca **"Diğer"** penceresinde, "Proje yedeği"nin altında (karar metni "Ayarlar" diyordu; "Ayarlar" her indirmeye uygulanan çerçeve/ses/altyazı ayarlarıdır, projenin saklanmasıyla ilgili var olan yer "Diğer" — ADR-012 eki, kurucu kararı). Onay: "Bu cihazdaki kayıtlı proje silinecek: kesitler, yazı, ayarlar ve proje adı. Cihazındaki video dosyasına dokunulmaz. Açık video ekranda kalır ama bu düzenleme artık saklanmaz; sayfayı kapatınca gider. Silinsin mi?" Sonra video ve kesitler yerinde, başlık **"Bu düzenleme saklanmıyor"**; otomatik kayıt ve çıkıştaki son yazma silinen projeyi geri yazmaz (tek proje, sabit kimlik: "yeni proje olarak saklamak" aynı kaydı geri yazmak olurdu). Yolda olan bir yazma silmeden sonra biterse geri alınır. Gizlilik sayfasında "Proje tarifi" kartının silme cümlesi (TR + EN) yeni yeri söyler; veri envanteri §2.1, §2.8 ve bulut bölümü.
+
+**Sınamalar (son kodla, yerel):** `tsc` ve `eslint` temiz; birim **1446 / 1446** (84 dosya; yeni `navigationFallback.test.ts` 7, `largeModelChoice.test.ts` +1, `wizardHandoff.test.ts` gizlilik cümlesi); olağan e2e (`CLIP_TEST_HOOKS=1`, port 3193, kilit altında) **419 sınama: 415 geçti, 4 atlandı, 0 başarısız** (27,4 dk) — yeni `card-navigation.spec.ts` 4 (gerçek 10 sn ile), `persistence.spec.ts` +2, `transcript-large-fallback.spec.ts` telefon bölümü 2; `PAGE-RECOVERED-TOTAL 0`, `PAGE-DEAD-TOTAL 0` (bekçinin kendi testleri bilerek 9 / 2). Varsayılan durağan çıktı (`/capcut`) derlendi; tam yükleme adresinde sondaki `/` açık. **Kalite katmanı:** 643 ölçü, 566 bütçe içinde, 8 dışında (hepsi önceki açık maddeler), farklı ekran 0 (`sihirbaz-yazi-model` telefon tabanı yeni satır için yenilendi; başka taban değişmedi). Koşulmayan: bulut e2e, Pages duman testi, tarayıcı matrisi, gerçek modelle testler, arıza sondası.
+
+**Açık kurucu kararları:** "Kayıtlı projeyi sil"in yeri ("Diğer" mi, "Ayarlar" mı); 10 sn eşiği (gerçek bağlantı verisiyle yeniden bakılmalı); korumanın "Kendim düzenleyeceğim" bağlantısına da genişletilmesi; telefon satırının sözü ("henüz" bir söz mü?).
+
+**Doğrulanmayan:** gerçek telefon; gerçek kötü bağlantı; GitHub Pages'te tam yükleme adresi (yalnızca birim testi ve durağan derleme); ekran okuyucu; iki sekmeyle silme.
+
 ## "Yazıya dök" telefonda küçük modeli önerir; büyük model durursa "Küçük modelle dene" — 14 Ekim 2026 (ADR-036 eki; şema ve politika değişmedi; tarayıcıda saklananlara bir `localStorage` anahtarı eklendi)
 
 Kurucu yokken, özerk çalışma. Hiçbir dış hizmete istek gitmedi; telefon kullanılmadı; `cloud/` altına dokunulmadı.
