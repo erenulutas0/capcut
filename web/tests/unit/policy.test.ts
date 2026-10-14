@@ -22,6 +22,8 @@ import { downloadBytes } from '@/domain/transcriptModels';
 import { overLimitText } from '@/components/editor/outputLimitText';
 import { tr, type MessageKey } from '@/i18n/messages';
 import { en } from '@/i18n/messages.en';
+import { cloudTr } from '@/i18n/cloudMessages';
+import { cloudEn } from '@/i18n/cloudMessages.en';
 
 const GIB = 1_073_741_824;
 const MIB = 1_048_576;
@@ -60,10 +62,61 @@ describe('web local policy', () => {
     expect(WEB_LOCAL_POLICY.maxTotalSourceBytes).toBe(4_294_967_296);
   });
 
-  it('records the v9 change (the download is the video’s own size, at most 1080p; nothing is enlarged) in doc 15', () => {
+  it('records the v10 change (the internet route of "Yazıya dök" is an invite-only free trial) in doc 15, as the Worker and the screens have it', () => {
     const [docId] = WEB_LOCAL_POLICY.policyId.split('/');
-    expect(docId).toBe('2026-10-11.v9');
+    expect(docId).toBe('2026-10-14.v10');
     expect(doc15).toContain(`Politika kimliği: \`${docId}\`.`);
+    const lines = doc15.split(/\r?\n/);
+    const note = lines.find((line) => line.startsWith(`**Değişiklik \`${docId}\``));
+    expect(note).toBeDefined();
+    expect(note).toContain('kurucu kararı, 14 Ekim 2026');
+    expect(note).toContain('ADR-039');
+    expect(note).toContain('davetli deneme');
+    expect(note).toContain('**Ücretsizdir**');
+    expect(note).toContain('kişi olarak');
+    expect(note).toContain('yalnızca genişleme');
+    expect(note).toContain('Ölçülmeyen');
+    expect(note).toContain('**Cihaz üstü yol değişmedi:**');
+    // The new row, and the on-device and paid cloud AI rows exactly as they were.
+    expect(doc15).toContain(
+      '| İnternette yazıya dökme — davetli deneme (bulut, isteğe bağlı; web, "Yazıya dök" sihirbazı) | Yalnızca davet koduyla, ücretsiz: davet başına dakika hakkı (varsayılan 60 dakika), iş başına en çok 120 dakika ses; aylık harcama tavanı dolunca kapanır; kalıcı hak değildir | Aynı; Pro\'ya bağlı değildir |',
+    );
+    expect(doc15).toContain(
+      '| Cihaz üstü yazıya dökme ve otomatik altyazı (web, yalnız İngilizce; model tarayıcıda çalışır) | Dahil; adet ve dakika kotası yok | Aynı |',
+    );
+    expect(doc15).toContain('| AI işlemleri (bulut / ücretli) | Yok | Başlangıç aboneliğine dahil değil |');
+
+    // The numbers are the proxy Worker's own settings in this repository (cloud/worker/wrangler.jsonc):
+    // what the document promises is what the Worker that is deployed from here enforces.
+    const wrangler = readFileSync(join(__dirname, '..', '..', '..', 'cloud', 'worker', 'wrangler.jsonc'), 'utf8');
+    const setting = (name: string) => new RegExp(`"${name}":\\s*"([^"]*)"`).exec(wrangler)?.[1];
+    expect(setting('INVITE_MINUTES_DEFAULT')).toBe('60');
+    expect(note).toContain('varsayılanı **60 dakika** (Worker `INVITE_MINUTES_DEFAULT`)');
+    expect(setting('MAX_JOB_MINUTES')).toBe('120');
+    expect(note).toContain('**İş başına en çok 120 dakika** ses (Worker `MAX_JOB_MINUTES`');
+    // The same 120 minutes as the web input limit: a video that may be opened may be sent whole.
+    expect(Number(setting('MAX_JOB_MINUTES')) * 60 * US_PER_SECOND).toBe(WEB_LOCAL_POLICY.maxTotalSourceDurationUs);
+    expect(setting('MONTHLY_CAP_USD')).toBe('1');
+    expect(note).toContain('kurucu kararı 1 $');
+    expect(setting('PROVIDER_REGION')).toBe('eu');
+    expect(note).toContain('**AB bölgesi** (Worker `PROVIDER_REGION=eu`)');
+    expect(setting('ENABLED')).toBe('true');
+    expect(setting('ALLOWED_ORIGINS')?.split(',')).toContain('https://erenulutas0.github.io');
+
+    // The screens say the same, and no more: Europe, free, minutes per invite, a monthly cap, the device way unchanged.
+    expect(cloudTr['cloud.online.fact.who']).toContain('Avrupa');
+    expect(cloudTr['cloud.privacy.region']).toContain('Avrupa Birliği');
+    expect(cloudEn['cloud.privacy.region']).toContain('European Union');
+    for (const text of [cloudTr['cloud.privacy.trial'], cloudEn['cloud.privacy.trial']]) {
+      expect(text).toMatch(/ücretsiz|free/);
+      expect(text).toMatch(/dakika|minutes/);
+      expect(text).toMatch(/Aylık|monthly/);
+    }
+    expect(cloudTr['cloud.privacy.trial']).toContain('Cihazımda');
+  });
+
+  it('keeps the v9 change (the download is the video’s own size, at most 1080p; nothing is enlarged) in doc 15', () => {
+    const docId = '2026-10-11.v9';
     const lines = doc15.split(/\r?\n/);
     const note = lines.find((line) => line.startsWith(`**Değişiklik \`${docId}\``));
     expect(note).toBeDefined();
