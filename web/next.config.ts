@@ -73,6 +73,9 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_APP_VERSION: appVersion(),
     NEXT_PUBLIC_GIT_COMMIT: gitCommit(),
     NEXT_PUBLIC_BASE_PATH: basePath,
+    // '1' where every page is a folder (the static export): an address built by hand for a full page
+    // load must end in '/' as `next/link`'s do (components/home/navigationFallback.ts).
+    NEXT_PUBLIC_TRAILING_SLASH: staticExport ? '1' : '',
     // '1' only for the e2e build (ADR-036): lets a test supply a tiny model
     // list and a scripted stand-in for the speech recogniser. Always defined,
     // so the code behind it is removed from every other build; a static

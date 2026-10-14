@@ -1010,6 +1010,7 @@ export const tr = {
   'home.examples': 'Örneğin',
   'home.tasks.title': 'Bütün işler',
   'home.results.title': 'Bunu mu demek istedin?',
+  'home.opening': 'Açılıyor…',
   'home.results.start': 'Başla',
   'home.results.unavailable': 'Bunu henüz yapamıyoruz.',
   'home.results.none.title': 'Bunu bulamadım.',

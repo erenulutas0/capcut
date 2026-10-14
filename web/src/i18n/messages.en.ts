@@ -983,6 +983,7 @@ export const en: Record<MessageKey, string> = {
   'home.examples': 'For example',
   'home.tasks.title': 'All tasks',
   'home.results.title': 'Did you mean this?',
+  'home.opening': 'Opening…',
   'home.results.start': 'Start',
   'home.results.unavailable': 'We cannot do this yet.',
   'home.results.none.title': 'I could not find that.',
