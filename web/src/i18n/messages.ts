@@ -1233,11 +1233,11 @@ export const tr = {
   'transcript.model.turbo': 'Önerilen: büyük model (≈{size}, bir kez iner)',
   'transcript.model.turboHint':
     'Konuşmayı çok daha iyi anlar; sohbette ve gürültüde de. İndirmesi büyüktür, ekran kartını kullanır ve çok bellek ister.',
-  // ADR-036 addendum (14 Oct 2026): where the large model is not proven (a phone, an untested browser, or it failed here).
+  // ADR-036 addendum (14 Oct 2026): where the large model is not proven (an untested browser, or it failed here).
+  // Second addendum: on a phone it is not offered at all; `largePhone` is the one line said instead.
   'transcript.model.baseRecommended': 'Önerilen: küçük model (≈{size}, bir kez iner)',
   'transcript.model.turboPlain': 'Büyük model (≈{size}, bir kez iner)',
-  'transcript.model.turboHint.phone':
-    'Konuşmayı daha iyi anlar ama telefonda çalışmayabilir: denediğimiz bir telefonda indi, sonra yazıya dökemedi. İndirmesi çok büyüktür.',
+  'transcript.model.largePhone': 'Büyük model telefonda henüz yok.',
   'transcript.model.turboHint.untested':
     'Konuşmayı daha iyi anlar ama bu tarayıcıda hiç denenmedi; çalışmayabilir. İndirmesi çok büyüktür.',
   'transcript.model.turboHint.failed_here':

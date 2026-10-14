@@ -6,6 +6,7 @@ import {
   LARGE_MODEL,
   RECOMMENDED_MODEL,
   classifyLargeModelFailure,
+  largeModelOffered,
   largeModelStanding,
   preselectedModel,
   recommendedModel,
@@ -21,7 +22,8 @@ import { strongJargon } from '../quality/lib/jargon';
  * pre-selected and "Önerilen"; its 605 MB download worked and writing failed
  * 3 times of 3 with a WebGPU buffer read error, while the small model wrote
  * the same clip in 10.5 s. The large model is now recommended only where it
- * was measured to work, and its failure offers the small model.
+ * was measured to work, and its failure offers the small model. Second
+ * addendum (same day): on a phone it is not offered at all.
  */
 
 /** User-Agent strings as the browsers send them (versions as of Oct 2026). */
@@ -120,12 +122,14 @@ describe('which model is "Önerilen" and selected first', () => {
     expect(preselectedModel({ ...input, baseReady: true, turboReady: false })).toBe('base');
     expect(preselectedModel({ ...input, baseReady: true, turboReady: true })).toBe('turbo');
     expect(RECOMMENDED_MODEL).toBe(LARGE_MODEL);
+    expect(largeModelOffered(input)).toBe(true);
   });
 
-  it('a phone with WebGPU (the S23): the small model, whatever is stored — the large one stays a choice', () => {
+  it('a phone with WebGPU (the S23): only the small model, whatever is stored — the large one is not offered at all', () => {
     const input = { largeSupported: true, device: PHONE, largeFailedHere: false };
     expect(largeModelStanding(input)).toBe('phone');
     expect(recommendedModel(input)).toBe('base');
+    expect(largeModelOffered(input)).toBe(false);
     for (const baseReady of [false, true]) {
       for (const turboReady of [false, true]) {
         expect(preselectedModel({ ...input, baseReady, turboReady })).toBe('base');
@@ -133,11 +137,22 @@ describe('which model is "Önerilen" and selected first', () => {
     }
   });
 
+  it('a phone where it failed before is still a phone: not offered (the device outranks the note)', () => {
+    const input = { largeSupported: true, device: PHONE, largeFailedHere: true };
+    expect(largeModelStanding(input)).toBe('phone');
+    expect(largeModelOffered(input)).toBe(false);
+    expect(preselectedModel({ ...input, baseReady: false, turboReady: true })).toBe('base');
+    // A tablet and a phone that is not Chromium (Firefox, Safari on an iPhone) are phones too.
+    expect(largeModelOffered({ largeSupported: true, device: { handheld: true, chromium: false }, largeFailedHere: false })).toBe(false);
+  });
+
   it('a browser that is not Chromium (Safari, Firefox with WebGPU): never measured, so the small model', () => {
     const input = { largeSupported: true, device: DESKTOP_OTHER, largeFailedHere: false };
     expect(largeModelStanding(input)).toBe('untested');
     expect(recommendedModel(input)).toBe('base');
     expect(preselectedModel({ ...input, baseReady: false, turboReady: true })).toBe('base');
+    // Unchanged: still a choice, with its line.
+    expect(largeModelOffered(input)).toBe(true);
   });
 
   it('where it failed before: the small model, even on desktop Chromium and with the large one stored', () => {
@@ -145,8 +160,8 @@ describe('which model is "Önerilen" and selected first', () => {
     expect(largeModelStanding(input)).toBe('failed_here');
     expect(recommendedModel(input)).toBe('base');
     expect(preselectedModel({ ...input, baseReady: false, turboReady: true })).toBe('base');
-    // The note outranks the device: a phone where it failed says "failed here".
-    expect(largeModelStanding({ device: PHONE, largeFailedHere: true })).toBe('failed_here');
+    // Unchanged: still a choice, with its line.
+    expect(largeModelOffered(input)).toBe(true);
   });
 
   it('no WebGPU: the small model on every device (unchanged)', () => {
@@ -154,6 +169,7 @@ describe('which model is "Önerilen" and selected first', () => {
       const input = { largeSupported: false, device, largeFailedHere: false };
       expect(recommendedModel(input)).toBe('base');
       expect(preselectedModel({ ...input, baseReady: false, turboReady: true })).toBe('base');
+      expect(largeModelOffered(input)).toBe(false);
     }
   });
 });
@@ -202,7 +218,7 @@ describe('what the screen says (plain words, both languages)', () => {
   const DEFAULT_PATH: MessageKey[] = [
     'transcript.model.baseRecommended',
     'transcript.model.turboPlain',
-    'transcript.model.turboHint.phone',
+    'transcript.model.largePhone',
     'transcript.model.turboHint.untested',
     'transcript.model.turboHint.failed_here',
     'transcript.model.largeSpace',
@@ -226,9 +242,9 @@ describe('what the screen says (plain words, both languages)', () => {
     }
   });
 
-  it('says plainly that the large model may not work on a phone and is large; the failure screen names the way forward', () => {
-    expect(tr['transcript.model.turboHint.phone']).toMatch(/telefonda çalışmayabilir/);
-    expect(tr['transcript.model.turboHint.phone']).toMatch(/büyük/);
+  it('says plainly, in one short line, that the large model is not on phones yet; the failure screen names the way forward', () => {
+    expect(tr['transcript.model.largePhone']).toBe('Büyük model telefonda henüz yok.');
+    expect(en['transcript.model.largePhone']).toBe('The large model is not on phones yet.');
     expect(tr['transcript.model.baseRecommended']).toMatch(/^Önerilen: küçük model/);
     expect(tr['transcript.model.turboPlain']).not.toMatch(/Önerilen/);
     expect(tr['transcript.fallback.small']).toBe('Küçük modelle dene');

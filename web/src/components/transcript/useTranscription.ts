@@ -29,6 +29,7 @@ import type { DeviceClass } from '@/domain/deviceClass';
 import {
   LARGE_MODEL,
   classifyLargeModelFailure,
+  largeModelOffered,
   largeModelStanding,
   preselectedModel,
   recommendedModel,
@@ -104,7 +105,8 @@ export function useTranscription() {
   /** The selected model, for the jobs: a press that switches models and starts at once must not use the old one. */
   const modelRef = useRef<TranscriptModelId>('base');
   const [status, setStatus] = useState<ModelStatus | null>(null);
-  const [largeOffered, setLargeOffered] = useState(false);
+  /** WebGPU with `shader-f16`: the large model can start in this browser (offered only off phones). */
+  const [largeSupported, setLargeSupported] = useState(false);
   /** Phone or computer, Chromium or not: read once (`domain/deviceClass.ts`). */
   const [device, setDevice] = useState<DeviceClass>({ handheld: false, chromium: true, source: 'user-agent' });
   /** "The large model failed here" — this browser's note (`largeModelNote.ts`). */
@@ -119,6 +121,8 @@ export function useTranscription() {
   const aliveRef = useRef(true);
   /** What decides "Önerilen modelle yeniden yaz" when a run ends. */
   const recommendedRef = useRef<TranscriptModelId>('base');
+  /** Whether the large model may be selected at all (not on a phone: `largeModelOffered`). */
+  const largeOfferedRef = useRef(false);
   /** The user pressed "Küçük modelle dene" after the large model failed: its outcome goes to the diagnostics. */
   const fallbackRef = useRef(false);
 
@@ -164,10 +168,11 @@ export function useTranscription() {
       const standing = { largeSupported, device: here, largeFailedHere: failedHere };
       const first = preselectedModel({ ...standing, baseReady: base?.ready === true, turboReady: turbo?.ready === true });
       recommendedRef.current = recommendedModel(standing);
+      largeOfferedRef.current = largeModelOffered(standing);
       setSmallStatus(base);
       setDevice(here);
       setLargeFailedHere(failedHere);
-      setLargeOffered(largeSupported);
+      setLargeSupported(largeSupported);
       setModel(first);
       setStatus(first === 'turbo' ? turbo : base);
       setDecided(true);
@@ -186,8 +191,9 @@ export function useTranscription() {
   }, [refreshLargeBytes, setModel]);
 
   useEffect(() => {
-    recommendedRef.current = recommendedModel({ largeSupported: largeOffered, device, largeFailedHere });
-  }, [largeOffered, device, largeFailedHere]);
+    recommendedRef.current = recommendedModel({ largeSupported, device, largeFailedHere });
+    largeOfferedRef.current = largeModelOffered({ largeSupported, device, largeFailedHere });
+  }, [largeSupported, device, largeFailedHere]);
 
   useEffect(() => {
     if (!decided) return undefined;
@@ -209,6 +215,8 @@ export function useTranscription() {
   const chooseModel = useCallback(
     (next: TranscriptModelId) => {
       if (next === modelRef.current) return;
+      // Not offered here (a phone): there is no control for it, and nothing else may select it.
+      if (next === LARGE_MODEL && !largeOfferedRef.current) return;
       setStatus(null);
       setModel(next);
     },
@@ -348,7 +356,8 @@ export function useTranscription() {
 
   /**
    * "Büyük modeli sil": only the large model's own files (the small model and the shared files stay).
-   * Offered where it failed here; never done without the press. The small model is selected after.
+   * Offered where it failed here, and on a phone that still holds it from before the large model stopped
+   * being offered there; never done without the press. The small model is selected after.
    */
   const removeLargeModel = useCallback(async () => {
     await deleteModelFiles(LARGE_MODEL, activeManifest()).catch(() => undefined);
@@ -360,7 +369,9 @@ export function useTranscription() {
   }, [chooseModel, refresh, refreshLargeBytes]);
 
   const standing: LargeModelStanding = largeModelStanding({ device, largeFailedHere });
-  const recommended = recommendedModel({ largeSupported: largeOffered, device, largeFailedHere });
+  const recommended = recommendedModel({ largeSupported, device, largeFailedHere });
+  /** The large model is a choice on the screen (never on a phone, ADR-036 second addendum). */
+  const largeOffered = largeModelOffered({ largeSupported, device, largeFailedHere });
 
   return {
     model,
