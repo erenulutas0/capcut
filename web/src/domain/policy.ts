@@ -1,6 +1,6 @@
 /**
  * Local web limits. The single source of truth is
- * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-10-11.v9)
+ * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-10-14.v10)
  * plus the web guard rails in doc 11. Plan names are deliberately NOT hardcoded
  * into the domain: this is one policy object the app passes in.
  *
@@ -41,7 +41,10 @@ export const WEB_LOCAL_POLICY: ExportPolicy = {
   // feature too; no limit here changes.
   // v9 (2026-10-11): the download is the video's own size, 1080p at most (720p at most on
   // request); nothing is enlarged (ADR-041, `domain/outputSize.ts`). No limit below changed.
-  policyId: '2026-10-11.v9/web-local',
+  // v10 (2026-10-14): the internet route of "Yazıya dök" (ADR-039) opens as an invite-only, free
+  // trial with its limits on our proxy Worker (minutes per invite, 120 min per job, a monthly cap),
+  // not in this object; the on-device route and every limit below are unchanged.
+  policyId: '2026-10-14.v10/web-local',
   // Raised from 5 min by founder decision (doc 15 v3): on the disk (OPFS)
   // route export memory stays flat with output length (ADR-013, ADR-020).
   maxOutputDurationUs: 60 * 60 * US_PER_SECOND,

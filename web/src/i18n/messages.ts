@@ -9,6 +9,8 @@ export const tr = {
   'app.name': APP_NAME,
   'landing.note':
     'Bu bir deneme sürümüdür. İndirme en iyi Chrome ve Edge’de çalışır. Hesap, abonelik ve bulut yükleme yok; her şey cihazında çalışır.',
+  'landing.note.online':
+    'Bu bir deneme sürümüdür. İndirme en iyi Chrome ve Edge’de çalışır. Hesap ve abonelik yok; her şey cihazında çalışır. Tek istisna: “Yazıya dök”te “İnternette”yi seçersen videonun yalnızca sesi gönderilir.',
 
   // Names only assistive technology hears (landmarks, hidden labels).
   'a11y.editorHeading': `${APP_NAME} editörü`,
@@ -21,6 +23,9 @@ export const tr = {
   'nav.backToEditor': 'Düzenlemeye dön',
 
   'banner.prototype': 'Deneme sürümü · videon cihazından çıkmaz · bulut yok',
+  // ".online": what the same places say in a build with the internet route of "Yazıya dök" (ADR-039), where
+  // "bulut yok" would no longer be true of the site. The route's own words stay in cloudMessages.ts.
+  'banner.prototype.online': 'Deneme sürümü · düzenleme bu cihazda yapılır',
 
   'topbar.untitled': 'Adsız proje',
   'topbar.renameLabel': 'Proje adı',
@@ -80,9 +85,11 @@ export const tr = {
   'privacy.eyebrow': 'Gizlilik',
   'privacy.heading': 'Bu sürüm verini nasıl işliyor',
   'privacy.draftBadge': 'Taslak — veri sorumlusu bilgisi ve hukuki inceleme eksik (belge 30 K02)',
+  // When the build names the data controller (NEXT_PUBLIC_DATA_CONTROLLER_NAME): the rest is still open.
+  'privacy.draftBadge.named': 'Taslak — hukuki inceleme ve bazı veri sorumlusu bilgileri eksik (belge 30 K02)',
   'privacy.draftBody':
     'Bu sayfa uygulamanın bugünkü davranışını anlatır; hukuki incelemeden geçmiş bir aydınlatma metni değildir. “belirlenmedi” yazan bilgiler henüz karara bağlanmadı.',
-  'privacy.updated': 'Son güncelleme: 30 Eylül 2026 · sürüm {version} · derleme {commit}',
+  'privacy.updated': 'Son güncelleme: 14 Ekim 2026 · sürüm {version} · derleme {commit}',
   'privacy.otherLanguage': 'English',
   'privacy.back': 'Ana sayfa',
   'privacy.undecided': 'belirlenmedi',
@@ -195,8 +202,12 @@ export const tr = {
   'privacy.controller.basis': 'Hukuki dayanak',
   'privacy.controller.rights': 'Haklarını kullanma ve başvuru yolu',
   'privacy.controller.support': 'Destek iletişimi',
+  // The founder, as a private person, until a company exists (founder decision, 14 Oct 2026). {name} comes from the build.
+  'privacy.controller.person': '{name} — kişi olarak; şirket kurulunca güncellenecek',
   'privacy.controller.note':
     'Bu bilgiler kurucu kararı ve hukuki inceleme bekliyor (belge 30 K02). Belirlenmeden bu metin yayına hazır sayılmaz.',
+  'privacy.controller.note.named':
+    'Veri sorumlusu, şirket kurulana kadar kurucunun kendisidir (kişi olarak); iletişim için yukarıdaki adresi kullan. “belirlenmedi” yazan bilgiler kurucu kararı ve hukuki inceleme bekliyor (belge 30 K02).',
 
   'privacy.controls.loading': 'Günlük okunuyor…',
   'privacy.controls.unavailable': 'Bu tarayıcıda yerel kayıt okunamadı.',
@@ -779,6 +790,8 @@ export const tr = {
   'help.limit.save':
     'Proje tarifi bu tarayıcıya kaydedilir; bulut yedeği yoktur ve video dosyaları saklanmaz.',
   'help.limit.cloud': 'Bulut, hesap ve ödeme yok. Yazıya dökme bu cihazda çalışır; bulutta çalışan bir yapay zekâ yok.',
+  'help.limit.cloud.online':
+    'Hesap ve ödeme yok. Editördeki yazıya dökme bu cihazda çalışır. Ana ekrandaki “Yazıya dök”te “İnternette”yi seçersen yalnızca videonun sesi gönderilir.',
 
   'kesit.title': 'Kesitler',
   'kesit.emptyNoVideo':
@@ -995,6 +1008,7 @@ export const tr = {
   'help.shortcut.zoom': 'Şeridi yakınlaştır / uzaklaştır',
   'help.shortcut.fullscreen': 'Tam ekran izle',
   'footer.local': 'Yerel düzenleme · kaynak dosya değişmez · bulut yüklemesi yok',
+  'footer.local.online': 'Yerel düzenleme · kaynak dosya değişmez',
   'footer.shortcuts':
     'Kısayollar: Boşluk oynat · I başlangıç · O bitiş ve ekle · F tam ekran · Ctrl+Z geri al',
   'dock.label': 'Kesitler kısayolu',
@@ -1025,6 +1039,7 @@ export const tr = {
   'home.results.statusChoose': 'Hiçbiri seçili değil. Önce aşağı okla birini seç.',
   'home.editorLink': 'Kendim düzenleyeceğim',
   'home.trust': 'Videon cihazından çıkmaz. Hesap gerekmez.',
+  'home.trust.online': 'Videon cihazından çıkmaz; yalnızca sen seçersen sesi gider. Hesap gerekmez.',
   'home.homeLink': 'Ana ekran',
 
   'task.kes.label': 'Kes',

@@ -3,6 +3,26 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Bulut yolunu yayında açmaya hazırlık: davetli deneme, veri sorumlusu, ön uçuş sınaması — 14 Ekim 2026 (ADR-039 "Kabul — davetli deneme"; politika `2026-10-14.v10`; şema değişmedi; yol bu çalışmada AÇILMADI)
+
+Kurucu kararları (14 Ekim 2026): bulut yazıya dökme yolu yayındaki sitede **davetli, ücretsiz deneme** olarak açılır (davet başına dakika, iş başına en çok 120 dakika, Worker'da aylık 1 $ tavan, AB); veri sorumlusu **kurucu, kişi olarak**; alan adı yok, yalnız ücretsiz katman. Worker kurucu tarafından yayınlandı. Bu çalışma Worker'a, AssemblyAI'ye ya da başka bir dış hizmete **tek istek göndermedi**, `cloud/.env` / `cloud/pass.txt` okunmadı, GitHub değişkeni ayarlanmadı; siteyi açmak ana oturumun işidir.
+
+**Şimdi.**
+- **Politika `2026-10-14.v10`** (belge 15): yeni satır "İnternette yazıya dökme — davetli deneme" ve değişiklik notu (ücretsiz, davet başına dakika — varsayılan 60, iş başına 120 dk, aylık tavan, AB, yalnızca ses, sonuçtan sonra silinir; cihaz üstü yol ve "AI işlemleri (bulut / ücretli)" satırı aynen; yalnızca genişleme). `policy.test.ts` sayıları depodaki `cloud/worker/wrangler.jsonc` ile bağlar.
+- **Veri sorumlusu:** `/gizlilik` adı tek derleme ayarından okur (`NEXT_PUBLIC_DATA_CONTROLLER_NAME` ← depo değişkeni `DATA_CONTROLLER_NAME`): "<ad> — kişi olarak; şirket kurulunca güncellenecek"; iletişim = destek iletişimi (GitHub Issues; herkese açık olduğu söylenir). Ad yoksa "belirlenmedi"; e-posta ya da bağlantı içeren ad derlemeyi durdurur. Faaliyet yeri, hukuki dayanak, başvuru yolu hâlâ "belirlenmedi".
+- **Gizlilik, bulut bölümü (yalnız yol açık derlemede):** silme süreleri (60 dk / en geç 24 saat / 10 dakikada bir), silinemezse sağlayıcının kuralı (ses en geç 48 saat, yazı 30 gün), model eğitimi için söz verilmediği, sağlayıcının iki belgesine bağlantı, ücretsiz ve sınırlı deneme, veri sorumlusu cümlesi. "Son güncelleme: 14 Ekim 2026". Veri envanteri §8.7.
+- **Yol açık derlemede "bulut yok" denmez:** açılış ekranının alt yazısı ("Videon cihazından çıkmaz; yalnızca sen seçersen sesi gider."), editörün şeridi, alt çubuğu ve "Kısayollar ve sınırlar". Yol kapalıyken hiçbir cümle değişmedi.
+- **Ön uçuş sınaması** `web/tests/pages/cloud-preflight.spec.ts` (Pages duman sınamasıyla; yol kapalıyken atlanır): her sayfada `connect-src` tam `'self'` + vekil; B ekranı kelimesi kelimesine; `/gizlilik`'te bulut bölümü ve adı verilmiş veri sorumlusu; **düğmeye basılmadan vekile tek istek yok**; "Kodu kaydet" yalnızca kalan dakikayı sorar (kod başlıkta). Vekile giden her istek yakalanır (durdurulur ya da sınamanın sahte yanıtı).
+- **Yayındaki siteye karşı** (`npm run test:live`): politika "yok, ya da tam bir köken ve o yapılandırılmış vekil" diye okunur; gerçek modelli "Yazıya dök" sınaması seçim ekranında "Cihazımda yaz"a basar.
+- **CI:** bulut sınaması değişken ayarlıyken yayını durdurur; `DATA_CONTROLLER_NAME` Pages derlemesine ve duman sınamasına geçer (tanımsızken her adım eskisi gibi).
+- **Kullanıcı testi:** `docs/beta/USER_TEST_KIT.md` bugünkü ürüne göre; yeni `docs/beta/IZLE-VE-NOT-AL.md` (10 dakikalık oturum, çocuk için ebeveyn izni, kayıt yok).
+
+**Geçiş sırası:** `DATA_CONTROLLER_NAME` → yayın → `CLOUD_TRANSCRIPT_URL` → CI'da ön uçuş geçmeden yayın yok → `npm run test:live` → kurucunun telefonunda tek kısa video.
+
+**Doğrulanmayan:** gerçek Worker (CORS, akıtılan yükleme, alarmlar), tarayıcının ses dosyasının gerçek sağlayıcıda kabulü, yayındaki Worker ayarlarının depodakiyle aynılığı, telefonda internet yolu, gerçek modelli Pages sınamasının yol açıkken çalışması (model dosyaları bu makinede yok), `npm run quality` (koşulmadı; yol açık derlemenin açılış ekranı ve editör sözleri değişti).
+
+**Sayılar (14 Ekim, dal `worktree-agent-a656ff58d65f53a96`, son kodla, hepsi yerel):** `tsc`, `eslint` temiz; birim **1442 / 1442** (83 dosya); olağan e2e **412: 408 geçti, 4 atlandı, 0 başarısız**; bulut e2e (yerel sahte vekil) **59: 55 geçti, 4 atlandı, 0 başarısız**; ikisinde de `PAGE-RECOVERED-TOTAL 0`; gerçek vekil kökeniyle derlenmiş durağan çıktıda Pages duman + ön uçuş **13: 11 geçti, 2 atlandı (model dosyaları yok), 0 başarısız**, vekile ulaşan istek 0; varsayılan durağan çıktıda Pages duman **13: 7 geçti, 6 atlandı (4 ön uçuş — yol kapalı; 2 model), 0 başarısız**.
+
 ## "Yazıya dök" telefonda küçük modeli önerir; büyük model durursa "Küçük modelle dene" — 14 Ekim 2026 (ADR-036 eki; şema ve politika değişmedi; tarayıcıda saklananlara bir `localStorage` anahtarı eklendi)
 
 Kurucu yokken, özerk çalışma. Hiçbir dış hizmete istek gitmedi; telefon kullanılmadı; `cloud/` altına dokunulmadı.

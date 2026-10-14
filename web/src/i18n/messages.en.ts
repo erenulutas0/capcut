@@ -11,6 +11,8 @@ export const en: Record<MessageKey, string> = {
   'app.name': APP_NAME,
   'landing.note':
     'This is a trial version. Downloading works best in Chrome and Edge. No account, subscription or cloud upload; everything runs on your device.',
+  'landing.note.online':
+    'This is a trial version. Downloading works best in Chrome and Edge. No account or subscription; everything runs on your device. The one exception: if you choose “İnternette” in “Yazıya dök”, only the sound of the video is sent.',
 
   // Names only assistive technology hears (landmarks, hidden labels).
   'a11y.editorHeading': `${APP_NAME} editor`,
@@ -23,6 +25,7 @@ export const en: Record<MessageKey, string> = {
   'nav.backToEditor': 'Back to editing',
 
   'banner.prototype': 'Trial version · your video never leaves your device · no cloud',
+  'banner.prototype.online': 'Trial version · editing happens on this device',
 
   'topbar.untitled': 'Untitled project',
   'topbar.renameLabel': 'Project name',
@@ -82,9 +85,10 @@ export const en: Record<MessageKey, string> = {
   'privacy.eyebrow': 'Privacy',
   'privacy.heading': 'How this version handles your data',
   'privacy.draftBadge': 'Draft — data controller details and legal review missing (doc 30 K02)',
+  'privacy.draftBadge.named': 'Draft — legal review and some data controller details missing (doc 30 K02)',
   'privacy.draftBody':
     'This page describes what the app does today; it is not a legally reviewed privacy notice. Items marked “not decided” have not been settled yet.',
-  'privacy.updated': 'Last updated: 30 September 2026 · version {version} · build {commit}',
+  'privacy.updated': 'Last updated: 14 October 2026 · version {version} · build {commit}',
   'privacy.otherLanguage': 'Türkçe',
   'privacy.back': 'Home',
   'privacy.undecided': 'not decided',
@@ -194,8 +198,11 @@ export const en: Record<MessageKey, string> = {
   'privacy.controller.basis': 'Legal basis',
   'privacy.controller.rights': 'How to exercise your rights',
   'privacy.controller.support': 'Support contact',
+  'privacy.controller.person': '{name} — as a private person; to be updated once a company is founded',
   'privacy.controller.note':
     'These details await a founder decision and legal review (doc 30 K02). Until they are settled this text is not ready for publication.',
+  'privacy.controller.note.named':
+    'Until a company is founded, the data controller is the founder, as a private person; use the address above to get in touch. Items marked “not decided” await a founder decision and legal review (doc 30 K02).',
 
   'privacy.controls.loading': 'Reading the log…',
   'privacy.controls.unavailable': 'Local storage could not be read in this browser.',
@@ -756,6 +763,8 @@ export const en: Record<MessageKey, string> = {
   'help.limit.save':
     'The project recipe is saved to this browser; there is no cloud backup and video files are not stored.',
   'help.limit.cloud': 'No cloud, account or payment. Speech is turned into text on this device; there is no AI running in a cloud.',
+  'help.limit.cloud.online':
+    'No account or payment. Speech is turned into text in the editor on this device. If you choose “İnternette” in “Yazıya dök” on the opening screen, only the sound of the video is sent.',
 
   'kesit.title': 'Clips',
   'kesit.emptyNoVideo':
@@ -969,6 +978,7 @@ export const en: Record<MessageKey, string> = {
   'help.shortcut.zoom': 'Zoom the strip in / out',
   'help.shortcut.fullscreen': 'Watch full screen',
   'footer.local': 'Local editing · your source file is unchanged · no cloud upload',
+  'footer.local.online': 'Local editing · your source file is unchanged',
   'footer.shortcuts':
     'Shortcuts: Space play · I start · O end and add · F full screen · Ctrl+Z undo',
   'dock.label': 'Clips shortcut',
@@ -997,6 +1007,7 @@ export const en: Record<MessageKey, string> = {
   'home.results.statusChoose': 'None is selected. Pick one with the down arrow first.',
   'home.editorLink': 'I will edit it myself',
   'home.trust': 'Your video never leaves your device. No account needed.',
+  'home.trust.online': 'Your video never leaves your device; only if you choose, its sound is sent. No account needed.',
   'home.homeLink': 'Home',
 
   'task.kes.label': 'Cut',

@@ -9,6 +9,13 @@ import './home.css';
 const t = translator('tr');
 
 /**
+ * A build with the internet route of "Yazıya dök" (ADR-039) cannot say "no cloud upload" here: the
+ * sound of a video leaves when the user chooses it. Compared to the literal, so a build without the
+ * route keeps today's sentences.
+ */
+const ONLINE_ROUTE = process.env.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1';
+
+/**
  * The opening screen (ADR-034, founder decision 3 Oct 2026: designs A + C):
  * "Ne yapmak istiyorsun?" — a box to type what you want and, under it, a card
  * for every task that works today. A card opens that task's wizard
@@ -42,10 +49,10 @@ export default function HomePage() {
 
       <footer className="home-footer">
         <p className="home-trust" data-testid="home-trust">
-          {t('home.trust')}
+          {t(ONLINE_ROUTE ? 'home.trust.online' : 'home.trust')}
         </p>
         <p className="home-note">
-          {t('landing.note')}{' '}
+          {t(ONLINE_ROUTE ? 'landing.note.online' : 'landing.note')}{' '}
           <Link href="/gizlilik" prefetch={false} data-testid="footer-privacy">
             {t('privacy.link')}
           </Link>

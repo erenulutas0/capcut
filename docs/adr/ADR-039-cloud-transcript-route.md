@@ -1,6 +1,8 @@
 # ADR-039 — Bulut yazıya dökme yolu (isteğe bağlı, davetli): yalnız ses çıkar, anahtar bir Worker'da durur
 
-> Tarih: 10 Ekim 2026 · Durum: **ÖNERİ / TASLAK** — hiçbir şey yayında değil, politika değişmedi
+> Tarih: 10 Ekim 2026 · Durum: **Kabul — davetli deneme (14 Ekim 2026, kurucu kararı;** ek en altta,
+> "Ek, 14 Ekim 2026 — Kabul"**)**. Sitede açılması tek bir depo değişkenine bağlı; bu ek yazılırken açılmamıştı.
+> Önceki durum: ÖNERİ / TASLAK — hiçbir şey yayında değil, politika değişmedi
 > · 11 Ekim 2026: ilk gerçek ölçüm (ek) · 11 Ekim 2026: **istemci yapıldı, KAPALI doğar** (ek, "İstemci yapıldı")
 > · 13 Ekim 2026: konuşmacılar kalıcı, EDL v5 (ek; [ADR-043](ADR-043-speakers-in-recipe.md))
 > · 13 Ekim 2026: internette yazılan yazı editöre geçişte saklanır (ek; [ADR-034](ADR-034-task-first-home.md) eki);
@@ -585,6 +587,63 @@ Kurucu kararı: "Bulut yazısı editöre geçişte saklansın." Ayrıntı ve ger
 
 "Sağlayıcıda silinir, yazı bundan sonra yalnızca bu tarayıcıda durur" cümlesi (`cloud.privacy.deletion`)
 doğru kalır; "bu tarayıcıda" artık iki hâli kapsar: açık sayfanın belleği ya da kayıtlı proje.
+
+## Ek, 14 Ekim 2026 — Kabul: davetli deneme
+
+> Bu çalışmada da Worker'a, AssemblyAI'ye ya da başka bir dış hizmete **tek bir istek gitmedi**;
+> `cloud/.env` ve `cloud/pass.txt` okunmadı; GitHub değişkeni ayarlanmadı. Gerçek vekilin kökeni
+> yalnızca bir derleme ayarı olarak kullanıldı ve sınamada ona giden her istek yakalandı.
+
+**Kurucu kararları (14 Ekim 2026):**
+
+1. **Yol yayındaki sitede açılır — davetli deneme olarak:** ücretsiz; davet başına dakika (Worker varsayılanı 60);
+   iş başına en çok 120 dakika; Worker'da aylık **1 $** kesin tavan; **AB bölgesi**. Worker kurucu tarafından
+   yayınlandı (`https://lilocut-transcript-proxy.eerenulutass.workers.dev`; `ALLOWED_ORIGINS` içinde
+   `https://erenulutas0.github.io`). Sitede açmak ana oturumun işidir: depo değişkeni `CLOUD_TRANSCRIPT_URL`.
+   Yukarıdaki "Kurucu kararları gerekiyor" listesinin 1. (tavan: 1 $), 3. (davet başına 60 dk, iş başına
+   120 dk), 5. (AB) maddeleri ve "Bu ek için" listesinin 4. maddesi (ücretsiz deneme) kapandı.
+2. **Veri sorumlusu (K02): kurucu, kişi olarak**, şirket kurulana kadar. Adı tek bir derleme ayarından
+   (`NEXT_PUBLIC_DATA_CONTROLLER_NAME` ← depo değişkeni `DATA_CONTROLLER_NAME`), iletişim adresi destek
+   iletişimi (`NEXT_PUBLIC_SUPPORT_CONTACT`). Ad verilmeyen derlemede sayfa "belirlenmedi" der; hukuki dayanak
+   hâlâ belirlenmedi ve sayfa bunu söyler.
+3. **Alan adı yok, yalnızca ücretsiz katman.** Site github.io'da kalır.
+
+**Bu ekte yapılanlar (her biri sınamalı):**
+
+- **Politika `2026-10-14.v10`** (belge 15): yeni satır ve değişiklik notu; sayılar depodaki
+  `cloud/worker/wrangler.jsonc` ile birim sınamasında bağlı (`policy.test.ts`). "AI işlemleri (bulut /
+  ücretli)" ve cihaz üstü satırlar aynen.
+- **`/gizlilik`** (TR + EN): veri sorumlusu bloğu (ad + "kişi olarak; şirket kurulunca güncellenecek",
+  iletişim = destek iletişimi; GitHub Issues herkese açık olduğu için uyarısı); bulut bölümüne silme süreleri
+  (60 dk / en geç 24 saat / 10 dakikada bir), silinemezse sağlayıcının kuralı (ses en geç 48 saat, yazı 30 gün;
+  silinen kaydın kimliği ve süresi faturalama için kalır — yukarıdaki belge alıntıları), model eğitimi için **söz
+  verilmediği** cümlesi ("eğitimde kullanılmaz" denmez), sağlayıcının iki belgesine bağlantı (saklama ve model
+  eğitimi; veri işleme sözleşmesi — bu ADR'nin alıntıladığı adresler), denemenin ücretsiz ve sınırlı oluşu.
+  "Son güncelleme: 14 Ekim 2026". Veri envanteri §8.3, §8.6, §8.7.
+- **Sitenin geri kalanı "bulut yok" demez** (yalnız yol açık derlemede): açılış ekranının alt yazısı, editörün
+  şeridi, alt çubuğu ve "Kısayollar ve sınırlar" (`*.online` anahtarları). Bu cümleler yol kapalıyken
+  aynen kalır; yol açılınca yanlış olurlardı ve önceki çalışmada ele alınmamıştı.
+- **Ön uçuş sınaması** `web/tests/pages/cloud-preflight.spec.ts` (Pages duman sınamasıyla koşar; CI'da
+  değişken ayarlanınca yayını durdurabilir): her sayfada `connect-src` tam `'self'` + vekil; B ekranı kelimesi
+  kelimesine; `/gizlilik`'te bulut bölümü ve adı verilmiş veri sorumlusu; **düğmeye basılmadan vekile tek istek
+  yok** (vekile giden her istek yakalanır; durdurulur ya da sınamanın sahte yanıtıyla karşılanır).
+- **Yayındaki siteye karşı duman sınaması** (`npm run test:live`): politika artık "yok, ya da tam bir köken ve
+  o da yapılandırılmış vekil" diye okunur; gerçek modelli "Yazıya dök" sınaması seçim ekranında "Cihazımda
+  yaz"a basar.
+- **CI:** bulut sınaması değişken ayarlıyken yayını durdurur (`continue-on-error` yalnızca değişken boşken);
+  `DATA_CONTROLLER_NAME` Pages derlemesine ve duman sınamasına geçer.
+
+**Geçiş sırası (ana oturum):** (1) `DATA_CONTROLLER_NAME` değişkeni → yayın, `/gizlilik`'te ad görünür (yol
+kapalı); (2) `CLOUD_TRANSCRIPT_URL` = vekilin kökeni → CI'da ön uçuş ve bulut sınamaları geçmeden yayın olmaz;
+(3) yayından sonra `npm run test:live`; (4) kurucunun telefonunda kendi davetiyle tek kısa video.
+Kapatmak: değişkeni silip yeniden yayın, ya da hemen `POST /admin/kill`.
+
+**Hâlâ doğrulanmayan:** gerçek Worker'ın Cloudflare'deki davranışı (CORS ön uçuşu, akıtılan gövde, `x-job-id`,
+10 ms işlemci sınırı, alarmlar); tarayıcının ürettiği WebM/Opus dosyasının gerçek sağlayıcıda kabulü ve kelime
+zamanlarının videoyla örtüşmesi; yayındaki Worker'ın ayarlarının depodaki `wrangler.jsonc` ile aynı olduğu
+(`PROVIDER_REGION=eu`, `MONTHLY_CAP_USD=1`, `INVITE_MINUTES_DEFAULT=60`, `MAX_JOB_MINUTES=120` — bu çalışmada
+okunmadı); telefonda internet yolu; Safari ve Firefox; ücretsiz hesapta AB uç noktasında "eğitimde
+kullanılmaz"ın geçerliliği (sayfa bu yüzden söz vermiyor); `audio_end_at` faturalaması.
 
 ## Doğrulanmayanlar (10 Ekim taslağı)
 
