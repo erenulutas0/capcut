@@ -3,6 +3,26 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## "Yazıya dök" telefonda küçük modeli önerir; büyük model durursa "Küçük modelle dene" — 14 Ekim 2026 (ADR-036 eki; şema ve politika değişmedi; tarayıcıda saklananlara bir `localStorage` anahtarı eklendi)
+
+Kurucu yokken, özerk çalışma. Hiçbir dış hizmete istek gitmedi; telefon kullanılmadı; `cloud/` altına dokunulmadı.
+
+**Sorun (gerçek telefon, `docs/phone/2026-10-14-s23.md`).** Galaxy S23'te (Android 16, Chrome 155) WebGPU ve `shader-f16` olduğu için büyük model (large-v3-turbo, 595,6 MB) ön seçili ve "Önerilen" geliyordu. 605 MB indi (55–81 sn), sonra yazıya dökme ~11 sn'de "beklenmedik bir hata" ile durdu; "Tekrar dene" de: 3 denemede 3 (konsolda onnxruntime WebGPU `BufferManager::Download … map_async`). Küçük model aynı klibi 10,5 sn'de yazdı. Yeni kullanıcı ~600 MB indirip yazı alamıyor, ekran ona küçük modeli önermiyordu. 7 Ekim'deki "Önerilen" kararı yalnızca masaüstü Chromium'da ölçülmüştü.
+
+**Şimdi.**
+- **"Önerilen" yalnızca ölçüldüğü yerde** (`domain/transcriptModels.ts`): masaüstü Chrome / Edge'de büyük model önerilir ve ön seçilir — **değişmedi**. Telefonda ve tablette, Chromium olmayan tarayıcıda (Safari, Firefox; hiç ölçülmedi) ve büyük modelin daha önce durduğu tarayıcıda küçük model "Önerilen: küçük model (≈108,8 MB, bir kez iner)", ilk sırada ve ön seçili — saklı ne olursa olsun. Büyük model seçilebilir kalır; satırı sade sözle neden önerilmediğini söyler ("Konuşmayı daha iyi anlar ama telefonda çalışmayabilir: denediğimiz bir telefonda indi, sonra yazıya dökemedi. İndirmesi çok büyüktür."). "Önerilen modelle yeniden yaz" yalnızca büyük model bu cihazın önerisiyse çıkar.
+- **Telefon nasıl anlaşılır** (`domain/deviceClass.ts`): `navigator.userAgentData` (mobile, platform, markalar; yalnızca markalar doluysa) ve User-Agent dizgisi — herhangi birindeki telefon/tablet işareti yeter. Sınırlar ADR'de: "masaüstü sitesi" kipindeki Android tablet ve telefon masaüstü görünür; iPad Safari "Macintosh" der (Chromium değil, yine önerilmez).
+- **Büyük model yazarken durursa:** "Büyük model bu cihazda yazıya dökemedi. Küçük modelle deneyebilirsin: daha küçüktür ve her cihazda çalışır." · **Küçük modelle dene** (altında "Önce küçük model iner (≈108,8 MB, bir kez), sonra yazıya döker." ya da "hazır; hemen başlar") · **Tekrar dene** (büyük modelle) · "Ayrıntılar". Tek basış: küçük modeli seçer, gerekirse indirir, yazıya döker. Hem sihirbazda hem editörün penceresinde.
+- **Tanı dosyası:** `large_model_failed_<gpu|memory|engine|stalled|crashed|other>`, `large_model_retry`, `large_model_fallback_small`, `large_model_fallback_small_done`, `large_model_deleted` — yalnızca kodlar. ADR-042 ayrıntısına iki ipucu etiketi eklendi: `gpu_buffer_read` (onnxruntime'ın tampon okuma cümlesi) ve `ort_run_failed`; cümlenin kendisi yine saklanmaz.
+- **Bu tarayıcı hatırlar:** `localStorage` → `clip.transcriptLargeFailed` = `1`, yalnızca büyük model burada durunca. Büyük model artık burada önerilmez. Büyük model bir kez çalışınca kendiliğinden, `/gizlilik` ve "Kısayollar ve sınırlar"daki **"Bu notu sil"** ile ya da site verisi temizlenince silinir. Veri envanteri §2.8a, `/gizlilik`'te "Büyük model notu" kartı.
+- **Yer:** büyük model burada durmuşsa adım "Büyük model bu tarayıcıda ≈566,5 MB yer kaplıyor." · **Büyük modeli sil** der: yalnızca büyük modelin kendi dosyaları silinir, küçük model ve ortak dosyalar kalır; kendiliğinden hiçbir şey silinmez. "Modeli sil" (hepsi) aynen duruyor.
+
+**Açık kurucu kararları:** büyük model telefonda hiç gösterilmesin mi; not süresiz mi; büyük model durunca küçük model kendiliğinden mi denensin (şimdi bir basış); Safari / Firefox'ta önerilmemesi; "her cihazda çalışır" sözü.
+
+**Doğrulanmayan:** gerçek telefonda yeni davranış (ana oturum deneyecek); telefonda fırlatılan hata metninin ilk 400 karakterinde `BufferManager`/`map_async` geçip geçmediği (öneri buna bağlı değil); Android tablet, Samsung Internet, Safari/Firefox'ta büyük model; masaüstünde gerçek büyük modelle hata yolu (yalnızca test ikizi).
+
+**Sayılar (14 Ekim, dal `worktree-agent-a0749dbc7d42a7e89`; hepsi yerel, son kodla):** `tsc` ve `eslint` temiz; birim 1436/1436 (83 dosya; 18'i yeni); e2e (olağan derleme) 400 testte 396 geçti / 4 atlandı / 0 başarısız (5'i yeni), kendiliğinden kurtarma gerektiren yükleme **1** (`transcript-long.spec.ts`, `/yap/yazi`; o iki yazı dosyası yeniden koşulunca 0), bekçinin kendi testleri bilerek 9 kurtarma, 2 ölü sayfa; varsayılan durağan çıktı derlendi. **Koşulmayan:** Pages duman testi, tarayıcı matrisi, `npm run quality`, gerçek modelle testler, gerçek telefon.
+
 ## İnternette yazılan yazı editöre geçişte saklanır — 13 Ekim 2026 (ADR-034 eki; ADR-043'ün "Bulunan"ı kapandı; şema, kayıt biçimi ve politika değişmedi; bulut yolu hâlâ KAPALI)
 
 Kurucu kararı: "Bulut yazısı editöre geçişte saklansın." Hiçbir dış hizmete istek gitmedi; bulut sınamaları yalnızca yerel sahte vekile karşı. `cloud/` altına dokunulmadı.

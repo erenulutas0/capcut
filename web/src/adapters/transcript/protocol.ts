@@ -37,6 +37,14 @@ export interface StubScript {
   stepMs?: number;
   /** Fail instead, after the first segment. */
   failWith?: TranscribeFailure;
+  /**
+   * Fail after the first segment the way the large model failed on a phone
+   * (14 Oct 2026) — but only when this model is the one asked for: an error
+   * the recogniser raised (name and text given by the test), tagged exactly as
+   * the real engine tags a recogniser error (`internal_error`, stage
+   * `recognise`). The text is the test's; the app must not keep it.
+   */
+  failAs?: { model: TranscriptModelId; errorName: string; message: string };
 }
 
 export type TranscribeFailure =

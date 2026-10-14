@@ -156,9 +156,15 @@ export const en: Record<MessageKey, string> = {
     'Cache Storage, a cache whose name starts with “clip-models-” (separate from the app’s offline copy)',
   'privacy.stored.model.delete':
     'It stays until you delete it or clear this site’s data in the browser. “Delete the model” below removes it; the same button is in the editor’s “Shortcuts and limits” window.',
+  'privacy.stored.largeNote.name': 'Large model note',
+  'privacy.stored.largeNote.body':
+    'A single value (1), written only if the large speech model stopped while writing in this browser: the app then recommends the small model here instead. It does not contain who you are, which video, or the error itself; it is sent nowhere. Unless that happens it is never written.',
+  'privacy.stored.largeNote.where': 'localStorage, key “clip.transcriptLargeFailed” (written only when the large model stopped here)',
+  'privacy.stored.largeNote.delete':
+    'Deleted by itself once the large model writes successfully in this browser. “Delete this note” on the “Speech model” card removes it, and so does clearing this site’s data in the browser.',
   'privacy.model.checking':
     'Checking…',
-  'privacy.stored.none': 'No cookies are used. localStorage holds only the hint value above; sessionStorage holds only the reload note above.',
+  'privacy.stored.none': 'No cookies are used. localStorage holds only the hint value above and (if the large model stopped here) the large model note; sessionStorage holds only the reload note above.',
 
   'privacy.downloads.title': 'Files you download',
   'privacy.downloads.body':
@@ -1185,6 +1191,17 @@ export const en: Record<MessageKey, string> = {
   'transcript.model.turbo': 'Recommended: large model (≈{size}, downloaded once)',
   'transcript.model.turboHint':
     'Understands speech far better, in conversation and noise too. It is a large download, uses the graphics card and needs a lot of memory.',
+  'transcript.model.baseRecommended': 'Recommended: small model (≈{size}, downloaded once)',
+  'transcript.model.turboPlain': 'Large model (≈{size}, downloaded once)',
+  'transcript.model.turboHint.phone':
+    'Understands speech better, but may not work on a phone: on a phone we tried it downloaded and then could not write anything. It is a very large download.',
+  'transcript.model.turboHint.untested':
+    'Understands speech better, but it has never been tried in this browser and may not work. It is a very large download.',
+  'transcript.model.turboHint.failed_here':
+    'It stopped while writing on this device before. You can still choose it. It is a very large download.',
+  'transcript.model.largeSpace': 'The large model takes ≈{size} in this browser.',
+  'transcript.model.deleteLarge': 'Delete the large model',
+  'transcript.model.largeDeleted': 'The large model was deleted.',
   'transcript.model.failed.offline':
     'The download was interrupted: the connection dropped. What was downloaded is kept; try again and it continues from there.',
   'transcript.model.failed.not_found': 'The model file was not found on this site. Try again a little later.',
@@ -1216,6 +1233,10 @@ export const en: Record<MessageKey, string> = {
   'transcript.failed.internal_error': 'The writing stopped with an unexpected error. Try again.',
   'transcript.failed.worker_unavailable': 'The writing could not start in this browser. Reload the page and try again.',
   'transcript.failed.nothing_heard': 'No speech was found in this video; there was nothing to write.',
+  'transcript.failed.large': 'The large model could not write on this device. You can try the small model: it is smaller and works on every device.',
+  'transcript.fallback.small': 'Try the small model',
+  'transcript.fallback.smallDownload': 'The small model is downloaded first (≈{size}, once), then it writes.',
+  'transcript.fallback.smallReady': 'The small model is ready in this browser; it starts at once.',
   'transcript.machine': 'Written automatically — it may be wrong, and you can correct it.',
   'transcript.unclear': '(could not be understood)',
   'transcript.speaker': 'Person {n}',
@@ -1267,6 +1288,9 @@ export const en: Record<MessageKey, string> = {
   'help.model.none': 'There is no speech model in this browser.',
   'help.model.delete': 'Delete the model',
   'help.model.deleted': 'The model was deleted.',
+  'help.model.largeNote': 'This browser noted that the large model stopped while writing here, so it does not recommend it.',
+  'help.model.forgetNote': 'Delete this note',
+  'help.model.noteForgotten': 'The note was deleted.',
 };
 
 registerMessages('en', en);

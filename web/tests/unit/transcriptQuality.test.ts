@@ -34,6 +34,9 @@ describe('how much of the found speech was written', () => {
 });
 
 describe('which model is selected to begin with', () => {
+  /** Where the large model was measured to work: desktop Chromium, never failed here (phones: largeModelChoice.test.ts). */
+  const PROVEN = { device: { handheld: false, chromium: true }, largeFailedHere: false } as const;
+
   it('recommends the large model, whose real download is about 596 MB', () => {
     expect(RECOMMENDED_MODEL).toBe('turbo');
     expect(downloadBytes('turbo')).toBe(595_564_916);
@@ -43,19 +46,19 @@ describe('which model is selected to begin with', () => {
   it('is the small model wherever the large one cannot run, whatever is stored', () => {
     for (const baseReady of [false, true]) {
       for (const turboReady of [false, true]) {
-        expect(preselectedModel({ largeSupported: false, baseReady, turboReady })).toBe('base');
+        expect(preselectedModel({ ...PROVEN, largeSupported: false, baseReady, turboReady })).toBe('base');
       }
     }
   });
 
   it('is the large model where it can run and nothing is here yet, or it is here already', () => {
-    expect(preselectedModel({ largeSupported: true, baseReady: false, turboReady: false })).toBe('turbo');
-    expect(preselectedModel({ largeSupported: true, baseReady: false, turboReady: true })).toBe('turbo');
-    expect(preselectedModel({ largeSupported: true, baseReady: true, turboReady: true })).toBe('turbo');
+    expect(preselectedModel({ ...PROVEN, largeSupported: true, baseReady: false, turboReady: false })).toBe('turbo');
+    expect(preselectedModel({ ...PROVEN, largeSupported: true, baseReady: false, turboReady: true })).toBe('turbo');
+    expect(preselectedModel({ ...PROVEN, largeSupported: true, baseReady: true, turboReady: true })).toBe('turbo');
   });
 
   it('stays on the small model when only that one is in this browser: no 596 MB download behind the first button', () => {
-    expect(preselectedModel({ largeSupported: true, baseReady: true, turboReady: false })).toBe('base');
+    expect(preselectedModel({ ...PROVEN, largeSupported: true, baseReady: true, turboReady: false })).toBe('base');
   });
 });
 

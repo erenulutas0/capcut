@@ -145,8 +145,13 @@ test.describe('privacy page', () => {
     // The one sessionStorage value (ADR-044: a page that had to reload itself), named with its key.
     await expect(page.getByTestId('stored-recovery')).toContainText('“clip:page-recovery”');
     await expect(page.getByTestId('stored-recovery')).toContainText('Sekmeyi kapatınca.');
+    // ADR-036 addendum: the note that the large speech model failed here — written only then, named with its key.
+    await expect(page.getByTestId('stored-largeNote')).toContainText('“clip.transcriptLargeFailed”');
+    await expect(page.getByTestId('stored-largeNote')).toContainText('Böyle bir şey olmadıkça hiç yazılmaz.');
     await expect(
-      page.getByText('Çerez kullanılmaz. localStorage’da yalnızca yukarıdaki ipucu bilgisi, sessionStorage’da yalnızca yukarıdaki yeniden yükleme notu durur.'),
+      page.getByText(
+        'Çerez kullanılmaz. localStorage’da yalnızca yukarıdaki ipucu bilgisi ve (büyük model burada durduysa) büyük model notu, sessionStorage’da yalnızca yukarıdaki yeniden yükleme notu durur.',
+      ),
     ).toBeVisible();
     await expect(page.getByTestId('export-log-count')).toHaveText('Bu tarayıcıda kayıtlı dışa aktarma denemesi yok.');
     await expect(page.getByTestId('privacy-updated')).toContainText('sürüm 0.1.0');

@@ -65,30 +65,115 @@ export const MODEL_RUNTIME: Record<TranscriptModelId, ModelRuntime> = {
 
 export const TRANSCRIPT_MODELS: readonly TranscriptModelId[] = ['base', 'turbo'];
 
+/** The large model (Whisper large-v3-turbo, WebGPU). */
+export const LARGE_MODEL: TranscriptModelId = 'turbo';
+
 /**
- * The model the app recommends where it can run (WebGPU with `shader-f16`):
- * the large one. On the realistic set of 7 Oct 2026 (ADR-036) it wrote far
- * more of the speech and dropped far fewer stretches than the small model.
- * Where it cannot run there is one model and nothing to recommend.
+ * The model recommended where the large model is PROVEN (see
+ * `largeModelStanding`): the large one. On the realistic set of 7 Oct 2026
+ * (ADR-036) it wrote far more of the speech and dropped far fewer stretches
+ * than the small model — measured on desktop Chromium. Kept under this name
+ * for "Önerilen modelle yeniden yaz", which is only offered where the large
+ * model is this device's recommendation (`recommendedModel`).
  */
-export const RECOMMENDED_MODEL: TranscriptModelId = 'turbo';
+export const RECOMMENDED_MODEL: TranscriptModelId = LARGE_MODEL;
+
+/**
+ * Where the large model stands on this device (ADR-036, addendum 14 Oct 2026):
+ *
+ * - `proven`: a desktop Chromium-family browser (Chrome, Edge) — where it was
+ *   measured to work;
+ * - `failed_here`: it stopped while writing in this browser before (a note
+ *   this browser keeps until it works here or the user clears it);
+ * - `phone`: a phone or a tablet. On a Galaxy S23 (Chrome 155, WebGPU with
+ *   `shader-f16`) the 605 MB download worked and writing failed every time
+ *   (3 of 3) with a WebGPU buffer read error; the small model wrote the same
+ *   clip in 10.5 s;
+ * - `untested`: any other browser with WebGPU (Safari, Firefox): never measured.
+ *
+ * Only asked where the large model can start at all (WebGPU with `shader-f16`).
+ */
+export type LargeModelStanding = 'proven' | 'failed_here' | 'phone' | 'untested';
+
+export interface DeviceStanding {
+  /** WebGPU with `shader-f16`: the large model can be offered at all. */
+  largeSupported: boolean;
+  /** `domain/deviceClass.ts`. */
+  device: { handheld: boolean; chromium: boolean };
+  /** The large model failed while writing in this browser before. */
+  largeFailedHere: boolean;
+}
+
+export function largeModelStanding(input: Omit<DeviceStanding, 'largeSupported'>): LargeModelStanding {
+  if (input.largeFailedHere) return 'failed_here';
+  if (input.device.handheld) return 'phone';
+  if (!input.device.chromium) return 'untested';
+  return 'proven';
+}
+
+/**
+ * The model marked "Önerilen" and listed first: the large one only where it is
+ * proven; everywhere else the small one (which also runs where WebGPU is missing).
+ */
+export function recommendedModel(input: DeviceStanding): TranscriptModelId {
+  return input.largeSupported && largeModelStanding(input) === 'proven' ? LARGE_MODEL : 'base';
+}
 
 /**
  * The model that is selected when the step opens, before the user chooses.
  *
- * - the large model cannot run here → the small one (the only choice);
- * - the large model is already in this browser → the large one;
+ * - the large model cannot run here, or is not proven here (a phone, an
+ *   untested browser, or it failed here before) → the small one. The large
+ *   one stays a choice where it can start, with a line that says why it is
+ *   not recommended — even when its files are already in this browser;
+ * - the large model is proven and already in this browser → the large one;
  * - ONLY the small one is in this browser → the small one: "Yazıya dök"
  *   works at once, and the 596 MB download stays the user's own decision
  *   (the large model is still shown, marked "Önerilen", with its size);
  * - nothing is here yet → the large one: a download is needed either way,
  *   and the button says its size before anything starts.
  */
-export function preselectedModel(input: { largeSupported: boolean; baseReady: boolean; turboReady: boolean }): TranscriptModelId {
-  if (!input.largeSupported) return 'base';
-  if (input.turboReady) return 'turbo';
+export function preselectedModel(input: DeviceStanding & { baseReady: boolean; turboReady: boolean }): TranscriptModelId {
+  if (recommendedModel(input) !== LARGE_MODEL) return 'base';
+  if (input.turboReady) return LARGE_MODEL;
   if (input.baseReady) return 'base';
-  return RECOMMENDED_MODEL;
+  return LARGE_MODEL;
+}
+
+/**
+ * How a failed run of the large model failed, when it is one the small model
+ * may well get past (ADR-036 addendum, 14 Oct 2026); null when it is not:
+ * the small model, the video's own problems (no sound, unreadable), missing
+ * files, a stop by the user, or a worker that could not be started at all.
+ *
+ * The reason is the transcription's code; the detail (ADR-042, enums only)
+ * sharpens it where it can:
+ *
+ * - `gpu`: the graphics card's buffers could not be read back, or its
+ *   device was lost (the phone of 14 Oct);
+ * - `memory`: out of memory;
+ * - `engine`: the browser could not start the large model at all;
+ * - `stalled`: it stood still and the page gave up waiting;
+ * - `crashed`: its worker stopped;
+ * - `other`: an unexpected error with nothing more known.
+ */
+export type LargeFailureKind = 'gpu' | 'memory' | 'engine' | 'stalled' | 'crashed' | 'other';
+
+const LARGE_FALLBACK_REASONS: ReadonlySet<string> = new Set(['internal_error', 'out_of_memory', 'engine_unavailable']);
+
+export function classifyLargeModelFailure(
+  model: TranscriptModelId,
+  reason: string,
+  detail?: { hint?: string | null; via?: string | null } | null,
+): LargeFailureKind | null {
+  if (model !== LARGE_MODEL || !LARGE_FALLBACK_REASONS.has(reason)) return null;
+  const hint = detail?.hint ?? null;
+  if (hint === 'gpu_buffer_read' || hint === 'gpu_or_context_lost') return 'gpu';
+  if (reason === 'out_of_memory' || hint === 'out_of_memory') return 'memory';
+  if (reason === 'engine_unavailable') return 'engine';
+  if (detail?.via === 'stalled') return 'stalled';
+  if (detail?.via === 'worker_error_event' || detail?.via === 'worker_message_error') return 'crashed';
+  return 'other';
 }
 
 /** The groups a model needs to run: the runtime, the speech detector, its own files. */

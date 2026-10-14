@@ -30,7 +30,7 @@ doğrulanır (`web/tests/e2e/privacy.spec.ts` → "nothing leaves the machine").
 | Hesap / oturum? | Yok. | Kodda auth yok |
 | Analitik, hata raporlama servisi, reklam? | Yok. Üçüncü taraf script yok. | `web/next.config.ts`, `web/src/app/layout.tsx`, `package.json` bağımlılıkları |
 | Çevrimdışı kopya? | Evet, 30 Eylül 2026'dan beri (ADR-031): bir service worker uygulamanın **kendi dosyalarını** (sayfalar, derleme dosyaları, altyazı yazı tipi, simgeler, manifest) Cache Storage'da tutar ki site internetsiz açılsın. Medya, dışa aktarılan dosya, proje ya da başka bir origin'in dosyası bu önbelleğe girmez (§2.5). | `web/scripts/lib/service-worker.js`, `web/scripts/lib/precache.mjs`, e2e `pwa.spec.ts` |
-| Çerez, localStorage, sessionStorage? | Çerez kullanılmıyor. **13 Ekim 2026 (ADR-044):** sessionStorage'da tek anahtar olabilir — `clip:page-recovery`, yalnızca bir sayfa açılamayıp kendini yeniden yüklediğinde yazılır (§2.4a); sorunsuz oturumda sessionStorage boştur. localStorage'da yalnızca ilk kullanım ipucunun kapatıldığı (`clip.firstRunHint.dismissed` = `1`) durur, o da yalnızca kullanıcı "Anladım"a basınca yazılır (§2.4). e2e testi ipucu kapatılmamış oturumun sonunda üçünün de boş olduğunu, kapatınca yalnızca o anahtarın yazıldığını doğrular. | `web/src/components/editor/FirstRunHint.tsx` + e2e testleri |
+| Çerez, localStorage, sessionStorage? | Çerez kullanılmıyor. **13 Ekim 2026 (ADR-044):** sessionStorage'da tek anahtar olabilir — `clip:page-recovery`, yalnızca bir sayfa açılamayıp kendini yeniden yüklediğinde yazılır (§2.4a); sorunsuz oturumda sessionStorage boştur. localStorage'da yalnızca ilk kullanım ipucunun kapatıldığı (`clip.firstRunHint.dismissed` = `1`) durur, o da yalnızca kullanıcı "Anladım"a basınca yazılır (§2.4). **14 Ekim 2026 (ADR-036 eki):** localStorage'da bir anahtar daha olabilir — `clip.transcriptLargeFailed` = `1`, yalnızca büyük konuşma modeli bu tarayıcıda yazıya dökerken durduğunda yazılır (§2.8a). e2e testi ipucu kapatılmamış oturumun sonunda üçünün de boş olduğunu, kapatınca yalnızca o anahtarın yazıldığını doğrular. | `web/src/components/editor/FirstRunHint.tsx` + e2e testleri |
 | Cihaz parmak izi? | Yok. Tanı dosyasındaki tarayıcı bilgisi yalnızca kullanıcı indirirse oluşur ve kendiliğinden gönderilmez. | `web/src/adapters/diagnostics.ts` |
 | Model dosyası / AI? | Bu sürümde yok. | — |
 | Kendiliğinden gönderilen bir şey? | Yok. Yayındaki derlemenin kodunda başka bir adrese giden `fetch`/XHR/WebSocket/beacon yok: `fetch` yalnızca kendi origin'imizden okur (yazı tipi — `useCaptionFont.ts`; "Modeli indir"e basılınca model dosyaları — §2.8). Bulut yolunun istemcisi (`web/src/adapters/cloud/`) depoda durur ama yayındaki derlemeye **girmez** (§8.1). | e2e testleri; `scripts/apply-csp.mjs` (durağan çıktıda bulut kodu bulursa derlemeyi durdurur); `tests/e2e/cloud-off.spec.ts` |
@@ -287,7 +287,9 @@ Yeni saklanan veri **yok**.
   silmez (yalnız `clip-app-*` adlarını siler).
 - **Ne zaman silinir:** kullanıcı silene kadar kalır. "Modeli sil": `/gizlilik` sayfasındaki
   "Konuşma modeli" kartında ve editörde "Kısayollar ve sınırlar" penceresinde; ikisi de adı
-  `clip-models-` ile başlayan önbellekleri siler (`modelStore.ts`, `deleteStoredModels`). Sabit
+  `clip-models-` ile başlayan önbellekleri siler (`modelStore.ts`, `deleteStoredModels`). **14 Ekim 2026:** büyük model bu tarayıcıda yazarken durduysa "Yazıya dök" adımı ayrıca
+  "Büyük modeli sil"i sunar: yalnızca büyük modelin kendi dosyaları (≈566,5 MB) silinir, küçük model
+  ve iki modelin ortak dosyaları kalır (`deleteModelFiles`); kendiliğinden hiçbir şey silinmez (§2.8a). Sabit
   revizyon değişirse eski revizyonun dosyaları bir sonraki indirmede silinir (`pruneStale`).
   İndirme sırasında `navigator.storage.persist()` istenir (tarayıcı depolama baskısında dosyaları
   kendiliğinden atmasın diye; Firefox bunu kullanıcıya sorar).
@@ -305,6 +307,27 @@ Yeni saklanan veri **yok**.
 - **Ölçüm kancası:** `globalThis.__clipTranscriptRuns` dizisi sayfa yüklenmeden önce tanımlanmışsa
   (yalnız ölçüm betikleri tanımlar) istemci bir koşunun kelime zamanlarını oraya yazar; olağan
   kullanımda dizi yoktur ve hiçbir şey yazılmaz (`__clipSilenceEnvelopes` ile aynı kalıp).
+
+### 2.8a localStorage — "büyük model burada durdu" notu (2026-10-14, ADR-036 eki)
+
+Tek anahtar: `clip.transcriptLargeFailed`, değeri `1`. **Yalnızca** büyük konuşma modeli
+(`large-v3-turbo`) bu tarayıcıda yazıya dökerken beklenmedik bir hatayla durduğunda yazılır (iç hata,
+bellek yetmedi, model başlatılamadı; videonun sesi olmaması, okunamaması, eksik model dosyası ya da
+"Durdur" yazmaz). Ne içindir: uygulama bu tarayıcıda büyük modeli artık "Önerilen" göstermez ve ön
+seçmez, küçük modeli önerir; büyük modelin satırı "Bu cihazda daha önce yazıya dökerken durdu" der.
+Zaman, kimlik, video, dosya adı, hatanın metni ya da cihaz bilgisi içermez; hiçbir yere gönderilmez;
+tanı dosyasına ("Sorun bildir") girmez. Tarayıcı depolamayı reddederse (gizli pencere) okuma ve yazma
+`try/catch` içindedir; not yalnızca açık sekmenin belleğinde kalır.
+
+Silinmesi: büyük model bu tarayıcıda bir kez yazıyı bitirebilirse kendiliğinden; `/gizlilik`
+"Konuşma modeli" kartında ve editörde "Kısayollar ve sınırlar" penceresinde **"Bu notu sil"**;
+tarayıcının site verisini temizleyince. Kaynak: `web/src/adapters/transcript/largeModelNote.ts`,
+`web/src/components/transcript/useTranscription.ts`, `ModelStoragePanel.tsx`; testler:
+`web/tests/e2e/transcript-large-fallback.spec.ts` (yazılır; tek yeni anahtar budur ve değeri `1`;
+gizlilik sayfasından silinir; büyük model çalışınca kendiliğinden gider), `web/tests/e2e/privacy.spec.ts`
+("Büyük model notu" kartı). Aynı değişiklikte, kullanıcı basarsa yalnızca büyük modelin kendi
+dosyalarını silen **"Büyük modeli sil"** eklendi (§2.8 deposu; önbelleğin adı ve biçimi değişmedi;
+küçük model ve ortak dosyalar kalır).
 
 ## 4. Ağ
 

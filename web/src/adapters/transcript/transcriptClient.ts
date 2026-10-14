@@ -6,6 +6,7 @@
  * a decode or a model call in flight cannot be interrupted any other way.
  */
 
+import { classifyDevice, type DeviceClass, type UserAgentHints } from '@/domain/deviceClass';
 import { sanitizeExportFailureDetail, type ExportFailureDetail, type FailurePhase } from '@/domain/exportFailureDetail';
 import type { TranscriptSegment } from '@/domain/transcript';
 import { MODEL_MANIFEST, isModelManifest, type ModelManifest, type TranscriptModelId } from '@/domain/transcriptModels';
@@ -258,6 +259,20 @@ export class TranscriptClient {
     this.cancel();
     this.worker?.terminate();
     this.worker = null;
+  }
+}
+
+/**
+ * Phone or computer, Chromium or not (`domain/deviceClass.ts`): decides only
+ * whether the large model is the recommendation here. Read from `navigator`,
+ * kept nowhere.
+ */
+export function currentDevice(): DeviceClass {
+  try {
+    const nav = navigator as Navigator & { userAgentData?: UserAgentHints['data'] };
+    return classifyDevice({ userAgent: nav.userAgent, data: nav.userAgentData ?? null });
+  } catch {
+    return classifyDevice({ userAgent: '' });
   }
 }
 
