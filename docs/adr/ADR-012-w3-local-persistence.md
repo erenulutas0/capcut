@@ -119,6 +119,68 @@ bekliyor: rozet, kesitsiz video kaydedildiği anda zaten "saklandı" der.
 kalmıştı (şema v3 üzerinde); 10 Ekim'de `main`'e (şema v4) taşındı ve yukarıdaki
 iki testle (bütün fixture'lar, eski müzik kaydı) genişletildi.
 
+### Ek, 14 Ekim 2026 — video açıkken "Kayıtlı projeyi sil"
+
+**Kurucu kararı.** "Kayıtlı projeyi sil" yalnızca sayfa yenilenip editör dosyayı yeniden isteyince
+(`RelinkPanel`) vardı; video açıkken projeyi silmenin yolu tarayıcının site verisini temizlemekti.
+Aynı eylem artık video açıkken de var.
+
+**Nerede: "Diğer" penceresi, "Proje yedeği"nin altında — "Ayarlar" değil.** Karar metni "Ayarlar"
+çekmecesini söylüyordu. "Ayarlar"ın başlığı "Ayarlar · her indirmeye uygulanır" ve üç sekmesi
+(Çerçeve, Ses, Altyazı) indirilen videonun ayarlarıdır; projenin bu tarayıcıda saklanmasıyla ilgili
+var olan tek yer "Diğer"deki "Proje yedeği"dir (yedek indir / yedekten geri yükle). Yeni bir sekme ya da
+"Ayarlar"a sekmelerin dışında bir bölüm yeni bir düzen olurdu; "Diğer"de var olan bölüm düzeni
+(`field-label` + `hint-small` + tam genişlik düğme, `btn-danger` `RelinkPanel`'deki silme düğmesininki)
+kullanıldı. Kurucu "Ayarlar"da isterse taşımak tek bir blok.
+
+**Ne görünür.** Yalnızca editörün kendi (saklanan) projesinde ve bu tarayıcıda gerçekten bir kayıt varken
+(geri yüklendi ya da bir yazma tamamlandı — `hasStoredRecord`): "Kayıtlı proje · Bu düzenleme bu cihazda
+saklanıyor. Silersen video dosyana dokunulmaz. · [Kayıtlı projeyi sil]". Sihirbazdan açılan (saklanmayan)
+editörde, henüz hiçbir şey yazılmamışken ve depoda daha yeni bir derlemenin projesi varken (ADR-043: o
+korunur) görünmez.
+
+**Onay** (`window.confirm`, `RelinkPanel` ile aynı desen): "Bu cihazdaki kayıtlı proje silinecek:
+kesitler, yazı, ayarlar ve proje adı. Cihazındaki video dosyasına dokunulmaz. Açık video ekranda kalır ama
+bu düzenleme artık saklanmaz; sayfayı kapatınca gider. Silinsin mi?" — neyin silindiği, neyin silinmediği
+ve sonra ne olacağı.
+
+**Sonra: açık video kalır, düzenleme artık saklanmaz** (seçilen yol). İki yol vardı: (a) saklamayı durdurmak,
+(b) yeni bir proje olarak saklamaya devam etmek. **(a) seçildi**, çünkü:
+
+- Bu ADR'nin 10 Ekim eki: "silinen proje geri yazılmaz" — `forget` silme başarılıysa o sekmede yazmayı
+  durdurur. (b) bunun tersi olurdu.
+- Depo tek proje tutar ve kimliği sabittir (`p_local_001`). (b)'deki "yeni proje", aynı kimlikle, aynı
+  kesitlerle, 500 ms sonra **aynı kaydı** geri yazmak demektir: kullanıcı sildiği projeyi sayfayı yeniden
+  açınca geri bulurdu. Silmenin anlamı kalmazdı.
+
+Başlık bunu sihirbazdan açılan editörün bugünkü sözüyle söyler: **"Bu düzenleme saklanmıyor"**
+(`save-state-off`); üzerine gelince: "Kayıtlı projeyi sildin: bu sekmedeki düzenleme artık bu tarayıcıya
+kaydedilmez, sayfayı kapatınca gider. Editörü yeniden açıp video seçersen yeni bir proje saklanır.
+İndirdiğin videolar sende kalır." (Telefonda başlıkta rozet yok; aynı cümle "Diğer"in üstündeki ipucu
+satırında.) Pencerede: "Kayıtlı proje silindi. Bu düzenleme artık saklanmıyor; sayfayı kapatınca gider."
+(`role="status"`). Silme başarısızsa: "Kayıtlı proje silinemedi; düzenleme saklanmaya devam ediyor. Tekrar
+dene." (`role="alert"`) ve kaydetme sürer (eski davranış). Ayrılırken uyarı yok — sihirbazdan açılan
+editörde de yok; saklanmayan iş için tek tutarlı söz başlıktaki.
+
+**Yolda olan yazma.** Silme, otomatik kaydın bir yazması yoldayken olursa (yazma silmeden önce başladı,
+sonra bitti) `persist` bunu görür: kaydı yeniden siler ve "saklandı" demez. Önceden yalnızca yazmanın
+**başında** bakılıyordu.
+
+**Değişmeyen:** şema, kayıt biçimi, depo, `RelinkPanel`'in kendi silme düğmesi (sildikten sonra sayfayı
+yeniler, aynen), politika. Gizlilik sayfasında "Proje tarifi" kartının "Ne zaman silinir" cümlesi yeni yeri
+de söyler ("editörde “Diğer → Kayıtlı projeyi sil” de kullanılabilir (editör dosyayı yeniden istediğinde de
+çıkar)"); veri envanteri §2.1, §2.8 ve bulut bölümü.
+
+**Sınananlar** (`tests/e2e/persistence.spec.ts`, 2 yeni): onayın tam metni; silindikten sonra video ve
+kesitler yerinde, başlık "Bu düzenleme saklanmıyor" ve ipucu; yeni bir kesit + 2 sn (500 ms zamanlayıcısı)
+ve sayfadan çıkış (`pagehide`) sonrası depoda kayıt yok; yeniden açılınca proje yok, dosya istenmez, yeni
+video seçilince yeni proje yazılır. "Vazgeç" hiçbir şeyi silmez; henüz saklanmamış projede düğme yok.
+`tests/unit/wizardHandoff.test.ts`: gizlilik cümlesi "Diğer → Kayıtlı projeyi sil"i iki dilde söyler.
+
+**Doğrulanmayan:** gerçek telefonda; ekran okuyucuyla; yoldaki yazma yarışı yalnızca kodla kapatıldı,
+testte zorlanmadı; iki sekme aynı anda açıkken (öbür sekme kendi kopyasını yazmaya devam eder — var olan
+sınır, tek proje deposu).
+
 ## Karar 6 — Yedek dosyası hem çıkış hem giriş
 
 Doc 10 yalnızca "EDL'yi dışa alma" kurtarma yolunu istiyor. Yalnızca dışa alım

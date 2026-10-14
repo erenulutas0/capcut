@@ -277,6 +277,85 @@ test.describe('local persistence', () => {
     await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
     await expect(page.getByTestId('preview-video')).toBeVisible();
   });
+
+  test('"Kayıtlı projeyi sil" in "Diğer" while the video is open: says what goes, the video stays, nothing is written back', async ({ page }) => {
+    await openEditor(page);
+    await buildAndSave(page);
+
+    await openMore(page);
+    const panel = page.getByTestId('project-delete-panel');
+    await expect(panel).toContainText('Kayıtlı proje');
+    await expect(panel).toContainText('Bu düzenleme bu cihazda saklanıyor. Silersen video dosyana dokunulmaz.');
+    const asked: string[] = [];
+    page.once('dialog', (dialog) => {
+      asked.push(dialog.message());
+      void dialog.accept();
+    });
+    await page.getByTestId('project-delete').click();
+    // The question names what is deleted, what is not, and what happens next.
+    expect(asked).toEqual([
+      'Bu cihazdaki kayıtlı proje silinecek: kesitler, yazı, ayarlar ve proje adı. Cihazındaki video dosyasına dokunulmaz. Açık video ekranda kalır ama bu düzenleme artık saklanmaz; sayfayı kapatınca gider. Silinsin mi?',
+    ]);
+    await expect(page.getByTestId('project-delete-message')).toHaveText(
+      'Kayıtlı proje silindi. Bu düzenleme artık saklanmıyor; sayfayı kapatınca gider.',
+    );
+    await expect(page.getByTestId('project-delete-message')).toHaveAttribute('role', 'status');
+    await expect(page.getByTestId('project-delete')).toHaveCount(0);
+    expect(await storedRecord(page)).toBeNull();
+    await page.keyboard.press('Escape');
+
+    // The open video and its kesitler stay; the header says the editing is not saved (as for a wizard's work).
+    await expect(page.getByTestId('preview-video')).toBeVisible();
+    await expect(page.getByTestId('moment-count')).toHaveText('(2)');
+    await expect(page.getByTestId('save-state')).toHaveCount(0);
+    await expect(page.getByTestId('save-state-off')).toHaveText('Bu düzenleme saklanmıyor');
+    await expect(page.getByTestId('save-state-off')).toHaveAttribute(
+      'title',
+      'Kayıtlı projeyi sildin: bu sekmedeki düzenleme artık bu tarayıcıya kaydedilmez, sayfayı kapatınca gider. Editörü yeniden açıp video seçersen yeni bir proje saklanır. İndirdiğin videolar sende kalır.',
+    );
+
+    // Not written back: not by the 500 ms autosave after a new edit, not by the flush when the tab goes away.
+    await addMoment(page, '00:16.000', '00:20.000');
+    await expect(page.getByTestId('moment-count')).toHaveText('(3)');
+    await page.waitForTimeout(2_000);
+    expect(await storedRecord(page)).toBeNull();
+    await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false })));
+    await page.waitForTimeout(1_000);
+    expect(await storedRecord(page)).toBeNull();
+
+    // Opened again: no project, no request for the old file — an empty editor that saves anew.
+    await page.reload();
+    await expect(page.getByTestId('download-all')).toBeVisible();
+    await expect(page.getByTestId('relink-video')).toHaveCount(0);
+    await expect(page.getByTestId('moment-count')).toHaveText('(0)');
+    await expect(page.getByTestId('save-state')).toContainText('Düzenleme henüz saklanmadı');
+    expect(await storedRecord(page)).toBeNull();
+    await page.getByTestId('video-input').setInputFiles(SAMPLE_VIDEO);
+    await expect(page.getByTestId('preview-video')).toBeVisible();
+    await expect.poll(async () => (await storedRecord(page))?.bindings.length ?? 0, { timeout: 15_000 }).toBe(1);
+  });
+
+  test('"Vazgeç" on that question deletes nothing; a project not yet stored offers nothing to delete', async ({ page }) => {
+    await openEditor(page);
+    // Nothing stored yet: nothing to delete.
+    await openMore(page);
+    await expect(page.getByTestId('backup-panel')).toBeVisible();
+    await expect(page.getByTestId('project-delete-panel')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+
+    await buildAndSave(page);
+    await openMore(page);
+    page.once('dialog', (dialog) => void dialog.dismiss());
+    await page.getByTestId('project-delete').click();
+    await expect(page.getByTestId('project-delete')).toBeVisible();
+    await expect(page.getByTestId('project-delete-message')).toHaveCount(0);
+    expect((await storedRecord(page))?.edl.clips.length).toBe(2);
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı');
+
+    await page.reload();
+    await expect(page.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
+  });
 });
 
 /** Puts a record into the browser's project store as an earlier (or later) build would have left it. */

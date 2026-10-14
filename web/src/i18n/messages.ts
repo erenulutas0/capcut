@@ -70,6 +70,14 @@ export const tr = {
   'relink.discardConfirm':
     'Bu tarayıcıya kaydedilen proje tarifi silinecek. Video dosyalarına dokunulmaz. Devam edilsin mi?',
 
+  'project.delete.title': 'Kayıtlı proje',
+  'project.delete.body': 'Bu düzenleme bu cihazda saklanıyor. Silersen video dosyana dokunulmaz.',
+  'project.delete.confirm':
+    'Bu cihazdaki kayıtlı proje silinecek: kesitler, yazı, ayarlar ve proje adı. Cihazındaki video dosyasına dokunulmaz. Açık video ekranda kalır ama bu düzenleme artık saklanmaz; sayfayı kapatınca gider. Silinsin mi?',
+  'project.deleted': 'Kayıtlı proje silindi. Bu düzenleme artık saklanmıyor; sayfayı kapatınca gider.',
+  'project.deleted.hint':
+    'Kayıtlı projeyi sildin: bu sekmedeki düzenleme artık bu tarayıcıya kaydedilmez, sayfayı kapatınca gider. Editörü yeniden açıp video seçersen yeni bir proje saklanır. İndirdiğin videolar sende kalır.',
+  'project.delete.failed': 'Kayıtlı proje silinemedi; düzenleme saklanmaya devam ediyor. Tekrar dene.',
   'backup.title': 'Proje yedeği',
   'backup.body':
     'Düzenleme tarifini bir dosyaya indir. Bu dosya videonu içermez; kesitlerini, ayarlarını, altyazı metinlerini, proje adını ve kaynak dosyanın adını taşır. Paylaşmadan önce bunu bil.',
@@ -120,7 +128,7 @@ export const tr = {
     'Proje adı, kesitlerin ve sırası, görüntü/oran ayarları, müzik ayarları, altyazı satırlarının metni ve biçimi. Kaynak dosyayı yeniden tanımak için dosyanın adı, boyutu, değiştirilme tarihi, süresi, çözünürlüğü ve türü. Video ve ses dosyasının kendisi saklanmaz. Yalnızca editörde (“Kendim düzenleyeceğim”) yaptığın düzenleme saklanır; ana ekrandaki bir işten (Kes, Dikey yap…) başlattığın çalışma saklanmaz. Tek istisna “Yazıya dök”: çıkan yazıyı “Daha fazla ayar → editörde aç” ile açarsan o çalışma (satırların metni dahil) burada proje olarak saklanır; orada daha önce sakladığın bir proje varsa hangisinin kalacağı sana sorulur. Silmesi aşağıdaki gibi.',
   'privacy.stored.project.where': 'IndexedDB “clip-editor”, “projects” deposu',
   'privacy.stored.project.delete':
-    'Sen silene kadar. Tarayıcı ayarlarından bu sitenin verilerini temizleyebilirsin; editör dosyayı yeniden istediğinde “Kayıtlı projeyi sil” de kullanılabilir. Tarayıcı yer açmak için kendisi de silebilir.',
+    'Sen silene kadar. Tarayıcı ayarlarından bu sitenin verilerini temizleyebilirsin; editörde “Diğer → Kayıtlı projeyi sil” de kullanılabilir (editör dosyayı yeniden istediğinde de çıkar). Tarayıcı yer açmak için kendisi de silebilir.',
   'privacy.stored.log.name': 'Dışa aktarma günlüğü',
   'privacy.stored.log.body':
     'Son 20 dışa aktarma denemesi: zaman, sonuç (başarılı, başarısız, iptal), hata kodu, çıktı süresi, çözünürlük, yazma yolu (disk veya bellek), geçen süre ve tarifin kısa özet kodu. Başarısız denemede ayrıca hatanın türü, hangi aşamada olduğu, kaçıncı karede kaldığı ve kullanılan kodlayıcı ile çözücünün adı; hatanın metni saklanmaz. Dosya adı, altyazı metni veya görüntü içermez. Yalnızca sen tanı dosyası indirirsen o dosyaya eklenir.',
@@ -1024,6 +1032,7 @@ export const tr = {
   'home.examples': 'Örneğin',
   'home.tasks.title': 'Bütün işler',
   'home.results.title': 'Bunu mu demek istedin?',
+  'home.opening': 'Açılıyor…',
   'home.results.start': 'Başla',
   'home.results.unavailable': 'Bunu henüz yapamıyoruz.',
   'home.results.none.title': 'Bunu bulamadım.',
@@ -1248,11 +1257,11 @@ export const tr = {
   'transcript.model.turbo': 'Önerilen: büyük model (≈{size}, bir kez iner)',
   'transcript.model.turboHint':
     'Konuşmayı çok daha iyi anlar; sohbette ve gürültüde de. İndirmesi büyüktür, ekran kartını kullanır ve çok bellek ister.',
-  // ADR-036 addendum (14 Oct 2026): where the large model is not proven (a phone, an untested browser, or it failed here).
+  // ADR-036 addendum (14 Oct 2026): where the large model is not proven (an untested browser, or it failed here).
+  // Second addendum: on a phone it is not offered at all; `largePhone` is the one line said instead.
   'transcript.model.baseRecommended': 'Önerilen: küçük model (≈{size}, bir kez iner)',
   'transcript.model.turboPlain': 'Büyük model (≈{size}, bir kez iner)',
-  'transcript.model.turboHint.phone':
-    'Konuşmayı daha iyi anlar ama telefonda çalışmayabilir: denediğimiz bir telefonda indi, sonra yazıya dökemedi. İndirmesi çok büyüktür.',
+  'transcript.model.largePhone': 'Büyük model telefonda henüz yok.',
   'transcript.model.turboHint.untested':
     'Konuşmayı daha iyi anlar ama bu tarayıcıda hiç denenmedi; çalışmayabilir. İndirmesi çok büyüktür.',
   'transcript.model.turboHint.failed_here':

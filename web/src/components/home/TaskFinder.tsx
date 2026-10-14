@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Icon } from '@/components/Icon';
+import { isPlainPress, useNavigationFallback } from '@/components/home/navigationFallback';
 import { searchTasks } from '@/domain/taskSearch';
 import { TASK_EXAMPLES, availableTasks, type TaskDefinition } from '@/domain/tasks';
 import { translator } from '@/i18n/messages';
@@ -51,9 +52,14 @@ function fill(template: string, values: Record<string, string>): string {
  * The box is a combobox over a listbox (WAI-ARIA 1.2): focus stays in the
  * box, ↑/↓ move the highlighted result (`aria-activedescendant`), Enter
  * starts it, Escape clears; a polite status says how many results there are.
+ *
+ * A press is never silent (ADR-044 addendum, 14 Oct 2026): the pressed card
+ * or row says "Açılıyor…" until the task's page is here, and a page whose
+ * data never arrives is loaded in full after 10 s (`navigationFallback.ts`).
  */
 export function TaskFinder() {
   const router = useRouter();
+  const { pendingPath, begin } = useNavigationFallback();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const gridRef = useRef<HTMLHeadingElement | null>(null);
   const [query, setQuery] = useState('');
@@ -85,6 +91,7 @@ export function TaskFinder() {
 
   const start = (task: TaskDefinition) => {
     if (!task.available) return;
+    begin(taskHref(task));
     router.push(taskHref(task));
   };
 
@@ -120,8 +127,9 @@ export function TaskFinder() {
   };
 
   const first = matches[0];
-  const status =
-    result.kind === 'none'
+  const status = pendingPath
+    ? t('home.opening')
+    : result.kind === 'none'
       ? t('home.results.statusNone')
       : asking
         ? nudged
@@ -211,7 +219,9 @@ export function TaskFinder() {
               role="option"
               aria-selected={index === activeIndex}
               aria-disabled={task.available ? undefined : true}
+              aria-busy={pendingPath === taskHref(task) || undefined}
               data-available={task.available}
+              data-pending={pendingPath === taskHref(task) || undefined}
               data-testid={`result-${task.id}`}
               onClick={() => start(task)}
               onPointerMove={() => {
@@ -232,7 +242,7 @@ export function TaskFinder() {
               </span>
               {task.available ? (
                 <span className="result-start" data-testid="result-start">
-                  {t('home.results.start')}
+                  {pendingPath === taskHref(task) ? t('home.opening') : t('home.results.start')}
                 </span>
               ) : null}
             </li>
@@ -287,23 +297,32 @@ export function TaskFinder() {
               {t('home.tasks.title')}
             </h2>
             <ul className="task-grid" data-columns={wideColumns(cards.length)} data-testid="task-grid">
-              {cards.map((task, index) => (
-                <li key={task.id}>
-                  {/* prefetch={false}: see app/page.tsx. */}
-                  <Link
-                    className={index === 0 ? 'task-card task-card-lead' : 'task-card'}
-                    href={taskHref(task)}
-                    prefetch={false}
-                    data-testid={`task-${task.id}`}
-                  >
-                    <span className="task-card-icon">
-                      <Icon name={task.icon} />
-                    </span>
-                    <span className="task-card-label">{t(task.labelKey)}</span>
-                    <span className="task-card-sub">{t(task.subKey)}</span>
-                  </Link>
-                </li>
-              ))}
+              {cards.map((task, index) => {
+                const opening = pendingPath === taskHref(task);
+                return (
+                  <li key={task.id}>
+                    {/* prefetch={false}: see app/page.tsx. */}
+                    <Link
+                      className={index === 0 ? 'task-card task-card-lead' : 'task-card'}
+                      href={taskHref(task)}
+                      prefetch={false}
+                      onClick={(event) => {
+                        // A new tab or window is the browser's own; only a press the router handles is watched.
+                        if (isPlainPress(event)) begin(taskHref(task));
+                      }}
+                      aria-busy={opening || undefined}
+                      data-pending={opening || undefined}
+                      data-testid={`task-${task.id}`}
+                    >
+                      <span className="task-card-icon">
+                        <Icon name={task.icon} />
+                      </span>
+                      <span className="task-card-label">{t(task.labelKey)}</span>
+                      <span className="task-card-sub">{opening ? t('home.opening') : t(task.subKey)}</span>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </section>
         </>

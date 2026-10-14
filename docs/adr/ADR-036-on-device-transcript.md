@@ -1103,7 +1103,8 @@ Hepsi 14 Ekim 2026'da bu makinede, son kodla (dal `worktree-agent-a0749dbc7d42a7
 
 ### Açık kurucu kararları
 
-1. Telefonda büyük model hiç gösterilmesin mi? (Şimdi: seçilebilir, uyarıyla.)
+1. Telefonda büyük model hiç gösterilmesin mi? (Şimdi: seçilebilir, uyarıyla.) — **Kapandı (aynı gün):**
+   gösterilmez; aşağıda "Ek 2".
 2. Not süresiz mi kalsın? (Şimdi: evet; ör. 30 gün sonra kendiliğinden unutulabilir.)
 3. Büyük model durunca küçük model **kendiliğinden** mi denensin? (Şimdi: hayır, bir basış; çünkü
    indirme gerekebilir.)
@@ -1131,3 +1132,47 @@ açılan editörde **kayıtlı proje** olur. Kural, soru penceresi, gizlilik met
   (yeni parça `KeepOnHandoff` `lazyPart` ile ayrı bir yığında; bu işte ölçülmedi).
 - **Gizlilik:** `/gizlilik` "Proje tarifi" kartına tek istisna cümlesi eklendi (her derleme); veri
   envanteri §2.7, §2.8, §8.4a.
+
+## Ek 2 — 14 Ekim 2026: büyük model telefonda hiç sunulmaz
+
+**Kurucu kararı** (yukarıdaki ekin 1. açık sorusu): telefonda büyük model **gösterilmez**. Gerekçe aynı
+ölçüm: Galaxy S23'te (Chrome 155, WebGPU + `shader-f16`) büyük model 3 denemede 3 kez WebGPU tampon okuma
+hatasıyla durdu; küçük model aynı klibi 10,5 sn'de yazdı.
+
+**Ne değişti.**
+
+- `largeModelStanding` (`domain/transcriptModels.ts`): **cihaz notun önüne geçti.** Telefon ya da tablet
+  her zaman `phone`; daha önce "burada durdu" notu olan bir telefon da (`failed_here` değil). Masaüstünde
+  sıra aynı: not → `failed_here`, Chromium değilse `untested`, yoksa `proven`.
+- Yeni `largeModelOffered(standing)`: büyük model burada başlayabiliyor **ve** telefon değil. Kanca
+  (`useTranscription`) seçimi buna göre gösterir; `chooseModel('turbo')` sunulmayan yerde hiçbir şey yapmaz.
+- Telefonda ekran: seçim kutusu (iki radyo) **yok**; yerine tek düz satır — **"Büyük model telefonda henüz
+  yok."** / "The large model is not on phones yet." (`transcript.model.largePhone`; 4 kelime, kalite
+  katmanının teknik kelime listesinden temiz, okunabilirlik ölçüsünün 5 kelime alt sınırının altında).
+  Satır WebGPU olmayan telefonda da çıkar: söz orada da doğrudur ve tek seçeneğin nedenini söyler.
+  Küçük model seçili; indirme düğmesi yalnızca onun boyutunu söyler. Artık kullanılmayan
+  `transcript.model.turboHint.phone` cümlesi kaldırıldı.
+- **Telefonda önceden saklanmış büyük model** (bu değişiklikten önce orada sunuluyordu): yine sunulmaz,
+  hiçbir şey kendiliğinden silinmez; adım, "burada durdu" durumundaki gibi "Büyük model bu tarayıcıda ≈…
+  yer kaplıyor." + **"Büyük modeli sil"** gösterir (yalnızca büyük modelin kendi dosyaları). "Modeli sil"
+  (hepsi; `/gizlilik` ve "Kısayollar ve sınırlar") aynen.
+- **Değişmeyen:** masaüstü Chromium (büyük model önerili, ön seçili), Safari/Firefox masaüstü (`untested`:
+  seçilebilir, satırıyla) ve "burada durdu" (`failed_here`: seçilebilir, satırıyla, yer geri verilir).
+  Hata ekranı ve "Küçük modelle dene" masaüstünde aynen; telefonda büyük model hiç çalışmadığı için oraya
+  düşülmez. `localStorage` notu, model deposu, motor, şema, politika aynı.
+
+**Bilinen sınır (yukarıdan devralınan).** "Telefon" `domain/deviceClass.ts`'in kararıdır: Chrome'un
+"masaüstü sitesi" kipindeki Android telefon/tablet her sinyalde masaüstü görünür ve büyük model orada
+sunulur (masaüstü Chromium sayılır, önerili). iPad Safari "Macintosh" der: telefon sayılmaz, ama Chromium
+olmadığı için `untested` — seçilebilir, uyarısıyla. Tablet de "telefon" sayılır; satır "telefonda" der.
+
+**Sınananlar.** Birim `largeModelChoice.test.ts` (19; 1'i yeni): telefonda sunulmaz (saklı ne olursa
+olsun), cihaz notun önüne geçer, Chromium olmayan telefon da, masaüstü / `untested` / `failed_here`
+sunulmaya devam eder, WebGPU yoksa hiçbir yerde; satırın iki dildeki metni. e2e
+`transcript-large-fallback.spec.ts` (Pixel 7 öykünmesi; 2 test yeniden yazıldı/eklendi): seçim yok, satır,
+yalnızca küçük modelin boyutu, bakarken hiçbir şey inmez, küçük model yazar ve büyük modele yönlendirmez;
+"önceden saklanmış" büyük model (aynı sekme önce masaüstü gibi görünür ve büyük modeli indirir, sonra
+telefon olarak açılır) sunulmaz, yeri "Büyük modeli sil" ile boşalır, sonraki açılışta yer satırı yok.
+Masaüstü testleri aynen geçti.
+
+**Doğrulanmayan:** gerçek telefonda (adb bu işte kullanılmadı); Android tablet, Samsung Internet, iOS.

@@ -79,16 +79,18 @@ export const LARGE_MODEL: TranscriptModelId = 'turbo';
 export const RECOMMENDED_MODEL: TranscriptModelId = LARGE_MODEL;
 
 /**
- * Where the large model stands on this device (ADR-036, addendum 14 Oct 2026):
+ * Where the large model stands on this device (ADR-036, addenda of 14 Oct 2026):
  *
  * - `proven`: a desktop Chromium-family browser (Chrome, Edge) — where it was
  *   measured to work;
- * - `failed_here`: it stopped while writing in this browser before (a note
- *   this browser keeps until it works here or the user clears it);
  * - `phone`: a phone or a tablet. On a Galaxy S23 (Chrome 155, WebGPU with
  *   `shader-f16`) the 605 MB download worked and writing failed every time
  *   (3 of 3) with a WebGPU buffer read error; the small model wrote the same
- *   clip in 10.5 s;
+ *   clip in 10.5 s. The large model is NOT offered here at all (second
+ *   addendum): one plain line says it is not on phones yet. The device
+ *   outranks the note below — a phone where it failed before is still a phone;
+ * - `failed_here`: it stopped while writing in this browser before (a note
+ *   this browser keeps until it works here or the user clears it);
  * - `untested`: any other browser with WebGPU (Safari, Firefox): never measured.
  *
  * Only asked where the large model can start at all (WebGPU with `shader-f16`).
@@ -96,7 +98,7 @@ export const RECOMMENDED_MODEL: TranscriptModelId = LARGE_MODEL;
 export type LargeModelStanding = 'proven' | 'failed_here' | 'phone' | 'untested';
 
 export interface DeviceStanding {
-  /** WebGPU with `shader-f16`: the large model can be offered at all. */
+  /** WebGPU with `shader-f16`: the large model can start in this browser. */
   largeSupported: boolean;
   /** `domain/deviceClass.ts`. */
   device: { handheld: boolean; chromium: boolean };
@@ -105,10 +107,20 @@ export interface DeviceStanding {
 }
 
 export function largeModelStanding(input: Omit<DeviceStanding, 'largeSupported'>): LargeModelStanding {
-  if (input.largeFailedHere) return 'failed_here';
   if (input.device.handheld) return 'phone';
+  if (input.largeFailedHere) return 'failed_here';
   if (!input.device.chromium) return 'untested';
   return 'proven';
+}
+
+/**
+ * Whether the large model is a choice on this screen at all: it can start
+ * here, and this is not a phone or a tablet (ADR-036, second addendum of
+ * 14 Oct 2026). An untested browser and one where it failed before still
+ * offer it, with a line that says why it is not recommended.
+ */
+export function largeModelOffered(input: DeviceStanding): boolean {
+  return input.largeSupported && largeModelStanding(input) !== 'phone';
 }
 
 /**
@@ -123,9 +135,10 @@ export function recommendedModel(input: DeviceStanding): TranscriptModelId {
  * The model that is selected when the step opens, before the user chooses.
  *
  * - the large model cannot run here, or is not proven here (a phone, an
- *   untested browser, or it failed here before) → the small one. The large
- *   one stays a choice where it can start, with a line that says why it is
- *   not recommended — even when its files are already in this browser;
+ *   untested browser, or it failed here before) → the small one. On a phone
+ *   that is the only one (`largeModelOffered`), even when the large model's
+ *   files are already in this browser; elsewhere the large one stays a choice
+ *   with a line that says why it is not recommended;
  * - the large model is proven and already in this browser → the large one;
  * - ONLY the small one is in this browser → the small one: "Yazıya dök"
  *   works at once, and the 596 MB download stays the user's own decision

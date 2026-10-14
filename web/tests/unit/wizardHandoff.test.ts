@@ -181,6 +181,9 @@ describe('what the user reads', () => {
     expect(en['privacy.stored.project.body']).toContain('One exception, “Yazıya dök”');
     expect(en['privacy.stored.project.body']).toContain(en['wizard.moreSettings']);
     expect(en['privacy.stored.project.delete']).toContain(en['relink.discard']);
+    // …and where it is while a video is open (ADR-012 addendum, 14 Oct 2026): the editor's "Diğer" sheet.
+    expect(tr['privacy.stored.project.delete']).toContain(`“${tr['more.title']} → ${tr['relink.discard']}”`);
+    expect(en['privacy.stored.project.delete']).toContain(`“${en['more.title']} → ${en['relink.discard']}”`);
     // The sentences added for it are in plain words (the card's older list of file facts is not judged here).
     expect(strongJargon(body.slice(body.indexOf('Tek istisna')))).toEqual([]);
   });

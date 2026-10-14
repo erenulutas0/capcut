@@ -85,7 +85,13 @@ export function TranscribeSteps({
         ? 'transcript.model.turbo'
         : 'transcript.model.turboPlain';
   const optionHint = (id: TranscriptModelId): MessageKey =>
-    id === 'base' ? 'transcript.model.baseHint' : standing === 'proven' ? 'transcript.model.turboHint' : `transcript.model.turboHint.${standing}`;
+    id === 'base'
+      ? 'transcript.model.baseHint'
+      : standing === 'untested' || standing === 'failed_here'
+        ? `transcript.model.turboHint.${standing}`
+        : 'transcript.model.turboHint';
+  /** Where the large model's room is offered back: it failed here, or this is a phone (never offered there). */
+  const largeRoomOffered = standing === 'failed_here' || standing === 'phone';
 
   return (
     <div
@@ -108,8 +114,9 @@ export function TranscribeSteps({
           <legend>{t('transcript.model.quality')}</legend>
           {/*
             The recommended model first. Where the large model is proven (desktop Chrome / Edge) that is the
-            large one; on a phone, in an untested browser, or where it failed before, the small one — and the
-            large one stays a choice whose line says why it is not recommended (ADR-036 addendum).
+            large one; in an untested browser, or where it failed before, the small one — and the large one
+            stays a choice whose line says why it is not recommended (ADR-036 addendum). Never on a phone:
+            there is no choice there, only the line below (second addendum).
           */}
           {order.map((id) => (
             <label className="wizard-option" data-checked={model === id} data-recommended={id === recommended || undefined} key={id}>
@@ -130,6 +137,14 @@ export function TranscribeSteps({
             </label>
           ))}
         </fieldset>
+      ) : null}
+
+      {standing === 'phone' && !busy ? (
+        // ADR-036, second addendum (14 Oct 2026): on the S23 the large model failed 3 times of 3 — it is not
+        // offered on a phone at all, and this one line says so instead of a choice.
+        <p className="wizard-hint" data-testid="transcribe-large-phone">
+          {t('transcript.model.largePhone')}
+        </p>
       ) : null}
 
       {job.kind === 'downloading' ? (
@@ -313,8 +328,9 @@ export function TranscribeSteps({
         </div>
       ) : null}
 
-      {!busy && standing === 'failed_here' && (largeStoredBytes > 0 || largeDeleted) ? (
-        // The large model did not work here and still takes its room: freeing it is offered, never done alone.
+      {!busy && largeRoomOffered && (largeStoredBytes > 0 || largeDeleted) ? (
+        // The large model did not work here (or is not offered on this phone) and still takes its room:
+        // freeing it is offered, never done alone.
         <div className="wizard-panel" data-testid="large-space">
           {largeStoredBytes > 0 ? (
             <>

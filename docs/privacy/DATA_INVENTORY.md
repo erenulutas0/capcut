@@ -70,8 +70,9 @@ kayıt biçimi `web/src/domain/projectRecord.ts` (`ProjectRecord`). Otomatik kay
 | `bindings[]` | Her kaynak için: `fileName`, `sizeBytes`, `lastModified`, `durationUs`, `displayWidth/Height`, `mimeType`, `fingerprint` (FNV-1a, içerik hash'i değil), `lastSeenAt` | **Evet** (dosya adı) |
 
 Medya baytı, blob URL, base64 **yok** (`projectStore.ts` başlık yorumu; kayıt `JSON.parse(JSON.stringify())` ile düz JSON).
-Silme: tarayıcının site verisini temizlemek; kaynak dosya istendiğinde "Kayıtlı projeyi sil"
-(`RelinkPanel` → `useProjectPersistence.forget`). Tarayıcı depolamayı kendisi de boşaltabilir.
+Silme: tarayıcının site verisini temizlemek; editörde "Diğer → Kayıtlı projeyi sil" (video açıkken de;
+14 Ekim 2026, ADR-012 eki) ya da kaynak dosya istendiğinde aynı düğme (`RelinkPanel`); ikisi de
+`useProjectPersistence.forget`. Silinen kayıt o sekmede geri yazılmaz. Tarayıcı depolamayı kendisi de boşaltabilir.
 
 **Store `exportLog`** (keyPath `id`, autoIncrement) — yeni, bu değişiklikle eklendi.
 Alanlar `web/src/domain/exportLog.ts` (`ExportLogEntry`), yazma `web/src/components/editor/useExport.ts`
@@ -277,8 +278,8 @@ Yeni saklanan veri **yok**.
   cihazda yazılan yazı için de geçerlidir, `speaker` yalnızca internet yolunda olur). Satır çıkmamışsa
   saklanmaz. Depoda üstünde çalışılmış bir proje varsa önce sorulur ("Saklanan bir projen var"); seçilmeden
   hiçbir şey yazılmaz. Adres `/editor` olur; yenileme projeyi geri getirir ve video dosyasını yeniden
-  ister. **Silme:** §2.1'deki proje silmenin aynısı — editör dosyayı yeniden istediğinde "Kayıtlı projeyi
-  sil", ya da tarayıcı verisini temizlemek. Öbür dokuz sihirbaz için yukarıdaki cümle değişmedi
+  ister. **Silme:** §2.1'deki proje silmenin aynısı — editörde "Diğer → Kayıtlı projeyi sil" (ya da editör
+  dosyayı yeniden istediğinde aynı düğme), ya da tarayıcı verisini temizlemek. Öbür dokuz sihirbaz için yukarıdaki cümle değişmedi
   (e2e: `transcript-keep.spec.ts`, `wizards.spec.ts`). `/gizlilik` "Proje tarifi" kartı bunu söyler.
 - Çevrimdışı kopya (§2.5) artık `/yap/kes`, `/yap/bosluk`, `/yap/dikey`, `/yap/muzik`,
   `/yap/cevir` sayfalarını da içerir (yalnızca uygulamanın kendi dosyaları).
@@ -535,10 +536,9 @@ otomatik kayıtla.
   eklenmedi (şema değişikliği olurdu). Depodaki kayıttan, yazının bir sunucuda yazıldığı **anlaşılmaz**;
   cihazda yazılmış bir yazının kaydıyla aynı biçimdedir (fark: satırlarda `speaker`). Editör bu izi
   "Otomatik yazıldı — yanlış olabilir" diye gösterir.
-- **Silme:** §2.1'deki proje silmenin aynısı — editör video dosyasını yeniden istediğinde "Kayıtlı
-  projeyi sil" (onaydan sonra kayıt silinir ve o sekmede geri yazılmaz, ADR-012 eki; e2e), ya da
-  tarayıcının site verisini temizlemek. Video açıkken editörde ayrı bir "projeyi sil" düğmesi **yoktur**
-  (var olan sınır; bu işte eklenmedi).
+- **Silme:** §2.1'deki proje silmenin aynısı — editörde "Diğer → Kayıtlı projeyi sil" (video açıkken de,
+  14 Ekim 2026) ya da editör video dosyasını yeniden istediğinde aynı düğme (onaydan sonra kayıt silinir ve
+  o sekmede geri yazılmaz, ADR-012 ekleri; e2e), ya da tarayıcının site verisini temizlemek.
 - **Adres:** saklanan geçişte adres çubuğu sayfa yüklenmeden `/editor` olur (`history.replaceState`);
   adrese kişisel hiçbir şey yazılmaz. Yenileme editörü açar, kayıtlı proje geri gelir ve video dosyası
   yeniden istenir (dosyanın kendisi hiçbir yerde saklanmaz, §2.3).
