@@ -352,8 +352,31 @@ export const CONTRACT_CASES = [
       equal([limited.status, limited.body], [429, { error: 'rate_limited' }], 'over the limit');
       const retry = Number(limited.headers.get('retry-after'));
       truthy(retry > 0 && retry <= 3600, 'Retry-After within the hour');
-      // Asking for the quota is not an attempt.
+      // Asking for the quota with a known code is not an attempt.
       equal((await client(driver, invite).get('/v1/quota')).status, 200, 'quota is not limited');
+      // … but with an unknown code it is answered like a start over the limit: guessing is not cheaper here.
+      const guess = await client(driver, 'WRONG-GUESS-AFTER-LIMIT').get('/v1/quota');
+      equal([guess.status, guess.body], [429, { error: 'rate_limited' }], 'quota with a wrong code over the limit');
+    },
+  },
+  {
+    name: 'guessing codes through quota counts like guessing them through a start',
+    run: async (driver) => {
+      const invite = await driver.newInvite(60);
+      for (let i = 0; i < driver.limits.rateLimitPerHour; i += 1) {
+        const wrong = await client(driver, `WRONG-QUOTA-${i}`).get('/v1/quota');
+        equal([wrong.status, wrong.body], [401, { error: 'invite_invalid' }], `guess ${i + 1}`);
+      }
+      const limited = await client(driver, 'WRONG-QUOTA-LAST').get('/v1/quota');
+      equal([limited.status, limited.body], [429, { error: 'rate_limited' }], 'guess over the limit');
+      const retry = Number(limited.headers.get('retry-after'));
+      truthy(retry > 0 && retry <= 3600, 'Retry-After within the hour');
+      // The same counter as the starts: a start from this address is refused too …
+      const start = await client(driver, invite).start({ seconds: 60 });
+      equal([start.status, start.body], [429, { error: 'rate_limited' }], 'start after guessing');
+      equal((await driver.providerState()).uploads, 0, 'nothing uploaded');
+      // … while the quota of a known code is still answered (the card asks for it on every opening).
+      equal((await client(driver, invite).get('/v1/quota')).body, { on: true, remainingMinutes: 60, maxJobMinutes: 120 }, 'known code still answered');
     },
   },
   {

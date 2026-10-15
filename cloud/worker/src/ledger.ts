@@ -26,6 +26,7 @@ import { deleteTranscript, getTranscriptStatus } from './provider';
 
 export type Refusal = { ok: false; status: number; code: string; retryAfterS?: number };
 export type Reservation = { ok: true; jobId: string; reservedS: number };
+export type Quota = { ok: true; on: boolean; remainingS: number; maxJobS: number };
 
 export interface JobRow {
   id: string;
@@ -94,6 +95,19 @@ export class Ledger extends DurableObject<Env> {
   private releaseStale(now: number): void {
     this.sql.exec("UPDATE jobs SET state = 'failed', updated_at = ? WHERE state = 'reserved' AND created_at < ?", now, now - STALE_RESERVATION_MS);
   }
+  /**
+   * Counts one attempt for this address in the current hour and says whether it is over the limit.
+   * Every start counts (right or wrong invite); a quota lookup counts only when its invite is unknown,
+   * so guessing codes through `/v1/quota` is as slow as guessing them through `/v1/jobs`.
+   */
+  private countAttempt(ipHash: string, now: number, limit: number): Refusal | null {
+    const window = Math.floor(now / HOUR_MS);
+    this.sql.exec('DELETE FROM rate WHERE window < ?', window);
+    this.sql.exec('INSERT INTO rate (ip_hash, window, count) VALUES (?, ?, 1) ON CONFLICT (ip_hash, window) DO UPDATE SET count = count + 1', ipHash, window);
+    const attempts = this.one<{ count: number }>('SELECT count FROM rate WHERE ip_hash = ? AND window = ?', ipHash, window)?.count ?? 0;
+    if (attempts <= limit) return null;
+    return { ok: false, status: 429, code: 'rate_limited', retryAfterS: Math.ceil(((window + 1) * HOUR_MS - now) / 1000) };
+  }
   private async ensureAlarm(): Promise<void> {
     if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(Date.now() + ALARM_EVERY_MS);
   }
@@ -106,14 +120,9 @@ export class Ledger extends DurableObject<Env> {
   async reserve(input: { inviteHash: string; ipHash: string; declaredS: number; bytes: number; jobId?: string }): Promise<Reservation | Refusal> {
     const config = readConfig(this.env);
     const now = Date.now();
-    const window = Math.floor(now / HOUR_MS);
     const result = this.ctx.storage.transactionSync((): Reservation | Refusal => {
-      this.sql.exec('DELETE FROM rate WHERE window < ?', window);
-      this.sql.exec('INSERT INTO rate (ip_hash, window, count) VALUES (?, ?, 1) ON CONFLICT (ip_hash, window) DO UPDATE SET count = count + 1', input.ipHash, window);
-      const attempts = this.one<{ count: number }>('SELECT count FROM rate WHERE ip_hash = ? AND window = ?', input.ipHash, window)?.count ?? 0;
-      if (attempts > config.rateLimitPerHour) {
-        return { ok: false, status: 429, code: 'rate_limited', retryAfterS: Math.ceil(((window + 1) * HOUR_MS - now) / 1000) };
-      }
+      const limited = this.countAttempt(input.ipHash, now, config.rateLimitPerHour);
+      if (limited) return limited;
       if (!config.enabled || config.capMicro <= 0 || this.killed()) return { ok: false, status: 503, code: 'cloud_off' };
 
       const invite = this.one<{ quota_s: number; used_s: number; revoked: number }>('SELECT quota_s, used_s, revoked FROM invites WHERE hash = ?', input.inviteHash);
@@ -209,16 +218,24 @@ export class Ledger extends DurableObject<Env> {
     this.sql.exec('UPDATE jobs SET provider_deleted = 1, transcript_id = NULL, updated_at = ? WHERE id = ?', Date.now(), jobId);
   }
 
-  async quota(inviteHash: string): Promise<{ on: boolean; remainingS: number; maxJobS: number } | null> {
+  /**
+   * Minutes left for an invite. An unknown (or revoked) code counts as an attempt of the address, like a
+   * start with a wrong code does: over the hourly limit the answer is `rate_limited`, below it `invite_invalid`.
+   * A known code is never counted and never limited here (the card asks on every opening).
+   */
+  async quota(inviteHash: string, ipHash: string): Promise<Quota | Refusal> {
     const config = readConfig(this.env);
-    const invite = this.one<{ quota_s: number; used_s: number; revoked: number }>('SELECT quota_s, used_s, revoked FROM invites WHERE hash = ?', inviteHash);
-    if (!invite || invite.revoked) return null;
-    const month = monthOf(Date.now());
-    const capLeftMicro = config.capMicro - this.monthSpent(month) - this.monthReserved(month);
-    const capLeftS = Math.max(0, Math.floor((capLeftMicro * 3600) / config.priceMicroPerHour));
-    const inviteLeftS = Math.max(0, invite.quota_s - invite.used_s - this.inviteReserved(inviteHash));
-    const on = config.enabled && config.capMicro > 0 && !this.killed();
-    return { on, remainingS: on ? Math.min(inviteLeftS, capLeftS) : 0, maxJobS: config.maxJobSeconds };
+    const now = Date.now();
+    return this.ctx.storage.transactionSync((): Quota | Refusal => {
+      const invite = this.one<{ quota_s: number; used_s: number; revoked: number }>('SELECT quota_s, used_s, revoked FROM invites WHERE hash = ?', inviteHash);
+      if (!invite || invite.revoked) return this.countAttempt(ipHash, now, config.rateLimitPerHour) ?? { ok: false, status: 401, code: 'invite_invalid' };
+      const month = monthOf(now);
+      const capLeftMicro = config.capMicro - this.monthSpent(month) - this.monthReserved(month);
+      const capLeftS = Math.max(0, Math.floor((capLeftMicro * 3600) / config.priceMicroPerHour));
+      const inviteLeftS = Math.max(0, invite.quota_s - invite.used_s - this.inviteReserved(inviteHash));
+      const on = config.enabled && config.capMicro > 0 && !this.killed();
+      return { ok: true, on, remainingS: on ? Math.min(inviteLeftS, capLeftS) : 0, maxJobS: config.maxJobSeconds };
+    });
   }
 
   // ------------------------------------------------------------ admin (founder only)
