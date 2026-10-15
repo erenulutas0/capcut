@@ -97,8 +97,9 @@ if (process.platform !== 'win32') {
 mkdirSync(outDir, { recursive: true });
 const MIB = 1048576;
 const mib = (bytes) => (bytes === null || bytes === undefined ? null : Number((bytes / MIB).toFixed(1)));
-const text = async (locator) => ((await locator.first().textContent().catch(() => null)) ?? '').replace(/\s+/g, ' ').trim() || null;
-const attr = (locator, name) => locator.first().getAttribute(name).catch(() => null);
+// Optional elements: an absent one answers null at once instead of after Playwright's 30 s wait.
+const text = async (locator) => ((await locator.first().textContent({ timeout: 500 }).catch(() => null)) ?? '').replace(/\s+/g, ' ').trim() || null;
+const attr = (locator, name) => locator.first().getAttribute(name, { timeout: 500 }).catch(() => null);
 
 /* ----------------------------------------------------------------- sampling */
 
@@ -425,7 +426,8 @@ try {
         }
       }
       if (outcome) break;
-      const progress = await text(page.getByTestId('export-progress'));
+      const progressEl = page.getByTestId('export-progress');
+      const progress = (await progressEl.count()) > 0 ? await text(progressEl) : null;
       const match = progress ? /%\s?(\d+)/.exec(progress) : null;
       if (match) {
         const pct = Number(match[1]);
@@ -437,7 +439,7 @@ try {
           row.cancel = { askedAtMs: cancelClickedAt - startedAt, askedAtPercent: pct };
         }
       }
-      const dead = await page.getByTestId('page-dead').getAttribute('data-state').catch(() => null);
+      const dead = await attr(page.getByTestId('page-dead'), 'data-state');
       if (dead && dead !== 'hidden') {
         row.pageWatchdog = dead;
       }
