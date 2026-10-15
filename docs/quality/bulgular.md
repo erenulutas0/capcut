@@ -1,5 +1,27 @@
 **Yazıldığı koşu:** 11 Ekim 2026 öğleden sonra, dal `worktree-agent-a511c0275d7647e51` (önceki bulgular: aynı gün, `b8e355f`). O raporda açık kalan üç şey üzerinde çalışıldı: aramanın yanlış karta göndermesi, editörün her videoyu 1080p’ye büyütmesi, 720p’den küçük kaynakların büyütülmesi. Aşağıda her biri için aynı ölçünün önceki → şimdiki değeri var. Açık kalanlar en başta.
 
+### 15 Ekim — editörün ilk yükü hafifledi (dal `worktree-agent-abfa7505f484bcb77`)
+
+Yayındaki sitede görünen bir şey değişmedi; ekran tabanlarından farklı ekran **0**. 643 ölçü: **566 bütçe içinde, 8
+dışında** (hepsi önceki açık maddeler: yedi arama ölçüsü ve `out.notFaststart`), 5 ölçülemedi, 64 bütçesiz.
+
+- **Telefon kısıtlamasında TBT** (3 koşunun ortancası, parantezde en az–en çok; önce = 14 Ekim akşamki rapor):
+  editör 193 (186–244) → **141 ms (130–158)**, sihirbaz `/yap/dikey/` 157 (157–373) → **135 ms (130–149)**,
+  ana ekran (dokunulmadı) 148 (129–216) → 142 ms (122–146). Bütçe ≤ 200 ms; bütçe değişmedi.
+- **Aktarılan JS:** editör 299 KB / 18 dosya → **255 KB / 16**, sihirbaz 244 KB / 15 → **230 KB / 14**, ana ekran
+  181 KB / 9 → 182 KB / 10 (aynı kod, paketleyici bir Next.js parçasını ayrı dosyaya ayırdı). LCP değişmedi
+  (editör 816 → 832 ms, sihirbaz 640 → 636 ms; gürültü içinde).
+- **Gürültüden ayırmak için** aynı makinede, aynı saatte önceki (`8927bcd`) ve yeni durağan çıktı **sırayla** açıldı
+  (her biri 8–10 kez, mobil kısıtlama): editör ortanca 184 → 123 ms ve 126 → 93 ms (iki ayrı oturum; makinenin
+  arka plan yükü %15–45 arası oynadı), sihirbaz 141 → 119 ms ve 131 → 129 ms. Yalnızca hidrasyon değişikliği
+  (aşağıda 3.) ayrıca ölçüldü: editör 100 → 90 ms, sihirbazda fark yok.
+- **Ne taşındı:** (1) Kayıt planı İyileştir'in matematiğini taşıyordu (yalnızca bir sürüm sabiti için; ~15 KB) —
+  sabit ayrı dosyada. (2) Kayıtlı projeyi okuma ve tarif doğrulaması (~13 KB) yalnızca okunacak kayıt ya da yedek
+  varken gelir. (3) Editörde Ayarlar sayfasının panelleri, yardım, "Yazıya dök" penceresi (model deposu ve WebGPU
+  soruları dahil) ve indirme durumu basışla gelir; sihirbazda indirme durumu da. Gelmeyen parça yerinde "Bu bölüm
+  açılamadı · Tekrar dene" der (ADR-044). (4) Hidrasyondan sonra pencere genişliğine geçiş artık editörün tamamını
+  bir uzun görevde yeniden çizmiyor (geçiş, kısa dilimlerle). Yeni parçalar çevrimdışı listede (59 / 59 JS dosyası).
+
 ### 14 Ekim akşamı — telefonda büyük model yok, ölü görünen kart, video açıkken proje silme (ADR-036 Ek 2, ADR-044 eki, ADR-012 eki; dal `worktree-agent-a47f69274849b8c7a`)
 
 - 643 ölçü: **566 bütçe içinde, 8 dışında** (hepsi önceki koşulardaki açık maddeler: yedi arama ölçüsü ve
@@ -96,7 +118,7 @@ Yayındaki sitede bir şey değişmedi; aşağıdakiler yalnızca yolun açık o
 
 2. **Kaydedilen dosyaların hiçbirinde dizin başta değil (10 / 10).** Bu çalışmanın kapsamı dışındaydı; değişmedi. Kanıt: bölüm 5.
 
-3. **Editörün açılışı yavaş telefonda sınırın kıyısında.** Mobil kısıtlamada TBT bu koşuda 176 ms (167–191) — bütçe (200 ms) içinde; sabahki koşuda 206 ms (167–213) idi. Bu çalışmada editörün açılışına dokunulmadı: ölçü koşudan koşuya sınırın iki yanına düşüyor, “düzeldi” sayılamaz. Kanıt: bölüm 7.
+3. **Editörün açılışı telefonda artık sınırdan uzak (15 Ekim).** Mobil kısıtlamada TBT 141 ms (130–158); önce 176–268 ms arasında, sınırın iki yanına düşüyordu. Ayrıntı en üstte (15 Ekim). Kanıt: bölüm 7.
 
 ### Düzeltilenler (önce → şimdi)
 
