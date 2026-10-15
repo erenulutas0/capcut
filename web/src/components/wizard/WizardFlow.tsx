@@ -1,11 +1,11 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import type { CapabilityReportV1 } from '@/adapters/exportCapability';
 import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
 import { BrowserNotice } from '@/components/BrowserNotice';
+import { FallbackLink, NavigationFallbackScope } from '@/components/FallbackLink';
 import { Icon, Wordmark } from '@/components/Icon';
 import { lazyPart } from '@/components/LazyPart';
 import { ReportProblemProvider } from '@/components/ReportProblem';
@@ -259,23 +259,24 @@ export function WizardFlow({
     ) : null;
 
   return (
+    <NavigationFallbackScope>
     <ReportProblemProvider value={openReport}>
     <div className="wizard" data-step={step} data-task={task.id} data-testid="wizard" {...(hydrated ? {} : { [PAGE_PENDING_ATTRIBUTE]: '' })}>
       <header className="wizard-bar">
         {step === 'pick' ? (
-          <Link href="/" prefetch={false} className="wizard-back" onClick={guardLeave} data-testid="wizard-back">
+          <FallbackLink href="/" className="wizard-back" onClick={guardLeave} data-testid="wizard-back">
             <Icon name="back" />
             {t('wizard.back')}
-          </Link>
+          </FallbackLink>
         ) : (
           <button type="button" className="wizard-back" onClick={back} data-testid="wizard-back">
             <Icon name="back" />
             {t('wizard.back')}
           </button>
         )}
-        <Link
+        <FallbackLink
           href="/"
-          prefetch={false}
+          opening={false}
           className="wordmark-link"
           aria-label={t('wizard.backHome')}
           title={t('wizard.backHome')}
@@ -283,7 +284,7 @@ export function WizardFlow({
           data-testid="home-link"
         >
           <Wordmark />
-        </Link>
+        </FallbackLink>
       </header>
 
       <main className="wizard-main">
@@ -390,9 +391,9 @@ export function WizardFlow({
                 >
                   {t('wizard.result.again')}
                 </button>
-                <Link href="/" prefetch={false} className="btn" data-testid="wizard-home">
+                <FallbackLink href="/" className="btn" data-testid="wizard-home">
                   {t('wizard.backHome')}
-                </Link>
+                </FallbackLink>
               </div>
             ) : null}
             {!finished && entry.phase !== 'running' ? (
@@ -439,6 +440,7 @@ export function WizardFlow({
       {reportOpen ? <ReportDialog t={t} project={recipe ?? state.project} onClose={() => setReportOpen(false)} /> : null}
     </div>
     </ReportProblemProvider>
+    </NavigationFallbackScope>
   );
 }
 

@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Icon } from '@/components/Icon';
-import { isPlainPress, useNavigationFallback } from '@/components/home/navigationFallback';
+import { useNavigationScope } from '@/components/FallbackLink';
+import { isPlainPress } from '@/components/home/navigationFallback';
 import { searchTasks } from '@/domain/taskSearch';
 import { TASK_EXAMPLES, availableTasks, type TaskDefinition } from '@/domain/tasks';
 import { translator } from '@/i18n/messages';
@@ -56,10 +57,12 @@ function fill(template: string, values: Record<string, string>): string {
  * A press is never silent (ADR-044 addendum, 14 Oct 2026): the pressed card
  * or row says "Açılıyor…" until the task's page is here, and a page whose
  * data never arrives is loaded in full after 10 s (`navigationFallback.ts`).
+ * The guard is the screen's (`NavigationFallbackScope` in app/page.tsx),
+ * shared with "Kendim düzenleyeceğim" and the privacy link.
  */
 export function TaskFinder() {
   const router = useRouter();
-  const { pendingPath, begin } = useNavigationFallback();
+  const { pendingPath, begin } = useNavigationScope();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const gridRef = useRef<HTMLHeadingElement | null>(null);
   const [query, setQuery] = useState('');

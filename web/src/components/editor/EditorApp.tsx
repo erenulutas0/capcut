@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { FallbackLink, NavigationFallbackScope } from '@/components/FallbackLink';
 import { Icon, Wordmark } from '@/components/Icon';
 import { lazyPart } from '@/components/LazyPart';
 import { ReportProblemProvider } from '@/components/ReportProblem';
@@ -810,6 +810,7 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
   );
 
   return (
+    <NavigationFallbackScope>
     <ReportProblemProvider value={openReport}>
     <div
       className="editor-root"
@@ -819,16 +820,16 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
       <aside className="prototype-banner" aria-label={t('a11y.prototypeNotice')}>
         {/* A build with the internet route of "Yazıya dök" (ADR-039) cannot say "bulut yok". */}
         <span>{t(process.env.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1' ? 'banner.prototype.online' : 'banner.prototype')}</span>
-        <Link href="/" style={{ color: 'inherit' }}>
+        <FallbackLink href="/" style={{ color: 'inherit' }}>
           {t('app.name')}
-        </Link>
+        </FallbackLink>
       </aside>
 
       <header className="topbar">
-        {/* The way back to the opening screen (ADR-034). prefetch={false}: see app/page.tsx. */}
-        <Link
+        {/* The way back to the opening screen (ADR-034). Never seems dead (ADR-044 addendum): FallbackLink. */}
+        <FallbackLink
           href="/"
-          prefetch={false}
+          opening={false}
           className="wordmark-link"
           aria-label={t('wizard.backHome')}
           title={t('wizard.backHome')}
@@ -839,7 +840,7 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
           data-testid="home-link"
         >
           <Wordmark />
-        </Link>
+        </FallbackLink>
         <div className="topbar-title">
           {phone ? null : (
             <>
@@ -1453,5 +1454,6 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
       ) : null}
     </div>
     </ReportProblemProvider>
+    </NavigationFallbackScope>
   );
 }

@@ -1,5 +1,4 @@
-import Link from 'next/link';
-
+import { FallbackLink, NavigationFallbackScope } from '@/components/FallbackLink';
 import { Wordmark } from '@/components/Icon';
 import { TaskFinder } from '@/components/home/TaskFinder';
 import { translator } from '@/i18n/messages';
@@ -24,21 +23,29 @@ const ONLINE_ROUTE = process.env.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1';
  *
  * It is the installed app's start page (`manifest.ts`) and is kept for
  * offline use by the service worker like every other page.
+ *
+ * No press here is ever silent (ADR-044 addendum, 14 and 15 Oct 2026): the
+ * cards, the search results, "Kendim düzenleyeceğim" and the privacy link
+ * share one guard (`NavigationFallbackScope`) — the pressed one says
+ * "Açılıyor…", and a page whose data never arrives is loaded in full after
+ * 10 s, once per visit of this screen.
  */
 export default function HomePage() {
   return (
+    <NavigationFallbackScope>
     <div className="home">
       <header className="home-bar">
         <Wordmark />
         {/*
-          prefetch={false} on every link here: Next 16's static export writes
-          nested segment payloads (editor/__next.editor/__PAGE__.txt) under a
-          different name than its prefetcher requests, which 404s on GitHub
-          Pages. A click still navigates normally.
+          prefetch={false} on every link here (FallbackLink): Next 16's static
+          export writes nested segment payloads
+          (editor/__next.editor/__PAGE__.txt) under a different name than its
+          prefetcher requests, which 404s on GitHub Pages. A click still
+          navigates normally.
         */}
-        <Link className="home-editor-link" href="/editor" prefetch={false} data-testid="home-editor-link">
+        <FallbackLink className="home-editor-link" href="/editor" data-testid="home-editor-link">
           {t('home.editorLink')}
-        </Link>
+        </FallbackLink>
       </header>
 
       <main className="home-main">
@@ -53,11 +60,12 @@ export default function HomePage() {
         </p>
         <p className="home-note">
           {t(ONLINE_ROUTE ? 'landing.note.online' : 'landing.note')}{' '}
-          <Link href="/gizlilik" prefetch={false} data-testid="footer-privacy">
+          <FallbackLink href="/gizlilik" data-testid="footer-privacy">
             {t('privacy.link')}
-          </Link>
+          </FallbackLink>
         </p>
       </footer>
     </div>
+    </NavigationFallbackScope>
   );
 }

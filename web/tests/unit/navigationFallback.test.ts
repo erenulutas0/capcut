@@ -111,6 +111,14 @@ describe('the address of the full load', () => {
     expect(fullPageHref('/yap/kes/', '/capcut', true)).toBe('/capcut/yap/kes/');
     expect(fullPageHref('/yap/kes', '/capcut', false)).toBe('/capcut/yap/kes');
   });
+
+  it('also for the editor and the way back to the opening screen (15 Oct 2026: every link of a screen)', () => {
+    expect(fullPageHref('/editor', '/capcut', true)).toBe('/capcut/editor/');
+    expect(fullPageHref('/editor', '', false)).toBe('/editor');
+    expect(fullPageHref('/', '/capcut', true)).toBe('/capcut/');
+    expect(fullPageHref('/', '', false)).toBe('/');
+    expect(fullPageHref('/', '', true)).toBe('/');
+  });
 });
 
 describe('which presses are watched', () => {
