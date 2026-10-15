@@ -227,13 +227,35 @@ const tr = (value: number, digits = 2) => value.toLocaleString('tr-TR', { maximu
 /** Decodes the whole file with ffmpeg: a file that "plays" has no decode error and at least one frame (or sample). */
 function decodeAll(file: string, hasVideo: boolean): { errors: string | null; frames: number | null } {
   const result = spawnSync('ffmpeg', ['-hide_banner', '-v', 'error', '-i', file, '-f', 'null', '-'], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
-  const errors = (result.stderr ?? '').trim();
+  // The null muxer's own complaint is not about the file: it rounds a low-rate, variable-rate video's
+  // times to its own coarse clock (1 s at 1 frame/s) and then finds two equal ones. The packets
+  // themselves are checked by ffprobe. Every other line — the decoders' — counts.
+  const lines = (result.stderr ?? '').split(/\r?\n/);
+  const kept: string[] = [];
+  let skipped = false;
+  for (const line of lines) {
+    const repeat = /^\s*Last message repeated \d+ times?$/.test(line);
+    if (/^\[null @ [^\]]+\] Application provided invalid, non monotonically increasing dts to muxer/.test(line) || (repeat && skipped)) {
+      skipped = true;
+      continue;
+    }
+    skipped = false;
+    if (line.trim() !== '') kept.push(line);
+  }
+  const errors = kept.join('\n').trim();
   let frames: number | null = null;
   if (hasVideo) {
     const count = spawnSync('ffprobe', ['-v', 'error', '-count_frames', '-select_streams', 'v:0', '-show_entries', 'stream=nb_read_frames', '-of', 'csv=p=0', file], { encoding: 'utf8' });
-    frames = Number((count.stdout ?? '').trim()) || 0;
+    // With a display matrix (a rotated video) ffprobe prints "60," — the side data's empty column: the first field is the count.
+    frames = Number.parseInt((count.stdout ?? '').trim().split(/[,\s]/)[0] ?? '', 10) || 0;
   }
   return { errors: errors === '' ? null : errors.slice(0, 300), frames };
+}
+
+/** The display matrix's rotation of the first picture track, in degrees (0 when there is none). */
+function displayRotation(file: string): number {
+  const result = spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream_side_data=rotation', '-of', 'csv=p=0', file], { encoding: 'utf8' });
+  return Number.parseInt((result.stdout ?? '').trim().split(/[,\s]/)[0] ?? '', 10) || 0;
 }
 
 /**
@@ -282,9 +304,18 @@ export function measureSaved(file: string, name: string, surface: Surface, item:
     if (surface === 'dikey') {
       add({ name: 'dikey (9:16)', ok: height > width, value: `${width} × ${height}`, weight: 'unclear' });
     } else if (item.width && item.height) {
-      // Never enlarged (ADR-041): a rotated source swaps its sides, so pixels are compared, not sides.
-      add({ name: 'büyütülmemiş (piksel ≤ kaynak)', ok: width * height <= item.width * item.height + 2 * Math.max(item.width, item.height), value: `${width} × ${height} (kaynak ${item.width} × ${item.height})`, weight: 'unclear' });
-      if (/^dondurme-(90|270)$/.test(item.id)) add({ name: 'döndürme uygulanmış (dikey çıktı)', ok: height > width, value: `${width} × ${height}`, weight: 'unclear' });
+      // Never enlarged (ADR-041): a rotated source swaps its sides, so pixels are compared, not sides. The one
+      // exception is deliberate (src/domain/outputSize.ts MIN_OUTPUT_SHORT_EDGE): a picture smaller than 144 px on
+      // its short side is brought up to 144, because hardware encoders refuse smaller ones.
+      const floor = 144;
+      const lifted = Math.min(item.width, item.height) < floor && Math.min(width, height) <= floor;
+      add({ name: 'büyütülmemiş (piksel ≤ kaynak; 144 px tabanı hariç)', ok: lifted || width * height <= item.width * item.height + 2 * Math.max(item.width, item.height), value: `${width} × ${height} (kaynak ${item.width} × ${item.height})`, weight: 'unclear' });
+      if (/^dondurme-(90|270)$/.test(item.id)) {
+        // Turned upright either in the pixels or by a display matrix the players apply (the quick cut copies it).
+        const turned = Math.abs(displayRotation(file)) % 180 === 90;
+        const [shownWidth, shownHeight] = turned ? [height, width] : [width, height];
+        add({ name: 'döndürme uygulanmış (dikey görünüyor)', ok: shownHeight > shownWidth, value: `${shownWidth} × ${shownHeight}${turned ? ' (döndürme bilgisiyle)' : ''}`, weight: 'unclear' });
+      }
     }
   }
   if (expectAudio && info.audio) add({ name: 'ses AAC', ok: info.audio.codec === 'aac', value: info.audio.codec, weight: 'unclear' });
@@ -345,6 +376,9 @@ export interface Verdict {
 const SAYS_WHAT_TO_DO =
   /(?<![\p{L}])(dene|deneyin|deneyebilirsin|deneyebilir|seç|seçin|seçebilirsin|kullan|kullanabilirsin|yenile|kısalt|kes|böl|indir|kapat|ekle|bağla|bak|aç)(?![\p{L}])/iu;
 
+/** A button that leads on from a card with nothing to do: another video, or the editor. */
+const WAY_ON_CONTROL = /başka bir video|editörde|editöre/iu;
+
 /** The file is damaged or lying: a sentence that points at the browser sends the user the wrong way. */
 const DAMAGED_GROUPS = new Set(['bozuk', 'yalan']);
 const BLAMES_BROWSER = /\bchrome\b|\bedge\b/iu;
@@ -403,7 +437,16 @@ export function judge(facts: CellFacts, item: CorpusItem): Verdict {
     else verdict = judged;
   } else if (outcome === 'noop') {
     if (item.expect === 'refuse') verdict = { verdict: 'belirsiz', why: `reddedilmesi gereken dosya açıldı; adım indirme sunmadı ve şöyle dedi: “${messages.join(' ').slice(0, 120)}”` };
-    else verdict = judgeMessage(messages, controls, item);
+    else {
+      // "Nothing to do with this video" is not a refusal: as in the quality layer's sound-less videos
+      // (tests/quality/errors.spec.ts), a plain reason plus a button on the screen that leads on
+      // ("Başka bir video seç", the editor) is the way forward.
+      const judged = judgeMessage(messages, controls, item);
+      const leadsOn = controls.some((name) => WAY_ON_CONTROL.test(name));
+      verdict = judged.verdict === 'belirsiz' && judged.why.startsWith('ne olduğunu söylüyor') && leadsOn
+        ? { verdict: 'iyi', why: `yapacak iş olmadığını sade sözle söylüyor; ekranda yol var (${controls.filter((name) => WAY_ON_CONTROL.test(name)).slice(0, 2).join(', ')})` }
+        : judged;
+    }
   } else {
     // unclear
     verdict = facts.stillBusy
