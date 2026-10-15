@@ -16,7 +16,7 @@ import { ALL_FORMATS, AudioSampleSink, BlobSource, Input, type InputAudioTrack }
 import { originOf, stageOf, tagStage, withOrigin } from '@/adapters/export/failureStage';
 import { applyWorkerFault } from '@/adapters/workerFault';
 import { caughtFailureDetail, stalledFailureDetail, type ExportStage } from '@/domain/exportFailureDetail';
-import { ENVELOPE_FRAME_US, LoudnessMeter, splitMeterRange, type MeterPart } from '@/domain/loudness';
+import { ENVELOPE_FRAME_US, joinEnvelopes, LoudnessMeter, splitMeterRange, type MeterPart } from '@/domain/loudness';
 import { US_PER_SECOND } from '@/domain/time';
 import type { AnalysisFailure, SilenceWorkerRequest, SilenceWorkerResponse } from './protocol';
 
@@ -179,13 +179,13 @@ async function analyze(request: Extract<SilenceWorkerRequest, { type: 'analyze' 
       stage = 'loudness';
       // The parts' envelopes end to end are the range's envelope.
       let frameCount = 0;
-      const values: number[] = [];
+      const envelopes: (readonly number[])[] = [];
       for (const meter of meters) {
         if (!meter) throw new AnalysisError('undecodable');
         frameCount += meter.frameCount;
-        values.push(...meter.finish().db);
+        envelopes.push(meter.finish().db);
       }
-      const db = Float32Array.from(values);
+      const db = joinEnvelopes(envelopes);
       post(
         { type: 'envelope', requestId, key: range.key, startUs: range.startUs, frameUs: ENVELOPE_FRAME_US, db },
         [db.buffer],

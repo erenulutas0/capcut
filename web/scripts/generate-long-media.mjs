@@ -23,6 +23,7 @@
  *   node scripts/generate-long-media.mjs --seconds=20 --only=1080   # quick check of the filter graph
  *   node scripts/generate-long-media.mjs --only=rot90    # 1080p coded landscape, displayed portrait
  *                                                         # (rotation metadata, like a phone; ADR-028)
+ *   node scripts/generate-long-media.mjs --only=phone60  # 60 min 720p under 50 MB (phone-run.mjs case LONG60)
  */
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
@@ -86,6 +87,44 @@ const SPECS = {
     seconds: 3600,
     video: ['-b:v', '10500k', '-minrate', '9500k', '-maxrate', '11500k', '-bufsize', '21000k'],
     noise: true,
+  },
+  // 2026-10-15 (long-export soak): 30 minutes of 4K HEVC HDR10 (10-bit,
+  // bt2020 / PQ, SDR white at 203 cd/m² like the matrix's M10-hdr clip), for
+  // the HDR -> SDR float16 path (ADR-022) at full length. Encoded with the
+  // GPU (hevc_nvenc main10): a CPU libx265 run of 54 000 4K frames would take
+  // hours. A machine without NVENC gets an honest ffmpeg error, not a fake.
+  hdr4k: {
+    name: 'long-30min-4k-hevc-hdr.mp4',
+    width: 3840,
+    height: 2160,
+    seconds: 1800,
+    codec: ['-c:v', 'hevc_nvenc', '-preset', 'p4', '-profile:v', 'main10', '-pix_fmt', 'p010le', '-g', '60',
+      '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc', '-color_range', 'tv',
+      '-tag:v', 'hvc1'],
+    video: ['-b:v', '15000k', '-maxrate', '18000k', '-bufsize', '36000k'],
+    // The drawn SDR picture placed in PQ the standard way (ITU-R BT.2408).
+    postChain: [
+      'format=gbrpf32le',
+      'zscale=tin=iec61966-2-1:pin=bt709:min=gbr:rin=pc:t=linear:p=bt709:m=gbr:r=pc:npl=203',
+      'zscale=p=bt2020:t=smpte2084:m=2020_ncl:r=limited:npl=203',
+      'format=yuv420p10le',
+    ],
+    noise: false,
+  },
+  // 2026-10-15 (long-export soak, the phone's turn): 60 minutes of 720p30 in
+  // under 50 MB, because `android/phone-run.mjs` sends the video to the
+  // phone as bytes over CDP and Playwright refuses files over 50 MB. The
+  // picture is starved (~70 kbit/s) but every frame and its barcode are
+  // there: the phone decodes 108 000 frames and encodes the output at the
+  // app's own bit rate, which is what the soak measures.
+  phone60: {
+    name: 'long-60min-720p-phone.mp4',
+    width: 1280,
+    height: 720,
+    seconds: 3600,
+    video: ['-b:v', '70k', '-maxrate', '120k', '-bufsize', '240k'],
+    audio: ['-b:a', '24k'],
+    noise: false,
   },
 };
 
@@ -175,8 +214,10 @@ for (const key of only) {
     `drawbox=x=0:y=0:w=${barW}:h=${BARCODE_BLOCK_H}:color=black:t=fill`,
     ...bits,
     `drawtext=fontfile='C\\:/Windows/Fonts/arial.ttf':text='%{pts\\:hms}  #%{frame_num}':x=40:y=${BARCODE_BLOCK_H + 24}:fontsize=${Math.round(spec.height / 16)}:fontcolor=white:box=1:boxcolor=black@0.8:boxborderw=12`,
+    ...(spec.postChain ?? []),
   ];
   const graph = `[0:v]${chain.join(',')}[v]`;
+  const codec = spec.codec ?? ['-c:v', 'libx264', '-preset', 'veryfast', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-g', '60'];
 
   const started = Date.now();
   console.log(`üretiliyor: ${name} (${seconds} s, ${spec.width}x${spec.height})…`);
@@ -186,9 +227,9 @@ for (const key of only) {
     '-f', 'lavfi', '-i', `aevalsrc=exprs=${escapeArg(AUDIO)}:sample_rate=48000:duration=${seconds}`,
     '-filter_complex', graph,
     '-map', '[v]', '-map', '1:a',
-    '-c:v', 'libx264', '-preset', 'veryfast', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-g', '60',
+    ...codec,
     ...spec.video,
-    '-c:a', 'aac', '-b:a', '96k', '-ac', '1',
+    '-c:a', 'aac', ...(spec.audio ?? ['-b:a', '96k']), '-ac', '1',
     partial,
   ]);
   if (spec.rotate) {
