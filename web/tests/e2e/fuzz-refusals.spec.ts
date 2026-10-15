@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from './fixtures';
 
-import { openEditor } from './kesitFlow';
+import { addKesit, openEditor } from './kesitFlow';
 
 /**
  * The fuzz run's findings, kept fixed (docs/quality/2026-10-15-fuzz.md).
@@ -123,4 +123,22 @@ test('a refused file is told what it really is, with a way on', async ({ page })
   expect(errors).toEqual([]);
   // The empty file is no longer handed to the player (it logged "ERR_REQUEST_RANGE_NOT_SATISFIABLE").
   expect(consoleErrors.filter((line) => /RANGE_NOT_SATISFIABLE/.test(line))).toEqual([]);
+});
+
+test('a download with nothing to work on does not blame the browser', async ({ page }) => {
+  // A saved recipe whose video is no longer open (after a reload): "source_missing". The same title is used
+  // for "no_clips", where the one-frame video ended before it was refused at the pick.
+  await openEditor(page);
+  await page.getByTestId('video-input').setInputFiles(join(process.cwd(), 'tests', 'media', 'sample-24s.mp4'));
+  await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 60_000 });
+  await addKesit(page, '00:00.000', '00:04.000');
+  await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
+  await page.reload();
+  await expect(page.getByTestId('moment-count')).toHaveText('(1)', { timeout: 20_000 });
+  await page.getByTestId('kesit-download').click();
+  const blocked = page.getByTestId('export-blocked');
+  await expect(blocked).toContainText('Bu indirme yapılamıyor.');
+  await expect(blocked).not.toContainText('Bu tarayıcıda');
+  // Still a place to report it.
+  await expect(page.getByTestId('export-report')).toBeVisible();
 });
