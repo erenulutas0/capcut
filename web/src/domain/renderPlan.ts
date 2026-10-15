@@ -21,7 +21,7 @@ import type { EnhanceStrength } from './enhance';
 import { ENHANCE_PLAN_VERSION } from './enhanceVersion';
 import { outputSizeFor, type OutputSize } from './outputSize';
 import type { ExportPolicy } from './policy';
-import { totalOutputDurationUs } from './timeline';
+import { dbToLinear, totalOutputDurationUs } from './timeline';
 import { cropPixels, type CropRect } from './transform';
 import { US_PER_SECOND, type Micros } from './time';
 
@@ -139,10 +139,6 @@ export type PlanRejection =
   | 'zero_frames';
 
 export type PlanResult = { ok: true; plan: RenderPlan } | { ok: false; reason: PlanRejection };
-
-export function dbToLinear(db: number): number {
-  return Math.pow(10, db / 20);
-}
 
 /** Frame index for an output timestamp; the single rounding rule of the grid. */
 export function frameAtUs(us: Micros, fpsNum: number, fpsDen: number): number {
