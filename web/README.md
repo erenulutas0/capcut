@@ -12,6 +12,10 @@ Kurulum ve komutlar için depo kökündeki [README](../README.md) dosyasına bak
   proje deposu (yalnızca EDL + küçük metadata; medya asla yazılmaz).
 - `src/adapters/export/` — encode worker'ı: demux → decode → canvas dönüşümü →
   encode → mux → üretilen dosyanın yeniden açılıp ölçülmesi.
+- `src/adapters/transcript/` — cihaz üstü "Yazıya dök" (Whisper, worker; ADR-036);
+  `src/adapters/cloud/` — internette yol (ADR-039; yalnızca `NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL`
+  verilen derlemede, yayında 15 Ekim 2026'dan beri davetli deneme). `cloud/` klasörü (Worker,
+  sahte Worker, ölçüm koşucusu) web uygulamasının bağımlılık ağacında değildir.
 - `src/components/` — React arayüzü: `home/` açılış ekranı (iş kartları + yazarak
   bulma), `wizard/` görev sihirbazları (`/yap/<id>/`), `editor/` kesit editörü.
 - `src/i18n/` — Türkçe varsayılan, İngilizce anahtarlı sözlükler.
