@@ -141,6 +141,15 @@ function mixFrames(
   const fixedGain = +constantGain;
   const step = +positionStep;
   let position = +positionStart;
+  // Where the block search starts (2026-10-15, long-export soak: the scan from
+  // block 0 for every frame was most of the mix time of a 60-minute fast cut).
+  // `frameAt` stops at the first block whose end lies past the frame. Every
+  // block before that one ends at or before the frame, so for a later frame
+  // (`step >= 0`: positions never go back) it ends before that frame too and
+  // the scan would pass it again. Starting there is the same search, so the
+  // result is still bit for bit `sampleAt` (tests/unit/audioMix.test.ts).
+  const forward = step >= 0;
+  let first = 0;
   for (let i = 0; i < frames; i += 1) {
     const gain = gainCurve === null ? fixedGain : gainCurve[i]!;
     if (gain !== 0) {
@@ -150,10 +159,14 @@ function mixFrames(
       // frameAt(base, channel): the block holding the frame, else silence.
       let a = 0;
       if (base >= 0) {
-        for (let k = 0; k < blockCount; k += 1) {
+        for (let k = first; k < blockCount; k += 1) {
           const block = blocks[k]!;
-          if (base < block.startFrame) break;
+          if (base < block.startFrame) {
+            if (forward) first = k;
+            break;
+          }
           if (base < block.startFrame + block.frameCount) {
+            if (forward) first = k;
             const count = block.channels.length;
             const source = count > 0 ? block.channels[channel % count] : undefined;
             const index = base - block.startFrame;
@@ -168,7 +181,7 @@ function mixFrames(
       if (fraction !== 0) {
         const next = base + 1;
         if (next >= 0) {
-          for (let k = 0; k < blockCount; k += 1) {
+          for (let k = first; k < blockCount; k += 1) {
             const block = blocks[k]!;
             if (next < block.startFrame) break;
             if (next < block.startFrame + block.frameCount) {

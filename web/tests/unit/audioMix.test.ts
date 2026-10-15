@@ -289,7 +289,17 @@ describe('mixStreamInto is the per-frame sampleAt mix, bit for bit', () => {
     one.append([new Float32Array([0.25, -0.5, 0.75])], 0, 3);
     const none = new PcmRingBuffer(0);
     none.append([], 0, 4);
+    // Three blocks with a gap: the block search may only start further on while positions go forward.
+    const three = new PcmRingBuffer(1);
+    three.append([new Float32Array([0.1, 0.2])], 0, 2);
+    three.append([new Float32Array([0.3, 0.4])], 2, 2);
+    three.append([new Float32Array([0.5, 0.6])], 5, 2);
     const cases: { buffer: PcmRingBuffer; start: number; step: number }[] = [
+      { buffer: three, start: 6.5, step: -1 },
+      { buffer: three, start: 7, step: -0.75 },
+      { buffer: three, start: 3.25, step: 0 },
+      { buffer: three, start: 0, step: Number.NaN },
+      { buffer: three, start: -1.5, step: 1.25 },
       { buffer: new PcmRingBuffer(2), start: 0, step: 1 },
       { buffer: one, start: -2.5, step: 0.5 },
       { buffer: one, start: Number.NaN, step: 1 },
