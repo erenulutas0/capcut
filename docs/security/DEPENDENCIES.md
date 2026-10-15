@@ -126,6 +126,11 @@ makinesinde ve CI'da çalışır; tarayıcı paketine ve derleme çıktısına g
 **İzlenecek:** `braces` için düzeltilmiş sürüm ya da `@next/eslint-plugin-next`'in `fast-glob`'u bırakması;
 ikisinden biri çıkınca tam kilitli sürümler yükseltilir ve bu bölüm güncellenir.
 
+**Yeniden bakıldı (2026-10-15):** değişmedi. `npm audit` yine aynı 5 "high" (tek tavsiye), `npm audit --omit=dev`
+0. `braces`'in en yeni sürümü hâlâ 3.0.3 (21 Mayıs 2024); `eslint-config-next@16.4.1` → `@next/eslint-plugin-next@16.4.1`
+hâlâ `fast-glob@3.3.1`'e sabit (`npm view`), `fast-glob@3.3.3` de `micromatch@^4.0.8` → `braces@^3.0.3` ister.
+Yükseltmenin zinciri değiştirmeyeceği görüldüğü için yükseltilmedi.
+
 ## 4. Kaynak haritası ve kaynak dosyalar (belge 11 "private source map")
 
 - `productionBrowserSourceMaps` kapalı (varsayılan; `web/next.config.ts` içinde açıkça yazıldı).

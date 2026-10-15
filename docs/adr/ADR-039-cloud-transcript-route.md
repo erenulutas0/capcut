@@ -2,6 +2,8 @@
 
 > Tarih: 10 Ekim 2026 · Durum: **Kabul — davetli deneme (14 Ekim 2026, kurucu kararı;** ek en altta,
 > "Ek, 14 Ekim 2026 — Kabul"**)**. Sitede açılması tek bir depo değişkenine bağlı; bu ek yazılırken açılmamıştı.
+> **15 Ekim 2026: yayında AÇIK** (depo değişkeni `CLOUD_TRANSCRIPT_URL` kuruldu, ana oturum; canlı duman 12/12,
+> düğmeye basılmadan Worker'a istek 0). Kapatmak: değişkeni silip yayınlamak ya da Worker `POST /admin/kill`.
 > Önceki durum: ÖNERİ / TASLAK — hiçbir şey yayında değil, politika değişmedi
 > · 11 Ekim 2026: ilk gerçek ölçüm (ek) · 11 Ekim 2026: **istemci yapıldı, KAPALI doğar** (ek, "İstemci yapıldı")
 > · 13 Ekim 2026: konuşmacılar kalıcı, EDL v5 (ek; [ADR-043](ADR-043-speakers-in-recipe.md))
