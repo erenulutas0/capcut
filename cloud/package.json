@@ -10,8 +10,8 @@
   "scripts": {
     "harness": "node harness/run.mjs",
     "test": "npm run test:harness && npm run test:fake && npm run test:worker",
-    "test:harness": "node --test harness/test/",
-    "test:fake": "node --test fake-worker/test/",
+    "test:harness": "node --test \"harness/test/*.test.mjs\"",
+    "test:fake": "node --test \"fake-worker/test/*.test.mjs\"",
     "test:worker": "vitest run --config worker/vitest.config.ts",
     "typecheck": "tsc -p worker/tsconfig.json --noEmit",
     "worker:dev": "wrangler dev --config worker/wrangler.jsonc",
