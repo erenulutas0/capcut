@@ -369,6 +369,59 @@ olması — beklenti tarayıcının adından değil, sayfada ölçülen yeteneğ
 | `web/scripts/lib/engine-walk-section.mjs` | `docs/SUPPORT_MATRIX.md` içindeki “motor derlemeleri” bölümü |
 | `web/.scratch/browsers/` | Ham sonuçlar ve çıkan dosyalar (git'e girmez) |
 
+## Dosya fuzz koşusu (`node scripts/fuzz/run-fuzz.mjs`)
+
+> 15 Ekim 2026'da kuruldu. Ayrı bir pakettir: `npm run quality`'nin, olağan e2e koşusunun ve CI'ın parçası
+> **değildir**. İlk koşunun bulguları ve düzeltmeleri: `docs/quality/2026-10-15-fuzz.md` (627 hücre: önce
+> iyi 582 / belirsiz 34 / bozuk 11 — bozuk dizinli MP4 sekmeyi donduruyordu —, sonra 599 / 28 / 0).
+
+Gerçek kullanıcılar on karta ve editöre her türden dosya bırakır. Bu koşu, ffmpeg ve bayt düzeyinde
+oynamalarla üretilen bir **korpusu** (`web/scripts/fuzz/make-corpus.mjs`; 57 dosya: dizin sonda, parçalı MP4,
+düzenleme listesi, negatif CTS, B kareleri, değişken kare hızı, 120 ve 1 kare/sn, yarım saniye, tek kare,
+yalnızca ses / yalnızca görüntü, 5.1 / 8 kHz / 96 kHz / mono ses, 90–180–270° döndürme ve ayna matrisleri,
+641 × 361, 16 × 16, 7680 × 4320, HEVC (hvc1 ve hev1), AV1, VP9 + Opus, VP8 + Vorbis, zaman kodlu MOV, MKV,
+3GP, AVI, MPEG-TS, GIF, .mp4 adlı PNG, sıfır bayt, rastgele bayt, bozuk stco / stsz / stts tabloları,
+%10 / %55 / %99'da kesilmiş, dizinsiz kesik, iki görüntü izi, altyazı izi, bölümler, 20 000 karakterlik
+başlık, 4 GiB'lık `mdat` yalanı, ASCII dışı ve 230 karakterlik ad, üst bilgide 3 saat / 30 dakika yalanı)
+**on kartın her birinin dosya seçme adımına ve editöre** verir, varsayılan yolu indirmeye kadar sürer ve
+her hücreyi yazar: sonuç (kaydedildi / dürüst ret ve kelimesi kelimesine metni / iş yok / belirsiz / 60 sn'de
+cevapsız / takılı indirme / konsol hatası / yakalanmamış söz / sayfa çökmesi / bekçi yeniden yükledi), süre
+ve kaydedilen dosyada ffprobe / ffmpeg denetimi (süre beklenene karşı, izler, büyütülmemiş görüntü,
+döndürme, baştan sona çözülme). Her bekleme sınırlıdır.
+
+Korpus **deterministiktir** (lavfi kaynaklar, sabit tohumlar, tek iş parçacıklı x264, `-bitexact`): iki üretim
+bayt bayt aynıdır. Medya git'e girmez (`web/.scratch/fuzz/corpus/`); üretici girer. Her dosyanın manifestte
+bir **beklentisi** vardır: `open` (geçerli, bu tarayıcı çözer: açılmalı ve sağlam bir dosya çıkmalı, ya da kart
+yapacak iş olmadığını söylemeli), `refuse` (çalışılamaz: seçildiğinde reddedilmeli ya da indirme dürüstçe
+başarısız olmalı; "Kaydedildi" sahte başarıdır), `any` (ikisi de olur — başka tarayıcı çözebilir, bir tolerans
+geçerlidir; ama kaydedilen dosya sağlam, ret sade olmalı).
+
+Hücre sınıfları kalite katmanının kurallarıdır (`web/tests/fuzz/lib.ts`): **iyi** = sade bir ret ve çıkış
+yolu, dürüst bir hata, "yapacak iş yok" diyen kart (ekranda "Başka bir video seç" ya da editör düğmesi
+varken), ya da ffprobe'un kartın söz verdiği gibi bulduğu
+kaydedilmiş dosya · **belirsiz** = teknik terimli ya da çıkış yolsuz mesaj, dürüstçe işlenemeyen geçerli
+dosya, söz verilenden biraz farklı dosya, uyarısız açılan kötü dosya · **bozuk** = sahte başarı, geçerli
+dosyanın reddi, 60 sn cevapsızlık ya da bitmeyen bekleme, donan sayfa, sayfa hatası, çökme.
+
+```
+cd web
+node scripts/fuzz/make-corpus.mjs                       # yalnızca korpus (≈ 25 sn)
+node scripts/fuzz/run-fuzz.mjs                          # korpus + test kancalı derleme + hepsi
+node scripts/fuzz/run-fuzz.mjs --no-build --no-corpus   # .next/ test kancalı derlemeyse ve korpus yerindeyse
+node scripts/fuzz/run-fuzz.mjs --surfaces=kes,editor --files=temel,avi
+node scripts/fuzz/run-fuzz.mjs --report-only            # son sonuçlardan raporu yeniden yaz
+```
+
+Çıktı: `web/.scratch/fuzz/report.md` (hücre tablosu, bulgular, her ekran metni, kaydedilen dosyaların
+denetimi, konsol hataları) ve `report.json`; ham hücreler `results/`, kaydedilen dosyalar `outputs/`.
+Sunucu 3194 numaralı portta (`FUZZ_PORT`), test kancalı derlemeyle (`CLIP_TEST_HOOKS=1`; "Yazıya dök"
+betikli tanıyıcıyla yürür, bulut yolu kapalı). Üç parti halinde koşar ve makine genelindeki ölçüm kilidini
+partiler arasında bırakır. **Süre** bu makinede (12 çekirdek, 15 Ekim, düzeltmelerden sonra): 627 hücre
+≈ 20 dakika Playwright süresi (üç parti 7,2 + 6,2 + 6,0 dk), kilit beklemesi ve derleme hariç. Donan bir sekme
+hücreyi 60 sn'de "dondu" diye yargılar ve sekmeyi kapattırır. Yalnızca **ölçülemeyen** hücre varsa 1 ile
+çıkar; bozuk hücre raporun bulgusudur. Bulgu düzeltilince küçük örneği `web/tests/media/fuzz/`'a (her biri
+200 KB'ın altında) ve olağan e2e'ye (`tests/e2e/fuzz-refusals.spec.ts`) girer.
+
 ## Dosyalar
 
 | Yer | Ne |
@@ -385,3 +438,8 @@ olması — beklenti tarayıcının adından değil, sayfada ölçülen yeteneğ
 | `web/tests/quality/lib/searchEval.ts` | Arama sayılarının hesabı (tarayıcısız; ayar sırasında da aynı hesap) |
 | `web/tests/quality/baselines/` | Ekran tabanları (PNG) |
 | `web/.scratch/quality/` | Ham sonuçlar, üretilen kaynaklar, çıkan dosyalar (git'e girmez) |
+| `web/scripts/fuzz/make-corpus.mjs` | Fuzz korpusunun üreticisi (deterministik; medya git'e girmez) |
+| `web/scripts/fuzz/run-fuzz.mjs` | Fuzz koşucusu: korpus, derleme, kilit, sunucu, partiler, rapor |
+| `web/playwright.fuzz.config.ts`, `web/tests/fuzz/` | Fuzz koşusunun Playwright ayarı, betiği (`fuzz.spec.ts`) ve kuralları (`lib.ts`) |
+| `web/tests/media/fuzz/` | Fuzz bulgularının küçük regresyon örnekleri (git'te; her biri 200 KB'ın altında) |
+| `web/.scratch/fuzz/` | Korpus, ham hücreler, kaydedilen dosyalar, rapor (git'e girmez) |

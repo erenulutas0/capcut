@@ -99,6 +99,8 @@ export interface MediaError {
   hint?: ProbeHint;
   /** With `incomplete` (ADR-040): the length the file declares and how far it really goes. */
   extent?: IncompleteExtent;
+  /** With `foreign_type`: the short name of the kind of file ("AVI", "TS", "MKV"). */
+  typeName?: string;
 }
 
 /**
@@ -211,7 +213,7 @@ export function useEditorState() {
       setImporting(null);
 
       if (!outcome.ok) {
-        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen, hint: outcome.hint, bytes: file.size, extent: outcome.extent });
+        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen, hint: outcome.hint, bytes: file.size, extent: outcome.extent, typeName: outcome.typeName });
         return { kind: 'rejected' };
       }
 
@@ -346,7 +348,7 @@ export function useEditorState() {
       const outcome = await probeVideoFile(file, VIDEO_LIMITS);
       setImporting(null);
       if (!outcome.ok) {
-        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen: false, hint: outcome.hint, bytes: file.size, extent: outcome.extent });
+        setMediaError({ scope: 'video', reason: outcome.reason, fileName: file.name, keptOpen: false, hint: outcome.hint, bytes: file.size, extent: outcome.extent, typeName: outcome.typeName });
         return { ok: false, reason: outcome.reason };
       }
 

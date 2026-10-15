@@ -172,8 +172,18 @@ function isRequestRefusal(entry: Extract<DownloadEntry, { phase: 'blocked' }>): 
   return entry.reason === 'target_size_too_small' || entry.reason === 'no_audio_track';
 }
 
+/**
+ * Nor is a recipe with nothing to download, or a video that is no longer open
+ * (the fuzz run, 15 Oct 2026: a one-frame video ended in "Bu tarayıcıda çıktı
+ * alınamıyor. İndirilecek kesit yok."). Only the title changes: "Sorun
+ * bildir" stays under these two.
+ */
+function isNotTheBrowser(entry: Extract<DownloadEntry, { phase: 'blocked' }>): boolean {
+  return isRequestRefusal(entry) || entry.reason === 'no_clips' || entry.reason === 'source_missing';
+}
+
 function blockedTitleKey(entry: Extract<DownloadEntry, { phase: 'blocked' }>): MessageKey {
-  return isRequestRefusal(entry) ? 'export.refusedTitle' : 'export.blockedTitle';
+  return isNotTheBrowser(entry) ? 'export.refusedTitle' : 'export.blockedTitle';
 }
 
 /** The one sentence a screen reader hears per phase (the percentage is left out). */

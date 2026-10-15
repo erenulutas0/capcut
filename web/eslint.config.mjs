@@ -12,6 +12,8 @@ const config = [
       'test-results/**',
       'playwright-report/**',
       'screenshots/**',
+      // Generated measurements and media (gitignored). The fuzz corpus has an MPEG transport stream named `.ts`.
+      '.scratch/**',
     ],
   },
   ...next,
