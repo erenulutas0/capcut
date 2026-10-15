@@ -279,7 +279,8 @@ export function measureSaved(file: string, name: string, surface: Surface, item:
   }
   const streams = info.streams.map((stream) => `${stream.type}:${stream.codec}`);
   const audioOnly = surface === 'ses';
-  const expectAudio = !audioOnly && surface !== 'sustur' && item.hasAudio;
+  // "Müzik ekle" brings its own sound: a source without one still gets the music.
+  const expectAudio = !audioOnly && surface !== 'sustur' && (item.hasAudio || surface === 'muzik');
   const expectVideo = !audioOnly;
 
   // Length.
@@ -306,10 +307,11 @@ export function measureSaved(file: string, name: string, surface: Surface, item:
     } else if (item.width && item.height) {
       // Never enlarged (ADR-041): a rotated source swaps its sides, so pixels are compared, not sides. The one
       // exception is deliberate (src/domain/outputSize.ts MIN_OUTPUT_SHORT_EDGE): a picture smaller than 144 px on
-      // its short side is brought up to 144, because hardware encoders refuse smaller ones.
-      const floor = 144;
+      // its short side is brought up to 144, because hardware encoders refuse smaller ones; with subtitles burned
+      // in ("Yazıya dök") to 360 (MIN_CAPTION_SHORT_EDGE), so the letters keep their shape.
+      const floor = surface === 'yazi' ? 360 : 144;
       const lifted = Math.min(item.width, item.height) < floor && Math.min(width, height) <= floor;
-      add({ name: 'büyütülmemiş (piksel ≤ kaynak; 144 px tabanı hariç)', ok: lifted || width * height <= item.width * item.height + 2 * Math.max(item.width, item.height), value: `${width} × ${height} (kaynak ${item.width} × ${item.height})`, weight: 'unclear' });
+      add({ name: `büyütülmemiş (piksel ≤ kaynak; ${floor} px tabanı hariç)`, ok: lifted || width * height <= item.width * item.height + 2 * Math.max(item.width, item.height), value: `${width} × ${height} (kaynak ${item.width} × ${item.height})`, weight: 'unclear' });
       if (/^dondurme-(90|270)$/.test(item.id)) {
         // Turned upright either in the pixels or by a display matrix the players apply (the quick cut copies it).
         const turned = Math.abs(displayRotation(file)) % 180 === 90;
