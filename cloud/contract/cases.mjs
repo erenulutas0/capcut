@@ -266,6 +266,22 @@ export const CONTRACT_CASES = [
     },
   },
   {
+    name: 'deleted before the provider finished: the reservation plus the upload\'s slack is used up, never more than the bytes could hold, and the invite is not suspended',
+    run: async (driver) => {
+      const api = client(driver, await driver.newInvite(60));
+      await driver.provider({ pollsUntilDone: 50 });
+      // 1 s declared, the most bytes that allows (8000 B/s + 64 KB): at 6 kbit/s ≈ 98 s of sound; charged 1 + 88 s.
+      equal((await api.start({ seconds: 1, body: webm(8000 + 64 * 1024), headers: { 'x-job-id': uuid(14) } })).status, 202, 'start');
+      equal((await api.del(`/v1/jobs/${uuid(14)}`)).body, { deleted: true }, 'delete');
+      equal((await api.get(`/v1/jobs/${uuid(14)}`)).body, { status: 'completed', minutes: 1.48, resultAvailable: false }, 'charged 89 s');
+      equal((await api.get('/v1/quota')).body.remainingMinutes, 58, 'quota');
+      // A small file is charged no more than its bytes could hold at 6 kbit/s (here: the reservation itself).
+      equal((await api.start({ seconds: 3, body: webm(2000), headers: { 'x-job-id': uuid(15) } })).status, 202, 'not suspended: next job');
+      await api.del(`/v1/jobs/${uuid(15)}`);
+      equal((await api.get(`/v1/jobs/${uuid(15)}`)).body, { status: 'completed', minutes: 0.05, resultAvailable: false }, 'small file: the reservation');
+    },
+  },
+  {
     name: 'the provider refuses the upload or the start: 502 naming the step only, minutes given back',
     run: async (driver) => {
       const api = client(driver, await driver.newInvite(60));
@@ -352,8 +368,31 @@ export const CONTRACT_CASES = [
       equal([limited.status, limited.body], [429, { error: 'rate_limited' }], 'over the limit');
       const retry = Number(limited.headers.get('retry-after'));
       truthy(retry > 0 && retry <= 3600, 'Retry-After within the hour');
-      // Asking for the quota is not an attempt.
+      // Asking for the quota with a known code is not an attempt.
       equal((await client(driver, invite).get('/v1/quota')).status, 200, 'quota is not limited');
+      // … but with an unknown code it is answered like a start over the limit: guessing is not cheaper here.
+      const guess = await client(driver, 'WRONG-GUESS-AFTER-LIMIT').get('/v1/quota');
+      equal([guess.status, guess.body], [429, { error: 'rate_limited' }], 'quota with a wrong code over the limit');
+    },
+  },
+  {
+    name: 'guessing codes through quota counts like guessing them through a start',
+    run: async (driver) => {
+      const invite = await driver.newInvite(60);
+      for (let i = 0; i < driver.limits.rateLimitPerHour; i += 1) {
+        const wrong = await client(driver, `WRONG-QUOTA-${i}`).get('/v1/quota');
+        equal([wrong.status, wrong.body], [401, { error: 'invite_invalid' }], `guess ${i + 1}`);
+      }
+      const limited = await client(driver, 'WRONG-QUOTA-LAST').get('/v1/quota');
+      equal([limited.status, limited.body], [429, { error: 'rate_limited' }], 'guess over the limit');
+      const retry = Number(limited.headers.get('retry-after'));
+      truthy(retry > 0 && retry <= 3600, 'Retry-After within the hour');
+      // The same counter as the starts: a start from this address is refused too …
+      const start = await client(driver, invite).start({ seconds: 60 });
+      equal([start.status, start.body], [429, { error: 'rate_limited' }], 'start after guessing');
+      equal((await driver.providerState()).uploads, 0, 'nothing uploaded');
+      // … while the quota of a known code is still answered (the card asks for it on every opening).
+      equal((await client(driver, invite).get('/v1/quota')).body, { on: true, remainingMinutes: 60, maxJobMinutes: 120 }, 'known code still answered');
     },
   },
   {

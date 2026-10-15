@@ -49,7 +49,7 @@ export interface FakeWorker {
   url: string;
   limits: { rateLimitPerHour: number; monthlyCapUsd: number; priceUsdPerHour: number };
   reset(): void;
-  newInvite(minutes?: number): string;
+  newInvite(minutes?: number, label?: string): string;
   setInviteMinutes(code: string, minutes: number): void;
   revokeInvite(code: string): void;
   kill(on: boolean): void;
@@ -73,4 +73,6 @@ export function startFakeWorker(options?: {
   rateLimitPerHour?: number;
   maxJobMinutes?: number;
   maxBytesPerSecond?: number;
+  /** With it the founder's `/admin/*` API answers (404 without the exact token); without it there is no admin API. */
+  adminToken?: string | null;
 }): Promise<FakeWorker>;

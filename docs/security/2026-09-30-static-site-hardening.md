@@ -286,3 +286,15 @@ eklenmedi**; politika 30 Eylül'deki hâliyle aynı, tek bir kelime gevşetilmed
 | Test ikizi | UI testlerinin sahte tanıyıcısı ve küçük model listesi yalnız `CLIP_TEST_HOOKS=1` derlemesinde vardır. Statik dışa aktarma bu bayrakla derlenmeyi reddeder (`next.config.ts`), `apply-csp.mjs` dışa aktarmada ikizin izini bulursa derlemeyi durdurur, Pages duman testi yayınlanan betiklerde izin (ve `__clipTranscriptTest`'in) olmadığını doğrular. |
 | Model önbelleği | Ayrı önbellek `clip-models-v1`; service worker'ın listesinde ve önbelleğinde model yok (birim: `precache`, e2e: `transcript.spec.ts`). `github.io` origin'ini paylaşan başka bir Pages projesi bu önbelleği okuyup değiştirebilir (§ "Kalan riskler", aynı origin notu): değiştirilen dosya bir sonraki kullanımda yeniden doğrulanmaz — doğrulama indirme anındadır. Etki: bozuk model → hata ya da saçma metin; kod çalıştırma değil (ONNX grafiği veri olarak yorumlanır; `.wasm` da aynı önbellekte durduğundan, aynı origin'deki kötü niyetli bir proje onu değiştirirse worker'da kendi WebAssembly'sini çalıştırabilir — o proje zaten aynı origin'de betik çalıştırabildiği için yeni bir yetki kazanmaz). Kendi alan adı (K01) ile kalkar. |
 | Transkript metni güvenilmeyen veridir | Belge 31: metin yalnızca altyazı metni olarak kullanılır (kanvasa çizilir, React metin düğümü olarak gösterilir, `normalizeCaptionText`'ten geçer); komut, HTML ya da adres olarak yorumlanmaz. |
+
+## Güncelleme 2026-10-15: bulut yolunun güvenlik incelemesi (ADR-039 yayında)
+
+Vekil Worker, defteri, tarayıcı istemcisi ve bu politika tehdit modeli maddeleriyle (para, veri, yönetim,
+site, sağlayıcı, kullanılabilirlik) gerçek Worker koduna, sahte Worker'a ve siteye karşı yerelde sınandı;
+bulgular, kalan riskler ve kurucunun olay kılavuzu [`cloud/SECURITY.md`](../../cloud/SECURITY.md). Bu belgeyi
+ilgilendiren sonuçlar: `web/src` içinde `dangerouslySetInnerHTML` / `innerHTML` / `eval` **yok**; davet kodu
+(`localStorage` → `clip.cloudInvite`) XSS'te en çok 60 dakikalık davet hakkını (≈ 0,23 $) riske atar ve kurucu
+iptal edebilir; `github.io` ortak kökeni notu (§ "Kalan riskler") davet kodu için de geçerlidir; service worker
+başka kökene hiç dokunmadığı için vekilin yanıtları Cache Storage'a girmez; `connect-src`'nin vekil kökenini
+tam olarak kazanması önceki sınamalarla (`cloud-preflight.spec.ts`, `cloud-off.spec.ts`) kanıtlıdır, bu
+incelemede politika değişmedi.

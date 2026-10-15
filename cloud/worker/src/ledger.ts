@@ -21,11 +21,12 @@
  */
 import { DurableObject } from 'cloudflare:workers';
 
-import { type Env, costMicro, monthOf, readConfig } from './config';
+import { type Env, UPLOAD_SLACK_BYTES, costMicro, monthOf, readConfig } from './config';
 import { deleteTranscript, getTranscriptStatus } from './provider';
 
 export type Refusal = { ok: false; status: number; code: string; retryAfterS?: number };
 export type Reservation = { ok: true; jobId: string; reservedS: number };
+export type Quota = { ok: true; on: boolean; remainingS: number; maxJobS: number };
 
 export interface JobRow {
   id: string;
@@ -53,6 +54,20 @@ export const MAX_PROVIDER_LIFETIME_MS = 24 * HOUR_MS;
 export const JOB_RETENTION_MS = 90 * 24 * HOUR_MS;
 /** Actual length may exceed the declared one by this much before the invite is suspended. */
 export const OVERRUN_TOLERANCE = { seconds: 3, share: 0.02 };
+/**
+ * A job deleted while the provider was still working is never seen finished, so its real length is never
+ * known. Up to UPLOAD_SLACK_BYTES (64 KB) may arrive on top of what the declared length allows; at 6 kbit/s
+ * (Opus's lowest rate, 750 B/s) that is ≈ 88 s of sound the declaration did not mention. Such a job is
+ * charged its reservation plus that slack — but never more than its bytes could hold at 6 kbit/s — so a
+ * loop of "declare 1 s, send 64 KB, delete before the end" uses up the invite's minutes as fast as it may
+ * be spending at the provider (SECURITY.md M5), instead of one second per round.
+ */
+export const EARLY_DELETE_FLOOR_BYTES_PER_SECOND = 750;
+export const EARLY_DELETE_SLACK_S = Math.ceil(UPLOAD_SLACK_BYTES / EARLY_DELETE_FLOOR_BYTES_PER_SECOND);
+
+/** Seconds charged for a job deleted before the provider finished (see EARLY_DELETE_FLOOR_BYTES_PER_SECOND). */
+export const earlyDeleteSeconds = (reservedS: number, bytes: number): number =>
+  Math.max(reservedS, Math.min(Math.ceil(bytes / EARLY_DELETE_FLOOR_BYTES_PER_SECOND), reservedS + EARLY_DELETE_SLACK_S));
 const ALARM_EVERY_MS = 10 * 60_000;
 
 export class Ledger extends DurableObject<Env> {
@@ -94,6 +109,19 @@ export class Ledger extends DurableObject<Env> {
   private releaseStale(now: number): void {
     this.sql.exec("UPDATE jobs SET state = 'failed', updated_at = ? WHERE state = 'reserved' AND created_at < ?", now, now - STALE_RESERVATION_MS);
   }
+  /**
+   * Counts one attempt for this address in the current hour and says whether it is over the limit.
+   * Every start counts (right or wrong invite); a quota lookup counts only when its invite is unknown,
+   * so guessing codes through `/v1/quota` is as slow as guessing them through `/v1/jobs`.
+   */
+  private countAttempt(ipHash: string, now: number, limit: number): Refusal | null {
+    const window = Math.floor(now / HOUR_MS);
+    this.sql.exec('DELETE FROM rate WHERE window < ?', window);
+    this.sql.exec('INSERT INTO rate (ip_hash, window, count) VALUES (?, ?, 1) ON CONFLICT (ip_hash, window) DO UPDATE SET count = count + 1', ipHash, window);
+    const attempts = this.one<{ count: number }>('SELECT count FROM rate WHERE ip_hash = ? AND window = ?', ipHash, window)?.count ?? 0;
+    if (attempts <= limit) return null;
+    return { ok: false, status: 429, code: 'rate_limited', retryAfterS: Math.ceil(((window + 1) * HOUR_MS - now) / 1000) };
+  }
   private async ensureAlarm(): Promise<void> {
     if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(Date.now() + ALARM_EVERY_MS);
   }
@@ -106,14 +134,9 @@ export class Ledger extends DurableObject<Env> {
   async reserve(input: { inviteHash: string; ipHash: string; declaredS: number; bytes: number; jobId?: string }): Promise<Reservation | Refusal> {
     const config = readConfig(this.env);
     const now = Date.now();
-    const window = Math.floor(now / HOUR_MS);
     const result = this.ctx.storage.transactionSync((): Reservation | Refusal => {
-      this.sql.exec('DELETE FROM rate WHERE window < ?', window);
-      this.sql.exec('INSERT INTO rate (ip_hash, window, count) VALUES (?, ?, 1) ON CONFLICT (ip_hash, window) DO UPDATE SET count = count + 1', input.ipHash, window);
-      const attempts = this.one<{ count: number }>('SELECT count FROM rate WHERE ip_hash = ? AND window = ?', input.ipHash, window)?.count ?? 0;
-      if (attempts > config.rateLimitPerHour) {
-        return { ok: false, status: 429, code: 'rate_limited', retryAfterS: Math.ceil(((window + 1) * HOUR_MS - now) / 1000) };
-      }
+      const limited = this.countAttempt(input.ipHash, now, config.rateLimitPerHour);
+      if (limited) return limited;
       if (!config.enabled || config.capMicro <= 0 || this.killed()) return { ok: false, status: 503, code: 'cloud_off' };
 
       const invite = this.one<{ quota_s: number; used_s: number; revoked: number }>('SELECT quota_s, used_s, revoked FROM invites WHERE hash = ?', input.inviteHash);
@@ -177,8 +200,12 @@ export class Ledger extends DurableObject<Env> {
    * length (what it bills) to the month and to the invite; `error` charges
    * nothing (a failed request is not billed, per the provider's billing FAQ).
    * Idempotent: a job is settled once.
+   *
+   * `actualS: null` means the provider's length is not known: the reservation is charged — or, for a job
+   * the browser deleted before the provider finished (`deletedEarly`), the reservation plus the upload's
+   * slack (earlyDeleteSeconds). An estimate never suspends the invite; only the provider's own length does.
    */
-  async settle(jobId: string, outcome: { status: 'completed'; actualS: number | null } | { status: 'error' }): Promise<JobRow | null> {
+  async settle(jobId: string, outcome: { status: 'completed'; actualS: number | null; deletedEarly?: boolean } | { status: 'error' }): Promise<JobRow | null> {
     const config = readConfig(this.env);
     const now = Date.now();
     return this.ctx.storage.transactionSync(() => {
@@ -187,7 +214,9 @@ export class Ledger extends DurableObject<Env> {
       if (outcome.status === 'error') {
         this.sql.exec("UPDATE jobs SET state = 'failed', updated_at = ? WHERE id = ?", now, jobId);
       } else {
-        const actualS = outcome.actualS === null ? job.reserved_s : Math.ceil(outcome.actualS);
+        const measured = outcome.actualS !== null;
+        const actualS =
+          outcome.actualS !== null ? Math.ceil(outcome.actualS) : outcome.deletedEarly ? earlyDeleteSeconds(job.reserved_s, job.bytes) : job.reserved_s;
         const charged = costMicro(actualS, config.priceMicroPerHour);
         this.sql.exec("UPDATE jobs SET state = 'completed', actual_s = ?, charged_micro = ?, updated_at = ? WHERE id = ?", actualS, charged, now, jobId);
         this.sql.exec('UPDATE invites SET used_s = used_s + ? WHERE hash = ?', actualS, job.invite_hash);
@@ -196,7 +225,7 @@ export class Ledger extends DurableObject<Env> {
           job.month, charged, actualS,
         );
         // A file much longer than declared is either a broken client or abuse: one shot, then the invite is suspended.
-        if (actualS > job.declared_s * (1 + OVERRUN_TOLERANCE.share) + OVERRUN_TOLERANCE.seconds) {
+        if (measured && actualS > job.declared_s * (1 + OVERRUN_TOLERANCE.share) + OVERRUN_TOLERANCE.seconds) {
           this.sql.exec("UPDATE invites SET revoked = 1, revoked_reason = 'longer_than_declared' WHERE hash = ?", job.invite_hash);
         }
       }
@@ -209,16 +238,24 @@ export class Ledger extends DurableObject<Env> {
     this.sql.exec('UPDATE jobs SET provider_deleted = 1, transcript_id = NULL, updated_at = ? WHERE id = ?', Date.now(), jobId);
   }
 
-  async quota(inviteHash: string): Promise<{ on: boolean; remainingS: number; maxJobS: number } | null> {
+  /**
+   * Minutes left for an invite. An unknown (or revoked) code counts as an attempt of the address, like a
+   * start with a wrong code does: over the hourly limit the answer is `rate_limited`, below it `invite_invalid`.
+   * A known code is never counted and never limited here (the card asks on every opening).
+   */
+  async quota(inviteHash: string, ipHash: string): Promise<Quota | Refusal> {
     const config = readConfig(this.env);
-    const invite = this.one<{ quota_s: number; used_s: number; revoked: number }>('SELECT quota_s, used_s, revoked FROM invites WHERE hash = ?', inviteHash);
-    if (!invite || invite.revoked) return null;
-    const month = monthOf(Date.now());
-    const capLeftMicro = config.capMicro - this.monthSpent(month) - this.monthReserved(month);
-    const capLeftS = Math.max(0, Math.floor((capLeftMicro * 3600) / config.priceMicroPerHour));
-    const inviteLeftS = Math.max(0, invite.quota_s - invite.used_s - this.inviteReserved(inviteHash));
-    const on = config.enabled && config.capMicro > 0 && !this.killed();
-    return { on, remainingS: on ? Math.min(inviteLeftS, capLeftS) : 0, maxJobS: config.maxJobSeconds };
+    const now = Date.now();
+    return this.ctx.storage.transactionSync((): Quota | Refusal => {
+      const invite = this.one<{ quota_s: number; used_s: number; revoked: number }>('SELECT quota_s, used_s, revoked FROM invites WHERE hash = ?', inviteHash);
+      if (!invite || invite.revoked) return this.countAttempt(ipHash, now, config.rateLimitPerHour) ?? { ok: false, status: 401, code: 'invite_invalid' };
+      const month = monthOf(now);
+      const capLeftMicro = config.capMicro - this.monthSpent(month) - this.monthReserved(month);
+      const capLeftS = Math.max(0, Math.floor((capLeftMicro * 3600) / config.priceMicroPerHour));
+      const inviteLeftS = Math.max(0, invite.quota_s - invite.used_s - this.inviteReserved(inviteHash));
+      const on = config.enabled && config.capMicro > 0 && !this.killed();
+      return { ok: true, on, remainingS: on ? Math.min(inviteLeftS, capLeftS) : 0, maxJobS: config.maxJobSeconds };
+    });
   }
 
   // ------------------------------------------------------------ admin (founder only)

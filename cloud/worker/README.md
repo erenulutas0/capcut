@@ -18,7 +18,7 @@ Site durağan dosyalardan oluşur; içinde sır saklanamaz. Bu yüzden tarayıc�
 | `POST /v1/jobs` | Başlat. İsteğin gövdesi ses dosyasının kendisidir; Worker onu **belleğe almadan** sağlayıcıya akıtır. |
 | `GET /v1/jobs/:id` | Durum (`uploading`, `queued`, `processing`, `completed`, `error`). Metin içermez. |
 | `GET /v1/jobs/:id/result` | Yazıyı sağlayıcıdan olduğu gibi geçirir; tarayıcı hepsini alınca sağlayıcıdaki kayıt **silinir**. |
-| `DELETE /v1/jobs/:id` | Sağlayıcıdaki kaydı hemen siler. |
+| `DELETE /v1/jobs/:id` | Sağlayıcıdaki kaydı hemen siler. Sağlayıcı daha çalışıyorsa ayrılan süre + en çok 88 sn harcanmış sayılır (SECURITY.md M5). |
 | `GET /v1/quota` | Bu davet kodunun kalan dakikası; bulut yolu açık mı. |
 | `/admin/*` | Yalnız kurucu (`ADMIN_TOKEN`): davet kodu, harcama, acil kapatma. |
 
@@ -50,7 +50,8 @@ verir, biz de onu kullanıyoruz (`wrangler.jsonc` → `new_sqlite_classes`).
 4. **Aylık kesin tavan (USD).** İş başlamadan önce, beyan edilen süreyle hesaplanan bedel
    ayrılır; "bu ay harcanan + ayrılmış + bu iş" tavanı aşıyorsa iş başlamaz. İş bitince
    sağlayıcının bildirdiği **gerçek süre** yazılır.
-5. **IP başına saatte 10 deneme** (yanlış davet kodu denemeleri de sayılır).
+5. **IP başına saatte 10 deneme** (yanlış davet kodu denemeleri de sayılır — başlatmada ve kota
+   sorgusunda; bilinen kodun kota sorgusu sayılmaz).
 6. **İş başına en çok 120 dakika**; beyan edilen süreye göre fazla ağır dosya reddedilir
    (saniye başına en çok 8000 bayt + 64 KB).
 7. **Ses olmayan içerik reddedilir:** `Content-Type` ses olmalı *ve* dosyanın ilk baytları o türe
@@ -73,6 +74,12 @@ verir, biz de onu kullanıyoruz (`wrangler.jsonc` → `new_sqlite_classes`).
   dosya sınırı kadar, yani en çok **10 sa × 0,23 $ = 2,30 $** yakar. İş bitince gerçek süre
   deftere yazılır, o davet askıya alınır ve tavan sonraki işleri durdurur. Yani en kötü durum:
   **(aynı anda hile yapan davet sayısı) × 2,30 $.**
+- **Sağlayıcı bitirmeden silinen iş** (15 Ekim, SECURITY.md M5). Defter onun gerçek süresini hiç
+  göremez. Böyle bir iş, ayrılan süresine ek olarak yüklemenin 64 KB'lık payının 6 kbit/s'deki
+  karşılığını (88 sn) öder — ama baytlarının 6 kbit/s'de taşıyabileceğinden fazlasını değil. Askıya
+  alma yalnız sağlayıcının kendi süresiyle olur; tahmin askıya almaz. Böylece "1 sn beyan et, 64 KB
+  gönder, bitmeden sil" döngüsü 60 dakikalık davette 3600 değil **41 turda** biter (sınandı). Dürüst
+  kullanıcı iptal edince en çok 88 sn fazla öder (≈ 0,006 $).
 - **Mutlak sınır, deneme döneminde:** sağlayıcı hesabında kart yoksa ücretsiz kredi bitince API
   durur ("API access is paused until you top up"); gerçek para çıkmaz. Kaybedilebilecek en fazla
   şey kalan ücretsiz kredidir.
@@ -210,8 +217,9 @@ sağlayıcıda kayıt açılmaz (`job_canceled`); son anda silinenin kaydı sağ
 silinemezse temizlik alarmı siler. `DELETE`, sağlayıcının durumu okunamasa da siler.
 
 `GET /v1/quota` (aynı başlıklarla, gövdesiz) → `{"on":true,"remainingMinutes":37,"maxJobMinutes":120}`:
-sitenin seçim ekranındaki "X dakika düşer, Y dakikan kalır" satırı buradan gelir. Hız sınırına
-sayılmaz.
+sitenin seçim ekranındaki "X dakika düşer, Y dakikan kalır" satırı buradan gelir. Bilinen kodla
+hız sınırına sayılmaz; **bilinmeyen (ya da iptal) kodla** sayılır ve sınırın üstünde `429 rate_limited`
+döner (15 Ekim 2026: kod tahmini kota ucundan da başlatmadan ucuz değil — [`../SECURITY.md`](../SECURITY.md) M1).
 
 **Site tarafı (11 Ekim 2026: yazıldı, kapalı).** Sitenin CSP'si `connect-src 'self'`dir ve bulut
 istemcisi yayındaki derlemede yoktur. Site bu Worker'la ancak derlemeye
@@ -237,10 +245,13 @@ verdiği kelimeleri döndürür. Bir yanıtı burada değiştiren, önce `cases.
 
 ```bash
 cd cloud
-npm run test:worker     # 43 sınama (25 + 18 sözleşme): gerçek Workers çalışma zamanı (workerd) + gerçek Durable Object, sahte sağlayıcı
-npm run test:fake       # 23 sınama (aynı 18 sözleşme + 5): yerel sahte Worker
+npm run test:worker     # 60 sınama (25 + 20 sözleşme + 15 güvenlik): gerçek Workers çalışma zamanı (workerd) + gerçek Durable Object, sahte sağlayıcı
+npm run test:fake       # 32 sınama (aynı 20 sözleşme + 5 sahteye özgü + 7 kurucu komutu): yerel sahte Worker
 npm run typecheck
 ```
+
+Güvenlik ve kötüye kullanım incelemesi, kurucu komutu (`cloud/admin.mjs`), anahtar/belirteç döndürme ve olay
+kılavuzu: [`../SECURITY.md`](../SECURITY.md) (15 Ekim 2026).
 
 Sınamalarda ağ yoktur: Worker'ın ve Durable Object'in her dış isteği yerel sahte sağlayıcıya
 düşer; başka bir adrese giden istek sınamayı düşürür.

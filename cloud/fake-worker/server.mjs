@@ -14,7 +14,7 @@
  *
  * No dependencies and no network: it never opens a connection to anything.
  */
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 
 const AUDIO_TYPES = {
@@ -34,6 +34,12 @@ const JOB_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const UPLOAD_SLACK_BYTES = 64 * 1024;
 const HARD_MAX_UPLOAD_BYTES = 95 * 1024 * 1024;
 const OVERRUN_TOLERANCE = { seconds: 3, share: 0.02 };
+// As in the Worker's ledger: a job deleted before the provider finished is charged its reservation plus the
+// upload's slack at 6 kbit/s, never more than its bytes could hold at that rate (SECURITY.md M5).
+const EARLY_DELETE_FLOOR_BYTES_PER_SECOND = 750;
+const EARLY_DELETE_SLACK_S = Math.ceil(UPLOAD_SLACK_BYTES / EARLY_DELETE_FLOOR_BYTES_PER_SECOND);
+const earlyDeleteSeconds = (reservedS, bytes) =>
+  Math.max(reservedS, Math.min(Math.ceil(bytes / EARLY_DELETE_FLOOR_BYTES_PER_SECOND), reservedS + EARLY_DELETE_SLACK_S));
 
 function ascii(bytes, at, text) {
   if (bytes.length < at + text.length) return false;
@@ -72,7 +78,10 @@ const freshProvider = () => ({
 
 /**
  * Starts the fake on 127.0.0.1:`port`. `allowedOrigins`: the site origins it
- * answers (CORS), like the Worker's ALLOWED_ORIGINS.
+ * answers (CORS), like the Worker's ALLOWED_ORIGINS. `adminToken`: with it the
+ * founder's `/admin/*` API answers (as the Worker's does: 404 without the
+ * exact token); without it the admin API does not exist, like a Worker whose
+ * ADMIN_TOKEN is unset or shorter than 24 characters.
  */
 export async function startFakeWorker({
   port,
@@ -82,6 +91,7 @@ export async function startFakeWorker({
   rateLimitPerHour = 30,
   maxJobMinutes = 120,
   maxBytesPerSecond = 8000,
+  adminToken = null,
 } = {}) {
   const capMicro = Math.round(monthlyCapUsd * 1e6);
   const priceMicroPerHour = Math.round(priceUsdPerHour * 1e6);
@@ -111,14 +121,93 @@ export async function startFakeWorker({
 
   const hashOf = (code) => createHash('sha256').update(code).digest('hex');
   const on = () => capMicro > 0 && !state.killed;
+  /** Constant time, as in the Worker: both sides are hashed first, so the lengths are equal. */
+  const sameSecret = (a, b) => timingSafeEqual(createHash('sha256').update(a).digest(), createHash('sha256').update(b).digest());
+  const usd = (micro) => Number((micro / 1e6).toFixed(4));
+  const minutes1 = (seconds) => Number((seconds / 60).toFixed(1));
+  /** A fresh code in the Worker's own format (20 symbols of a 32-letter alphabet), stored only as its hash. */
+  function issueInvite(label, minutes) {
+    const alphabet = 'ABCDEFGHJKMNPQRSTVWXYZ23456789ab';
+    const text = [...createHash('sha256').update(randomUUID()).digest()].slice(0, 20).map((byte) => alphabet[byte & 31]).join('');
+    const code = `${text.slice(0, 5)}-${text.slice(5, 10)}-${text.slice(10, 15)}-${text.slice(15)}`;
+    const hash = hashOf(code);
+    state.invites.set(hash, { label, quotaS: Math.round(minutes * 60), usedS: 0, revoked: false, revokedReason: null, createdAt: Date.now() });
+    return { code, hash };
+  }
+  /** What `GET /admin/spend` says: the same fields as the Worker's Ledger.spend(). */
+  function spendReport() {
+    const month = new Date().toISOString().slice(0, 7);
+    const jobs = [...state.jobs.values()];
+    const done = jobs.filter((job) => job.state === 'completed');
+    return {
+      on: on(),
+      enabledVariable: capMicro > 0,
+      killSwitch: state.killed,
+      month,
+      capUsd: usd(capMicro),
+      spentUsd: usd(state.spentMicro),
+      reservedUsd: usd(monthReserved()),
+      priceUsdPerHour: usd(priceMicroPerHour),
+      months: [{ month, spentUsd: usd(state.spentMicro), jobs: done.length, minutes: minutes1(done.reduce((sum, job) => sum + (job.actualS ?? 0), 0)) }],
+      invites: [...state.invites.entries()].map(([hash, invite]) => ({
+        id: hash.slice(0, 12),
+        label: invite.label ?? 'test',
+        minutes: minutes1(invite.quotaS),
+        usedMinutes: minutes1(invite.usedS),
+        revoked: invite.revoked ? (invite.revokedReason ?? true) : false,
+      })),
+      activeJobs: jobs.filter((job) => job.state === 'reserved' || job.state === 'running').length,
+      transcriptsStillAtProvider: jobs.filter((job) => job.transcriptId !== null && !job.providerDeleted).length,
+    };
+  }
+  async function readJson(request) {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    try {
+      return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    } catch {
+      return {};
+    }
+  }
+  /** The founder's four calls, answered as the Worker answers them (cloud/worker/src/index.ts, `admin`). */
+  async function admin(request, url, plain) {
+    if (url.pathname === '/admin/spend' && request.method === 'GET') return plain(200, spendReport());
+    if (url.pathname === '/admin/invites' && request.method === 'POST') {
+      const body = await readJson(request);
+      const label = typeof body.label === 'string' ? body.label.trim().slice(0, 40) : '';
+      if (!label) return plain(400, { error: 'label_required' });
+      const minutes = body.minutes === undefined ? 60 : Number(body.minutes);
+      if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 100000) return plain(400, { error: 'bad_minutes' });
+      const { code, hash } = issueInvite(label, minutes);
+      return plain(201, { code, id: hash.slice(0, 12), label, minutes });
+    }
+    const revoke = /^\/admin\/invites\/([0-9a-f]{8,64})$/.exec(url.pathname);
+    if (revoke && request.method === 'DELETE') {
+      let revoked = 0;
+      for (const [hash, invite] of state.invites) {
+        if (!invite.revoked && hash.startsWith(revoke[1])) {
+          invite.revoked = true;
+          invite.revokedReason = 'by_admin';
+          revoked += 1;
+        }
+      }
+      return plain(200, { revoked });
+    }
+    if (url.pathname === '/admin/kill' && request.method === 'POST') {
+      const body = await readJson(request);
+      if (typeof body.on !== 'boolean') return plain(400, { error: 'on_required' });
+      state.killed = body.on;
+      return plain(200, { killSwitch: body.on });
+    }
+    return plain(404, { error: 'not_found' });
+  }
   const reservedOf = (filter) => [...state.jobs.values()].filter((job) => (job.state === 'reserved' || job.state === 'running') && filter(job));
   const monthReserved = () => reservedOf(() => true).reduce((sum, job) => sum + job.reservedMicro, 0);
   const inviteReserved = (hash) => reservedOf((job) => job.inviteHash === hash).reduce((sum, job) => sum + job.reservedS, 0);
 
-  function reserve({ inviteHash, address, declaredS, bytes, jobId: wanted }) {
-    const attempts = (state.rate.get(address) ?? 0) + 1;
-    state.rate.set(address, attempts);
-    if (attempts > rateLimitPerHour) return { ok: false, status: 429, code: 'rate_limited', retryAfterS: 1800 };
+  function reserve({ inviteHash, countAttempt, declaredS, bytes, jobId: wanted }) {
+    const limited = countAttempt();
+    if (limited) return limited;
     if (!on()) return { ok: false, status: 503, code: 'cloud_off' };
     const invite = state.invites.get(inviteHash);
     if (!invite || invite.revoked) return { ok: false, status: 401, code: 'invite_invalid' };
@@ -143,14 +232,18 @@ export async function startFakeWorker({
       job.state = 'failed';
       return;
     }
-    const actualS = outcome.actualS === null ? job.reservedS : Math.ceil(outcome.actualS);
+    const measured = outcome.actualS !== null;
+    const actualS = measured ? Math.ceil(outcome.actualS) : outcome.deletedEarly ? earlyDeleteSeconds(job.reservedS, job.bytes) : job.reservedS;
     job.state = 'completed';
     job.actualS = actualS;
     state.spentMicro += costMicro(actualS, priceMicroPerHour);
     const invite = state.invites.get(job.inviteHash);
     if (invite) {
       invite.usedS += actualS;
-      if (actualS > job.declaredS * (1 + OVERRUN_TOLERANCE.share) + OVERRUN_TOLERANCE.seconds) invite.revoked = true;
+      if (measured && actualS > job.declaredS * (1 + OVERRUN_TOLERANCE.share) + OVERRUN_TOLERANCE.seconds) {
+        invite.revoked = true;
+        invite.revokedReason = 'longer_than_declared';
+      }
     }
   }
   const markDeleted = (job) => {
@@ -242,19 +335,41 @@ export async function startFakeWorker({
       request.resume(); // let an unread body drain so the browser sees the answer, not a reset
     };
 
+    const authorization = request.headers.authorization ?? '';
+    const bearer = authorization.startsWith('Bearer ') && authorization.length > 7 ? authorization.slice(7).trim() : null;
+    // The founder's API: no CORS headers at all, 404 for everything without the exact token (as in the Worker).
+    if (url.pathname.startsWith('/admin/')) {
+      entry.status = 0;
+      const plain = (status, body) => {
+        entry.status = status;
+        send(response, status, body);
+        request.resume();
+      };
+      if (!adminToken || !bearer || !sameSecret(bearer, adminToken)) return plain(404, { error: 'not_found' });
+      return admin(request, url, plain);
+    }
     if (!url.pathname.startsWith('/v1/')) return answer(404, { error: 'not_found' });
     if (request.method === 'OPTIONS') return answer(allowed(origin) ? 204 : 403, null);
     if (!allowed(origin)) return answer(403, { error: 'origin_not_allowed' });
 
-    const authorization = request.headers.authorization ?? '';
-    const invite = authorization.startsWith('Bearer ') && authorization.length > 7 ? authorization.slice(7).trim() : null;
+    const invite = bearer;
     if (!invite) return answer(401, { error: 'invite_required' });
     const inviteHash = hashOf(invite);
+    const address = request.headers['cf-connecting-ip'] ?? 'local';
+    const countAttempt = () => {
+      const attempts = (state.rate.get(address) ?? 0) + 1;
+      state.rate.set(address, attempts);
+      return attempts > rateLimitPerHour ? { ok: false, status: 429, code: 'rate_limited', retryAfterS: 1800 } : null;
+    };
 
     try {
       if (url.pathname === '/v1/quota' && request.method === 'GET') {
         const row = state.invites.get(inviteHash);
-        if (!row || row.revoked) return answer(401, { error: 'invite_invalid' });
+        // An unknown code counts as an attempt of the address, like a start with a wrong code (Worker: Ledger.quota).
+        if (!row || row.revoked) {
+          const limited = countAttempt();
+          return limited ? answer(429, { error: 'rate_limited' }, { 'retry-after': String(limited.retryAfterS) }) : answer(401, { error: 'invite_invalid' });
+        }
         const capLeftS = Math.max(0, Math.floor(((capMicro - state.spentMicro - monthReserved()) * 3600) / priceMicroPerHour));
         const inviteLeftS = Math.max(0, row.quotaS - row.usedS - inviteReserved(inviteHash));
         return answer(200, { on: on(), remainingMinutes: Math.floor((on() ? Math.min(inviteLeftS, capLeftS) : 0) / 60), maxJobMinutes: Math.floor(maxJobSeconds / 60) });
@@ -276,8 +391,7 @@ export async function startFakeWorker({
         const wantedId = request.headers['x-job-id'] ?? null;
         if (wantedId !== null && !JOB_ID.test(wantedId)) return answer(400, { error: 'bad_job_id' });
 
-        const address = request.headers['cf-connecting-ip'] ?? 'local';
-        const reservation = reserve({ inviteHash, address, declaredS, bytes: length, jobId: wantedId });
+        const reservation = reserve({ inviteHash, countAttempt, declaredS, bytes: length, jobId: wantedId });
         if (!reservation.ok) return answer(reservation.status, { error: reservation.code }, reservation.retryAfterS ? { 'retry-after': String(reservation.retryAfterS) } : {});
         const job = state.jobs.get(reservation.jobId);
 
@@ -397,7 +511,7 @@ export async function startFakeWorker({
             } catch {
               // counted as still working
             }
-            if (live !== 'done') settle(job, { status: 'completed', actualS: null });
+            if (live !== 'done') settle(job, { status: 'completed', actualS: null, deletedEarly: true });
           } else if (job.state === 'reserved') {
             release(job.id);
           }
@@ -438,12 +552,8 @@ export async function startFakeWorker({
     /** Forget everything: invites, jobs, what was uploaded, the request log, the provider's switches. */
     reset,
     /** A fresh invite code in the Worker's own format, good for `minutes`. */
-    newInvite(minutes = 60) {
-      const alphabet = 'ABCDEFGHJKMNPQRSTVWXYZ23456789ab';
-      const text = [...createHash('sha256').update(randomUUID()).digest()].slice(0, 20).map((byte) => alphabet[byte & 31]).join('');
-      const code = `${text.slice(0, 5)}-${text.slice(5, 10)}-${text.slice(10, 15)}-${text.slice(15)}`;
-      state.invites.set(hashOf(code), { quotaS: Math.round(minutes * 60), usedS: 0, revoked: false });
-      return code;
+    newInvite(minutes = 60, label = 'test') {
+      return issueInvite(label, minutes).code;
     },
     /** Changes what an invite has left (as if other jobs had used it up meanwhile). */
     setInviteMinutes(code, minutes) {
@@ -452,7 +562,10 @@ export async function startFakeWorker({
     },
     revokeInvite(code) {
       const invite = state.invites.get(hashOf(code));
-      if (invite) invite.revoked = true;
+      if (invite) {
+        invite.revoked = true;
+        invite.revokedReason = 'by_admin';
+      }
     },
     kill(value) {
       state.killed = value;

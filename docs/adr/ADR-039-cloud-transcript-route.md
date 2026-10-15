@@ -645,6 +645,23 @@ zamanlarının videoyla örtüşmesi; yayındaki Worker'ın ayarlarının depoda
 okunmadı); telefonda internet yolu; Safari ve Firefox; ücretsiz hesapta AB uç noktasında "eğitimde
 kullanılmaz"ın geçerliliği (sayfa bu yüzden söz vermiyor); `audio_end_at` faturalaması.
 
+## Ek, 15 Ekim 2026 — güvenlik ve kötüye kullanım incelemesi
+
+Yayındaki yolun tehdit modeli (para, veri, yönetim, site, sağlayıcı, kullanılabilirlik) tek tek gerçek Worker
+koduna (workerd + gerçek Durable Object + sahte sağlayıcı), sahte Worker'a ve siteye karşı sınandı; rapor, kalan
+riskler, kurucu işletmesi (harcama, anahtar/belirteç döndürme, davet iptali) ve olay kılavuzu
+[`cloud/SECURITY.md`](../../cloud/SECURITY.md). Yayındaki Worker'a, Cloudflare'e ve AssemblyAI'ye istek gitmedi.
+Worker'da üç değişiklik (**kurucu yeniden yayınlayana kadar yayında değil**): bilinmeyen kodla `GET /v1/quota`
+artık IP'nin saatlik sayacına sayılır (kod tahmini kota ucundan sınırsızdı; sınırın üstünde `429`); 24
+karakterden kısa `ADMIN_TOKEN` para yolunu da kapatır (yönetim API'siyle aynı kural); ve sağlayıcı bitirmeden
+silinen iş artık ayrılan süre + yüklemenin 64 KB'lık payının 6 kbit/s karşılığını (88 sn) öder, baytlarının
+taşıyabileceğinden fazlasını değil (SECURITY.md M5): "1 sn beyan et, 64 KB gönder, bitmeden sil" döngüsü 60
+dakikalık davette 3600 yerine 41 turda biter; dürüst iptal en çok 88 sn fazla öder; tahmin askıya almaz. Tavan
+yarışı 12 eşzamanlı başlatmayla yeniden kanıtlandı (aşım 0). Kalan para riski yine sağlayıcının `audio_end_at`
+/ bitmeden-silme faturalamasına bağlı (hâlâ doğrulanmadı). Kurucu komutu `cloud/admin.mjs` (spend, invites
+list/add/revoke, kill on/off) sahte Worker'a karşı sınandı; belirteci düz `http` ile başka makineye göndermez,
+yönlendirme izlemez. Sözleşme 20 durum; sahte Worker artık `/admin/*` uçlarını da taklit ediyor.
+
 ## Doğrulanmayanlar (10 Ekim taslağı)
 
 - **Sağlayıcının kendisi:** doğruluk, hız, gerçek hata metinleri, hız sınırı davranışı — hiçbiri

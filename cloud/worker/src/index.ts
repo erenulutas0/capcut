@@ -36,6 +36,9 @@ const AUDIO_TYPES: Record<string, (head: Uint8Array) => boolean> = {
 const ALLOWED_HEADERS = 'authorization, content-type, x-audio-duration-s, x-job-id, x-language, x-speaker-labels';
 const LANGUAGE = /^(auto|[a-z]{2,3}(_[a-z]{2})?)$/;
 const JOB_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+/** Below this the admin token is treated as unset: no admin API, and (the same rule) no money path either. */
+const ADMIN_TOKEN_MIN_LENGTH = 24;
+const adminTokenOf = (env: Env): string | null => (env.ADMIN_TOKEN && env.ADMIN_TOKEN.length >= ADMIN_TOKEN_MIN_LENGTH ? env.ADMIN_TOKEN : null);
 
 function ascii(bytes: Uint8Array, at: number, text: string): boolean {
   if (bytes.length < at + text.length) return false;
@@ -114,15 +117,23 @@ async function api(request: Request, url: URL, env: Env, ctx: ExecutionContext, 
   if (!allowed) return json({ error: 'origin_not_allowed' }, 403, cors);
 
   const key = env.ASSEMBLYAI_API_KEY;
-  const configured = Boolean(key) && Boolean(env.ADMIN_TOKEN);
+  const adminToken = adminTokenOf(env);
+  // The same rule as the admin API: a missing or short admin token means "not set up" — nothing is spent then.
+  const configured = Boolean(key) && adminToken !== null;
   const invite = bearer(request);
   if (!invite) return json({ error: 'invite_required' }, 401, cors);
   const inviteHash = await sha256Hex(invite);
   const ledger = ledgerOf(env);
+  // The address is kept only as a salted hash, for the hourly attempt counter (the salt is a secret, so the
+  // stored value cannot be turned back into an address by listing them; the raw address is never stored).
+  const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
+  const ipHash = (await sha256Hex(`ip:${adminToken ?? ''}:${ip}`)).slice(0, 32);
+  const refusal = (reservation: { status: number; code: string; retryAfterS?: number }) =>
+    json({ error: reservation.code }, reservation.status, { ...cors, ...(reservation.retryAfterS ? { 'retry-after': String(reservation.retryAfterS) } : {}) });
 
   if (url.pathname === '/v1/quota' && request.method === 'GET') {
-    const quota = await ledger.quota(inviteHash);
-    if (!quota) return json({ error: 'invite_invalid' }, 401, cors);
+    const quota = await ledger.quota(inviteHash, ipHash);
+    if (!quota.ok) return refusal(quota);
     return json({ on: quota.on && configured, remainingMinutes: Math.floor((quota.on && configured ? quota.remainingS : 0) / 60), maxJobMinutes: Math.floor(quota.maxJobS / 60) }, 200, cors);
   }
 
@@ -146,12 +157,8 @@ async function api(request: Request, url: URL, env: Env, ctx: ExecutionContext, 
     const wantedId = request.headers.get('x-job-id');
     if (wantedId !== null && !JOB_ID.test(wantedId)) return json({ error: 'bad_job_id' }, 400, cors);
 
-    const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
-    const ipHash = (await sha256Hex(`ip:${env.ADMIN_TOKEN}:${ip}`)).slice(0, 32);
     const reservation = await ledger.reserve({ inviteHash, ipHash, declaredS, bytes: length, ...(wantedId ? { jobId: wantedId } : {}) });
-    if (!reservation.ok) {
-      return json({ error: reservation.code }, reservation.status, { ...cors, ...(reservation.retryAfterS ? { 'retry-after': String(reservation.retryAfterS) } : {}) });
-    }
+    if (!reservation.ok) return refusal(reservation);
 
     let transcriptId: string | null = null;
     try {
@@ -258,7 +265,8 @@ async function api(request: Request, url: URL, env: Env, ctx: ExecutionContext, 
         } catch {
           // counted as still working
         }
-        if (live !== 'done') job = await ledger.settle(jobId, { status: 'completed', actualS: null });
+        // Its real length will never be known: the reservation plus the upload's slack is counted (ledger.ts, SECURITY.md M5).
+        if (live !== 'done') job = await ledger.settle(jobId, { status: 'completed', actualS: null, deletedEarly: true });
       } else if (job.state === 'reserved') {
         await ledger.release(jobId);
       }
@@ -275,8 +283,9 @@ async function api(request: Request, url: URL, env: Env, ctx: ExecutionContext, 
 // ---------------------------------------------------------------------------- founder API (curl, no CORS)
 async function admin(request: Request, url: URL, env: Env, config: Config): Promise<Response> {
   const token = bearer(request);
+  const adminToken = adminTokenOf(env);
   // Without a long admin token there is no admin API at all.
-  if (!env.ADMIN_TOKEN || env.ADMIN_TOKEN.length < 24 || !token || !(await sameSecret(token, env.ADMIN_TOKEN))) return json({ error: 'not_found' }, 404);
+  if (!adminToken || !token || !(await sameSecret(token, adminToken))) return json({ error: 'not_found' }, 404);
   const ledger = ledgerOf(env);
 
   if (url.pathname === '/admin/spend' && request.method === 'GET') return json(await ledger.spend(), 200);
