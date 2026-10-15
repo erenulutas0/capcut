@@ -22,7 +22,6 @@ export const en: Record<MessageKey, string> = {
   'a11y.timeNow': 'Current time',
   'a11y.timeTotal': 'Total length',
   'a11y.inspector': 'Settings',
-  'nav.backToEditor': 'Back to editing',
 
   'banner.prototype': 'Trial version · your video never leaves your device · no cloud',
   'banner.prototype.online': 'Trial version · editing happens on this device',
@@ -38,8 +37,6 @@ export const en: Record<MessageKey, string> = {
   'topbar.saveState.failed': 'Could not keep edits',
   'topbar.saveState.hint':
     'Your editing recipe is saved to this browser. This is not a cloud backup: clearing browser data, or using another device or browser, means the project will not be there. Your video files are never stored.',
-  'topbar.saveState.failedHint':
-    'The browser refused to save. Download the backup file so you do not lose your project.',
 
   'store.fail.unavailable': 'Local saving is unavailable in this browser (possibly a private window).',
   'store.fail.blocked': 'Local saving was blocked by another tab.',
@@ -58,9 +55,6 @@ export const en: Record<MessageKey, string> = {
   'relink.audioTitle': 'The music file is not open.',
   'relink.audioBody':
     'The project has music but its audio file is not open in this tab. You can pick the same file again.',
-  'relink.matched': 'File recognised; your clips are intact.',
-  'relink.matchedLikely':
-    'The file looks the same (size and duration match) and was re-linked. Its modification time differs.',
   'relink.mismatchTitle': 'This file looks different from the saved one.',
   'relink.mismatchBody':
     'The size or duration does not match. Using it could point your clips at different footage, so they are not kept.',
@@ -119,7 +113,6 @@ export const en: Record<MessageKey, string> = {
   'privacy.network.logs': 'Server access logs (who keeps them and for how long: the provider’s own statement)',
 
   'privacy.stored.title': 'What is kept in this browser',
-  'privacy.stored.what': 'What',
   'privacy.stored.where': 'Where',
   'privacy.stored.howLong': 'When it is deleted',
   'privacy.stored.project.name': 'Project recipe',
@@ -339,7 +332,6 @@ export const en: Record<MessageKey, string> = {
   'sources.size': 'Size',
   'sources.replaceWarning':
     'Choosing a new video removes your clips and captions. Continue?',
-  'sources.localOnly': 'We never touch your source file. Nothing is uploaded.',
 
   'frame.title': 'Video frame',
   'frame.portrait': 'Portrait 9:16',
@@ -351,7 +343,6 @@ export const en: Record<MessageKey, string> = {
   'frame.contain': 'Show the whole frame',
   'frame.containHint': 'Leaves empty space when needed.',
   'frame.zoom': 'Zoom from centre',
-  'frame.zoomReset': 'Reset zoom',
   'frame.note': 'The frame you see in the preview is exactly the frame of the downloaded video.',
   'frame.appliesToAll': 'Framing and quality apply to every download.',
   'audio.sourceTitle': 'Source video audio',
@@ -383,7 +374,6 @@ export const en: Record<MessageKey, string> = {
   'captions.line': 'Line',
   'captions.newLine': 'New line',
   'captions.textLabel': 'text',
-  'captions.chars': 'characters',
   'captions.textHint': 'At most 2 lines and 120 characters. Extra spaces are cleaned up when saved.',
   'captions.draftHint': 'The line is added when you leave the field.',
   'captions.goTo': 'Go here',
@@ -702,13 +692,6 @@ export const en: Record<MessageKey, string> = {
   'export.plan.unknown_asset': 'The recipe references an unknown source.',
   'export.plan.output_duration_exceeds_policy': 'Longer than the download limit of 60 minutes.',
   'export.plan.zero_frames': 'The output would contain no frames at all.',
-  'export.privacy': 'Your source files are not uploaded. There is no cloud or payment service here.',
-  'export.detected': 'Detected in this browser',
-  'export.videoEncoder': 'VideoEncoder API',
-  'export.audioEncoder': 'AudioEncoder API',
-  'export.secureContext': 'Secure context (HTTPS/localhost)',
-  'export.present': 'present',
-  'export.absent': 'absent',
   'export.detectedNote':
     'The API being present does not mean H.264 + AAC output works on this device. Playback support is not export support.',
 
@@ -911,7 +894,6 @@ export const en: Record<MessageKey, string> = {
   'enhance.did.denoise': 'grain reduced',
   'enhance.did.nothing': 'Enhancement was on, but nothing to change was found in this video; the picture was re-processed as it is.',
   'enhance.did.cpu': 'Done without graphics-card acceleration.',
-  'enhance.setting.title': 'Enhance',
   'enhance.setting.label': 'Enhance the picture',
   'enhance.setting.off': 'Off',
   'enhance.setting.hint':
@@ -991,7 +973,6 @@ export const en: Record<MessageKey, string> = {
     'Shortcuts: Space play · I start · O end and add · F full screen · Ctrl+Z undo',
   'dock.label': 'Clips shortcut',
   'dock.count': 'Clips ({n})',
-  'unsaved.prompt': 'Your edits in this session are not saved.',
   'home.title': 'What do you want to do?',
   'home.lede': 'Pick one, give it your video, two steps and you are done.',
   'home.search.label': 'Type what you want to do',
@@ -1017,7 +998,6 @@ export const en: Record<MessageKey, string> = {
   'home.editorLink': 'I will edit it myself',
   'home.trust': 'Your video never leaves your device. No account needed.',
   'home.trust.online': 'Your video never leaves your device; only if you choose, its sound is sent. No account needed.',
-  'home.homeLink': 'Home',
 
   'task.kes.label': 'Cut',
   'task.kes.sub': 'Keep the parts you want',

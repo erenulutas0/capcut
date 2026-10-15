@@ -20,7 +20,6 @@ export const tr = {
   'a11y.timeNow': 'Şu anki zaman',
   'a11y.timeTotal': 'Toplam süre',
   'a11y.inspector': 'Ayarlar',
-  'nav.backToEditor': 'Düzenlemeye dön',
 
   'banner.prototype': 'Deneme sürümü · videon cihazından çıkmaz · bulut yok',
   // ".online": what the same places say in a build with the internet route of "Yazıya dök" (ADR-039), where
@@ -38,8 +37,6 @@ export const tr = {
   'topbar.saveState.failed': 'Düzenleme saklanamadı',
   'topbar.saveState.hint':
     'Düzenleme tarifin bu tarayıcıya kaydedilir. Bu bir bulut yedeği değildir: tarayıcı verisini temizlersen veya başka bir cihaz/tarayıcı kullanırsan proje orada olmaz. Video dosyaların hiçbir zaman kaydedilmez.',
-  'topbar.saveState.failedHint':
-    'Tarayıcı kaydı reddetti. Projeni kaybetmemek için yedek dosyasını indir.',
 
   'store.fail.unavailable': 'Bu tarayıcıda yerel kayıt kullanılamıyor (gizli sekme olabilir).',
   'store.fail.blocked': 'Yerel kayıt başka bir sekme tarafından engellendi.',
@@ -58,9 +55,6 @@ export const tr = {
   'relink.audioTitle': 'Müzik dosyası açık değil.',
   'relink.audioBody':
     'Projede müzik var ama ses dosyası bu sekmede açık değil. Aynı dosyayı yeniden seçebilirsin.',
-  'relink.matched': 'Dosya tanındı, kesitlerin korundu.',
-  'relink.matchedLikely':
-    'Dosya aynı görünüyor (boyut ve süre uyuşuyor) ve yeniden bağlandı. Değiştirilme tarihi farklı.',
   'relink.mismatchTitle': 'Bu dosya kayıtlı dosyadan farklı görünüyor.',
   'relink.mismatchBody':
     'Boyut veya süre uyuşmuyor. Bu dosyayı kullanırsak kesitlerin başka görüntülere denk gelebilir; bu yüzden kesitleri saklamıyoruz.',
@@ -120,7 +114,6 @@ export const tr = {
   'privacy.network.logs': 'Sunucu erişim kayıtları (kim tutar, ne kadar süre: sağlayıcının kendi bildirimi)',
 
   'privacy.stored.title': 'Bu tarayıcıda saklananlar',
-  'privacy.stored.what': 'Ne',
   'privacy.stored.where': 'Nerede',
   'privacy.stored.howLong': 'Ne zaman silinir',
   'privacy.stored.project.name': 'Proje tarifi',
@@ -345,7 +338,6 @@ export const tr = {
   'sources.size': 'Boyut',
   'sources.replaceWarning':
     'Yeni bir video seçersen kesitlerin ve altyazıların silinir. Devam edilsin mi?',
-  'sources.localOnly': 'Kaynak dosyana dokunmuyoruz. Hiçbir dosya yüklenmez.',
 
   'frame.title': 'Videonun çerçevesi',
   'frame.portrait': 'Dikey 9:16',
@@ -357,7 +349,6 @@ export const tr = {
   'frame.contain': 'Tam görüntüyü göster',
   'frame.containHint': 'Gerekirse boş alan bırakır.',
   'frame.zoom': 'Merkezden yakınlaştır',
-  'frame.zoomReset': 'Yakınlaştırmayı sıfırla',
   'frame.note': 'Önizlemede gördüğün çerçeve, indirilen videoda da aynen olur.',
   'frame.appliesToAll': 'Çerçeve ve kalite her indirmeye uygulanır.',
   'audio.sourceTitle': 'Kaynak videonun sesi',
@@ -390,7 +381,6 @@ export const tr = {
   'captions.line': 'Satır',
   'captions.newLine': 'Yeni satır',
   'captions.textLabel': 'metni',
-  'captions.chars': 'karakter',
   'captions.textHint': 'En çok 2 satır ve 120 karakter. Fazla boşluklar kaydederken temizlenir.',
   'captions.draftHint': 'Yazıp alandan çıkınca satır eklenir.',
   'captions.goTo': 'Buraya git',
@@ -725,13 +715,6 @@ export const tr = {
   'export.plan.unknown_asset': 'Tarifte tanımsız bir kaynak var.',
   'export.plan.output_duration_exceeds_policy': 'İndirme sınırı olan 60 dakikadan uzun.',
   'export.plan.zero_frames': 'Çıktıda tek kare bile yok.',
-  'export.privacy': 'Kaynak dosyaların yüklenmez. Bu sürümde bulut veya ödeme servisi yok.',
-  'export.detected': 'Bu tarayıcıda görülenler',
-  'export.videoEncoder': 'VideoEncoder API',
-  'export.audioEncoder': 'AudioEncoder API',
-  'export.secureContext': 'Güvenli bağlam (HTTPS/localhost)',
-  'export.present': 'var',
-  'export.absent': 'yok',
   'export.detectedNote':
     'API’nin bulunması, bu cihazda H.264 + AAC çıktısının çalıştığı anlamına gelmez. Oynatma desteği de export desteği değildir.',
 
@@ -939,7 +922,6 @@ export const tr = {
   'enhance.did.denoise': 'kumlanma azaltıldı',
   'enhance.did.nothing': 'İyileştirme açıktı ama bu videoda değiştirilecek bir şey bulunamadı; görüntü olduğu gibi yeniden işlendi.',
   'enhance.did.cpu': 'Ekran kartı hızlandırması olmadan yapıldı.',
-  'enhance.setting.title': 'İyileştir',
   'enhance.setting.label': 'Görüntüyü iyileştir',
   'enhance.setting.off': 'Kapalı',
   'enhance.setting.hint':
@@ -1021,7 +1003,6 @@ export const tr = {
     'Kısayollar: Boşluk oynat · I başlangıç · O bitiş ve ekle · F tam ekran · Ctrl+Z geri al',
   'dock.label': 'Kesitler kısayolu',
   'dock.count': 'Kesitler ({n})',
-  'unsaved.prompt': 'Bu oturumdaki düzenlemen kaydedilmedi.',
   // ---- Opening screen: task cards + type-to-find (ADR-034) ----
   'home.title': 'Ne yapmak istiyorsun?',
   'home.lede': 'Birini seç, videonu ver, gerisi iki adım.',
@@ -1049,7 +1030,6 @@ export const tr = {
   'home.editorLink': 'Kendim düzenleyeceğim',
   'home.trust': 'Videon cihazından çıkmaz. Hesap gerekmez.',
   'home.trust.online': 'Videon cihazından çıkmaz; yalnızca sen seçersen sesi gider. Hesap gerekmez.',
-  'home.homeLink': 'Ana ekran',
 
   'task.kes.label': 'Kes',
   'task.kes.sub': 'İstediğin yerleri al',

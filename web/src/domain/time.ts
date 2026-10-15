@@ -31,15 +31,6 @@ export function secondsToUs(seconds: number): Micros {
   return Math.round(seconds * US_PER_SECOND);
 }
 
-export function usToSeconds(us: Micros): number {
-  return us / US_PER_SECOND;
-}
-
-/** Duration of a half-open range. */
-export function rangeDurationUs(inUs: Micros, outUs: Micros): Micros {
-  return outUs - inUs;
-}
-
 /** `MM:SS.mmm`, or `HH:MM:SS.mmm` past one hour. Always non-negative. */
 export function formatTimecode(us: Micros): string {
   const clamped = Math.max(0, Math.round(us));

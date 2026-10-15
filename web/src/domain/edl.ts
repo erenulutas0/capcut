@@ -255,5 +255,3 @@ export const DEFAULT_EXPORT_SPEC: ExportSpecV1 = {
   colorMode: 'sdr_rec709',
   audioSampleRate: 48000,
 };
-
-export const FULL_FRAME_VIEW: ViewRectV1 = { x: 0, y: 0, width: 1, height: 1, fit: 'cover' };
