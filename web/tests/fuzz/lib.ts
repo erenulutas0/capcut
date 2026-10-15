@@ -280,7 +280,8 @@ export function measureSaved(file: string, name: string, surface: Surface, item:
   const streams = info.streams.map((stream) => `${stream.type}:${stream.codec}`);
   const audioOnly = surface === 'ses';
   // "Müzik ekle" brings its own sound: a source without one still gets the music.
-  const expectAudio = !audioOnly && surface !== 'sustur' && (item.hasAudio || surface === 'muzik');
+  // "Sesini al" saves only the sound; "Sesi kapat" only the picture.
+  const expectAudio = audioOnly || (surface !== 'sustur' && (item.hasAudio || surface === 'muzik'));
   const expectVideo = !audioOnly;
 
   // Length.
