@@ -9,7 +9,6 @@ import { BrowserNotice } from '@/components/BrowserNotice';
 import { Icon, Wordmark } from '@/components/Icon';
 import { lazyPart } from '@/components/LazyPart';
 import { ReportProblemProvider } from '@/components/ReportProblem';
-import { DownloadStatus } from '@/components/editor/DownloadStatus';
 import { MediaErrorNotice } from '@/components/editor/MediaErrorNotice';
 import type { ExportExtras, TargetSizePreview } from '@/components/editor/useDownloads';
 import type { EditorState } from '@/components/editor/useEditorState';
@@ -28,6 +27,10 @@ const t = translator('tr');
 
 /** "Sorun bildir": opened by a press after a failure, so its code comes with that press, not with the page. */
 const ReportDialog = lazyPart(() => import('@/components/editor/ReportDialog').then((module) => module.ReportDialog), { close: (props) => props.onClose });
+/** The download's status (progress, the saved file, a failure): shown from the press of the download button on. */
+const DownloadStatus = lazyPart(() => import('@/components/editor/DownloadStatus').then((module) => module.DownloadStatus), {
+  variant: 'inline',
+});
 
 export function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);

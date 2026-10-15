@@ -25,7 +25,8 @@ import {
   isMusicFitted,
 } from '@/domain/musicFit';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
-import { parseRecord, createRecord } from '@/domain/projectRecord';
+import { createRecord } from '@/domain/projectRecord';
+import { parseRecord } from '@/domain/recordParse';
 import { compileRenderPlan } from '@/domain/renderPlan';
 import { MIN_CLIP_DURATION_US, US_PER_SECOND } from '@/domain/time';
 import { validateProject } from '@/domain/validation';

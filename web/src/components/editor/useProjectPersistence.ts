@@ -7,7 +7,6 @@ import { createIndexedDbStore, type StoreFailure } from '@/adapters/projectStore
 import type { Project } from '@/domain/edl';
 import {
   createRecord,
-  parseRecord,
   type AssetBinding,
   type ProjectRecord,
 } from '@/domain/projectRecord';
@@ -223,6 +222,7 @@ export function useProjectPersistence({ project, title, bindings, onRestore, ena
     async (file: File): Promise<{ ok: true } | { ok: false; reason: string }> => {
       try {
         const text = await file.text();
+        const { parseRecord } = await import('@/domain/recordParse');
         const parsed = parseRecord(JSON.parse(text));
         if (!parsed.ok) return { ok: false, reason: parsed.reason };
         createdAtRef.current = parsed.record.createdAt;

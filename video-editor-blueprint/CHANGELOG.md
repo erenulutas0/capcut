@@ -3,6 +3,21 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Editörün ilk yükü hafifledi — 15 Ekim 2026 (şema, politika, sözler ve ekranlar değişmedi)
+
+Editörün telefon kısıtlamasındaki ana iş parçacığı süresi (TBT) bütçenin (≤ 200 ms) kıyısındaydı (14 Ekim: 176–268 ms). Hiçbir özellik çıkarılmadan, ilk ekranın kullanmadığı kod ilk yükten çıkarıldı:
+
+- **Kayıt planı** İyileştir'in matematiğini yalnızca bir sürüm sabiti için taşıyordu (~15 KB, her sihirbazda da); sabit `domain/enhanceVersion.ts`'te, birim testi `enhance.ts`'teki eşiyle eşit tutar.
+- **Kayıtlı projeyi okuma** ve tarif doğrulaması (`domain/recordParse.ts`, ~13 KB) yalnızca okunacak kayıt ya da yedek dosyası varken gelir (ikisi de zaten eşzamansız okunuyordu).
+- **Editörde basışla gelen parçalar** (ADR-044 `lazyPart`): Ayarlar sayfasının panelleri (tek dosya), yardım, indirme durumu ve "Yazıya dök" penceresi — model deposuna ve WebGPU'ya sorulan sorular da artık ilk basışta, sayfa açılırken değil; pencere ondan sonra bağlı kalır, model indirmesi kapalı pencerenin arkasında sürer. Sihirbazda indirme durumu da basışla gelir. Gelmeyen parça yerinde "Bu bölüm açılamadı · Tekrar dene" der. Yeni dosyalar çevrimdışı listede.
+- **Hidrasyondan sonra** pencere genişliği, dokunmatik ekran ve "sayfa canlı" değerlerine geçiş bir React geçişi (`useBrowserValue`): editörün tamamı artık bir uzun görevde yeniden çizilmiyor.
+
+**Sayılar** (`npm run quality`, mobil kısıtlama, 3 koşunun ortancası; önce = 14 Ekim akşamı raporu): editör TBT 193 (186–244) → **141 ms (130–158)**, JS 299 KB / 18 dosya → **255 KB / 16**; sihirbaz `/yap/dikey/` TBT 157 (157–373) → **135 ms (130–149)**, JS 244 → **230 KB**; ana ekran 148 → 142 ms (dokunulmadı). LCP değişmedi. Önceki ve yeni çıktı aynı saatte sırayla 8–10'ar kez açıldığında editör ortancası 184 → 123 ms ve 126 → 93 ms.
+
+**Sınamalar (son kodla, yerel):** `tsc`, `eslint` temiz; birim **1458 / 1458** (85 dosya); olağan e2e **425: 421 geçti, 4 atlandı, 0 başarısız**, `PAGE-RECOVERED-TOTAL 0`, `PAGE-DEAD-TOTAL 0`; bulut e2e (yerel sahte vekil) **59: 55 geçti, 4 atlandı**; varsayılan durağan çıktıda (`/capcut`, CI'ın ortam değerleriyle) Pages duman **13: 7 geçti, 6 atlandı (4 ön uçuş — yol kapalı; 2 model)**; kalite katmanı 643 ölçü, 566 içinde, 8 dışında (önceki açık maddeler), farklı ekran 0.
+
+**Doğrulanmayan:** gerçek telefon; gerçek yavaş ağda bir parçanın ilk basıştaki gecikmesi (service worker'sız ilk ziyarette Ayarlar / yardım / Yazıya dök / indirme durumu bir istek sonra gelir).
+
 ## Bulut yolunu yayında açmaya hazırlık: davetli deneme, veri sorumlusu, ön uçuş sınaması — 14 Ekim 2026 (ADR-039 "Kabul — davetli deneme"; politika `2026-10-14.v10`; şema değişmedi; yol bu çalışmada AÇILMADI)
 
 Kurucu kararları (14 Ekim 2026): bulut yazıya dökme yolu yayındaki sitede **davetli, ücretsiz deneme** olarak açılır (davet başına dakika, iş başına en çok 120 dakika, Worker'da aylık 1 $ tavan, AB); veri sorumlusu **kurucu, kişi olarak**; alan adı yok, yalnız ücretsiz katman. Worker kurucu tarafından yayınlandı. Bu çalışma Worker'a, AssemblyAI'ye ya da başka bir dış hizmete **tek istek göndermedi**, `cloud/.env` / `cloud/pass.txt` okunmadı, GitHub değişkeni ayarlanmadı; siteyi açmak ana oturumun işidir.

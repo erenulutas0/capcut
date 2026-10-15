@@ -13,9 +13,9 @@ import {
   computeFingerprint,
   createRecord,
   missingBindings,
-  parseRecord,
   type AssetBinding,
 } from '@/domain/projectRecord';
+import { parseRecord } from '@/domain/recordParse';
 
 const edl: Project = JSON.parse(
   readFileSync(join(process.cwd(), 'fixtures', 'edl', 'valid', 'doc10-example.json'), 'utf8'),
