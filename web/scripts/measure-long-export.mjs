@@ -46,6 +46,11 @@
  *   --source-width / --source-fps   barcode geometry (1920 / 30)
  *   --keep-output  keep the saved file (default: deleted after it is measured)
  *   --no-lock    do not take the measurement lock (only when the caller holds it)
+ *   --room-mib   a real quota (CDP) this many MiB above the origin's usage: a nearly full disk
+ *   --claim-mib  claim only this much up front (`__clipStorageReserveBytes`), so the disk is
+ *                met mid-file; with --room-mib this is the "disk fills up during the export" case
+ *
+ * A source over the input limits ends as `refused-on-open` with the app's own words.
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, statfsSync, writeFileSync } from 'node:fs';
@@ -89,6 +94,8 @@ const sourceFps = Number(argValue('source-fps', '30'));
 const keepOutput = args.includes('--keep-output');
 const useLock = !args.includes('--no-lock');
 const quality = argValue('quality', '');
+const claimMib = args.some((a) => a.startsWith('--claim-mib=')) ? Number(argValue('claim-mib', '0')) : null;
+const roomMib = args.some((a) => a.startsWith('--room-mib=')) ? Number(argValue('room-mib', '0')) : null;
 
 if (process.platform !== 'win32') {
   console.error('Bu ölçüm yalnızca Windows süreç örnekleyicisiyle çalışıyor.');
@@ -179,6 +186,26 @@ function findBrowserPid(userDataDir) {
   const result = spawnSync('powershell', ['-NoProfile', '-Command', script], { encoding: 'utf8' });
   const pid = Number((result.stdout || '').trim());
   return Number.isFinite(pid) && pid > 0 ? pid : null;
+}
+
+/**
+ * A real quota with `roomBytes` of room above what the origin holds once its
+ * offline copy has settled (the method of tests/e2e/output-limits.spec.ts):
+ * Chromium enforces it on every OPFS write and truncate, like a full disk.
+ */
+async function limitRoom(page, roomBytes) {
+  await page.evaluate(() => Promise.race([navigator.serviceWorker?.ready ?? Promise.resolve(null), new Promise((resolve) => setTimeout(resolve, 15_000))]));
+  const usageNow = () => page.evaluate(async () => (await navigator.storage.estimate()).usage ?? 0);
+  let usage = await usageNow();
+  for (let i = 0; i < 40; i += 1) {
+    await page.waitForTimeout(750);
+    const next = await usageNow();
+    if (next === usage) break;
+    usage = next;
+  }
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Storage.overrideQuotaForOrigin', { origin: new URL(page.url()).origin, quotaSize: usage + roomBytes });
+  return { usageMib: mib(usage), roomMib: mib(roomBytes), quotaMib: mib(usage + roomBytes) };
 }
 
 /* -------------------------------------------------------------- file checks */
@@ -307,10 +334,18 @@ try {
   }
   if (route === 'opfs') await removeSavePicker(page);
   else await installSavePicker(page);
+  if (claimMib !== null) {
+    // Measurement hook (every build): claim only this much up front, so a full disk is met mid-file.
+    await page.addInitScript((bytes) => {
+      window.__clipStorageReserveBytes = bytes;
+    }, Math.round(claimMib * MIB));
+    row.claimMib = claimMib;
+  }
 
   const url = task === 'editor' ? `${baseURL}/editor/` : `${baseURL}/yap/${task}/`;
   await page.goto(url, { waitUntil: 'load' });
   await page.locator('html[data-clip-alive]').waitFor({ state: 'attached', timeout: 60_000 });
+  if (roomMib !== null) row.quota = await limitRoom(page, Math.round(roomMib * MIB));
   // No leftovers from an earlier run can exist in a fresh profile; said explicitly.
   row.opfsBefore = await page.evaluate(async () => {
     const root = await navigator.storage.getDirectory();
@@ -326,6 +361,13 @@ try {
   let ranges = [[0, 0, sourceDurationS ?? 0]];
   let startButton = page.getByTestId('wizard-download');
   if (task === 'editor' || task === 'kes') {
+    // A source over the input limits is refused on open (media-error), before any export exists.
+    await page.locator('[data-testid="preview-video"], [data-testid="media-error"]').first().waitFor({ timeout: 180_000 });
+    const refusedOnOpen = await text(page.getByTestId('media-error'));
+    if (refusedOnOpen && (await page.getByTestId('preview-video').count()) === 0) {
+      row.openS = Number(((Date.now() - openedAt) / 1000).toFixed(1));
+      throw Object.assign(new Error('refused-on-open'), { refusedOnOpen });
+    }
     await page.getByTestId('preview-video').waitFor({ timeout: 180_000 });
     await page.waitForFunction(() => (document.querySelector('video')?.duration ?? 0) > 0, null, { timeout: 180_000 }).catch(() => undefined);
     row.openS = Number(((Date.now() - openedAt) / 1000).toFixed(1));
@@ -407,6 +449,7 @@ try {
   if (!startEnabled) {
     row.outcome = 'blocked-before-start';
     row.message = row.blockedBefore;
+    row.refusal = await text(page.getByTestId('target-size-refusal'));
   } else {
     const startedAt = Date.now();
     row.startedAt = startedAt;
@@ -472,6 +515,8 @@ try {
         reason: await text(page.getByTestId('export-failed-reason')),
         detail: await text(page.getByTestId('export-failed-detail')),
         storage: await text(page.getByTestId('export-failed-storage')),
+        overLimit: await text(page.getByTestId('export-failed-over-limit')),
+        encodingSeen: progressSeen.length > 0,
       };
       row.stallWatchdog = /stall|takıl|yanıt vermedi|Stalled/i.test(`${row.failure.text} ${row.failure.detail}`) ? 'fired' : 'no';
     } else {
@@ -583,7 +628,12 @@ try {
   row.profileLines = profiles.length;
   await page.close();
 } catch (error) {
-  row.error = String(error?.stack ?? error).split('\n').slice(0, 4).join(' | ');
+  if (error?.refusedOnOpen) {
+    row.outcome = 'refused-on-open';
+    row.message = error.refusedOnOpen;
+  } else {
+    row.error = String(error?.stack ?? error).split('\n').slice(0, 4).join(' | ');
+  }
 } finally {
   if (diskTimer) clearInterval(diskTimer);
   sampling?.stop();
