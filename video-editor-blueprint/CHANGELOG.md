@@ -3,6 +3,19 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Dosya fuzz koşusu: bozuk dizin sekmeyi dondurmaz, reddedilen dosyaya ne olduğu söylenir — 15 Ekim 2026 (şema ve politika değişmedi)
+
+Yeni ölçüm paketi `web/scripts/fuzz/` (CI'da ve `npm run quality`'de değil; `docs/quality/README.md` "Dosya fuzz koşusu"): 57 türlü yapay dosya × on kartın dosya seçme adımı + editör = 627 hücre, her biri indirmeye kadar sürülür ve yargılanır. Rapor: `docs/quality/2026-10-15-fuzz.md`. **Önce → sonra:** iyi 582 → **599**, belirsiz 34 → **28**, bozuk 11 → **0**; en uzun yanıtsızlık 60 sn → yok; konsol hatalı hücre 11 → 0.
+
+- **Bozuk kare süreleri tablosu (stts) sekmeyi donduruyordu** (11 yüzeyin hepsinde ≥ 60 sn, sonra sekme belleği bitirip çöktü): ADR-040 denetimi dizini mediabunny ile ana iş parçacığında kare kare açıyordu. Yeni `adapters/mp4Index.ts` dizinin sayılarını önce kendisi toplar; doğru olamıyorsa dosya hemen reddedilir: "Bu dosya bozuk görünüyor; bu haliyle açılamaz. Dosyayı yeniden indir ya da yeniden kopyala; olmazsa başka bir dosya seç."
+- **Reddedilen dosyaya ne olduğu söylenir** (`adapters/fileKind.ts`, ilk baytlar): önce hepsi "Dosya bozuk olabilir veya tarayıcı bu biçimi oynatmıyor" duyuyordu. Şimdi: boş dosya ("Bu dosya boş…"; tarayıcıya hiç verilmez, konsol hatası da gitti), resim ("Bu bir resim, video değil."), yalnızca ses, açmadığımız tür ("Bu dosya türünü (AVI) açamıyoruz. MP4 ya da MOV türünde bir video seç…" — AVI, TS, MPG, FLV, WMV, oynatılamayan MKV), video olmayan baytlar, dizini gelmeden kesilmiş MP4 ("yarım kalmış görünüyor: dosyanın sonu eksik…"). Yeni biçim desteği eklenmedi; HEVC ipucu aynen.
+- **0,1 saniyeden kısa video** (tek kare) seçilince reddedilir ("Bu video çok kısa…"); önce dört yüzey "Bu tarayıcıda çıktı alınamıyor. İndirilecek kesit yok." diyordu, İyileştir 90 sn sessiz kalıyordu. İndirilecek kesit yoksa ya da video açık değilse engel başlığı artık "Bu indirme yapılamıyor." ("Sorun bildir" yerinde).
+- **Kalan** (rapor, bulgu 5): HEVC ipucundaki "HEVC (H.265)" teknik terim sayılıyor (bilerek; 22 hücre); H.264 4:4:4 641 × 361 kaynak yeniden kodlayan kartlarda 644 × 362 çıkıyor (6 hücre; dışa aktarma işleyicisinin içinde, dokunulmadı).
+
+**Sınamalar (son kodla, yerel):** `tsc`, `eslint` temiz; birim **1476 / 1476** (87 dosya; yeni `fileKind`, `mp4Index`); olağan e2e **428: 424 geçti, 4 atlandı, 0 başarısız**, `PAGE-RECOVERED-TOTAL 0`, `PAGE-DEAD-TOTAL 0`; fuzz 627 hücre: iyi 599, belirsiz 28, bozuk 0, ölçülemedi 0; varsayılan durağan çıktı (`/capcut`) derlendi (Pages duman sınaması koşulmadı). Yeni küçük örnekler `web/tests/media/fuzz/` (4 dosya, 3–38 KB).
+
+**Doğrulanmayan:** yalnızca masaüstü Chromium (Windows); Safari, Firefox, telefon; gerçek "Yazıya dök" modeliyle korpus; gerçek kullanıcı dosyaları.
+
 ## Editörün ilk yükü hafifledi — 15 Ekim 2026 (şema, politika, sözler ve ekranlar değişmedi)
 
 Editörün telefon kısıtlamasındaki ana iş parçacığı süresi (TBT) bütçenin (≤ 200 ms) kıyısındaydı (14 Ekim: 176–268 ms). Hiçbir özellik çıkarılmadan, ilk ekranın kullanmadığı kod ilk yükten çıkarıldı:
