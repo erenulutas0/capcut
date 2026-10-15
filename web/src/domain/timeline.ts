@@ -58,12 +58,6 @@ export function totalOutputDurationUs(project: Pick<Project, 'clips'>): Micros {
   return project.clips.reduce((total, clip) => total + clipDurationUs(clip), 0);
 }
 
-export function totalSourceDurationUs(project: Pick<Project, 'assets'>): Micros {
-  return project.assets
-    .filter((asset) => asset.kind === 'video')
-    .reduce((total, asset) => total + asset.durationUs, 0);
-}
-
 /**
  * Maps an output timestamp to the clip and source timestamp playing there.
  * Half-open: outputUs === totalDuration belongs to no clip.

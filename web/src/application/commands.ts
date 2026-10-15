@@ -75,10 +75,6 @@ export function primaryVideoAsset(project: Project): AssetV1 | undefined {
   return project.assets.find((asset) => asset.kind === 'video');
 }
 
-export function audioAsset(project: Project): AssetV1 | undefined {
-  return project.assets.find((asset) => asset.kind === 'audio');
-}
-
 export function findClip(project: Project, clipId: string): ClipV1 | undefined {
   return project.clips.find((clip) => clip.clipId === clipId);
 }
@@ -115,13 +111,6 @@ export function setVideoAsset(project: Project, asset: AssetV1): Project {
     captionTracks: replacing
       ? project.captionTracks.filter((track) => track.timeBase === 'source' && track.assetId === asset.assetId)
       : project.captionTracks,
-  });
-}
-
-export function removeVideoAsset(project: Project): Project {
-  return bump(project, {
-    assets: project.assets.filter((asset) => asset.kind !== 'video'),
-    clips: [],
   });
 }
 

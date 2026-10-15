@@ -16,12 +16,10 @@ import {
   sortCues,
   type CueVisibility,
 } from './captions';
-import type { Micros } from './time';
+import { US_PER_MS, type Micros } from './time';
 
 /** Length of a line added with "Satır ekle"; long enough to be read aloud once. */
 export const DEFAULT_CUE_LENGTH_US: Micros = 2_000_000;
-
-const US_PER_MS = 1000;
 
 export type NewCueRangeResult =
   | { ok: true; startUs: Micros; endUs: Micros }

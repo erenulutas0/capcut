@@ -347,6 +347,7 @@ kaldığı için böyle bir anda istemci gezinmesi yerine tam yükleme olabilir 
 
 **Kapsam.** Yalnızca açılış ekranındaki görev kartları ve arama sonuçları. "Kendim düzenleyeceğim"
 bağlantısı ve öbür sayfalardaki bağlantılar değişmedi (karar kart için; aynı koruma istenirse aynı kanca).
+**15 Ekim: genişletildi** — aşağıda "Ek 2".
 Next'in kendi davranışı aynen: istek **başarısız** olursa çatı kendisi tam yüklemeye düşer (bu koruma
 devreye girmeden); bekçinin (Karar 1) ilk yüklemedeki davranışı değişmedi.
 
@@ -370,3 +371,44 @@ yolu, sondaki `/`); izlenen basışlar.
 **Doğrulanmayan:** gerçek kötü bağlantı (yalnızca Playwright yönlendirmesi); GitHub Pages'te (`/capcut/…/`)
 tam yükleme adresi yalnızca birim testi ve durağan derlemeyle; gerçek telefon; ekran okuyucunun
 "Açılıyor…"yu okuması; bfcache dönüşü yalnızca birim testinde.
+
+## Ek 2 — 15 Ekim 2026: aynı koruma ekranın öbür bağlantılarında (`FallbackLink`)
+
+**Önce yeniden üretildi** (bu değişiklikten önceki derleme, `CLIP_TEST_HOOKS=1`, `next start`; Playwright
+`?_rsc` isteğini yanıtsız tuttu, "Kendim düzenleyeceğim"e basıldı): **25 sn sonra** adres hâlâ `/`, tutulan
+`?_rsc` isteği 1, belge isteği 0, bağlantının yazısı değişmemiş, `aria-busy` yok. 14 Ekim ekinin açık
+bıraktığı madde buydu.
+
+**Karar** (`web/src/components/FallbackLink.tsx`): istemci yönlendiricisinden geçen her bağlantı aynı
+korumayı alır, **ekran başına tek koruma** — `NavigationFallbackScope` ekranı sarar, içindeki her
+`FallbackLink` ve açılış ekranının kartları/arama sonuçları aynı sayacı paylaşır; hangi bağlantıya basılırsa
+basılsın tam yükleme ekran başına bir kez (14 Ekim'deki "döngü yok" kuralı aynen; eşik aynı 10 sn; aynı adres
+kuralı: taban yolu ve durağan çıktıdaki sondaki `/`, `/` için `/capcut/`).
+
+| Ekran | Bağlantı | Basınca |
+|---|---|---|
+| Açılış | "Kendim düzenleyeceğim" (`/editor`) | yazısı "Açılıyor…", `aria-busy`; durum bölgesi de "Açılıyor…" (kartlarla aynı) |
+| Açılış | alt yazıdaki "Gizlilik" (`/gizlilik`) | yazısı "Açılıyor…" |
+| Sihirbaz | "Geri" (seçim adımında `/`), bitince "Ana ekrana dön" | yazısı "Açılıyor…" |
+| Sihirbaz, editör | sözcük işareti (logo, `/`) | logo kalır; `aria-busy`, `aria-label` "Açılıyor…" |
+| Editör | şeritteki uygulama adı (`/`) | yazısı "Açılıyor…" |
+
+"Daha fazla ayar → editörde aç" bir gezinme değildir (aynı sayfada parça yükler; 30 sn'lik parça koruması
+yukarıda, Karar 2). İndirme sürerken çıkışı soran onay (`guardLeave`, editörün sözcük işareti) önce çalışır;
+vazgeçilen basış izlenmez (`defaultPrevented`). `prefetch={false}` her `FallbackLink`'te sabittir
+(`app/page.tsx`'teki Pages 404 notu).
+
+**Dokunulmayan:** `/gizlilik` sayfasının iki "Geri" bağlantısı (`PrivacyPage.tsx`) ve `TaskWizard`'ın
+ulaşılamayan "bu iş yok" sayfası — aynı örüntü, aynı kanca ile kapatılabilir; öncelik verilmedi.
+
+**Sınananlar** — `web/tests/e2e/card-navigation.spec.ts` +4 (gerçek 10 sn ile): "Kendim düzenleyeceğim"
+tutulan `?_rsc` ile (1 sn içinde "Açılıyor…", `aria-busy`, durum bölgesi; kart işaretlenmez; ≥ 9,8 sn ve
+< 13 sn sonra tek belge isteği `/editor`; editör açılır); sihirbazın "Geri"si (tek belge isteği `/`, açılış
+ekranı); editörün sözcük işareti (logo görünür, `aria-label` "Açılıyor…", tek belge isteği `/`); olağan
+basışlar (editör bağlantısı, editörün sözcük işareti, kart, "Geri") 12 sn beklendiğinde **hiç** belge isteği
+yok. Birim: `fullPageHref` `/editor` ve `/` için (+1).
+
+**Doğrulanmayan:** aynı ekranda iki farklı bağlantıya art arda basışın tek tam yükleme vermesi yalnızca
+yapıdan (tek bağlam) okunur, sayfa testinde değil (bekleyen bir tam yükleme varken Playwright sayfayı
+okumadan önce onu bekler); `/gizlilik` bağlantısı için ayrı sayfa testi yok (aynı bileşen); gerçek kötü
+bağlantı; ekran okuyucu.

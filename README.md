@@ -12,7 +12,9 @@
 > kesim önerisi çalışıyor. 15 gerçek kayıt ve 20 vakalık dosya matrisiyle ölçüldü:
 > [destek matrisi](docs/SUPPORT_MATRIX.md). Cihaz üstü **İngilizce** yazıya dökme ve otomatik
 > altyazı ("Yazıya dök") çalışıyor ([ADR-036](docs/adr/ADR-036-on-device-transcript.md));
-> Türkçe ve bulut transkript yok (ADR-017). Cihaz üstü görüntü iyileştirme ("İyileştir": ışık,
+> Cihaz üstü yol İngilizce (ADR-017); **internette yazıya dökme** ([ADR-039](docs/adr/ADR-039-cloud-transcript-route.md))
+> yayındaki sitede 15 Ekim 2026'dan beri **davetli, ücretsiz deneme** olarak açık: davet koduyla, yalnızca sen
+> "Sesi gönder ve yaz"a basınca videonun sesi gider. Cihaz üstü görüntü iyileştirme ("İyileştir": ışık,
 > renk, keskinlik, kumlanma; klasik görüntü işleme, yapay zekâ değil) çalışıyor
 > ([ADR-037](docs/adr/ADR-037-enhance.md)); yapay zekâyla büyütme ve bulanıklık giderme yok. Ürünün adı **LiloCut** (kurucu kararı, 10 Ekim 2026;
 > [ADR-038](docs/adr/ADR-038-product-name.md)); marka/alan adı araştırması yapılmadı, tescil ya da uygunluk iddiası yok.
@@ -22,24 +24,27 @@ ne istediğini kendi sözleriyle yazar ("sessiz yerleri sil", "TikTok için dike
 kısa bir sihirbazdır: video seç → en fazla bir karar → İndir. Bugün çalışan işler: **Kes**,
 **Boşlukları at**, **Dikey yap**, **Küçült** (WhatsApp, e-posta ya da paylaşım sınırına
 sığdırır), **Yazıya dök** (İngilizce konuşmayı bu cihazda zaman damgalı yazıya ve altyazıya
-çevirir; [ADR-036](docs/adr/ADR-036-on-device-transcript.md)), **Müzik ekle**, **Sesini al**
-(videonun sesi M4A olarak), **Sesi kapat** (aynı video, ses izi olmadan), **Her yerde açılsın**.
-Henüz yapılamayan bir şey yazılırsa (döndür, hızlandır, videoları birleştir, GIF, filigran sil,
-filtre, arka plan, tersten oynat, videodan fotoğraf, titremeyi düzelt, videoya yazı ekle, yüzü gizle,
-başka dile çevir, sesteki gürültüyü temizle) arama başka bir kart
-önermez, "Bunu henüz yapamıyoruz." der. Editör "Kendim düzenleyeceğim" bağlantısıyla bir
+çevirir; [ADR-036](docs/adr/ADR-036-on-device-transcript.md); davet koduyla "İnternette" yolu,
+[ADR-039](docs/adr/ADR-039-cloud-transcript-route.md)), **Müzik ekle**, **Sesini al**
+(videonun sesi M4A olarak), **Sesi kapat** (aynı video, ses izi olmadan), **Her yerde açılsın**,
+**İyileştir** (ışık, renk, keskinlik, kumlanma; [ADR-037](docs/adr/ADR-037-enhance.md)) — on kart.
+Henüz yapılamayan bir şey yazılırsa (kayıtta on sekiz istek: döndür, hızlandır, videoları birleştir, GIF,
+filigran sil, filtre, arka plan, tersten oynat, videodan fotoğraf, titremeyi düzelt, videoya yazı ekle,
+yüzü gizle, başka dile çevir, sesteki gürültüyü temizle, internetten video indir, siteye yükle, ekran
+kaydı, canlı yayın) arama başka bir kart önermez, "Bunu henüz yapamıyoruz." der. Editör "Kendim düzenleyeceğim" bağlantısıyla bir
 dokunuş ötededir.
 
 Editörde kullanıcı kendi videosunda tutmak istediği aralıkları işaretler; her aralık
 "Kesitler" listesine düşer. Her kesit kendi ⬇ düğmesiyle ayrı indirilir ya da
 hepsi sırayla birleştirilip tek video olarak indirilir; görüntü çerçevesi, ses ve
 altyazı "Ayarlar"dan her indirmeye uygulanır. Kodlama tamamen tarayıcıda
-yapılır: dosyalar bilgisayardan çıkmaz; bulut yükleme, hesap, abonelik ve dış yapay
-zekâ servisi yoktur.
+yapılır: dosyalar bilgisayardan çıkmaz; hesap ve abonelik yoktur. Tek istisna "Yazıya dök"te
+"İnternette" seçeneği (davetli deneme): yalnızca sen basınca videonun sesi gönderilir, sonuç gelince
+silinir (ADR-039, `docs/privacy/DATA_INVENTORY.md`).
 
 ## Çalıştırma
 
-Gereken: **Node ≥ 20.9** (geliştirme Node 20.18.0 ile yapıldı), npm.
+Gereken: **Node ≥ 20.9** (CI Node 20 ile; geliştirme Node 22.23 ile yapılıyor), npm.
 
 ```bash
 cd web && npm install && npm run dev
@@ -224,8 +229,8 @@ cd web && node scripts/generate-test-media.mjs && node scripts/generate-fixtures
 ## Bu sürümde olmayanlar
 
 Bulut yedeği veya cihazlar arası senkron, çoklu proje listesi, serbest kırpma,
-çoklu video kaynağı, **Türkçe** (ve İngilizce dışındaki her dil için) otomatik transkript,
-çeviri, hesap, ödeme ve native uygulama.
+çoklu video kaynağı, cihaz üstü yolda **Türkçe** (ve İngilizce dışındaki her dil için) otomatik
+transkript (internette yol davetlidir ve ücretsiz denemedir), çeviri, hesap, ödeme ve native uygulama.
 
 Yerel kayıt yalnızca **bu tarayıcıdadır**: tarayıcı verisi temizlenirse veya
 başka bir cihaz/tarayıcı kullanılırsa proje orada olmaz. Video dosyaları
@@ -290,7 +295,9 @@ Sessizlik önerisinin dinleme kapısı kapandı (kurucu, 10/10 temiz). Beta haz�
 erişilebilirlik (axe 233 → 0), veri envanteri ve taslak gizlilik sayfası, "Sorun bildir"
 (GitHub Issues), CI ve GitHub Pages yayını (`docs/beta/`).
 
-**Sıradaki:** kullanıcı testleri (`docs/beta/USER_TEST_KIT.md`, 5–10 kişi) ve kurucunun
-Samsung telefonunda canlı adresi denemesi; NVDA ekran okuyucu kontrolü.
+**Sıradaki:** kullanıcı testleri (`docs/beta/USER_TEST_KIT.md`, `docs/beta/IZLE-VE-NOT-AL.md`; 5–10 kişi);
+kurucunun Samsung telefonunda canlı adres denendi (14 Ekim 2026, `docs/phone/2026-10-14-s23.md`, on kart);
+internette yolun kurucunun kendi davetiyle ilk gerçek denemesi; NVDA ekran okuyucu kontrolü; iPhone/iPad
+ölçülmedi (ödünç cihaz gerekir).
 Açık küçük kararlar: HDR kayıtları SDR'ye tonlama (şu an reddediliyor) ve
 ayrıntılı 60 fps kayıtlarda Chromium'un yazılım kodlayıcısı için bit hızı.

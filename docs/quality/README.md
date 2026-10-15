@@ -42,11 +42,12 @@ commit'ini söylemeye devam eder. Bulgular (`bulgular.md`) düzeltildikten sonra
 Bölüm adları: `walkthrough`, `search`, `errors`, `honesty`, `output`, `transcript`, `perf`, `visual`,
 `a11y`, `text`.
 
-Gerekenler: Node 20, `npm ci`, Playwright'ın Chromium'u (`npx playwright install chromium`), ffmpeg ve
+Gerekenler: Node 20 ya da 22, `npm ci`, Playwright'ın Chromium'u (`npx playwright install chromium`), ffmpeg ve
 ffprobe (yolda). VMAF yalnızca yerel ffmpeg libvmaf ile derlenmişse ölçülür; betik bunu sorar,
 varsaymaz.
 
-**Bulut yazıya dökme yolu (ADR-039; 11 Ekim 2026).** Yol yayındaki sitede yoktur; ama rıza ekranı
+**Bulut yazıya dökme yolu (ADR-039; 11 Ekim 2026; yayında 15 Ekim 2026'dan beri davetli deneme olarak açık).**
+Bu katman yine de yayındaki Worker'a hiç gitmez: rıza ekranı
 ve akışı ölçülür: `walkthrough` bölümü, yolun açık olduğu test kancalı bir derlemeyi **yerel sahte
 Worker'a** (`cloud/fake-worker/`, 127.0.0.1:38197) karşı yürütür (`walkthrough-yazi-bulut.spec.ts`)
 ve ekranlarını tabanlarla karşılaştırır (`yol-yazi-bulut-*`). Rapor bu satırları **"sahte

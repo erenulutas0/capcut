@@ -99,8 +99,3 @@ export async function watchProblems(page: Page): Promise<PageProblems> {
   });
   return problems;
 }
-
-/** Uncaught errors (an unhandled rejection is one of them in Chromium) and console errors. */
-export function problemCount(problems: PageProblems): number {
-  return problems.pageErrors.length + problems.consoleErrors.length;
-}

@@ -129,8 +129,3 @@ export function sanitizeExportLogEntry(raw: unknown): ExportLogEntry | null {
     planPrefix: prefix,
   };
 }
-
-/** Oldest first, at most `limit`: the newest attempts are the ones kept. */
-export function capExportLog<T>(entries: readonly T[], limit = EXPORT_LOG_LIMIT): T[] {
-  return entries.slice(Math.max(0, entries.length - limit));
-}

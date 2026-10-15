@@ -13,8 +13,8 @@ yazı tipi veya stil yüklenmez (CSP `default-src 'self'`, e2e "nothing leaves t
 | Paket | Sürüm | Lisans | Nerede çalışır | Not |
 |---|---|---|---|---|
 | `next` (istemci çalışma zamanı, yönlendirici) | 16.3.8 | MIT | Her sayfa | |
-| `react` | 19.3.0 | MIT | Her sayfa | |
-| `react-dom` | 19.3.0 | MIT | Her sayfa | |
+| `react` | 19.3.1 | MIT | Her sayfa | Sayfalara giden kopya Next'in derlediği `19.3.0-canary-cbb046ab-20260731`'dir (App Router kendi React'ını paketler; `_next/static`'te başka sürüm yok, 2026-10-15). `node_modules`'taki sürüm birim testlerinde ve tiplerde çalışır |
+| `react-dom` | 19.3.1 | MIT | Her sayfa | aynı |
 | `scheduler` (react-dom bağımlılığı) | 0.28.0 | MIT | Her sayfa | |
 | `@swc/helpers` (next bağımlılığı) | 0.5.23 | Apache-2.0 | Derleyici yardımcıları | |
 | `mediabunny` | 1.58.1 | **MPL-2.0** | Yalnız editör: dosya açma/probe (sayfada, `import()` ile tembel), dışa aktarma ve sessizlik worker'ları | Değiştirilmeden kullanılıyor |
@@ -125,6 +125,13 @@ makinesinde ve CI'da çalışır; tarayıcı paketine ve derleme çıktısına g
 
 **İzlenecek:** `braces` için düzeltilmiş sürüm ya da `@next/eslint-plugin-next`'in `fast-glob`'u bırakması;
 ikisinden biri çıkınca tam kilitli sürümler yükseltilir ve bu bölüm güncellenir.
+
+**Yeniden bakıldı (2026-10-15):** değişmedi. `npm audit` yine aynı 5 "high" (tek tavsiye), `npm audit --omit=dev`
+0. `braces`'in en yeni sürümü hâlâ 3.0.3 (21 Mayıs 2024); `eslint-config-next@16.4.1` → `@next/eslint-plugin-next@16.4.1`
+hâlâ `fast-glob@3.3.1`'e sabit (`npm view`), `fast-glob@3.3.3` de `micromatch@^4.0.8` → `braces@^3.0.3` ister.
+Yükseltmenin zinciri değiştirmeyeceği görüldüğü için yükseltilmedi.
+Aynı gün tek yama yükseltmesi: `react`/`react-dom` 19.3.0 → 19.3.1 (14 Ekim; kilit dosyasında yalnız bu iki paket
+değişti, `scheduler` aynı). Yayınlanan pakete etkisi yok (yukarıdaki tablo notu).
 
 ## 4. Kaynak haritası ve kaynak dosyalar (belge 11 "private source map")
 

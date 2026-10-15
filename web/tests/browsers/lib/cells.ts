@@ -6,9 +6,14 @@
  * was not run has no file and is printed as "koşulmadı" — never guessed.
  */
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page, TestInfo } from '@playwright/test';
+
+import { ensureDir } from '../../quality/lib/record';
+
+// The same helper as the quality suite's; the other files of this suite take it from here.
+export { ensureDir };
 
 export const SCRATCH = join(process.cwd(), '.scratch', 'browsers');
 export const RESULTS = join(SCRATCH, 'results');
@@ -46,11 +51,6 @@ export interface Cell {
   facts?: Record<string, unknown>;
 }
 
-export function ensureDir(dir: string): string {
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
-
 export function writeCell(cell: Cell): void {
   ensureDir(RESULTS);
   writeFileSync(
@@ -61,8 +61,6 @@ export function writeCell(cell: Cell): void {
 
 export const engineOf = (testInfo: TestInfo): 'chromium' | 'firefox' | 'webkit' =>
   testInfo.project.name.startsWith('firefox') ? 'firefox' : testInfo.project.name.startsWith('webkit') ? 'webkit' : 'chromium';
-
-export const isPhoneProject = (testInfo: TestInfo): boolean => testInfo.project.name.endsWith('-phone');
 
 export interface Problems {
   pageErrors: string[];

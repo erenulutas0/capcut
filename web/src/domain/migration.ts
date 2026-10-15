@@ -15,11 +15,7 @@
 
 import { EDL_SCHEMA_VERSION } from './edl';
 import type { ExportPolicy } from './policy';
-import { validateProject, validateStoredProject, type ValidationResult } from './validation';
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isPlainObject, validateProject, validateStoredProject, type ValidationResult } from './validation';
 
 /** True when any caption line carries the v5 field `speaker`. Looks only; judges nothing. */
 function carriesSpeaker(input: Record<string, unknown>): boolean {

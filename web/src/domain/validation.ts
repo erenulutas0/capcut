@@ -93,7 +93,7 @@ const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 /** Float comparison epsilon for normalised crop coordinates (doc 10). */
 export const VIEW_EPSILON = 1e-6;
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 

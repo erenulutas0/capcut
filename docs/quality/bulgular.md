@@ -1,5 +1,13 @@
 **Yazıldığı koşu:** 11 Ekim 2026 öğleden sonra, dal `worktree-agent-a511c0275d7647e51` (önceki bulgular: aynı gün, `b8e355f`). O raporda açık kalan üç şey üzerinde çalışıldı: aramanın yanlış karta göndermesi, editörün her videoyu 1080p’ye büyütmesi, 720p’den küçük kaynakların büyütülmesi. Aşağıda her biri için aynı ölçünün önceki → şimdiki değeri var. Açık kalanlar en başta.
 
+### 15 Ekim akşamı — ölü görünen bağlantılar, ölü kod, react 19.3.1 yaması (ADR-044 Ek 2; dal `worktree-agent-a1b21395390822816`)
+
+Bu rapor o dalın son koduyla (`f1dd38e`) koşuldu. Farklı ekran **0**, taban yenilenmedi; 643 ölçü: **566 bütçe içinde,
+8 dışında** (aynı açık maddeler), 5 ölçülemedi, 64 bütçesiz. Telefon kısıtlamasında editör TBT'si **173 ms (149–185)**
+(aşağıdaki 15 Ekim koşusunda 141): bütçe (≤ 200) içinde ve aynı kodla daha önce görülen 176–268 bandında; bu işe
+bağlanmadı, ayrıca A/B ölçülmedi — sonraki koşu izlenmeli. Editörün aktarılan JS'i 255 KB / 16 → 238 KB / 14 dosya
+(düşüşün nedeni ayrıca incelenmedi). Sihirbaz 119 ms, ana ekran 122 ms.
+
 ### 15 Ekim — editörün ilk yükü hafifledi (dal `worktree-agent-abfa7505f484bcb77`)
 
 Yayındaki sitede görünen bir şey değişmedi; ekran tabanlarından farklı ekran **0**. 643 ölçü: **566 bütçe içinde, 8

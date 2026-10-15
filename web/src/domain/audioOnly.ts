@@ -12,7 +12,6 @@ import { nominalOutputBytes } from './outputStorage';
 import type { RenderPlan } from './renderPlan';
 
 export const AUDIO_FILE_EXTENSION = '.m4a';
-export const AUDIO_FILE_MIME = 'audio/mp4';
 
 /** The sound-only name for a suggested video name: `tatil_3-kesit.mp4` -> `tatil_3-kesit.m4a`. */
 export function audioFileName(videoFileName: string): string {
