@@ -34,7 +34,10 @@ export function isEnhanceStrength(value: unknown): value is EnhanceStrength {
   return value === 'light' || value === 'auto' || value === 'strong';
 }
 
-/** Bumped whenever the same recipe would give different pixels (part of the plan's fingerprint). */
+/**
+ * Bumped whenever the same recipe would give different pixels (part of the plan's fingerprint).
+ * Bump `ENHANCE_PLAN_VERSION` in enhanceVersion.ts with it: the plan reads that one (a unit test keeps them equal).
+ */
 export const ENHANCE_ENGINE_VERSION = 2;
 
 /** The picture's place inside the output frame, in pixels (bars around it are left alone). */

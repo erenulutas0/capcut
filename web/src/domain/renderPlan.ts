@@ -17,7 +17,8 @@ import {
   type Project,
 } from './edl';
 import { outputCues, primaryCaptionTrack } from './captions';
-import { ENHANCE_ENGINE_VERSION, type EnhanceStrength } from './enhance';
+import type { EnhanceStrength } from './enhance';
+import { ENHANCE_PLAN_VERSION } from './enhanceVersion';
 import { outputSizeFor, type OutputSize } from './outputSize';
 import type { ExportPolicy } from './policy';
 import { totalOutputDurationUs } from './timeline';
@@ -279,7 +280,7 @@ export function compileRenderPlan(project: Project, policy: ExportPolicy): PlanR
     audio,
     captions,
     // Only present when asked for, so every plan without it keeps the fingerprint it always had.
-    ...(enhance ? { enhance: [enhance.strength, ENHANCE_ENGINE_VERSION] } : {}),
+    ...(enhance ? { enhance: [enhance.strength, ENHANCE_PLAN_VERSION] } : {}),
   });
 
   return {
