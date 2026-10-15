@@ -120,9 +120,10 @@ async function stopServer(child) {
 }
 
 function playwright(surfaces, files) {
-  const grep = `^fuzz: (${surfaces.join('|')}) ×`;
+  // The spec picks its own cells from FUZZ_SURFACES / FUZZ_FILES. (A `-g` title filter anchored with `^`
+  // matched nothing: Playwright matches it against the project and file name too.)
   const cli = join('node_modules', '@playwright', 'test', 'cli.js');
-  return run(process.execPath, [cli, 'test', '-c', 'playwright.fuzz.config.ts', '-g', grep], {
+  return run(process.execPath, [cli, 'test', '-c', 'playwright.fuzz.config.ts'], {
     FUZZ_PORT: String(PORT),
     FUZZ_CORPUS: corpusDir,
     FUZZ_SURFACES: surfaces.join(','),

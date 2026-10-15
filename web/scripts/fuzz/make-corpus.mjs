@@ -308,8 +308,8 @@ const ITEMS = [
   { id: 'mdat-4gib-yalani', group: 'ek', label: 'mdat başlığı 4 GiB’tan büyük diyor (dosya 2 MB)', expect: 'any', ext: 'mp4', make: (out, from) => writeFileSync(out, lieAboutMdat(readFileSync(from('temel')))) },
   { id: 'ad-ascii-disi', group: 'ad', label: 'ASCII dışı ad: “tatil 🎬 çekim – Ağustos ✓.mp4”', expect: 'open', ext: 'mp4', name: 'tatil 🎬 çekim – Ağustos ✓.mp4', make: (out, from) => writeFileSync(out, readFileSync(from('temel'))) },
   { id: 'ad-cok-uzun', group: 'ad', label: 'Çok uzun ad (230 karakter)', expect: 'open', ext: 'mp4', name: `${'çok-uzun-bir-dosya-adı-'.repeat(10)}sonu.mp4`, make: (out, from) => writeFileSync(out, readFileSync(from('temel'))) },
-  { id: 'sure-yalani-3saat', group: 'yalan', label: 'Dizin 3 saat diyor, dosyada 6 sn var', expect: 'refuse', ext: 'mp4', make: (out, from) => writeFileSync(out, claimDuration(readFileSync(from('temel')), 3 * 3600)) },
-  { id: 'sure-yalani-30dk', group: 'yalan', label: 'Dizin 30 dakika diyor, dosyada 6 sn var', expect: 'refuse', ext: 'mp4', make: (out, from) => writeFileSync(out, claimDuration(readFileSync(from('temel')), 30 * 60)) },
+  { id: 'sure-yalani-3saat', group: 'yalan', label: 'Üst bilgi 3 saat diyor, karelerin tablosu 6 sn (Chrome kareleri sayar: 6 sn doğru cevaptır)', expect: 'any', ext: 'mp4', make: (out, from) => writeFileSync(out, claimDuration(readFileSync(from('temel')), 3 * 3600)) },
+  { id: 'sure-yalani-30dk', group: 'yalan', label: 'Üst bilgi 30 dakika diyor, karelerin tablosu 6 sn (6 sn doğru cevaptır)', expect: 'any', ext: 'mp4', make: (out, from) => writeFileSync(out, claimDuration(readFileSync(from('temel')), 30 * 60)) },
 ];
 
 const MIME = { mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', mkv: 'video/x-matroska', '3gp': 'video/3gpp', avi: 'video/x-msvideo', ts: 'video/mp2t', gif: 'image/gif' };

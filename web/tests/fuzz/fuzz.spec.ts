@@ -105,9 +105,8 @@ async function firstAnswer(page: Page, problems: PageProblems, waitMs: number): 
       .evaluate(() => ({
         refused: document.querySelector('[data-testid="media-error"]') !== null,
         step: document.querySelector('[data-testid="wizard"]')?.getAttribute('data-step') ?? null,
-        editor:
-          document.querySelector('[data-testid="preview-video"]') !== null ||
-          (document.querySelector('[data-testid="wizard"]') === null && document.querySelector('[data-testid="download-all"]') !== null),
+        // The preview element exists only once a video is open (the empty editor already has "download-all").
+        editor: document.querySelector('[data-testid="preview-video"]') !== null,
         dead: document.getElementById('clip-page-dead')?.getAttribute('data-state') === 'dead',
       }))
       .catch(() => null);
