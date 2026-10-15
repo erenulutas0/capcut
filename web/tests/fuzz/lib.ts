@@ -304,7 +304,10 @@ export function measureSaved(file: string, name: string, surface: Surface, item:
     const width = info.video.width ?? 0;
     const height = info.video.height ?? 0;
     if (surface === 'dikey') {
-      add({ name: 'dikey (9:16)', ok: height > width, value: `${width} × ${height}`, weight: 'unclear' });
+      // An already upright (rotated) source is copied with its display matrix: players show it upright.
+      const turned = Math.abs(displayRotation(file)) % 180 === 90;
+      const [shownWidth, shownHeight] = turned ? [height, width] : [width, height];
+      add({ name: 'dikey (9:16)', ok: shownHeight > shownWidth, value: `${shownWidth} × ${shownHeight}${turned ? ' (döndürme bilgisiyle)' : ''}`, weight: 'unclear' });
     } else if (item.width && item.height) {
       // Never enlarged (ADR-041): a rotated source swaps its sides, so pixels are compared, not sides. The one
       // exception is deliberate (src/domain/outputSize.ts MIN_OUTPUT_SHORT_EDGE): a picture smaller than 144 px on
