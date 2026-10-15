@@ -35,17 +35,10 @@ import { computeSourceView } from '@/domain/transform';
 import { frameStepUs, type TrimEdge } from '@/domain/trim';
 import { translator, type MessageKey } from '@/i18n/messages';
 import { listenForUncaughtErrors, recordError } from '@/adapters/diagnostics';
-import { TranscribeSteps, fillText } from '@/components/transcript/TranscribeSteps';
-import { useTranscription } from '@/components/transcript/useTranscription';
 import { transcriptLines } from '@/domain/transcript';
-import { RECOMMENDED_MODEL } from '@/domain/transcriptModels';
 import { Dialog, Sheet } from './Dialog';
 import { onTablistKeyDown } from './tablist';
-import { DownloadStatus } from './DownloadStatus';
-import { HelpDialog } from './HelpDialog';
-import { EnhanceSetting } from '@/components/enhance/EnhanceSetting';
-import { SettingsPanel, type InspectorTab } from './Inspector';
-import { CaptionsPanel } from './CaptionsPanel';
+import type { InspectorTab } from './Inspector';
 import { KesitDock } from './KesitDock';
 import { KesitList } from './KesitList';
 import { MarkBar, type MarkTarget } from './MarkBar';
@@ -77,6 +70,22 @@ const t = translator('tr');
 const TranscriptPanel = lazyPart(() => import('@/components/transcript/TranscriptPanel').then((module) => module.TranscriptPanel), { variant: 'inline' });
 const ReportDialog = lazyPart(() => import('./ReportDialog').then((module) => module.ReportDialog), { close: (props) => props.onClose });
 const SilenceDialog = lazyPart(() => import('./SilenceDialog').then((module) => module.SilenceDialog), { close: (props) => props.onClose });
+
+/*
+ * The same for what the empty editor does not show (15 Oct 2026: the editor's blocking time at load was
+ * at the 200 ms budget again): the "Ayarlar" sheet's panels, help, the model step of "Yazıya dök" and a
+ * download's status line come with the press or the download that shows them. The sheet's three parts
+ * share one file (settingsParts.ts).
+ */
+const settingsParts = () => import('./settingsParts');
+const SettingsPanel = lazyPart(() => settingsParts().then((module) => module.SettingsPanel), { variant: 'inline' });
+const CaptionsPanel = lazyPart(() => settingsParts().then((module) => module.CaptionsPanel), { variant: 'inline' });
+const EnhanceSetting = lazyPart(() => settingsParts().then((module) => module.EnhanceSetting), { variant: 'inline' });
+const HelpDialog = lazyPart(() => import('./HelpDialog').then((module) => module.HelpDialog), { close: (props) => props.onClose });
+const EditorTranscribe = lazyPart(() => import('./EditorTranscribe').then((module) => module.EditorTranscribe), {
+  close: (props) => props.onClose,
+});
+const DownloadStatus = lazyPart(() => import('./DownloadStatus').then((module) => module.DownloadStatus), { variant: 'inline' });
 
 const CANVAS_ASPECT_CSS: Record<string, string> = {
   '9:16': '9 / 16',
@@ -211,7 +220,8 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
   const captionFont = useCaptionFont();
   /** "Videoyu yazıya dök" (ADR-036): the dialog with the model step and the progress. */
   const [transcribeOpen, setTranscribeOpen] = useState(false);
-  const transcription = useTranscription();
+  /** Presses of "Yazıya dök" so far; the dialog (and its questions to the browser) exists from the first one. */
+  const [transcribeSession, setTranscribeSession] = useState(0);
   /** The side column shows the kesitler or, once there is one, the transcript. */
   const [sideTab, setSideTab] = useState<'kesit' | 'yazi'>(() =>
     // Opened from "Yazıya dök" with a fresh transcript and no kesit yet: the text is what the user came for.
@@ -1236,7 +1246,8 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
             onClick={() => {
               playback.stop();
               setMoreOpen(false);
-              transcription.reset();
+              // A new session: the dialog starts from its first step (EditorTranscribe).
+              setTranscribeSession((count) => count + 1);
               setTranscribeOpen(true);
             }}
             disabled={!video}
@@ -1327,110 +1338,36 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
         </div>
       </Sheet>
 
-      <HelpDialog
-        t={t}
-        open={helpOpen}
-        onClose={() => {
-          setHelpOpen(false);
-          returnFocusToMore();
-        }}
-        onReportProblem={() => setReportOpen(true)}
-      />
-      {reportOpen ? <ReportDialog t={t} project={project} onClose={() => setReportOpen(false)} /> : null}
-      {video ? (
-        <Dialog
-          open={transcribeOpen}
+      {helpOpen ? (
+        <HelpDialog
+          t={t}
+          open
           onClose={() => {
-            // Closing stops a transcription (nothing partial is kept); a model download keeps what it has.
-            transcription.cancel();
+            setHelpOpen(false);
+            returnFocusToMore();
+          }}
+          onReportProblem={() => setReportOpen(true)}
+        />
+      ) : null}
+      {reportOpen ? <ReportDialog t={t} project={project} onClose={() => setReportOpen(false)} /> : null}
+      {transcribeSession > 0 ? (
+        <EditorTranscribe
+          t={t}
+          open={transcribeOpen}
+          session={transcribeSession}
+          video={video}
+          captionStyle={captionStyle}
+          hasCaptions={(captionTrack?.cues.length ?? 0) > 0}
+          apply={state.applyTranscript}
+          onClose={() => {
             setTranscribeOpen(false);
             returnFocusToMore();
           }}
-          labelledBy="transcribe-title"
-        >
-          <div className="dialog-head">
-            <h2 id="transcribe-title">{t('transcript.dialog.title')}</h2>
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={() => {
-                transcription.cancel();
-                setTranscribeOpen(false);
-                returnFocusToMore();
-              }}
-              aria-label={t('help.close')}
-            >
-              <Icon name="close" />
-            </button>
-          </div>
-          {transcription.job.kind === 'done' ? (
-            <>
-              <p className="wizard-note" role="status" data-testid="transcribe-done">
-                <Icon name="check" />
-                <span>{fillText(t('transcript.dialog.done'), { lines: String(transcription.job.lines) })}</span>
-              </p>
-              {transcription.job.coverage.worthSaying ? (
-                <div className="wizard-panel" data-testid="transcribe-coverage">
-                  <p className="wizard-panel-title" role="status">
-                    {fillText(t('transcript.coverage'), {
-                      pct: String(transcription.job.coverage.writtenPercent),
-                      n: String(transcription.job.coverage.unclearCount),
-                    })}
-                  </p>
-                  {transcription.job.suggestLarger ? (
-                    <>
-                      <p className="wizard-hint">{t('transcript.coverage.larger')}</p>
-                      <button
-                        type="button"
-                        className="btn"
-                        onClick={() => {
-                          // The same dialog, one step back, with the recommended model selected; nothing downloads by itself.
-                          transcription.chooseModel(RECOMMENDED_MODEL);
-                          transcription.reset();
-                        }}
-                        data-testid="transcribe-try-larger"
-                      >
-                        {t('transcript.coverage.tryLarger')}
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-              ) : null}
-              <div className="dialog-actions">
-                <button
-                  type="button"
-                  className="btn btn-accent"
-                  onClick={() => {
-                    setTranscribeOpen(false);
-                    setSideTab('yazi');
-                  }}
-                  data-testid="transcribe-close"
-                >
-                  {t('transcript.dialog.close')}
-                </button>
-              </div>
-            </>
-          ) : video.hasAudio === false ? (
-            <p className="wizard-blocked" role="alert" data-testid="transcribe-no-sound">
-              {t('transcript.failed.no_audio')}
-            </p>
-          ) : (
-            <TranscribeSteps
-              t={t}
-              transcription={transcription}
-              canStart
-              replaceNote={(captionTrack?.cues.length ?? 0) > 0 ? t('transcript.dialog.replace') : null}
-              onStart={() =>
-                void transcription.start({
-                  file: video.file,
-                  durationUs: video.durationUs,
-                  style: captionStyle,
-                  apply: state.applyTranscript,
-                })
-              }
-            />
-          )}
-        </Dialog>
+          onDone={() => {
+            setTranscribeOpen(false);
+            setSideTab('yazi');
+          }}
+        />
       ) : null}
       {silenceScope && video ? (
         <SilenceDialog
