@@ -39,7 +39,7 @@ sızıntısı ya da kuralsızlık. "Kanıt" sütunundaki sınamalar `cloud/worke
 | M2 | Tavan yarışı: aynı anda gelen başlatmalar tavanı geçebilir mi? | Yüksek (olsaydı) | S "twelve half-hour starts at once, exactly the eight that fit are accepted": 12 eşzamanlı 30 dk işten tam 8'i kabul (0,92 $ ≤ 1 $), 4'ü `monthly_cap_reached`; W aynı şey 5 × 2 saat. Defter tek Durable Object, `transactionSync` içinde "denetle + ayır". | **Kanıtlandı, aşım 0.** |
 | M3 | Çalınmış davet kodu çok IP'den aynı anda | Orta | S "a stolen invite used from many addresses at once starts one job": 6 adresten 6 başlatma → 1 kabul, 5 `job_in_progress`; sağlayıcıya 1 yükleme. | **Kanıtlandı.** Davet başına tek iş + dakika hakkı. Kurucu `admin.mjs invites revoke` ile keser. |
 | M4 | **Beyan yalanı** (`x-audio-duration-s` küçük, dosya uzun). Bayt sınırı: beyan × 8000 B/s + 64 KB. Sağlayıcıya `audio_end_at = beyan + 1 s` gönderilir; iş bitince sağlayıcının `audio_duration`'ı deftere yazılır, beyanı %2 + 3 sn'den çok aşan davet askıya alınır. | Orta | W "the provider's own length is what is charged; a file much longer than declared suspends the invite" | **Denetim var; en kötü durum ADR-039'daki gibi:** sağlayıcı `audio_end_at`'e göre faturalıyorsa aşım ≈ 1 sn; tüm dosyaya göre faturalıyorsa (kanıtlanmadı) davet başına en çok 10 sa × 0,23 $ = 2,30 $, sonra askı. |
-| M5 | **BİLİNEN BOŞLUK — bitmeden silinen uzun dosya.** Beyan 1 sn, dosya uzun; kullanıcı sağlayıcı bitirmeden `DELETE` derse defter gerçek süreyi hiç göremez: yalnız ayrılan (1 sn) yazılır, askı tetiklenmez, davet hemen yeni iş başlatabilir. | Orta — **ancak** sağlayıcı bitmemiş-silinmiş kaydı tüm dosya süresine göre faturalıyorsa; `audio_end_at`'e göre faturalıyorsa 0. İkisi de kanıtlanmadı. | S "KNOWN GAP … is charged the reservation only and does not suspend the invite" (davranışı adıyla sabitler) | **Düzeltilmedi; öneri:** (a) kurucu tek gerçek işle `audio_end_at` faturalamasını doğrulasın (ADR-039 "doğrulanmayan"); (b) faturalama tüm dosyaya göreyse davet başına "bitmeden silme" bütçesi (ör. ayda 5) ve/veya bayt başına taban süre (ör. 16 kbit/s'den uzun çıkamaz) eklensin — ikisi de dürüst kullanıcıyı etkileyebileceği için kurucu kararı. Bayt sınırı zaten var: 1 sn beyanla en çok 72 KB gider (24 kbit/s Opus'ta ≈ 24 sn ses). |
+| M5 | **Bitmeden silinen uzun dosya.** Beyan 1 sn, dosya uzun; kullanıcı sağlayıcı bitirmeden `DELETE` derse defter gerçek süreyi hiç göremez. Önceden yalnız ayrılan (1 sn) yazılıyordu, askı tetiklenmiyordu: "1 sn beyan et, 72 KB gönder, bitmeden sil" döngüsü 60 dakikalık davette **3600 tur** dönebilirdi; 72 KB, 6 kbit/s Opus'ta ≈ 98 sn ses → sağlayıcı tüm dosyayı faturalıyorsa davet başına ≈ 98 saat ≈ 22 $, defter 0,23 $ görürdü. | Orta — **ancak** sağlayıcı bitmemiş-silinmiş kaydı tüm dosya süresine göre faturalıyorsa; `audio_end_at`'e göre faturalıyorsa 0. Hangisi olduğu kanıtlanmadı. | S "M5: … charged the reservation plus the upload slack (89 s …)", S "M5 bound: … runs out of invite minutes after 41 rounds", S "M5 for honest users: … at most 88 s"; C "deleted before the provider finished …" | **Düzeltildi** (Worker, yeniden yayın gerekir): bitmeden silinen iş ayrılan süre + 64 KB'lık payın 6 kbit/s'deki karşılığını (**88 sn**) öder, ama baytlarının 6 kbit/s'de taşıyabileceğinden fazlasını değil (`earlyDeleteSeconds`). Tahmin askıya almaz (askı yalnız sağlayıcının kendi süresiyle). Döngü artık **41 turda** davetin dakikasını bitirir. Dürüst iptal en çok 88 sn (≈ 0,006 $) fazla öder. **Kalan:** beyan edilen kısmın bit hızı kaldıracı (beyan × 8000 B/s, 6 kbit/s'de ≈ 10,7 kat) — davetin dakikasıyla sınırlı, M4 ile aynı büyüklük (60 dk davette ≈ 10,7 sa ≈ 2,46 $, yalnız tüm-dosya faturalamasında). Öneri: kurucu tek gerçek işle `audio_end_at` ve bitmeden-silme faturalamasını doğrulasın (ADR-039 "doğrulanmayan"); faturalama tüm dosyaya göreyse `MAX_BYTES_PER_SECOND`'u sitenin gerçek hızına yaklaştırmak (site ≤ 32 kbit/s = 4000 B/s gönderir; 5000 kaldıracı ≈ 6,7'ye indirir; yayın gerekir) kurucu kararı. |
 | M6 | Yavaş/bitmeyen sağlayıcı: ayrılan para sonsuza kadar bloke mi? | Orta | S "a provider that never finishes …": 24 saat sonra alarm ayrılanı harcanmış sayar, kaydı sağlayıcıda siler, daveti serbest bırakır. Yüklemesi 30 dk'da bitmeyen iş: S "an upload that stalls holds its reservation for 30 minutes at most" — geç gelen yükleme `job_canceled`, sağlayıcıda kayıt açılmaz. | **Kanıtlandı.** |
 | M7 | Acil düğme | — | S "the kill switch refuses every new start and quota says off, while a job already running can still be finished and deleted"; C "the emergency switch". | **Kanıtlandı.** Süren iş bitirilir ve silinir (ADR kararı). Yayın gerekmez. |
 | M8 | **Kısa ADMIN_TOKEN**: 24 karakterden kısaysa yönetim API'si yoktu (404) ama para yolu "kurulmuş" sayılıyordu. | Düşük (yayındaki belirteç uzun; tutarsızlık) | S "without the admin token nothing can be spent … missing or short" | **Düzeltildi** (Worker): tek kural `adminTokenOf` — kısa belirteç = kurulmamış = `cloud_off`. |
@@ -51,10 +51,14 @@ sızıntısı ya da kuralsızlık. "Kanıt" sütunundaki sınamalar `cloud/worke
 | D5 | Sekme kapanırken `keepalive` DELETE (özel başlıkla) | Düşük | kod: `CloudRoute.tsx` `pagehide` → `deleteRun(run, true)`; `cloudClient.ts` `keepalive`. | **Kanıtlanmadı** (gerçek telefon/tarayıcı; ADR-039 da "doğrulanmayan" sayıyor). Başarısız olursa zarar yok: temizlik alarmı sonuç hazır olduktan 60 dk sonra, her durumda 24 saatte siler. Ön uçuş önbelleği (`max-age 600`) aynı adrese daha önce gidilmiş olduğu için büyük olasılıkla isabet eder. |
 | D6 | Sonuç olduğu gibi geçer: sağlayıcının nesnesindeki `audio_url` (yükleme adresi) ve kayıt kimliği tarayıcıya ulaşır | Düşük | kod: `provider.ts` `fetchResult` | Değişmedi: megabaytlık JSON'u ayrıştırmak Free planın 10 ms işlemci sınırını yer. `audio_url` sağlayıcının anahtarla erişilen özel adresidir; sonuç alınınca kayıt ve ses silinir. |
 | D7 | Bir davetli, `remainingMinutes` üzerinden ayın küresel kalan tavanını çıkarabilir (`min(davet, tavan)`) | Düşük | kod: `ledger.ts` `quota` | Değişmedi (kart "Y dakikan kaldı" için gerekli). Kişisel veri değil. |
+| D8 | **Kaydı açılmamış yükleme sağlayıcıda kalır.** Ses yüklendi ama kayıt (transcript) açılmadıysa — kullanıcı yükleme sürerken iptal etti (`job_canceled`), sağlayıcı kaydı reddetti (`502 create`) — silinecek bir kayıt yoktur; sağlayıcının API'sinde yalnız yüklemeyi silen uç yok. | Düşük (veri; para 0) | kod: `index.ts` `isReserved` → `job_canceled`; `catch` (kayıt açılamadı) | **Kalan risk:** o ses sağlayıcının saklama kuralıyla silinir ("deletion process begins at 24 hours and is at most 48 hours", ADR-039), AB bölgesinde. Kayıt açıp hemen silmek para yakar; yapılmadı. Gizlilik sayfasındaki "silinmezse 24–48 saat" cümlesi bu durumu da kapsar. |
+| D9 | Sağlayıcı kaydı açtıktan hemen sonra defter yazılamazsa (`attachTranscript` hata verirse) kayıt kimliği deftere düşmez | Düşük | kod: `index.ts` `catch` → `waitUntil(deleteTranscript)` | Silme tek denemedir; o da başarısız olursa kayıt sağlayıcıda 30 gün durur ve `spend` onu göremez. Yalnız Durable Object'in kendisi hata verirken olur (ölçülmedi). Olay kılavuzu 4. adım: AssemblyAI panelindeki kayıt listesi ile `spend` karşılaştırılır. |
 | A1 | Yönetim belirteci karşılaştırması zamana bağlı mı | Orta (olsaydı) | kod: `sameSecret` → iki taraf SHA-256 → `crypto.subtle.timingSafeEqual`; S "… 404 not_found" aynı uzunlukta yanlış belirteçle | **Kanıtlandı.** |
 | A2 | Yönetim API'sinde hız sınırı yok | Düşük | — | Değişmedi: belirteç ≥ 24 rastgele karakter (öneri 32 bayt base64url = 43), 404 ile yanlış/boş ayırt edilmez, Durable Object'e dokunmaz (ucuz). Kaba kuvvet olanaksız. |
 | A3 | Belirteç adreste taşınıyor mu | Yüksek (olsaydı) | kod: yalnız `Authorization: Bearer`; `admin.mjs` de öyle; iptal adresi özetin 12 karakteri (sır değil). | **Yok.** |
 | A4 | Adresi bilen yabancı ne öğrenir | Düşük | S "the root, an unknown path, the admin API without the token … all look the same: 404 not_found" | Sürüm yok, rota listesi yok, `server` başlığı yok. Zamanlama: kodsuz istek defter'e gitmeden 401, yanlış kodla defter yolculuğu — kodun biçimi zaten ekranda yazılı, öğrenilecek sır yok. |
+| A5 | **`admin.mjs` belirteci düz `http://` ile ya da bir yönlendirmenin ardından başka bir adrese gönderebilirdi** (`--url` / `CLOUD_WORKER_URL` yanlış yazılırsa ya da başkasının değeriyse). | Orta (belirteç = davet verme + acil düğme) | A "the token never travels in clear to another machine, and never follows a redirect" | **Düzeltildi** (yerel komut, yayın gerekmez): `http://` yalnız 127.0.0.1 / localhost / [::1]; başka her `http` adresi belirteç okunmadan, istek atılmadan reddedilir; `redirect: 'error'` — yönlendiren adresin hedefi hiç istek görmez (sınandı). |
+| A6 | Davet iptali id **öneki** ile (`LIKE 'önek%'`, en az 8 hex) | Düşük | kod: `ledger.ts` `revokeInvite` | 8 karakterlik önek birden çok daveti iptal edebilir; `admin.mjs` `invites list`'in 12 karakterini kullanır (çakışma olasılığı ≈ davet² / 2⁴⁸). Yalnız kurucu yapabilir; yanlış iptal yeni davetle geri alınır. Değişmedi. |
 | S1 | Sitede XSS yüzeyi (davet kodu `localStorage`'da) | Yüksek (olsaydı) | `grep`: `web/src` içinde `dangerouslySetInnerHTML`, `innerHTML`, `insertAdjacentHTML`, `document.write`, `eval`, `new Function` **yok**; SRT/VTT içe aktarma, yazı metni ve dosya adları React metin düğümü; tek satır içi betik sayfa bekçisidir (`page-watchdog.js`, kullanıcı verisi içermez) ve politikada özetiyle izinlidir; `script-src 'self' + özetler`, `object-src 'none'`, `base-uri 'self'`. | **Bilinen yüzey yok.** XSS olsa kayıp en çok davetin kalan dakikası (0,23 $) — kurucu iptal eder. |
 | S2 | `github.io` kökeni başka Pages projeleriyle ortak: aynı kökendeki başka bir proje `clip.cloudInvite`'ı okuyabilir | Düşük–Orta | `docs/security/2026-09-30…` §"github.io origin'i" (önbellek için aynı not) | **Kalan risk.** Alan adı yok (kurucu kararı K01/K03). Kurucu aynı hesapta üçüncü taraf betik yükleyen bir Pages projesi yayımlamamalı. Kayıp sınırı yine davet dakikası. |
 | S3 | CSP `connect-src` vekil kökenini doğru kazanıyor mu; başka köken sızıyor mu | Orta | `web/tests/pages/cloud-preflight.spec.ts` (her sayfa tam `'self' <vekil>`), `tests/e2e/cloud-off.spec.ts` (kapalıda hiçbir köken), `scripts/lib/cloudOrigin.mjs` (yol/joker/`http` derlemeyi durdurur) | **Kanıtlı (önceki çalışmalar), değişmedi.** |
@@ -67,7 +71,8 @@ sızıntısı ya da kuralsızlık. "Kanıt" sütunundaki sınamalar `cloud/worke
 | V1 | İstek boyutu | — | `config.ts`: 95 MB üst sınır + beyan × 8000 B/s + 64 KB; `Content-Length` zorunlu (411). | **Kanıtlandı** (W "heavier than its declared length allows"). |
 | V2 | Yavaş yükleme (slowloris) | Düşük | M6'daki S sınaması: 30 dk sonra ayrılan geri verilir; yalnız davetli yapabilir; davet başına tek iş olduğu için en çok 120 dk × 0,23 $/60 = 0,46 $ tavanı 30 dk bloke eder. | **Kanıtlandı.** |
 | V3 | **Durable Object tek iş parçacığı + Free plan günlük sınırı (Worker 100 000 istek/gün, DO 100 000 istek/gün, 100 000 satır yazımı/gün)** | Orta (kullanılabilirlik; para 0) | — | **Kalan risk, kanıt gerekmez:** `Origin` başlığını bilen tek kişi bir günde sınırı doldurup o gün bulut yolunu herkese kapatabilir. Kapıda reddedilenler (yabancı köken, kodsuz, ses değil, uzunluk) defter'e dokunmaz (S "requests refused before the ledger"); yanlış kodla her deneme bir DO isteği + bir satır yazımı (sayaç için gerekli). `workers.dev` adresinde Cloudflare WAF/hız kuralı yok (alan adı ister). Sonuç: cihaz üstü yol çalışır, para harcanmaz; ertesi gün açılır. |
-| V4 | Durum sorgusunun her çağrısı sağlayıcıya gider | Düşük | kod: `index.ts` `refresh()` | Davetli, saniyede yüzlerce sorguyla sağlayıcının hız sınırına çarpabilir → kendi işine `provider_error`. Para yok. Değişmedi. |
+| V4 | Durum sorgusunun her çağrısı sağlayıcıya gider | Düşük | kod: `index.ts` `refresh()` | Sağlayıcının hız sınırı **hesap geneli**dir (tek anahtar; SSS: 5 dakikada 20 000 istek): süren işi olan bir davetli saniyede onlarca sorguyla birkaç dakikalığına **herkesin** durum/sonuç çağrısını `provider_error`'a düşürebilir. Para yok; davet gerekir; aynı kişi V3'teki günlük sınırı da zaten doldurabilir. Değişmedi (önbellek için DO'ya satır yazmak V3'ü kötüleştirir). Kötüye kullanan davet `invites revoke` ile kesilir. |
+| V5 | Ortak IP (operatör NAT'ı, okul/iş ağı): saatlik sayaç adres başınadır | Düşük | kod: `ledger.ts` `countAttempt` | Aynı çıkış adresini paylaşan biri yanlış kodlarla saatte 10 deneme yaparsa, aynı adresteki dürüst davetli o saat **başlatamaz** (`429`, Retry-After ≤ 1 sa). Kotası (bilinen kod) sınırlanmaz. Kalan risk; sayaç kod tahminini yavaşlatmak için gerekli. |
 | T1 | `npm run test:fake` / `test:harness` Node 22'de çalışmıyordu (`node --test <dizin>`) | — (araç) | kurucunun Node'u 22.23 | **Düzeltildi** (`package.json` glob). |
 
 ## 3. Denetimler (kod ve sınama ile)
@@ -88,12 +93,17 @@ atmaz; ses "Sesi gönder ve yaz"a basılmadan çıkmaz (`cloud-preflight.spec.ts
 ## 4. Kalan riskler (dürüst liste)
 
 1. **Sağlayıcının faturalama kuralları** (`audio_end_at`, bitmeden silinen kayıt) belgelerden kanıtlanmadı → M4/M5.
+   M5'in döngü kaldıracı kapatıldı (her tur ≥ 88 sn sayılır); kalan, beyan edilen kısmın bit hızı kaldıracıdır
+   (≈ 10,7 kat, davetin dakikasıyla sınırlı: 60 dk davette ≈ 2,46 $, yalnız tüm-dosya faturalamasında).
    Mutlak sınır kart olmamasıdır. **Karta bağlanmadıkça** en kötü durum kalan kredi.
-2. **Günlük Free plan sınırı** tek kişiyle doldurulabilir → V3. Para 0, kullanılabilirlik 1 gün.
+2. **Günlük Free plan sınırı** tek kişiyle doldurulabilir → V3 (davetliyse sağlayıcının hesap geneli hız
+   sınırı da → V4). Para 0, kullanılabilirlik 1 gün / birkaç dakika.
 3. **`github.io` ortak kökeni** → S2.
-4. **Gerçek Cloudflare'de ölçülmeyenler**: 10 ms işlemci sınırı, alarmın güvenilirliği, akıtılan gövde,
+4. **Kaydı açılmamış yükleme** sağlayıcıda 24–48 saat kalır → D8. **Ortak IP**'de dürüst kullanıcı bir saat
+   başlatamayabilir → V5.
+5. **Gerçek Cloudflare'de ölçülmeyenler**: 10 ms işlemci sınırı, alarmın güvenilirliği, akıtılan gövde,
    `keepalive` DELETE (ADR-039 "doğrulanmayan"). Hepsi kullanılabilirlik/temizlik; para denetimi defterdedir.
-5. **Bağımlılıklar**: `cloud/` yalnız geliştirme araçları (wrangler, vitest, workerd); siteye girmez.
+6. **Bağımlılıklar**: `cloud/` yalnız geliştirme araçları (wrangler, vitest, workerd); siteye girmez.
    `@cloudflare/vitest-pool-workers` kullanımdan kalkıyor (yeni ad `@cloudflare/vitest-plugin`).
 
 ## 5. Kurucu için işletme
@@ -120,7 +130,9 @@ hiçbir çıktıya yazılmaz. Adres varsayılan yayındaki vekildir; `--url=…`
    kayıt var mı. AssemblyAI Billing sayfasıyla karşılaştır: defterin görmediği harcama varsa (M4/M5 ya da anahtar
    sızıntısı) fark oradadır.
 3. **Kes:** şüpheli davetleri `invites revoke`. Defterin görmediği harcama varsa **anahtarı döndür** (yukarıda) —
-   sızmış bir anahtar bizim Worker'ımızı hiç kullanmadan harcar; defter onu göremez.
+   sızmış bir anahtar bizim Worker'ımızı hiç kullanmadan harcar; defter onu göremez. `invites list`'te senin
+   vermediğin bir etiket varsa **ADMIN_TOKEN sızmıştır**: önce belirteci döndür (yukarıda), sonra o davetleri
+   iptal et (eski belirteçle yeni davet açılamaz olur).
 4. **Kayıtları temizle:** `spend` → "sağlayıcıda hâlâ duran kayıt" > 0 ise alarm 10 dakikada bir dener; 24 saat
    sonra hâlâ > 0 ise AssemblyAI panelinden kayıtları elle sil.
 5. **Yeniden aç:** nedeni anladıktan sonra `kill off`; gerekirse `MONTHLY_CAP_USD`'yi düşür (yayın gerekir).
@@ -130,11 +142,16 @@ hiçbir çıktıya yazılmaz. Adres varsayılan yayındaki vekildir; `--url=…`
 
 ```bash
 cd cloud && npm ci
-npm run test:worker     # vitest + workerd, gerçek Durable Object, sahte sağlayıcı — 57 (25 + 19 sözleşme + 13 güvenlik)
-npm run test:fake       # node:test — 30 (aynı 19 sözleşme + 5 sahteye özgü + 6 admin.mjs)
+npm run test:worker     # vitest + workerd, gerçek Durable Object, sahte sağlayıcı — 60 (25 + 20 sözleşme + 15 güvenlik)
+npm run test:fake       # node:test — 32 (aynı 20 sözleşme + 5 sahteye özgü + 7 admin.mjs)
 npm run test:harness    # 39
 npm run typecheck
 ```
 
-Web tarafı: `web/tests/cloud/*` (Playwright, sahte Worker'a karşı; `playwright.cloud.config.ts`) ve
-`web/tests/pages/cloud-preflight.spec.ts` bu incelemede yeniden koşuldu; sonuçlar inceleme raporunda.
+Son kodda koşulanlar (15 Ekim 2026, Node 22.23): `test:worker` **60/60**, `test:fake` **32/32**,
+`test:harness` **39/39**, `typecheck` temiz. (`node --test harness/test/` biçimi Node 22'de dizini kabul etmez —
+T1; bu yüzden betikler glob kullanır.) Web: `tsc --noEmit` ve `eslint .` temiz, `vitest run` **1458/1458**;
+bulut paketi (`CLIP_TEST_HOOKS=1 NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL=http://127.0.0.1:38197 npm run build`, sonra
+`npx playwright test -c playwright.cloud.config.ts`, sahte Worker'a karşı) **55 geçti, 4 atlandı, 0 başarısız**.
+Bu incelemede web koduna dokunulmadı; olağan e2e paketi ve `web/tests/pages/cloud-preflight.spec.ts` bu yüzden
+yeniden koşulmadı (son sonuçları ADR-039'da).

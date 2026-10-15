@@ -245,8 +245,8 @@ verdiği kelimeleri döndürür. Bir yanıtı burada değiştiren, önce `cases.
 
 ```bash
 cd cloud
-npm run test:worker     # 57 sınama (25 + 19 sözleşme + 13 güvenlik): gerçek Workers çalışma zamanı (workerd) + gerçek Durable Object, sahte sağlayıcı
-npm run test:fake       # 30 sınama (aynı 19 sözleşme + 5 sahteye özgü + 6 kurucu komutu): yerel sahte Worker
+npm run test:worker     # 60 sınama (25 + 20 sözleşme + 15 güvenlik): gerçek Workers çalışma zamanı (workerd) + gerçek Durable Object, sahte sağlayıcı
+npm run test:fake       # 32 sınama (aynı 20 sözleşme + 5 sahteye özgü + 7 kurucu komutu): yerel sahte Worker
 npm run typecheck
 ```
 
