@@ -760,6 +760,21 @@ export const tr = {
     'Bu müzik dosyası yarım kalmış görünüyor: {total} uzunluğunda olması gerekirken dosyada yalnızca ilk {readable} var. Dosyayı yeniden indir ya da yeniden kopyala, sonra tekrar dene.',
   'error.music_incompleteStart':
     'Bu müzik dosyası yarım kalmış görünüyor: {total} uzunluğunda olması gerekirken dosyada neredeyse hiçbiri yok. Dosyayı yeniden indir ya da yeniden kopyala, sonra tekrar dene.',
+  // The fuzz run (docs/quality/2026-10-15-fuzz.md): a refused file is told what it really is. Before, all of
+  // these heard "the file may be damaged or this browser does not play it" — wrong for a valid AVI, an empty
+  // file or a picture.
+  'error.empty_file':
+    'Bu dosya boş; içinde hiçbir şey yok. İnerken ya da kopyalanırken bir sorun olmuş olabilir. Dosyayı yeniden indir ya da yeniden kopyala; ya da başka bir dosya seç.',
+  'error.damaged':
+    'Bu dosya bozuk görünüyor; bu haliyle açılamaz. Dosyayı yeniden indir ya da yeniden kopyala; olmazsa başka bir dosya seç.',
+  'error.cut_short':
+    'Bu video yarım kalmış görünüyor: dosyanın sonu eksik, bu haliyle açılamaz. İnerken ya da kopyalanırken yarıda kesilmiş olabilir. Videoyu yeniden indir ya da yeniden kopyala, sonra tekrar dene.',
+  'error.too_short': 'Bu video çok kısa: 0,1 saniyeden kısa bir videodan kesit yapılamaz. Daha uzun bir video seç.',
+  'error.not_video_picture': 'Bu bir resim, video değil. Bir video dosyası seç.',
+  'error.sound_only': 'Bu dosyada görüntü yok, yalnızca ses var. Görüntüsü olan bir video seç.',
+  'error.foreign_type':
+    'Bu dosya türünü ({type}) açamıyoruz. MP4 ya da MOV türünde bir video seç; telefonla çekilen videolar genelde böyledir.',
+  'error.not_video': 'Bu dosya bir video gibi görünmüyor; bozuk ya da başka türde bir dosya olabilir. Başka bir video seç.',
   'error.range_reversed': 'Bitiş zamanı başlangıçtan sonra olmalı.',
   'error.range_out_of_source': 'Seçilen aralık videonun dışında.',
   'error.clip_too_short': 'Bir kesit en az 0,1 saniye olmalı.',

@@ -13,6 +13,8 @@ export interface RefusedFile {
   bytes?: number;
   /** For a file that is not all there (ADR-040): the length it declares and how far it really goes. */
   extent?: { declaredUs: Micros; readableUs: Micros };
+  /** For a kind of video file this app does not open: its short name ("AVI"). */
+  typeName?: string;
 }
 
 /** Under this much readable video the sentence does not name an amount: "almost none of it is in the file". */
@@ -61,6 +63,7 @@ export function refusedFileText(t: T, file: RefusedFile, policy = WEB_LOCAL_POLI
           readable: formatDurationShort(Math.max(0, file.extent.readableUs - 50_000), words),
         }
       : {}),
+    ...(file.typeName === undefined ? {} : { type: file.typeName }),
   };
   const reason = t(reasonKey(file)).replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
   const lowered = `${reason.charAt(0).toLocaleLowerCase('tr-TR')}${reason.slice(1)}`;

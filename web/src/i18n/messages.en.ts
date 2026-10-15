@@ -733,6 +733,16 @@ export const en: Record<MessageKey, string> = {
     'This music file looks incomplete: it should be {total} long, but only the first {readable} is in the file. Download or copy the file again, then retry.',
   'error.music_incompleteStart':
     'This music file looks incomplete: it should be {total} long, but almost none of it is in the file. Download or copy the file again, then retry.',
+  'error.empty_file':
+    'This file is empty; there is nothing in it. The download or the copy may have gone wrong. Download or copy the file again, or pick another file.',
+  'error.damaged': 'This file looks damaged and cannot be opened as it is. Download or copy it again; if that does not help, pick another file.',
+  'error.cut_short':
+    'This video looks incomplete: the end of the file is missing, so it cannot be opened. The download or the copy may have stopped half way. Download or copy the video again, then retry.',
+  'error.too_short': 'This video is too short: a clip cannot be made from less than 0.1 seconds. Pick a longer video.',
+  'error.not_video_picture': 'This is a picture, not a video. Pick a video file.',
+  'error.sound_only': 'This file has no picture, only sound. Pick a video with a picture.',
+  'error.foreign_type': 'This kind of file ({type}) cannot be opened here. Pick an MP4 or MOV video; videos from a phone usually are.',
+  'error.not_video': 'This file does not look like a video; it may be damaged or a different kind of file. Pick another video.',
   'error.range_reversed': 'The end must come after the start.',
   'error.range_out_of_source': 'The selected range is outside the video.',
   'error.clip_too_short': 'A clip must be at least 0.1 seconds.',

@@ -162,9 +162,9 @@ describe('the refusal sentence', () => {
       en: /\b(try|pick|split|download|copy)\b/i,
     };
     const refusals = Object.keys(tr).filter(
-      (key) => /^error\.(unreadable|unsupported_preview|unknown_duration|timeout|file_too_large|total_too_large|source_too_long|music_too_large|music_too_long|incomplete|incompleteStart|music_incomplete|music_incompleteStart)$/.test(key),
+      (key) => /^error\.(unreadable|unsupported_preview|unknown_duration|timeout|file_too_large|total_too_large|source_too_long|music_too_large|music_too_long|incomplete|incompleteStart|music_incomplete|music_incompleteStart|empty_file|damaged|cut_short|too_short|not_video_picture|sound_only|foreign_type|not_video)$/.test(key),
     ) as MessageKey[];
-    expect(refusals).toHaveLength(13);
+    expect(refusals).toHaveLength(21);
     for (const key of refusals) {
       expect(tr[key], key).toMatch(tells.tr);
       expect(en[key], key).toMatch(tells.en);
