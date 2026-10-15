@@ -130,6 +130,9 @@ const CASES = [
   // there, so a forced 96 kbit/s is refused ("ses kodlayıcısı sesi görüntüyle hizalı yazamadı"), no file
   // written. The planner itself only offers 96 where the delay is measurable; `forced` bypasses it.
   { id: 'Z2', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [[10, 40]], exportOptions: { forced: { shortEdge: 1080, videoBitrate: 3_000_000, audioBitrate: 96_000, bitrateMode: 'constant' } }, expect: 'phone: refused (96 kbit/s AAC not alignable, ADR-035); elsewhere forced 1080p 3 Mbit/s constant, 30 s' },
+  // Long-export soak (docs/perf/2026-10-15-long-export.md): the whole 60 minutes, forced full encode, on the phone.
+  // Made by `generate-long-media.mjs --only=phone60` (under Playwright's 50 MB, see above); only with --only=LONG60.
+  { id: 'LONG60', file: join(media, 'long', 'long-60min-720p-phone.mp4'), kesits: [], mode: 'encode', timeoutMin: 120, onlyWhenAsked: true, expect: 'whole 60 min 720p source, forced full encode, 108 000 frames' },
 ];
 
 /** ADR-035: the bytes of one stream's packets (the encoder's real output, without the container). */
@@ -288,6 +291,7 @@ async function recoverOrphan(targetId) {
 
 for (const testCase of CASES) {
   if (only.length > 0 && !only.includes(testCase.id)) continue;
+  if (testCase.onlyWhenAsked && !only.includes(testCase.id)) continue;
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     ensurePorts();
     await waitForBrowserInFront();
@@ -411,9 +415,9 @@ async function runCase(testCase) {
     const startedAt = Date.now();
     await page.getByTestId('download-all').click();
     const outcome = await Promise.race([
-      page.getByTestId('download-saved').first().waitFor({ timeout: 20 * 60_000 }).then(() => 'saved'),
-      page.getByTestId('export-failed').first().waitFor({ timeout: 20 * 60_000 }).then(() => 'failed'),
-      page.getByTestId('export-blocked').first().waitFor({ timeout: 20 * 60_000 }).then(() => 'blocked'),
+      page.getByTestId('download-saved').first().waitFor({ timeout: (testCase.timeoutMin ?? 20) * 60_000 }).then(() => 'saved'),
+      page.getByTestId('export-failed').first().waitFor({ timeout: (testCase.timeoutMin ?? 20) * 60_000 }).then(() => 'failed'),
+      page.getByTestId('export-blocked').first().waitFor({ timeout: (testCase.timeoutMin ?? 20) * 60_000 }).then(() => 'blocked'),
     ]).catch((e) => `timeout: ${e.message.split('\n')[0]}`);
     row.outcome = outcome;
     row.elapsedS = Number(((Date.now() - startedAt) / 1000).toFixed(1));

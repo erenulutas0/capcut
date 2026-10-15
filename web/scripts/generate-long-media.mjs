@@ -23,6 +23,7 @@
  *   node scripts/generate-long-media.mjs --seconds=20 --only=1080   # quick check of the filter graph
  *   node scripts/generate-long-media.mjs --only=rot90    # 1080p coded landscape, displayed portrait
  *                                                         # (rotation metadata, like a phone; ADR-028)
+ *   node scripts/generate-long-media.mjs --only=phone60  # 60 min 720p under 50 MB (phone-run.mjs case LONG60)
  */
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
@@ -108,6 +109,21 @@ const SPECS = {
       'zscale=p=bt2020:t=smpte2084:m=2020_ncl:r=limited:npl=203',
       'format=yuv420p10le',
     ],
+    noise: false,
+  },
+  // 2026-10-15 (long-export soak, the phone's turn): 60 minutes of 720p30 in
+  // under 50 MB, because `android/phone-run.mjs` sends the video to the
+  // phone as bytes over CDP and Playwright refuses files over 50 MB. The
+  // picture is starved (~70 kbit/s) but every frame and its barcode are
+  // there: the phone decodes 108 000 frames and encodes the output at the
+  // app's own bit rate, which is what the soak measures.
+  phone60: {
+    name: 'long-60min-720p-phone.mp4',
+    width: 1280,
+    height: 720,
+    seconds: 3600,
+    video: ['-b:v', '70k', '-maxrate', '120k', '-bufsize', '240k'],
+    audio: ['-b:a', '24k'],
     noise: false,
   },
 };
@@ -213,7 +229,7 @@ for (const key of only) {
     '-map', '[v]', '-map', '1:a',
     ...codec,
     ...spec.video,
-    '-c:a', 'aac', '-b:a', '96k', '-ac', '1',
+    '-c:a', 'aac', ...(spec.audio ?? ['-b:a', '96k']), '-ac', '1',
     partial,
   ]);
   if (spec.rotate) {

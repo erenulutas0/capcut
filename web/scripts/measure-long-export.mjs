@@ -427,6 +427,8 @@ try {
   // The capability gate runs in the background once the video is open.
   await page.waitForTimeout(3000);
   row.blockedBefore = await text(page.getByTestId('wizard-blocked'));
+  // The editor's own warning on a kesit longer than the output limit, before any download.
+  row.kesitOverLimit = await text(page.getByTestId('kesit-over-limit'));
   const startEnabled = await startButton.first().isEnabled().catch(() => false);
   row.startButton = { text: await text(startButton), enabled: startEnabled };
 
@@ -454,7 +456,7 @@ try {
     const startedAt = Date.now();
     row.startedAt = startedAt;
     await startButton.first().click();
-    const outcomes = ['download-saved', 'export-succeeded', 'export-failed', 'export-blocked', 'export-canceled', 'wizard-blocked'];
+    const outcomes = ['download-saved', 'export-succeeded', 'export-failed', 'export-blocked', 'export-over-limit', 'export-canceled', 'wizard-blocked'];
     let outcome = null;
     let progressSeen = [];
     let cancelClickedAt = null;
@@ -522,7 +524,7 @@ try {
     } else {
       row.stallWatchdog = 'no';
     }
-    if (outcome === 'export-blocked' || outcome === 'wizard-blocked') {
+    if (outcome === 'export-blocked' || outcome === 'export-over-limit' || outcome === 'wizard-blocked') {
       row.message = (await text(page.getByTestId('export-over-limit-text'))) ?? (await text(page.getByTestId('export-blocked'))) ?? (await text(page.getByTestId('wizard-blocked')));
       row.refusal = await text(page.getByTestId('target-size-refusal'));
     }
