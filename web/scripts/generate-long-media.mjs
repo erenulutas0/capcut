@@ -87,6 +87,29 @@ const SPECS = {
     video: ['-b:v', '10500k', '-minrate', '9500k', '-maxrate', '11500k', '-bufsize', '21000k'],
     noise: true,
   },
+  // 2026-10-15 (long-export soak): 30 minutes of 4K HEVC HDR10 (10-bit,
+  // bt2020 / PQ, SDR white at 203 cd/m² like the matrix's M10-hdr clip), for
+  // the HDR -> SDR float16 path (ADR-022) at full length. Encoded with the
+  // GPU (hevc_nvenc main10): a CPU libx265 run of 54 000 4K frames would take
+  // hours. A machine without NVENC gets an honest ffmpeg error, not a fake.
+  hdr4k: {
+    name: 'long-30min-4k-hevc-hdr.mp4',
+    width: 3840,
+    height: 2160,
+    seconds: 1800,
+    codec: ['-c:v', 'hevc_nvenc', '-preset', 'p4', '-profile:v', 'main10', '-pix_fmt', 'p010le', '-g', '60',
+      '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc', '-color_range', 'tv',
+      '-tag:v', 'hvc1'],
+    video: ['-b:v', '15000k', '-maxrate', '18000k', '-bufsize', '36000k'],
+    // The drawn SDR picture placed in PQ the standard way (ITU-R BT.2408).
+    postChain: [
+      'format=gbrpf32le',
+      'zscale=tin=iec61966-2-1:pin=bt709:min=gbr:rin=pc:t=linear:p=bt709:m=gbr:r=pc:npl=203',
+      'zscale=p=bt2020:t=smpte2084:m=2020_ncl:r=limited:npl=203',
+      'format=yuv420p10le',
+    ],
+    noise: false,
+  },
 };
 
 const PAUSES = 'lt(mod(t,13),4)+gte(mod(t,13),5.5)*lt(mod(t,13),9)+gte(mod(t,13),9.3)*lt(mod(t,13),11.5)';
@@ -175,8 +198,10 @@ for (const key of only) {
     `drawbox=x=0:y=0:w=${barW}:h=${BARCODE_BLOCK_H}:color=black:t=fill`,
     ...bits,
     `drawtext=fontfile='C\\:/Windows/Fonts/arial.ttf':text='%{pts\\:hms}  #%{frame_num}':x=40:y=${BARCODE_BLOCK_H + 24}:fontsize=${Math.round(spec.height / 16)}:fontcolor=white:box=1:boxcolor=black@0.8:boxborderw=12`,
+    ...(spec.postChain ?? []),
   ];
   const graph = `[0:v]${chain.join(',')}[v]`;
+  const codec = spec.codec ?? ['-c:v', 'libx264', '-preset', 'veryfast', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-g', '60'];
 
   const started = Date.now();
   console.log(`üretiliyor: ${name} (${seconds} s, ${spec.width}x${spec.height})…`);
@@ -186,7 +211,7 @@ for (const key of only) {
     '-f', 'lavfi', '-i', `aevalsrc=exprs=${escapeArg(AUDIO)}:sample_rate=48000:duration=${seconds}`,
     '-filter_complex', graph,
     '-map', '[v]', '-map', '1:a',
-    '-c:v', 'libx264', '-preset', 'veryfast', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-g', '60',
+    ...codec,
     ...spec.video,
     '-c:a', 'aac', '-b:a', '96k', '-ac', '1',
     partial,
