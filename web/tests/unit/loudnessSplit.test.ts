@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ENVELOPE_FRAME_US, LoudnessMeter, splitMeterRange } from '@/domain/loudness';
+import { ENVELOPE_FRAME_US, joinEnvelopes, LoudnessMeter, splitMeterRange } from '@/domain/loudness';
 
 function frameCount(part: { startUs: number; endUs: number }): number {
   return Math.max(0, Math.ceil((part.endUs - part.startUs) / ENVELOPE_FRAME_US));
@@ -57,5 +57,21 @@ describe('splitMeterRange (ADR-028)', () => {
       joined.push(...meter.finish().db);
     }
     expect(joined).toEqual(whole.finish().db);
+  });
+});
+
+describe('joinEnvelopes (long-export soak, 2026-10-15)', () => {
+  it('puts the parts end to end exactly as Float32Array.from of their concatenation', () => {
+    const parts = [[-60, -12.5, 0.1], [], [-3.25], [-100, 7]];
+    expect(Array.from(joinEnvelopes(parts))).toEqual(Array.from(Float32Array.from(parts.flat())));
+  });
+
+  it('takes the four parts of a 120-minute range (720 000 values) without a RangeError', () => {
+    // 120 min at 10 ms is 720 000 frames; the spread it replaces threw at ~90 000 per part in the worker.
+    const parts = Array.from({ length: 4 }, (_, p) => Array.from({ length: 180_000 }, (_, i) => -((p * 180_000 + i) % 97)));
+    const db = joinEnvelopes(parts);
+    expect(db.length).toBe(720_000);
+    expect(db[0]).toBe(-0);
+    expect(db[719_999]).toBe(Math.fround(-(719_999 % 97)));
   });
 });

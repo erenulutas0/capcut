@@ -165,3 +165,22 @@ export function splitMeterRange(
   }
   return out;
 }
+
+/**
+ * The parts' envelopes end to end, as the one envelope of their range
+ * (`splitMeterRange`). Copied part by part: the worker once gathered them with
+ * `values.push(...part)`, which passes every value as an argument and threw a
+ * RangeError in the silence worker once a part held ~90 000 values (a
+ * 60-minute video: four 15-minute parts; long-export soak, 2026-10-15).
+ */
+export function joinEnvelopes(parts: readonly (readonly number[])[]): Float32Array {
+  let length = 0;
+  for (const part of parts) length += part.length;
+  const db = new Float32Array(length);
+  let offset = 0;
+  for (const part of parts) {
+    db.set(part, offset);
+    offset += part.length;
+  }
+  return db;
+}
