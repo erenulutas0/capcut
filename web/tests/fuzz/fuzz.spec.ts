@@ -70,6 +70,11 @@ for (const surface of SURFACES) {
         sleep(480_000).then(() => ({ kind: 'late' as const })),
       ]);
       freeze.stop();
+      if (result.kind === 'frozen') {
+        // A tab whose main thread never comes back would hold the test until its own timeout (the
+        // fixture's last look at the page waits on it): the browser closes it; the cell is already judged.
+        await Promise.race([page.close({ runBeforeUnload: false }).catch(() => undefined), sleep(15_000)]);
+      }
       if (result.kind === 'done') {
         writeCell(surface, item.id, { ...result.data, longestUnresponsiveMs: freeze.longest() });
         return;
