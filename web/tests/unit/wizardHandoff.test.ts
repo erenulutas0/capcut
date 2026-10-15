@@ -3,7 +3,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import type { Project } from '@/domain/edl';
-import { bindingFor, createRecord, parseRecord, type ProjectRecord } from '@/domain/projectRecord';
+import { bindingFor, createRecord, type ProjectRecord } from '@/domain/projectRecord';
+import { parseRecord } from '@/domain/recordParse';
 import { US_PER_SECOND } from '@/domain/time';
 import { handoffAction, storedProjectHasWork, storedProjectName, type StoredProbe } from '@/domain/wizardHandoff';
 import { cloudTr } from '@/i18n/cloudMessages';

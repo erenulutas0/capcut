@@ -10,7 +10,7 @@
  * user to believe their work is backed up somewhere.
  */
 
-import { parseRecord, type ProjectRecord } from '@/domain/projectRecord';
+import type { ProjectRecord } from '@/domain/projectRecord';
 import { PROJECTS_STORE, createConnection } from './localDb';
 
 const STORE = PROJECTS_STORE;
@@ -87,6 +87,8 @@ export function createIndexedDbStore(): ProjectStore {
 
         // Stored data is input: an older build or a corrupted row must not be
         // loaded into the editor just because it came from our own database.
+        // The validation comes only when there is a row to read (recordParse.ts says why).
+        const { parseRecord } = await import('@/domain/recordParse');
         const parsed = parseRecord(raw);
         if (!parsed.ok) return { ok: false, reason: parsed.reason === 'edl_newer' ? 'newer' : 'corrupt' };
         return { ok: true, record: parsed.record };

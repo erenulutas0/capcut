@@ -21,7 +21,8 @@ import { EDL_SCHEMA_VERSION, type AssetV1, type CaptionCueV2, type Project } fro
 import { DEFAULT_KESIT_SETTINGS, downloadRecipe, kesitRecipe } from '@/domain/kesit';
 import { loadProject, loadStoredProject, migrateProject } from '@/domain/migration';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
-import { createRecord, isNewerRecipe, parseRecord } from '@/domain/projectRecord';
+import { createRecord, isNewerRecipe } from '@/domain/projectRecord';
+import { parseRecord } from '@/domain/recordParse';
 import { compileRenderPlan } from '@/domain/renderPlan';
 import { parseSubtitles, serializeSubtitles } from '@/domain/subtitleFormats';
 import { totalOutputDurationUs } from '@/domain/timeline';
