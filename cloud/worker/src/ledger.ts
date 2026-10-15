@@ -21,7 +21,7 @@
  */
 import { DurableObject } from 'cloudflare:workers';
 
-import { type Env, costMicro, monthOf, readConfig } from './config';
+import { type Env, UPLOAD_SLACK_BYTES, costMicro, monthOf, readConfig } from './config';
 import { deleteTranscript, getTranscriptStatus } from './provider';
 
 export type Refusal = { ok: false; status: number; code: string; retryAfterS?: number };
@@ -54,6 +54,20 @@ export const MAX_PROVIDER_LIFETIME_MS = 24 * HOUR_MS;
 export const JOB_RETENTION_MS = 90 * 24 * HOUR_MS;
 /** Actual length may exceed the declared one by this much before the invite is suspended. */
 export const OVERRUN_TOLERANCE = { seconds: 3, share: 0.02 };
+/**
+ * A job deleted while the provider was still working is never seen finished, so its real length is never
+ * known. Up to UPLOAD_SLACK_BYTES (64 KB) may arrive on top of what the declared length allows; at 6 kbit/s
+ * (Opus's lowest rate, 750 B/s) that is ≈ 88 s of sound the declaration did not mention. Such a job is
+ * charged its reservation plus that slack — but never more than its bytes could hold at 6 kbit/s — so a
+ * loop of "declare 1 s, send 64 KB, delete before the end" uses up the invite's minutes as fast as it may
+ * be spending at the provider (SECURITY.md M5), instead of one second per round.
+ */
+export const EARLY_DELETE_FLOOR_BYTES_PER_SECOND = 750;
+export const EARLY_DELETE_SLACK_S = Math.ceil(UPLOAD_SLACK_BYTES / EARLY_DELETE_FLOOR_BYTES_PER_SECOND);
+
+/** Seconds charged for a job deleted before the provider finished (see EARLY_DELETE_FLOOR_BYTES_PER_SECOND). */
+export const earlyDeleteSeconds = (reservedS: number, bytes: number): number =>
+  Math.max(reservedS, Math.min(Math.ceil(bytes / EARLY_DELETE_FLOOR_BYTES_PER_SECOND), reservedS + EARLY_DELETE_SLACK_S));
 const ALARM_EVERY_MS = 10 * 60_000;
 
 export class Ledger extends DurableObject<Env> {
@@ -186,8 +200,12 @@ export class Ledger extends DurableObject<Env> {
    * length (what it bills) to the month and to the invite; `error` charges
    * nothing (a failed request is not billed, per the provider's billing FAQ).
    * Idempotent: a job is settled once.
+   *
+   * `actualS: null` means the provider's length is not known: the reservation is charged — or, for a job
+   * the browser deleted before the provider finished (`deletedEarly`), the reservation plus the upload's
+   * slack (earlyDeleteSeconds). An estimate never suspends the invite; only the provider's own length does.
    */
-  async settle(jobId: string, outcome: { status: 'completed'; actualS: number | null } | { status: 'error' }): Promise<JobRow | null> {
+  async settle(jobId: string, outcome: { status: 'completed'; actualS: number | null; deletedEarly?: boolean } | { status: 'error' }): Promise<JobRow | null> {
     const config = readConfig(this.env);
     const now = Date.now();
     return this.ctx.storage.transactionSync(() => {
@@ -196,7 +214,9 @@ export class Ledger extends DurableObject<Env> {
       if (outcome.status === 'error') {
         this.sql.exec("UPDATE jobs SET state = 'failed', updated_at = ? WHERE id = ?", now, jobId);
       } else {
-        const actualS = outcome.actualS === null ? job.reserved_s : Math.ceil(outcome.actualS);
+        const measured = outcome.actualS !== null;
+        const actualS =
+          outcome.actualS !== null ? Math.ceil(outcome.actualS) : outcome.deletedEarly ? earlyDeleteSeconds(job.reserved_s, job.bytes) : job.reserved_s;
         const charged = costMicro(actualS, config.priceMicroPerHour);
         this.sql.exec("UPDATE jobs SET state = 'completed', actual_s = ?, charged_micro = ?, updated_at = ? WHERE id = ?", actualS, charged, now, jobId);
         this.sql.exec('UPDATE invites SET used_s = used_s + ? WHERE hash = ?', actualS, job.invite_hash);
@@ -205,7 +225,7 @@ export class Ledger extends DurableObject<Env> {
           job.month, charged, actualS,
         );
         // A file much longer than declared is either a broken client or abuse: one shot, then the invite is suspended.
-        if (actualS > job.declared_s * (1 + OVERRUN_TOLERANCE.share) + OVERRUN_TOLERANCE.seconds) {
+        if (measured && actualS > job.declared_s * (1 + OVERRUN_TOLERANCE.share) + OVERRUN_TOLERANCE.seconds) {
           this.sql.exec("UPDATE invites SET revoked = 1, revoked_reason = 'longer_than_declared' WHERE hash = ?", job.invite_hash);
         }
       }

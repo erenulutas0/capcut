@@ -265,7 +265,8 @@ async function api(request: Request, url: URL, env: Env, ctx: ExecutionContext, 
         } catch {
           // counted as still working
         }
-        if (live !== 'done') job = await ledger.settle(jobId, { status: 'completed', actualS: null });
+        // Its real length will never be known: the reservation plus the upload's slack is counted (ledger.ts, SECURITY.md M5).
+        if (live !== 'done') job = await ledger.settle(jobId, { status: 'completed', actualS: null, deletedEarly: true });
       } else if (job.state === 'reserved') {
         await ledger.release(jobId);
       }

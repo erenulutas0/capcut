@@ -34,6 +34,12 @@ const JOB_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const UPLOAD_SLACK_BYTES = 64 * 1024;
 const HARD_MAX_UPLOAD_BYTES = 95 * 1024 * 1024;
 const OVERRUN_TOLERANCE = { seconds: 3, share: 0.02 };
+// As in the Worker's ledger: a job deleted before the provider finished is charged its reservation plus the
+// upload's slack at 6 kbit/s, never more than its bytes could hold at that rate (SECURITY.md M5).
+const EARLY_DELETE_FLOOR_BYTES_PER_SECOND = 750;
+const EARLY_DELETE_SLACK_S = Math.ceil(UPLOAD_SLACK_BYTES / EARLY_DELETE_FLOOR_BYTES_PER_SECOND);
+const earlyDeleteSeconds = (reservedS, bytes) =>
+  Math.max(reservedS, Math.min(Math.ceil(bytes / EARLY_DELETE_FLOOR_BYTES_PER_SECOND), reservedS + EARLY_DELETE_SLACK_S));
 
 function ascii(bytes, at, text) {
   if (bytes.length < at + text.length) return false;
@@ -226,14 +232,15 @@ export async function startFakeWorker({
       job.state = 'failed';
       return;
     }
-    const actualS = outcome.actualS === null ? job.reservedS : Math.ceil(outcome.actualS);
+    const measured = outcome.actualS !== null;
+    const actualS = measured ? Math.ceil(outcome.actualS) : outcome.deletedEarly ? earlyDeleteSeconds(job.reservedS, job.bytes) : job.reservedS;
     job.state = 'completed';
     job.actualS = actualS;
     state.spentMicro += costMicro(actualS, priceMicroPerHour);
     const invite = state.invites.get(job.inviteHash);
     if (invite) {
       invite.usedS += actualS;
-      if (actualS > job.declaredS * (1 + OVERRUN_TOLERANCE.share) + OVERRUN_TOLERANCE.seconds) {
+      if (measured && actualS > job.declaredS * (1 + OVERRUN_TOLERANCE.share) + OVERRUN_TOLERANCE.seconds) {
         invite.revoked = true;
         invite.revokedReason = 'longer_than_declared';
       }
@@ -504,7 +511,7 @@ export async function startFakeWorker({
             } catch {
               // counted as still working
             }
-            if (live !== 'done') settle(job, { status: 'completed', actualS: null });
+            if (live !== 'done') settle(job, { status: 'completed', actualS: null, deletedEarly: true });
           } else if (job.state === 'reserved') {
             release(job.id);
           }

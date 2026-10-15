@@ -266,6 +266,22 @@ export const CONTRACT_CASES = [
     },
   },
   {
+    name: 'deleted before the provider finished: the reservation plus the upload\'s slack is used up, never more than the bytes could hold, and the invite is not suspended',
+    run: async (driver) => {
+      const api = client(driver, await driver.newInvite(60));
+      await driver.provider({ pollsUntilDone: 50 });
+      // 1 s declared, the most bytes that allows (8000 B/s + 64 KB): at 6 kbit/s ≈ 98 s of sound; charged 1 + 88 s.
+      equal((await api.start({ seconds: 1, body: webm(8000 + 64 * 1024), headers: { 'x-job-id': uuid(14) } })).status, 202, 'start');
+      equal((await api.del(`/v1/jobs/${uuid(14)}`)).body, { deleted: true }, 'delete');
+      equal((await api.get(`/v1/jobs/${uuid(14)}`)).body, { status: 'completed', minutes: 1.48, resultAvailable: false }, 'charged 89 s');
+      equal((await api.get('/v1/quota')).body.remainingMinutes, 58, 'quota');
+      // A small file is charged no more than its bytes could hold at 6 kbit/s (here: the reservation itself).
+      equal((await api.start({ seconds: 3, body: webm(2000), headers: { 'x-job-id': uuid(15) } })).status, 202, 'not suspended: next job');
+      await api.del(`/v1/jobs/${uuid(15)}`);
+      equal((await api.get(`/v1/jobs/${uuid(15)}`)).body, { status: 'completed', minutes: 0.05, resultAvailable: false }, 'small file: the reservation');
+    },
+  },
+  {
     name: 'the provider refuses the upload or the start: 502 naming the step only, minutes given back',
     run: async (driver) => {
       const api = client(driver, await driver.newInvite(60));

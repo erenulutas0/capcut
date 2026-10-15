@@ -118,17 +118,51 @@ describe('money', () => {
     expect((await mockState()).requests.filter((r) => r.path === '/v2/upload')).toHaveLength(1);
   });
 
-  it('KNOWN GAP (recommendation in SECURITY.md): a file longer than declared that is deleted before the provider finishes is charged the reservation only and does not suspend the invite', async () => {
+  it('M5: a file longer than declared that is deleted before the provider finishes is charged the reservation plus the upload slack (89 s for "1 s + 64 KB"), not one second', async () => {
     const invite = await newInvite(60, 'liar');
     await mockConfig({ pollsUntilDone: 1000, audioDurationS: 3600 });
-    const jobId = await startOk({ invite, seconds: 1 });
+    const jobId = await startOk({ invite, seconds: 1, body: ogg(8000 + 64 * 1024) });
     expect(await (await call(`/v1/jobs/${jobId}`, invite, 'DELETE')).json()).toEqual({ deleted: true });
     const totals = await spend();
-    expect(totals.invites[0]).toMatchObject({ usedMinutes: 0, revoked: false }); // 1 s rounds to 0.0 min
-    expect(totals.spentUsd).toBeCloseTo(0.0001, 4);
+    // An estimate is charged, but it never suspends the invite (only the provider's own length does).
+    expect(totals.invites[0]).toMatchObject({ usedMinutes: 1.5, revoked: false });
+    expect(totals.spentUsd).toBe(0.0057); // 89 s at $0.23/h, as spend shows it (4 decimals)
     // What the provider was told limits the damage: only the declared second (+1) is to be transcribed.
     expect((await mockState()).transcripts[0].params.audio_end_at).toBe(2000);
     // Whether the provider bills a deleted-in-progress transcript, and whether by audio_end_at: not provable here.
+  });
+
+  it('M5 bound: the "declare 1 s, send 64 KB, delete before the end" loop runs out of invite minutes after 41 rounds (one second each would have allowed 3600)', async () => {
+    const invite = await newInvite(60, 'loop');
+    await mockConfig({ pollsUntilDone: 1000 });
+    let rounds = 0;
+    for (;;) {
+      // A fresh address each round: the hourly per-address limit is not what stops this.
+      const response = await start({ invite, seconds: 1, body: ogg(8000 + 64 * 1024), ip: `198.18.${Math.floor(rounds / 250)}.${(rounds % 250) + 1}` });
+      if (response.status !== 202) {
+        expect(response.status).toBe(402);
+        expect(await response.json()).toEqual({ error: 'invite_minutes_used_up' });
+        break;
+      }
+      const { jobId } = (await response.json()) as { jobId: string };
+      expect((await call(`/v1/jobs/${jobId}`, invite, 'DELETE')).status).toBe(200);
+      rounds += 1;
+      expect(rounds).toBeLessThan(100);
+    }
+    // Round k+1 is accepted while 89·k + 1 ≤ 3600: 41 rounds, then the minutes are gone.
+    expect(rounds).toBe(41);
+    const totals = await spend();
+    expect(totals.invites[0].usedMinutes).toBeCloseTo((41 * 89) / 60, 1);
+    expect(totals.invites[0].revoked).toBe(false);
+    expect(totals.transcriptsStillAtProvider).toBe(0);
+  });
+
+  it('M5 for honest users: a 10-minute job (24 kbit/s) cancelled while the provider works is charged its reservation plus at most 88 s', async () => {
+    const invite = await newInvite(60, 'honest');
+    await mockConfig({ pollsUntilDone: 1000 });
+    const jobId = await startOk({ invite, seconds: 600, body: ogg(600 * 3000) });
+    expect((await call(`/v1/jobs/${jobId}`, invite, 'DELETE')).status).toBe(200);
+    expect((await spend()).invites[0]).toMatchObject({ usedMinutes: Number(((600 + 88) / 60).toFixed(1)), revoked: false });
   });
 });
 

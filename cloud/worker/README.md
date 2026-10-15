@@ -18,7 +18,7 @@ Site durağan dosyalardan oluşur; içinde sır saklanamaz. Bu yüzden tarayıc�
 | `POST /v1/jobs` | Başlat. İsteğin gövdesi ses dosyasının kendisidir; Worker onu **belleğe almadan** sağlayıcıya akıtır. |
 | `GET /v1/jobs/:id` | Durum (`uploading`, `queued`, `processing`, `completed`, `error`). Metin içermez. |
 | `GET /v1/jobs/:id/result` | Yazıyı sağlayıcıdan olduğu gibi geçirir; tarayıcı hepsini alınca sağlayıcıdaki kayıt **silinir**. |
-| `DELETE /v1/jobs/:id` | Sağlayıcıdaki kaydı hemen siler. |
+| `DELETE /v1/jobs/:id` | Sağlayıcıdaki kaydı hemen siler. Sağlayıcı daha çalışıyorsa ayrılan süre + en çok 88 sn harcanmış sayılır (SECURITY.md M5). |
 | `GET /v1/quota` | Bu davet kodunun kalan dakikası; bulut yolu açık mı. |
 | `/admin/*` | Yalnız kurucu (`ADMIN_TOKEN`): davet kodu, harcama, acil kapatma. |
 
@@ -74,6 +74,12 @@ verir, biz de onu kullanıyoruz (`wrangler.jsonc` → `new_sqlite_classes`).
   dosya sınırı kadar, yani en çok **10 sa × 0,23 $ = 2,30 $** yakar. İş bitince gerçek süre
   deftere yazılır, o davet askıya alınır ve tavan sonraki işleri durdurur. Yani en kötü durum:
   **(aynı anda hile yapan davet sayısı) × 2,30 $.**
+- **Sağlayıcı bitirmeden silinen iş** (15 Ekim, SECURITY.md M5). Defter onun gerçek süresini hiç
+  göremez. Böyle bir iş, ayrılan süresine ek olarak yüklemenin 64 KB'lık payının 6 kbit/s'deki
+  karşılığını (88 sn) öder — ama baytlarının 6 kbit/s'de taşıyabileceğinden fazlasını değil. Askıya
+  alma yalnız sağlayıcının kendi süresiyle olur; tahmin askıya almaz. Böylece "1 sn beyan et, 64 KB
+  gönder, bitmeden sil" döngüsü 60 dakikalık davette 3600 değil **41 turda** biter (sınandı). Dürüst
+  kullanıcı iptal edince en çok 88 sn fazla öder (≈ 0,006 $).
 - **Mutlak sınır, deneme döneminde:** sağlayıcı hesabında kart yoksa ücretsiz kredi bitince API
   durur ("API access is paused until you top up"); gerçek para çıkmaz. Kaybedilebilecek en fazla
   şey kalan ücretsiz kredidir.
