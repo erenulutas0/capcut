@@ -3,6 +3,21 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Uzun dışa aktarma uçtan uca ölçüldü; 60 dakikada "Boşlukları at" düzeldi, hızlı kesim hızlandı — 15 Ekim 2026 (politika, şema ve sözler değişmedi)
+
+Politikanın sınırlarında (60 dakikalık çıktı, 120 dakikalık / 4 GiB girdi) her indirme yolu tam uzunlukta, uygulamanın kendi düğmesinden ölçüldü: süre ve aşamalar, bütün tarayıcı süreç ağacının belleği (süreç türüne göre), disk ve OPFS, dosyanın süresi / kare sayısı / kaynak karesi / ses–görüntü kayması, bekçiler, sınırlardaki cümleler. Rapor: `docs/perf/2026-10-15-long-export.md`.
+
+- **Boşlukları at 60 dakikalık videoda çözümlemenin sonunda `RangeError` ile duruyordu** (kısa videoda değil). Sessizlik worker'ı dört parçanın ses zarfını `push(...parça)` ile birleştiriyordu; ~90 000 değer worker'ın yığınına sığmıyordu. Artık parçalar tek diziye kopyalanıyor (`joinEnvelopes`, birim testi 720 000 değerle); 60 dakika 10 s'de çözümleniyor, 39 s'de iniyor.
+- **Ses karıştırma döngüsü** her örnekte blokları baştan tarıyordu (worker'ın CPU profilinde en büyük kalem). Arama artık son bulunan bloktan başlıyor, sonuç bit bit aynı. Hızlı kesim, 60 dk, Chrome, 3'er koşu: **30,9 → 27,1 s**; dosyalar önce/sonra aynı. Sesini al değişmedi (tavan tarayıcının AAC kodlayıcısı).
+- **Ölçülen (tek makine, Chrome 155 donanım / Playwright Chromium yazılım):** tam yeniden kodlama 60 dk 1080p 449 s (×8,0) / 924 s (×3,9); 60 dk 720p 231 s; 30 dk 4K HEVC HDR → 1080p 945 s (×1,9); hızlı kesim, Sesi kapat, Her yerde açılsın, 20 kesit birleştirme 5–37 s. Süreç ağacının tepesi en çok 1218 MiB. Ayrılan disk dosyanın 1,11–1,22 katı; her koşudan sonra artık dosya 0. Her dosyada süre ve kare sayısı tam, kaynak karesi başta/ortada/sonda doğru, ses kayması ≤ 0,6 ms. Bekçiler hiç konuşmadı.
+- **Sınırlar:** 121 dk ve 4,78 GB girdi açılışta reddedildi; 61 dk çıktı kodlamadan reddedildi; Küçült 16 MB'ı başlamadan reddetti ("en az 131,3 MB gerekir"); disk yarıda dolunca yarım dosya silindi; %50'de iptal 345 ms'de durdu, bellek bırakıldı.
+- **Karar bekleyen:** yazılım kodlayıcısında 60 dk 1080p dosyası **4958 MiB** — uygulamanın kendi 4 GiB girdi sınırının üstünde; Boşlukları at uzun videoda 20 parça sınırı yüzünden 553 sessizliğin yalnız 19'unu atabiliyor. İkisi de raporun §8'inde.
+- **Araçlar:** `web/scripts/measure-long-export.mjs` (uzun indirme ölçümü; `--room-mib`/`--claim-mib` ile dolu disk), `web/scripts/profile-export-worker.mjs` (dışa aktarma worker'ının CPU profili), `generate-long-media.mjs --only=phone60` ve `phone-run.mjs --only=LONG60` (telefon için hazır, koşulmadı).
+
+**Sınamalar:** son kodla, yerel: `tsc`, `eslint` temiz; birim **1460 / 1460** (85 dosya); olağan e2e (`CLIP_TEST_HOOKS=1`) **425: 421 geçti, 4 atlandı, 0 başarısız**, `PAGE-RECOVERED-TOTAL 0`, `PAGE-DEAD-TOTAL 0`; dışa aktarma matrisi (düz derleme) Chromium / Chrome / Edge **32 / 32 / 32 PASS**; varsayılan durağan çıktıda (`/capcut`) Pages duman **13: 7 geçti, 6 atlandı**.
+
+**Doğrulanmayan:** telefon; Edge; gerçek kaydetme penceresinin diske yazışı; gerçekten dolu disk (kota ile benzetildi); müzikli uzun karıştırma.
+
 ## Editörün ilk yükü hafifledi — 15 Ekim 2026 (şema, politika, sözler ve ekranlar değişmedi)
 
 Editörün telefon kısıtlamasındaki ana iş parçacığı süresi (TBT) bütçenin (≤ 200 ms) kıyısındaydı (14 Ekim: 176–268 ms). Hiçbir özellik çıkarılmadan, ilk ekranın kullanmadığı kod ilk yükten çıkarıldı:

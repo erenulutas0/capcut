@@ -285,6 +285,12 @@ silinmez, "düzeltildi (commit)" diye işaretlenir, sonraki koşuda sayısıyla 
 - **Gerçek cihazlar.** "Telefon" burada masaüstü Chromium'un 390 × 844 dokunmatik öykünmesidir: gerçek
   bir Android'in ya da iPhone'un hızı, belleği, dosya seçicisi, paylaşım menüsü, ekran klavyesi ölçülmez.
   Hız sayıları bu masaüstünün sayılarıdır. Gerçek telefon ölçümü ayrı bir iştir (`web/scripts/android/`).
+- **Uzun dışa aktarma.** Bu katmanın çıktı ölçüleri kısa videolardadır. Politikanın sınırlarında (60 dakikalık
+  çıktı, 120 dakikalık / 4 GiB girdi) her indirme yolu ayrıca ölçüldü: süre, süreç belleği, disk, dosya
+  doğruluğu, sınırlardaki cümleler — [`docs/perf/2026-10-15-long-export.md`](../perf/2026-10-15-long-export.md)
+  (`web/scripts/measure-long-export.mjs`, elle; `npm run quality` koşmaz). Yalnızca bu masaüstünde ve Chrome /
+  Playwright Chromium'da; **telefonda uzun dışa aktarma ölçülmedi** (hazır komut o belgede), Edge, gerçek
+  kaydetme penceresinin diske yazışı ve gerçekten dolu bir disk de ölçülmedi.
 - **Gerçek videolar.** Sadakat ve İyileştir ölçümleri üretilmiş videolardadır; bir düğün çekiminde ya da
   karanlık bir odada ne olduğunu söylemez.
 - **Yazıya dökmenin bugünkü doğruluğu.** Kayıtlı sayılar son ölçümün sayılarıdır.
