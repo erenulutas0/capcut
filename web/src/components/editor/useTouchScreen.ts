@@ -1,6 +1,6 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
+import { useBrowserValue } from '@/components/useBrowserValue';
 
 /**
  * A phone or tablet: the main pointer is a finger and nothing hovers.
@@ -10,6 +10,10 @@ import { useSyncExternalStore } from 'react';
  */
 const QUERY = '(hover: none) and (pointer: coarse)';
 
+function read(): boolean {
+  return window.matchMedia(QUERY).matches;
+}
+
 function subscribe(onChange: () => void): () => void {
   const list = window.matchMedia(QUERY);
   list.addEventListener('change', onChange);
@@ -17,9 +21,5 @@ function subscribe(onChange: () => void): () => void {
 }
 
 export function useTouchScreen(): boolean {
-  return useSyncExternalStore(
-    subscribe,
-    () => window.matchMedia(QUERY).matches,
-    () => false,
-  );
+  return useBrowserValue(read, false, subscribe);
 }

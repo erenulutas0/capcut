@@ -1,6 +1,6 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
+import { useBrowserValue } from '@/components/useBrowserValue';
 
 /**
  * Which shell the editor renders.
@@ -34,5 +34,6 @@ function subscribe(onChange: () => void): () => void {
 }
 
 export function useLayoutMode(): LayoutMode {
-  return useSyncExternalStore(subscribe, read, () => 'wide');
+  // 'wide' in the prerendered HTML; the window's own mode once the page is live (a transition).
+  return useBrowserValue<LayoutMode>(read, 'wide', subscribe);
 }
