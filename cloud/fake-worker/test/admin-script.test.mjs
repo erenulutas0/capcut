@@ -7,6 +7,7 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, beforeEach, describe, it } from 'node:test';
@@ -120,6 +121,37 @@ describe('cloud/admin.mjs against the fake', () => {
       const bad = await admin(args);
       assert.equal(bad.code, 2, args.join(' '));
       noToken(bad);
+    }
+  });
+
+  it('the token never travels in clear to another machine, and never follows a redirect', async () => {
+    for (const url of ['http://example.invalid', 'http://192.0.2.1:8787', 'http://proxy.example.invalid:80']) {
+      const plain = await admin(['spend', `--url=${url}`]);
+      assert.equal(plain.code, 2, url);
+      assert.match(plain.stderr, /şifresiz bağlantıyla gönderilmez/);
+      noToken(plain);
+    }
+    // A redirecting address (not our proxy): the command stops at the redirect; the target never sees a request.
+    const seen = [];
+    const target = createServer((request, response) => {
+      seen.push(request.headers.authorization ?? null);
+      response.end('{}');
+    });
+    await new Promise((resolve) => target.listen(0, '127.0.0.1', resolve));
+    const redirector = createServer((request, response) => {
+      response.writeHead(307, { location: `http://127.0.0.1:${target.address().port}${request.url}` });
+      response.end();
+    });
+    await new Promise((resolve) => redirector.listen(0, '127.0.0.1', resolve));
+    try {
+      const redirected = await admin(['spend', `--url=http://127.0.0.1:${redirector.address().port}`]);
+      assert.equal(redirected.code, 1);
+      assert.match(redirected.stderr, /Vekile ulaşılamadı/);
+      noToken(redirected);
+      assert.deepEqual(seen, []);
+    } finally {
+      await new Promise((resolve) => redirector.close(resolve));
+      await new Promise((resolve) => target.close(resolve));
     }
   });
 

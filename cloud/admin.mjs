@@ -65,6 +65,8 @@ async function callAdmin(url, token, method, path, body) {
   try {
     response = await fetch(`${url}${path}`, {
       method,
+      // The Worker never redirects; a redirect means "not our proxy" — the token is not carried anywhere else.
+      redirect: 'error',
       headers: { authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'content-type': 'application/json' }) },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
@@ -116,6 +118,11 @@ async function main(argv) {
   if (!command) return usage();
   if (!/^https?:\/\/[^/\s]+$/.test(url)) {
     console.error(`Adres bir köken olmalı (yol yok): "${url}"`);
+    return 2;
+  }
+  // The token is a bearer secret: plain http only to this machine (the local fake / `wrangler dev`).
+  if (url.startsWith('http://') && !/^http:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(url)) {
+    console.error(`Belirteç şifresiz bağlantıyla gönderilmez: "${url}" — https:// kullan (http yalnız 127.0.0.1 / localhost).`);
     return 2;
   }
   const token = readToken();
