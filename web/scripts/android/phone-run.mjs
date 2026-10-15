@@ -54,6 +54,7 @@ import { chromium } from '@playwright/test';
 import { ownTabsEndpoint } from './cdp-own-tabs.mjs';
 import { installSavePicker, lastPickedName, readPickedFile, setQuality } from '../lib/kesit-flow.mjs';
 import { audioLayout, audioSync, avSync, frameIdentity, writeSyncClip } from '../lib/av-sync.mjs';
+import { readFrameNumber } from '../lib/frame-barcode.mjs';
 import { referenceIdentity } from '../lib/frame-identity.mjs';
 
 const SYNC_CLIP = 'sync-clicks-1080x1920.mp4';
@@ -132,7 +133,7 @@ const CASES = [
   { id: 'Z2', file: join(android, 'portrait-3min-1080x1920.mp4'), kesits: [[10, 40]], exportOptions: { forced: { shortEdge: 1080, videoBitrate: 3_000_000, audioBitrate: 96_000, bitrateMode: 'constant' } }, expect: 'phone: refused (96 kbit/s AAC not alignable, ADR-035); elsewhere forced 1080p 3 Mbit/s constant, 30 s' },
   // Long-export soak (docs/perf/2026-10-15-long-export.md): the whole 60 minutes, forced full encode, on the phone.
   // Made by `generate-long-media.mjs --only=phone60` (under Playwright's 50 MB, see above); only with --only=LONG60.
-  { id: 'LONG60', file: join(media, 'long', 'long-60min-720p-phone.mp4'), kesits: [], mode: 'encode', timeoutMin: 120, onlyWhenAsked: true, expect: 'whole 60 min 720p source, forced full encode, 108 000 frames' },
+  { id: 'LONG60', file: join(media, 'long', 'long-60min-720p-phone.mp4'), kesits: [], mode: 'encode', timeoutMin: 120, onlyWhenAsked: true, barcode: { sourceWidth: 1280 }, expect: 'whole 60 min 720p source, forced full encode, 108 000 frames' },
 ];
 
 /** ADR-035: the bytes of one stream's packets (the encoder's real output, without the container). */
@@ -470,6 +471,20 @@ async function runCase(testCase) {
           ['-v', 'error', '-select_streams', 'a:0', '-show_entries', 'stream=duration,duration_ts,nb_frames,start_time,sample_rate', '-of', 'json', local],
           { encoding: 'utf8' },
         ).stdout.replace(/\s+/g, ' ');
+      } else if (testCase.barcode) {
+        // Long-export soak: the generated long sources carry their frame number as a barcode
+        // (generate-long-media.mjs); the source frame is read at the start, middle and end.
+        const frames = Number(/\((\d+) frames\)/.exec(row.probe?.video ?? '')?.[1] ?? 0);
+        const width = Number(/ (\d+)x\d+ /.exec(row.probe?.video ?? '')?.[1] ?? 0);
+        const checks = [0, 1, Math.floor(frames / 2), frames - 2, frames - 1].filter((f, i, all) => f >= 0 && all.indexOf(f) === i).map((index) => {
+          try {
+            const read = readFrameNumber(local, index, { fps: 30, sourceWidth: testCase.barcode.sourceWidth, outputWidth: width });
+            return { outputFrame: index, shown: read.frame, ok: read.frame === index };
+          } catch (error) {
+            return { outputFrame: index, shown: null, ok: false, error: String(error.message ?? error).split('\n')[0] };
+          }
+        });
+        row.frameIdentity = { frames, expectedFrames: checks.length, wrong: checks.filter((c) => !c.ok).length, unmatched: 0, checks };
       } else if (testCase.sync) {
         row.avSync = avSync(local);
         row.frameIdentity = frameIdentity(local, testCase.kesits, { sourceFps: testCase.sourceFps ?? 30 });
