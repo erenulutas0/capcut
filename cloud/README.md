@@ -8,6 +8,8 @@ CI'daki `npm audit --omit=dev` kapısına dokunmaz; CI'a eklenmedi.
 |---|---|
 | `harness/` | Sağlayıcı ölçüm düzeneği (Node, bağımlılıksız). Kurucu "başla" deyince sağlayıcıyı kendi gerçekçi kümemizde ölçer; puanlama ADR-036'nın ölçüleriyle aynıdır. |
 | `worker/` | Cloudflare Worker vekili: anahtarı tutar, sesi akıtır, tavanı ve davet kodlarını uygular. Kurulum: [`worker/README.md`](worker/README.md). |
+| `admin.mjs` | Kurucu komutu: `spend`, `invites list/add/revoke`, `kill on/off`. Belirteç `ADMIN_TOKEN` ya da `cloud/pass.txt`'den yalnız çalışırken okunur, hiç yazdırılmaz. |
+| `SECURITY.md` | Güvenlik ve kötüye kullanım incelemesi (15 Ekim 2026): tehdit modeli, bulgular, kalan riskler, anahtar/belirteç döndürme, olay kılavuzu. |
 | `.env.example` | Anahtar dosyasının örneği. Gerçek dosya `cloud/.env` — git'e girmez (`.gitignore`: `.env*`). |
 
 ## Ölçüm düzeneği
@@ -117,10 +119,12 @@ cd web/spike/asr; python -m venv .venv; .venv\Scripts\pip install whisper-normal
 cd cloud
 npm ci
 npm run test:harness   # node:test, 39 sınama — yerel sahte sağlayıcı (127.0.0.1)
-npm run test:fake      # node:test, 23 sınama — yerel sahte Worker; 18'i gerçek Worker'la ORTAK sözleşme (contract/cases.mjs)
-npm run test:worker    # vitest + workerd, 43 sınama (25 + aynı 18 sözleşme) — sahte sağlayıcı, ağ yok
+npm run test:fake      # node:test, 30 sınama — yerel sahte Worker; 19'u gerçek Worker'la ORTAK sözleşme (contract/cases.mjs), 6'sı admin.mjs
+npm run test:worker    # vitest + workerd, 57 sınama (25 + aynı 19 sözleşme + 13 güvenlik) — sahte sağlayıcı, ağ yok
 npm run typecheck
 ```
+
+Node 22'de `node --test` bir dizin kabul etmez; betikler bu yüzden glob kullanır (15 Ekim 2026).
 
 Fiyatlar `harness/lib/pricing.mjs` içinde sabittir (kaynak ve okunma tarihiyle); sağlayıcı fiyat
 değiştirirse orası ve `worker/wrangler.jsonc` → `PRICE_USD_PER_HOUR` birlikte güncellenir.
