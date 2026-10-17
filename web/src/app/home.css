@@ -356,6 +356,11 @@
   min-width: 0;
 }
 
+/* An odd number of cards: the lead card takes two places (TaskFinder: leadWide). */
+.task-grid[data-lead-wide='true'] > li:first-child {
+  grid-column: span 2;
+}
+
 .task-card {
   display: flex;
   flex-direction: column;

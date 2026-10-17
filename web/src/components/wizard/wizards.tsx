@@ -841,14 +841,17 @@ function SusturWizard(host: WizardHostProps) {
 }
 
 /**
- * Two wizards bring a screen of their own that no other task needs — the transcript panel with its
- * model steps ("Yazıya dök") and the before/after picture with the enhancement preview ("İyileştir").
+ * Three wizards bring a screen of their own that no other task needs — the transcript panel with its
+ * model steps ("Yazıya dök"), the before/after picture with the enhancement preview ("İyileştir") and
+ * the looping preview with its text boxes and the GIF encoder ("GIF yap", ADR-046).
  * They are separate chunks, loaded with their own page only (10 Oct 2026: every wizard page was
  * carrying both, and the whole editor). `next/dynamic` keeps them in the prerendered HTML and has the
  * page ask for the chunk up front, so nothing appears later than before on those two pages.
  */
 const YaziWizard = dynamic<WizardHostProps>(() => import('./YaziWizard'));
 const IyilestirWizard = dynamic<WizardHostProps>(() => import('./IyilestirWizard'));
+/** "GIF yap" (ADR-046): its own screen, its own worker and encoder — a chunk of its own too. */
+const GifWizard = dynamic<WizardHostProps>(() => import('@/components/gif/GifWizard'));
 
 /**
  * The wizard of every task that works today. Enabling a task is one line in
@@ -866,5 +869,6 @@ export const WIZARDS: Record<AvailableTaskId, ComponentType<WizardHostProps>> = 
   sustur: SusturWizard,
   cevir: CevirWizard,
   iyilestir: IyilestirWizard,
+  gif: GifWizard,
 };
 

@@ -23,11 +23,12 @@ export type TaskId =
   | 'sustur'
   | 'cevir'
   | 'iyilestir'
+  | 'gif'
   // Asked for, not possible yet: no card, no page, an honest answer in the search (see below).
   | 'dondur'
   | 'hiz'
   | 'birlestir'
-  | 'gif'
+  | 'sticker'
   | 'filigran'
   | 'efekt'
   | 'arkaplan'
@@ -56,6 +57,7 @@ export type TaskIcon =
   | 'taskMute'
   | 'taskConvert'
   | 'taskEnhance'
+  | 'taskGif'
   /** The one icon of everything that cannot be done yet. */
   | 'taskLater';
 
@@ -391,6 +393,22 @@ const REGISTRY = [
       ],
     },
   },
+  {
+    // ADR-046 (17 Oct 2026): a part of the video, at most ten seconds, as a looping GIF with a top and
+    // a bottom text, made on this device. Until then an honest "Bunu henüz yapamıyoruz." (7 Oct 2026).
+    // "animasyon" / "animated" only support: "intro animasyonu", "animasyon karakteri" are not GIFs.
+    id: 'gif',
+    icon: 'taskGif',
+    labelKey: 'task.gif.label',
+    subKey: 'task.gif.sub',
+    available: true,
+    steps: ['pick', 'choose', 'download'],
+    words: {
+      strong: ['gif', 'gife', 'gifi', 'gifler', 'gifini'],
+      weak: ['hareketli', 'animasyon', 'animated', 'loop', 'dongu'],
+      phrases: ['gif e', 'gife cevir', 'gife donustur', 'gif yap', 'to gif', 'hareketli resim', 'hareketli foto'],
+    },
+  },
   // ------------------------------------------------------------------
   // Asked for, not possible yet (7 Oct 2026). These have no card and no page.
   // They exist so that the search can answer "Bunu henüz yapamıyoruz."
@@ -451,16 +469,18 @@ const REGISTRY = [
     },
   },
   {
-    id: 'gif',
+    // Split off "GIF yap" on 17 Oct 2026 (ADR-046): a sticker of a chat app is a picture of its own
+    // format and size, which the GIF card does not make — it stays an honest "Bunu henüz yapamıyoruz."
+    id: 'sticker',
     icon: 'taskLater',
-    labelKey: 'task.gif.label',
-    subKey: 'task.gif.sub',
+    labelKey: 'task.sticker.label',
+    subKey: 'task.sticker.sub',
     available: false,
     steps: ['pick', 'download'],
     words: {
-      strong: ['gif', 'gife', 'gifi', 'animasyon', 'animated', 'sticker', 'cikartma'],
-      weak: ['hareketli'],
-      phrases: ['gif e', 'gife cevir', 'gife donustur', 'gif yap', 'to gif', 'hareketli resim', 'hareketli foto'],
+      strong: ['sticker', 'stickers', 'cikartma', 'cikartmasi', 'cikartmalari'],
+      weak: ['whatsapp', 'telegram'],
+      phrases: ['whatsapp cikartmasi', 'whatsapp sticker', 'sticker yap', 'cikartma yap'],
     },
   },
   {

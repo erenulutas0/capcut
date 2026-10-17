@@ -1,6 +1,6 @@
 /**
  * Local web limits. The single source of truth is
- * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-10-14.v10)
+ * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-10-17.v11)
  * plus the web guard rails in doc 11. Plan names are deliberately NOT hardcoded
  * into the domain: this is one policy object the app passes in.
  *
@@ -28,6 +28,8 @@ export interface ExportPolicy {
   maxMusicBytes: number;
   minGainDb: number;
   maxGainDb: number;
+  /** "GIF yap" (doc 15 v11, ADR-046): the longest part of a video one GIF is made of. */
+  maxGifDurationUs: Micros;
 }
 
 const MIB = 1_048_576;
@@ -44,7 +46,9 @@ export const WEB_LOCAL_POLICY: ExportPolicy = {
   // v10 (2026-10-14): the internet route of "Yazıya dök" (ADR-039) opens as an invite-only, free
   // trial with its limits on our proxy Worker (minutes per invite, 120 min per job, a monthly cap),
   // not in this object; the on-device route and every limit below are unchanged.
-  policyId: '2026-10-14.v10/web-local',
+  // v11 (2026-10-17): "GIF yap" (ADR-046) is a free basic feature, made on this device, at most
+  // 10 seconds of the video per GIF (`maxGifDurationUs`); no other limit changed.
+  policyId: '2026-10-17.v11/web-local',
   // Raised from 5 min by founder decision (doc 15 v3): on the disk (OPFS)
   // route export memory stays flat with output length (ADR-013, ADR-020).
   maxOutputDurationUs: 60 * 60 * US_PER_SECOND,
@@ -63,6 +67,7 @@ export const WEB_LOCAL_POLICY: ExportPolicy = {
   maxMusicBytes: 100 * MIB,
   minGainDb: -60,
   maxGainDb: 0,
+  maxGifDurationUs: 10 * US_PER_SECOND,
 };
 
 /**

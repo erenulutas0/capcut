@@ -196,7 +196,7 @@ export const FRESH_HELD_OUT_2: readonly EvalPhrase[] = [
   p('iki videoyu tek parça yap', 'cannot', 'tr'),
   p('üç klibi arka arkaya ekleyip tek video yapmak istiyorum', 'cannot', 'tr uzun'),
   p('merge my clips together', 'cannot', 'en'),
-  p('bundan gif olur mu', 'cannot', 'tr'),
+  p('bundan gif olur mu', 'gif', 'tr'),
   p('videodan whatsapp çıkartması yapmak istiyorum', 'cannot', 'tr'),
   p('tiktok yazısını kaldır', 'cannot', 'tr'),
   p('filigrani sil', 'cannot', 'tr ascii'),

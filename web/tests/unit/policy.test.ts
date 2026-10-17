@@ -15,6 +15,7 @@ import {
   outputRouteRefusal,
 } from '@/domain/policy';
 import { CAPTION_LIMITS } from '@/domain/captions';
+import { GIF_LONG_EDGE, GIF_MAX_DURATION_US } from '@/domain/gif';
 import { DEFAULT_EXPORT_SPEC } from '@/domain/edl';
 import { MIN_CAPTION_SHORT_EDGE, MIN_OUTPUT_SHORT_EDGE } from '@/domain/outputSize';
 import { formatClock, US_PER_SECOND } from '@/domain/time';
@@ -62,10 +63,34 @@ describe('web local policy', () => {
     expect(WEB_LOCAL_POLICY.maxTotalSourceBytes).toBe(4_294_967_296);
   });
 
-  it('records the v10 change (the internet route of "Yazıya dök" is an invite-only free trial) in doc 15, as the Worker and the screens have it', () => {
+  it('records the v11 change ("GIF yap" is a free basic feature on this device, at most 10 seconds) in doc 15, as the code has it', () => {
     const [docId] = WEB_LOCAL_POLICY.policyId.split('/');
-    expect(docId).toBe('2026-10-14.v10');
+    expect(docId).toBe('2026-10-17.v11');
     expect(doc15).toContain(`Politika kimliği: \`${docId}\`.`);
+    const note = doc15.split(/\r?\n/).find((line) => line.startsWith(`**Değişiklik \`${docId}\``));
+    expect(note).toBeDefined();
+    expect(note).toContain('kurucu kararı, 17 Ekim 2026');
+    expect(note).toContain('ADR-046');
+    expect(note).toContain('ücretsiz temel özellik');
+    expect(note).toContain('**GIF başına en çok 10 saniye** (`WEB_LOCAL_POLICY.maxGifDurationUs`)');
+    expect(note).toContain('yalnızca genişleme');
+    expect(note).toContain('Ölçülmeyen');
+    expect(doc15).toContain(
+      '| GIF yap (web, cihazda; videonun bir kısmından durmadan dönen GIF, üst ve alt yazıyla) | Dahil; GIF başına en çok 10 saniye, adet kotası yok | Aynı |',
+    );
+    expect(doc15).toContain('| AI işlemleri (bulut / ücretli) | Yok | Başlangıç aboneliğine dahil değil |');
+    // The number the document states is the one the code enforces, and the one the screen says.
+    expect(WEB_LOCAL_POLICY.maxGifDurationUs).toBe(10 * US_PER_SECOND);
+    expect(GIF_MAX_DURATION_US).toBe(WEB_LOCAL_POLICY.maxGifDurationUs);
+    expect(tr['wizard.gif.maxLength']).toContain('10 saniye');
+    expect(en['wizard.gif.maxLength']).toContain('10 seconds');
+    // The sizes the note names are the planner's.
+    expect(note).toContain(`uzun kenar ${GIF_LONG_EDGE.small}`);
+    expect(note).toContain(`(${GIF_LONG_EDGE.medium})`);
+  });
+
+  it('records the v10 change (the internet route of "Yazıya dök" is an invite-only free trial) in doc 15, as the Worker and the screens have it', () => {
+    const docId = '2026-10-14.v10';
     const lines = doc15.split(/\r?\n/);
     const note = lines.find((line) => line.startsWith(`**Değişiklik \`${docId}\``));
     expect(note).toBeDefined();

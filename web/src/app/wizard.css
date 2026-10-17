@@ -672,6 +672,243 @@
   }
 }
 
+/* ------------------------------------------------ "GIF yap" (ADR-046, mockup B "Tek ekran")
+   The part loops in the GIF's own shape; the two text boxes sit where the text will be, in the GIF's
+   own letters at the size they will have (the layout is scaled to the preview in GifWizard). */
+
+.gif-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gif-preview-frame {
+  --gif-max-height: min(52vh, 420px);
+  position: relative;
+  width: min(100%, calc(var(--gif-max-height) * var(--gif-ratio, 1.78)));
+  margin: 0 auto;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.gif-preview-frame video {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+.gif-text {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(100% - 8px), calc(var(--gif-width) + 12px));
+  height: calc(var(--gif-lines) * var(--gif-line) + 8px);
+  min-height: var(--tap);
+  margin: 0;
+  padding: 2px 4px;
+  overflow: hidden;
+  resize: none;
+  background: rgb(16 19 21 / 0.45);
+  border: 2px dashed var(--control-border);
+  border-radius: var(--radius-control);
+  color: #fff;
+  font-size: var(--gif-font);
+  font-weight: 700;
+  line-height: var(--gif-line);
+  text-align: center;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  /* The GIF's dark edge around white letters (`drawGifText`), as wide as it will be. */
+  text-shadow:
+    var(--gif-edge) 0 0 #000,
+    calc(-1 * var(--gif-edge)) 0 0 #000,
+    0 var(--gif-edge) 0 #000,
+    0 calc(-1 * var(--gif-edge)) 0 #000,
+    var(--gif-edge) var(--gif-edge) 0 #000,
+    calc(-1 * var(--gif-edge)) calc(-1 * var(--gif-edge)) 0 #000,
+    var(--gif-edge) calc(-1 * var(--gif-edge)) 0 #000,
+    calc(-1 * var(--gif-edge)) var(--gif-edge) 0 #000;
+}
+
+.gif-text[data-where='top'] {
+  top: var(--gif-margin);
+}
+
+.gif-text[data-where='bottom'] {
+  bottom: var(--gif-margin);
+}
+
+.gif-text[data-filled='true'] {
+  border-color: var(--accent);
+}
+
+.gif-text::placeholder {
+  color: #fff;
+  opacity: 0.85;
+}
+
+.gif-text:focus-visible,
+.gif-text:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.gif-preview-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gif-preview-bar .wizard-hint {
+  font-size: 15px;
+}
+
+.gif-part {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* The bar and its two edges; the edges sit beside the bar in the page, drawn over it. */
+.gif-range-wrap {
+  position: relative;
+  /* Room for an edge's finger-wide reach past either end of the bar (with the wizard's own 16 px). */
+  margin: 0 22px;
+  touch-action: none;
+  user-select: none;
+}
+
+.gif-range-wrap[data-disabled='true'] {
+  opacity: 0.6;
+}
+
+/* The whole bar moves the part: press anywhere on it and drag. */
+.gif-range {
+  position: relative;
+  height: 48px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  cursor: grab;
+}
+
+.gif-range-window {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  min-width: 10px;
+  background: rgb(210 239 120 / 0.14);
+  border: 3px solid var(--accent);
+  border-radius: var(--radius-control);
+  pointer-events: none;
+}
+
+/* The edges: a thin bar to the eye just inside the part, 44 px to a finger reaching OUT of the part, so
+   the two do not cover each other until the part is narrower than 12 px. */
+.gif-range-edge {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: var(--tap);
+  cursor: ew-resize;
+}
+
+.gif-range-edge[data-part='start'] {
+  margin-left: calc(6px - var(--tap));
+}
+
+.gif-range-edge[data-part='end'] {
+  margin-left: -6px;
+}
+
+.gif-range-edge::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  width: 6px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+.gif-range-edge[data-part='start']::after {
+  right: 0;
+}
+
+.gif-range-edge[data-part='end']::after {
+  left: 0;
+}
+
+.gif-range:focus-visible,
+.gif-range-edge:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.gif-part-line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.gif-estimate {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.gif-size {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.gif-size legend {
+  float: left;
+  margin-right: 4px;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.gif-size-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 16px 0 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font-size: 16px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.gif-size-option[data-checked='true'] {
+  background: var(--raised);
+  border-color: var(--accent);
+}
+
+.gif-size-option input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 /* "Bu tarayıcı video dosyası hazırlayamıyor": said under the heading, before the user picks or chooses anything. */
 .browser-notice {
   align-items: flex-start;
