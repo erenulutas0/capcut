@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
-import { safeFileName } from '@/adapters/browserMedia';
 import {
   SHARE_PICKED_ID,
   forgetSharedVideo,
@@ -39,6 +38,15 @@ export function useHeldVideo(): HeldVideo | null {
 
 /** Module-level (useBrowserValue wants a stable reader): the page address's share marker. */
 const readMarker = () => readShareMarker(window.location.search);
+
+/**
+ * The file name as the wizard's video row shows it (`safeFileName` of adapters/browserMedia.ts, kept here so the
+ * opening screen does not carry that module's media checks): spaces collapsed, at most 48 characters.
+ */
+function shortName(name: string, maxLength = 48): string {
+  const collapsed = name.replace(/\s+/g, ' ').trim();
+  return collapsed.length <= maxLength ? collapsed : `${collapsed.slice(0, maxLength - 1)}…`;
+}
 
 function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
@@ -141,7 +149,7 @@ export function HomeIntro() {
             </span>
             <span className="home-video-text">
               <span className="home-video-name" data-testid="home-video-name">
-                {safeFileName(video.file.name, 48)}
+                {shortName(video.file.name)}
               </span>
               {lengthUs !== null ? (
                 <span className="home-video-length" data-testid="home-video-length">
