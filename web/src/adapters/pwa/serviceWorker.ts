@@ -131,6 +131,16 @@ export function registerServiceWorker(): void {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator) || !window.isSecureContext) return;
   const container = navigator.serviceWorker;
 
+  // ADR-047: the installed app asks the browser not to clear its data when the disk fills up. Without its
+  // service worker a share would go to the host (GitHub Pages answers 405) and saved projects would be lost.
+  // Chrome decides by itself for an installed app (no prompt); nothing new is stored.
+  if (window.matchMedia?.('(display-mode: standalone)').matches && navigator.storage?.persist) {
+    void navigator.storage
+      .persisted()
+      .then((already) => (already ? undefined : navigator.storage.persist()))
+      .catch(() => undefined);
+  }
+
   container.addEventListener('controllerchange', () => {
     // Only the user's "Yenile" reloads; a switch made by another tab does not.
     if (reloadRequested) window.location.reload();

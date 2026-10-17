@@ -286,28 +286,31 @@ export function TaskFinder() {
         </button>
       ) : (
         <>
-          <div className="finder-examples">
-            <h2 className="home-label" id="finder-examples-title">
-              {t('home.examples')}
-            </h2>
-            <ul className="chip-list" aria-labelledby="finder-examples-title">
-              {TASK_EXAMPLES.map((example) => (
-                <li key={example}>
-                  <button
-                    type="button"
-                    className="chip"
-                    onClick={() => {
-                      type(example);
-                      inputRef.current?.focus();
-                    }}
-                    data-testid="finder-example"
-                  >
-                    {example}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* With a video already in hand (ADR-047) the cards matter more than examples of what to type. */}
+          {video ? null : (
+            <div className="finder-examples">
+              <h2 className="home-label" id="finder-examples-title">
+                {t('home.examples')}
+              </h2>
+              <ul className="chip-list" aria-labelledby="finder-examples-title">
+                {TASK_EXAMPLES.map((example) => (
+                  <li key={example}>
+                    <button
+                      type="button"
+                      className="chip"
+                      onClick={() => {
+                        type(example);
+                        inputRef.current?.focus();
+                      }}
+                      data-testid="finder-example"
+                    >
+                      {example}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <section className="task-section" aria-labelledby="task-grid-title">
             <h2 className="home-label" id="task-grid-title" ref={gridRef} tabIndex={-1}>

@@ -382,8 +382,9 @@ alır (`web/scripts/lib/share-target.mjs`, `sw.js`'e derleme anında yazılır) 
   **İstisna — worker yokken:** tarayıcı bu sitenin verisini silmişse (kullanıcı temizledi ya da tarayıcı yer
   açmak için sildi) ya da worker hiç kurulamadıysa (ör. disk doluydu) worker yoktur; o zaman tarayıcı POST'u
   **sitenin sunucusuna gönderir** (video gövdesiyle). Statik bir dosya sunucusu bunu kabul etmez:
-  GitHub Pages'in POST'a "405 Not Allowed" verdiği bildiriliyor — **canlı sitede henüz doğrulanmadı**
-  (ADR-047, "Uygulama hazır değilken"); `next start` "Server action not found." der. Uygulama açılmaz,
+  GitHub Pages POST'a 405 veriyor (canlı sitede 17 Ekim 2026'da doğrulandı; ADR-047 ek). Yüklü uygulama
+  açılırken `navigator.storage.persist()` ister ki tarayıcı disk dolunca bu veriyi (worker dahil) silmesin;
+  yeni bir şey saklanmaz (ADR-047, "Uygulama hazır değilken"); `next start` "Server action not found." der. Uygulama açılmaz,
   tarayıcıda hiçbir şey saklanmaz (e2e). Sağlayıcının bu istekten ne kaydettiği kendi bildirimine tabidir
   (§4.2, `/gizlilik` "Sunucu erişim kayıtları").
 - **Bulut yolu açık derlemede (§8):** paylaşılan video galeriden seçilen bir video gibidir; yalnız kullanıcı

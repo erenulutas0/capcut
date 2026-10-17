@@ -246,3 +246,13 @@ yapmaz, yani deneme **yayındaki sitede** olur (bu dal yayınlandıktan sonra).
    verdiğini gösterirse, 404 sayfasına "uygulamayı bir kez aç, yeniden paylaş" cümlesi.
 3. **15 dakika** (hiç dokunulmayan kopyanın ömrü) uygun mu.
 4. **Yalnız video** (`video/*`; resim ve GIF alınmaz).
+
+## Ek — 17 Ekim 2026, ana oturum: ölçüm ve kararlar
+
+- **GitHub Pages POST'a 405 veriyor (doğrulandı, 17 Ekim):** `curl -X POST -d x=1 https://erenulutas0.github.io/capcut/paylas/` → 405,
+  aynı istek `/capcut/` → 405. Yani worker yokken paylaşım bir 405 sayfasında biter; 404 sayfası araya girmez (seçenek c düştü).
+- **Karar 1 (ana ekran):** paylaşılmış ya da seçilmiş bir video eldeyken örnek arama kelimeleri gizlenir; kartlar yukarı çıkar.
+- **Karar 2 (worker yokken):** (a) + (b): durum belgeli kalır ve yüklü uygulama (`display-mode: standalone`) açılırken
+  `navigator.storage.persist()` ister; tarayıcı disk dolunca sitenin verisini (worker, projeler) silmeye daha az eğilimli olur.
+  Chrome yüklü uygulamada kendisi karar verir, soru sormaz; yeni bir şey saklanmaz.
+- **Karar 3:** 15 dakika kalıyor. **Karar 4:** yalnız video; resim ve GIF alınmaz.
