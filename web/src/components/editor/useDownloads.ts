@@ -16,6 +16,7 @@ import type { TargetSizeExport } from '@/adapters/export/protocol';
 import { exportLog } from '@/adapters/exportLogStore';
 import { removeExportEntry, sweepExportEntries } from '@/adapters/export/opfsEntries';
 import { setAppBusy } from '@/adapters/pwa/serviceWorker';
+import { removeEmptyPick, savePicker } from '@/adapters/saveFile';
 import { shareVerdictFor, shareVideo } from '@/adapters/share';
 import type { Project } from '@/domain/edl';
 import type { ExportFailureCode, ExportResult, StorageShortfall, TargetSizeShortfall } from '@/domain/exportEvents';
@@ -164,17 +165,6 @@ export function entryIsCurrent(entry: DownloadEntry, fingerprint: string | null,
   if (entry.phase === 'running') return true;
   if (entry.phase === 'saved' || entry.phase === 'ready') return entry.fingerprint === fingerprint;
   return entry.revision === revision;
-}
-
-/** The save dialog of the File System Access API (Chromium). */
-type SavePicker = (options: {
-  suggestedName?: string;
-  types?: Array<{ description: string; accept: Record<string, string[]> }>;
-}) => Promise<FileSystemFileHandle>;
-
-function savePicker(): SavePicker | null {
-  const picker = (globalThis as { showSaveFilePicker?: unknown }).showSaveFilePicker;
-  return typeof picker === 'function' ? (picker as SavePicker).bind(globalThis) : null;
 }
 
 /** Whether the ⬇ buttons save straight to a file (true) or offer "Bilgisayara kaydet" after. */
@@ -904,26 +894,6 @@ export function useDownloads({
 function shareOffer(file: File): ShareOffer | null {
   const verdict = shareVerdictFor(file);
   return verdict === 'unsupported' ? null : { verdict, file, failed: false };
-}
-
-/** The save dialog creates the chosen file; if it is still empty, remove it again. */
-async function removeEmptyPick(handle: FileSystemFileHandle): Promise<void> {
-  const removable = handle as FileSystemFileHandle & { remove?: () => Promise<void> };
-  // A worker that was stopped mid-write (it crashed) still holds the file for a
-  // moment after it is gone; the browser refuses the removal until then
-  // (measured: the empty file stayed behind). A few short tries cover that.
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    try {
-      const file = await handle.getFile();
-      if (file.size === 0) await removable.remove?.();
-      return;
-    } catch (error) {
-      // Gone already: nothing to clean up.
-      if (error instanceof DOMException && error.name === 'NotFoundError') return;
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    }
-  }
-  // Still held, or no permission to remove it; the file is empty either way.
 }
 
 export type Downloads = ReturnType<typeof useDownloads>;
