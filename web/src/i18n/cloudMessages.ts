@@ -135,6 +135,8 @@ export const cloudTr = {
   'cloud.privacy.provider.dpa': 'Veri işleme sözleşmesi',
   'cloud.privacy.kept':
     'Yazı cihazında nerede durur: önce yalnızca açık sayfada; sayfayı kapatırsan gider. “Daha fazla ayar → editörde aç”a basarsan, satırları ve kimin konuştuğu bu tarayıcıda proje olarak saklanır (aşağıda “Proje tarifi”). Orada daha önce sakladığın bir proje varsa hangisinin kalacağı sana sorulur. Silmek için: editör video dosyasını yeniden istediğinde “Kayıtlı projeyi sil”e bas ya da tarayıcı ayarlarından bu sitenin verilerini temizle.',
+  'cloud.privacy.stored.shared.extra':
+    'Paylaştığın video, galeriden seçtiğin bir video gibidir: “Yazıya dök”te “İnternette”yi seçersen yalnızca sesi gönderilir; kopyanın kendisi hiçbir zaman gönderilmez.',
   'cloud.privacy.stored.project.extra':
     'İnternette yazılan yazı için de aynı: editörde açarsan satırların metni ve kimin konuştuğu burada saklanır; ses, davet kodun ve şirketin yanıtı saklanmaz.',
   'cloud.privacy.others': 'Videoda başka insanlar konuşuyorsa onların sesi de gider. Göndermeden önce bunu düşün.',

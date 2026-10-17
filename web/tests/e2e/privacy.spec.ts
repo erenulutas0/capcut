@@ -140,7 +140,7 @@ test.describe('privacy page', () => {
       'Bu bilgiler kurucu kararı ve hukuki inceleme bekliyor (belge 30 K02). Belirlenmeden bu metin yayına hazır sayılmaz.',
     );
     await expect(page.getByTestId('privacy-contact-public')).toHaveCount(0);
-    await expect(page.getByTestId('privacy-updated')).toContainText('Son güncelleme: 14 Ekim 2026');
+    await expect(page.getByTestId('privacy-updated')).toContainText('Son güncelleme: 17 Ekim 2026');
 
     // The stored items name the real stores and the real deletion rules.
     await expect(page.getByTestId('stored-project')).toContainText('“projects”');
@@ -151,6 +151,10 @@ test.describe('privacy page', () => {
     // The offline copy (ADR-031): Cache Storage with app files only, and the service worker.
     await expect(page.getByTestId('stored-offline')).toContainText('“clip-app-”');
     await expect(page.getByTestId('stored-offline')).toContainText('service worker');
+    // A video shared to the app (ADR-047): its own cache, one video at most, and when it goes.
+    await expect(page.getByTestId('stored-shared')).toContainText('“clip-shared”');
+    await expect(page.getByTestId('stored-shared')).toContainText('15 dakika');
+    await expect(page.getByTestId('stored-shared')).toContainText('sitenin sunucusuna');
     // The one sessionStorage value (ADR-044: a page that had to reload itself), named with its key.
     await expect(page.getByTestId('stored-recovery')).toContainText('“clip:page-recovery”');
     await expect(page.getByTestId('stored-recovery')).toContainText('Sekmeyi kapatınca.');

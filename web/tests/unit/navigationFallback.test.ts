@@ -110,6 +110,9 @@ describe('the address of the full load', () => {
     expect(fullPageHref('/yap/kes', '/capcut', true)).toBe('/capcut/yap/kes/');
     expect(fullPageHref('/yap/kes/', '/capcut', true)).toBe('/capcut/yap/kes/');
     expect(fullPageHref('/yap/kes', '/capcut', false)).toBe('/capcut/yap/kes');
+    // A card that carries the shared video (ADR-047): the slash goes before the query.
+    expect(fullPageHref('/yap/gif?paylasim=abc-123', '/capcut', true)).toBe('/capcut/yap/gif/?paylasim=abc-123');
+    expect(fullPageHref('/yap/gif?paylasim=abc-123', '', false)).toBe('/yap/gif?paylasim=abc-123');
   });
 
   it('also for the editor and the way back to the opening screen (15 Oct 2026: every link of a screen)', () => {

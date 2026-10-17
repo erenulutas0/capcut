@@ -1,5 +1,6 @@
 import { FallbackLink, NavigationFallbackScope } from '@/components/FallbackLink';
 import { Wordmark } from '@/components/Icon';
+import { HomeIntro } from '@/components/home/HomeIntro';
 import { TaskFinder } from '@/components/home/TaskFinder';
 import { translator } from '@/i18n/messages';
 
@@ -49,8 +50,8 @@ export default function HomePage() {
       </header>
 
       <main className="home-main">
-        <h1 className="home-title">{t('home.title')}</h1>
-        <p className="home-lede">{t('home.lede')}</p>
+        {/* The title and, with a shared video in hand (ADR-047), that video and "Başka bir video seç". */}
+        <HomeIntro />
         <TaskFinder />
       </main>
 

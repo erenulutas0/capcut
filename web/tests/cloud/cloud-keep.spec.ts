@@ -362,7 +362,11 @@ test('the privacy page of this build says the opened transcript is stored on the
   // The way to delete it is the project's own, named as the button is.
   await expect(page.getByTestId('privacy-cloud')).toContainText('Kayıtlı projeyi sil');
   await expect(page.getByTestId('stored-project')).toContainText('Kayıtlı projeyi sil');
+  // A video shared to the app (ADR-047): the card every build has, and what this build adds to it.
+  await expect(page.getByTestId('stored-shared')).toContainText('“clip-shared”');
+  await expect(page.getByTestId('stored-shared-cloud')).toHaveText(ct('cloud.privacy.stored.shared.extra'));
   await page.goto('/gizlilik/en/');
   await expect(page.getByTestId('privacy-cloud')).toContainText(cloudEn['cloud.privacy.kept']);
   await expect(page.getByTestId('stored-project-cloud')).toHaveText(cloudEn['cloud.privacy.stored.project.extra']);
+  await expect(page.getByTestId('stored-shared-cloud')).toHaveText(cloudEn['cloud.privacy.stored.shared.extra']);
 });

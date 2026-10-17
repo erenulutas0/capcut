@@ -13,6 +13,7 @@ import {
   subscribeAppBusy,
   subscribeUpdate,
 } from '@/adapters/pwa/serviceWorker';
+import { sweepSharedVideos } from '@/adapters/pwa/sharedVideo';
 import { translator } from '@/i18n/messages';
 
 /**
@@ -30,6 +31,9 @@ export function PwaClient() {
   useEffect(() => {
     listenForInstallPrompt();
     registerServiceWorker();
+    // "LiloCut'a paylaş" (ADR-047): a shared video this page is not about, or one that waited too long,
+    // is deleted at every start. A browser never shared to has nothing to delete (nothing is created).
+    void sweepSharedVideos(window.location.search);
   }, []);
 
   if (!waiting) return null;

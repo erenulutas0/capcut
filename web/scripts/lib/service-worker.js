@@ -10,12 +10,20 @@
  * - activate: deletes the app's older caches ("clip-app-*" only).
  * - fetch: pages network first, the stored page when the network fails or
  *   hangs; the stored build files cache first. Everything else is not
- *   touched: other origins, POST, range requests (video), blob:/OPFS data
+ *   touched: other origins, POST (but the share target's, below), range requests (video), blob:/OPFS data
  *   (never reach a service worker), files outside the list.
  *
  * It never stores what the network returns at runtime, so the cache holds
  * exactly the list below: no user media, no exported file, no other site.
  * It makes no request of its own except the list, on the app's origin.
+ *
+ * One POST is its own (ADR-047, "LiloCut'a paylaş"): the share sheet's
+ * `<base>/paylas/` (manifest `share_target`). The host cannot take a POST;
+ * the worker answers it here, on the device: the first video of the share
+ * goes into a cache of its own ("clip-shared", one entry, deleted as soon as
+ * a task takes it, or after 15 minutes, or at the next start), and the
+ * answer is a redirect to the opening screen ("?paylasim=<id>"). That code
+ * is scripts/lib/share-target.mjs, written in below by build-sw.mjs.
  */
 'use strict';
 
@@ -35,6 +43,11 @@ function pageKey(pathname) {
 
 const PAGES = new Map(CONFIG.pages.map((path) => [pageKey(path), path]));
 const ASSETS = new Set(CONFIG.assets);
+
+// The share target's inbox (scripts/lib/share-target.mjs), written in here by build-sw.mjs.
+/* @clip-sw-share */
+
+const SHARE_ACTION = pageKey(CONFIG.base + SHARE_ACTION_PATH);
 
 function inScope(url) {
   if (url.origin !== self.location.origin) return false;
@@ -56,9 +69,13 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((names) => Promise.all(names.filter((name) => name.startsWith(PREFIX) && name !== CACHE).map((name) => caches.delete(name)))),
+    Promise.all([
+      caches
+        .keys()
+        .then((names) => Promise.all(names.filter((name) => name.startsWith(PREFIX) && name !== CACHE).map((name) => caches.delete(name)))),
+      // A shared video nobody took and that waited too long (the pages sweep the rest when they start).
+      sweepShares({ cachesApi: caches, now: Date.now() }).catch(() => 0),
+    ]),
   );
 });
 
@@ -104,8 +121,28 @@ async function asset(request, url) {
   return copy;
 }
 
+/** The share sheet's POST: kept on the device, answered with the opening screen (ADR-047). */
+async function share(request) {
+  let location;
+  try {
+    location = await receiveShare({ request, cachesApi: caches, base: CONFIG.base, now: Date.now(), random: Math.random() });
+  } catch {
+    // Whatever failed, the share must not end on the browser's "site can't be reached" page.
+    location = shareRedirect(CONFIG.base, { error: 'okunamadi' });
+  }
+  // 303: the browser follows with a GET, so a reload of the opening screen does not send the video again.
+  return Response.redirect(new URL(location, self.location.origin).href, 303);
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
+  if (request.method === 'POST') {
+    const target = new URL(request.url);
+    if (request.mode === 'navigate' && target.origin === self.location.origin && pageKey(target.pathname) === SHARE_ACTION) {
+      event.respondWith(share(request));
+    }
+    return;
+  }
   if (request.method !== 'GET' || request.headers.has('range')) return;
   const url = new URL(request.url);
   if (!inScope(url)) return;

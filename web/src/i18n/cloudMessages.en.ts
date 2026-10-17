@@ -110,6 +110,8 @@ export const cloudEn: Record<CloudMessageKey, string> = {
   'cloud.privacy.provider.dpa': 'Data processing addendum',
   'cloud.privacy.kept':
     'Where the text is on your device: at first only in the open page; if you close the page it is gone. If you press “Daha fazla ayar → editörde aç”, its lines and who spoke are kept in this browser as a project (see “Project recipe” below). If a project you kept earlier is there, you are asked which one stays. To delete it: press “Delete the saved project” when the editor asks for the video file again, or clear this site’s data in the browser settings.',
+  'cloud.privacy.stored.shared.extra':
+    'A video you shared is like a video you picked from your gallery: if you choose “İnternette” in “Yazıya dök”, only its sound is sent; the copy itself is never sent.',
   'cloud.privacy.stored.project.extra':
     'The same for a text written on the internet: if you open it in the editor, the text of its lines and who spoke are kept here; the sound, your invite code and the company’s reply are not.',
   'cloud.privacy.others': 'If other people speak in the video, their voices are sent too. Think about that before you send.',

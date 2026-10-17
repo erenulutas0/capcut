@@ -91,7 +91,7 @@ export const tr = {
   'privacy.draftBadge.named': 'Taslak — hukuki inceleme ve bazı veri sorumlusu bilgileri eksik (belge 30 K02)',
   'privacy.draftBody':
     'Bu sayfa uygulamanın bugünkü davranışını anlatır; hukuki incelemeden geçmiş bir aydınlatma metni değildir. “belirlenmedi” yazan bilgiler henüz karara bağlanmadı.',
-  'privacy.updated': 'Son güncelleme: 14 Ekim 2026 · sürüm {version} · derleme {commit}',
+  'privacy.updated': 'Son güncelleme: 17 Ekim 2026 · sürüm {version} · derleme {commit}',
   'privacy.otherLanguage': 'English',
   'privacy.back': 'Ana sayfa',
   'privacy.undecided': 'belirlenmedi',
@@ -155,6 +155,13 @@ export const tr = {
   'privacy.stored.offline.where': 'Cache Storage, adı “clip-app-” ile başlayan önbellek; hizmet çalışanı kaydı (“sw.js”)',
   'privacy.stored.offline.delete':
     'Yeni sürüm gelince eski kopya silinir. Hepsini tarayıcının bu siteye ait verisini temizleyerek silebilirsin.',
+  // ADR-047: a video shared to the app from the phone's share menu, until a task takes it.
+  'privacy.stored.shared.name': 'Paylaştığın video (geçici kopya)',
+  'privacy.stored.shared.body':
+    'Telefonunun paylaşma menüsünden bir videoyu bu uygulamaya paylaşınca, video bir işte açılana kadar bir kopyası bu tarayıcıda durur; yanında adı, türü ve paylaşıldığı an. Kopyayı telefonun kendisi verir, sitenin hizmet çalışanı (service worker) onu bu cihazda alır: hiçbir yere gönderilmez. Bir seferde tek video tutulur; birden çok dosya paylaşırsan yalnızca ilk video alınır, ötekiler hiç saklanmaz. Tek istisna: tarayıcı bu sitenin verisini silmişse (sen temizlediysen ya da tarayıcı yer açmak için sildiyse) hizmet çalışanı yoktur; o zaman telefon videoyu sitenin sunucusuna göndermeye çalışır, sunucu bunu kabul etmez ve uygulama açılmaz. Böyle olursa uygulamayı simgesinden bir kez aç, sonra yeniden paylaş.',
+  'privacy.stored.shared.where': 'Cache Storage, “clip-shared” adlı önbellek (en çok bir video)',
+  'privacy.stored.shared.delete':
+    'Video bir işte (Kes, GIF yap…) açılınca hemen; “Başka bir video seç”e basınca da. Hiçbir işe dokunmazsan uygulama açıksa 15 dakika sonra, kapattıysan uygulamayı bir sonraki açışında. Hepsini tarayıcının bu siteye ait verisini temizleyerek de silebilirsin.',
   'privacy.stored.model.name':
     'Konuşma modeli (yalnızca “Modeli indir”e bastıysan)',
   'privacy.stored.model.body':
@@ -1059,6 +1066,20 @@ export const tr = {
   'home.editorLink': 'Kendim düzenleyeceğim',
   'home.trust': 'Videon cihazından çıkmaz. Hesap gerekmez.',
   'home.trust.online': 'Videon cihazından çıkmaz; yalnızca sen seçersen sesi gider. Hesap gerekmez.',
+  // ---- "LiloCut'a paylaş" (ADR-047): the opening screen with a video in hand ----
+  'home.title.video': 'Bu videoyla ne yapmak istiyorsun?',
+  'home.video.shared': 'Paylaştığın video',
+  'home.video.picked': 'Seçtiğin video',
+  'home.video.change': 'Başka bir video seç',
+  'home.video.hint': 'Bir iş seç; video onda açılır.',
+  'home.share.many':
+    '{n} dosya paylaştın. Bir seferde bir video açılır: ilk videoyu aldım. Ötekiler için onları tek tek paylaş.',
+  'home.share.notVideo': 'Paylaştığın dosya bir video değil. Bu uygulama yalnızca videolarla çalışır: galeriden bir video paylaş.',
+  'home.share.empty': 'Paylaşımdan bir dosya gelmedi. Yeniden paylaş ya da aşağıdan bir iş seçip videonu seç.',
+  'home.share.noSpace':
+    'Paylaştığın videoyu açacak kadar boş yer yok. Telefonunda biraz yer aç ya da aşağıdan bir iş seçip videoyu galeriden seç: öyle açınca kopyası alınmaz.',
+  'home.share.unreadable': 'Paylaştığın video okunamadı. Aşağıdan bir iş seçip videoyu galeriden seç.',
+  'home.share.gone': 'Paylaştığın video artık burada değil. Yeniden paylaş ya da aşağıdan bir iş seçip videonu seç.',
 
   'task.kes.label': 'Kes',
   'task.kes.sub': 'İstediğin yerleri al',
@@ -1168,6 +1189,8 @@ export const tr = {
   'wizard.pick.hintDrop': 'Dosyalarından seç ya da videoyu buraya sürükleyip bırak',
   'wizard.pick.drop': 'Bırak, açalım',
   'wizard.pick.reading': 'Video açılıyor…',
+  'wizard.share.gone': 'Paylaştığın video artık burada değil. Videonu buradan seç.',
+  'wizard.share.lost': 'Ana ekranda seçtiğin video bu sayfaya gelemedi. Videonu buradan yeniden seç.',
   'wizard.video.label': 'Seçtiğin video',
   'wizard.video.change': 'Değiştir',
   'wizard.video.changeLabel': 'Başka bir video seç',

@@ -6,6 +6,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Icon } from '@/components/Icon';
 import { useNavigationScope } from '@/components/FallbackLink';
+import { withHeldVideo } from '@/adapters/pwa/sharedVideo';
+import { useHeldVideo } from '@/components/home/HomeIntro';
 import { isPlainPress } from '@/components/home/navigationFallback';
 import { searchTasks } from '@/domain/taskSearch';
 import { TASK_EXAMPLES, availableTasks, type TaskDefinition } from '@/domain/tasks';
@@ -94,6 +96,9 @@ export function TaskFinder() {
   const activeIndex = active === null ? (asking ? -1 : 0) : Math.min(active, matches.length - 1);
   const activeMatch = activeIndex >= 0 ? matches[activeIndex] : undefined;
   const cards = availableTasks();
+  // With a video in hand (shared to the app, ADR-047), every task opens with it: the address says which.
+  const video = useHeldVideo();
+  const hrefOf = (task: Pick<TaskDefinition, 'id'>) => withHeldVideo(taskHref(task), video);
 
   const type = (text: string) => {
     setQuery(text);
@@ -103,8 +108,8 @@ export function TaskFinder() {
 
   const start = (task: TaskDefinition) => {
     if (!task.available) return;
-    begin(taskHref(task));
-    router.push(taskHref(task));
+    begin(hrefOf(task));
+    router.push(hrefOf(task));
   };
 
   const showAll = () => {
@@ -231,9 +236,9 @@ export function TaskFinder() {
               role="option"
               aria-selected={index === activeIndex}
               aria-disabled={task.available ? undefined : true}
-              aria-busy={pendingPath === taskHref(task) || undefined}
+              aria-busy={pendingPath === hrefOf(task) || undefined}
               data-available={task.available}
-              data-pending={pendingPath === taskHref(task) || undefined}
+              data-pending={pendingPath === hrefOf(task) || undefined}
               data-testid={`result-${task.id}`}
               onClick={() => start(task)}
               onPointerMove={() => {
@@ -254,7 +259,7 @@ export function TaskFinder() {
               </span>
               {task.available ? (
                 <span className="result-start" data-testid="result-start">
-                  {pendingPath === taskHref(task) ? t('home.opening') : t('home.results.start')}
+                  {pendingPath === hrefOf(task) ? t('home.opening') : t('home.results.start')}
                 </span>
               ) : null}
             </li>
@@ -315,17 +320,18 @@ export function TaskFinder() {
               data-testid="task-grid"
             >
               {cards.map((task, index) => {
-                const opening = pendingPath === taskHref(task);
+                const href = hrefOf(task);
+                const opening = pendingPath === href;
                 return (
                   <li key={task.id}>
                     {/* prefetch={false}: see app/page.tsx. */}
                     <Link
                       className={index === 0 ? 'task-card task-card-lead' : 'task-card'}
-                      href={taskHref(task)}
+                      href={href}
                       prefetch={false}
                       onClick={(event) => {
                         // A new tab or window is the browser's own; only a press the router handles is watched.
-                        if (isPlainPress(event)) begin(taskHref(task));
+                        if (isPlainPress(event)) begin(href);
                       }}
                       aria-busy={opening || undefined}
                       data-pending={opening || undefined}

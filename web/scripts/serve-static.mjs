@@ -38,6 +38,14 @@ const TYPES = {
 
 createServer((request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
+  // A file host takes no uploads: a POST gets "405 Not Allowed", as GitHub Pages is reported to answer
+  // (not yet confirmed on the live site: ADR-047, "Uygulama hazır değilken"). It is what the share
+  // sheet's POST meets when the app's service worker is not there to take it.
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    request.resume();
+    response.writeHead(405, { 'Content-Type': TYPES['.html'], Allow: 'GET, HEAD' }).end('<h1>405 Not Allowed</h1>');
+    return;
+  }
   if (!url.pathname.startsWith(`${base}/`) && url.pathname !== base) {
     response.writeHead(404).end('outside base path');
     return;
