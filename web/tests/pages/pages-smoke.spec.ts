@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { expect, test, type Page } from '../e2e/fixtures';
+import { expect, expectPageRecovery, test, type Page } from '../e2e/fixtures';
 
 import { allowedConnectSrc, expectPolicy, expectedConnectSrc, watchCsp } from '../e2e/cspWatch';
 import { enhanceFixture, frameLumas } from '../e2e/enhance-media';
@@ -680,6 +680,8 @@ test.describe('the page watchdog under /capcut/', () => {
     request,
   }) => {
     test.setTimeout(120_000);
+    // It breaks a page load on purpose: its recovery is counted apart (tests/e2e/fixtures.ts).
+    expectPageRecovery();
     for (const path of ['./', 'editor/', 'yap/cevir/', 'gizlilik/', 'gizlilik/en/']) {
       const html = await (await request.get(path)).text();
       const ours = [...html.matchAll(/<script data-clip-watchdog="">([\s\S]*?)<\/script>/g)].map((match) => match[1] ?? '');
