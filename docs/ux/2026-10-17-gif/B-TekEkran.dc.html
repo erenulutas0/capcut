@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>GIF yap: tek ekran</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #101315; color: #f3f5ee; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 8px; padding: 12px 12px 8px">
+<button aria-label="Geri" style="width: 44px; height: 44px; border: 0; background: transparent; color: #f3f5ee; display: flex; align-items: center; justify-content: center; border-radius: 10px">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+</button>
+<div style="font-size: 15px; color: #abb4ae">GIF yap</div>
+</div>
+<div style="flex: 1; padding: 4px 20px 0; display: flex; flex-direction: column; gap: 14px">
+<div style="position: relative; height: 300px; border-radius: 14px; background: #22282b; border: 1px solid #343d3b; overflow: hidden">
+<div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; color: #abb4ae; font-size: 15px">GIF önizlemesi (döngüde oynar)</div>
+<label style="position: absolute; left: 12px; right: 12px; top: 12px; display: block">
+<span style="position: absolute; left: -9999px">Üst yazı</span>
+<input type="text" value="PAZARTESİ SABAHI" style="width: 100%; box-sizing: border-box; height: 48px; border: 2px dashed #d2ef78; border-radius: 10px; background: rgba(16,19,21,0.35); color: #ffffff; font-family: Impact, 'Arial Black', sans-serif; font-size: 26px; text-align: center; letter-spacing: 0.02em">
+</label>
+<label style="position: absolute; left: 12px; right: 12px; bottom: 12px; display: block">
+<span style="position: absolute; left: -9999px">Alt yazı</span>
+<input type="text" placeholder="Alta yazı ekle" style="width: 100%; box-sizing: border-box; height: 48px; border: 2px dashed #78837d; border-radius: 10px; background: rgba(16,19,21,0.35); color: #ffffff; font-family: Impact, 'Arial Black', sans-serif; font-size: 22px; text-align: center">
+</label>
+</div>
+<div style="font-size: 15px; color: #abb4ae">Yazının üstüne dokun ve yaz. Boş bırakırsan yazı olmaz.</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="position: relative; height: 44px; border-radius: 10px; background: #181c1f; border: 1px solid #343d3b">
+<div style="position: absolute; left: 30%; width: 22%; top: 0; bottom: 0; border: 3px solid #d2ef78; border-radius: 10px; box-sizing: border-box"></div>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 15px; color: #abb4ae"><span>Kaydırarak kısmı seç</span><span><strong style="color: #f3f5ee">4 sn</strong> · yaklaşık 3 MB</span></div>
+</div>
+</div>
+<div style="padding: 16px 20px 20px">
+<button style="width: 100%; height: 56px; border-radius: 14px; border: 2px solid #d2ef78; background: #d2ef78; color: #17200c; font-size: 18px; font-weight: 700; font-family: inherit">GIF'i indir</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

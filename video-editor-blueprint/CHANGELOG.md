@@ -3,6 +3,48 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## "GIF yap" on birinci kart oldu: videonun bir kısmı, üst ve alt yazıyla, cihazda GIF — 17 Ekim 2026 (ADR-046; politika v11, şema değişmedi)
+
+Kurucu kararı: aramada "Bunu henüz yapamıyoruz." diyen "gif yap" gerçek bir kart oldu, taslak tuvalinden
+**B "Tek ekran, yazı önizlemenin üstünde"** ile. Taslak ve uygulanan ekranlar: `docs/ux/2026-10-17-gif/`.
+Dış hizmet yok; tek yeni bağımlılık `gifenc` 1.0.3 (MIT, 9 KB, bağımlılıksız; `npm audit --omit=dev` 0).
+
+- **Ekran:** video seçilince tek ekran — seçilen kısım önizlemede sessiz ve durmadan döner; üstteki ve
+  alttaki kesik çizgili kutuya dokunup yazılır (boş = yazı yok); kutu GIF'in kendi harfleriyle ve
+  satır kırılımıyla yazar; çubukla kısım seçilir (en çok 10 sn — aşılmak istenince "GIF en çok 10
+  saniye olabilir."), yanında "4,0 sn · yaklaşık 141 KB" (ölçülür: kısmın dört yerinden ikişer kare
+  GIF'in kendi yoluyla kodlanır), "Boyut: Küçük / Orta", tek "GIF'i indir". Sonra gerçek ilerleme
+  ("Kareler hazırlanıyor: 23 / 50"), İptal, "Kaydedildi" + ne kaydedildiği ("143 KB · 4,0 sn ·
+  durmadan döner"), Paylaş, "Bir GIF daha yap".
+- **Kodlama tamamen cihazda, ayrı bir worker'da** (`adapters/gif/`): dışa aktarmanın çözme yolu içe
+  aktarıldı (tek sürekli çözme, çözücü tutma, yarım dosya denetimi, HDR doğrulaması; `adapters/export/**`
+  değişmedi). Tek palet (bütün karelerden), değişmeyen piksel saydam, titreşim yok, 12,5 kare/sn,
+  sonsuz döngü; Küçük 320, Orta 480 (videodan büyük değil). Kaydetmeden önce GIF yapısıyla geri okunur.
+- **Yazı:** Inter Bold (altyazı yazı tipi; bütün Türkçe harfler), beyaz, koyu kenar, sığana dek küçülür,
+  en çok iki satır; en küçük harfte de sığmazsa "…" ile biter ve ekran söyler. Büyük harfe çevrilmez.
+- **Dürüstlük:** ses dosyası / tek kare / bozuk dosya seçerken reddedilir (mevcut cümleler); ADR-042
+  bekçisi ve "Ayrıntılar" (`gif_encode`, `GifFailure`); dosya adı `<video>_gif.gif`; kaydetme penceresi
+  ya da "Kaydet" bağlantısı (ADR-026); hiçbir şey saklanmaz (gizlilik sayfası değişmedi).
+- **Ana ekran:** on bir kart; kart sayısı tek olunca öndeki "Kes" iki yer kaplar (satırda tek kart
+  kalmaz). **Arama:** GIF ifadeleri emin cevapla karta gider; "sticker / çıkartma" ayrı bir "henüz
+  yapamıyoruz" girdisi oldu. Kör kümede doğrudan doğru %54,1 → %53,7 (payda 148 → 149; yeni GIF ifadesi
+  soru olarak cevaplandı), yanlış ama emin %3,0 → %3,0; ayrıntı ADR-046.
+- **Politika `2026-10-17.v11`:** GIF yap ücretsiz temel özellik, cihazda, GIF başına en çok 10 saniye
+  (`WEB_LOCAL_POLICY.maxGifDurationUs`; belge 15'e satır ve not, politika testi).
+- **Ölçüm (bu makine, Playwright Chromium, dört yapay kaynak):** Küçük 4 sn 225 KB–1,28 MB, Küçük 10 sn
+  523 KB–3,16 MB, Orta 4 sn 443 KB–2,62 MB, Orta 10 sn 1,06–6,62 MB; GIF'i yapmak 0,8–4,9 sn; tahmin 16
+  ölçümde gerçeğin ×0,94–×1,10'u. Palet / titreşim / kare hızı karşılaştırması ADR-046'da.
+
+**Sınamalar (son kodla, yerel):** `tsc`, `eslint` temiz; birim **1512 / 1512** (88 dosya); olağan e2e **444: 438
+geçti, 4 atlandı, 2 başarısız** (iki izin listesinde `/yap/gif` eksikti; düzeltilip iki dosya yeniden koşuldu:
+26 / 26), `PAGE-RECOVERED-TOTAL 1` (Yazıya dök büyük model sınaması; GIF'le ilgisiz), `PAGE-DEAD-TOTAL 0`; bulut
+e2e **59: 55 geçti, 4 atlandı**; durağan çıktı (`/capcut`) + Pages duman **14: 8 geçti, 6 atlandı** (yeni GIF
+sınaması dahil); kalite katmanı 676 ölçü, 598 bütçe içinde, 8 dışında (önceden açık olanlar), farklı ekran 0;
+`npm audit --omit=dev` 0.
+
+**Doğrulanmayan:** telefon, Safari, Firefox; gerçek çekimde boyut; HDR kaynaktan GIF; H.264 sıra derinliği
+düzeltmesi isteyen kamera dosyaları (o düzeltme `exportWorker.ts`'te özel, taşınmadı).
+
 ## Ölü görünen bağlantılar da açılır; ölü kod ve belge temizliği — 15 Ekim 2026 (ADR-044 Ek 2; şema, politika ve ekranlar değişmedi)
 
 Özerk çalışma. npm kayıt bilgisi (`npm outdated` / `view` / `audit`) ve iki paketin indirilmesi dışında hiçbir dış hizmete istek gitmedi; `cloud/`, `web/src/adapters/export/**`, yazıya dökme modeli ve bulut arayüzü dokunulmadı.
