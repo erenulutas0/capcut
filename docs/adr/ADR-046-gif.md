@@ -248,6 +248,6 @@ Hepsi yerel, bu dalın son koduyla (Windows, Playwright Chromium):
 2. **Titreşim yok.** Çok yumuşak geçişlerde hafif bant olabilir; titreşimli seçenek dosyayı büyütür.
 3. **Yazı büyük harfe çevrilmiyor** (klasik "meme" büyük harftir). İstenirse `toLocaleUpperCase('tr')`
    ile tek satır.
-4. **Varsayılan kısım ilk 4 saniye.** Alternatif: videonun ortası ya da 10 sn'den kısa videoda tamamı.
+4. ~~**Varsayılan kısım ilk 4 saniye.**~~ **Karar (17 Ekim, ana oturum):** 10 saniyeye sığan video bütünüyle seçili gelir; daha uzunu ilk 4 saniyeyle başlar (`initialGifRange`).
 5. **Sticker ayrı "henüz yapamıyoruz" girdisi** oldu. WhatsApp çıkartması (512 × 512 WebP) ayrı bir iş.
 6. `gifenc`'in bakımı etkin değil; yerine kendi kodlayıcımız gerekirse tek dosya.
