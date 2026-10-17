@@ -145,6 +145,11 @@ export const STATES: ScreenState[] = [
       await page.getByTestId('gif-text-bottom').blur();
       await page.getByTestId('gif-play').click();
       await expect(estimate).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+      // A moving picture is masked in every screenshot, and the mask would cover the two text boxes on it:
+      // the picture is hidden instead (the frame shows black), so the boxes and their letters are compared.
+      await page.getByTestId('gif-video').evaluate((video: HTMLVideoElement) => {
+        video.style.display = 'none';
+      });
     },
   },
   {
