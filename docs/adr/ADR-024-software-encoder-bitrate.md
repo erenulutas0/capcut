@@ -153,3 +153,98 @@ yazılımda). Bit hızı **modu** değişti: olağan indirmede donanım kodlayı
 ([ADR-045](ADR-045-constant-bitrate-ordinary-download.md)); yazılım kodlayıcısı `variable` kaldı. Yukarıdaki
 "bit hızı modu etkisiz" bulgusu yazılım kodlayıcısı içindi ve 14 Ekim ölçüsünde de öyle çıktı (kalite iki modda
 aynı, boyut farkı koşudan koşuya gürültü içinde).
+
+## Ek — 17 Ekim 2026: hiçbir indirme 4 GiB − 1 bayttan büyük olmaz
+
+**Bulgu (uzun dışa aktarma raporu, [`docs/perf/2026-10-15-long-export.md`](../perf/2026-10-15-long-export.md) §8.1):**
+60 dakikalık 1080p tam yeniden kodlama yazılım kodlayıcısında (Playwright Chromium, donanım kodlayıcısı yok)
+**4958 MiB** yazdı: bu ADR'nin 3 katı (kaynağın 2 katı tavanıyla 11,43 Mbit/s). Uygulamanın kendi girdi sınırı
+4 GiB (doc 15, `maxTotalSourceBytes`); kullanıcı kendi indirdiği dosyayı LiloCut'ta yeniden açamıyordu, FAT32 bir
+belleğe de yazamıyordu. **Kurucu kararı (17 Ekim):** bir indirme uygulamanın kendi girdi sınırından büyük olamaz.
+
+**Karar (`web/src/domain/outputStorage.ts`):**
+
+1. **Tavan: `OUTPUT_FILE_LIMIT_BYTES` = 4 GiB − 1 bayt = 4 294 967 295 bayt.** 4 GiB'lık girdi sınırı ile FAT32'nin en
+   büyük dosyasının (4 GiB − 1) küçüğü. Politika değişmedi: girdi sınırı aynı, bu onun çıktıdaki karşılığı.
+2. **Planlanan bit hızı tavanın altında tutulur** (`fileLimitedVideoBitrate`): olağan tam kodlamanın video bit hızı,
+   dosyanın **üst tahmini** (ADR-023: nominal × 1,1 + 32 MiB, bit hızları × süre, ses dahil) tavanı geçmeyecek en büyük
+   değerle sınırlanır. Yani planlanan (nominal) dosya ≤ (4 GiB − 1 − 32 MiB) / 1,1 ≈ **3,61 GiB (3,87 GB)**; 60 dakika,
+   128 kbit/s sesle videoya **8 480 913 bit/s** kalır. Sıra: plan → kaynağın 2 katı (10 Ekim eki) → yazılımda 3 kat
+   (bu ADR; tarayıcı reddederse plan) → **bu tavan, en sonda**. Kısa çıktıya dokunmaz: tutma yalnızca tahmin tavanı
+   geçecekken devreye girer (birim testi, 7 bit hızı × 240 uzunluk). 1080p30 donanımda (5,6 Mbit/s) 60 dakikada da
+   dokunulmaz; yazılımda (16,8 Mbit/s) ~30,5 dakikadan, kaynağın 2 katıyla 11,43'te ~45 dakikadan sonra.
+   720p yazılımda (7,46) bir saat de sığar. İyileştir (ADR-037, kaynak tavanı yok) aynı kurala girer. Hedef boyut
+   (Küçült, ≤ 50 MB) zaten çok altında. Sonuç satırı söyler: `videoEncoding.heldForFileLimit`, yöntem satırında
+   `data-file-limit-held`.
+3. **Pay neden ADR-023'ün 1,1'i:** ayrı bir sayı uydurmak yerine uygulamanın zaten ölçülmüş ve diskte yer ayırırken
+   kullandığı üst tahmin tavana oturtuldu; böylece ayrılan yer de ≤ 4 GiB olur. Ölçülen taşma bu payın çok
+   altında (aşağıda): tutulan bit hızında yazılan ÷ istenen **0,994–1,004**, dosya ÷ planlanan en çok **1,0036**;
+   1,1 ölçülmemiş içerik ve donanım için kalır.
+4. **Kopya da tavanı geçmez:** hızlı kesim / kopya (ADR-027) kaynağın kendi baytlarıdır ve boyutu yazmadan önce
+   bilinir. Tavanı geçecek bir kopya (ör. aynı yeri tekrar eden kesitler, 4 GiB'a yakın bir kaynağın sesinin 128
+   kbit/s'e kodlanması) tam kodlamaya döner, tutulan bit hızıyla (`FastCutFallback('output_size')`; "neden" cümlesi:
+   "görüntü olduğu gibi kopyalansaydı dosya 4,29 GB'tan büyük olurdu").
+5. **Son bekçi (disk yolları):** yine de bir yazma dosyayı tavanın ötesine taşıyacaksa (kodlayıcı istenenin çok
+   üstünü yazarsa: ADR-035'in ölçtüğü "en düşük hızında" OpenH264, ör. çok ayrıntılı 1080p60 kaynak) OPFS ve
+   kaydetme penceresi yolu yazmayı orada durdurur (`OutputTooLargeError` → `output_too_large`): yarım dosya silinir,
+   "Video 4,29 GB'tan büyük olacaktı; LiloCut bu kadar büyük bir dosyayı yeniden açamaz. Yarım dosya silindi. Daha
+   kısa bir kesit indir ya da Ayarlar'da “En çok 720p”yi seç." Bellek yolunda bekçi yok: orada en çok 5 dakika var
+   (doc 15 v3), uygulamanın istediği her bit hızında tavanın küçük bir kesri. Bu ölçümlerde bekçi hiç konuşmadı.
+6. **Ölçüm kancası** `window.__clipOutputLimitBytes` (her derlemede; tavanı yalnızca **düşürebilir**, uygulama
+   kurmaz): kısa bir çıktının uzun bir çıktı gibi tutulması ve durdurulması için (e2e ve aşağıdaki ölçüm).
+
+**Kanıt — 60 dakika, aynı kaynak, aynı makine** (`long-120min-1080p-3600s.mp4`, 817,6 MiB; Playwright Chromium
+153.0.8010.12, OpenH264, değişken bit hızı; `measure-long-export.mjs --task=editor --mode=encode`, kaydetme penceresi
+yolu):
+
+| | Önce (15 Ekim raporu) | Sonra (bu ek) |
+|---|---|---|
+| İstenen video bit hızı | 11,43 Mbit/s | **8,481 Mbit/s** (tutuldu) |
+| Dosya | **4958 MiB** (4 GiB'ın üstünde) | **3 877 248 423 bayt = 3697,6 MiB** (3,88 GB; tavanın 417,7 MB altında) |
+| Dosya ÷ planlanan | ~1,00 | **1,0008** |
+| Baştan ayrılan yer (profil tepe − taban) | 5488 MiB | 4096,1 MiB (= tahmin, ≤ tavan) |
+| Süre | 923,5 s (×3,90) | 808,6 s (×4,45) |
+| Doğruluk | 3600,000 s, 108 000 kare, 5/5, 0,1 ms | 3600,000 s, 108 000 kare, kare kimliği 5/5, ses kayması 0,1 / 0,1 / 0,1 ms |
+| Bellek (ağaç tepe) | 794 MiB | 812 MiB |
+| Konsol hatası, bekçi | yok | yok; artık dosya 0 (profil 18,6 → 18,6 MiB) |
+
+**Kanıt — taşma, tutulan bit hızında, 5 dakikalık parçalarda** (`scripts/measure-file-limit.mjs`: aynı uygulama,
+kanca ile 5 dakika tam 60 dakikanın 8 480 913 bit/s'ine tutuldu; sonuç satırının bildirdiği bit hızı birebir buydu).
+"Yazılan ÷ istenen": videonun paket baytları ÷ (istenen × süre); "dosya ÷ planlanan": dosya ÷ ((video + ses) × süre).
+
+| Parça (1080p30, 300 s) | Tutulmadan (5 dk'nın kendi bit hızı) | Tutulunca (60 dk'nın bit hızı) |
+|---|---|---|
+| DESEN: uzun kaynağın ilk 5 dakikası (test deseni + barkod) | 11,43 Mbit/s · 0,9992 · dosya 433,1 MB | 8,48 · **1,0004** · dosya ÷ plan **1,0007** · 323,1 MB |
+| GÜRÜLTÜ: 10,5 Mbit/s gürültülü 1080p (`--only=big`) | 16,80 · 0,9999 · 634,7 MB | 8,48 · **1,0006** · **1,0009** · 323,1 MB |
+| GERÇEK: iPhone 11 kaydı (15 Mbit/s, özel, depoda değil), ilk 5 dakika | 16,80 · 0,9937 · 630,8 MB | 8,48 · **1,0033** · **1,0036** · 324,0 MB |
+
+**Kalite — evet, 60 dakikalık yazılım kodlamasında görünür biçimde düşer** (aynı 5 dakikalık parçalar, kayıpsız ffmpeg
+referansına karşı; SSIM kare kare, iki akış kare numarasıyla eşlendi — `settb=1/30,setpts=N`, ±1 karelik kaydırma her
+dosyada kontrol edildi, en iyisi 0; VMAF libvmaf varsayılan modeli). Karşılaştırma için aynı parçalar Chrome 155'in
+**donanım** kodlayıcısında (RTX 3070 Ti, plan 5,6 Mbit/s, sabit mod; 60 dakikada da tutulmaz):
+
+| Parça | Yazılım, tutulmadan (16,80 / 11,43) | Yazılım, 60 dk'nın 8,48'i | Donanım (Chrome), 5,60 |
+|---|---|---|---|
+| GERÇEK (iPhone 11) — SSIM ort. / en kötü kare · VMAF ort. | 0,9726 / 0,8586 · **93,22** | 0,9481 / 0,8480 · **80,19** | 0,9483 / 0,8264 · 82,23 |
+| GÜRÜLTÜ | 0,9377 / 0,7871 · 75,34 | 0,9318 / 0,7858 · 74,10 | 0,9501 / 0,8840 · 76,27 |
+| DESEN (11,43 → 8,48) | 0,9795 / 0,9772 · 75,12 | 0,9792 / 0,9767 · 74,93 | — |
+
+- Gerçek kayıtta 60 dakikalık yazılım kodlaması **VMAF −13,0** ve **SSIM −0,025** kaybeder (93,2 → 80,2; 0,973 → 0,948):
+  bu bir göz farkıdır. Ama vardığı yer, bu ADR'nin hedeflediği sınıf: aynı parçada **donanım kodlayıcısının** olağan
+  indirmesi (5,6 Mbit/s) SSIM 0,948 / VMAF 82,2. Yani tutma, yazılım kodlayıcılı kullanıcıyı 60 dakikada donanımın
+  kalite sınıfının biraz altına (VMAF −2,0, SSIM aynı) indiriyor; 3 katın donanımın **üstüne** çıkardığı fazlalık gidiyor.
+  ADR-014'ün SSIM eşiği (0,85) her durumda üstte.
+- Gürültüde fark küçük (VMAF −1,2), test deseninde yok (−0,2): bu içerikte kodlayıcı zaten istenenden az bit harcıyor.
+- Kısa çıktılarda (~30 dakikanın altında, 1080p yazılım) hiçbir şey değişmez.
+
+**Kurucuya:** 60 dakikalık yazılım kodlamasında kalite donanım sınıfına iner (yukarıda). Kararınız "indirme girdi
+sınırından büyük olmasın"dı; bedel bu ölçüldü. Alternatifler (uygulanmadı): tavanı FAT32'den vazgeçip yalnızca girdi
+sınırına (4 GiB) koymak +1 bayt kazandırır, anlamlı değil; uzun yazılım çıktısını 720p'ye indirmek (7,46 Mbit/s bir saate
+sığar) pikseli feda eder.
+
+**Ölçülmeyen:** donanım kodlayıcısında tutma (bugünkü politika içinde 1080p30 donanımda hiç tutulmuyor; sabit mod
+istenenin 0,95–1,00'ını yazıyor, ADR-045); tutulan bit hızının altına inemeyen "doymuş" bir kodlayıcı (çok ayrıntılı
+1080p yazılımda 0,14 bit/piksel, ADR-035 — 8,48 Mbit/s 1080p30'da 0,136 bit/piksel; bu durumda bekçi durdurur, ölçülmedi
+çünkü böyle bir 60 dakikalık kaynak üretilmedi); telefon; Edge / Chrome'un yazılım kodlayıcısı (`prefer-software`);
+4 GiB'a yakın gerçek bir kaynağın kopyası (kopyanın tam kodlamaya dönüşü yalnızca küçük tavanlı e2e'de koşuldu, orada
+bekçi durdurdu; dönüşün sebep satırı ayrıca doğrulanmadı).

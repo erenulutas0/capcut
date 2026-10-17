@@ -3,6 +3,38 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## İndirme 4 GiB − 1 bayttan büyük olmaz; "yer yetmiyor" sığan uzunluğu söyler — 17 Ekim 2026 (ADR-024 / ADR-045 / ADR-023 ekleri; politika ve şema değişmedi)
+
+Kurucunun onayladığı iki düzeltme (uzun dışa aktarma raporu §8.1 ve §8.5). Dış hizmet yok.
+
+**1. Hiçbir indirme uygulamanın kendi girdi sınırından büyük değil.** Tavan **4 GiB − 1 bayt** (4 GiB'lık girdi sınırı ve
+FAT32'nin en büyük dosyası). Olağan tam kodlamanın video bit hızı en sonda tutulur (kaynağın 2 katından ve yazılımın 3
+katından sonra): dosyanın üst tahmini (ADR-023, × 1,1 + 32 MiB) tavanı geçmez, yani planlanan dosya ≤ ~3,61 GiB; 60
+dakika 1080p'de 8,48 Mbit/s. Kısa çıktılara dokunulmaz (1080p30 donanımda hiç; yazılımda ~30 dakikadan sonra). Tavanı
+geçecek bir kopya tam kodlamaya döner; disk yollarında tavanı geçen bir yazma durdurulur, yarım dosya silinir, cümle:
+"Video 4,29 GB'tan büyük olacaktı; LiloCut bu kadar büyük bir dosyayı yeniden açamaz. …". Ölçüm kancası
+`window.__clipOutputLimitBytes` (yalnızca düşürür); ölçüm betiği `web/scripts/measure-file-limit.mjs`.
+- **60 dakika, yazılım kodlayıcısı (Playwright Chromium), aynı kaynak:** 4958 MiB → **3697,6 MiB** (3 877 248 423 bayt;
+  dosya ÷ planlanan 1,0008); 108 000 kare, kare kimliği 5/5, ses kayması 0,1 ms; 923,5 → 808,6 s.
+- **Taşma (pay için kanıt), 60 dakikanın bit hızında 5 dakikalık parçalar:** dosya ÷ planlanan 1,0007 (desen), 1,0009
+  (gürültü), 1,0036 (gerçek iPhone kaydı) — 1,1'lik payın çok altında.
+- **Kalite bedeli (aynı parçalar):** gerçek kayıtta yazılım kodlaması VMAF 93,2 → **80,2**, SSIM 0,973 → **0,948** —
+  görünür bir düşüş; vardığı yer donanım kodlayıcısının olağan indirmesi (Chrome, aynı parça: VMAF 82,2, SSIM 0,948).
+  Gürültüde VMAF −1,2, test deseninde −0,2.
+
+**2. "Yer yetmiyor" cümlesi.** Önce her yolda "en fazla 5 dakikalık bir kesit indir" (kaydetme penceresi yolunda bellek
+yolu yok; orada 5 dakika iki yönde de yanlıştı). Şimdi ayırma reddedilince disk küçük adımlarla yeniden sorulur, sığan
+uzunluk aynı kuralla ve indirmenin kendi bit hızıyla hesaplanır: "Diskte yer aç ya da en fazla **32 dakikalık** bir kesit
+indir" (1500 MiB, 1080p donanım; birim testi). Tarayıcının kendi diskinde bellek yolunun 5 dakikası en az öneridir;
+dürüst bir sayı yoksa sayı yok. Kaydetme penceresi satırı diskin verdiğini de söyler ("o diskte yalnızca yaklaşık X var").
+e2e: söylenen uzunlukta kesit aynı diskte gerçekten iniyor.
+
+**Sınamalar (son kodla, yerel):** `tsc`, `eslint` temiz; birim **1498 / 1498** (88 dosya; yeni `outputFileLimit.test.ts`, `outputSink.test.ts` +5); olağan e2e (`CLIP_TEST_HOOKS=1`, port 3193, kilit altında) **436: 432 geçti, 4 atlandı, 0 başarısız** (28,3 dk; `output-limits.spec.ts` +4), `PAGE-RECOVERED-TOTAL 0`, `PAGE-DEAD-TOTAL 0`; dışa aktarma matrisi (düz derleme) Chromium / Chrome / Edge **32 / 32 / 32 PASS**; varsayılan durağan çıktı (`STATIC_EXPORT=1`, `/capcut`) derlendi (Pages duman sınaması koşulmadı).
+
+**Doğrulanmayan:** telefon; Edge'de uzun koşu; doymuş (istenenin çok üstünü yazan) bir yazılım kodlamasında bekçinin
+60 dakikada durdurması (yalnızca küçük tavanla e2e); gerçek dolu disk (kota ile benzetildi); macOS/Linux seyrek dosyada
+küçük adımlı yer sorusu; değişken moda düşmüş donanım kodlamasının 60 dakikası.
+
 ## Ölü görünen bağlantılar da açılır; ölü kod ve belge temizliği — 15 Ekim 2026 (ADR-044 Ek 2; şema, politika ve ekranlar değişmedi)
 
 Özerk çalışma. npm kayıt bilgisi (`npm outdated` / `view` / `audit`) ve iki paketin indirilmesi dışında hiçbir dış hizmete istek gitmedi; `cloud/`, `web/src/adapters/export/**`, yazıya dökme modeli ve bulut arayüzü dokunulmadı.

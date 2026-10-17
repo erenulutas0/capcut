@@ -245,6 +245,8 @@ ile aynı yöntem; Chromium onu her OPFS yazımında uygular); gerçek bir dolu 
    ≤ 4 GiB − pay; 60 dk 1080p için ~9 Mbit/s), kalite ADR-024'teki ölçümle yeniden doğrulanır; (b) indirmeden
    önce "bu dosya ~4,8 GB olacak; LiloCut'ta yeniden açılamaz" demek; (c) olduğu gibi bırakmak. Kalite ↔
    boyut kararı kurucunun.
+   **Durum 17 Ekim:** kurucu (a)'yı seçti, uygulandı ([ADR-024, 17 Ekim eki](../adr/ADR-024-software-encoder-bitrate.md)):
+   hiçbir indirme 4 GiB − 1 bayttan büyük olmaz; aynı koşu artık 8,48 Mbit/s ister ve **3697,6 MiB** yazar (önce 4958).
 2. **Kopyalayan yolların süresi sesin süresi.** Karıştırma döngüsü hızlandı (§6); geri kalan çözme
    (WebCodecs AAC) ve kodlama. Sesi hiç değiştirmeyen bir kesimde (kazanç 1, müzik yok, kenarlarda solma
    yok) AAC paketlerini kopyalamak bu süreyi kaldırır, ama kesim noktaları AAC çerçevesine (21,3 ms) düşmez:
@@ -259,6 +261,8 @@ ile aynı yöntem; Chromium onu her OPFS yazımında uygular); gerçek bir dolu 
    matris SSIM'i yeniden ölçülmeli. Orta iş.
 5. **"Yer yetmiyor" cümlesi** dosya yolunda da "en fazla 5 dakikalık bir kesit indir" diyor; 1,5 GB boş
    yerde ~20 dakikalık kesit sığar. Cümle, ayrılabilen yere göre söylenebilir (metin kararı).
+   **Durum 17 Ekim:** uygulandı ([ADR-023, 17 Ekim eki](../adr/ADR-023-storage-margin.md)): uzunluk diskin gerçekten
+   verdiği yerden ve indirmenin kendi bit hızından hesaplanır; dürüst bir sayı yoksa sayı söylenmez.
 6. **Boşlukları at uzun videoda 553 sessizliğin 19'unu atabiliyor** (politikanın 20 parça sınırı,
    `maxClips`): 60 dakika yalnızca 23 s kısalıyor. Sihirbaz bunu dürüstçe söylüyor. Sınırın sihirbazın
    ürettiği tarif için yükseltilmesi (kopya/akıllı kesimde parça sayısı belleği değil dikiş sayısını
