@@ -18,7 +18,7 @@ import { US_PER_SECOND, type Micros } from './time';
 /**
  * The longest GIF (doc 15 v11). A GIF has no video compression: every frame
  * is a full picture, so ten seconds of a 480-pixel GIF of grainy or softly
- * shaded pictures already weighed 4,8–6,3 MB (ADR-046) — more than most chat
+ * shaded pictures already weighed 5,3–6,6 MB (ADR-046) — more than most chat
  * apps take as a GIF.
  */
 export const GIF_MAX_DURATION_US: Micros = WEB_LOCAL_POLICY.maxGifDurationUs;
@@ -93,8 +93,7 @@ export function normalizeGifRange(range: GifRange, videoUs: Micros): GifRange {
  * 12,5 frames a second: one frame every 8 hundredths of a second, the unit
  * a GIF counts its delays in, so the GIF runs at exactly the video's pace
  * (15 fps would need 7, 7, 6 … hundredths). Measured in ADR-046: 15 fps made
- * every file ≈ 18 % larger and the motion hardly smoother at these sizes;
- * 10 fps is visibly jerkier on movement.
+ * the files 13–22 % larger, 10 fps 15–21 % smaller; 12,5 is the middle.
  */
 export const GIF_FRAME_DELAY_CS = 8;
 export const GIF_FRAME_US: Micros = GIF_FRAME_DELAY_CS * 10_000;

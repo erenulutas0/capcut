@@ -8,11 +8,11 @@
  *
  * No dithering, measured in ADR-046 ("Palet ve titreşim"): with one palette
  * of 255 colours chosen from frames across the whole part, a smooth gradient
- * already showed no visible bands at GIF sizes, while the ordered (Bayer)
- * pattern was visible as a grid on flat and soft areas and made the file
- * 12–30 % larger, and error diffusion (Floyd–Steinberg) made it 16–70 %
- * larger and 3–10 times slower (its noise moves from frame to frame, so
- * almost no pixel stays the same and the unchanged-pixel saving is lost).
+ * showed no visible bands at GIF sizes, while the ordered (Bayer) pattern was
+ * visible as a grid on flat and soft areas and made the file 5–29 % larger,
+ * and error diffusion (Floyd–Steinberg) made it 16–69 % larger and 3–10 times
+ * slower (its noise moves from frame to frame, so almost no pixel stays the
+ * same and the unchanged-pixel saving is lost).
  */
 
 /** A palette as packed RGB triplets: entry `i` is `colors[3i], colors[3i+1], colors[3i+2]`. */

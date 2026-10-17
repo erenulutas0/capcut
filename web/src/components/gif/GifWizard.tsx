@@ -167,8 +167,8 @@ function GifPreview({
     const video = videoRef.current;
     if (!video) return;
     video.currentTime = range.startUs / 1_000_000;
-    if (!paused) void video.play().catch(() => undefined);
-  }, [range.startUs, range.endUs, paused]);
+    if (!pausedRef.current) void video.play().catch(() => undefined);
+  }, [range.startUs, range.endUs]);
 
   // The loop: back to the start of the part when it is over (checked at every frame where the browser can).
   useEffect(() => {
