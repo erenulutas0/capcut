@@ -55,10 +55,10 @@ export const STATES: ScreenState[] = [
   },
   {
     id: 'ana-ekran-yapamiyoruz',
-    label: 'Ana ekran, “Bunu henüz yapamıyoruz.” (“gif yap”)',
+    label: 'Ana ekran, “Bunu henüz yapamıyoruz.” (“videoyu döndür”)',
     open: async (page) => {
       await page.goto('/');
-      await page.getByTestId('finder-input').fill('gif yap');
+      await page.getByTestId('finder-input').fill('videoyu döndür');
       await expect(page.getByTestId('result-unavailable').first()).toBeVisible();
     },
   },
@@ -129,6 +129,22 @@ export const STATES: ScreenState[] = [
       await pick(page, 'iyilestir', enhanceFixture('dark'));
       await expect(page.getByTestId('enhance-preview')).toHaveAttribute('data-status', 'ready', { timeout: 180_000 });
       await expect(page.getByTestId('iyilestir-summary')).toBeVisible();
+    },
+  },
+  {
+    // ADR-046, mockup B: the one screen, with a text typed into each box.
+    id: 'sihirbaz-gif-secim',
+    label: 'GIF yap, tek ekran (iki yazı yazılmış)',
+    wizard: true,
+    open: async (page) => {
+      await pick(page, 'gif', SAMPLE);
+      const estimate = page.getByTestId('gif-estimate');
+      await expect(estimate).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+      await page.getByTestId('gif-text-top').fill('PAZARTESİ SABAHI');
+      await page.getByTestId('gif-text-bottom').fill('kahveden önce ben');
+      await page.getByTestId('gif-text-bottom').blur();
+      await page.getByTestId('gif-play').click();
+      await expect(estimate).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
     },
   },
   {

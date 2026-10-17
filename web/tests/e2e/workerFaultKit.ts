@@ -15,7 +15,7 @@
 import { expect, type Page } from '@playwright/test';
 
 export type FaultKind = 'throw' | 'crash' | 'stall' | 'unsendable';
-export type FaultWorker = 'silence' | 'model_download' | 'transcript' | 'cloud_audio' | 'enhance_preview';
+export type FaultWorker = 'silence' | 'model_download' | 'transcript' | 'cloud_audio' | 'enhance_preview' | 'gif';
 
 export interface Fault {
   worker: FaultWorker;
