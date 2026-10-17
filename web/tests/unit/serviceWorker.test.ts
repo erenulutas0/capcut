@@ -3,9 +3,12 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { collectPrecache, precacheVersion, renderServiceWorker } from '../../scripts/lib/precache.mjs';
+import { collectPrecache, precacheVersion, renderServiceWorker, withShareInbox } from '../../scripts/lib/precache.mjs';
+import { SHARE_CACHE, SHARE_TTL_MS, readShareEntry } from '../../scripts/lib/share-target.mjs';
 
 const TEMPLATE = readFileSync(join(process.cwd(), 'scripts', 'lib', 'service-worker.js'), 'utf8');
+/** The worker's code as build-sw.mjs writes it: the template with the share target's inbox (ADR-047). */
+const WORKER = withShareInbox(TEMPLATE, readFileSync(join(process.cwd(), 'scripts', 'lib', 'share-target.mjs'), 'utf8'));
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -165,14 +168,21 @@ function loadWorker(config: { version: string; base: string; pages: string[]; as
           map.set(url.pathname, response);
         }
       },
-      match: async (path: string) => {
-        const response = map.get(new URL(path, 'https://app.test').pathname);
+      match: async (path: string | { url: string }) => {
+        const response = map.get(new URL(typeof path === 'string' ? path : path.url, 'https://app.test').pathname);
         if (!response) return undefined;
         // Like Cache Storage: the stored response keeps the stored address.
         const copy = response.clone();
         Object.defineProperty(copy, 'url', { value: response.url });
         return copy;
       },
+      // What the share target's inbox uses (ADR-047).
+      put: async (path: string, response: Response) => {
+        const body = await response.arrayBuffer();
+        map.set(new URL(path, 'https://app.test').pathname, new Response(body, { headers: response.headers }));
+      },
+      keys: async () => [...map.keys()].map((path) => ({ url: `https://app.test${path}` })),
+      delete: async (path: string | { url: string }) => map.delete(new URL(typeof path === 'string' ? path : path.url, 'https://app.test').pathname),
     };
   };
   const scope = {
@@ -185,6 +195,7 @@ function loadWorker(config: { version: string; base: string; pages: string[]; as
     },
   };
   const cachesApi = {
+    has: async (name: string) => stores.has(name),
     open: async (name: string) => cacheFor(name),
     keys: async () => [...stores.keys()],
     delete: async (name: string) => stores.delete(name),
@@ -193,7 +204,7 @@ function loadWorker(config: { version: string; base: string; pages: string[]; as
     fetched.push(`network ${new URL(request.url).pathname}`);
     return new Response('from network');
   };
-  const source = renderServiceWorker(TEMPLATE, config);
+  const source = renderServiceWorker(WORKER, config);
   new Function('self', 'caches', 'fetch', 'Request', 'Response', 'URL', 'setTimeout', 'clearTimeout', source)(
     scope,
     cachesApi,
@@ -289,7 +300,7 @@ describe('service worker behaviour (ADR-031)', () => {
     expect((await sw.request('https://app.test/capcut/editor/', { mode: 'navigate' }))?.body).toBe('from network');
     // The same worker with a network that fails (offline).
     const failing = () => Promise.reject(new TypeError('Failed to fetch'));
-    const source = renderServiceWorker(TEMPLATE, CONFIG);
+    const source = renderServiceWorker(WORKER, CONFIG);
     const handlers: Record<string, Handler> = {};
     new Function('self', 'caches', 'fetch', 'Request', 'Response', 'URL', 'setTimeout', 'clearTimeout', source)(
       { location: new URL('https://app.test/capcut/sw.js'), addEventListener: (t: string, h: Handler) => (handlers[t] = h) },
@@ -337,5 +348,68 @@ describe('service worker behaviour (ADR-031)', () => {
       { version: 'v2', owns: false },
       { version: 'v2', owns: false },
     ]);
+  });
+});
+
+describe('service worker: the share target (ADR-047)', () => {
+  /** The share sheet's request: a navigation POST of a multipart form. */
+  async function post(sw: ReturnType<typeof loadWorker>, url: string, files: File[], init: { mode?: string } = {}) {
+    const data = new FormData();
+    for (const file of files) data.append('video', file);
+    let answer: Promise<Response> | null = null;
+    const fake = { url, method: 'POST', mode: init.mode ?? 'navigate', destination: 'document', headers: new Headers(), formData: async () => data };
+    sw.handlers.fetch?.({ request: fake, respondWith: (promise: Promise<Response>) => (answer = promise) });
+    if (!answer) return null;
+    const response: Response = await answer;
+    return { status: response.status, location: response.headers.get('location') };
+  }
+
+  it('takes the POST to <base>/paylas/ on the device and answers with the opening screen (303)', async () => {
+    const sw = loadWorker(CONFIG);
+    await sw.lifecycle('install');
+    const clip = new File(['shared bytes'], 'tatil.mp4', { type: 'video/mp4' });
+    for (const url of ['https://app.test/capcut/paylas/', 'https://app.test/capcut/paylas']) {
+      const answer = await post(sw, url, [clip]);
+      expect(answer?.status, url).toBe(303);
+      expect(answer?.location).toMatch(/^https:\/\/app\.test\/capcut\/\?paylasim=[a-z0-9]+-[a-z0-9]{6}$/);
+    }
+    // One shared video at a time, in its own cache; the app's offline copy is untouched.
+    const shared = [...(sw.stores.get(SHARE_CACHE)?.keys() ?? [])];
+    expect(shared).toHaveLength(1);
+    expect(shared[0]).toMatch(/^\/capcut\/paylas\/dosya\/[a-z0-9]+-[a-z0-9]{6}$/);
+    expect([...sw.stores.keys()].sort()).toEqual(['clip-app-v2', SHARE_CACHE]);
+    // Nothing went to the network.
+    expect(sw.fetched.filter((entry) => entry.startsWith('network'))).toEqual([]);
+  });
+
+  it('a share without a video ends on the opening screen with the reason', async () => {
+    const sw = loadWorker(CONFIG);
+    const answer = await post(sw, 'https://app.test/capcut/paylas/', [new File(['x'], 'photo.jpg', { type: 'image/jpeg' })]);
+    expect(answer).toEqual({ status: 303, location: 'https://app.test/capcut/?paylasim-hata=video-degil' });
+    expect(sw.stores.has(SHARE_CACHE)).toBe(false);
+  });
+
+  it('leaves every other POST to the browser', async () => {
+    const sw = loadWorker(CONFIG);
+    const clip = new File(['x'], 'a.mp4', { type: 'video/mp4' });
+    expect(await post(sw, 'https://app.test/capcut/editor/', [clip])).toBeNull();
+    expect(await post(sw, 'https://app.test/capcut/paylas/', [clip], { mode: 'cors' })).toBeNull();
+    expect(await post(sw, 'https://other.test/capcut/paylas/', [clip])).toBeNull();
+    expect(await post(sw, 'https://app.test/other-project/paylas/', [clip])).toBeNull();
+  });
+
+  it('activation deletes a shared video that waited too long, and keeps a fresh one', async () => {
+    const sw = loadWorker(CONFIG);
+    await post(sw, 'https://app.test/capcut/paylas/', [new File(['x'], 'fresh.mp4', { type: 'video/mp4' })]);
+    const map = sw.stores.get(SHARE_CACHE);
+    const stale = new Response('old', {
+      headers: { 'x-clip-shared-at': String(Date.now() - SHARE_TTL_MS - 1000), 'x-clip-name': 'old.mp4', 'content-type': 'video/mp4' },
+    });
+    map?.set('/capcut/paylas/dosya/old-000000', stale);
+    expect(readShareEntry(stale.clone())?.name).toBe('old.mp4');
+    await sw.lifecycle('activate');
+    const left = [...(sw.stores.get(SHARE_CACHE)?.keys() ?? [])];
+    expect(left).toHaveLength(1);
+    expect(left[0]).not.toContain('old-000000');
   });
 });

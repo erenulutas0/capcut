@@ -45,8 +45,12 @@ export const CARD_NAVIGATION_FALLBACK_MS = 10_000;
  * its folders need (`/capcut/yap/kes/`) — what `next/link` itself renders.
  */
 export function fullPageHref(path: string, basePath: string = BASE_PATH, trailingSlash: boolean = process.env.NEXT_PUBLIC_TRAILING_SLASH === '1'): string {
-  const withSlash = trailingSlash && !path.endsWith('/') ? `${path}/` : path;
-  return `${basePath}${withSlash}`;
+  // A query (a card carrying the shared video, ADR-047: `/yap/gif?paylasim=…`) stays after the slash.
+  const queryAt = path.indexOf('?');
+  const pathname = queryAt < 0 ? path : path.slice(0, queryAt);
+  const query = queryAt < 0 ? '' : path.slice(queryAt);
+  const withSlash = trailingSlash && !pathname.endsWith('/') ? `${pathname}/` : pathname;
+  return `${basePath}${withSlash}${query}`;
 }
 
 export interface NavigationFallback {

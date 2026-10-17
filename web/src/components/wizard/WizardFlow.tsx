@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import type { CapabilityReportV1 } from '@/adapters/exportCapability';
 import { safeFileName, type MediaHandle } from '@/adapters/browserMedia';
+import { SHARE_PARAM, takeVideoForWizard } from '@/adapters/pwa/sharedVideo';
 import { BrowserNotice } from '@/components/BrowserNotice';
 import { FallbackLink, NavigationFallbackScope } from '@/components/FallbackLink';
 import { Icon, Wordmark } from '@/components/Icon';
@@ -211,6 +212,27 @@ export function WizardFlow({
     pickRef.current = pick;
   });
 
+  // Opened from the opening screen with a video in hand (shared to the app, ADR-047: `?paylasim=<id>`):
+  // that video is picked at once — no second file dialog — and its stored copy is deleted. Once per
+  // page; the address loses the query, so a reload is this wizard's own first step again.
+  const [shareGone, setShareGone] = useState<'gone' | 'lost' | null>(null);
+  const sharedTried = useRef(false);
+  useEffect(() => {
+    if (!hydrated || sharedTried.current) return;
+    sharedTried.current = true;
+    const search = window.location.search;
+    if (!search.includes(`${SHARE_PARAM}=`)) return;
+    try {
+      window.history.replaceState(window.history.state, '', window.location.pathname);
+    } catch {
+      // The address keeps its query; the stored copy is gone either way.
+    }
+    void takeVideoForWizard(search).then((taken) => {
+      if (taken === 'gone' || taken === 'lost') setShareGone(taken);
+      else if (taken) void pickRef.current(taken.file);
+    });
+  }, [hydrated]);
+
   // A file dropped anywhere on the pick step opens; dropped anywhere else it
   // must not make the browser leave the page to play it.
   useEffect(() => {
@@ -351,6 +373,11 @@ export function WizardFlow({
               </span>
               <span className="dropzone-hint">{t(phone || touchScreen ? 'wizard.pick.hint' : 'wizard.pick.hintDrop')}</span>
             </button>
+            {shareGone ? (
+              <p className="wizard-hint" data-testid="wizard-share-gone" data-reason={shareGone}>
+                {t(shareGone === 'lost' ? 'wizard.share.lost' : 'wizard.share.gone')}
+              </p>
+            ) : null}
             <MediaErrorNotice t={t} error={state.mediaError} onDismiss={state.clearMediaError} />
           </>
         ) : null}

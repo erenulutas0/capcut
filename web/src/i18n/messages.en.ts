@@ -90,7 +90,7 @@ export const en: Record<MessageKey, string> = {
   'privacy.draftBadge.named': 'Draft — legal review and some data controller details missing (doc 30 K02)',
   'privacy.draftBody':
     'This page describes what the app does today; it is not a legally reviewed privacy notice. Items marked “not decided” have not been settled yet.',
-  'privacy.updated': 'Last updated: 14 October 2026 · version {version} · build {commit}',
+  'privacy.updated': 'Last updated: 17 October 2026 · version {version} · build {commit}',
   'privacy.otherLanguage': 'Türkçe',
   'privacy.back': 'Home',
   'privacy.undecided': 'not decided',
@@ -153,6 +153,12 @@ export const en: Record<MessageKey, string> = {
   'privacy.stored.offline.where': 'Cache Storage, a cache whose name starts with “clip-app-”; the service worker registration (“sw.js”)',
   'privacy.stored.offline.delete':
     'The old copy is deleted when a new version arrives. Clearing this site’s data in the browser deletes all of it.',
+  'privacy.stored.shared.name': 'The video you shared (temporary copy)',
+  'privacy.stored.shared.body':
+    'When you share a video to this app from your phone’s share menu, a copy of it stays in this browser until it opens in a task, with its name, its type and the moment it was shared. Your phone hands over the copy and the site’s service worker takes it on this device: it is not sent anywhere. One video is kept at a time; if you share several files, only the first video is taken and the others are never stored. The one exception: if the browser has deleted this site’s data (you cleared it, or the browser deleted it to free space), there is no service worker; then your phone tries to send the video to the site’s server, which does not accept it, and the app does not open. If that happens, open the app once from its icon, then share again.',
+  'privacy.stored.shared.where': 'Cache Storage, a cache named “clip-shared” (one video at most)',
+  'privacy.stored.shared.delete':
+    'As soon as the video opens in a task (Kes, GIF yap…), and when you press “Başka bir video seç”. If you touch no task: after 15 minutes while the app is open, or the next time you open the app if you closed it. Clearing this site’s data in the browser deletes all of it too.',
   'privacy.stored.model.name':
     'Speech model (only if you pressed “Download the model”)',
   'privacy.stored.model.body':
@@ -1020,6 +1026,19 @@ export const en: Record<MessageKey, string> = {
   'home.editorLink': 'I will edit it myself',
   'home.trust': 'Your video never leaves your device. No account needed.',
   'home.trust.online': 'Your video never leaves your device; only if you choose, its sound is sent. No account needed.',
+  'home.title.video': 'What do you want to do with this video?',
+  'home.video.shared': 'The video you shared',
+  'home.video.picked': 'The video you picked',
+  'home.video.change': 'Choose another video',
+  'home.video.hint': 'Pick a task; the video opens in it.',
+  'home.share.many':
+    'You shared {n} files. One video opens at a time: I took the first video. Share the others one by one.',
+  'home.share.notVideo': 'The file you shared is not a video. This app works with videos only: share a video from your gallery.',
+  'home.share.empty': 'No file came with the share. Share again, or pick a task below and choose your video.',
+  'home.share.noSpace':
+    'There is not enough free space to open the video you shared. Free some space on your phone, or pick a task below and choose the video from your gallery: opened that way, no copy is made.',
+  'home.share.unreadable': 'The video you shared could not be read. Pick a task below and choose the video from your gallery.',
+  'home.share.gone': 'The video you shared is no longer here. Share it again, or pick a task below and choose your video.',
 
   'task.kes.label': 'Cut',
   'task.kes.sub': 'Keep the parts you want',
@@ -1127,6 +1146,8 @@ export const en: Record<MessageKey, string> = {
   'wizard.pick.hintDrop': 'Choose from your files, or drag the video here and drop it',
   'wizard.pick.drop': 'Drop it and we will open it',
   'wizard.pick.reading': 'Opening the video…',
+  'wizard.share.gone': 'The video you shared is no longer here. Choose your video here.',
+  'wizard.share.lost': 'The video you picked on the opening screen did not reach this page. Choose your video here again.',
   'wizard.video.label': 'The video you chose',
   'wizard.video.change': 'Change',
   'wizard.video.changeLabel': 'Choose another video',

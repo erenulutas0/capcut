@@ -97,6 +97,14 @@ const STORED: Array<{ name: MessageKey; body: MessageKey; where: MessageKey; del
     delete: 'privacy.stored.offline.delete',
   },
   {
+    // ADR-047: a video shared to the app from the phone's share menu, until a task takes it.
+    id: 'shared',
+    name: 'privacy.stored.shared.name',
+    body: 'privacy.stored.shared.body',
+    where: 'privacy.stored.shared.where',
+    delete: 'privacy.stored.shared.delete',
+  },
+  {
     // ADR-036: the speech model of "Yazıya dök", only after an explicit download.
     id: 'model',
     name: 'privacy.stored.model.name',
@@ -238,6 +246,8 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
               <p>{t(item.body)}</p>
               {/* The body names the one wizard hand-over that IS stored; a build with the route adds what of the internet one is kept (ADR-034 addendum). */}
               {CLOUD_ON && item.id === 'project' ? <p data-testid="stored-project-cloud">{ct('cloud.privacy.stored.project.extra')}</p> : null}
+              {/* A shared video is a video like any picked one: in this build its sound leaves only on "İnternette" (ADR-047). */}
+              {CLOUD_ON && item.id === 'shared' ? <p data-testid="stored-shared-cloud">{ct('cloud.privacy.stored.shared.extra')}</p> : null}
               <dl>
                 <dt>{t('privacy.stored.where')}</dt>
                 <dd>{t(item.where)}</dd>

@@ -13,7 +13,7 @@
 import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-import { collectPrecache, precacheVersion, renderServiceWorker } from './lib/precache.mjs';
+import { collectPrecache, precacheVersion, renderServiceWorker, withShareInbox } from './lib/precache.mjs';
 
 const webDir = process.cwd();
 const mode = process.env.STATIC_EXPORT === '1' ? 'export' : 'server';
@@ -25,7 +25,12 @@ if (!existsSync(target)) {
   process.exit(1);
 }
 
-const template = readFileSync(join(webDir, 'scripts', 'lib', 'service-worker.js'), 'utf8');
+// The worker's code: the template with the share target's inbox written in (ADR-047). The version
+// below is computed over this whole code, so a change in either file makes a new cache name.
+const template = withShareInbox(
+  readFileSync(join(webDir, 'scripts', 'lib', 'service-worker.js'), 'utf8'),
+  readFileSync(join(webDir, 'scripts', 'lib', 'share-target.mjs'), 'utf8'),
+);
 const list = collectPrecache({ webDir, mode, base });
 const pageUrls = list.pages.map((entry) => entry.url);
 // The opening screen, the editor, the privacy page and the task wizards

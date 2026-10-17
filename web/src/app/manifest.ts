@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 
 import { APP_BACKGROUND, APP_NAME, APP_THEME } from '@/appIdentity';
 import { withBasePath } from '@/basePath';
+import { SHARE_ACTION_PATH } from '../../scripts/lib/share-target.mjs';
 
 export const dynamic = 'force-static';
 
@@ -26,6 +27,16 @@ export default function manifest(): MetadataRoute.Manifest {
     display: 'standalone',
     background_color: APP_BACKGROUND,
     theme_color: APP_THEME,
+    // "LiloCut'a paylaş" (ADR-047): on Android, the installed app is a target of the share sheet for
+    // videos. The host only serves files; the service worker takes this POST on the device
+    // (scripts/lib/share-target.mjs) and opens the opening screen with the video. Videos only: the
+    // app opens nothing else, and a GIF is something it makes, not something it edits.
+    share_target: {
+      action: withBasePath(SHARE_ACTION_PATH),
+      method: 'POST',
+      enctype: 'multipart/form-data',
+      params: { files: [{ name: 'video', accept: ['video/*'] }] },
+    },
     icons: [
       { src: withBasePath('/icons/icon-192.png'), sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: withBasePath('/icons/icon-512.png'), sizes: '512x512', type: 'image/png', purpose: 'any' },

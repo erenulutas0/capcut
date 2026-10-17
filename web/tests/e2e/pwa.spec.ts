@@ -254,6 +254,7 @@ test.describe('install as an app', () => {
       lang: string;
       theme_color: string;
       background_color: string;
+      share_target: unknown;
       icons: Array<{ src: string; sizes: string; type: string; purpose: string }>;
     };
     expect(manifest).toMatchObject({
@@ -267,6 +268,13 @@ test.describe('install as an app', () => {
       lang: 'tr',
       theme_color: '#101315',
       background_color: '#101315',
+      // "LiloCut'a paylaş" (ADR-047): a target of Android's share sheet, for videos only.
+      share_target: {
+        action: '/paylas/',
+        method: 'POST',
+        enctype: 'multipart/form-data',
+        params: { files: [{ name: 'video', accept: ['video/*'] }] },
+      },
     });
     expect(manifest.icons.map((icon) => `${icon.sizes} ${icon.purpose}`).sort()).toEqual([
       '192x192 any',

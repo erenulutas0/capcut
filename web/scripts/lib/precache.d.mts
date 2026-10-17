@@ -15,3 +15,5 @@ export function renderServiceWorker(
   template: string,
   config: { version: string; base: string; pages: string[]; assets: string[] },
 ): string;
+export function inlineModule(source: string): string;
+export function withShareInbox(template: string, shareSource: string): string;

@@ -21,6 +21,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 const CONFIG_RE = /\/\* @clip-sw-config \*\/[\s\S]*?\/\* @end \*\//;
+const SHARE_MARKER = '/* @clip-sw-share */';
 
 function walk(folder) {
   if (!existsSync(folder)) return [];
@@ -112,4 +113,22 @@ export function renderServiceWorker(template, config) {
   if (!CONFIG_RE.test(template)) throw new Error('service worker template: no /* @clip-sw-config */ marker');
   const json = JSON.stringify(config);
   return template.replace(CONFIG_RE, () => `/* @clip-sw-config */ ${json} /* @end */`);
+}
+
+/**
+ * An ES module of plain functions as a classic script's code: its `export` words removed. Only for
+ * modules written for it (scripts/lib/share-target.mjs: no imports, top-level functions and
+ * constants); anything else stops the build rather than ship a worker that does not parse.
+ */
+export function inlineModule(source) {
+  const code = source.replace(/^export (?=(async )?function |const |let )/gm, '');
+  if (/^\s*(import|export)\b/m.test(code)) throw new Error('inlineModule: the module still has an import or export');
+  return code;
+}
+
+/** The worker template with the share target's inbox (ADR-047) written in at its marker. */
+export function withShareInbox(template, shareSource) {
+  if (!template.includes(SHARE_MARKER)) throw new Error('service worker template: no /* @clip-sw-share */ marker');
+  const code = inlineModule(shareSource);
+  return template.replace(SHARE_MARKER, () => `${SHARE_MARKER}\n${code}`);
 }

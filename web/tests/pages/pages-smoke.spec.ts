@@ -1,11 +1,12 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../e2e/fixtures';
 
 import { allowedConnectSrc, expectPolicy, expectedConnectSrc, watchCsp } from '../e2e/cspWatch';
 import { enhanceFixture, frameLumas } from '../e2e/enhance-media';
 import { addKesit, closeSheet, openMore, openSettings, installSavePicker, probeMp4, readSaved } from '../e2e/kesitFlow';
+import { shareFiles, storedShares, waitForWorker } from '../e2e/shareKit';
 import { APP_NAME } from '../../src/appIdentity';
 import { availableTasks } from '../../src/domain/tasks';
 
@@ -616,6 +617,50 @@ test('GIF yap under /capcut/: its worker, the typeface of its text and the saved
   expect(seen.outside).toEqual([]);
   expect(watch.violations).toEqual([]);
   expect(seen.failures).toEqual([]);
+});
+
+/**
+ * "LiloCut'a paylaş" (ADR-047) under the sub-path: the manifest's share target is `/capcut/paylas/`,
+ * the worker registered for `/capcut/` takes Android's POST there on the device and answers with
+ * `/capcut/?paylasim=<id>`; the cards carry the video under `/capcut/yap/…/`. Without the worker
+ * the POST meets the host (here `serve-static.mjs`, which answers 405 as GitHub Pages is reported to).
+ */
+test('share to the app under /capcut/: the worker takes the POST, the opening screen and a wizard have the video', async ({
+  page,
+  browser,
+  request,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  const seen = watchRequests(page);
+  const origin = new URL(testInfo.project.use.baseURL ?? '').origin;
+  const manifest = (await (await request.get('/capcut/manifest.webmanifest')).json()) as { share_target?: { action?: string } };
+  expect(manifest.share_target?.action).toBe('/capcut/paylas/');
+
+  await page.goto('./');
+  await waitForWorker(page);
+  const landed = await shareFiles(page, [OTHER_VIDEO], `${origin}/capcut/paylas/`);
+  expect(landed.pathname).toBe('/capcut/');
+  const id = landed.searchParams.get('paylasim') ?? '';
+  expect(id).toMatch(/^[a-z0-9]+-[a-z0-9]{6}$/);
+  expect(await storedShares(page)).toEqual([`/capcut/paylas/dosya/${id}`]);
+  await expect(page.getByTestId('home-title')).toHaveText('Bu videoyla ne yapmak istiyorsun?');
+  await expect(page.getByTestId('home-video-name')).toHaveText('other-8s.mp4');
+  await expect(page.getByTestId('task-dikey')).toHaveAttribute('href', `/capcut/yap/dikey/?paylasim=${id}`);
+  await page.getByTestId('task-dikey').click();
+  await expect(page).toHaveURL(/\/capcut\/yap\/dikey\/$/);
+  await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'choose', { timeout: 60_000 });
+  await expect(page.getByTestId('wizard-video-name')).toHaveText('other-8s.mp4');
+  await expect.poll(() => storedShares(page)).toBeNull();
+  expect(seen.outside).toEqual([]);
+
+  // No worker (the browser lost the site's data): the host's own answer, nothing of the app, nothing kept.
+  const bare = await browser.newContext({ serviceWorkers: 'block' });
+  const other = await bare.newPage();
+  const answer = other.waitForResponse((response) => response.request().method() === 'POST');
+  await shareFiles(other, [OTHER_VIDEO], `${origin}/capcut/paylas/`);
+  expect((await answer).status()).toBe(405);
+  await expect(other.getByTestId('home-title')).toHaveCount(0);
+  await bare.close();
 });
 
 /**
