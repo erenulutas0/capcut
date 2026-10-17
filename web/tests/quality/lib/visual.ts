@@ -49,6 +49,7 @@ const VOLATILE = [
   '[data-testid="export-save-space"]',
   '[data-testid="iyilestir-slow"]',
   '[data-testid="export-enhance"]',
+  '[data-testid="gif-measured-elapsed"]',
 ];
 
 export const BASELINES = join(process.cwd(), 'tests', 'quality', 'baselines');

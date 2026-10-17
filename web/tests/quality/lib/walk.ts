@@ -7,8 +7,11 @@
  * only when the file is what the card promised.
  */
 
+import { readFileSync } from 'node:fs';
+
 import { expect, type Page, type TestInfo } from '@playwright/test';
 
+import { inspectGif } from '../../../src/domain/gifInspect';
 import { enhanceFixture, frameRgb, rgbMeans } from '../../e2e/enhance-media';
 import { silenceFixture } from '../../e2e/silence-media';
 import { noisyLongFixture } from '../../e2e/targetsize-media';
@@ -246,6 +249,32 @@ export const FLOWS: Flow[] = [
         codecCheck(out, ['video:h264', 'audio:aac']),
         { name: 'görüntü aydınlandı (ortalama parlaklık en az +10)', ok: after - before >= 10, value: `${tr(before, 1)} → ${tr(after, 1)}` },
         { name: 'boyut aynı', ok: out.video?.width === source.video?.width && out.video?.height === source.video?.height, value: `${out.video?.width} × ${out.video?.height}` },
+      ];
+    },
+  },
+  {
+    // ADR-046: the part offered first (four seconds), a top text typed, the size left as it is.
+    id: 'gif',
+    sourceNote: 'sample-24s.mp4 (1280 × 720, 24 sn); üste yazı yazılır, kısım ve boyut değiştirilmeden',
+    source: () => SAMPLE,
+    middle: async (novice, page) => {
+      const estimate = page.getByTestId('gif-estimate');
+      await expect(estimate).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+      await novice.look('seçim', ['üst ya da alt yazı (isteğe bağlı)']);
+      await novice.type(t('wizard.gif.topLabel'), 'PAZARTESİ SABAHI', 'gif-text-top');
+      await expect(estimate).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+    },
+    download: { name: t('wizard.gif.download'), testId: 'wizard-download' },
+    verify: (out, _source, files) => {
+      const gif = inspectGif(new Uint8Array(readFileSync(files.out)));
+      return [
+        { name: 'GIF', ok: out.format === 'gif' && out.video?.codec === 'gif', value: `${out.format} / ${out.video?.codec ?? 'yok'}` },
+        { name: '320 × 180 (Küçük, kaynaktan büyük değil)', ok: out.video?.width === 320 && out.video?.height === 180, value: `${out.video?.width} × ${out.video?.height}` },
+        {
+          name: '50 kare, 4 sn, durmadan döner',
+          ok: gif.ok && gif.gif.frames === 50 && gif.gif.durationCs === 400 && gif.gif.loops === 0,
+          value: gif.ok ? `${gif.gif.frames} kare, ${tr(gif.gif.durationCs / 100)} sn, döngü ${gif.gif.loops ?? 'yok'}` : gif.reason,
+        },
       ];
     },
   },

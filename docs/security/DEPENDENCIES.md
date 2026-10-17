@@ -18,7 +18,8 @@ yazı tipi veya stil yüklenmez (CSP `default-src 'self'`, e2e "nothing leaves t
 | `scheduler` (react-dom bağımlılığı) | 0.28.0 | MIT | Her sayfa | |
 | `@swc/helpers` (next bağımlılığı) | 0.5.23 | Apache-2.0 | Derleyici yardımcıları | |
 | `mediabunny` | 1.58.1 | **MPL-2.0** | Yalnız editör: dosya açma/probe (sayfada, `import()` ile tembel), dışa aktarma ve sessizlik worker'ları | Değiştirilmeden kullanılıyor |
-| Inter (yazı tipi, 700, latin + latin-ext `woff2`) | — | **SIL OFL 1.1** | Yalnız altyazı yakma/önizleme, ihtiyaç olunca | Lisans metni dosyaların yanında yayınlanıyor: `web/public/fonts/caption/OFL.txt` |
+| Inter (yazı tipi, 700, latin + latin-ext `woff2`) | — | **SIL OFL 1.1** | Yalnız altyazı yakma/önizleme ve GIF yazısı, ihtiyaç olunca | Lisans metni dosyaların yanında yayınlanıyor: `web/public/fonts/caption/OFL.txt` |
+| `gifenc` | 1.0.3 | MIT (© 2017 Matt DesLauriers) | Yalnız "GIF yap"ın worker'ında (ADR-046): renk seçimi (PnnQuant) ve GIF/LZW yazıcısı | 2026-10-17 eklendi. Bağımlılığı yok; pakete giren `dist/gifenc.esm.js` 9 KB (küçültülmüş). Son sürüm 1.0.3 (npm kaydı en son 2022-05'te değişmiş): bakımı **etkin değil**, ama yalnızca hesap yapar (ağ, dosya, `eval` yok) ve GIF89a biçimi donmuş bir biçimdir. Sarıldığı yer tek dosya (`web/src/adapters/gif/gifEncode.ts`): gerekirse kendi kodlayıcımızla değiştirilebilir. `npm audit --omit=dev` eklendikten sonra 0. Tipleri bizim (`web/src/types/gifenc.d.ts`) |
 
 Arayüz yazı tipi yok: arayüz sistem yazı tiplerini kullanır (`--font-ui`, `--font-time`, `web/src/app/globals.css`).
 

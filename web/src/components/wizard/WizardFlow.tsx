@@ -58,6 +58,24 @@ export interface WizardHostProps {
   onOpenEditor: (handoff?: EditorHandoff) => void;
 }
 
+/**
+ * A task that makes a file of its own instead of a video ("GIF yap", ADR-046). Its own button is part of
+ * its choose step (the children); its own card is the result step. There is no "İndir" of the export
+ * and no "Daha fazla ayar → editörde aç": the editor does not make that file.
+ */
+export interface OwnDownload {
+  /** Where the task's own download stands; null while nothing was started (the choose step). */
+  phase: 'running' | 'saved' | 'ready' | 'canceled' | 'failed' | null;
+  busy: boolean;
+  /** The result step's card: progress, the saved file, a failure. */
+  status: ReactNode;
+  /** The heading when the file waits for its save button ("GIF'in hazır"). */
+  readyTitle: string;
+  cancel: () => void;
+  /** Back to the choose step, the same video and choices still there. */
+  dismiss: () => void;
+}
+
 /** What the choose step may want to know about the export side. */
 export interface FlowInfo {
   /** The capability check of the open video, once it finished (codecs, HDR). */
@@ -99,6 +117,8 @@ interface Props extends WizardHostProps {
    * than change settings ("Yazıya dök" over a transcript: it is what keeps the text).
    */
   editorNote?: string | null;
+  /** The task saves a file of its own (see `OwnDownload`). */
+  ownDownload?: OwnDownload;
   /** The one decision (or the one-line explanation) of this task. */
   children: ReactNode | ((info: FlowInfo) => ReactNode);
 }
@@ -135,6 +155,7 @@ export function WizardFlow({
   beforeEditor,
   downloadLabelKey = 'wizard.download',
   editorNote = null,
+  ownDownload,
   children,
 }: Props) {
   const hydrated = useHydrated();
@@ -152,15 +173,21 @@ export function WizardFlow({
   const exporter = useWizardExport({
     project: recipe ?? state.project,
     settings: state.settings,
-    videoFile: video?.file ?? null,
+    // A task with a download of its own never asks the export anything (no encoder check in the background).
+    videoFile: ownDownload ? null : (video?.file ?? null),
     videoName: video?.fileName ?? null,
     audioFile,
     fileTag,
     extras: exportExtras,
   });
-  const { entry, busy } = exporter;
+  const { entry } = exporter;
+  const busy = ownDownload ? ownDownload.busy : exporter.busy;
+  const ownPhase = ownDownload?.phase ?? null;
+  const started = ownDownload ? ownPhase !== null : entry !== null;
+  const dismissResult = () => (ownDownload ? ownDownload.dismiss() : exporter.dismiss());
 
-  const step: Step = !video || picking ? 'pick' : entry ? 'result' : 'choose';
+  const step: Step = !video || picking ? 'pick' : started ? 'result' : 'choose';
+  const resultPhase = ownDownload ? ownPhase : (entry?.phase ?? null);
   const totalSteps = task.steps.includes('editor') ? 2 : 3;
   const stepNumber = step === 'pick' ? 1 : step === 'choose' ? 2 : 3;
   const importing = state.importing === 'video';
@@ -175,7 +202,7 @@ export function WizardFlow({
 
   const pick = async (file: File) => {
     if (busy) return;
-    exporter.dismiss();
+    dismissResult();
     const opened = await openVideo(file);
     if (opened) setPicking(false);
   };
@@ -220,10 +247,10 @@ export function WizardFlow({
   const back = () => {
     if (step === 'result') {
       if (busy) {
-        if (window.confirm(t('wizard.leaveWarning'))) exporter.cancel();
+        if (window.confirm(t('wizard.leaveWarning'))) (ownDownload ? ownDownload.cancel : exporter.cancel)();
         return;
       }
-      exporter.dismiss();
+      dismissResult();
       return;
     }
     setPicking(true);
@@ -238,21 +265,23 @@ export function WizardFlow({
   const title =
     step === 'pick'
       ? t('wizard.pick.title')
-      : step === 'choose' || !entry
+      : step === 'choose' || resultPhase === null
         ? (step === 'choose' && chooseTitle) || t(titleKey)
-        : entry.phase === 'running'
+        : resultPhase === 'running'
           ? t('wizard.result.running')
-          : entry.phase === 'saved'
+          : resultPhase === 'saved'
             ? t('wizard.result.saved')
-            : entry.phase === 'ready'
-              ? t(entry.result.output === 'audio' ? 'wizard.result.readyAudio' : 'wizard.result.ready')
-              : entry.phase === 'canceled'
+            : resultPhase === 'ready'
+              ? ownDownload
+                ? ownDownload.readyTitle
+                : t(entry?.phase === 'ready' && entry.result.output === 'audio' ? 'wizard.result.readyAudio' : 'wizard.result.ready')
+              : resultPhase === 'canceled'
                 ? t('wizard.result.canceled')
                 : t('wizard.result.failed');
 
-  const finished = entry?.phase === 'saved' || entry?.phase === 'ready';
+  const finished = resultPhase === 'saved' || resultPhase === 'ready';
   const moreSettings =
-    video && !working && !busy ? (
+    video && !working && !busy && !ownDownload ? (
       <button type="button" className="link-button wizard-more" onClick={openEditor} data-testid="wizard-open-editor">
         {t('wizard.moreSettings')}
       </button>
@@ -338,7 +367,7 @@ export function WizardFlow({
             {typeof children === 'function'
               ? children({ capability: exporter.capability, busy, previewSize: exporter.previewSize })
               : children}
-            {working ? null : (
+            {working || ownDownload ? null : (
               <div className="wizard-actions">
                 {blockedText ? (
                   <p className="wizard-blocked" id="wizard-blocked" data-testid="wizard-blocked">
@@ -362,29 +391,39 @@ export function WizardFlow({
           </>
         ) : null}
 
-        {step === 'result' && video && entry ? (
+        {step === 'result' && video && resultPhase !== null ? (
           <>
             <VideoRow video={video} />
             <div className="wizard-result" data-testid="wizard-result">
-              <DownloadStatus
-                t={t}
-                entry={entry}
-                kind={entry.kind}
-                onCancel={exporter.cancel}
-                onDismiss={exporter.dismiss}
-                onReportProblem={() => setReportOpen(true)}
-                onShare={exporter.share}
-                device={phone || touchScreen}
-              />
+              {ownDownload ? (
+                ownDownload.status
+              ) : entry ? (
+                <DownloadStatus
+                  t={t}
+                  entry={entry}
+                  kind={entry.kind}
+                  onCancel={exporter.cancel}
+                  onDismiss={exporter.dismiss}
+                  onReportProblem={() => setReportOpen(true)}
+                  onShare={exporter.share}
+                  device={phone || touchScreen}
+                />
+              ) : null}
             </div>
-            {entry.phase === 'running' ? <p className="wizard-hint">{t('wizard.result.keepOpen')}</p> : null}
+            {resultPhase === 'running' ? <p className="wizard-hint">{t('wizard.result.keepOpen')}</p> : null}
             {finished ? (
               <div className="wizard-after">
+                {ownDownload ? (
+                  // Another GIF of the same video: the part, the size and the text are still there.
+                  <button type="button" className="btn" onClick={dismissResult} data-testid="wizard-again-same">
+                    {t('wizard.gif.again')}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="btn"
                   onClick={() => {
-                    exporter.dismiss();
+                    dismissResult();
                     setPicking(true);
                   }}
                   data-testid="wizard-again"
@@ -396,9 +435,9 @@ export function WizardFlow({
                 </FallbackLink>
               </div>
             ) : null}
-            {!finished && entry.phase !== 'running' ? (
+            {!finished && resultPhase !== 'running' ? (
               <div className="wizard-after">
-                <button type="button" className="btn" onClick={exporter.dismiss} data-testid="wizard-back-to-choice">
+                <button type="button" className="btn" onClick={dismissResult} data-testid="wizard-back-to-choice">
                   {t('wizard.result.backToChoice')}
                 </button>
               </div>

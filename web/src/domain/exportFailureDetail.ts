@@ -91,6 +91,8 @@ export const EXPORT_STAGES = [
   'recognise',
   /** Measuring loudness ("Boşlukları at"). */
   'loudness',
+  /** ADR-046: choosing the GIF's colours and writing its frames. */
+  'gif_encode',
   'unknown',
 ] as const;
 export type ExportStage = (typeof EXPORT_STAGES)[number];
@@ -176,6 +178,8 @@ export const KNOWN_ERROR_NAMES: ReadonlySet<string> = new Set([
   'EngineError',
   'DownloadError',
   'PreviewRefusal',
+  /** ADR-046: a refusal of the GIF worker. */
+  'GifFailure',
   /** Something that is not an Error object was thrown. */
   'NonError',
   /** The worker's `error` event carries no error object the page may read. */

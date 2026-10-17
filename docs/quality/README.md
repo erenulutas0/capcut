@@ -102,8 +102,8 @@ ayrı bir test yakalar (`web/tests/pages/`, CI'da).
 
 ### 1. Görev tamamlama yürüyüşleri (`walkthrough`)
 
-Betikli bir "ilk kez kullanan" (`web/tests/quality/lib/novice.ts`) ana ekrandan başlar, on kartın her
-biri için işi küçük bir deneme videosuyla bitirir ve gerçek bir dosya alır. Kural: yalnızca **görünen
+Betikli bir "ilk kez kullanan" (`web/tests/quality/lib/novice.ts`) ana ekrandan başlar, on bir kartın
+her biri için (GIF yap 17 Ekim 2026'da eklendi) işi küçük bir deneme videosuyla bitirir ve gerçek bir dosya alır. Kural: yalnızca **görünen
 ve adıyla bulunabilen** düğmelere basar (rol + erişilebilir ad), test kimliği kullanmaz. Bir adım adıyla
 bulunamazsa bu bir bulgudur; betik not eder ve ölçümün geri kalanı için test kimliğiyle devam eder.
 

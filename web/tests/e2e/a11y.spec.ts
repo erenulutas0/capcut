@@ -1023,8 +1023,8 @@ async function auditHome(page: Page, prefix: string, testInfo: TestInfo) {
   await expect(page.getByTestId('result-yazi').getByTestId('result-start')).toBeVisible();
   await audit(page, `${prefix}-home-yazi-result`, testInfo);
   // A request the app cannot serve yet: the row that says so, with no button (7 Oct 2026).
-  await finderBox(page).fill('gife çevir');
-  await expect(page.getByTestId('result-gif').getByTestId('result-unavailable')).toHaveText('Bunu henüz yapamıyoruz.');
+  await finderBox(page).fill('whatsapp çıkartması yap');
+  await expect(page.getByTestId('result-sticker').getByTestId('result-unavailable')).toHaveText('Bunu henüz yapamıyoruz.');
   await expect(page.getByTestId('result-start')).toHaveCount(0);
   await audit(page, `${prefix}-home-cannot-yet`, testInfo);
   expect(await horizontalOverflow(page), `${prefix} home, cannot yet`).toBe(0);
@@ -1505,15 +1505,15 @@ test.describe('a11y: “Sesi kapat” and “Bunu henüz yapamıyoruz.”, axe a
     { name: 'phone-390', width: 390, height: 844 },
     { name: 'desktop-1440', width: 1440, height: 900 },
   ]) {
-    test(`${size.name}: the ten cards, both answers of the search, every step of the wizard — no axe finding, nothing scrolls sideways`, async ({
+    test(`${size.name}: the eleven cards, both answers of the search, every step of the wizard — no axe finding, nothing scrolls sideways`, async ({
       page,
     }, testInfo) => {
       await page.setViewportSize({ width: size.width, height: size.height });
 
-      // The opening screen with ten cards; "Sesi kapat" found; a request that cannot be served.
+      // The opening screen with eleven cards; "Sesi kapat" found; a request that cannot be served.
       await page.goto('/');
-      await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(10);
-      await audit(page, `${size.name}-home-ten-cards`, testInfo);
+      await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(11);
+      await audit(page, `${size.name}-home-eleven-cards`, testInfo);
       expect(await horizontalOverflow(page), 'home').toBe(0);
       await finderBox(page).fill('sesini kapat');
       await expect(page.getByTestId('result-sustur').getByTestId('result-start')).toBeVisible();
@@ -1603,12 +1603,12 @@ test.describe('a11y: “Sesi kapat” and “Bunu henüz yapamıyoruz.”, axe a
   });
 
   for (const width of [320, 640]) {
-    test(`reflow at ${width} px: the ten cards, the honest answer and the wizard never scroll sideways; nothing clips with wider text spacing`, async ({
+    test(`reflow at ${width} px: the eleven cards, the honest answer and the wizard never scroll sideways; nothing clips with wider text spacing`, async ({
       page,
     }) => {
       await page.setViewportSize({ width, height: 720 });
       await page.goto('/');
-      await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(10);
+      await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(11);
       expect(await horizontalOverflow(page), 'home').toBe(0);
       await finderBox(page).fill('arka planı bulanıklaştır');
       await expect(page.getByTestId('result-arkaplan')).toBeVisible();

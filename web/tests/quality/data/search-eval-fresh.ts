@@ -150,7 +150,7 @@ export const FRESH_HELD_OUT: readonly EvalPhrase[] = [
   p('hızlandır', 'cannot', 'tr'),
   p('ağır çekim yap', 'cannot', 'tr'),
   p('iki videoyu birlestir', 'cannot', 'tr ascii'),
-  p('bundan gif olur mu', 'cannot', 'tr argo'),
+  p('bundan gif olur mu', 'gif', 'tr argo'),
   p('tiktok yazısını sil', 'cannot', 'tr'),
   p('filigranı kaldr', 'cannot', 'tr yazım'),
   p('siyah beyaz olsun', 'cannot', 'tr'),

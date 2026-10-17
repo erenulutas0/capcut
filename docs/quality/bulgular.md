@@ -1,5 +1,25 @@
 **Yazıldığı koşu:** 11 Ekim 2026 öğleden sonra, dal `worktree-agent-a511c0275d7647e51` (önceki bulgular: aynı gün, `b8e355f`). O raporda açık kalan üç şey üzerinde çalışıldı: aramanın yanlış karta göndermesi, editörün her videoyu 1080p’ye büyütmesi, 720p’den küçük kaynakların büyütülmesi. Aşağıda her biri için aynı ölçünün önceki → şimdiki değeri var. Açık kalanlar en başta.
 
+### 17 Ekim — "GIF yap" on birinci kart (ADR-046; dal `worktree-agent-ab29a64817aeefa71`)
+
+676 ölçü (önce 643): **598 bütçe içinde, 8 dışında** (aynı açık maddeler: yedi arama ölçüsü ve
+`out.notFaststart`; bu işten yeni bütçe dışı ölçü yok), 5 ölçülemedi, 65 bütçesiz. Farklı ekran **0** — ilk
+koşuda `ana-ekran` iki görünümde farklıydı (%4,2 / %19,9: on bir kart, öndeki kart iki yer kaplıyor); fark
+resimlerine bakıldıktan sonra yalnız bu iki taban elle yenilendi. Yeni tabanlar: `sihirbaz-gif-secim` (iki yazı
+yazılmış; video gizlenerek, yoksa maskesi yazı kutularını örtüyordu), `yol-gif-ilk`, `yol-gif-sonuc`.
+
+- **GIF yürüyüşü:** masaüstü ve telefonda dosya çıktı ve doğru (GIF, 320 × 180, 50 kare, 4 sn, sonsuz döngü);
+  tıklama 3 / 4, yazılan alan 1, karar ekranı 1, teknik terim 0, adıyla bulunamayan 0; karttan dosyaya 9,7 sn
+  (masaüstü; iki kez boyut tahmininin bitmesi beklendi) / 3,5 sn (telefon). Dosyası doğrulanan görev 9 → **10**.
+- **GIF ekranı, erişilebilirlik:** telefonda en küçük yazı 14 px, 44 px'ten küçük hedef 0, adsız kontrol 0, axe 0;
+  11 sekme durağı, ulaşılamayan 0.
+- **Arama:** yeni ayrı kümede doğrudan doğru %54,1 → %53,7, ilk satır %75,7 → %75,8, yanlış ama emin %3 → %3;
+  "henüz yapamıyoruz" isabet / kesinlik %88 / %88,2 → %87,5 / %87,5 (bir ifade "yapamıyoruz"dan işe geçti;
+  ADR-046 "Arama").
+- **Yük:** ana ekran aktarılan JS 183 → 184 KB, sihirbaz `/yap/dikey/` 230 → 233 KB (yeni metinler ve
+  `WizardFlow`); GIF ekranının kodu, kodlayıcısı ve worker'ı ayrı parçalarda, yalnız `/yap/gif` yükler.
+  Telefon kısıtlamasında TBT ana ekran 121, editör 121, sihirbaz 113 ms (bütçe ≤ 200).
+
 ### 15 Ekim akşamı — ölü görünen bağlantılar, ölü kod, react 19.3.1 yaması (ADR-044 Ek 2; dal `worktree-agent-a1b21395390822816`)
 
 Bu rapor o dalın son koduyla (`f1dd38e`) koşuldu. Farklı ekran **0**, taban yenilenmedi; 643 ölçü: **566 bütçe içinde,

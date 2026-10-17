@@ -39,7 +39,7 @@ test.describe('opening screen', () => {
 
     // The cards, in the registry's order: exactly the tasks that work today.
     const cards = page.getByTestId('task-grid').getByRole('link');
-    await expect(cards).toHaveCount(10);
+    await expect(cards).toHaveCount(11);
     expect(await cards.evaluateAll((links) => links.map((link) => link.getAttribute('href')))).toEqual(
       availableTasks().map((task) => `/yap/${task.id}`),
     );
@@ -56,6 +56,8 @@ test.describe('opening screen', () => {
     await expect(page.getByTestId('task-sustur')).toContainText('Sesi kapat');
     await expect(page.getByTestId('task-sustur')).toContainText('Videoyu sessiz yap');
     await expect(page.getByTestId('task-cevir')).toContainText('Her yerde açılsın');
+    await expect(page.getByTestId('task-gif')).toContainText('GIF yap');
+    await expect(page.getByTestId('task-gif')).toContainText('Videodan hareketli resim');
     // Kes is first (the lead card); "Sesi kapat" sits right after "Sesini al".
     const order = await cards.evaluateAll((links) => links.map((link) => link.getAttribute('data-testid')));
     expect(order[0]).toBe('task-kes');
@@ -91,7 +93,7 @@ test.describe('opening screen', () => {
           return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
         }),
       );
-      expect(boxes).toHaveLength(10);
+      expect(boxes).toHaveLength(11);
       for (const rect of boxes) {
         expect(rect.width).toBeGreaterThanOrEqual(120);
         expect(rect.height).toBeGreaterThanOrEqual(120);
@@ -102,13 +104,16 @@ test.describe('opening screen', () => {
       const sorted = [...boxes].sort((a, b) => a.y - b.y || a.x - b.x);
       expect(boxes).toEqual(sorted);
       // Two columns on a phone; from 700 px three; from 1000 px four when that leaves no card
-      // alone — ten cards ("İyileştir" is the tenth, ADR-037) are 4 + 4 + 2 on a desktop.
+      // alone. Eleven cards ("GIF yap" is the eleventh, ADR-046): the lead card takes two places,
+      // so the rows are full — Kes + 2, 4, 4 on a desktop; Kes alone across the phone, then five of two.
       const columns = new Set(boxes.map((rect) => Math.round(rect.x))).size;
       expect(columns).toBe(size.width >= 1000 ? 4 : size.width >= 700 ? 3 : 2);
       const rows = new Map<number, number>();
       for (const rect of boxes) rows.set(Math.round(rect.y), (rows.get(Math.round(rect.y)) ?? 0) + 1);
-      // No card alone on a row: 4 + 4 + 2 on a desktop, five rows of two on a phone.
-      expect([...rows.values()]).toEqual(size.width >= 1000 ? [4, 4, 2] : [2, 2, 2, 2, 2]);
+      expect([...rows.values()]).toEqual(size.width >= 1000 ? [3, 4, 4] : [1, 2, 2, 2, 2, 2]);
+      // The lead card is two cards wide (and a gap).
+      const [lead, second] = boxes;
+      expect(lead && second ? lead.width : 0).toBeGreaterThan((second?.width ?? 0) * 2);
 
       // Every other control is at least 44 px tall.
       for (const testId of ['home-editor-link', 'finder-input', 'finder-example']) {
@@ -421,7 +426,8 @@ test.describe('type to find', () => {
       ['videoyu döndür', 'dondur', 'Döndür'],
       ['hızlandır', 'hiz', 'Hızlandır ya da yavaşlat'],
       ['iki videoyu birleştir', 'birlestir', 'Videoları birleştir'],
-      ['gife çevir', 'gif', 'GIF yap'],
+      // "gife çevir" was here until "GIF yap" became a card (ADR-046); a chat app's sticker still is not one.
+      ['whatsapp çıkartması yap', 'sticker', 'Çıkartma yap'],
       ['tiktok logosunu kaldır', 'filigran', 'Filigran ya da logo sil'],
       ['filtre ekle', 'efekt', 'Filtre ve renk'],
       ['arka planı sil', 'arkaplan', 'Arka planı değiştir'],

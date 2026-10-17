@@ -1,7 +1,8 @@
 /**
  * Page-side watch over one job of a background worker (ADR-042, addendum of
  * 13 Oct 2026): the loudness worker, the transcript worker (model download
- * and transcription), the cloud sound worker and the "İyileştir" preview.
+ * and transcription), the cloud sound worker, the "İyileştir" preview and
+ * the GIF worker (ADR-046).
  *
  * The export got this first (`exportClient.ts`). Without it these jobs had
  * three ways to wait for ever: a worker whose message could not be read
@@ -61,6 +62,12 @@ export const STALL_LIMITS_MS = {
    */
   enhancePreview: 60_000,
   /**
+   * "GIF yap" (ADR-046): progress after every frame (at most every 100 ms) while the part is decoded
+   * and while the GIF is written; before the first one only the opening of the file (the ADR-040 check
+   * caps its reads at 4 s) and the font. One frame of a GIF is one decode and one small drawing.
+   */
+  gif: 60_000,
+  /**
    * Model download: bytes are reported as they arrive (at most every
    * 100 ms), and the checksum pass reports as it reads. Two minutes without
    * one byte is a connection that has stopped, not a slow one; the stored
@@ -116,7 +123,7 @@ export interface WorkerTestFault {
   message?: string;
 }
 
-export type WatchedWorker = 'silence' | 'model_download' | 'transcript' | 'cloud_audio' | 'enhance_preview';
+export type WatchedWorker = 'silence' | 'model_download' | 'transcript' | 'cloud_audio' | 'enhance_preview' | 'gif';
 
 /**
  * Test builds only (`window.__clipWorkerFault = { worker, kind, … }`): the

@@ -299,7 +299,7 @@ test('installable and offline under /capcut/: manifest, service worker, offline 
     expect(paths).toContain(stored);
   }
   const allowed = [
-    /^\/capcut\/((editor|gizlilik|gizlilik\/en|yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|cevir|iyilestir))\/)?$/,
+    /^\/capcut\/((editor|gizlilik|gizlilik\/en|yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|cevir|iyilestir|gif))\/)?$/,
     /^\/capcut\/_next\/static\/.+\.(js|css|png|svg)$/,
     /^\/capcut\/fonts\/caption\/inter-latin(-ext)?-700-normal\.woff2$/,
     /^\/capcut\/icons\/(icon-192|icon-512|maskable-512)\.png$/,
@@ -585,6 +585,37 @@ test('İyileştir under /capcut/: before/after from the export worker, download,
   expect(watch.violations).toEqual([]);
   expect(seen.failures).toEqual([]);
   expect(seen.outside).toEqual([]);
+});
+
+test('GIF yap under /capcut/: its worker, the typeface of its text and the saved GIF, the policy holds', async ({
+  page,
+  context,
+}, testInfo) => {
+  test.setTimeout(180_000);
+  const seen = watchRequests(page);
+  const watch = await watchCsp(context);
+  await watch.attach(page);
+  await installSavePicker(page);
+
+  await page.goto('./');
+  await expect(page.getByTestId('task-gif')).toHaveAttribute('href', '/capcut/yap/gif/');
+  await page.goto('yap/gif/');
+  await expectPolicy(page);
+  await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+  await expect(page.getByTestId('gif-estimate')).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+  // Text: the worker loads the caption typeface from the sub-path, or refuses ("Yazının harfleri yüklenemedi").
+  await page.getByTestId('gif-text-top').fill('PAZARTESİ');
+  await expect(page.getByTestId('gif-estimate')).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+  await page.getByTestId('wizard-download').click();
+  await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
+  const savedPath = await readSaved(page, testInfo, 'saved-other-8s_gif.gif');
+  const bytes = readFileSync(savedPath);
+  expect(bytes.subarray(0, 6).toString('latin1')).toBe('GIF89a');
+  expect(bytes.readUInt16LE(6)).toBe(320);
+  expect(bytes.readUInt16LE(8)).toBe(180);
+  expect(seen.outside).toEqual([]);
+  expect(watch.violations).toEqual([]);
+  expect(seen.failures).toEqual([]);
 });
 
 /**

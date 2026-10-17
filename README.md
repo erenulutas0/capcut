@@ -27,8 +27,10 @@ sığdırır), **Yazıya dök** (İngilizce konuşmayı bu cihazda zaman damgal�
 çevirir; [ADR-036](docs/adr/ADR-036-on-device-transcript.md); davet koduyla "İnternette" yolu,
 [ADR-039](docs/adr/ADR-039-cloud-transcript-route.md)), **Müzik ekle**, **Sesini al**
 (videonun sesi M4A olarak), **Sesi kapat** (aynı video, ses izi olmadan), **Her yerde açılsın**,
-**İyileştir** (ışık, renk, keskinlik, kumlanma; [ADR-037](docs/adr/ADR-037-enhance.md)) — on kart.
-Henüz yapılamayan bir şey yazılırsa (kayıtta on sekiz istek: döndür, hızlandır, videoları birleştir, GIF,
+**İyileştir** (ışık, renk, keskinlik, kumlanma; [ADR-037](docs/adr/ADR-037-enhance.md)), **GIF yap**
+(videonun en çok 10 saniyelik bir kısmı, üst ve alt yazıyla, durmadan dönen GIF; [ADR-046](docs/adr/ADR-046-gif.md))
+— on bir kart.
+Henüz yapılamayan bir şey yazılırsa (kayıtta on sekiz istek: döndür, hızlandır, videoları birleştir, çıkartma (sticker),
 filigran sil, filtre, arka plan, tersten oynat, videodan fotoğraf, titremeyi düzelt, videoya yazı ekle,
 yüzü gizle, başka dile çevir, sesteki gürültüyü temizle, internetten video indir, siteye yükle, ekran
 kaydı, canlı yayın) arama başka bir kart önermez, "Bunu henüz yapamıyoruz." der. Editör "Kendim düzenleyeceğim" bağlantısıyla bir

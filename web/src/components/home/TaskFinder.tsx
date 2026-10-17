@@ -34,6 +34,15 @@ export function wideColumns(count: number): 3 | 4 {
   return count % 4 === 2 ? 4 : 3;
 }
 
+/**
+ * An odd number of cards (eleven since "GIF yap", ADR-046): the lead card takes two places, so the
+ * phone's two columns have no card alone on the last row, and the wider grids fill too (12 places:
+ * 4 + 4 + 4, or 3 + 3 + 3 + 3).
+ */
+export function leadWide(count: number): boolean {
+  return count % 2 === 1;
+}
+
 function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
 }
@@ -299,7 +308,12 @@ export function TaskFinder() {
             <h2 className="home-label" id="task-grid-title" ref={gridRef} tabIndex={-1}>
               {t('home.tasks.title')}
             </h2>
-            <ul className="task-grid" data-columns={wideColumns(cards.length)} data-testid="task-grid">
+            <ul
+              className="task-grid"
+              data-columns={wideColumns(cards.length + (leadWide(cards.length) ? 1 : 0))}
+              data-lead-wide={leadWide(cards.length)}
+              data-testid="task-grid"
+            >
               {cards.map((task, index) => {
                 const opening = pendingPath === taskHref(task);
                 return (

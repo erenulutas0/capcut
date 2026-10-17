@@ -124,7 +124,7 @@ for (const size of SIZES) {
     await page.getByTestId('finder-input').fill('sesi kes');
     await shot('03-search-two-results');
     // A request the app cannot serve yet: "Bunu henüz yapamıyoruz.", no button.
-    await page.getByTestId('finder-input').fill('gife çevir');
+    await page.getByTestId('finder-input').fill('videoyu döndür');
     await shot('04-search-unavailable');
     await page.getByTestId('finder-input').fill('pizza siparişi');
     await shot('05-search-none');

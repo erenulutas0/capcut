@@ -107,7 +107,7 @@ test('ana ekran ve arama', async ({ page }, testInfo) => {
   try {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(t('home.title'));
-    await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(10);
+    await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(11);
     // Typed without Turkish letters, as on a keyboard that has none.
     await page.getByRole('combobox').first().fill('kucult');
     await expect(page.getByTestId('result-kucult')).toBeVisible();
@@ -119,7 +119,7 @@ test('ana ekran ve arama', async ({ page }, testInfo) => {
       testInfo,
       'ana-ekran',
       errors.length > 0 ? 'broken' : 'works',
-      errors.length > 0 ? `yakalanmamış hata: ${errors[0]}` : 'açıldı; 10 kart; “kucult” yazıp Enter → Küçült sihirbazı',
+      errors.length > 0 ? `yakalanmamış hata: ${errors[0]}` : 'açıldı; 11 kart; “kucult” yazıp Enter → Küçült sihirbazı',
       { problems },
     );
   } catch (error) {

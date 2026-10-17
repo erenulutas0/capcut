@@ -140,6 +140,12 @@ export const PHRASES: ReadonlyArray<readonly [string, TaskId]> = [
   ['gif e dönüştür', 'gif'],
   ['convert to gif', 'gif'],
   ['animated gif', 'gif'],
+  // Split off "GIF yap" on 17 Oct 2026 (ADR-046): a chat app's sticker is still not something the app makes.
+  ['sticker yap', 'sticker'],
+  ['whatsapp çıkartması', 'sticker'],
+  ['çıkartma yap', 'sticker'],
+  ['make a sticker', 'sticker'],
+  ['telegram sticker', 'sticker'],
   ['filigran', 'filigran'],
   ['filigran sil', 'filigran'],
   ['logoyu kaldır', 'filigran'],
@@ -365,7 +371,7 @@ describe('searchTasks: rules', () => {
   it('a request the app cannot serve yet is answered as such, and no card that does another job is offered under it', () => {
     // Until 7 Oct 2026 these found a card with a "Başla" button: Her yerde açılsın, Dikey yap, Kes, Müzik ekle.
     for (const [phrase, id] of [
-      ['gife çevir', 'gif'],
+      ['whatsapp çıkartması yap', 'sticker'],
       ['tiktok logosunu kaldır', 'filigran'],
       ['logo sil', 'filigran'],
       ['arka planı sil', 'arkaplan'],
@@ -457,16 +463,17 @@ describe('searchTasks: rules', () => {
 });
 
 describe('task registry', () => {
-  const CARDS = ['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'sustur', 'cevir', 'iyilestir'];
+  // 17 Oct 2026: "GIF yap" (ADR-046) became the eleventh card; the sticker it used to answer for stays "not yet".
+  const CARDS = ['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'sustur', 'cevir', 'iyilestir', 'gif'];
   const CANNOT_YET = [
-    'dondur', 'hiz', 'birlestir', 'gif', 'filigran', 'efekt', 'arkaplan', 'ters', 'foto', 'stabil',
+    'dondur', 'hiz', 'birlestir', 'sticker', 'filigran', 'efekt', 'arkaplan', 'ters', 'foto', 'stabil',
     // 10 Oct 2026
     'yaziekle', 'yuz', 'tercume', 'gurultu',
     // 10 Oct 2026, after the quality report
     'indir', 'yukle', 'kayit', 'yayin',
   ];
 
-  it('lists the ten tasks in card order — Kes first, Sesi kapat next to Sesini al — then what cannot be done yet', () => {
+  it('lists the eleven tasks in card order — Kes first, Sesi kapat next to Sesini al — then what cannot be done yet', () => {
     expect(TASKS.map((task) => task.id)).toEqual([...CARDS, ...CANNOT_YET]);
     expect(new Set(TASKS.map((task) => task.id)).size).toBe(TASKS.length);
   });

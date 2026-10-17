@@ -127,9 +127,18 @@ describe('confidence: what the user gets', () => {
   });
 
   it('“Bunu henüz yapamıyoruz.” is never turned into a question', () => {
-    for (const phrase of ['gife çevir', 'videoyu döndür', 'tiktok logosunu kaldır', 'youtubedan video indir']) {
+    for (const phrase of ['whatsapp çıkartması yap', 'videoyu döndür', 'tiktok logosunu kaldır', 'youtubedan video indir']) {
       const result = found(phrase);
       expect(result.matches[0]?.task.available, phrase).toBe(false);
+      expect(result.confidence, phrase).toBe('sure');
+    }
+  });
+
+  it('"GIF yap" (ADR-046) is answered as the card it now is, not asked about', () => {
+    for (const phrase of ['gife çevir', 'gif yap', 'make a gif', 'videodan gif']) {
+      const result = found(phrase);
+      expect(result.matches[0]?.task.id, phrase).toBe('gif');
+      expect(result.matches[0]?.task.available, phrase).toBe(true);
       expect(result.confidence, phrase).toBe('sure');
     }
   });
