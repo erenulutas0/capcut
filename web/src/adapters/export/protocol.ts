@@ -234,6 +234,13 @@ export type WorkerRequest =
        * other build.
        */
       refuseConstantBitrate?: boolean;
+      /**
+       * Measurement hook only (`window.__clipOutputLimitBytes`, 17 Oct 2026): a
+       * SMALLER largest-download size than `OUTPUT_FILE_LIMIT_BYTES` (4 GiB − 1
+       * byte), so that a short output is held, and stopped, the way a long one
+       * is. It can only lower the limit. The app never sets it.
+       */
+      outputLimitBytes?: number | null;
       /** Test builds only (`window.__clipExportFault`): see `ExportTestFault`. Ignored in every other build. */
       testFault?: ExportTestFault | null;
     }

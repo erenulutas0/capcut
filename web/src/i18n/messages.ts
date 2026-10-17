@@ -594,6 +594,7 @@ export const tr = {
   'export.why.error': 'görüntü olduğu gibi kopyalanamadı',
   'export.why.requested_encode': 'yeniden işleme istendi',
   'export.why.target_size': 'görüntü olduğu gibi bu boyuta sığmıyor',
+  'export.why.output_size': 'görüntü olduğu gibi kopyalansaydı dosya 4,29 GB’tan büyük olurdu',
   'export.why.enhance': 'iyileştirme her kareyi değiştiriyor',
   // "Ayrıntılar" → "Yöntem": the same fact in engineering words.
   'export.methodDetail.copy': 'Hızlı kesim — görüntü yeniden kodlanmadı, orijinal kalite',
@@ -622,6 +623,7 @@ export const tr = {
   'export.fallback.requested_encode': 'tam kodlama istendi',
   // ADR-035: "Küçült" (hedef boyut) ve "Sesini al" (yalnızca ses).
   'export.fallback.target_size': 'orijinal görüntü hedef boyuta sığmıyor',
+  'export.fallback.output_size': 'kopya 4,29 GB’ı aşardı',
   'export.refusedTitle': 'Bu indirme yapılamıyor.',
   'export.running.pass': 'Dosya istenenden büyük çıktı; daha küçük olacak şekilde yeniden hazırlanıyor ({pass}. deneme)',
   'export.running.audio': 'Ses dosyası oluşturuluyor',
@@ -700,8 +702,18 @@ export const tr = {
     'Video yazılırken diskte yer kalmadı. Yarım dosya silindi, indirilecek bir şey yok. Diskte yer açıp tekrar dene.',
   'export.fail.output_too_long_for_memory':
     'Bu tarayıcı videoyu diske yazamıyor; burada en fazla 5 dakikalık video indirilebilir. Daha kısa bir kesit indir ya da gizli olmayan bir pencerede, güncel bir tarayıcıda dene.',
+  // 17 Oct 2026: the length comes from the free space the disk really gave and this download's own
+  // bitrate (`storageFitSuggestion`); without an honest number, no number.
   'export.fail.output_storage_insufficient':
-    'Bu uzunlukta bir video için boş disk alanı yetmiyor. Diskte yer aç ya da en fazla 5 dakikalık bir kesit indir; hiçbir kare kodlanmadı.',
+    'Bu uzunlukta bir video için boş disk alanı yetmiyor. Diskte yer açıp yeniden dene; hiçbir kare kodlanmadı.',
+  'export.fail.output_storage_insufficient_fit':
+    'Bu uzunlukta bir video için boş disk alanı yetmiyor. Diskte yer aç ya da en fazla {length} bir kesit indir; hiçbir kare kodlanmadı.',
+  'export.fail.fitMinutes': '{n} dakikalık',
+  'export.fail.fitMinutesOne': '1 dakikalık',
+  'export.fail.fitSeconds': '{n} saniyelik',
+  'export.fail.fitSecondsOne': '1 saniyelik',
+  'export.fail.output_too_large':
+    `Video 4,29 GB’tan büyük olacaktı; ${APP_NAME} bu kadar büyük bir dosyayı yeniden açamaz. Yarım dosya silindi. Daha kısa bir kesit indir ya da Ayarlar’da “En çok 720p”yi seç.`,
   'export.fail.worker_unavailable': 'Arka plan işleyicisi başlatılamadı.',
   // 11 Oct 2026: it happened once on a real machine and the next press worked — so the sentence says what to do.
   'export.fail.internal_error': 'Beklenmeyen bir hata oluştu. Bir kez daha dene; yine olursa “Sorun bildir”e bas.',
@@ -887,6 +899,8 @@ export const tr = {
     'Seçtiğin dosyaya yazılamadı (izin verilmedi ya da dosya başka bir programda açık). Başka bir yer ya da ad seçip yeniden dene.',
   'export.fail.storageFileReservation':
     'Seçtiğin yerde bu video için yaklaşık {required} boş yer gerekiyor; o diskte bu kadar yer yok. Başka bir disk seç ya da yer aç; hiçbir kare kodlanmadı.',
+  'export.fail.storageFileRoom':
+    'Seçtiğin yerde bu video için yaklaşık {required} boş yer gerekiyor; o diskte yalnızca yaklaşık {room} var. Başka bir disk seç ya da yer aç.',
   // ---- "İyileştir" (ADR-037): the card, its wizard, the editor setting, the result ----
   'task.iyilestir.label': 'İyileştir',
   'task.iyilestir.sub': 'Işık, renk, netlik',

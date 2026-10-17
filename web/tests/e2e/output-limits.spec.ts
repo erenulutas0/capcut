@@ -12,6 +12,8 @@ import {
   installSavePicker,
 } from './kesitFlow';
 import { timelineFixture } from './timeline-media';
+import { maxVideoBitrateForFileLimit } from '../../src/domain/outputStorage';
+import { US_PER_SECOND } from '../../src/domain/time';
 
 /**
  * Policy v3 (doc 15, ADR-020): 60 minutes of output where the file goes to
@@ -214,6 +216,11 @@ test.describe('real quota: the space is claimed before encoding (ADR-023)', () =
     await expect(page.getByTestId('export-failed-storage')).toContainText(
       /Bu video için gereken boş alan: \d+(,\d)? MB\. Tarayıcı bu kadar yeri diskte ayıramadı/,
     );
+    // The browser's own disk: a video of up to 5 minutes still goes through memory (doc 15 v3), and
+    // 64 MB holds less than that here, so 5 minutes is the honest length to suggest.
+    await expect(page.getByTestId('export-failed-reason')).toHaveText(
+      'Bu uzunlukta bir video için boş disk alanı yetmiyor. Diskte yer aç ya da en fazla 5 dakikalık bir kesit indir; hiçbir kare kodlanmadı.',
+    );
     await expect(page.getByTestId('export-download')).toHaveCount(0);
     expect(await exportFiles(page)).toEqual([]);
     expect(errors).toEqual([]);
@@ -232,8 +239,9 @@ test.describe('real quota: the space is claimed before encoding (ADR-023)', () =
     const run = await downloadUntilEnd(page);
     expect(run.end).toBe('failed');
     expect(run.sawEncoding).toBe(false);
+    // 17 Oct 2026: the disk is asked again in smaller steps, so the line says how much it does have.
     await expect(page.getByTestId('export-failed-storage')).toHaveText(
-      /^Seçtiğin yerde bu video için yaklaşık \d+(,\d)? MB boş yer gerekiyor; o diskte bu kadar yer yok\./,
+      /^Seçtiğin yerde bu video için yaklaşık \d+(,\d)? MB boş yer gerekiyor; o diskte yalnızca yaklaşık \d+(,\d)? MB var\./,
     );
     // The empty file the dialog created is removed again.
     await expect.poll(() => opfsFiles(page)).toEqual({});
@@ -287,6 +295,103 @@ test.describe('real quota: the space is claimed before encoding (ADR-023)', () =
     await expect(page.getByTestId('export-failed')).toContainText('diskte yer kalmadı');
     await expect(page.getByTestId('download-saved')).toHaveCount(0);
     await expect.poll(() => opfsFiles(page)).toEqual({});
+    expect(errors).toEqual([]);
+  });
+});
+
+test.describe('not enough space: the length said is the length that fits (17 Oct 2026)', () => {
+  test('the picked file: the refusal names a length from the real free space, and a kesit that long downloads', async ({
+    page,
+  }) => {
+    test.setTimeout(300_000);
+    await installSavePicker(page);
+    const errors = await openEditor(page);
+    // Room for about two minutes of this video, not for all 5:10 (and not for "5 minutes" either).
+    await limitRoom(page, 62 * MIB);
+    await openVideo(page, timelineFixture('long').file);
+    await quality720(page);
+    const refused = await downloadUntilEnd(page);
+    expect(refused.end).toBe('failed');
+    expect(refused.sawEncoding).toBe(false);
+    const reason = (await page.getByTestId('export-failed-reason').textContent()) ?? '';
+    const said = /en fazla (\d+) dakikalık bir kesit indir/.exec(reason);
+    expect(said, reason).not.toBeNull();
+    const minutes = Number(said![1]);
+    expect(minutes).toBeGreaterThanOrEqual(1);
+    expect(minutes).toBeLessThan(5);
+    await expect.poll(() => opfsFiles(page)).toEqual({});
+
+    // The same disk, a kesit exactly that long: it fits.
+    await addKesit(page, '0', String(minutes * 60));
+    const fits = await downloadUntilEnd(page);
+    expect(fits.end).toBe('succeeded');
+    await expect(page.getByTestId('download-saved')).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+});
+
+test.describe('the largest download: 4 GiB - 1 byte, never more (17 Oct 2026)', () => {
+  const sixSeconds = 6 * US_PER_SECOND;
+
+  test('an output whose estimate would pass the limit is encoded at a held bitrate and stays under it', async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    // A small limit (measurement hook) holds a six-second kesit the way 60 minutes are held by the real one.
+    const limit = 33 * MIB;
+    await page.addInitScript((value) => {
+      const holder = window as unknown as { __clipOutputLimitBytes: number; __clipExportMode: string };
+      holder.__clipOutputLimitBytes = value;
+      holder.__clipExportMode = 'encode';
+    }, limit);
+    await noSavePicker(page);
+    const errors = await openEditor(page);
+    await openVideo(page, SAMPLE_VIDEO);
+    await addKesit(page, '0', '6');
+    const run = await downloadUntilEnd(page);
+    expect(run.end).toBe('succeeded');
+    const method = page.getByTestId('export-method');
+    await expect(method).toHaveAttribute('data-file-limit-held', 'true');
+    const expected = maxVideoBitrateForFileLimit({ audioBitrate: 128_000, durationUs: sixSeconds }, limit);
+    expect(Number(await method.getAttribute('data-video-bitrate'))).toBe(expected);
+    const sizes = Object.values(await opfsFiles(page));
+    expect(sizes).toHaveLength(1);
+    expect(sizes[0]).toBeLessThanOrEqual(limit);
+    expect(errors).toEqual([]);
+  });
+
+  test('without the hook a short kesit is not held', async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.addInitScript(() => {
+      (window as unknown as { __clipExportMode: string }).__clipExportMode = 'encode';
+    });
+    await noSavePicker(page);
+    await openEditor(page);
+    await openVideo(page, SAMPLE_VIDEO);
+    await addKesit(page, '0', '6');
+    expect((await downloadUntilEnd(page)).end).toBe('succeeded');
+    await expect(page.getByTestId('export-method')).toHaveAttribute('data-file-limit-held', 'false');
+  });
+
+  test('a file that still grows past the limit is stopped there, honestly, and nothing is left', async ({ page }) => {
+    test.setTimeout(180_000);
+    // Under what even the lowest bitrate writes in six seconds: the copy is too big (so the full encode
+    // runs), the held encode is too, and the disk route stops the file at the limit.
+    await page.addInitScript(() => {
+      (window as unknown as { __clipOutputLimitBytes: number }).__clipOutputLimitBytes = 150_000;
+    });
+    await noSavePicker(page);
+    const errors = await openEditor(page);
+    await openVideo(page, SAMPLE_VIDEO);
+    await addKesit(page, '0', '6');
+    const run = await downloadUntilEnd(page);
+    expect(run.end).toBe('failed');
+    expect(run.sawEncoding).toBe(true);
+    await expect(page.getByTestId('export-failed-reason')).toHaveText(
+      'Video 4,29 GB’tan büyük olacaktı; LiloCut bu kadar büyük bir dosyayı yeniden açamaz. Yarım dosya silindi. Daha kısa bir kesit indir ya da Ayarlar’da “En çok 720p”yi seç.',
+    );
+    await expect(page.getByTestId('export-download')).toHaveCount(0);
+    expect(await exportFiles(page)).toEqual([]);
     expect(errors).toEqual([]);
   });
 });

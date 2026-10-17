@@ -766,9 +766,14 @@ export function useDownloads({
               // A refusal before anything was written (no sound, half a source file, ADR-040) leaves the
               // file the save dialog created, still empty, under the name the user chose: take it back.
               if (destination) await removeEmptyPick(destination);
+              // The memory route's limit is said as a limit only where it is the length suggested: when
+              // the free space holds more than that, the refusal's own sentence says how much (17 Oct 2026).
+              const memoryLimitUs = WEB_LOCAL_POLICY.maxMemoryRouteOutputDurationUs;
               const memoryRefusal =
                 event.code === 'output_too_long_for_memory' ||
-                (event.code === 'output_storage_insufficient' && event.storage?.reason !== 'file_reservation');
+                (event.code === 'output_storage_insufficient' &&
+                  event.storage?.reason !== 'file_reservation' &&
+                  (event.storage?.suggestedDurationUs ?? memoryLimitUs) <= memoryLimitUs);
               setEntry(key, {
                 key,
                 kind,
@@ -781,7 +786,7 @@ export function useDownloads({
                 ...(event.targetSize ? { targetSize: event.targetSize } : {}),
                 ...(event.detail ? { detail: event.detail } : {}),
                 overrun: memoryRefusal
-                  ? outputOverrun(plan.requestedDurationUs, WEB_LOCAL_POLICY.maxMemoryRouteOutputDurationUs)
+                  ? outputOverrun(plan.requestedDurationUs, memoryLimitUs)
                   : null,
               });
               break;

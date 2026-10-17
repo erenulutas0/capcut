@@ -77,6 +77,16 @@ function bitrateModeHook(): 'constant' | 'variable' | null {
   return value === 'constant' || value === 'variable' ? value : null;
 }
 
+/**
+ * Measurement hook only (`window.__clipOutputLimitBytes`): a smaller largest
+ * download than 4 GiB − 1 byte (the worker takes the lower of the two). The
+ * app never sets it.
+ */
+function outputLimitHook(): number | null {
+  const value = (globalThis as { __clipOutputLimitBytes?: unknown }).__clipOutputLimitBytes;
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
+}
+
 /** '1' only in a test build (`CLIP_TEST_HOOKS=1`); the published site is built with ''. */
 const TEST_HOOKS = process.env.NEXT_PUBLIC_CLIP_TEST_HOOKS === '1';
 
@@ -328,6 +338,7 @@ export class ExportWorkerClient {
       enhanceAnalysis: options.enhanceAnalysis ?? null,
       enhanceEngine: enhanceEngineHook(),
       bitrateMode: bitrateModeHook(),
+      outputLimitBytes: outputLimitHook(),
       refuseConstantBitrate:
         TEST_HOOKS && (globalThis as { __clipRefuseConstantBitrate?: unknown }).__clipRefuseConstantBitrate === true,
       testFault: takeTestFault(),

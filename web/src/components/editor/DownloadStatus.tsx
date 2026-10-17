@@ -13,7 +13,7 @@ import { formatByteLimit, formatBytes, formatBytesAgainstLimit } from '@/domain/
 import { CHROMIUM_SHARE_MAX_BYTES } from '@/domain/share';
 import { formatDecimal, formatTimecode } from '@/domain/time';
 import type { MessageKey } from '@/i18n/messages';
-import { overLimitText } from './outputLimitText';
+import { overLimitText, storageRefusalText } from './outputLimitText';
 import type { DownloadEntry } from './useDownloads';
 
 type T = (key: MessageKey) => string;
@@ -263,6 +263,7 @@ function MethodLine({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase:
       data-video-bitrate={result.videoEncoding?.bitrate}
       data-bitrate-mode={result.videoEncoding?.bitrateMode ?? ''}
       data-bitrate-mode-asked={result.videoEncoding?.askedBitrateMode ?? ''}
+      data-file-limit-held={result.videoEncoding ? String(result.videoEncoding.heldForFileLimit === true) : ''}
     >
       {methodText(t, entry)}
     </span>
@@ -611,7 +612,11 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
         <Icon name="alert" size={16} />
         <span className="dl-text">
           <b>{t('export.failedTitle')}</b>
-          <span data-testid="export-failed-reason">{t(`export.fail.${entry.code}` as MessageKey)}</span>
+          <span data-testid="export-failed-reason">
+            {entry.code === 'output_storage_insufficient'
+              ? storageRefusalText(t, entry.storage?.suggestedDurationUs)
+              : t(`export.fail.${entry.code}` as MessageKey)}
+          </span>
           {/* "Try Chrome or Edge" only where the browser may really be the problem: never inside one of them. */}
           {BROWSER_MAY_BE_THE_PROBLEM.has(entry.code) && !isChromiumBrowser() ? (
             <span className="dl-sub" data-testid="export-failed-browser">
@@ -639,13 +644,16 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
             <span className="dl-sub" data-testid="export-failed-storage">
               {t(
                 entry.storage.reason === 'file_reservation'
-                  ? 'export.fail.storageFileReservation'
+                  ? typeof entry.storage.roomBytes === 'number'
+                    ? 'export.fail.storageFileRoom'
+                    : 'export.fail.storageFileReservation'
                   : entry.storage.reason === 'reservation'
                     ? 'export.fail.storageReservation'
                     : 'export.fail.storageNumbers',
               )
                 .replace('{required}', formatStorageBytes(entry.storage.requiredBytes, 'up', t('time.decimalMark')))
-                .replace('{free}', formatStorageBytes(entry.storage.freeBytes, 'down', t('time.decimalMark')))}
+                .replace('{free}', formatStorageBytes(entry.storage.freeBytes, 'down', t('time.decimalMark')))
+                .replace('{room}', formatStorageBytes(entry.storage.roomBytes ?? 0, 'down', t('time.decimalMark')))}
             </span>
           ) : null}
         </span>
