@@ -3,6 +3,37 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## "LiloCut'a paylaş": galeride Paylaş → LiloCut, uygulama o videoyla açılır — 17 Ekim 2026 (ADR-047; politika ve şema değişmedi)
+
+Kurucunun onayladığı özellik (Web Share Target). Ekran yeni bir düzen değil, açılış ekranına bir ekleme; veto için
+önce / sonra görüntüleri `docs/ux/2026-10-17-paylas/`. Dış hizmet yok, yeni bağımlılık yok.
+
+- **Manifest** `share_target`: `POST <base>/paylas/`, `multipart/form-data`, alan `video`, yalnız `video/*` (resim
+  ve GIF alınmaz). Chrome'un kurulabilirlik denetimi 0 hata (`/` ve `/capcut/`).
+- **Service worker** POST'u **cihazda** alır (Pages POST alamaz; istek ağa çıkmaz): paylaşımın ilk videosu Cache
+  Storage `clip-shared`'e (en çok bir kayıt), 303 ile `<base>/?paylasim=<id>`. Video yok / boş / okunamadı / yer
+  yok: sebebiyle açılış ekranı, hiçbir şey saklanmaz. Kod tek modül (`web/scripts/lib/share-target.mjs`): worker'a
+  derlemede yazılır, sayfa aynısını içe aktarır.
+- **Açılış ekranı:** "Bu videoyla ne yapmak istiyorsun?", videonun resmi, adı, süresi, "Başka bir video seç";
+  kartlar ve aramanın "Başla"sı işi videoyla açar. Birden çok dosya: ilk video + "3 dosya paylaştın. Bir seferde
+  bir video açılır: ilk videoyu aldım. …". Video yokken ekran aynı.
+- **Sihirbaz** (on birinin ortak çatısı) videoyu bellekten ya da saklanan kopyadan alır ve bir sonraki adımı açar
+  ("Kes" doğrudan editör); kopya o an silinir. Ayrıca 15 dk zamanlayıcı, her açılışta ve worker etkinleşince
+  süpürme: paylaşılan videolar birikmez.
+- **Worker yokken** (site verisi silinmişse) POST sitenin sunucusuna gider ve sunucunun hata sayfasında biter
+  (GitHub Pages: 405 bildiriliyor, canlıda doğrulanmadı); statik açıklama sayfası denendi, hiçbir sunucu onu
+  POST'a göstermediği için kaldırıldı. Kurucu kararı: ADR-047 "Kurucu kararları".
+- **Gizlilik:** veri envanteri §2.9, `/gizlilik` "Paylaştığın video (geçici kopya)" kartı (TR + EN; bulut
+  derlemesinde ek cümle), "Son güncelleme: 17 Ekim 2026".
+
+**Sınamalar (son kodla, yerel):** `tsc`, `eslint` temiz; birim **1548 / 1548** (90 dosya, +17); olağan e2e **458:
+454 geçti, 4 atlandı, 0 başarısız**, `PAGE-RECOVERED-TOTAL 0`, `PAGE-DEAD-TOTAL 0`; bulut e2e **59: 55 geçti, 4
+atlandı**; durağan çıktı (`/capcut`) + Pages duman **15: 9 geçti, 6 atlandı** (yeni paylaşım sınaması dahil);
+kalite katmanı 676 ölçü, 598 bütçe içinde, 8 dışında (önceden açık olanlar), farklı ekran 0; ana ekran JS 184 → 188 KB.
+
+**Doğrulanmayan:** gerçek Android paylaşma menüsü ve WebAPK (yayındaki sitede denenecek; adımlar ADR-047), büyük
+dosya, Samsung Internet, GitHub Pages'in POST yanıtı.
+
 ## "GIF yap" on birinci kart oldu: videonun bir kısmı, üst ve alt yazıyla, cihazda GIF — 17 Ekim 2026 (ADR-046; politika v11, şema değişmedi)
 
 Kurucu kararı: aramada "Bunu henüz yapamıyoruz." diyen "gif yap" gerçek bir kart oldu, taslak tuvalinden

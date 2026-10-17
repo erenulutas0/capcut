@@ -1,5 +1,13 @@
 **Yazıldığı koşu:** 11 Ekim 2026 öğleden sonra, dal `worktree-agent-a511c0275d7647e51` (önceki bulgular: aynı gün, `b8e355f`). O raporda açık kalan üç şey üzerinde çalışıldı: aramanın yanlış karta göndermesi, editörün her videoyu 1080p’ye büyütmesi, 720p’den küçük kaynakların büyütülmesi. Aşağıda her biri için aynı ölçünün önceki → şimdiki değeri var. Açık kalanlar en başta.
 
+### 17 Ekim akşamı — "LiloCut'a paylaş" (ADR-047; dal `worktree-agent-a586f5ccf4bee0ed2`)
+
+676 ölçü: **598 bütçe içinde, 8 dışında** (aynı açık maddeler; bu işten yeni bütçe dışı ölçü yok), 5 ölçülemedi,
+65 bütçesiz. Farklı ekran **0**, taban yenilenmedi: elde video yokken açılış ekranı öncekiyle aynı. Ana ekran
+aktarılan JS 184 → **188 KB** (paylaşılan videonun kutusu ve paylaşma hedefinin ortak modülü); LCP (mobil
+kısıtlama) 580 → 612 ms, bütçe içinde. Paylaşılan videonun ekranı bu katmanda ölçülmüyor (Android paylaşma
+menüsü gerekir); e2e `share-target.spec.ts` ve ekran görüntüleri `docs/ux/2026-10-17-paylas/`.
+
 ### 17 Ekim — "GIF yap" on birinci kart (ADR-046; dal `worktree-agent-ab29a64817aeefa71`)
 
 676 ölçü (önce 643): **598 bütçe içinde, 8 dışında** (aynı açık maddeler: yedi arama ölçüsü ve

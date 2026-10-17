@@ -149,7 +149,7 @@ temizlemesini önlemez.
 
 Paylaşma hedefi olmayan her yerde (masaüstü Chrome/Edge/Firefox, iOS) hiçbir şey değişmez: manifest alanını
 tanımayan tarayıcı yok sayar; adreste `?paylasim` yoksa açılış ekranı bugünkü HTML'in aynısıdır. Kalite katmanının
-görsel karşılaştırması bunu ölçer (Sonuçlar).
+görsel karşılaştırması: tabanından farklı ekran 0 (Sonuçlar).
 
 ## Değişen dosyalar
 
@@ -187,9 +187,18 @@ görsel karşılaştırması bunu ölçer (Sonuçlar).
   `/capcut/?paylasim=…`, kart `/capcut/yap/dikey/?paylasim=…`, sihirbaz Adım 2'de, kopya silindi, kökten çıkan
   istek yok; worker yok → 405.
 
-## Sonuçlar
+## Sonuçlar — Doğrulama (17 Ekim 2026, bu makine, son kodla, ölçüm kilidi altında)
 
-(Aşağıda, son kodla; "Doğrulama".)
+| Komut | Sonuç |
+|---|---|
+| `npx tsc --noEmit -p .`, `npx eslint .` | hatasız |
+| `npx vitest run` | 90 dosya, **1548 / 1548** (+17: `shareTarget.test.ts` 13, `serviceWorker.test.ts` 4) |
+| Olağan e2e (`CLIP_TEST_HOOKS=1` derlemesi, `E2E_PORT=3194`) | **458: 454 geçti, 4 atlandı, 0 başarısız**, 29,0 dk; `PAGE-RECOVERED-TOTAL 0`, `PAGE-DEAD-TOTAL 0` (bekçinin kendi sınamalarının bilerek yaptıkları: 9 / 2) |
+| Bulut e2e (`NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL=http://127.0.0.1:38197` derlemesi) | **59: 55 geçti, 4 atlandı**; `PAGE-RECOVERED-TOTAL 0` |
+| Durağan çıktı (`/capcut`, CI ortam değişkenleri) + Pages duman testi (`PAGES_PORT=3198`) | **15: 9 geçti, 6 atlandı** (model dosyası ve bulut ön uçuşu isteyenler; yeni paylaşım sınaması geçti) |
+| `npm run quality` | 676 ölçü: 598 bütçe içinde, 8 dışında (önceden açık olanlar), farklı ekran **0** (taban yenilenmedi); ana ekran aktarılan JS 184 → 188 KB |
+
+Ekran görüntüleri bu dalın test kancalı derlemesinden (`docs/ux/2026-10-17-paylas/`).
 
 ## Telefonda bakılacaklar (ana oturum; kurucunun Galaxy S23'ü)
 

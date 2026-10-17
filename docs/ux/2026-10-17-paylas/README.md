@@ -17,7 +17,8 @@ Android'in yaptığı gibi uygulamanın adresine giden bir POST ile, gerçek ser
 
 Kutu, sihirbazdaki video satırının (`.video-row`: ad + süre + "Değiştir") aynısıdır, yanına küçük resim ve
 bir cümle eklendi; düğme örnek cümlelerin hap biçiminde. Renkler Quiet Studio belirteçleri. Elde video
-yokken ekran **piksel piksel aynı** (masaüstünde de, paylaşma hedefi olmayan her tarayıcıda da).
+yokken ekran **aynı** (kalite katmanının görsel karşılaştırması: tabanından farklı ekran 0; masaüstünde de,
+paylaşma hedefi olmayan her tarayıcıda da).
 
 ## Ekranlar
 
