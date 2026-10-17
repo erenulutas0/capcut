@@ -6,6 +6,9 @@
 > (EDL v2) ve politika (`2026-09-24.v6`) **değişmedi**. Güvenlik: [statik site
 > sertleştirmesi](../security/2026-09-30-static-site-hardening.md) "Güncelleme: service worker";
 > gizlilik: [veri envanteri](../privacy/DATA_INVENTORY.md) §2.5, §3, §4.
+> **Ek, 17 Ekim 2026:** manifest'e paylaşma hedefi (`share_target`, yalnız video) ve worker'a tek bir POST
+> (`<base>/paylas/`, cihazda alınır; ayrı önbellek `clip-shared`) — [ADR-047](ADR-047-share-target.md). Aşağıdaki
+> "POST … worker'dan geçmez" o tek adres dışında geçerli.
 
 ## Neden
 

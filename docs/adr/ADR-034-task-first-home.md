@@ -13,6 +13,10 @@
 > editöre geçişte saklanır: sabah internette yazılan yazı (yalnız bulut derlemesinde), akşam cihazda
 > yazılan yazı da, yani yayındaki derlemede (sonda "Ek, 13 Ekim 2026" ve "Ek 2, 13 Ekim 2026 akşamı").
 
+> **Ek, 17 Ekim 2026:** telefonun paylaşma menüsünden gelen videoyla açılış ekranı "Bu videoyla ne yapmak
+> istiyorsun?" der, videoyu gösterir ve kartlar işi videoyla bir sonraki adımda açar —
+> [ADR-047](ADR-047-share-target.md), ekranlar [docs/ux/2026-10-17-paylas](../ux/2026-10-17-paylas/README.md).
+
 ## Neden
 
 Kurucunun 3 Ekim 2026 değerlendirmesi (tasarım klasörünün README'sinden):

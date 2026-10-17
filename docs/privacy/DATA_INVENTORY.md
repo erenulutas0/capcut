@@ -16,6 +16,10 @@
 > O andan sonra bu belgenin §1, §2.4, §4.1 ve §6 satırları **§8'e göre okunur**: cihazdan yalnızca kullanıcı
 > "Sesi gönder ve yaz"a bastığında ve yalnızca ses çıkar (§8.2).
 
+> **17 Ekim 2026 — "LiloCut'a paylaş" (ADR-047).** Telefonun paylaşma menüsünden uygulamaya paylaşılan
+> video, bir iş onu alana kadar geçici bir kopya olarak bu tarayıcıda durur (§2.9). Bulut yolu açık ve kapalı
+> derlemede aynıdır; açık derlemede yalnız "İnternette" seçilirse sesi gider (§8.2).
+
 > **11 Ekim 2026 — bulut yazıya dökme yolu (ADR-039): yazıldı, KAPALI.** Bu belgenin geri kalanı
 > **yayındaki derlemeyi** anlatır ve o derlemede hiçbir şey değişmedi: yol, yalnızca
 > `NEXT_PUBLIC_CLOUD_TRANSCRIPT_URL` verilen bir derlemede vardır; yayındaki site ve CI onu
@@ -41,6 +45,7 @@ doğrulanır (`web/tests/e2e/privacy.spec.ts` → "nothing leaves the machine").
 | Hesap / oturum? | Yok. | Kodda auth yok |
 | Analitik, hata raporlama servisi, reklam? | Yok. Üçüncü taraf script yok. | `web/next.config.ts`, `web/src/app/layout.tsx`, `package.json` bağımlılıkları |
 | Çevrimdışı kopya? | Evet, 30 Eylül 2026'dan beri (ADR-031): bir service worker uygulamanın **kendi dosyalarını** (sayfalar, derleme dosyaları, altyazı yazı tipi, simgeler, manifest) Cache Storage'da tutar ki site internetsiz açılsın. Medya, dışa aktarılan dosya, proje ya da başka bir origin'in dosyası bu önbelleğe girmez (§2.5). | `web/scripts/lib/service-worker.js`, `web/scripts/lib/precache.mjs`, e2e `pwa.spec.ts` |
+| Paylaşılan video? | **17 Ekim 2026'dan beri (ADR-047):** telefonun paylaşma menüsünden uygulamaya paylaşılan videonun bir kopyası, bir iş onu alana kadar bu tarayıcıda durur (Cache Storage `clip-shared`, en çok bir video; alınınca, 15 dakika sonra ya da sonraki açılışta silinir). Service worker varken cihazdan çıkmaz; worker yokken tarayıcı paylaşımı sitenin sunucusuna gönderir ve sunucu reddeder (§2.9). | `web/scripts/lib/share-target.mjs`, e2e `share-target.spec.ts` |
 | Çerez, localStorage, sessionStorage? | Çerez kullanılmıyor. **13 Ekim 2026 (ADR-044):** sessionStorage'da tek anahtar olabilir — `clip:page-recovery`, yalnızca bir sayfa açılamayıp kendini yeniden yüklediğinde yazılır (§2.4a); sorunsuz oturumda sessionStorage boştur. localStorage'da yalnızca ilk kullanım ipucunun kapatıldığı (`clip.firstRunHint.dismissed` = `1`) durur, o da yalnızca kullanıcı "Anladım"a basınca yazılır (§2.4). **14 Ekim 2026 (ADR-036 eki):** localStorage'da bir anahtar daha olabilir — `clip.transcriptLargeFailed` = `1`, yalnızca büyük konuşma modeli bu tarayıcıda yazıya dökerken durduğunda yazılır (§2.8a). e2e testi ipucu kapatılmamış oturumun sonunda üçünün de boş olduğunu, kapatınca yalnızca o anahtarın yazıldığını doğrular. | `web/src/components/editor/FirstRunHint.tsx` + e2e testleri |
 | Cihaz parmak izi? | Yok. Tanı dosyasındaki tarayıcı bilgisi yalnızca kullanıcı indirirse oluşur ve kendiliğinden gönderilmez. | `web/src/adapters/diagnostics.ts` |
 | Model dosyası / AI? | Bu sürümde yok. | — |
@@ -349,6 +354,48 @@ gizlilik sayfasından silinir; büyük model çalışınca kendiliğinden gider)
 dosyalarını silen **"Büyük modeli sil"** eklendi (§2.8 deposu; önbelleğin adı ve biçimi değişmedi;
 küçük model ve ortak dosyalar kalır).
 
+### 2.9 Cache Storage `clip-shared` — paylaşılan video, geçici kopya (2026-10-17, ADR-047)
+
+"LiloCut'a paylaş": Android'de yüklü uygulama, telefonun paylaşma menüsünde videolar için bir hedeftir
+(manifest `share_target`, yalnız `video/*`). Galeride (WhatsApp, Dosyalar…) bir videoda "Paylaş → LiloCut"
+denince **telefonun tarayıcısı** videoyu uygulamanın adresine (`<base>/paylas/`) bir form gönderimi (POST,
+`multipart/form-data`) olarak verir. Bu istek **cihazda kalır**: sitenin service worker'ı onu ağa çıkmadan
+alır (`web/scripts/lib/share-target.mjs`, `sw.js`'e derleme anında yazılır) ve açılış ekranını açar.
+
+- **Ne saklanır:** paylaşımın **ilk videosu**, bir kopya olarak; yanında başlıklarda adı, türü, değiştirilme
+  tarihi, paylaşıldığı an ve paylaşımda kaç dosya geldiği. Başka hiçbir şey: paylaşımın öteki dosyaları
+  (ikinci video, resim) ve metin alanları hiç saklanmaz. Kimlik, cihaz bilgisi yok.
+- **Nerede:** Cache Storage, **`clip-shared`** adlı önbellek, **en çok bir kayıt** (yeni paylaşım eskisini
+  siler). Anahtar `<base>/paylas/dosya/<id>` — hiçbir sunucunun sunmadığı, worker'ın yanıtlamadığı bir adres;
+  `<id>` paylaşım anı + 6 rastgele harf. IndexedDB'ye (projeler) ve OPFS'e **dokunulmaz**. `clip-app-*`
+  önbelleğinin (§2.5) ve `clip-models-*`'in (§2.8) dışındadır; worker'ın "eski sürüm" temizliği ve
+  "Uygulamayı baştan indir" (§2.4a) ona dokunmaz.
+- **Ne zaman silinir:** (1) bir iş (Kes, GIF yap…) videoyu aldığı anda — sihirbaz videoyu açarken kopyayı
+  siler; videonun sayfadaki `File`'ı silinen kopyanın diskteki baytlarını okumaya devam eder (e2e: GIF bu
+  silinmiş kopyadan yapılır); (2) açılış ekranında "Başka bir video seç"e basılınca; (3) hiçbir işe
+  dokunulmazsa, açılış ekranı açıkken paylaşımdan **15 dakika** sonra (sayfanın zamanlayıcısı); (4) uygulamanın
+  **her açılışında**: adresi o paylaşımı göstermeyen her sayfa (`?paylasim=<id>`) açılırken bütün paylaşılan
+  videoları, adresindeki paylaşım 15 dakikadan eskiyse onu da siler; (5) worker'ın her etkinleşmesinde 15
+  dakikadan eski olanı; (6) tarayıcının site verisini temizleyince. Son kayıt gidince önbelleğin kendisi de
+  silinir; hiç paylaşım yapılmamış bir tarayıcıda `clip-shared` hiç oluşmaz (bakmak oluşturmaz).
+- **Ağ:** service worker varken paylaşım hiçbir ağ isteği yapmaz; yönlendirme (303) de cihazdadır.
+  **İstisna — worker yokken:** tarayıcı bu sitenin verisini silmişse (kullanıcı temizledi ya da tarayıcı yer
+  açmak için sildi) ya da worker hiç kurulamadıysa (ör. disk doluydu) worker yoktur; o zaman tarayıcı POST'u
+  **sitenin sunucusuna gönderir** (video gövdesiyle). Statik bir dosya sunucusu bunu kabul etmez:
+  GitHub Pages'in POST'a "405 Not Allowed" verdiği bildiriliyor — **canlı sitede henüz doğrulanmadı**
+  (ADR-047, "Uygulama hazır değilken"); `next start` "Server action not found." der. Uygulama açılmaz,
+  tarayıcıda hiçbir şey saklanmaz (e2e). Sağlayıcının bu istekten ne kaydettiği kendi bildirimine tabidir
+  (§4.2, `/gizlilik` "Sunucu erişim kayıtları").
+- **Bulut yolu açık derlemede (§8):** paylaşılan video galeriden seçilen bir video gibidir; yalnız kullanıcı
+  "Yazıya dök"te "İnternette"yi seçip gönderirse **sesi** gider (§8.2); kopyanın kendisi hiçbir zaman.
+- **Kaynak:** `web/src/app/manifest.ts`, `web/scripts/lib/share-target.mjs`,
+  `web/scripts/lib/service-worker.js`, `web/src/adapters/pwa/sharedVideo.ts`,
+  `web/src/components/home/HomeIntro.tsx`, `web/src/components/wizard/WizardFlow.tsx`,
+  `web/src/components/pwa/PwaClient.tsx`. **Testler:** `web/tests/unit/shareTarget.test.ts`,
+  `web/tests/unit/serviceWorker.test.ts` (worker'ın POST'u), `web/tests/e2e/share-target.spec.ts` (alma,
+  silme: alınınca, 15 dakika, sonraki açılış; worker yokken POST sunucuya gider ve hiçbir şey saklanmaz),
+  `web/tests/pages/pages-smoke.spec.ts` (`/capcut/` altında), `privacy.spec.ts` ("Paylaştığın video" kartı).
+
 ## 4. Ağ
 
 ### 4.1 Uygulamanın kendi origin'i dışında istek: yok
@@ -428,7 +475,9 @@ güncellenmeli: herhangi bir `fetch`/XHR/beacon/WebSocket; üçüncü taraf scri
 analitik/hata raporlama SDK'sı; hesap/oturum; çerez veya web depolama; yeni IndexedDB store'u
 veya `ProjectRecord` alanı; OPFS'e yeni dosya türü; model dosyasının **başka bir adresten** indirilmesi
 (bugün yalnızca kendi origin'imizden, §2.8) ya da sesin/metnin bir sunucuya gitmesi; service worker'ın listesine
-uygulama dosyası dışında bir şey girmesi ya da çalışırken ağ yanıtlarını önbelleğe yazmaya başlaması.
+uygulama dosyası dışında bir şey girmesi ya da çalışırken ağ yanıtlarını önbelleğe yazmaya başlaması;
+paylaşılan videonun (§2.9) birden fazlasının, ya da 15 dakikadan uzun saklanması, ya da `clip-shared` dışında bir
+yere yazılması.
 
 ## 7. Açık kurucu kararları (uygulama bunları uydurmaz)
 
