@@ -587,6 +587,37 @@ test('İyileştir under /capcut/: before/after from the export worker, download,
   expect(seen.outside).toEqual([]);
 });
 
+test('GIF yap under /capcut/: its worker, the typeface of its text and the saved GIF, the policy holds', async ({
+  page,
+  context,
+}, testInfo) => {
+  test.setTimeout(180_000);
+  const seen = watchRequests(page);
+  const watch = await watchCsp(context);
+  await watch.attach(page);
+  await installSavePicker(page);
+
+  await page.goto('./');
+  await expect(page.getByTestId('task-gif')).toHaveAttribute('href', '/capcut/yap/gif/');
+  await page.goto('yap/gif/');
+  await expectPolicy(page);
+  await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
+  await expect(page.getByTestId('gif-estimate')).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+  // Text: the worker loads the caption typeface from the sub-path, or refuses ("Yazının harfleri yüklenemedi").
+  await page.getByTestId('gif-text-top').fill('PAZARTESİ');
+  await expect(page.getByTestId('gif-estimate')).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+  await page.getByTestId('wizard-download').click();
+  await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
+  const savedPath = await readSaved(page, testInfo, 'saved-other-8s_gif.gif');
+  const bytes = readFileSync(savedPath);
+  expect(bytes.subarray(0, 6).toString('latin1')).toBe('GIF89a');
+  expect(bytes.readUInt16LE(6)).toBe(320);
+  expect(bytes.readUInt16LE(8)).toBe(180);
+  expect(seen.outside).toEqual([]);
+  expect(watch.violations).toEqual([]);
+  expect(seen.failures).toEqual([]);
+});
+
 /**
  * ADR-044 under the sub-path: the watchdog of a page that never came alive is
  * in every published page as an inline script, its hash is in that page's
