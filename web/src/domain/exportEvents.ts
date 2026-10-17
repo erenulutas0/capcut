@@ -54,6 +54,12 @@ export type ExportFailureCode =
   | 'output_duration_mismatch'
   | 'out_of_memory'
   | 'output_storage_full'
+  /**
+   * 17 Oct 2026: the file grew past `OUTPUT_FILE_LIMIT_BYTES` (4 GiB − 1 byte)
+   * while it was written — the encoder wrote far more than it was asked for.
+   * Stopped there, the partial file deleted: no download is ever larger.
+   */
+  | 'output_too_large'
   /** Refused up front: the file cannot go to disk and is longer than memory allows (doc 15 v3). */
   | 'output_too_long_for_memory'
   /** Refused up front: disk access exists but the browser could not give the file its space (ADR-023). */
@@ -130,6 +136,11 @@ export interface VideoEncodingOutcome {
   bitrate: number;
   bitrateMode: 'constant' | 'variable';
   askedBitrateMode: 'constant' | 'variable';
+  /**
+   * 17 Oct 2026: the bitrate was lowered so the file stays under the largest
+   * download (`OUTPUT_FILE_LIMIT_BYTES`); false when it was not touched.
+   */
+  heldForFileLimit?: boolean;
 }
 
 /** What "İyileştir" did in one download (ADR-037). */
@@ -236,6 +247,18 @@ export interface StorageShortfall {
    * no browser estimate is involved, `freeBytes` is 0.
    */
   reason: 'estimate' | 'reservation' | 'file_reservation';
+  /**
+   * `reservation` / `file_reservation`: the most the disk really let the
+   * download claim when asked again in smaller steps (17 Oct 2026); null when
+   * that could not be found out.
+   */
+  roomBytes?: number | null;
+  /**
+   * The longest output the user is told to try instead (`storageFitSuggestion`):
+   * what the free space holds with this download's settings, or the memory
+   * route's limit where that route is open. Null: no honest number.
+   */
+  suggestedDurationUs?: Micros | null;
 }
 
 export const TERMINAL_EXPORT_TYPES: ReadonlySet<ExportEvent['type']> = new Set([

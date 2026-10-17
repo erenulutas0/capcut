@@ -577,6 +577,7 @@ export const en: Record<MessageKey, string> = {
   'export.why.error': 'the picture could not be copied as it is',
   'export.why.requested_encode': 're-processing was asked for',
   'export.why.target_size': 'the picture as it is does not fit that size',
+  'export.why.output_size': 'copied as it is, the file would have been larger than 4.29 GB',
   'export.why.enhance': 'enhancement changes every frame',
   'export.methodDetail.copy': 'Fast cut — the picture was not re-encoded, original quality',
   'export.methodDetail.smart':
@@ -604,6 +605,7 @@ export const en: Record<MessageKey, string> = {
   'export.fallback.requested_encode': 'a full encode was requested',
   // ADR-035: target-size and sound-only downloads.
   'export.fallback.target_size': 'the original picture does not fit the target size',
+  'export.fallback.output_size': 'the copy would be larger than 4.29 GB',
   'export.refusedTitle': 'This download cannot be made.',
   'export.running.pass': 'The file came out larger than asked; it is being made again, smaller (attempt {pass})',
   'export.running.audio': 'Making the audio file',
@@ -680,7 +682,15 @@ export const en: Record<MessageKey, string> = {
   'export.fail.output_too_long_for_memory':
     'This browser cannot write the video to disk; here you can download at most 5 minutes of video. Download a shorter clip, or try an up-to-date browser in a normal (not private) window.',
   'export.fail.output_storage_insufficient':
-    'There is not enough free disk space for a video this long. Free some disk space or download a clip of at most 5 minutes; no frame was encoded.',
+    'There is not enough free disk space for a video this long. Free some disk space and try again; no frame was encoded.',
+  'export.fail.output_storage_insufficient_fit':
+    'There is not enough free disk space for a video this long. Free some disk space or download a clip of at most {length}; no frame was encoded.',
+  'export.fail.fitMinutes': '{n} minutes',
+  'export.fail.fitMinutesOne': '1 minute',
+  'export.fail.fitSeconds': '{n} seconds',
+  'export.fail.fitSecondsOne': '1 second',
+  'export.fail.output_too_large':
+    `The video would have been larger than 4.29 GB, too large for ${APP_NAME} to open again. The partial file was deleted. Download a shorter clip, or choose “720p at most” in Settings.`,
   'export.fail.worker_unavailable': 'The background worker could not be started.',
   'export.fail.internal_error': 'An unexpected error occurred. Try once more; if it happens again, press “Report a problem”.',
   'export.failDetail.frame': 'frame',
@@ -854,6 +864,8 @@ export const en: Record<MessageKey, string> = {
     'The file you chose could not be written (no permission, or it is open in another program). Pick another place or name and try again.',
   'export.fail.storageFileReservation':
     'About {required} of free space is needed where you chose to save; that disk does not have it. Pick another disk or free some space; no frame was encoded.',
+  'export.fail.storageFileRoom':
+    'About {required} of free space is needed where you chose to save; that disk has only about {room}. Pick another disk or free some space.',
   // ---- "İyileştir" (ADR-037) ----
   'task.iyilestir.label': 'Enhance',
   'task.iyilestir.sub': 'Light, colour, sharpness',

@@ -183,3 +183,40 @@ Kanıt dosyaları git dışında: `web/matrix-results/export-storage-*.json`.
 ADR-013 (OPFS yolu), ADR-020 (60 dk çıktı; "payın küçültülmesi ayrı karar"
 notu burada kapandı), ADR-024 (yazılım kodlayıcı bit hızı; tahmin kodlayıcının
 gerçek hedefini kullanır).
+
+## Ek — 17 Ekim 2026: "yer yetmiyor" cümlesindeki uzunluk gerçek boş yerden gelir
+
+**Bulgu (uzun dışa aktarma raporu §7 ve §8.5):** ret cümlesi her yolda "Diskte yer aç ya da en fazla 5 dakikalık bir
+kesit indir" diyordu. 5 dakika bellek yolunun sınırıdır (doc 15 v3) ve yalnızca tarayıcının kendi diskinde (OPFS) doğru
+bir öneriydi: orada 5 dakikaya kadar bir video diske sığmasa da bellekten iner. **Kaydetme penceresi yolunda**
+(ADR-026) bellek yolu yoktur; orada 5 dakika iki yönde de yanlıştı: 1500 MiB boş yerde 1080p'den ~32 dakika sığar,
+çok dolu bir diskte 5 dakika da sığmaz.
+
+**Karar:**
+
+1. **Diskin gerçekten verdiği yer ölçülür.** Ayırma (`truncate(gereken)`) reddedilince aynı yol daha küçük adımlarla
+   yeniden sorulur (`largestClaim`, ikili arama, %1 ya da 1 MiB'a kadar, en çok 24 soru, her biri geri verilir): OPFS'te
+   aynı dosya tutacağıyla; kaydetme penceresinde her soru kendi geçici dosyasında (`createWritable` → `truncate` →
+   `abort`; seçilen dosyaya dokunulmaz, sonunda boş dosya yine silinir). Sonuç `StorageShortfall.roomBytes`.
+   Tahmin kontrolü (`estimate`) reddettiyse oda tahminin kendisidir.
+2. **Sığan uzunluk aynı kuralla hesaplanır** (`longestOutputThatFits`): gereken yer (× 1,1 + 32 MiB, bu ADR) odaya
+   sığan en uzun çıktı, tam saniye, bu indirmenin kendi bit hızlarıyla — en büyük indirme tavanından (ADR-024, 17 Ekim
+   eki) **önceki** bit hızıyla, çünkü daha kısa bir çıktı o tavana takılmaz. Kopya yolunda kopyanın ve tam kodlamanın
+   bit hızının büyüğü. Önerilen (`storageFitSuggestion`): OPFS yolunda sığan uzunluk ile bellek yolunun 5 dakikasının
+   büyüğü, kaydetme penceresi yolunda yalnızca sığan uzunluk; her zaman reddedilen uzunluktan kısa; bir dakikadan
+   itibaren tam dakika, altında tam saniye, aşağı yuvarlanmış.
+3. **Cümle** (TR + EN): sayı varsa "Bu uzunlukta bir video için boş disk alanı yetmiyor. Diskte yer aç ya da en fazla
+   **20 dakikalık** bir kesit indir; hiçbir kare kodlanmadı." ("1 dakikalık", "45 saniyelik"); dürüst bir sayı yoksa
+   (oda bilinmiyor ya da bir saniye bile sığmıyor) sayı yok: "… Diskte yer açıp yeniden dene; hiçbir kare kodlanmadı."
+   Kaydetme penceresi yolunun alt satırı artık o diskin verdiğini de söyler: "Seçtiğin yerde bu video için yaklaşık
+   1,99 GB boş yer gerekiyor; o diskte yalnızca yaklaşık 1,57 GB var. Başka bir disk seç ya da yer aç." "Sonuç X. …
+   sınır 5 dakika" satırı yalnızca önerilen uzunluk bellek yolunun 5 dakikası olduğunda görünür.
+
+**Önce → sonra** (raporun §7'deki gibi kaydetme penceresi ve 1500 MiB yer; 60 dakikalık 1080p, donanım kodlayıcısı, 5,6 Mbit/s): "en fazla 5 dakikalık bir
+kesit indir" → "en fazla **32 dakikalık** bir kesit indir" (birim testi). e2e (`output-limits.spec.ts`, gerçek kota): kaydetme
+penceresi yolunda cümlenin söylediği uzunlukta bir kesit **gerçekten iner**; OPFS yolunda 64 MiB kotada öneri 5 dakika
+kalır (bellek yolu açık, disk ondan azını tutuyor).
+
+**Ölçülmeyen:** gerçek bir dolu diskte (NTFS, FAT32, ağ diski) küçük adımlarla yeniden sormanın süresi ve doğruluğu —
+kota ile benzetildi; macOS / Linux'ta seyrek dosya (`truncate` yer ayırmayabilir; o zaman oda olduğundan büyük çıkar ve
+öneri fazla olabilir; dosya yine yazılırken dolarsa `output_storage_full`).

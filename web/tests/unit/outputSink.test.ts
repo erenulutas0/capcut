@@ -76,7 +76,7 @@ vi.mock('@/adapters/export/opfsEntries', () => ({
   opfsRoot: async () => root,
 }));
 
-const { prepareOutput, sinkRefusal } = await import('@/adapters/export/outputSink');
+const { OUTPUT_TOO_LARGE_ERROR, largestClaim, prepareOutput, sinkRefusal } = await import('@/adapters/export/outputSink');
 
 /**
  * The file picked in the save dialog (ADR-026), the way Chromium behaves:
@@ -178,7 +178,10 @@ describe('disk route: space claimed before encoding (ADR-023)', () => {
     const sink = await prepareOutput('b', 40 * MIB);
     expect(sink.route).toBe('memory');
     expect(sink.availability).toBe('not_enough_space');
-    expect(sink.storage).toEqual({ requiredBytes: 40 * MIB, freeBytes: estimateFree, reason: 'reservation' });
+    expect(sink.storage).toMatchObject({ requiredBytes: 40 * MIB, freeBytes: estimateFree, reason: 'reservation' });
+    // 17 Oct 2026: how much the disk does give, asked again in smaller steps (within 1 MiB here).
+    expect(sink.storage?.roomBytes).toBeLessThanOrEqual(10 * MIB);
+    expect(sink.storage?.roomBytes).toBeGreaterThanOrEqual(9 * MIB);
     expect(files.has('clip-export-b.mp4')).toBe(false);
   });
 
@@ -188,6 +191,8 @@ describe('disk route: space claimed before encoding (ADR-023)', () => {
     const sink = await prepareOutput('c', 40 * MIB);
     expect(sink.availability).toBe('not_enough_space');
     expect(sink.storage?.reason).toBe('reservation');
+    // Only what the file really grew to counts as room (a silent truncate is not room).
+    expect(sink.storage?.roomBytes).toBeLessThanOrEqual(10 * MIB);
     expect(files.has('clip-export-c.mp4')).toBe(false);
   });
 
@@ -253,12 +258,16 @@ describe('file route: straight into the file picked in the save dialog (ADR-026)
     const file = pick(0, 10 * MIB);
     const sink = await prepareOutput('i', 40 * MIB, { destination: file as unknown as FileSystemFileHandle });
     expect(sink.refused).toBe('output_storage_insufficient');
-    expect(sinkRefusal(sink, 5 * 60_000_000, 60_000_000)).toEqual({
+    expect(sinkRefusal(sink, 5 * 60_000_000, 60_000_000)).toMatchObject({
       code: 'output_storage_insufficient',
       storage: { requiredBytes: 40 * MIB, freeBytes: 0, reason: 'file_reservation' },
     });
+    // 17 Oct 2026: what that disk does give, each ask in its own temporary file, all thrown away.
+    expect(sink.storage?.roomBytes).toBeLessThanOrEqual(10 * MIB);
+    expect(sink.storage?.roomBytes).toBeGreaterThanOrEqual(9 * MIB);
     expect(file.removed).toBe(true);
     expect(file.openWritables).toBe(0);
+    expect(file.size).toBe(0);
   });
 
   it('a file that cannot be opened for writing is refused with its own reason', async () => {
@@ -319,5 +328,72 @@ describe('file route: straight into the file picked in the save dialog (ADR-026)
     expect(
       sinkRefusal({ availability: 'no_disk_access', refused: null, storage: null }, 5 * 60_000_000, 6 * 60_000_000),
     ).toEqual({ code: 'output_too_long_for_memory', storage: null });
+  });
+});
+
+describe('the largest download: never past 4 GiB - 1 byte (17 Oct 2026)', () => {
+  it('the disk route stops a write that would pass the limit, before it reaches the disk', async () => {
+    quota.bytes = 100 * MIB;
+    const sink = await prepareOutput('o', 4 * MIB, { limitBytes: 6 * MIB });
+    expect(sink.route).toBe('opfs');
+    const w = writerOf(sink.target);
+    await w.write({ type: 'write', data: new Uint8Array(6 * MIB), position: 0 }); // exactly the limit: allowed
+    await expect(w.write({ type: 'write', data: new Uint8Array(1), position: 6 * MIB })).rejects.toMatchObject({
+      name: OUTPUT_TOO_LARGE_ERROR,
+    });
+    expect(files.get('clip-export-o.mp4')?.maxSeen).toBe(6 * MIB);
+    await sink.discard();
+    expect(files.has('clip-export-o.mp4')).toBe(false);
+  });
+
+  it('the picked file stops the same way, and nothing stays under its name', async () => {
+    const file = new FakePickedFile('lang.mp4', 0, { bytes: 100 * MIB });
+    const sink = await prepareOutput('p', 4 * MIB, {
+      destination: file as unknown as FileSystemFileHandle,
+      limitBytes: 6 * MIB,
+    });
+    const w = writerOf(sink.target);
+    await expect(w.write({ type: 'write', data: new Uint8Array(2 * MIB), position: 5 * MIB })).rejects.toMatchObject({
+      name: OUTPUT_TOO_LARGE_ERROR,
+    });
+    expect(file.swapPeak).toBe(4 * MIB);
+    await sink.discard();
+    expect(file.removed).toBe(true);
+    expect(file.openWritables).toBe(0);
+  });
+
+  it('by default the limit is 4 GiB - 1 byte (a patch inside the file is never stopped)', async () => {
+    const file = new FakePickedFile('lang.mp4', 0, { bytes: 8 * 1024 * MIB });
+    const sink = await prepareOutput('q', MIB, { destination: file as unknown as FileSystemFileHandle });
+    const w = writerOf(sink.target);
+    const limit = 4 * 1024 * MIB - 1;
+    await w.write({ type: 'write', data: new Uint8Array(8), position: limit - 8 });
+    await expect(w.write({ type: 'write', data: new Uint8Array(8), position: limit - 7 })).rejects.toMatchObject({
+      name: OUTPUT_TOO_LARGE_ERROR,
+    });
+    await sink.discard();
+  });
+});
+
+describe('largestClaim: how much a disk really gives', () => {
+  it('finds the free space within 1 % or 1 MiB, from below', async () => {
+    for (const free of [0, 512 * 1024, 3 * MIB, 700 * MIB, 1536 * MIB, 3900 * MIB]) {
+      const asked: number[] = [];
+      const found = await largestClaim(4 * 1024 * MIB, (bytes) => {
+        asked.push(bytes);
+        return bytes <= free;
+      });
+      expect(found).toBeLessThanOrEqual(free);
+      expect(free - found).toBeLessThanOrEqual(Math.max(MIB, free / 100) + 1);
+      expect(asked.length).toBeLessThanOrEqual(24);
+    }
+  });
+
+  it('an ask that throws counts as a refusal', async () => {
+    expect(
+      await largestClaim(100 * MIB, () => {
+        throw new DOMException('no', 'InvalidStateError');
+      }),
+    ).toBe(0);
   });
 });

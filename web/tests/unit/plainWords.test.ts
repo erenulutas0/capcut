@@ -34,6 +34,7 @@ const REASONS: Record<FastCutFallbackReason, true> = {
   encoder: true,
   seam_check: true,
   target_size: true,
+  output_size: true,
   error: true,
 };
 

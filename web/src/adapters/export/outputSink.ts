@@ -29,7 +29,7 @@
 import { BufferTarget, Mp4OutputFormat, StreamTarget, type StreamTargetChunk, type Target } from 'mediabunny';
 
 import type { ExportFailureCode, StorageShortfall } from '@/domain/exportEvents';
-import { hasRoomForOutput } from '@/domain/outputStorage';
+import { OUTPUT_FILE_LIMIT_BYTES, hasRoomForOutput } from '@/domain/outputStorage';
 import { outputRouteRefusal, type OutputRouteAvailability } from '@/domain/policy';
 
 import { tagStage } from './failureStage';
@@ -39,6 +39,51 @@ export type OutputRoute = 'opfs' | 'memory' | 'file';
 
 /** The muxer's own writes are small; batching them keeps disk I/O sane. */
 const CHUNK_SIZE = 4 * 1024 * 1024;
+
+/**
+ * The error a disk route throws when the file would grow past the largest
+ * download (`OUTPUT_FILE_LIMIT_BYTES`, 4 GiB − 1 byte; 17 Oct 2026). The
+ * bitrate is planned to stay well under it, so this only fires on an encoder
+ * that writes far more than it is asked for. The worker reports it as
+ * `output_too_large` and the partial file is discarded like any failed one.
+ * The memory route has no such check: it holds at most 5 minutes (doc 15 v3),
+ * a small fraction of the limit at any bitrate the app asks for.
+ */
+export const OUTPUT_TOO_LARGE_ERROR = 'OutputTooLargeError';
+
+function guardFileLimit(end: number, limitBytes: number): void {
+  if (end > limitBytes) {
+    throw tagStage(new DOMException('the file would pass the largest download size', OUTPUT_TOO_LARGE_ERROR), 'write');
+  }
+}
+
+/**
+ * The most a disk really lets a file claim, found by asking in smaller steps
+ * after the full claim was refused (17 Oct 2026): `tryClaim(bytes)` resolves
+ * true when that much could be set aside (and gives it back). Binary search
+ * from `refusedBytes` down, to within 1 % or 1 MiB. Never more than 24 asks;
+ * an error counts as a refusal. Used only to say how long a download WOULD
+ * fit; it reserves nothing.
+ */
+export async function largestClaim(
+  refusedBytes: number,
+  tryClaim: (bytes: number) => Promise<boolean> | boolean,
+): Promise<number> {
+  let lo = 0;
+  let hi = Math.max(0, Math.floor(refusedBytes));
+  for (let asks = 0; asks < 24 && hi - lo > Math.max(1024 * 1024, hi / 100); asks += 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    let ok = false;
+    try {
+      ok = (await tryClaim(mid)) === true;
+    } catch {
+      ok = false;
+    }
+    if (ok) lo = mid;
+    else hi = mid;
+  }
+  return lo;
+}
 
 export interface CollectedOutput {
   route: OutputRoute;
@@ -157,9 +202,14 @@ export async function prepareOutput(
     reserveBytes?: number | null;
     /** ADR-026: the file the user picked in the save dialog; wins over OPFS. */
     destination?: FileSystemFileHandle | null;
+    /** The largest file allowed (default `OUTPUT_FILE_LIMIT_BYTES`): a write past it throws `OUTPUT_TOO_LARGE_ERROR`. */
+    limitBytes?: number;
   } = {},
 ): Promise<PreparedOutput> {
-  if (options.destination) return prepareFileOutput(options.destination, requiredBytes, options.reserveBytes ?? null);
+  const limitBytes = options.limitBytes ?? OUTPUT_FILE_LIMIT_BYTES;
+  if (options.destination) {
+    return prepareFileOutput(options.destination, requiredBytes, options.reserveBytes ?? null, limitBytes);
+  }
   if (options.forceMemory) return memoryRoute('no_disk_access');
   const root = await opfsRoot();
   if (!root) return memoryRoute('no_disk_access');
@@ -171,10 +221,11 @@ export async function prepareOutput(
   } catch {
     return memoryRoute('no_disk_access');
   }
-  const shortfall = (reason: StorageShortfall['reason']): StorageShortfall => ({
+  const shortfall = (reason: StorageShortfall['reason'], roomBytes: number | null = null): StorageShortfall => ({
     requiredBytes,
     freeBytes: Math.max(0, Number.isFinite(free) ? free : 0),
     reason,
+    ...(reason === 'reservation' ? { roomBytes } : {}),
   });
   if (!hasRoomForOutput(free, requiredBytes)) return memoryRoute('not_enough_space', shortfall('estimate'));
 
@@ -206,13 +257,27 @@ export async function prepareOutput(
     reserved = false;
   }
   if (!reserved) {
+    // How much the disk does give, so the refusal can say how long a download
+    // would fit (the same handle; a refused truncate leaves it usable). An
+    // in-memory file system that never grows the file reports nothing.
+    let room: number | null = null;
+    try {
+      room = await largestClaim(reserve, (bytes) => {
+        access.truncate(bytes);
+        const ok = access.getSize() >= bytes;
+        access.truncate(0);
+        return ok;
+      });
+    } catch {
+      room = null;
+    }
     try {
       access.close();
     } catch {
       // Already closed.
     }
     await root.removeEntry(entryName).catch(() => undefined);
-    return memoryRoute('not_enough_space', shortfall('reservation'));
+    return memoryRoute('not_enough_space', shortfall('reservation', room));
   }
 
   let open = true;
@@ -239,6 +304,7 @@ export async function prepareOutput(
   // The muxer seeks (to patch box sizes), so writes carry their own position.
   const writable = new WritableStream<StreamTargetChunk>({
     write(chunk) {
+      guardFileLimit(chunk.position + chunk.data.byteLength, limitBytes);
       // Past the claimed size the file grows again, and a full disk or quota
       // throws QuotaExceededError here (ADR-023).
       let count: number;
@@ -352,6 +418,7 @@ async function prepareFileOutput(
   handle: FileSystemFileHandle,
   requiredBytes: number,
   reserveBytes: number | null,
+  limitBytes: number,
 ): Promise<PreparedOutput> {
   const picked = handle as PickedFileHandle;
   const refuse = (
@@ -402,8 +469,26 @@ async function prepareFileOutput(
     await writable.truncate(reserve);
   } catch {
     await writable.abort().catch(() => undefined);
+    // How much that disk does give (17 Oct 2026), so the refusal can say how
+    // long a download would fit. A refused truncate leaves the writable
+    // errored, so every ask opens its own temporary file and throws it away
+    // (`abort`: the chosen file is never touched).
+    const room = await largestClaim(reserve, async (bytes) => {
+      const probe = await picked.createWritable({ keepExistingData: false });
+      try {
+        await probe.truncate(bytes);
+        return true;
+      } finally {
+        await probe.abort().catch(() => undefined);
+      }
+    }).catch(() => null);
     await removeIfOurs();
-    return refuse('output_storage_insufficient', { requiredBytes, freeBytes: 0, reason: 'file_reservation' });
+    return refuse('output_storage_insufficient', {
+      requiredBytes,
+      freeBytes: 0,
+      reason: 'file_reservation',
+      roomBytes: room,
+    });
   }
 
   let state: 'open' | 'closed' | 'aborted' = 'open';
@@ -424,6 +509,7 @@ async function prepareFileOutput(
 
   const stream = new WritableStream<StreamTargetChunk>({
     async write(chunk) {
+      guardFileLimit(chunk.position + chunk.data.byteLength, limitBytes);
       // The reservation above already holds the space, so a full disk is
       // not expected here. What a native file throws when the disk does
       // fill up mid-write was not measured (ADR-026): a QuotaExceededError

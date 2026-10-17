@@ -20,7 +20,7 @@ import { DEFAULT_EXPORT_SPEC } from '@/domain/edl';
 import { MIN_CAPTION_SHORT_EDGE, MIN_OUTPUT_SHORT_EDGE } from '@/domain/outputSize';
 import { formatClock, US_PER_SECOND } from '@/domain/time';
 import { downloadBytes } from '@/domain/transcriptModels';
-import { overLimitText } from '@/components/editor/outputLimitText';
+import { overLimitText, storageRefusalText } from '@/components/editor/outputLimitText';
 import { tr, type MessageKey } from '@/i18n/messages';
 import { en } from '@/i18n/messages.en';
 import { cloudTr } from '@/i18n/cloudMessages';
@@ -328,7 +328,10 @@ describe('web local policy', () => {
       const inputMin = String(WEB_LOCAL_POLICY.maxTotalSourceDurationUs / (60 * US_PER_SECOND));
       expect(locale['help.limit.length']).toContain(`${inputMin} ${minutes}`);
       expect(locale['export.fail.output_too_long_for_memory']).toContain(` ${memoryMin} `);
-      expect(locale['export.fail.output_storage_insufficient']).toContain(` ${memoryMin} `);
+      // 17 Oct 2026: on the browser's own disk the memory route's limit is the shortest length said.
+      expect(
+        storageRefusalText((key) => locale[key], WEB_LOCAL_POLICY.maxMemoryRouteOutputDurationUs),
+      ).toContain(` ${memoryMin} `);
       expect(locale['help.limit.length']).toContain(`${outputMin} ${minutes}`);
       expect(locale['help.limit.length']).toContain(` ${memoryMin} `);
     }

@@ -51,6 +51,7 @@ import type {
 import {
   chooseBitrateMode,
   encoderVideoBitrate,
+  MIN_REENCODE_BITRATE,
   ORDINARY_BITRATE_MODE,
   sourceBoundedBitrate,
   type BitrateModeChoice,
@@ -75,7 +76,14 @@ import {
   type RenderPlan,
   type RenderSegment,
 } from '@/domain/renderPlan';
-import { nominalOutputBytes, requiredFreeBytes } from '@/domain/outputStorage';
+import {
+  OUTPUT_FILE_LIMIT_BYTES,
+  fileLimitedVideoBitrate,
+  longestOutputThatFits,
+  nominalOutputBytes,
+  requiredFreeBytes,
+  storageFitSuggestion,
+} from '@/domain/outputStorage';
 import {
   MAX_TARGET_ATTEMPTS,
   TARGET_AUDIO_BITRATES,
@@ -91,7 +99,7 @@ import {
 } from '@/domain/targetSize';
 import { outputPixelSize } from '@/domain/edl';
 import { hdrTransferOf, type HdrTransfer } from '@/domain/hdr';
-import { outputRouteRefusal } from '@/domain/policy';
+import { WEB_LOCAL_POLICY, outputRouteRefusal } from '@/domain/policy';
 import { US_PER_SECOND } from '@/domain/time';
 import {
   CAPTION_FONT_FAMILY,
@@ -127,7 +135,7 @@ import { createHdrContext, readHdrPixels, softClippedImage } from './hdrCanvas';
 import { HDR_CLIP_WORKER_NAME, HDR_PIPELINE_DEPTH, HdrClipper, serveHdrClips } from './hdrClip';
 import { probeHdrToneMapping, type HdrProbeResult } from './hdrProbe';
 import { removeExportEntry, sweepExportEntries } from './opfsEntries';
-import { prepareOutput, sinkRefusal, type CollectedOutput } from './outputSink';
+import { OUTPUT_TOO_LARGE_ERROR, prepareOutput, sinkRefusal, type CollectedOutput } from './outputSink';
 import { AUDIO_CHUNK_FRAMES, SegmentAudioWriter, audioEndFrame, type AudioContextSources } from './segmentAudio';
 import type {
   CaptionFontStatus,
@@ -738,23 +746,79 @@ async function videoEncoderKind(plan: RenderPlan): Promise<VideoEncoderKind> {
  * software encoder on top. An enhanced picture (ADR-037) is not held to the
  * source: brightening and sharpening bring out detail the source's own bits
  * did not have to carry.
+ *
+ * Last (17 Oct 2026): held so the file stays under the largest download
+ * (`fileLimitedVideoBitrate`, 4 GiB − 1 byte). `unlimited` is the bitrate
+ * before that hold: a shorter output with the same settings keeps more of it
+ * (the "not enough space" suggestion is computed with it).
  */
 async function exportVideoBitrate(
   plan: RenderPlan,
   sourceBitrate: number | null,
-): Promise<{ bitrate: number; kind: VideoEncoderKind }> {
+  fileLimitBytes: number,
+): Promise<{ bitrate: number; unlimited: number; kind: VideoEncoderKind; heldForFileLimit: boolean }> {
   const kind = await videoEncoderKind(plan);
   const planned = plan.enhance ? plan.videoBitrate : sourceBoundedBitrate(plan.videoBitrate, sourceBitrate);
-  const bitrate = encoderVideoBitrate(planned, kind);
-  if (bitrate === planned) return { bitrate, kind };
-  // A software encoder that would refuse the higher bitrate keeps the plan's.
-  const supported = await canEncodeVideo('avc', {
-    width: plan.width,
-    height: plan.height,
-    bitrate,
-    frameRate: plan.fpsNum / plan.fpsDen,
-  }).catch(() => false);
-  return { bitrate: supported ? bitrate : planned, kind };
+  let unlimited = encoderVideoBitrate(planned, kind);
+  if (unlimited !== planned) {
+    // A software encoder that would refuse the higher bitrate keeps the plan's.
+    const supported = await canEncodeVideo('avc', {
+      width: plan.width,
+      height: plan.height,
+      bitrate: unlimited,
+      frameRate: plan.fpsNum / plan.fpsDen,
+    }).catch(() => false);
+    if (!supported) unlimited = planned;
+  }
+  // The same sound and length the disk reservation counts (ADR-023). The floor
+  // only matters under the measurement hook's smaller limits: with the real one
+  // the hold never goes below 8.4 Mbit/s inside the 60-minute output limit.
+  const held = Math.max(
+    MIN_REENCODE_BITRATE,
+    fileLimitedVideoBitrate(
+      unlimited,
+      { audioBitrate: plan.audioBitrate, durationUs: plan.expectedDurationUs },
+      fileLimitBytes,
+    ),
+  );
+  const bitrate = Math.min(unlimited, held);
+  return { bitrate, unlimited, kind, heldForFileLimit: bitrate < unlimited };
+}
+
+/**
+ * The largest file this download may be: `OUTPUT_FILE_LIMIT_BYTES`, or less
+ * under the measurement hook (`window.__clipOutputLimitBytes`, which can only
+ * lower it).
+ */
+function fileLimitOf(options: Pick<ExportRequestOptions, 'outputLimitBytes'>): number {
+  const hook = options.outputLimitBytes;
+  return hook !== null && Number.isFinite(hook) && hook > 0 ? Math.min(OUTPUT_FILE_LIMIT_BYTES, hook) : OUTPUT_FILE_LIMIT_BYTES;
+}
+
+/**
+ * A "not enough space" refusal with the length that does fit (17 Oct 2026):
+ * from the free space the disk really gave (`roomBytes`, or the browser's
+ * estimate when that was the check), this download's bitrates and the same
+ * rule the reservation uses. On the browser's private disk a short output
+ * may still go to memory (doc 15 v3), so the memory route's limit counts
+ * there; the save-dialog route has no such fallback. Null: no honest number.
+ */
+function withSuggestion(
+  storage: StorageShortfall | null,
+  rates: { videoBitrate: number; audioBitrate: number },
+  options: Pick<ExportRequestOptions, 'memoryRouteLimitUs' | 'plan'>,
+  fileLimit: number,
+): StorageShortfall | undefined {
+  if (!storage) return undefined;
+  const room = storage.reason === 'estimate' ? storage.freeBytes : (storage.roomBytes ?? null);
+  const fitUs =
+    room === null ? null : longestOutputThatFits(room, rates, WEB_LOCAL_POLICY.maxOutputDurationUs, fileLimit);
+  const suggestedDurationUs = storageFitSuggestion({
+    fitUs,
+    memoryRouteUs: storage.reason === 'file_reservation' ? null : options.memoryRouteLimitUs,
+    outputUs: options.plan.expectedDurationUs,
+  });
+  return { ...storage, suggestedDurationUs };
 }
 
 /**
@@ -828,6 +892,8 @@ interface ExportRequestOptions {
   bitrateModeOverride: VideoBitrateMode | null;
   /** ADR-045, test builds only: the encoder is taken to refuse `constant` (false everywhere else). */
   refuseConstantBitrate: boolean;
+  /** Measurement hook: a smaller largest-download size than `OUTPUT_FILE_LIMIT_BYTES` (null: the real one). */
+  outputLimitBytes: number | null;
   /** Test builds only: break this export on purpose (`ExportTestFault`); null everywhere else. */
   testFault: ExportTestFault | null;
 }
@@ -1126,6 +1192,23 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
       // that file fits — then the copy is the best quality there is. Its size
       // is known before a byte is written: the copied packets, plus the sound.
       let copyTarget: TargetRun | null = null;
+      // 17 Oct 2026: no download is larger than `OUTPUT_FILE_LIMIT_BYTES`. A
+      // copy keeps the source's own bytes, so its size is known now; one that
+      // would pass the limit is fully encoded instead, at a held bitrate.
+      const copyOverLimit =
+        job.videoBytes +
+          nominalOutputBytes({
+            videoBitrate: 0,
+            audioBitrate: wantsAudio ? plan.audioBitrate : 0,
+            durationUs: plan.expectedDurationUs,
+          }) +
+          containerOverheadBytes({
+            durationUs: plan.expectedDurationUs,
+            fps: plan.fpsNum / plan.fpsDen,
+            audioSampleRate: wantsAudio ? plan.audio.sampleRate : null,
+          }) >
+        fileLimitOf(options);
+      if (copyOverLimit) throw new FastCutFallback('output_size');
       if (target) {
         const copyBytes = Math.ceil(
           job.videoBytes +
@@ -1280,15 +1363,23 @@ async function runAudioExport(options: ExportRequestOptions, startedAt: number):
   ownEntries.clear();
   await sweepExportEntries().catch(() => 0);
 
+  const fileLimit = fileLimitOf(options);
   const sink = await prepareOutput(
     requestId,
     requiredFreeBytes({ videoBitrate: 0, audioBitrate: plan.audioBitrate, durationUs: plan.expectedDurationUs }),
-    { forceMemory: forceMemoryRoute, storageFreeBytes, reserveBytes: storageReserveBytes, destination },
+    {
+      forceMemory: forceMemoryRoute,
+      storageFreeBytes,
+      reserveBytes: storageReserveBytes,
+      destination,
+      limitBytes: fileLimit,
+    },
   );
   const refusal = sinkRefusal(sink, options.memoryRouteLimitUs, plan.expectedDurationUs);
   if (refusal) {
     await sink.discard();
-    throw new ExportFailure(refusal.code, undefined, refusal.storage ?? undefined);
+    const rates = { videoBitrate: 0, audioBitrate: plan.audioBitrate };
+    throw new ExportFailure(refusal.code, undefined, withSuggestion(refusal.storage, rates, options, fileLimit));
   }
 
   facts.route = sink.route;
@@ -1437,7 +1528,8 @@ async function produceOutput(
   // The fast cut's video is the source's own bytes; the full encode's is the
   // encoder's bitrate (ADR-024). A target-size attempt's bitrate is the
   // planner's, as it is: the size decides, no factor is put on top (ADR-035).
-  const ordinary = fastJob || target ? null : await exportVideoBitrate(plan, sources.sourceBitrate);
+  const fileLimit = fileLimitOf(options);
+  const ordinary = fastJob || target ? null : await exportVideoBitrate(plan, sources.sourceBitrate, fileLimit);
   const videoBitrate = fastJob
     ? Math.ceil((fastJob.videoBytes * 8) / Math.max(durationSeconds, 0.001))
     : target
@@ -1506,7 +1598,13 @@ async function produceOutput(
       audioBitrate: plan.audioBitrate,
       durationUs: plan.expectedDurationUs,
     }),
-    { forceMemory: forceMemoryRoute, storageFreeBytes, reserveBytes: storageReserveBytes, destination },
+    {
+      forceMemory: forceMemoryRoute,
+      storageFreeBytes,
+      reserveBytes: storageReserveBytes,
+      destination,
+      limitBytes: fileLimit,
+    },
   );
 
   // Doc 15 v3: 60 minutes only on a disk route; ADR-026: the picked file
@@ -1515,7 +1613,17 @@ async function produceOutput(
   const refusal = sinkRefusal(sink, memoryRouteLimitUs, plan.expectedDurationUs);
   if (refusal) {
     await sink.discard();
-    throw new ExportFailure(refusal.code, undefined, refusal.storage ?? undefined);
+    // The length that does fit is said with the bitrate a full encode of it
+    // would get — or the copy's, if that is higher (a copy keeps the source's
+    // own rate, which can be above the re-encode's).
+    const rates = {
+      videoBitrate: Math.max(
+        ordinary?.unlimited ?? videoBitrate,
+        fastJob ? (await exportVideoBitrate(plan, sources.sourceBitrate, fileLimit)).unlimited : 0,
+      ),
+      audioBitrate: plan.audioBitrate,
+    };
+    throw new ExportFailure(refusal.code, undefined, withSuggestion(refusal.storage, rates, options, fileLimit));
   }
   if (!fastJob) {
     facts.route = sink.route;
@@ -1974,6 +2082,7 @@ async function produceOutput(
               bitrate: videoBitrate,
               bitrateMode: bitrateMode.used,
               askedBitrateMode: bitrateMode.asked,
+              heldForFileLimit: ordinary?.heldForFileLimit ?? false,
             } satisfies VideoEncodingOutcome,
           }
         : {}),
@@ -2345,6 +2454,10 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
         bitrateModeOverride:
           request.bitrateMode === 'constant' || request.bitrateMode === 'variable' ? request.bitrateMode : null,
         refuseConstantBitrate: TEST_HOOKS && request.refuseConstantBitrate === true,
+        outputLimitBytes:
+          typeof request.outputLimitBytes === 'number' && Number.isFinite(request.outputLimitBytes)
+            ? request.outputLimitBytes
+            : null,
         testFault: TEST_HOOKS ? (request.testFault ?? null) : null,
       });
     } catch (error) {
@@ -2371,7 +2484,9 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
           code:
             name === 'RangeError'
               ? 'out_of_memory'
-              : // Chromium closes a codec it reclaimed with a QuotaExceededError too: that is not a full disk.
+              : name === OUTPUT_TOO_LARGE_ERROR
+                ? 'output_too_large'
+                : // Chromium closes a codec it reclaimed with a QuotaExceededError too: that is not a full disk.
                 name === 'QuotaExceededError' && detail.hint !== 'codec_reclaimed'
                 ? 'output_storage_full'
                 : 'internal_error',

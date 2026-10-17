@@ -87,3 +87,20 @@ Küçült'ün tahmini (`VIDEO_EXPECTED_RATIO`) zaten sabit moddu; değişmedi.
 1. Donanımda sabit mod ayrıntılı kayıtlarda kaliteyi biraz düşürüp dosyayı küçültüyor (en çok VMAF −1,85).
    Boyutun doğru söylenmesi bu bedele değer mi — kararınız böyleydi; telefon ölçüsünden sonra yeniden bakılabilir.
 2. Yazılım kodlayıcısı (donanımı olmayan bilgisayarlar) değişken kaldı; orada boyut sapması zaten yok.
+
+## Ek — 17 Ekim 2026: en büyük indirme (ADR-024 eki)
+
+Olağan indirmenin bit hızına en sonda bir tavan kondu: dosyanın üst tahmini (ADR-023) **4 GiB − 1 baytı** geçmez
+([ADR-024, 17 Ekim eki](ADR-024-software-encoder-bitrate.md)). Mod kuralı değişmedi (donanım `constant`, yazılım
+`variable`); tavan iki modda da aynı bit hızına uygulanır ve sabit mod sorusu (`settleBitrateMode`) **tutulmuş** bit
+hızıyla sorulur.
+
+- **Donanımda bugün hiç devreye girmez:** çıktı en çok 30 kare/sn ve 1080p (doc 15), planın bit hızı 5,6 Mbit/s;
+  60 dakikanın tahmini 2,6 GiB. Sabit mod istenenin 0,95–1,00'ını yazıyor (masaüstü), telefonda 0,999–1,003; tavanın
+  1,1'lik payı bu ölçülere göre bol.
+- **Donanımda değişkene düşülürse** (tarayıcı sabit modu reddederse): değişken mod masaüstünde istenenin 1,29'una,
+  telefonda 1,51'ine (3,5 sn'lik klipte 1,97) çıkmıştı. 5,6 Mbit/s'te 60 dakika × 1,51 ≈ 3,9 GiB, yine tavanın altında;
+  değişken modla 60 dakikalık donanım kodlaması ölçülmedi. Aşarsa son bekçi dosyayı tavanda durdurur
+  (`output_too_large`), dosya bırakmaz.
+- **Yazılımda (değişken):** tutulan bit hızında 60 dakikanın dosyası planlananın 1,0008'i (3697,6 MiB); 5 dakikalık
+  gürültü ve gerçek kayıt parçalarında 1,0009 ve 1,0036 (ADR-024 eki).

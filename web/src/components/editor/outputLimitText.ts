@@ -21,3 +21,29 @@ export function overLimitText(
   };
   return t(key).replace(/\{(\w+)\}/g, (match, name: string) => values[name] ?? match);
 }
+
+/**
+ * The "not enough space" sentence (17 Oct 2026). With a suggested length
+ * (`StorageShortfall.suggestedDurationUs`, worked out from the free space the
+ * disk really gave and this download's own bitrate) it says it: "en fazla 20
+ * dakikalık bir kesit indir" — whole minutes from one minute on, whole seconds
+ * under it, both already rounded down. Without one it gives no number.
+ */
+export function storageRefusalText(
+  t: (key: MessageKey) => string,
+  suggestedDurationUs: number | null | undefined,
+): string {
+  const us = suggestedDurationUs ?? null;
+  if (us === null || !Number.isFinite(us) || us < US_PER_SECOND) return t('export.fail.output_storage_insufficient');
+  const minutes = Math.floor(us / (60 * US_PER_SECOND));
+  const seconds = Math.floor(us / US_PER_SECOND);
+  const length =
+    minutes >= 1
+      ? minutes === 1
+        ? t('export.fail.fitMinutesOne')
+        : t('export.fail.fitMinutes').replace('{n}', String(minutes))
+      : seconds === 1
+        ? t('export.fail.fitSecondsOne')
+        : t('export.fail.fitSeconds').replace('{n}', String(seconds));
+  return t('export.fail.output_storage_insufficient_fit').replace('{length}', length);
+}

@@ -62,6 +62,12 @@ export type FastCutFallbackReason =
   | 'seam_check'
   /** ADR-035: the copy would be larger than the size the download must fit. */
   | 'target_size'
+  /**
+   * 17 Oct 2026: the copy would be larger than any download may be
+   * (`OUTPUT_FILE_LIMIT_BYTES`, 4 GiB − 1 byte); the full encode holds its
+   * bitrate under it.
+   */
+  | 'output_size'
   /** Something unexpected went wrong in the fast cut; the full encode ran instead. */
   | 'error';
 
