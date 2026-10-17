@@ -176,7 +176,7 @@ test('a small video has one size, its own; the GIF is never larger than the vide
   await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
   await expect(estimate(page)).toHaveAttribute('data-width', '480');
   const made = await saveGif(page, testInfo, 'other-8s_gif.gif');
-  expect(made.gif).toMatchObject({ width: 480, height: 270, frames: 50 });
+  expect(made.gif).toMatchObject({ width: 480, height: 270, frames: 100 });
 });
 
 test('refusals: sound only, one frame, a broken index — the screens’ own sentences, nothing made', async ({ page }) => {
@@ -257,7 +257,7 @@ test.describe('without a save dialog (Firefox, Safari)', () => {
     const path = testInfo.outputPath('fallback.gif');
     await download.saveAs(path);
     const inspected = inspectGif(new Uint8Array(readFileSync(path)));
-    expect(inspected.ok && inspected.gif).toMatchObject({ width: 320, height: 180, frames: 50, loops: 0 });
+    expect(inspected.ok && inspected.gif).toMatchObject({ width: 320, height: 180, frames: 100, loops: 0 });
   });
 });
 

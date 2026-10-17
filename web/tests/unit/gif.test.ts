@@ -42,8 +42,10 @@ describe('GIF yap: the part', () => {
     expect(WEB_LOCAL_POLICY.maxGifDurationUs).toBe(GIF_MAX_DURATION_US);
   });
 
-  it('starts as the first four seconds, or the whole of a shorter video', () => {
+  it('takes a video that fits in a GIF whole; a longer one starts with its first four seconds', () => {
     expect(initialGifRange(24 * S)).toEqual({ startUs: 0, endUs: GIF_DEFAULT_DURATION_US });
+    expect(initialGifRange(10 * S)).toEqual({ startUs: 0, endUs: 10 * S });
+    expect(initialGifRange(8 * S)).toEqual({ startUs: 0, endUs: 8 * S });
     expect(initialGifRange(2.5 * S)).toEqual({ startUs: 0, endUs: 2.5 * S });
   });
 

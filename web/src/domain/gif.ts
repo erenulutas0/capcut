@@ -41,9 +41,14 @@ export function minGifLength(videoUs: Micros): Micros {
   return Math.min(GIF_MIN_DURATION_US, Math.max(0, videoUs));
 }
 
-/** The first part offered: from the start, four seconds (or the whole video when it is shorter). */
+/**
+ * The first part offered: a video that fits in a GIF is taken whole; a longer
+ * one starts with its first four seconds.
+ */
 export function initialGifRange(videoUs: Micros): GifRange {
-  return { startUs: 0, endUs: Math.max(0, Math.min(videoUs, GIF_DEFAULT_DURATION_US)) };
+  const length = Math.max(0, videoUs);
+  if (length <= GIF_MAX_DURATION_US) return { startUs: 0, endUs: length };
+  return { startUs: 0, endUs: GIF_DEFAULT_DURATION_US };
 }
 
 function clamp(value: number, low: number, high: number): number {
