@@ -67,7 +67,7 @@ test.describe('share a video to the app', () => {
     await expect(page.getByTestId('home-video-change')).toHaveText('Başka bir video seç');
     await expect(page.getByTestId('home-share-many')).toHaveCount(0);
     // Every task is still there, each carrying the video.
-    await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(11);
+    await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(12);
     await expect(page.getByTestId('task-gif')).toHaveAttribute('href', `/yap/gif?paylasim=${id}`);
 
     await page.getByTestId('task-gif').click();

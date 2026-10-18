@@ -14,6 +14,7 @@ import { expect, type Page, type TestInfo } from '@playwright/test';
 import { inspectGif } from '../../../src/domain/gifInspect';
 import { enhanceFixture, frameRgb, rgbMeans } from '../../e2e/enhance-media';
 import { silenceFixture } from '../../e2e/silence-media';
+import { loudness, soundFixFixture } from '../../e2e/soundfix-media';
 import { noisyLongFixture } from '../../e2e/targetsize-media';
 import { wizardFixture } from '../../e2e/wizard-media';
 import type { MessageKey } from '../../../src/i18n/messages';
@@ -220,6 +221,26 @@ export const FLOWS: Flow[] = [
     },
     download: { key: 'wizard.download', testId: 'wizard-download' },
     verify: (out) => [lengthCheck(out, 24), codecCheck(out, ['video:h264'])],
+  },
+  {
+    // ADR-049: speech recorded far too quietly (ffmpeg's synthetic voice, about −38 LUFS).
+    id: 'duzelt',
+    sourceNote: 'kisik-konusma.mp4 (640 × 360, 16 sn, yapay ses, yaklaşık −38 LUFS)',
+    source: () => soundFixFixture('quiet'),
+    middle: async (novice, page) => {
+      await wait(page, 'duzelt-summary');
+      await novice.look('seçim');
+    },
+    download: { key: 'wizard.download', testId: 'wizard-download' },
+    verify: (out, _source, files) => {
+      const level = loudness(files.out);
+      return [
+        lengthCheck(out, 16.37),
+        codecCheck(out, ['video:h264', 'audio:aac']),
+        { name: '−16 LUFS (±1)', ok: Math.abs(level.integratedLufs + 16) <= 1, value: `${tr(level.integratedLufs, 1)} LUFS` },
+        { name: 'gerçek tepe ≤ −1 dBTP', ok: level.truePeakDbtp <= -1, value: `${tr(level.truePeakDbtp, 1)} dBTP` },
+      ];
+    },
   },
   {
     id: 'cevir',

@@ -9,6 +9,7 @@ import { closeSheet, noSavePicker, openMore, openSettings, installSavePicker, st
 import { silenceFixture } from './silence-media';
 import { expectStylesApplied } from './stylesReady';
 import { timelineFixture } from './timeline-media';
+import { soundFixFixture } from './soundfix-media';
 import { noisyLongFixture } from './targetsize-media';
 import { wizardFixture } from './wizard-media';
 
@@ -1505,15 +1506,15 @@ test.describe('a11y: “Sesi kapat” and “Bunu henüz yapamıyoruz.”, axe a
     { name: 'phone-390', width: 390, height: 844 },
     { name: 'desktop-1440', width: 1440, height: 900 },
   ]) {
-    test(`${size.name}: the eleven cards, both answers of the search, every step of the wizard — no axe finding, nothing scrolls sideways`, async ({
+    test(`${size.name}: the twelve cards, both answers of the search, every step of the wizard — no axe finding, nothing scrolls sideways`, async ({
       page,
     }, testInfo) => {
       await page.setViewportSize({ width: size.width, height: size.height });
 
-      // The opening screen with eleven cards; "Sesi kapat" found; a request that cannot be served.
+      // The opening screen with twelve cards; "Sesi kapat" found; a request that cannot be served.
       await page.goto('/');
-      await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(11);
-      await audit(page, `${size.name}-home-eleven-cards`, testInfo);
+      await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(12);
+      await audit(page, `${size.name}-home-twelve-cards`, testInfo);
       expect(await horizontalOverflow(page), 'home').toBe(0);
       await finderBox(page).fill('sesini kapat');
       await expect(page.getByTestId('result-sustur').getByTestId('result-start')).toBeVisible();
@@ -1603,12 +1604,12 @@ test.describe('a11y: “Sesi kapat” and “Bunu henüz yapamıyoruz.”, axe a
   });
 
   for (const width of [320, 640]) {
-    test(`reflow at ${width} px: the eleven cards, the honest answer and the wizard never scroll sideways; nothing clips with wider text spacing`, async ({
+    test(`reflow at ${width} px: the twelve cards, the honest answer and the wizard never scroll sideways; nothing clips with wider text spacing`, async ({
       page,
     }) => {
       await page.setViewportSize({ width, height: 720 });
       await page.goto('/');
-      await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(11);
+      await expect(page.getByTestId('task-grid').getByRole('link')).toHaveCount(12);
       expect(await horizontalOverflow(page), 'home').toBe(0);
       await finderBox(page).fill('arka planı bulanıklaştır');
       await expect(page.getByTestId('result-arkaplan')).toBeVisible();
@@ -1631,4 +1632,84 @@ test.describe('a11y: “Sesi kapat” and “Bunu henüz yapamıyoruz.”, axe a
       expect(await horizontalOverflow(page), 'sustur saved').toBe(0);
     });
   }
+});
+
+// ------------------------------------------------------------ "Sesi düzelt"
+// The twelfth card (ADR-049): its summary with the before/after buttons, the saved result, the refusal.
+
+test.describe('a11y: “Sesi düzelt”, axe audit, keyboard and reflow', () => {
+  test.use({ storageState: { cookies: [], origins: [] }, reducedMotion: 'reduce' });
+  test.describe.configure({ timeout: 300_000 });
+
+  test.beforeEach(async ({ page }) => {
+    await installSavePicker(page);
+  });
+
+  for (const size of [
+    { name: 'phone-360', width: 360, height: 780 },
+    { name: 'desktop-1440', width: 1440, height: 900 },
+  ]) {
+    test(`${size.name}: every step of the wizard — no axe finding, nothing scrolls sideways, the listen buttons big enough`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize({ width: size.width, height: size.height });
+      await page.goto('/yap/duzelt');
+      await expect(page.getByTestId('pick-video')).toBeEnabled();
+      await audit(page, `${size.name}-duzelt-pick`, testInfo);
+      await page.getByTestId('video-input').setInputFiles(soundFixFixture('uneven'));
+      await expect(page.getByTestId('duzelt-summary')).toBeVisible({ timeout: 120_000 });
+      await audit(page, `${size.name}-duzelt-summary`, testInfo);
+      expect(await horizontalOverflow(page), 'duzelt summary').toBe(0);
+      for (const which of ['before', 'after']) {
+        const box = await page.getByTestId(`duzelt-listen-${which}`).boundingBox();
+        expect(box?.height ?? 0, which).toBeGreaterThanOrEqual(44);
+      }
+      await page.getByTestId('wizard-download').click();
+      await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await audit(page, `${size.name}-duzelt-saved`, testInfo);
+      expect(await horizontalOverflow(page), 'duzelt saved').toBe(0);
+      await page.goto('/yap/duzelt');
+      await page.getByTestId('video-input').setInputFiles(wizardFixture('noAudio'));
+      await expect(page.getByTestId('wizard-blocked')).toBeVisible({ timeout: 60_000 });
+      await audit(page, `${size.name}-duzelt-no-sound`, testInfo);
+      expect(await horizontalOverflow(page), 'duzelt no sound').toBe(0);
+    });
+  }
+
+  test('keyboard only: the card, the video, both listen buttons, İndir — focus visible at every stop', async ({ page }) => {
+    catchFileChoosers(page);
+    const unmarked: string[] = [];
+    await page.goto('/');
+    await tabTo(page, byTestId('task-duzelt'), unmarked, 'the Sesi düzelt card');
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/yap\/duzelt$/);
+    await expect(page.getByTestId('pick-video')).toBeEnabled();
+    await tabTo(page, byTestId('pick-video'), unmarked, 'Video seç');
+    const chooser = page.waitForEvent('filechooser', { timeout: 15_000 });
+    await page.keyboard.press('Enter');
+    await (await chooser).setFiles(soundFixFixture('quiet'));
+    await expect(page.getByTestId('duzelt-summary')).toBeVisible({ timeout: 120_000 });
+    await tabTo(page, byTestId('duzelt-listen-before'), unmarked, 'Önce');
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('duzelt-listen-before')).toHaveAttribute('aria-pressed', 'true');
+    await tabTo(page, byTestId('duzelt-listen-after'), unmarked, 'Sonra');
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('duzelt-listen-after')).toHaveAttribute('aria-pressed', 'true');
+    await tabTo(page, byTestId('wizard-download'), unmarked, 'İndir');
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
+    expect(unmarked, 'stops without a visible focus indicator').toEqual([]);
+  });
+
+  test('reflow at 320 px with wider text spacing: the summary never scrolls sideways and nothing clips', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 720 });
+    await page.goto('/yap/duzelt');
+    await page.getByTestId('video-input').setInputFiles(soundFixFixture('uneven'));
+    await expect(page.getByTestId('duzelt-summary')).toBeVisible({ timeout: 120_000 });
+    expect(await horizontalOverflow(page), 'duzelt summary').toBe(0);
+    await applyTextSpacing(page);
+    expect(await clippedControls(page), 'duzelt summary, text spacing').toEqual([]);
+    expect(await horizontalOverflow(page), 'duzelt summary, text spacing').toBe(0);
+  });
 });

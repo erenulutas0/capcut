@@ -18,7 +18,7 @@ import { halfDownloaded } from './wizard-media';
 
 const SAMPLE = join(process.cwd(), 'tests', 'media', 'sample-24s.mp4');
 const MUSIC = join(process.cwd(), 'tests', 'media', 'tone-30s.m4a');
-const TASKS = ['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'sustur', 'cevir', 'iyilestir'] as const;
+const TASKS = ['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'sustur', 'duzelt', 'cevir', 'iyilestir'] as const;
 
 const REFUSAL =
   /^“yarim-inmis\.mp4” açılamadı: bu video yarım kalmış görünüyor: 24,0 sn uzunluğunda olması gerekirken dosyada yalnızca ilk \d{1,2},\d sn var\. İnerken ya da kopyalanırken yarıda kesilmiş olabilir\. Videoyu yeniden indir ya da yeniden kopyala, sonra tekrar dene\.$/;

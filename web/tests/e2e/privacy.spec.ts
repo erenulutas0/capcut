@@ -584,10 +584,10 @@ test.describe('nothing leaves the machine', () => {
       /^\/editor$/,
       /^\/gizlilik(\/en)?$/,
       // The task wizards (ADR-034): their pages, visited above and kept by the service worker.
-      /^\/yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|cevir|iyilestir|gif)$/,
+      /^\/yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|duzelt|cevir|iyilestir|gif)$/,
       // ADR-048: the same pages in English, kept by the service worker too.
       /^\/en(\/editor)?$/,
-      /^\/en\/yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|cevir|iyilestir|gif)$/,
+      /^\/en\/yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|duzelt|cevir|iyilestir|gif)$/,
       /^\/_next\/static\//,
       /^\/fonts\/caption\/inter-latin(-ext)?-700-normal\.woff2$/,
       /^\/favicon\.ico$/,
