@@ -364,7 +364,8 @@ test('the privacy page of this build says the opened transcript is stored, and h
   // ADR-047: the shared video's card, without the route's extra line.
   await expect(page.getByTestId('stored-shared')).toContainText(tr['privacy.stored.shared.body']);
   await expect(page.getByTestId('stored-shared-cloud')).toHaveCount(0);
-  await page.goto('/gizlilik/en/');
+  // ADR-048: a Turkish browser opens the English page by choosing it (what the language button does).
+  await page.goto('/gizlilik/en/?lang=en');
   await expect(page.getByTestId('stored-shared')).toContainText(en['privacy.stored.shared.delete']);
   await expect(page.getByTestId('stored-project')).toContainText(en['privacy.stored.project.body']);
   await expect(page.getByTestId('stored-project')).toContainText(en['relink.discard']);

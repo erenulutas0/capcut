@@ -33,9 +33,16 @@
 /* The language button and "Kendim düzenleyeceğim", side by side at the end of the bar (ADR-048). */
 .home-bar-end {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: 4px 8px;
   min-width: 0;
+}
+
+/* A narrow phone (320 px): the two links stack at the end of the bar rather than push the page sideways. */
+.home-bar {
+  flex-wrap: wrap;
 }
 
 .home .language-switch {

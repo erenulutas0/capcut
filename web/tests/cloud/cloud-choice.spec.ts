@@ -282,7 +282,8 @@ test('the privacy page of this build describes the route — what goes, to whom,
   expect(await page.getByTestId('undecided').count()).toBeGreaterThan(0);
 
   // English: the same section, from the same keys.
-  await page.goto('/gizlilik/en/');
+  // ADR-048: a Turkish browser opens the English page by choosing it (what the language button does).
+  await page.goto('/gizlilik/en/?lang=en');
   await expect(page.getByTestId('privacy-cloud').getByRole('heading', { level: 2 })).toHaveText(cloudEn['cloud.privacy.title']);
   await expect(page.getByTestId('privacy-cloud')).toContainText(cloudEn['cloud.privacy.region']);
   await expect(page.getByTestId('invite-storage-status')).toHaveText(cloudEn['cloud.privacy.invite.absent']);

@@ -398,6 +398,9 @@ const APP_PATH = [
   /^\/gizlilik(\/en)?$/,
   // The task wizards (ADR-034).
   /^\/yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|cevir|iyilestir|gif)$/,
+  // The same pages in English (ADR-048).
+  /^\/en(\/editor)?$/,
+  /^\/en\/yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|cevir|iyilestir|gif)$/,
   /^\/_next\/static\/[^?]+$/,
   /^\/fonts\/caption\/inter-latin(-ext)?-700-normal\.woff2$/,
   /^\/icons\/(icon-192|icon-512|maskable-512)\.png$/,
@@ -420,6 +423,12 @@ test.describe('open without internet', () => {
     expect(config.pages).toEqual([
       '/',
       '/editor',
+      // ADR-048: every page in English too.
+      '/en',
+      '/en/editor',
+      ...availableTasks()
+        .map((task) => `/en/yap/${task.id}`)
+        .sort(),
       '/gizlilik',
       '/gizlilik/en',
       ...availableTasks()

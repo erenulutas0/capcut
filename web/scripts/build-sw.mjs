@@ -36,7 +36,8 @@ const pageUrls = list.pages.map((entry) => entry.url);
 // The opening screen, the editor, the privacy page and the task wizards
 // (ADR-034): `/yap/<id>` for every task that works today. The ids are read
 // from the build itself below; "kes" stands for "the wizards were built".
-for (const needed of ['/', '/editor', '/gizlilik', '/yap/kes']) {
+// ADR-048: and every one of them in English too (`/en/…`, `/gizlilik/en`).
+for (const needed of ['/', '/editor', '/gizlilik', '/yap/kes', '/en', '/en/editor', '/gizlilik/en', '/en/yap/kes']) {
   const found = pageUrls.some((url) => url.replace(/\/$/, '') === `${base}${needed}`.replace(/\/$/, ''));
   if (!found) {
     console.error(`build-sw: page ${base}${needed} not found in the build (${pageUrls.join(', ')})`);
