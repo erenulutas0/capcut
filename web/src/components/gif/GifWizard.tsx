@@ -30,12 +30,11 @@ import {
   type MeasureGifText,
 } from '@/domain/gif';
 import { formatBytes } from '@/domain/policy';
-import { translator } from '@/i18n/messages';
+import { useT } from '@/i18n/locale';
 import { GifRangeBar } from './GifRangeBar';
 import { GifStatus, gifFailureText } from './GifStatus';
 import { useGifDownload, useGifEstimate } from './useGif';
 
-const t = translator('tr');
 
 /** Refusals the estimate already proves: the GIF could not be made either, so "GIF'i indir" waits. */
 const BLOCKING = new Set(['no_video_track', 'source_undecodable', 'source_incomplete', 'hdr_source_unsupported', 'no_frames_decoded', 'source_frames_missing', 'text_font_unavailable']);
@@ -76,6 +75,7 @@ function TextBox({
   scale: number;
   disabled: boolean;
 }) {
+  const t = useT();
   // An empty box keeps the size the first letters will have, so it can be found and tapped.
   const fontPx = (layout?.fontPx ?? gifTextMaxPx(size)) * scale;
   const lineHeight = (layout?.lineHeightPx ?? Math.round(gifTextMaxPx(size) * 1.15)) * scale;
@@ -142,6 +142,7 @@ function GifPreview({
   measure: MeasureGifText | null;
   disabled: boolean;
 }) {
+  const t = useT();
   const frameRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [width, setWidth] = useState(0);
@@ -265,6 +266,7 @@ function GifPreview({
  * download (the save dialog where the browser has one, a save link where it has not).
  */
 export default function GifWizard(host: WizardHostProps) {
+  const t = useT();
   const { state } = host;
   const { video } = state;
   const phone = useLayoutMode() === 'phone';
@@ -306,8 +308,8 @@ export default function GifWizard(host: WizardHostProps) {
   const estimateText = !part
     ? ''
     : current?.status === 'ready'
-      ? fill(t('wizard.gif.estimate'), { length: lengthText(lengthUs), size: formatBytes(current.bytes, mark) })
-      : fill(t('wizard.gif.measuring'), { length: lengthText(lengthUs) });
+      ? fill(t('wizard.gif.estimate'), { length: lengthText(lengthUs, t), size: formatBytes(current.bytes, mark) })
+      : fill(t('wizard.gif.measuring'), { length: lengthText(lengthUs, t) });
 
   const status = download.state;
   const ownDownload = {

@@ -41,7 +41,7 @@ const YAZI_STAND_IN: Flow = {
     await expect(page.getByTestId('transcript-panel')).toBeVisible({ timeout: 120_000 });
     await novice.look('yazı');
   },
-  download: { name: t('wizard.yazi.downloadVideo'), testId: 'wizard-download' },
+  download: { key: 'wizard.yazi.downloadVideo', testId: 'wizard-download' },
   verify: (out) => [
     { name: 'süre ≈ 24 sn', ok: Math.abs(out.durationS - 24) <= 0.15, value: `${tr(out.durationS, 3)} sn` },
     {

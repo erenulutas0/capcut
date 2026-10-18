@@ -63,14 +63,16 @@ export async function readScreen(page: Page): Promise<ScreenReading> {
       step: wizard?.getAttribute('data-step') ?? null,
       title: (heading?.textContent ?? '').trim(),
       choiceGroups: groups.size,
+      // ADR-048: the English pages are measured against the English jargon list.
+      lang: document.documentElement.lang === 'en' ? ('en' as const) : ('tr' as const),
     };
   });
   return {
     id: `${facts.path}|${facts.step ?? ''}|${facts.title}`,
     ...facts,
     words: countWords(text),
-    strong: strongJargon(text),
-    mild: mildJargon(text),
+    strong: strongJargon(text, facts.lang),
+    mild: mildJargon(text, facts.lang),
     text,
   };
 }

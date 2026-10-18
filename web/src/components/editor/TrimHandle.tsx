@@ -114,7 +114,9 @@ export function TrimHandle({
   const spoken = (us: Micros) =>
     formatSpokenTime(us, {
       minute: t('time.minute'),
+      minutes: t('time.minutes'),
       second: t('time.second'),
+      seconds: t('time.seconds'),
       decimalMark: t('time.decimalMark'),
     });
 

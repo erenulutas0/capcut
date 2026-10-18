@@ -1,7 +1,7 @@
 import { test } from '@playwright/test';
 
 import { installSavePicker, noSavePicker } from '../e2e/kesitFlow';
-import { isPhone } from './lib/app';
+import { isPhone, langOf } from './lib/app';
 import { BUILD, writeResult } from './lib/record';
 import { STATES } from './lib/states';
 import { shot, type VisualEntry } from './lib/visual';
@@ -35,7 +35,7 @@ for (const state of STATES.filter((item) => !SKIP.has(item.id))) {
     if (isPhone(testInfo)) await noSavePicker(page);
     else await installSavePicker(page);
     try {
-      await state.open(page);
+      await state.open(page, langOf(testInfo));
       await shot(page, testInfo, log, state.id, { mask: [page.locator('[data-testid^="size-hint-"]')] });
     } catch (error) {
       log.push({

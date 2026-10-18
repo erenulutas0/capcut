@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useT } from '@/i18n/locale';
+
 import {
   buildReport,
   checkEnvironment,
@@ -243,6 +245,8 @@ export function useDownloads({
   fileName: fileNameOverride = null,
   exportExtras,
 }: Args) {
+  // File names in the page's language (ADR-048).
+  const t = useT();
   const [entries, setEntries] = useState<Record<string, DownloadEntry>>({});
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [capability, setCapability] = useState<{ key: string; report: CapabilityReportV1 } | null>(null);
@@ -567,6 +571,7 @@ export function useDownloads({
               : kind === 'merged'
                 ? { kind: 'merged', count: project.clips.length }
                 : { kind: 'whole' },
+          { whole: t('file.whole'), merged: t('file.merged') },
         );
       // ADR-035: the sound-only file is M4A (AAC in MP4), `audio/mp4`; a
       // suggested `.mp4` name (a wizard's) gets the `.m4a` ending too.
@@ -809,6 +814,7 @@ export function useDownloads({
       sourceBitrate,
       setEntry,
       settings,
+      t,
       videoFile,
       videoName,
       withFont,

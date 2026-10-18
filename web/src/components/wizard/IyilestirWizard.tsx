@@ -9,11 +9,11 @@ import { EnhanceSlowNotice } from '@/components/enhance/SlowNotice';
 import { useEnhancePreview } from '@/components/enhance/useEnhancePreview';
 import { Icon } from '@/components/Icon';
 import { ENHANCE_STRENGTHS_V4 } from '@/domain/edl';
-import { translator, type MessageKey } from '@/i18n/messages';
+import { useT } from '@/i18n/locale';
+import type { MessageKey } from '@/i18n/messages';
 import { ChoiceOption } from './ChoiceOption';
 import { WizardFlow, type WizardHostProps } from './WizardFlow';
 
-const t = translator('tr');
 
 /**
  * "İyileştir" (ADR-037): light, colour, sharpness and noise of the whole
@@ -28,6 +28,7 @@ const t = translator('tr');
  * the same setting.
  */
 export default function IyilestirWizard(host: WizardHostProps) {
+  const t = useT();
   const { state } = host;
   const { video, project, settings } = state;
   const [shot, setShot] = useState(0);
@@ -47,7 +48,7 @@ export default function IyilestirWizard(host: WizardHostProps) {
     <WizardFlow
       {...host}
       titleKey="wizard.iyilestir.title"
-      fileTag="iyilestirilmis"
+      fileTag={t('file.tag.iyilestir')}
       // Nothing to download until the video has been looked at, and nothing when nothing would change.
       recipe={video && strength && picture && !nothing ? project : null}
       exportExtras={extras}

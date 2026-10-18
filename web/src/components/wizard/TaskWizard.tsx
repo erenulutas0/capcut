@@ -7,14 +7,38 @@ import { BASE_PATH } from '@/basePath';
 import { useEditorState } from '@/components/editor/useEditorState';
 import { PartFailed, lazyPart } from '@/components/LazyPart';
 import { taskById, type TaskId } from '@/domain/tasks';
-import { translator } from '@/i18n/messages';
+import { useLocale, useT } from '@/i18n/locale';
+import { localizedPath } from '@/i18n/localePath';
+import type { Locale } from '@/i18n/translate';
 import type { EditorHandoff, WizardHostProps } from './WizardFlow';
 import { WIZARDS } from './wizards';
 
-const t = translator('tr');
-
 /** The editor's own chunk: asked for when it is about to be shown, never by a wizard's first screen. */
 const loadEditor = () => import('@/components/editor/EditorApp');
+
+function EditorLoading() {
+  const t = useT();
+  return (
+    <div className="wizard" data-testid="editor-loading">
+      <main className="wizard-main">
+        <p className="wizard-panel-title" role="status">
+          {t('wizard.editorLoading')}
+        </p>
+      </main>
+    </div>
+  );
+}
+
+function EditorFailed({ retry }: { retry: () => void }) {
+  const t = useT();
+  return (
+    <div className="wizard" data-testid="editor-failed">
+      <main className="wizard-main">
+        <PartFailed t={t} variant="inline" onRetry={retry} />
+      </main>
+    </div>
+  );
+}
 
 /**
  * The editor, over the wizard's state. Its code is not part of a wizard page (10 Oct 2026: every
@@ -25,22 +49,8 @@ const loadEditor = () => import('@/components/editor/EditorApp');
  * that, with "Tekrar dene" — the wizard's state (the open video, the choice) stays as it is (ADR-044).
  */
 const EditorView = lazyPart(() => loadEditor().then((module) => module.EditorView), {
-  loading: () => (
-    <div className="wizard" data-testid="editor-loading">
-      <main className="wizard-main">
-        <p className="wizard-panel-title" role="status">
-          {t('wizard.editorLoading')}
-        </p>
-      </main>
-    </div>
-  ),
-  failed: (retry) => (
-    <div className="wizard" data-testid="editor-failed">
-      <main className="wizard-main">
-        <PartFailed t={t} variant="inline" onRetry={retry} />
-      </main>
-    </div>
-  ),
+  loading: () => <EditorLoading />,
+  failed: (retry) => <EditorFailed retry={retry} />,
 });
 
 /**
@@ -48,10 +58,11 @@ const EditorView = lazyPart(() => loadEditor().then((module) => module.EditorVie
  * one). Only the address changes: what is on screen is already the editor. With or without the
  * trailing slash, as the page was served (the static export serves folders).
  */
-function showEditorAddress(): void {
+function showEditorAddress(locale: Locale): void {
   try {
     const slash = window.location.pathname.endsWith('/') ? '/' : '';
-    window.history.replaceState(null, '', `${BASE_PATH}/editor${slash}`);
+    // The editor of the page's language (ADR-048): `/en/editor` from an English wizard.
+    window.history.replaceState(null, '', `${BASE_PATH}${localizedPath('/editor', locale)}${slash}`);
   } catch {
     // An address that could not be changed loses nothing now: the project is stored either way, and
     // "Kendim düzenleyeceğim" on the opening screen opens it.
@@ -75,6 +86,8 @@ function showEditorAddress(): void {
  * `/editor`, so a reload must land there, not on the wizard's "Videonu seç".
  */
 export function TaskWizard({ taskId }: { taskId: TaskId }) {
+  const t = useT();
+  const locale = useLocale();
   const state = useEditorState();
   const [editor, setEditor] = useState<EditorHandoff | null>(null);
   const task = taskById(taskId);
@@ -95,7 +108,7 @@ export function TaskWizard({ taskId }: { taskId: TaskId }) {
       <div className="wizard" data-testid="wizard-unavailable">
         <main className="wizard-main">
           <h1 className="wizard-title">{t('home.results.unavailable')}</h1>
-          <Link href="/" prefetch={false} className="btn">
+          <Link href={localizedPath('/', locale)} prefetch={false} className="btn">
             {t('wizard.backHome')}
           </Link>
         </main>
@@ -110,7 +123,7 @@ export function TaskWizard({ taskId }: { taskId: TaskId }) {
       state={state}
       onOpenEditor={(handoff) => {
         const stored = handoff?.stored === true;
-        if (stored) showEditorAddress();
+        if (stored) showEditorAddress(locale);
         setEditor({ stored });
       }}
     />

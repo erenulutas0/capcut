@@ -1,18 +1,32 @@
 /**
- * English messages. A module of its own, loaded only where English is shown
- * (the English privacy page): importing it registers the language with
+ * English messages (ADR-048). A module of its own, loaded only by the pages
+ * that speak English (`/en/…`, `/gizlilik/en`, through their
+ * `LanguageProvider`): importing it registers the language with
  * `translator('en')`. Tests import `en` from here.
+ *
+ * Terms (one word for each thing, everywhere; the list is in ADR-048):
+ * "kesit" is a "clip"; "İndir" is "Download"; "Kaydedildi" is "Saved";
+ * the editor is "the editor"; "tarif" (the edit recipe) is "your edit".
  */
 
 import { APP_NAME, BACKUP_FILE_SUFFIX } from '../appIdentity';
-import { registerMessages, type MessageKey } from './messages';
+import type { MessageKey } from './messages';
+import { registerMessages } from './translate';
 
 export const en: Record<MessageKey, string> = {
   'app.name': APP_NAME,
+  'meta.home.title': 'what do you want to do with your video?',
+  'meta.description':
+    'Cut your video, shrink it, make it vertical, get its sound or turn speech into text. A few taps; your files never leave your device.',
+  'meta.editor.title': 'editor',
+  'notFound.title': 'This page does not exist.',
+  'notFound.home': 'Go to the start screen',
+  'language.title': 'Language',
+  'language.note': 'Changing the language reloads the page; you will need to pick the video again.',
   'landing.note':
     'This is a trial version. Downloading works best in Chrome and Edge. No account, subscription or cloud upload; everything runs on your device.',
   'landing.note.online':
-    'This is a trial version. Downloading works best in Chrome and Edge. No account or subscription; everything runs on your device. The one exception: if you choose “İnternette” in “Yazıya dök”, only the sound of the video is sent.',
+    'This is a trial version. Downloading works best in Chrome and Edge. No account or subscription; everything runs on your device. The one exception: if you choose “On the internet” in “Speech to text”, only the sound of the video is sent.',
 
   // Names only assistive technology hears (landmarks, hidden labels).
   'a11y.editorHeading': `${APP_NAME} editor`,
@@ -31,12 +45,12 @@ export const en: Record<MessageKey, string> = {
   'topbar.undo': 'Undo',
   'topbar.redo': 'Redo',
   'topbar.help': 'Shortcuts and limits',
-  'topbar.saveState.idle': 'Edits not kept yet',
-  'topbar.saveState.saving': 'Keeping edits…',
-  'topbar.saveState.saved': 'Edits kept',
-  'topbar.saveState.failed': 'Could not keep edits',
+  'topbar.saveState.idle': 'Edits not saved yet',
+  'topbar.saveState.saving': 'Saving edits…',
+  'topbar.saveState.saved': 'Edits saved',
+  'topbar.saveState.failed': 'Could not save edits',
   'topbar.saveState.hint':
-    'Your editing recipe is saved to this browser. This is not a cloud backup: clearing browser data, or using another device or browser, means the project will not be there. Your video files are never stored.',
+    'Your edits are saved in this browser. This is not a cloud backup: if you clear the browser’s data, or use another device or browser, the project will not be there. Your video files are never saved.',
 
   'store.fail.unavailable': 'Local saving is unavailable in this browser (possibly a private window).',
   'store.fail.blocked': 'Local saving was blocked by another tab.',
@@ -48,7 +62,7 @@ export const en: Record<MessageKey, string> = {
 
   'relink.title': 'This project\u2019s video is not open.',
   'relink.body':
-    'Your editing recipe was saved and restored. Video files cannot be kept in the browser, so you need to pick the same file again.',
+    'Your edits were saved and are back. Video files cannot be kept in the browser, so you need to pick the same file again.',
   'relink.fileLabel': 'Looking for',
   'relink.pick': 'Choose the file again',
   'relink.pickAudio': 'Choose the audio file again',
@@ -62,19 +76,20 @@ export const en: Record<MessageKey, string> = {
   'relink.cancel': 'Cancel',
   'relink.discard': 'Delete the saved project',
   'relink.discardConfirm':
-    'The project recipe saved in this browser will be deleted. Your video files are not touched. Continue?',
+    'The project saved in this browser will be deleted. Your video files are not touched. Continue?',
 
   'project.delete.title': 'Saved project',
-  'project.delete.body': 'This editing is saved on this device. Deleting it does not touch your video file.',
+  'project.delete.body': 'These edits are saved on this device. Deleting them does not touch your video file.',
   'project.delete.confirm':
-    'The saved project on this device will be deleted: the clips, the text, the settings and the project name. The video file on your device is not touched. The open video stays on screen, but this editing is no longer saved; it goes when you close the page. Delete it?',
-  'project.deleted': 'The saved project was deleted. This editing is no longer saved; it goes when you close the page.',
+    'The saved project on this device will be deleted: the clips, the text, the settings and the project name. The video file on your device is not touched. The open video stays on screen, but these edits are no longer saved; they are gone when you close the page. Delete it?',
+  'project.deleted':
+    'The saved project was deleted. These edits are no longer saved; they are gone when you close the page.',
   'project.deleted.hint':
-    'You deleted the saved project: the editing in this tab is no longer saved in this browser and goes when you close the page. If you open the editor again and pick a video, a new project is saved. Videos you downloaded stay with you.',
-  'project.delete.failed': 'The saved project could not be deleted; the editing is still being saved. Try again.',
+    'You deleted the saved project: the edits in this tab are no longer saved in this browser, and they are gone when you close the page. If you open the editor again and pick a video, a new project is saved. Videos you downloaded stay with you.',
+  'project.delete.failed': 'The saved project could not be deleted; your edits are still being saved. Try again.',
   'backup.title': 'Project backup',
   'backup.body':
-    'Download the editing recipe as a file. It does not contain your video; it carries your clips, settings, caption text, the project name and the source file name. Keep that in mind before sharing it.',
+    'Download your edits as a file. It does not contain your video; it carries your clips, settings, caption text, the project name and the source file name. Keep that in mind before you share it.',
   'backup.download': 'Download the backup file',
   'backup.import': 'Restore from a backup file',
   'backup.importFailed': 'The backup file could not be read or is not compatible with this version.',
@@ -90,8 +105,7 @@ export const en: Record<MessageKey, string> = {
   'privacy.draftBadge.named': 'Draft — legal review and some data controller details missing (doc 30 K02)',
   'privacy.draftBody':
     'This page describes what the app does today; it is not a legally reviewed privacy notice. Items marked “not decided” have not been settled yet.',
-  'privacy.updated': 'Last updated: 17 October 2026 · version {version} · build {commit}',
-  'privacy.otherLanguage': 'Türkçe',
+  'privacy.updated': 'Last updated: 18 October 2026 · version {version} · build {commit}',
   'privacy.back': 'Home',
   'privacy.undecided': 'not decided',
 
@@ -101,7 +115,7 @@ export const en: Record<MessageKey, string> = {
   'privacy.summary.nothingCollected':
     'No account. No analytics, advertising, cookies, device fingerprinting or automatic error reporting.',
   'privacy.summary.search':
-    'What you type into the box on the opening screen is matched on your device against a word list inside the page; it is not sent anywhere and not stored. No AI is used for that.',
+    'What you type into the box on the start screen is matched on your device against a word list inside the page; it is not sent anywhere and not stored. No AI is used for that.',
   'privacy.summary.stored': 'Some information is kept only in this browser; each item is listed below and you can delete it.',
   'privacy.summary.report':
     'The app never sends anything on your behalf. If you want to report a problem, you download the diagnostics file and send it yourself.',
@@ -115,9 +129,9 @@ export const en: Record<MessageKey, string> = {
   'privacy.stored.title': 'What is kept in this browser',
   'privacy.stored.where': 'Where',
   'privacy.stored.howLong': 'When it is deleted',
-  'privacy.stored.project.name': 'Project recipe',
+  'privacy.stored.project.name': 'Your project',
   'privacy.stored.project.body':
-    'Project name, your clips and their order, frame/aspect settings, music settings, the text and style of caption lines. To recognise the source file again: its name, size, modification date, duration, resolution and type. The video and audio files themselves are not stored. Only edits made in the editor (“I will edit it myself”) are stored; work started from a task on the home screen (Cut, Make it vertical…) is not. One exception, “Yazıya dök”: if you open the text it wrote with “More settings → open in the editor”, that work (the text of its lines included) is kept here as the project; if a project you kept earlier is there, you are asked which one stays. Deleting it: as below.',
+    'Project name, your clips and their order, frame/aspect settings, music settings, the text and style of caption lines. To recognise the source file again: its name, size, modification date, duration, resolution and type. The video and audio files themselves are not saved. Only edits made in the editor (“I’ll edit it myself”) are saved; work started from a task on the start screen (Cut, Make it vertical…) is not. One exception, “Speech to text”: if you open the text it wrote with “More settings → open in the editor”, that work (the text of its lines included) is saved here as the project; if you saved a project earlier, you are asked which one stays. Deleting it: as below.',
   'privacy.stored.project.where': 'IndexedDB “clip-editor”, store “projects”',
   'privacy.stored.project.delete':
     'Until you delete it. You can clear this site’s data in your browser settings; “More → Delete the saved project” in the editor also works (it also appears when the editor asks for the file again). The browser may also evict it to free space.',
@@ -158,11 +172,11 @@ export const en: Record<MessageKey, string> = {
     'When you share a video to this app from your phone’s share menu, a copy of it stays in this browser until it opens in a task, with its name, its type and the moment it was shared. Your phone hands over the copy and the site’s service worker takes it on this device: it is not sent anywhere. One video is kept at a time; if you share several files, only the first video is taken and the others are never stored. The one exception: if the browser has deleted this site’s data (you cleared it, or the browser deleted it to free space), there is no service worker; then your phone tries to send the video to the site’s server, which does not accept it, and the app does not open. If that happens, open the app once from its icon, then share again.',
   'privacy.stored.shared.where': 'Cache Storage, a cache named “clip-shared” (one video at most)',
   'privacy.stored.shared.delete':
-    'As soon as the video opens in a task (Kes, GIF yap…), and when you press “Başka bir video seç”. If you touch no task: after 15 minutes while the app is open, or the next time you open the app if you closed it. Clearing this site’s data in the browser deletes all of it too.',
+    'As soon as the video opens in a task (Cut, Make a GIF…), and when you press “Choose another video”. If you touch no task: after 15 minutes while the app is open, or the next time you open the app if you closed it. Clearing this site’s data in the browser deletes all of it too.',
   'privacy.stored.model.name':
     'Speech model (only if you pressed “Download the model”)',
   'privacy.stored.model.body':
-    'The model files downloaded from this site’s own server when you press “Download the model” for “Turn speech into text”: the small model is about 109 MB, the large one you may choose about 596 MB. Not your video or its sound; only the app’s own file. It is never downloaded by itself. Once downloaded, turning speech into text also works without the internet.',
+    'The model files downloaded from this site’s own server when you press “Download the model” for “Speech to text”: the small model is about 109 MB, the large one you may choose about 596 MB. Not your video or its sound; only the app’s own file. It is never downloaded by itself. Once downloaded, turning speech into text also works without the internet.',
   'privacy.stored.model.where':
     'Cache Storage, a cache whose name starts with “clip-models-” (separate from the app’s offline copy)',
   'privacy.stored.model.delete':
@@ -173,9 +187,19 @@ export const en: Record<MessageKey, string> = {
   'privacy.stored.largeNote.where': 'localStorage, key “clip.transcriptLargeFailed” (written only when the large model stopped here)',
   'privacy.stored.largeNote.delete':
     'Deleted by itself once the large model writes successfully in this browser. “Delete this note” on the “Speech model” card removes it, and so does clearing this site’s data in the browser.',
+  'privacy.stored.language.name': 'Language choice',
+  'privacy.stored.language.body':
+    'The language you chose with the language button (“English” / “Türkçe”): a single value (“tr” or “en”). The next pages open in that language. If you never chose, nothing is written; the page looks at your browser’s language setting on this device and opens in Turkish or English. Neither your choice nor your language setting is sent anywhere.',
+  'privacy.stored.language.where':
+    'localStorage, key “clip.language” (written only when you press the language button, or open an address that ends in “?lang=tr” or “?lang=en”)',
+  'privacy.stored.language.delete': 'With “Forget my language choice” below, or by clearing this site’s data in the browser.',
+  'privacy.language.present': 'This browser remembers a language choice: {name}.',
+  'privacy.language.absent': 'No language choice is saved in this browser.',
+  'privacy.language.forget': 'Forget my language choice',
+  'privacy.language.forgotten': 'The language choice was deleted. Pages follow your browser’s language setting again.',
   'privacy.model.checking':
     'Checking…',
-  'privacy.stored.none': 'No cookies are used. localStorage holds only the hint value above and (if the large model stopped here) the large model note; sessionStorage holds only the reload note above.',
+  'privacy.stored.none': 'No cookies are used. localStorage holds only the hint value above, (if the large model stopped here) the large model note and (if you chose one) your language choice; sessionStorage holds only the reload note above.',
 
   'privacy.downloads.title': 'Files you download',
   'privacy.downloads.body':
@@ -183,7 +207,7 @@ export const en: Record<MessageKey, string> = {
   'privacy.downloads.mp4':
     'Downloaded video (MP4): one clip, the clips joined, or the whole video; with music and burned-in captions. Written where you choose in the save dialog.',
   'privacy.downloads.backup':
-    `Project backup (${BACKUP_FILE_SUFFIX}): the full project recipe, including the project name, caption text and source file names. It contains no video.`,
+    `Project backup (${BACKUP_FILE_SUFFIX}): your whole project, including the project name, caption text and source file names. It contains no video.`,
   'privacy.downloads.subtitles': 'Subtitle file (SRT or VTT): your caption lines and their timing.',
   'privacy.downloads.share':
     '“Share”: the video is handed to your phone’s (or computer’s) share menu; you choose there where it goes. The app itself sends or keeps nothing while doing so.',
@@ -403,7 +427,7 @@ export const en: Record<MessageKey, string> = {
   'captions.language': 'Language',
   'captions.language.tr': 'Türkçe',
   'captions.language.en': 'English',
-  'captions.languageHint': 'Records the language of the lines in the recipe; it does not translate.',
+  'captions.languageHint': 'Records the language of the lines in your project; it does not translate.',
   'captions.styleNote':
     'Preview and export draw with the same bundled font (Inter Bold) and the same layout calculation.',
   'captions.fontLoading': 'Loading the caption font…',
@@ -525,7 +549,27 @@ export const en: Record<MessageKey, string> = {
   'captions.export.none': 'No line appears in the joined video; there is nothing to download.',
   'output.overLimit': 'The result is {total}. To download it, delete at least {excess} — the limit is {limit} minutes.',
   'time.minute': 'minute',
-  'time.second': 'seconds',
+  'time.minutes': 'minutes',
+  'time.second': 'second',
+  'time.seconds': 'seconds',
+  'time.localeTag': 'en-GB',
+  'file.tag.kes': 'clip',
+  'file.tag.bosluk': 'no-silences',
+  'file.tag.dikey': 'vertical',
+  'file.tag.muzik': 'with-music',
+  'file.tag.cevir': 'plays-everywhere',
+  'file.tag.kucult': 'small',
+  'file.tag.ses': 'sound',
+  'file.tag.sustur': 'muted',
+  'file.tag.yazi': 'captioned',
+  'file.tag.iyilestir': 'enhanced',
+  'file.whole': 'whole',
+  'file.merged': '{n}-clips',
+  'file.text': 'text',
+  'file.subtitles': 'subtitles',
+  'file.diagnostics': 'report',
+  'file.project': 'project',
+  'number.percent': '{n}%',
   'time.decimalMark': '.',
   'time.minuteShort': 'min',
   'time.secondShort': 's',
@@ -645,18 +689,16 @@ export const en: Record<MessageKey, string> = {
   'export.saveSpaceUnknownDevice': 'Saving needs about the file’s size again in free space on this device.',
   'export.noAudioTrack': 'no audio',
   'export.failedTitle': 'Export failed.',
-  'export.fail.plan_invalid': 'The editing recipe cannot be exported.',
+  'export.fail.plan_invalid': 'These edits cannot be made into a video.',
   'export.fail.no_video_track': 'No video track was found in the selected file.',
   'export.fail.source_undecodable': 'This browser cannot decode the source video.',
   'export.fail.hdr_source_unsupported':
     'This video is HDR. This browser did not convert HDR to SDR correctly (checked with a test frame), so export is refused rather than producing a file with wrong colours. You can try Google Chrome.',
   'export.fail.audio_undecodable': 'This browser cannot decode the selected audio file.',
-  'export.fail.video_encoder_unsupported':
-    'H.264 encoding is unsupported here with this configuration.',
-  'export.fail.audio_encoder_unsupported':
-    'AAC encoding is unsupported here with this configuration.',
+  'export.fail.video_encoder_unsupported': 'This browser cannot encode H.264 with these settings.',
+  'export.fail.audio_encoder_unsupported': 'This browser cannot encode AAC with these settings.',
   'export.fail.audio_encoder_misaligned':
-    "This browser's audio encoder could not write the sound in sync with the picture; a file with shifted sound was not saved.",
+    'This browser’s audio encoder could not write the sound in sync with the picture; a file with shifted sound was not saved.',
   'export.fail.no_frames_decoded':
     'The picture of the video could not be read. The video may be damaged: check whether it plays in another player. If it is damaged, download or copy the video again.',
   'export.fail.source_frames_missing':
@@ -678,7 +720,7 @@ export const en: Record<MessageKey, string> = {
   'export.fail.captionCue': 'Needs shortening: caption line {index}, “{text}”',
   'export.fail.storageNumbers': 'Free space this video needs: {required}. Free space the browser reports: {free}.',
   'export.fail.storageReservation':
-    'Free space this video needs: {required}. The browser could not claim that much on disk, so the disk does not have it free. The browser\'s estimate said {free}; that estimate does not reflect how full the disk really is.',
+    'Free space this video needs: {required}. The browser could not claim that much on disk, so the disk does not have it free. The browser’s estimate said {free}; that estimate does not reflect how full the disk really is.',
   'export.fail.output_probe_failed':
     'The produced file could not be re-opened, so it does not count as success.',
   'export.fail.output_duration_mismatch': 'The produced file did not have the expected duration.',
@@ -705,7 +747,7 @@ export const en: Record<MessageKey, string> = {
   'export.plan.source_missing':
     'The project\u2019s video file is not open in this tab. Choose it again to export.',
   'export.plan.missing_source_dimensions': 'The source video dimensions could not be read.',
-  'export.plan.unknown_asset': 'The recipe references an unknown source.',
+  'export.plan.unknown_asset': 'Your project refers to a source that is not there.',
   'export.plan.output_duration_exceeds_policy': 'Longer than the download limit of 60 minutes.',
   'export.plan.zero_frames': 'The output would contain no frames at all.',
   'export.detectedNote':
@@ -721,9 +763,9 @@ export const en: Record<MessageKey, string> = {
   'error.total_too_large':
     'Video and music together are {size}; the combined limit of this version is {limit}. Pick a smaller file.',
   'error.music_too_large': 'The music file is {size}; the music limit of this version is {limit}. Pick a smaller music file.',
-  'error.music_too_long': 'The music is above the 10 minute limit of this version. Pick a shorter one.',
+  'error.music_too_long': 'The music is above the 10-minute limit of this version. Pick a shorter one.',
   'error.source_too_long':
-    'The video is above the 120 minute limit of this version. Pick a shorter video, or split this one into parts with another app first.',
+    'The video is above the 120-minute limit of this version. Pick a shorter video, or split this one into parts with another app first.',
   'error.incomplete':
     'This video looks incomplete: it should be {total} long, but only the first {readable} is in the file. The download or the copy may have stopped half way. Download or copy the video again, then retry.',
   'error.incompleteStart':
@@ -777,17 +819,16 @@ export const en: Record<MessageKey, string> = {
     'An opened video can be up to 120 minutes and 4.29 GB. A downloaded video (one clip or the clips joined) can be up to 60 minutes; at most 5 minutes if the browser cannot write the video to disk. Add clips from a longer video and download those.',
   'help.limit.export': 'Export is only possible in a browser that passes the capability check.',
   'help.limit.mix': 'The preview runs two players together; the real mix happens only in the export.',
-  'help.limit.save':
-    'The project recipe is saved to this browser; there is no cloud backup and video files are not stored.',
+  'help.limit.save': 'Your project is saved in this browser; there is no cloud backup and video files are not saved.',
   'help.limit.cloud': 'No cloud, account or payment. Speech is turned into text on this device; there is no AI running in a cloud.',
   'help.limit.cloud.online':
-    'No account or payment. Speech is turned into text in the editor on this device. If you choose “İnternette” in “Yazıya dök” on the opening screen, only the sound of the video is sent.',
+    'No account or payment. Speech is turned into text in the editor on this device. If you choose “On the internet” in “Speech to text” on the start screen, only the sound of the video is sent.',
 
   'kesit.title': 'Clips',
   'kesit.emptyNoVideo':
     'Open a video first. Then mark the parts you want to keep; your clips are listed here.',
   'kesit.emptyWithVideo':
-    'No clips yet. Press “Mark start” where the part you want starts and “Mark end” where it ends: the clip shows up here. With no clips, “Download video” downloads the whole video.',
+    'No clips yet. Press “Mark start” where your part starts and “Mark end” where it ends. With no clips, “Download video” saves the whole video.',
   'kesit.selectLabel': 'Select clip {n}, {range}',
   'kesit.playLabel': 'Play clip {n}, {range}',
   'kesit.downloadLabel': 'Download clip {n}, {range}',
@@ -799,12 +840,12 @@ export const en: Record<MessageKey, string> = {
   'kesit.downloadTitle': 'Download just this clip',
   'kesit.deleteTitle': 'Delete this clip',
   'hint.title': 'How to cut: three steps',
-  'hint.step1': 'Play the video, or go to a point on the strip.',
+  'hint.step1': 'Play the video, or tap a point on the strip.',
   'hint.step1NoVideo': 'Open your video with “Choose a video”; play it, or go to a point on the strip.',
-  'hint.step2': 'Press “Mark start” where the part you want starts.',
+  'hint.step2': 'Press “Mark start” where your part starts.',
   'hint.step3':
-    'Press “Mark end” where it ends: the clip drops into this list right away. ▶ plays it, “Download” saves just that clip.',
-  'hint.more': 'Add several clips and the button at the top joins them into one video; add none and it saves the whole video.',
+    'Press “Mark end” where it ends: the clip appears in this list. ▶ plays it; “Download” saves just that clip.',
+  'hint.more': 'Several clips? The top button joins them into one video. None? It saves the whole video.',
   'hint.dismiss': 'Got it',
   'kesit.moveHint':
     'Change its place with the up and down arrow keys. The order only affects the joined download.',
@@ -878,31 +919,35 @@ export const en: Record<MessageKey, string> = {
   'task.iyilestir.result': 'Tidies up the light, colour and sharpness. It cannot make a very blurry video sharp.',
   'wizard.iyilestir.title': 'Let’s tidy up your video',
   'wizard.iyilestir.body': 'Tidies up the light, colour and sharpness. It cannot make a very blurry video sharp.',
-  'wizard.iyilestir.keeps': 'Everything is done on this device. Your own video is not changed; a new file is saved.',
+  'wizard.iyilestir.keeps': 'Done on this device. Your video stays as it is; a new file is saved.',
   'wizard.iyilestir.choice': 'How much?',
   'wizard.iyilestir.light': 'Light',
   'wizard.iyilestir.lightHint': 'Small touches.',
   'wizard.iyilestir.auto': 'Automatic',
-  'wizard.iyilestir.autoHint': 'Set by looking at your video. The best fit for most videos.',
+  'wizard.iyilestir.autoHint': 'Set for your video. Best for most videos.',
   'wizard.iyilestir.strong': 'Strong',
-  'wizard.iyilestir.strongHint': 'Brightens and sharpens more. On some videos it looks worse than Automatic: grain and compression marks show more, and colours can look overdone.',
+  'wizard.iyilestir.strongHint':
+    'Brighter and sharper. On some videos it looks worse than Automatic: more grain and blocky marks, and colours that are too strong.',
   'wizard.iyilestir.nothing': 'Nothing to change in the video was found with this setting: it already looks fine.',
   'wizard.iyilestir.nothingBlocked':
     'Nothing in the video changes with this setting; there is nothing new to download. You can try another setting or use your video as it is.',
-  'enhance.slow': 'This device has no graphics-card acceleration. Enhancing still works, but slowly: a 5-minute video may take more than half an hour.',
-  'enhance.slow.minutes': 'This device has no graphics-card acceleration. Enhancing still works, but slowly: this video may take about {n} minutes.',
-  'enhance.slow.hours': 'This device has no graphics-card acceleration. Enhancing still works, but very slowly: this video may take about {n} hours.',
+  'enhance.slow':
+    'No graphics card here to speed this up: it still works, but slowly — a 5-minute video may take more than half an hour.',
+  'enhance.slow.minutes':
+    'No graphics card here to speed this up: it still works, but slowly — about {n} minutes for this video.',
+  'enhance.slow.hours':
+    'No graphics card here to speed this up: it still works, but very slowly — about {n} hours for this video.',
   'enhance.preview.label': 'Before and after',
   'enhance.preview.before': 'Before',
   'enhance.preview.after': 'After',
   'enhance.preview.slider': 'The line between before and after',
   'enhance.preview.sliderValue': '{n} percent of the picture is the earlier version',
-  'enhance.preview.sliderHint': 'Drag the line or move it with the arrow keys: the left is the video as it is, the right is the enhanced one.',
+  'enhance.preview.sliderHint': 'Drag the line, or use the arrow keys: left is your video now, right is enhanced.',
   'enhance.preview.other': 'Show another frame',
   'enhance.preview.loading': 'Looking at your video…',
   'enhance.preview.loadingHint': 'A few frames of the video are being examined. Nothing leaves your device.',
   'enhance.preview.making': 'Preparing the preview…',
-  'enhance.preview.note': 'This is a real frame of your video. The downloaded video will look like this.',
+  'enhance.preview.note': 'A real frame of your video: the download will look like this.',
   'enhance.preview.failed.hdr_source_unsupported':
     'This browser cannot convert this HDR video correctly, so it cannot be enhanced here. Try opening the video in Chrome.',
   'enhance.preview.failed.source_undecodable': 'This browser cannot decode this video; it cannot be enhanced here.',
@@ -910,18 +955,18 @@ export const en: Record<MessageKey, string> = {
   'enhance.preview.retry': 'Try again',
   'enhance.will.title': 'What will be done:',
   'enhance.will.light.some': 'light and contrast are corrected a little',
-  'enhance.will.light.much': 'the video is brightened noticeably',
+  'enhance.will.light.much': 'the video is made a lot brighter',
   'enhance.will.colour': 'the colours are tidied up',
   'enhance.will.sharpen': 'edges are sharpened',
   'enhance.will.denoise': 'grain is reduced',
   'enhance.did.title': 'Enhanced ({strength}):',
   'enhance.did.light.some': 'light and contrast corrected a little',
-  'enhance.did.light.much': 'the video brightened noticeably',
+  'enhance.did.light.much': 'the video made a lot brighter',
   'enhance.did.colour': 'colours tidied up',
   'enhance.did.sharpen': 'edges sharpened',
   'enhance.did.denoise': 'grain reduced',
   'enhance.did.nothing': 'Enhancement was on, but nothing to change was found in this video; the picture was re-processed as it is.',
-  'enhance.did.cpu': 'Done without graphics-card acceleration.',
+  'enhance.did.cpu': 'Done without help from a graphics card.',
   'enhance.setting.label': 'Enhance the picture',
   'enhance.setting.off': 'Off',
   'enhance.setting.hint':
@@ -968,8 +1013,7 @@ export const en: Record<MessageKey, string> = {
   'silence.scope.whole': 'Searching: the whole video. The parts that remain become clips.',
   'silence.scope.all': 'Searching: all clips.',
   'silence.scope.kesit': 'Searching: clip {n}.',
-  'notice.opened':
-    'Video opened ({length}). Press “Mark start” where the part you want starts and “Mark end” where it ends: the clip is added to the list.',
+  'notice.opened': 'Video opened ({length}). Press “Mark start” where your part starts and “Mark end” where it ends.',
   'notice.aspectPortrait': 'Portrait video: the 9:16 frame was chosen',
   'notice.aspectLandscape': 'Landscape video: the 16:9 frame was chosen',
   'notice.aspectSquare': 'Square video: the 1:1 frame was chosen',
@@ -994,6 +1038,7 @@ export const en: Record<MessageKey, string> = {
     'Download one clip with its “Download” button, or “Join all and download” at the top. It asks where to save and writes the file there.',
   'help.shortcut.add': 'Add a clip with the times typed into the fields',
   'help.shortcut.zoom': 'Zoom the strip in / out',
+  'help.shortcut.zoomKeys': 'Ctrl / ⌘ + mouse wheel',
   'help.shortcut.fullscreen': 'Watch full screen',
   'footer.local': 'Local editing · your source file is unchanged · no cloud upload',
   'footer.local.online': 'Local editing · your source file is unchanged',
@@ -1002,9 +1047,9 @@ export const en: Record<MessageKey, string> = {
   'dock.label': 'Clips shortcut',
   'dock.count': 'Clips ({n})',
   'home.title': 'What do you want to do?',
-  'home.lede': 'Pick one, give it your video, two steps and you are done.',
+  'home.lede': 'Pick one and give it your video. Then just two steps.',
   'home.search.label': 'Type what you want to do',
-  'home.search.placeholder': 'Type: remove silence',
+  'home.search.placeholder': 'Type: remove the silent parts',
   'home.search.clear': 'Clear what you typed',
   'home.search.keys': 'Move through the results with the up and down arrows, start with Enter.',
   'home.examples': 'For example',
@@ -1012,20 +1057,21 @@ export const en: Record<MessageKey, string> = {
   'home.results.title': 'Did you mean this?',
   'home.opening': 'Opening…',
   'home.results.start': 'Start',
-  'home.results.unavailable': 'We cannot do this yet.',
-  'home.results.none.title': 'I could not find that.',
+  'home.results.unavailable': 'We can’t do that yet.',
+  'home.results.none.title': 'I couldn’t find that.',
   'home.results.none.body': 'Try other words, or look at all the tasks.',
   'home.results.showAll': 'See all tasks',
   'home.results.status': '{n} results. First: {first}.',
-  'home.results.statusUnavailable': '{n} results. First: {first}. We cannot do this yet.',
-  'home.results.statusNone': 'No results. I could not find that.',
-  'home.results.ask.hint': 'I am not quite sure. Press the one you want.',
+  'home.results.statusUnavailable': '{n} results. First: {first}. We can’t do that yet.',
+  'home.results.statusNone': 'No results. I couldn’t find that.',
+  'home.results.ask.hint': 'I’m not quite sure. Press the one you want.',
   'home.results.ask.other': 'If it is none of these, try other words or look at all the tasks.',
-  'home.results.statusAsk': 'I am not sure. There are {n} choices. Pick one with the down arrow, then press Enter.',
+  'home.results.statusAsk': 'I’m not sure. There are {n} choices. Pick one with the down arrow, then press Enter.',
   'home.results.statusChoose': 'None is selected. Pick one with the down arrow first.',
-  'home.editorLink': 'I will edit it myself',
+  'home.editorLink': 'I’ll edit it myself',
   'home.trust': 'Your video never leaves your device. No account needed.',
-  'home.trust.online': 'Your video never leaves your device; only if you choose, its sound is sent. No account needed.',
+  'home.trust.online':
+    'Your video never leaves your device; its sound is sent only if you choose. No account needed.',
   'home.title.video': 'What do you want to do with this video?',
   'home.video.shared': 'The video you shared',
   'home.video.picked': 'The video you picked',
@@ -1042,22 +1088,22 @@ export const en: Record<MessageKey, string> = {
 
   'task.kes.label': 'Cut',
   'task.kes.sub': 'Keep the parts you want',
-  'task.bosluk.label': 'Remove gaps',
-  'task.bosluk.sub': 'Take out the silent parts',
+  'task.bosluk.label': 'Remove silences',
+  'task.bosluk.sub': 'Take out the quiet parts',
   'task.dikey.label': 'Make it vertical',
   'task.dikey.sub': 'Reels, TikTok, Shorts',
-  'task.kucult.label': 'Make it smaller',
+  'task.kucult.label': 'Shrink',
   'task.kucult.sub': 'Fit it into WhatsApp',
-  'task.yazi.label': 'Turn speech into text',
+  'task.yazi.label': 'Speech to text',
   'task.yazi.sub': 'Subtitles and text',
   'task.muzik.label': 'Add music',
   'task.muzik.sub': 'Put your own music on it',
   'task.ses.label': 'Get the sound',
   'task.ses.sub': 'An audio file from the video',
-  'task.sustur.label': 'Turn the sound off',
+  'task.sustur.label': 'Mute',
   'task.sustur.sub': 'Make the video silent',
   'task.cevir.label': 'Make it play everywhere',
-  'task.cevir.sub': 'Convert to standard MP4',
+  'task.cevir.sub': 'Turn it into a standard MP4',
   // Asked for, not possible yet: no card, no page; the search says “We cannot do this yet.”
   'task.dondur.label': 'Rotate',
   'task.dondur.sub': 'Turn a video that is upside down or on its side',
@@ -1139,7 +1185,7 @@ export const en: Record<MessageKey, string> = {
   'task.yayin.sub': 'Broadcast while you film',
 
   'wizard.back': 'Back',
-  'wizard.backHome': 'Back to the home screen',
+  'wizard.backHome': 'Back to the start screen',
   'wizard.step': 'Step {n} of {total}',
   'wizard.pick.title': 'Choose your video',
   'wizard.pick.hint': 'From your gallery or your files',
@@ -1147,7 +1193,8 @@ export const en: Record<MessageKey, string> = {
   'wizard.pick.drop': 'Drop it and we will open it',
   'wizard.pick.reading': 'Opening the video…',
   'wizard.share.gone': 'The video you shared is no longer here. Choose your video here.',
-  'wizard.share.lost': 'The video you picked on the opening screen did not reach this page. Choose your video here again.',
+  'wizard.share.lost':
+    'The video you picked on the start screen did not reach this page. Choose your video here again.',
   'wizard.video.label': 'The video you chose',
   'wizard.video.change': 'Change',
   'wizard.video.changeLabel': 'Choose another video',
@@ -1163,9 +1210,9 @@ export const en: Record<MessageKey, string> = {
   'wizard.result.canceled': 'Stopped',
   'wizard.result.again': 'Another video',
   'wizard.result.backToChoice': 'Go back',
-  'wizard.editor.unsaved': 'This edit is not stored',
+  'wizard.editor.unsaved': 'These edits are not saved',
   'wizard.editor.unsavedHint':
-    'Work started from the home screen is not stored in this browser: your clips go when you close the page. The videos you downloaded stay with you.',
+    'Work started from the start screen is not saved in this browser: your clips are gone when you close the page. The videos you downloaded stay with you.',
 
   'wizard.bosluk.title': 'Let’s remove the silent parts',
   'wizard.bosluk.searching': 'Looking for silent parts…',
@@ -1217,7 +1264,7 @@ export const en: Record<MessageKey, string> = {
 
   // ADR-035: "Make it smaller" and "Get the sound".
   'wizard.result.readyAudio': 'Your audio file is ready',
-  'wizard.kucult.title': 'Let’s make your video smaller',
+  'wizard.kucult.title': 'Let’s shrink your video',
   'wizard.kucult.choice': 'Where should it fit?',
   'wizard.kucult.share': 'For sharing (under 52 MB)',
   'wizard.kucult.email': 'E-mail (under 25 MB)',
@@ -1258,13 +1305,15 @@ export const en: Record<MessageKey, string> = {
   'wizard.yazi.done': '{lines} lines written (it took {time}).',
   'wizard.yazi.skipped': '{n} lines broke a rule and were left out.',
   'wizard.yazi.editorHint': 'Open it in the editor to select lines and make clips from them, or to change how the subtitles look.',
-  'wizard.yazi.keepNote': 'This text is not kept yet: it stays if you open it in the editor or download the text, otherwise it is gone when the page closes.',
-  'wizard.yazi.keep.title': 'You have a kept project',
-  'wizard.yazi.keep.body': 'Only one project can be kept in this browser. Which one should stay?',
-  'wizard.yazi.keep.named': 'Kept project: {name}',
-  'wizard.yazi.keep.old': 'Keep the old project (this text is not kept)',
-  'wizard.yazi.keep.new': 'Keep this text (the old project is deleted)',
-  'wizard.yazi.keep.hint': 'If you cancel, nothing changes. You can also save the text as a file with “Metni indir”.',
+  'wizard.yazi.keepNote':
+    'This text is not saved yet: it stays if you open it in the editor or download the text; otherwise it is gone when the page closes.',
+  'wizard.yazi.keep.title': 'You already have a saved project',
+  'wizard.yazi.keep.body': 'Only one project can be saved in this browser. Which one should stay?',
+  'wizard.yazi.keep.named': 'Saved project: {name}',
+  'wizard.yazi.keep.old': 'Keep the old project (this text is not saved)',
+  'wizard.yazi.keep.new': 'Save this text (the old project is deleted)',
+  'wizard.yazi.keep.hint':
+    'If you cancel, nothing changes. You can also save the text as a file with “Download the text (TXT)”.',
   'wizard.yazi.keep.cancel': 'Cancel',
   'transcript.english': 'For now it only writes down English speech.',
   'transcript.onDevice': 'The writing happens on this device; your video and its sound are not sent anywhere.',

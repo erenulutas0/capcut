@@ -63,7 +63,7 @@ test('walkthrough: yazi, internet route (against the local fake)', async ({ page
       await novice.look('yazı');
       await shot(page, testInfo, visual, 'yol-yazi-bulut-yazi', { mask: [page.locator('video')] });
     },
-    download: { name: t('wizard.yazi.downloadVideo'), testId: 'wizard-download' },
+    download: { key: 'wizard.yazi.downloadVideo', testId: 'wizard-download' },
     verify: (out) => [
       { name: 'süre ≈ 24 sn', ok: Math.abs(out.durationS - 24) <= 0.15, value: `${tr(out.durationS, 3)} sn` },
       {

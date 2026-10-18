@@ -3,6 +3,43 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Uygulamanın tamamı İngilizce — 18 Ekim 2026 (ADR-048; politika ve şema değişmedi)
+
+Kurucunun hedefi "web, her telefon". Dış hizmet ve makine çevirisi yok; yeni bağımlılık yok.
+
+- **Her sayfa iki dilde önceden çizilir:** `/en/`, `/en/editor/`, `/en/yap/<iş>/`, `/gizlilik/en/` (Türkçe
+  adresler değişmedi). İki kök düzen (`<html lang="tr">` / `<html lang="en">`); eşleşmeyen adres iki dilde 404.
+- **İlk karede doğru dil:** her sayfanın `<head>`'inde ilk betik (hash'i CSP'de): kayıtlı seçim, yoksa tarayıcının
+  dili; farklıysa sayfa gizlenir ve ikizi açılır (sorgu korunur, paylaşım hedefi İngilizce açılış ekranına düşer).
+  e2e: İngilizce tarayıcıda Türkçe sayfa hiç animasyon karesi çalıştırmadan değiştirildi, hiçbir karede Türkçe yok.
+- **Dil düğmesi** ("English" / "Türkçe"): ana ekran çubuğu, editörün Ayarlar paneli, gizlilik sayfası; 44 px,
+  klavyeyle, betiksiz de çalışır. Seçim localStorage `clip.language`'da (envanter §2.4c, `/gizlilik` "Dil seçimi",
+  "Dil seçimini unut").
+- **Sayfa başına tek dil:** sözlükler ayrıldı; İngilizce gizlilik sayfası −20,9 KiB (gzip), Türkçe sayfalar
+  +2,4–2,6 KiB JS, +~1 KiB HTML. Çevrimdışı kopya 15 → 28 sayfa (3,77 → 4,28 MB).
+- **İngilizce metinler** tamamlandı ve gözden geçirildi (anahtar / yer tutucu eşitliği testi; İngilizce sayfanın
+  Türkçe düğme adlarına göndermesi düzeltildi ve testle kapatıldı); terim listesi ve kart adları ADR-048'de
+  (kesit = clip; Cut, Remove silences, Make it vertical, Shrink, Speech to text, Add music, Get the sound, Mute,
+  Make it play everywhere, Enhance, Make a GIF; "We can’t do that yet."). Ondalık nokta, `42%`, çoğul, `en-GB`
+  saat, İngilizce dosya adları (`_whole`, `_3-clips`…). Türkçe metin değişmedi (gizlilik sayfasındaki yeni kart ve
+  tarih dışında).
+- **Arama İngilizce:** ayar kümesi (140) ve kör küme (200; görev listesinden başka bir şey görmeyen yazar);
+  kör kümede ilk satır doğru %76,2, yanlış ama emin %2,6. 1 044 Türkçe ifadenin hiçbirinin cevabı değişmedi.
+- **Kalite katmanı iki dilde:** yürüyüşler ve görsel tabanlar `desktop-en` / `phone-en`; İngilizce teknik terim
+  listesi; İngilizce okunabilirlik Flesch ile (bütçeler Türkçenin aynası).
+
+**Sınamalar (son kodla, yerel):** `tsc`, `eslint` temiz; birim **1577 / 1577** (92 dosya; +29: anahtar ve yer
+tutucu eşitliği, sayfa başına tek dil, sayfaya giden dil betiğinin kendisi); olağan e2e **481: 477 geçti, 4 atlandı,
+0 başarısız** (yeni `english.spec.ts` 23 sınama), `PAGE-RECOVERED-TOTAL 1` (zorlanmamış: `captions-export`
+sınamasında bir `/editor` yüklemesi bir kez kendini yeniledi), `PAGE-DEAD-TOTAL 0`; bulut e2e **62: 58 geçti, 4
+atlandı** (+3 İngilizce); durağan çıktı (`/capcut`) + Pages duman **16: 10 geçti, 6 atlandı** (+1 İngilizce site);
+kalite katmanı 913 ölçü: 799 bütçe içinde, 16 dışında (8'i önceden açık Türkçe bulgular; yeni: İngilizce arama
+5 — Türkçe başlık bütçelerinin aynası, Türkçe gibi altında —, İngilizce en kalabalık ekran 3: İyileştir seçimi 174
+ve masaüstü editör 172 kelime, bütçe 160), farklı ekran 0, 70 İngilizce taban yazıldı; `npm audit --omit=dev` 0.
+
+**Doğrulanmayan:** gerçek İngilizce telefonda (Android Chrome, iOS Safari) ilk kare ve paylaşım; Firefox/WebKit'te
+dil betiği; İngilizce ekran okuyucu oturumu; metinlerin anadili İngilizce bir okurca okunması.
+
 ## "LiloCut'a paylaş": galeride Paylaş → LiloCut, uygulama o videoyla açılır — 17 Ekim 2026 (ADR-047; politika ve şema değişmedi)
 
 Kurucunun onayladığı özellik (Web Share Target). Ekran yeni bir düzen değil, açılış ekranına bir ekleme; veto için

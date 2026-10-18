@@ -1,7 +1,7 @@
 import { test, type Page } from '@playwright/test';
 
 import { installSavePicker, noSavePicker } from '../e2e/kesitFlow';
-import { isPhone } from './lib/app';
+import { isPhone, langOf } from './lib/app';
 import { BUILD, tr, writeResult } from './lib/record';
 import { STATES } from './lib/states';
 
@@ -209,7 +209,7 @@ for (const state of STATES) {
     if (phone) await noSavePicker(page);
     else await installSavePicker(page);
     try {
-      await state.open(page);
+      await state.open(page, langOf(testInfo));
     } catch (error) {
       writeResult('a11y', `${testInfo.project.name}.${state.id}`, {
         id: state.id,

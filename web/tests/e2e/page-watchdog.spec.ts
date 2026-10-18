@@ -58,19 +58,31 @@ test.describe('without a service worker', () => {
 
   test('every page comes alive, and an alive page is left alone', async ({ page }) => {
     const loads = countLoads(page);
-    const pages = ['/', '/editor', '/gizlilik', '/gizlilik/en', '/no-such-page', ...availableTasks().map((task) => `/yap/${task.id}`)];
+    const pages = ['/', '/editor', '/gizlilik', '/no-such-page', ...availableTasks().map((task) => `/yap/${task.id}`)];
     for (const path of pages) {
       await page.goto(path);
       await expectAlive(page);
       await expect(notice(page)).toHaveAttribute('data-state', 'hidden');
       await expect(notice(page)).toBeHidden();
     }
-    expect(loads()).toBe(pages.length);
+    // ADR-048: the English pages, for a reader who chose English (this browser is Turkish: without the
+    // choice the language script would put it on the Turkish twin — one more load, not a recovery).
+    await page.evaluate(() => localStorage.setItem('clip.language', 'en'));
+    const english = ['/gizlilik/en', '/en', '/en/editor', ...availableTasks().map((task) => `/en/yap/${task.id}`)];
+    for (const path of english) {
+      await page.goto(path);
+      await expectAlive(page);
+      await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+      await expect(notice(page)).toHaveAttribute('data-state', 'hidden');
+      await expect(notice(page)).toBeHidden();
+    }
+    await page.evaluate(() => localStorage.removeItem('clip.language'));
+    expect(loads()).toBe(pages.length + english.length);
     // Well past every limit of the watchdog: nothing happens on a page that works.
     await page.goto('/yap/cevir');
     await expect(page.getByTestId('video-input')).toBeAttached();
     await page.waitForTimeout(20_000);
-    expect(loads()).toBe(pages.length + 1);
+    expect(loads()).toBe(pages.length + english.length + 1);
     await expect(notice(page)).toBeHidden();
     expect(await flag(page)).toBeNull();
   });
@@ -183,7 +195,8 @@ test.describe('without a service worker', () => {
   test('the English page says it in English', async ({ page }) => {
     expectPageRecovery();
     await page.route(CHUNK, (route) => route.abort('connectionreset'));
-    await page.goto('/gizlilik/en');
+    // ADR-048: this browser is Turkish; `?lang=en` is the English choice (what the language button opens).
+    await page.goto('/gizlilik/en?lang=en');
     await expect(notice(page)).toHaveAttribute('data-state', 'dead', { timeout: 40_000 });
     const panel = notice(page).locator('[data-clip-lang="en"]');
     await expect(panel).toBeVisible();
@@ -563,7 +576,7 @@ test.describe('with the service worker and its stored copy', () => {
 });
 
 test('the watchdog script is in every page: the first script, before any stylesheet, its hash in the policy', async ({ page }) => {
-  for (const path of ['/', '/yap/cevir', '/yap/yazi', '/editor', '/gizlilik', '/gizlilik/en', '/no-such-page']) {
+  for (const path of ['/', '/yap/cevir', '/yap/yazi', '/editor', '/gizlilik', '/gizlilik/en', '/en', '/en/yap/cevir', '/no-such-page']) {
     const html = await (await page.request.get(path)).text();
     const ours = [...html.matchAll(/<script data-clip-watchdog="">([\s\S]*?)<\/script>/g)].map((match) => match[1] ?? '');
     expect(ours.length, `${path}: one watchdog script`).toBe(1);
@@ -572,10 +585,22 @@ test('the watchdog script is in every page: the first script, before any stylesh
     const policy = /<meta http-equiv="Content-Security-Policy"[^>]*content="([^"]*)"/.exec(html)?.[1] ?? '';
     expect(policy, path).toContain(hash);
     expect(policy).not.toContain('unsafe-inline');
-    // charset, the policy, then the watchdog: nothing of the page is asked for before it listens.
+    // charset, the policy, then the watchdog: nothing of the page is asked for before it listens. On an app page
+    // the language script (ADR-048) comes first — it starts nothing, it may only hide the page and replace it.
     const at = html.indexOf('<script data-clip-watchdog');
     expect(at, path).toBeGreaterThan(html.indexOf('http-equiv="Content-Security-Policy"'));
-    expect(html.search(/<script[\s>]/), path).toBe(at);
+    const language = /<script data-clip-language="">([\s\S]*?)<\/script>/.exec(html)?.[1] ?? null;
+    if (path === '/no-such-page') {
+      expect(language, path).toBeNull();
+      expect(html.search(/<script[\s>]/), path).toBe(at);
+    } else {
+      expect(language, path).not.toBeNull();
+      expect(html.search(/<script[\s>]/), path).toBe(html.indexOf('<script data-clip-language'));
+      expect(html.indexOf('<script data-clip-language'), path).toBeLessThan(at);
+      expect(policy, path).toContain(`'sha256-${createHash('sha256').update(language ?? '', 'utf8').digest('base64')}'`);
+      // Nothing between the two but each other.
+      expect(html.slice(html.indexOf('</script>', html.indexOf('<script data-clip-language')) + '</script>'.length, at), path).toBe('');
+    }
     expect(at, path).toBeLessThan(html.search(/<link[\s>]/));
     expect(html).toContain('id="clip-page-dead"');
     // The limits are in the page as written in the ADR.

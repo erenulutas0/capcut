@@ -15,10 +15,10 @@ import { useTranscription } from '@/components/transcript/useTranscription';
 import { primaryCaptionTrack } from '@/domain/captions';
 import { transcriptLines } from '@/domain/transcript';
 import { RECOMMENDED_MODEL } from '@/domain/transcriptModels';
-import { translator, type MessageKey } from '@/i18n/messages';
+import { useT } from '@/i18n/locale';
+import type { MessageKey } from '@/i18n/messages';
 import { VideoPreview, WizardFlow, fill, lengthText, type WizardHostProps } from './WizardFlow';
 
-const t = translator('tr');
 
 /**
  * "Yazıyı nerede çıkaralım?" (ADR-039): the choice between this device and
@@ -33,7 +33,15 @@ const t = translator('tr');
  * (scripts/apply-csp.mjs stops such an export).
  */
 const CloudRoute = process.env.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1'
-  ? lazyPart<CloudRouteProps>(() => import('@/components/transcript/CloudRoute').then((module) => module.default), { variant: 'inline' })
+  ? lazyPart<CloudRouteProps>(
+      () =>
+        Promise.all([
+          import('@/components/transcript/CloudRoute'),
+          // The route's words in the page's language, and only those (ADR-048): the page says which in <html lang>.
+          document.documentElement.lang === 'en' ? import('@/i18n/cloudMessages.en') : import('@/i18n/cloudMessages'),
+        ]).then(([module]) => module.default),
+      { variant: 'inline' },
+    )
   : null;
 
 /**
@@ -58,6 +66,7 @@ const KeepOnHandoff = lazyPart<KeepOnHandoffProps>(() => import('@/components/tr
  * the text, the SRT/VTT files, or the editor, where lines become kesitler.
  */
 export default function YaziWizard(host: WizardHostProps) {
+  const t = useT();
   const { state } = host;
   const { video, project } = state;
   const transcription = useTranscription();
@@ -103,7 +112,7 @@ export default function YaziWizard(host: WizardHostProps) {
       titleKey="wizard.yazi.title"
       chooseTitle={transcript ? null : cloudView.title}
       footerText={transcript ? (cloud?.footer ?? null) : cloudView.footer}
-      fileTag="altyazili"
+      fileTag={t('file.tag.yazi')}
       downloadLabelKey="wizard.yazi.downloadVideo"
       editorNote={keepsOnHandoff ? t('wizard.yazi.keepNote') : null}
       recipe={video && hasLines ? project : null}
@@ -143,7 +152,7 @@ export default function YaziWizard(host: WizardHostProps) {
                 <span>
                   {fill(t('wizard.yazi.done'), {
                     lines: String(transcription.job.lines),
-                    time: lengthText(transcription.job.stats.totalMs * 1000),
+                    time: lengthText(transcription.job.stats.totalMs * 1000, t),
                   })}
                   {transcription.job.skipped > 0
                     ? ` ${fill(t('wizard.yazi.skipped'), { n: String(transcription.job.skipped) })}`

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { forgetLargeModelFailed, largeModelFailedHere, subscribeLargeModelNote } from '@/adapters/transcript/largeModelNote';
 import { deleteStoredModels, storedModelBytes } from '@/adapters/transcript/modelStore';
 import { formatBytes } from '@/domain/policy';
-import { translator, type Locale } from '@/i18n/messages';
+import { translator, type Locale } from '@/i18n/translate';
 
 /**
  * What the speech model occupies in this browser, and "Modeli sil"

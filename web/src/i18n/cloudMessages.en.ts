@@ -5,7 +5,8 @@
  */
 
 import { APP_NAME } from '../appIdentity';
-import { registerCloudMessages, type CloudMessageKey } from './cloudMessages';
+import type { CloudMessageKey } from './cloudMessages';
+import { registerCloudMessages } from './cloudTranslate';
 
 export const cloudEn: Record<CloudMessageKey, string> = {
   'cloud.choice.title': 'Where should we write the text?',
@@ -27,7 +28,8 @@ export const cloudEn: Record<CloudMessageKey, string> = {
   'cloud.online.notEnough': 'This video has {x} minutes of sound; you have {y} minutes left. Not enough. We can write it on your device.',
   'cloud.online.tooLong': 'This video is too long: at most {max} minutes of sound can be written on the internet. We can write it on your device.',
   'cloud.online.off': 'We cannot write on the internet right now. We can write it on your device.',
-  'cloud.online.unreachable': 'We could not reach the writer on the internet. Check your connection; we can also write it on your device.',
+  'cloud.online.unreachable':
+    'We could not reach the online service. Check your internet connection; we can also write it on your device.',
   'cloud.online.retry': 'Try again',
   'cloud.invite.need': 'You need an invite code to use this.',
   'cloud.invite.label': 'Invite code',
@@ -37,7 +39,8 @@ export const cloudEn: Record<CloudMessageKey, string> = {
   'cloud.invite.bad': 'This does not look like an invite code. A code is four groups of letters and digits separated by dashes.',
   'cloud.invite.invalid': 'This invite code is not valid. Check it and type it again.',
   'cloud.invite.expired': 'Your saved invite code is no longer valid. You can type a new one.',
-  'cloud.invite.unreachable': 'We could not check the code: the writer on the internet could not be reached. Check your connection and try again.',
+  'cloud.invite.unreachable':
+    'We could not check the code: the online service could not be reached. Check your internet connection and try again.',
   'cloud.invite.off': 'Your code is right, but we cannot write on the internet right now. We can write it on your device.',
   'cloud.invite.remove': 'Remove the invite code',
   'cloud.invite.removed': 'The invite code was removed from this device.',
@@ -54,7 +57,8 @@ export const cloudEn: Record<CloudMessageKey, string> = {
   'cloud.run.stop': 'Stop',
   'cloud.stopped': 'Stopped; no text was written.',
 
-  'cloud.failed.unreachable': 'We could not reach the writer on the internet. Check your connection and try again, or write it on your device.',
+  'cloud.failed.unreachable':
+    'We could not reach the online service. Check your internet connection and try again, or write it on your device.',
   'cloud.failed.off': 'We cannot write on the internet right now. We can write it on your device.',
   'cloud.failed.invite_invalid': 'Your invite code is not valid. Type a new one, or write it on your device.',
   'cloud.failed.minutes_used_up': 'You do not have enough minutes for this video. We can write it on your device.',
@@ -62,7 +66,8 @@ export const cloudEn: Record<CloudMessageKey, string> = {
   'cloud.failed.busy': 'Another writing job is running with this invite code. Try again when it is done, or write it on your device.',
   'cloud.failed.rate_limited': 'Too many tries. Try again in a while, or write it on your device.',
   'cloud.failed.upload_interrupted': 'Sending was cut off; no text was written. Check your connection and try again, or write it on your device.',
-  'cloud.failed.provider_error': 'It did not work: the writer on the internet could not write this sound. Try again, or write it on your device.',
+  'cloud.failed.provider_error':
+    'It did not work: the online service could not write this sound. Try again, or write it on your device.',
   'cloud.failed.empty': 'The text came back empty: no speech to write was found in this sound. You can try on your device.',
   'cloud.failed.timeout': 'It took too long, so we stopped; no text was written. Try again, or write it on your device.',
   'cloud.failed.audio_unavailable': 'This browser cannot prepare the video’s sound for sending; nothing was sent. We can write it on your device.',
@@ -83,17 +88,17 @@ export const cloudEn: Record<CloudMessageKey, string> = {
   'cloud.footer.sent': 'The sound of this video was sent to the internet to be written; its picture did not leave your device.',
 
   'cloud.privacy.summary.local':
-    'The video, audio and subtitle files you choose are processed in this browser, on your own device. One exception: if you choose “On the internet” in “Yazıya dök”, only the sound of the video is sent (see “Writing on the internet” below). Nothing is sent unless you choose it.',
+    'The video, audio and subtitle files you choose are processed in this browser, on your own device. One exception: if you choose “On the internet” in “Speech to text”, only the sound of the video is sent (see “Writing on the internet” below). Nothing is sent unless you choose it.',
   'cloud.privacy.summary.report':
-    'The app sends nothing by itself; sound is sent only when you press “Sesi gönder ve yaz”. If you want to report a problem, you download the diagnostics file and you send it.',
+    'The app sends nothing by itself; sound is sent only when you press “Send the sound and write”. If you want to report a problem, you download the diagnostics file and you send it.',
   'cloud.privacy.network.extra':
     'The one exception is “Writing on the internet”: if you choose it, your browser also makes requests to our relay server. Details are below.',
   'cloud.privacy.notCollected.body':
     'An account or e-mail address, analytics or usage statistics, cookies, an advertising ID, a device fingerprint, location, automatic error or crash reports. The picture of your video is not collected either. The sound of your video and its written text leave your device only if you choose “On the internet”; if you choose “On my device”, neither does.',
-  'cloud.privacy.stored.none': 'Cookies are not used. localStorage holds only the hint above, (if the large model stopped here) the large model note and (if you saved one) your invite code; sessionStorage holds only the reload note above.',
+  'cloud.privacy.stored.none': 'No cookies are used. localStorage holds only the hint value above, (if the large model stopped here) the large model note, (if you chose one) your language choice and (if you saved one) your invite code; sessionStorage holds only the reload note above.',
   'cloud.privacy.title': 'Writing on the internet (optional, invited trial)',
   'cloud.privacy.intro':
-    '“Yazıya dök” has two ways: “On my device” and “On the internet”. The internet way works only with an invite code and starts each time only when you press “Sesi gönder ve yaz”; it is never chosen for you, and your choice is not remembered.',
+    '“Speech to text” has two ways: “On my device” and “On the internet”. The internet way works only with an invite code and starts each time only when you press “Send the sound and write”; it is never chosen for you, and your choice is not remembered.',
   'cloud.privacy.what':
     'What is sent: only the sound of the video (speech, background sounds, music). The sound is prepared on your device as a new audio file. The picture, the file name, location and device details are not sent.',
   'cloud.privacy.who':
@@ -109,16 +114,16 @@ export const cloudEn: Record<CloudMessageKey, string> = {
   'cloud.privacy.provider.retention': 'Data retention and model training',
   'cloud.privacy.provider.dpa': 'Data processing addendum',
   'cloud.privacy.kept':
-    'Where the text is on your device: at first only in the open page; if you close the page it is gone. If you press “Daha fazla ayar → editörde aç”, its lines and who spoke are kept in this browser as a project (see “Project recipe” below). If a project you kept earlier is there, you are asked which one stays. To delete it: press “Delete the saved project” when the editor asks for the video file again, or clear this site’s data in the browser settings.',
+    'Where the text is on your device: at first only in the open page; if you close the page it is gone. If you press “More settings → open in the editor”, its lines and who spoke are saved in this browser as a project (see “Your project” below). If you saved a project earlier, you are asked which one stays. To delete it: press “Delete the saved project” when the editor asks for the video file again, or clear this site’s data in the browser settings.',
   'cloud.privacy.stored.shared.extra':
-    'A video you shared is like a video you picked from your gallery: if you choose “İnternette” in “Yazıya dök”, only its sound is sent; the copy itself is never sent.',
+    'A video you shared is like a video you picked from your gallery: if you choose “On the internet” in “Speech to text”, only its sound is sent; the copy itself is never sent.',
   'cloud.privacy.stored.project.extra':
-    'The same for a text written on the internet: if you open it in the editor, the text of its lines and who spoke are kept here; the sound, your invite code and the company’s reply are not.',
+    'The same for a text written on the internet: if you open it in the editor, the text of its lines and who spoke are saved here; the sound, your invite code and the company’s reply are not.',
   'cloud.privacy.others': 'If other people speak in the video, their voices are sent too. Think about that before you send.',
   'cloud.privacy.ledger':
     'What our relay server records: a digest of the invite code, the length and size of the sound, the state and time of the job (90 days); to prevent overuse, a digest of the IP address (for about an hour at most). The sound, the text and the file name are not recorded. Like every internet server, Cloudflare sees the IP address while carrying the request.',
   'cloud.privacy.quota':
-    'If your invite code is saved, it is sent to our relay server when the “Yazıyı nerede çıkaralım?” screen opens, to ask how many minutes you have left. That request carries no sound.',
+    'If your invite code is saved, it is sent to our relay server when the “Where should we write the text?” screen opens, to ask how many minutes you have left. That request carries no sound.',
   'cloud.privacy.trial':
     'This way is an invited trial and it is free. Each invite code has a set number of minutes; one video may be at most 120 minutes long. We have a monthly spending limit: when it is reached, this way closes for that month. “On my device” always works.',
   'cloud.privacy.controller.unset':
@@ -127,9 +132,10 @@ export const cloudEn: Record<CloudMessageKey, string> = {
     'The data controller is named below: until a company is founded, the founder, as a private person. The legal basis has not been decided yet; this way will not be opened beyond the invited trial before it is.',
   'cloud.privacy.stored.invite.name': 'Invite code (writing on the internet)',
   'cloud.privacy.stored.invite.body':
-    'Kept in this browser so you only type your invite code once. It is written only when you press “Kodu kaydet” and the code is accepted.',
+    'Kept in this browser so you only type your invite code once. It is written only when you press “Save the code” and the code is accepted.',
   'cloud.privacy.stored.invite.where': 'localStorage, key “clip.cloudInvite”',
-  'cloud.privacy.stored.invite.delete': 'With the “Remove the invite code” button below, or the same button on the “Yazıya dök” screen.',
+  'cloud.privacy.stored.invite.delete':
+    'With the “Remove the invite code” button below, or the same button on the “Speech to text” screen.',
   'cloud.privacy.invite.present': 'An invite code is saved in this browser.',
   'cloud.privacy.invite.absent': 'No invite code is saved in this browser.',
 };

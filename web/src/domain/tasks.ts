@@ -145,6 +145,8 @@ const REGISTRY = [
       strong: [
         'kes', 'kesmek', 'kirp', 'kirpmak', 'kisalt', 'kisaltmak', 'bol', 'bolmek', 'parca', 'ayir', 'kesit', 'klip',
         'makas', 'trim', 'cut', 'clip', 'split', 'shorten', 'crop',
+        // ADR-048 (English DEV set): how people say it without the word cut.
+        'snip', 'chop', 'trimmed', 'trimming',
       ],
       weak: [
         'sil', 'cikar', 'at', 'bas', 'basi', 'basini', 'son', 'sonu', 'sonunu', 'orta', 'ortasini', 'bolum', 'kisim',
@@ -155,8 +157,14 @@ const REGISTRY = [
         'uzun', 'kisa', 'long', 'short', 'shorter', 'gereksiz',
         // "Keep only this, the rest can go."
         'kalsin', 'gerisi', 'kalan', 'keep', 'rest',
+        // Not "bit": "a bit more" is "a little" (ADR-048).
+        'bits', 'moment', 'scene',
       ],
-      phrases: ['basini kes', 'sonunu kes', 'bir kismini', 'istedigim yer', 'istedigim kismi'],
+      phrases: [
+        'basini kes', 'sonunu kes', 'bir kismini', 'istedigim yer', 'istedigim kismi',
+        // ADR-048: keeping one part of a video.
+        'keep only', 'only want the', 'the part where', 'the bit where', 'the good part', 'the best part',
+      ],
     },
   },
   {
@@ -176,6 +184,9 @@ const REGISTRY = [
       phrases: [
         'sessiz yer', 'bos yer', 'konusmadigim yer', 'konusmayan yer', 'dead air', 'remove silence', 'cut silence',
         'bosluklari at', 'jump cut', 'olu an', 'olu zaman',
+        // ADR-048: the places where nobody speaks, as English speakers describe them.
+        'awkward pauses', 'awkward silence', 'long breaks', 'stop talking', 'not talking', 'dont say anything',
+        'don t say anything',
       ],
       // A silent or empty PLACE in the video — whatever is then done to it ("sessiz kısımları kırp") —
       // and the places where the speaker waits, stops or thinks ("beklediğim yerleri at").
@@ -188,6 +199,8 @@ const REGISTRY = [
           ['bekledigim', 'durdugum', 'sustugum', 'konusmadigim', 'dusundugum', 'duraksadigim', 'takildigim'],
           ['yer', 'kisim', 'bolum', 'an', 'ara'],
         ],
+        // "where nobody talks", "no one speaks": nobody's voice in a place of the video (ADR-048).
+        [['nobody', 'noone', 'no'], ['talks', 'talking', 'speaks', 'speaking', 'says'], 1],
       ],
     },
   },
@@ -202,6 +215,8 @@ const REGISTRY = [
       strong: [
         'dikey', 'dik', 'reels', 'reel', 'tiktok', 'shorts', 'instagram', 'insta', 'story', 'hikaye', 'vertical',
         'portrait', '916',
+        // A common English misspelling (ADR-048, DEV set): two edits from "vertical", beyond the typo rule.
+        'verticle',
       ],
       weak: ['yatay', 'telefon', 'youtube', 'ekran', 'tall', 'phone'],
       phrases: ['9 16', 'dikey yap', 'dik yap', 'make it vertical', 'yan duruyor'],
@@ -240,10 +255,17 @@ const REGISTRY = [
       strong: [
         'yazi', 'yaziya', 'altyazi', 'metin', 'metne', 'transkript', 'desifre', 'dokum', 'subtitle', 'subtitles',
         'caption', 'captions', 'transcript', 'transcribe', 'transcription', 'text', 'srt',
+        // ADR-048: who needs the words written down, and how English names them.
+        'deaf', 'cc', 'dictation',
       ],
       weak: ['dok', 'yaz', 'soylenen', 'soylenenler', 'kelime', 'words', 'written', 'typed'],
       // "alt yazı" typed as two words is the subtitle, not "yazı ekle" (text laid over the picture).
-      phrases: ['yaziya dok', 'yaziya cevir', 'metne cevir', 'ne dedigini', 'speech to text', 'alt yazi', 'alt yazi ekle', 'alt yazi koy'],
+      phrases: [
+        'yaziya dok', 'yaziya cevir', 'metne cevir', 'ne dedigini', 'speech to text', 'alt yazi', 'alt yazi ekle', 'alt yazi koy',
+        // ADR-048: what is SAID, written down.
+        'write down', 'what they say', 'what people say', 'what he says', 'what she says', 'what i say', 'show the words',
+        'into words', 'into text', 'auto captions', 'closed captions',
+      ],
     },
   },
   {
@@ -254,19 +276,19 @@ const REGISTRY = [
     available: true,
     steps: ['pick', 'choose', 'download'],
     words: {
-      strong: ['muzik', 'sarki', 'fon', 'melodi', 'music', 'song', 'soundtrack', 'track'],
+      strong: ['muzik', 'sarki', 'fon', 'melodi', 'music', 'song', 'soundtrack', 'track', 'musik'],
       // No bare "ekle" / "koy" / "add" / "put": what is added says the task ("şifre koy" is not music);
       // next to the music they are a pair (below).
       weak: ['arka', 'plan', 'mp3', 'background', 'parca', 'parcami'],
       phrases: [
         'muzik ekle', 'muzik koy', 'sarki ekle', 'sarki koy', 'ses ekle', 'arka plan', 'fon muzigi', 'add music',
-        'background music',
+        'background music', 'add an mp3', 'add mp3', 'put an mp3',
       ],
       // Music put IN: "şarkı eklemek istiyorum", "müzik çalsın", "put a song".
       pairs: [
         [
           ['muzik', 'sarki', 'sarkimi', 'melodi', 'parcami', 'song', 'music', 'soundtrack', 'track'],
-          ['ekle', 'koy', 'cal', 'yerlestir', 'add', 'put', 'insert'],
+          ['ekle', 'koy', 'cal', 'yerlestir', 'add', 'put', 'insert', 'playing', 'over', 'behind'],
           1,
         ],
       ],
@@ -282,18 +304,20 @@ const REGISTRY = [
     words: {
       // No "sesi": "sesiz" must stay a typo of "sessiz", not "sesi" + "z".
       // "müziğini", "şarkısını": the video's OWN music — taking it out, not putting one in.
-      strong: ['mp3', 'sesini', 'ses', 'dinle', 'dinlemek', 'podcast', 'audio', 'wav', 'm4a', 'muzigini', 'sarkisini'],
+      strong: ['mp3', 'sesini', 'ses', 'dinle', 'dinlemek', 'podcast', 'audio', 'wav', 'm4a', 'muzigini', 'sarkisini', 'listen'],
       // No bare "al" (take): it is every task's verb. With the sound next to it, it is a pair (below).
       weak: ['ayir', 'cikar', 'extract', 'only', 'sound'],
       phrases: [
         'ses dosyasi', 'sesini al', 'sesini cikar', 'sesini ayir', 'sadece ses', 'audio only', 'extract audio',
         'muzik cikar', 'muzigi cikar', 'muzigini cikar', 'muzigi al', 'muzigini al', 'sarkiyi al', 'sarkiyi cikar',
+        // ADR-048: the sound taken OUT of the video, in English.
+        'sound file', 'audio file', 'mp3 file', 'song from', 'music from', 'get mp3', 'get the mp3', 'mp3 from',
       ],
       // The sound taken OUT as a file: "müziğini almak istiyorum", "şarkıyı indir", "sesini kaydet".
       pairs: [
         [
           ['ses', 'muzik', 'sarki', 'audio', 'sound', 'song', 'music', 'soundtrack'],
-          ['al', 'ayir', 'kaydet', 'indir', 'dinle', 'dosyasi', 'kaydi', 'extract', 'save', 'rip', 'download', 'grab'],
+          ['al', 'ayir', 'kaydet', 'indir', 'dinle', 'dosyasi', 'kaydi', 'extract', 'save', 'rip', 'download', 'grab', 'get', 'keep'],
         ],
       ],
     },
@@ -320,6 +344,8 @@ const REGISTRY = [
         'sesi yok', 'remove audio', 'remove sound', 'remove the audio', 'remove the sound', 'delete audio',
         'delete sound', 'delete the audio', 'no sound', 'no audio', 'without sound', 'without audio', 'sound off',
         'audio off', 'turn off', 'sesleri sil', 'sesleri kapat', 'sesleri kaldir', 'sesi tamamen kis', 'sesini tamamen kis',
+        // ADR-048: the video made silent ("silent" alone is a silent PLACE: Remove silences).
+        'make it silent', 'make the video silent', 'make video silent', 'silent video',
       ],
       // The sound taken AWAY: a word for the sound next to "off", "gone" or "not wanted" — "sesi kapa",
       // "ses hiç olmasın", "sesini istemiyorum", "get rid of the audio". ("kes" is not here: "sesi kes"
@@ -348,6 +374,7 @@ const REGISTRY = [
         'acilmiyor', 'acilmadi', 'acmiyor', 'acamiyorum', 'oynat', 'oynamiyor', 'calismiyor', 'supported',
         'gorunmuyor', 'mp4', 'format', 'formati', 'bicim', 'bicimi', 'iphone', 'mov', 'hevc', 'h265', 'h264', 'hdr',
         'uyumlu', 'uyumsuz', 'desteklenmiyor', 'compatible', 'compatibility', 'unsupported',
+        'webm',
       ],
       // "Turn it into…" — into what is said by the word next to it: alone, a format every device opens.
       yielding: ['cevir', 'donustur', 'convert', 'converter'],
@@ -357,6 +384,9 @@ const REGISTRY = [
       phrases: [
         'her yerde', 'her cihazda', 'wont open', 'won t open', 'cant open', 'can t open', 'not playing', 'doesnt play',
         'doesn t play', 'wont play', 'won t play', 'goruntu yok',
+        // ADR-048: the card's own words, and what people say of a video that plays only somewhere.
+        'play everywhere', 'plays everywhere', 'play anywhere', 'open everywhere', 'every device', 'all devices',
+        'normal video', 'normal mp4',
       ],
     },
   },
@@ -384,7 +414,7 @@ const REGISTRY = [
         'saturation', 'denoise', 'grainy', 'noisy', 'lighting',
       ],
       // "canlı": vivid colours — and "canlı yayın" (a live broadcast), so it only supports.
-      weak: ['yukselt', 'artir', 'duzelt', 'gorunsun', 'goruntu', 'goruntuyu', 'better', 'fix', 'look', 'clear', 'light', 'canli'],
+      weak: ['yukselt', 'artir', 'duzelt', 'gorunsun', 'goruntu', 'goruntuyu', 'better', 'fix', 'look', 'clear', 'light', 'canli', 'night'],
       phrases: [
         'kaliteyi yukselt', 'kalitesini yukselt', 'kaliteyi artir', 'kalitesini artir', 'daha net', 'daha iyi gorunsun',
         '4k yap', 'hd yap', 'bulanikligi sil', 'bulanikligi gider', 'bulanikligi al', 'goruntuyu duzelt', 'cok karanlik',
@@ -404,9 +434,13 @@ const REGISTRY = [
     available: true,
     steps: ['pick', 'choose', 'download'],
     words: {
-      strong: ['gif', 'gife', 'gifi', 'gifler', 'gifini'],
-      weak: ['hareketli', 'animasyon', 'animated', 'loop', 'dongu'],
-      phrases: ['gif e', 'gife cevir', 'gife donustur', 'gif yap', 'to gif', 'hareketli resim', 'hareketli foto'],
+      strong: ['gif', 'gife', 'gifi', 'gifler', 'gifini', 'gifs', 'jif'],
+      weak: ['hareketli', 'animasyon', 'animated', 'loop', 'dongu', 'looping', 'animation'],
+      phrases: [
+        'gif e', 'gife cevir', 'gife donustur', 'gif yap', 'to gif', 'hareketli resim', 'hareketli foto',
+        // ADR-048: a picture that moves ("picture" alone is a still: not yet).
+        'moving picture', 'moving image', 'animated picture', 'animated image', 'gif with text',
+      ],
     },
   },
   // ------------------------------------------------------------------
@@ -497,6 +531,7 @@ const REGISTRY = [
         'logosunu sil', 'logosunu kaldir', 'logoyu sil', 'logoyu kaldir', 'yaziyi sil', 'yaziyi kaldir',
         'yazisini sil', 'yazisini kaldir', 'tiktok logosu', 'tiktok yazisi', 'remove logo', 'remove text',
         'remove the logo', 'remove the text', 'remove watermark', 'remove the watermark', 'filigrani kaldir', 'filigrani sil',
+        'tiktok watermark', 'tiktok logo',
       ],
     },
   },
@@ -787,6 +822,19 @@ export const TASK_EXAMPLES: readonly string[] = [
   'başını kes',
   'müzik koy',
 ];
+
+/** The same four, as an English speaker would type them (ADR-048): each finds the same task. */
+export const TASK_EXAMPLES_EN: readonly string[] = [
+  'remove the silent parts',
+  'vertical for TikTok',
+  'cut the start',
+  'add music',
+];
+
+/** The example chips of the opening screen, in the page's language. */
+export function taskExamples(locale: 'tr' | 'en'): readonly string[] {
+  return locale === 'en' ? TASK_EXAMPLES_EN : TASK_EXAMPLES;
+}
 
 export function taskById(id: string): TaskDefinition | undefined {
   return TASKS.find((task) => task.id === id);

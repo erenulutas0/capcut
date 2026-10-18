@@ -7,6 +7,9 @@ import { DEV, HELD_OUT, type EvalPhrase } from './data/search-eval';
 import { FRESH_HELD_OUT } from './data/search-eval-fresh';
 import { FRESH_HELD_OUT_2 } from './data/search-eval-fresh2';
 import { FRESH_HELD_OUT_3 } from './data/search-eval-fresh3';
+import { EN_DEV } from './data/search-eval-en-dev';
+import { EN_FRESH } from './data/search-eval-en-fresh';
+import { en } from '../../src/i18n/messages.en';
 import { writeResult } from './lib/record';
 import { evaluate, type EvalTexts } from './lib/searchEval';
 import { t } from './lib/app';
@@ -50,6 +53,13 @@ function seenPhrases(): Set<string> {
 
 const folded = (phrases: readonly EvalPhrase[]): string[] => phrases.map((phrase) => foldText(phrase.text));
 
+const EN_TEXTS: EvalTexts = {
+  label: (id) => en[`task.${id}.label` as keyof typeof en] ?? id,
+  unavailable: en['home.results.unavailable'],
+  none: en['home.results.none.title'],
+  askTitle: en['home.results.title'],
+};
+
 const TEXTS: EvalTexts = {
   label: (id) => t(`task.${id}.label` as Parameters<typeof t>[0]),
   unavailable: t('home.results.unavailable'),
@@ -74,7 +84,12 @@ test('search: held-out and dev phrases', async ({}, testInfo) => {
   const seen = seenPhrases();
   const tuned = new Set([...seen, ...folded(DEV)]);
   const beforeSecond = new Set([...tuned, ...folded(HELD_OUT), ...folded(FRESH_HELD_OUT)]);
+  // ADR-048: the English sets. Everything above has been seen by the lists; the English DEV set was tuned on.
+  const beforeEnglish = new Set([...beforeSecond, ...folded(FRESH_HELD_OUT_2), ...folded(FRESH_HELD_OUT_3)]);
   writeResult('search', testInfo.project.name, {
+    enFreshFile: 'search-eval-en-fresh.ts',
+    enFresh: evaluate(EN_FRESH, new Set([...beforeEnglish, ...folded(EN_DEV)]), EN_TEXTS),
+    enDev: evaluate(EN_DEV, beforeEnglish, EN_TEXTS),
     tunedTablePhrases: seen.size,
     freshFile: 'search-eval-fresh3.ts',
     fresh: evaluate(FRESH_HELD_OUT_3, new Set([...beforeSecond, ...folded(FRESH_HELD_OUT_2)]), TEXTS),

@@ -225,7 +225,10 @@ test.describe('type to find', () => {
     await expect(page.getByRole('combobox', { name: 'Ne yapmak istediğini yaz' })).toBeVisible();
     await expect(page.locator(`#${await input.getAttribute('aria-describedby')}`)).toHaveText(tr['home.search.keys']);
 
-    // Reached with Tab alone: wordmark is not a link here, so editor link, then the box.
+    // Reached with Tab alone: wordmark is not a link here, so the language button (ADR-048), the editor
+    // link, then the box.
+    await page.keyboard.press('Tab');
+    await expect(page.getByTestId('language-switch')).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(page.getByTestId('home-editor-link')).toBeFocused();
     await page.keyboard.press('Tab');

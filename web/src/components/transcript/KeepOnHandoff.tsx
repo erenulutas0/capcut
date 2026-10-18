@@ -7,9 +7,7 @@ import { createIndexedDbStore } from '@/adapters/projectStore';
 import { Icon } from '@/components/Icon';
 import { Dialog } from '@/components/editor/Dialog';
 import { handoffAction, storedProjectName, type StoredProbe } from '@/domain/wizardHandoff';
-import { translator } from '@/i18n/messages';
-
-const t = translator('tr');
+import { useT } from '@/i18n/locale';
 
 export interface KeepOnHandoffProps {
   /** The id the browser's one stored project is kept under (the recipe's own). */
@@ -37,6 +35,7 @@ export interface KeepOnHandoffProps {
  * In every build: it has no word of the cloud route and imports nothing of it.
  */
 export default function KeepOnHandoff({ projectId, onDecide, onClose }: KeepOnHandoffProps) {
+  const t = useT();
   const [existing, setExisting] = useState<{ name: string } | null>(null);
   const decide = useRef(onDecide);
   useEffect(() => {

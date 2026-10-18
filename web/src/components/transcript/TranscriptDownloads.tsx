@@ -50,7 +50,7 @@ export function TranscriptDownloads({
   const noLines = cues.length === 0;
 
   const saveText = () => {
-    const name = subtitleFileName(`${base}_yazi`, 'srt').replace(/\.srt$/, '.txt');
+    const name = subtitleFileName(`${base}_${t('file.text')}`, 'srt').replace(/\.srt$/, '.txt');
     const turns = speakerTurns(lines);
     const turnLabel = (line: TranscriptLine) => {
       const speaker = turns.get(line.key);
@@ -60,7 +60,7 @@ export function TranscriptDownloads({
   };
   const saveSubtitles = (format: SubtitleFormat) => {
     if (noLines) return;
-    saveTextFile(subtitleFileName(`${base}_altyazi`, format), serializeSubtitles(cues, format, voiceNames(t, project)), TEXT_MIME[format]);
+    saveTextFile(subtitleFileName(`${base}_${t('file.subtitles')}`, format), serializeSubtitles(cues, format, voiceNames(t, project)), TEXT_MIME[format]);
   };
 
   return (

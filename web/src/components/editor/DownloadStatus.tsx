@@ -422,7 +422,7 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
             <span className="dl-step">{step}</span>
           </span>
           <span className="dl-percent" data-testid="export-progress">
-            {percent === null ? '—' : `%${percent}`}
+            {percent === null ? '—' : t('number.percent').replace('{n}', String(percent))}
           </span>
         </div>
         <div

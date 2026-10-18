@@ -668,7 +668,7 @@ export function CaptionExportSection({ t, project, title }: { t: T; project: Pro
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = subtitleFileName(title, format);
+    anchor.download = subtitleFileName(title, format, t('file.subtitles'));
     anchor.click();
     // Revoked on the next task: some browsers start the download after click returns.
     setTimeout(() => URL.revokeObjectURL(url), 0);

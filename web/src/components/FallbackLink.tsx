@@ -4,9 +4,7 @@ import Link from 'next/link';
 import { createContext, useContext, type ComponentProps, type ReactNode } from 'react';
 
 import { isPlainPress, useNavigationFallback } from '@/components/home/navigationFallback';
-import { translator } from '@/i18n/messages';
-
-const t = translator('tr');
+import { useLocalePath, useT } from '@/i18n/locale';
 
 type Scope = ReturnType<typeof useNavigationFallback>;
 
@@ -52,7 +50,10 @@ type LinkProps = Omit<ComponentProps<typeof Link>, 'href' | 'prefetch'> & {
  * on GitHub Pages (app/page.tsx). A press that opens a new tab or window is
  * the browser's own and is not watched.
  */
-export function FallbackLink({ href, opening, children, onClick, ...rest }: LinkProps) {
+export function FallbackLink({ href: path, opening, children, onClick, ...rest }: LinkProps) {
+  const t = useT();
+  // In the page's own language (ADR-048): '/editor' is '/en/editor' on an English page.
+  const href = useLocalePath()(path);
   const { pendingPath, begin } = useNavigationScope();
   const isOpening = pendingPath === href;
   const label = opening === undefined ? t('home.opening') : opening;

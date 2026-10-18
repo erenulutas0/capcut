@@ -54,7 +54,8 @@ export const SECTIONS = [
   { id: 'walkthrough', results: ['walkthrough', 'walkthrough-yazi', 'walkthrough-yazi-bulut', 'walkthrough-yazi-bulut-kisiler'], runs: [
     { build: 'cloud', spec: 'walkthrough-yazi-bulut.spec.ts', projects: ['desktop', 'phone'] },
     { build: 'hooks', spec: 'walkthrough-yazi.spec.ts', projects: ['desktop', 'phone'] },
-    { build: 'static', spec: 'walkthrough.spec.ts', projects: ['desktop', 'phone'] },
+    // ADR-048: the eleven cards in English too (an English browser, on the English pages).
+    { build: 'static', spec: 'walkthrough.spec.ts', projects: ['desktop', 'phone', 'desktop-en', 'phone-en'] },
   ] },
   { id: 'search', results: ['search'], runs: [{ build: 'none', spec: 'search.spec.ts', projects: ['desktop'] }] },
   { id: 'errors', results: ['errors'], runs: [{ build: 'static', spec: 'errors.spec.ts', projects: ['desktop'] }] },
@@ -62,9 +63,9 @@ export const SECTIONS = [
   { id: 'output', results: ['output'], runs: [{ build: 'static', spec: 'output.spec.ts', projects: ['desktop'] }] },
   { id: 'transcript', results: ['transcript'], optIn: 'with-transcript', runs: [{ build: 'static', spec: 'transcript.spec.ts', projects: ['desktop'] }] },
   { id: 'perf', results: ['perf'], runs: [{ build: 'static', spec: 'perf.spec.ts', projects: ['desktop'] }] },
-  { id: 'visual', results: ['visual'], runs: [{ build: 'static', spec: 'visual.spec.ts', projects: ['desktop', 'phone'] }] },
+  { id: 'visual', results: ['visual'], runs: [{ build: 'static', spec: 'visual.spec.ts', projects: ['desktop', 'phone', 'desktop-en', 'phone-en'] }] },
   { id: 'a11y', results: ['a11y'], runs: [{ build: 'static', spec: 'a11y.spec.ts', projects: ['desktop', 'phone'] }] },
-  { id: 'text', results: ['text'], runs: [{ build: 'none', spec: 'text.spec.ts', projects: ['desktop'] }] },
+  { id: 'text', results: ['text', 'text-en'], runs: [{ build: 'none', spec: 'text.spec.ts', projects: ['desktop'] }] },
 ];
 
 function selected() {

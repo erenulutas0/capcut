@@ -277,7 +277,7 @@ export function buildDiagnostics(input: DiagnosticsInput): DiagnosticsReport {
 }
 
 /** A file name with the date only: never the project title or a source name. */
-export function diagnosticsFileName(now: Date): string {
+export function diagnosticsFileName(now: Date, word = 'tani'): string {
   const pad = (value: number) => String(value).padStart(2, '0');
-  return `${APP_SLUG}-tani-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.json`;
+  return `${APP_SLUG}-${word}-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.json`;
 }

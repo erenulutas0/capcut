@@ -127,6 +127,8 @@ const STOP_WORDS = new Set([
   'any', 'some', 'so', 'but', 'because', 'when', 'there', 'here', 'be', 'are', 'am', 'was', 'have', 'has', 'im', 'very',
   'really', 'just', 'would', 'like', 'wanna', 'gonna', 'as', 'or', 'if', 'what', 'which', 'will', 'your', 'our',
   'hello', 'hi', 'hey', 'thanks', 'thank',
+  // ADR-048: "vid" is "video"; chat words that say nothing about the job.
+  'vid', 'vids', 'pls', 'u', 'ur', 'bc', 'cuz', 'lol', 'omg', 'idk',
 ]);
 
 function isStopWord(token: string): boolean {

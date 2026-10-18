@@ -490,7 +490,7 @@ describe('task registry', () => {
       expect(task.generic, task.id).toBeUndefined();
     }
     expect(tr['home.results.unavailable']).toBe('Bunu henüz yapamıyoruz.');
-    expect(en['home.results.unavailable']).toBe('We cannot do this yet.');
+    expect(en['home.results.unavailable']).toBe('We can’t do that yet.');
   });
 
   it('keeps every word folded, so the search compares like with like', () => {

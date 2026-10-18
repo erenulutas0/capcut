@@ -1,6 +1,5 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
 import { useEffect, useSyncExternalStore } from 'react';
 
 import { listenForInstallPrompt } from '@/adapters/pwa/installPrompt';
@@ -14,7 +13,7 @@ import {
   subscribeUpdate,
 } from '@/adapters/pwa/serviceWorker';
 import { sweepSharedVideos } from '@/adapters/pwa/sharedVideo';
-import { translator } from '@/i18n/messages';
+import { useT } from '@/i18n/locale';
 
 /**
  * On every page (root layout): registers the service worker, starts
@@ -23,8 +22,7 @@ import { translator } from '@/i18n/messages';
  * reloads by itself; its "Yenile" is disabled while a download runs.
  */
 export function PwaClient() {
-  const pathname = usePathname();
-  const t = translator(pathname?.startsWith('/gizlilik/en') ? 'en' : 'tr');
+  const t = useT();
   const waiting = useSyncExternalStore(subscribeUpdate, isUpdateWaiting, () => false);
   const busy = useSyncExternalStore(subscribeAppBusy, isAppBusy, () => false);
 

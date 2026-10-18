@@ -140,7 +140,7 @@ test.describe('privacy page', () => {
       'Bu bilgiler kurucu kararı ve hukuki inceleme bekliyor (belge 30 K02). Belirlenmeden bu metin yayına hazır sayılmaz.',
     );
     await expect(page.getByTestId('privacy-contact-public')).toHaveCount(0);
-    await expect(page.getByTestId('privacy-updated')).toContainText('Son güncelleme: 17 Ekim 2026');
+    await expect(page.getByTestId('privacy-updated')).toContainText('Son güncelleme: 18 Ekim 2026');
 
     // The stored items name the real stores and the real deletion rules.
     await expect(page.getByTestId('stored-project')).toContainText('“projects”');
@@ -163,9 +163,13 @@ test.describe('privacy page', () => {
     await expect(page.getByTestId('stored-largeNote')).toContainText('Böyle bir şey olmadıkça hiç yazılmaz.');
     await expect(
       page.getByText(
-        'Çerez kullanılmaz. localStorage’da yalnızca yukarıdaki ipucu bilgisi ve (büyük model burada durduysa) büyük model notu, sessionStorage’da yalnızca yukarıdaki yeniden yükleme notu durur.',
+        'Çerez kullanılmaz. localStorage’da yalnızca yukarıdaki ipucu bilgisi, (büyük model burada durduysa) büyük model notu ve (seçtiysen) dil seçimin, sessionStorage’da yalnızca yukarıdaki yeniden yükleme notu durur.',
       ),
     ).toBeVisible();
+    // ADR-048: the language choice, named with its key, written only when the language button is used.
+    await expect(page.getByTestId('stored-language')).toContainText('“clip.language”');
+    await expect(page.getByTestId('stored-language')).toContainText('yalnızca dil düğmesine basınca');
+    await expect(page.getByTestId('language-storage-status')).toHaveText('Bu tarayıcıda kayıtlı dil seçimi yok.');
     await expect(page.getByTestId('export-log-count')).toHaveText('Bu tarayıcıda kayıtlı dışa aktarma denemesi yok.');
     await expect(page.getByTestId('privacy-updated')).toContainText('sürüm 0.1.0');
 
@@ -581,6 +585,9 @@ test.describe('nothing leaves the machine', () => {
       /^\/gizlilik(\/en)?$/,
       // The task wizards (ADR-034): their pages, visited above and kept by the service worker.
       /^\/yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|cevir|iyilestir|gif)$/,
+      // ADR-048: the same pages in English, kept by the service worker too.
+      /^\/en(\/editor)?$/,
+      /^\/en\/yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|cevir|iyilestir|gif)$/,
       /^\/_next\/static\//,
       /^\/fonts\/caption\/inter-latin(-ext)?-700-normal\.woff2$/,
       /^\/favicon\.ico$/,

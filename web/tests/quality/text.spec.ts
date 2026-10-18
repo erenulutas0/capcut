@@ -2,6 +2,8 @@ import { test } from '@playwright/test';
 
 import { cloudTr } from '../../src/i18n/cloudMessages';
 import { tr } from '../../src/i18n/messages';
+import { cloudEn } from '../../src/i18n/cloudMessages.en';
+import { en } from '../../src/i18n/messages.en';
 import { strongJargon } from './lib/jargon';
 import { median, round, writeResult } from './lib/record';
 
@@ -100,6 +102,101 @@ test('text: readability of the Turkish strings', async ({}, testInfo) => {
     .flatMap((row) => strongJargon(row.text).map((hit) => ({ key: row.key, term: hit.term, text: row.text.length > 160 ? `${row.text.slice(0, 157)}…` : row.text })))
     .filter((item, index, list) => list.findIndex((other) => other.key === item.key && other.term === item.term) === index);
   writeResult('text', testInfo.project.name, {
+    all: summarize(all),
+    defaultPath: summarize(defaultPath),
+    hardestDefaultPath: hardest(defaultPath),
+    hardestAll: hardest(all),
+    jargonDefaultPath: { strings: new Set(jargon.map((item) => item.key)).size, list: jargon },
+  });
+});
+
+// ------------------------------------------------------------------ English (ADR-048)
+
+/**
+ * The same measurement for the English table, with the English ruler: Flesch reading ease (1948),
+ *
+ *   206.835 − 1.015 × (words per sentence) − 84.6 × (syllables per word)
+ *
+ *   90–100 very easy · 80–89 easy · 70–79 fairly easy · 60–69 plain English · 50–59 fairly difficult ·
+ *   30–49 difficult · below 30 very difficult
+ *
+ * English spelling does not show its syllables: they are counted by the usual rule of thumb (groups of
+ * vowels, a silent final "e" dropped, "-le" after a consonant kept), which is right for most words and
+ * off by one for some. The same keys, the same "default path", and the English jargon list.
+ */
+function syllablesEn(word: string): number {
+  const w = word.toLowerCase().replace(/[^a-z]/g, '');
+  if (w === '') return 1;
+  if (w.length <= 3) return 1;
+  const trimmed = w.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '').replace(/^y/, '');
+  const groups = trimmed.match(/[aeiouy]{1,2}/g)?.length ?? 0;
+  return Math.max(1, groups);
+}
+
+function measureEn(raw: string) {
+  const text = raw.replace(/\{\w+\}/g, '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
+  const words = text.match(/[\p{L}\p{N}]+(?:[’'][\p{L}]+)?/gu) ?? [];
+  const sentences = text.split(/[.!?…;:]+(?:\s+|$)/u).filter((part) => /[\p{L}\p{N}]/u.test(part));
+  const syllables = words.reduce((sum, word) => sum + (/^\d/.test(word) ? 1 : syllablesEn(word)), 0);
+  const sentenceCount = Math.max(1, sentences.length);
+  const longestSentence = sentences.reduce((most, part) => Math.max(most, (part.match(/[\p{L}\p{N}]+/gu) ?? []).length), 0);
+  const longestWord = words.reduce((longest, word) => (word.length > longest.length ? word : longest), '');
+  const score = words.length === 0 ? null : 206.835 - 1.015 * (words.length / sentenceCount) - 84.6 * (syllables / words.length);
+  return {
+    words: words.length,
+    sentences: sentenceCount,
+    wordsPerSentence: words.length / sentenceCount,
+    syllablesPerWord: words.length === 0 ? 0 : syllables / words.length,
+    longestSentence,
+    longestWord,
+    score,
+  };
+}
+
+const bandEn = (score: number): string =>
+  score >= 80 ? 'easy' : score >= 70 ? 'fairly easy' : score >= 60 ? 'plain' : score >= 50 ? 'fairly difficult' : score >= 30 ? 'difficult' : 'very difficult';
+
+test('text: readability of the English strings', async ({}, testInfo) => {
+  const all = Object.entries({ ...en, ...cloudEn } as Record<string, string>).map(([key, text]) => ({ key, text, defaultPath: DEFAULT_PATH.test(key), ...measureEn(text) }));
+  const summarize = (rows: typeof all) => {
+    const scored = rows.filter((row) => row.score !== null && row.words >= 5);
+    const scores = scored.map((row) => row.score as number);
+    const bands: Record<string, number> = { easy: 0, 'fairly easy': 0, plain: 0, 'fairly difficult': 0, difficult: 0, 'very difficult': 0 };
+    for (const score of scores) bands[bandEn(score)] = (bands[bandEn(score)] ?? 0) + 1;
+    return {
+      strings: rows.length,
+      words: rows.reduce((sum, row) => sum + row.words, 0),
+      scoredStrings: scored.length,
+      medianScore: scores.length > 0 ? round(median(scores) ?? 0, 1) : null,
+      hardPercent: scores.length > 0 ? round((scores.filter((score) => score < 50).length / scores.length) * 100, 1) : null,
+      veryHard: scores.filter((score) => score < 30).length,
+      bands,
+      longestSentenceWords: rows.reduce((most, row) => Math.max(most, row.longestSentence), 0),
+      sentencesOver20Words: rows.filter((row) => row.longestSentence > 20).length,
+      longestWord: rows.reduce((longest, row) => (row.longestWord.length > longest.length ? row.longestWord : longest), ''),
+      medianWordsPerSentence: round(median(scored.map((row) => row.wordsPerSentence)) ?? 0, 1),
+    };
+  };
+  const hardest = (rows: typeof all) =>
+    rows
+      .filter((row) => row.score !== null && row.words >= 5)
+      .sort((a, b) => (a.score as number) - (b.score as number))
+      .slice(0, 20)
+      .map((row) => ({
+        key: row.key,
+        score: round(row.score as number, 1),
+        band: bandEn(row.score as number),
+        words: row.words,
+        wordsPerSentence: round(row.wordsPerSentence, 1),
+        syllablesPerWord: round(row.syllablesPerWord, 2),
+        longestWord: row.longestWord,
+        text: row.text,
+      }));
+  const defaultPath = all.filter((row) => row.defaultPath);
+  const jargon = defaultPath
+    .flatMap((row) => strongJargon(row.text, 'en').map((hit) => ({ key: row.key, term: hit.term, text: row.text.length > 160 ? `${row.text.slice(0, 157)}…` : row.text })))
+    .filter((item, index, list) => list.findIndex((other) => other.key === item.key && other.term === item.term) === index);
+  writeResult('text-en', testInfo.project.name, {
     all: summarize(all),
     defaultPath: summarize(defaultPath),
     hardestDefaultPath: hardest(defaultPath),

@@ -14,6 +14,9 @@ export default defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${port}`,
     trace: 'off',
+    // A Turkish browser (ADR-048): the pages follow the browser's language, and the suite is about the
+    // Turkish app unless a spec says `test.use({ locale: 'en-US' })` (tests/e2e/english.spec.ts).
+    locale: 'tr-TR',
     // Local synthetic media only; nothing leaves the machine.
     launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] },
   },

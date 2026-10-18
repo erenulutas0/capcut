@@ -112,7 +112,7 @@ describe('who may ask for a stored hand-over', () => {
     const keep = read('src', 'components', 'transcript', 'KeepOnHandoff.tsx');
     expect(keep).not.toMatch(/from '@\/(adapters\/cloud|components\/transcript\/Cloud|i18n\/cloudMessages)/);
     expect(keep).not.toContain("'cloud.");
-    expect(keep).toContain("import { translator } from '@/i18n/messages';");
+    expect(keep).toContain("import { useT } from '@/i18n/locale';");
     // No other wizard, and not the shared frame, hands over anything but "unsaved" (ADR-034 stands for them).
     for (const file of ['wizards.tsx', 'IyilestirWizard.tsx', 'WizardFlow.tsx']) {
       const source = read('src', 'components', 'wizard', file);
@@ -126,7 +126,7 @@ describe('who may ask for a stored hand-over', () => {
     expect(route).toContain('const stored = handoff?.stored === true;');
     expect(route).toContain('<EditorView state={state} stored={editor.stored} adopt={editor.stored} />');
     // The stored project lives at /editor: a reload must land there.
-    expect(route).toContain('window.history.replaceState(null, \'\', `${BASE_PATH}/editor${slash}`);');
+    expect(route).toContain('window.history.replaceState(null, \'\', `${BASE_PATH}${localizedPath(\'/editor\', locale)}${slash}`);');
   });
 });
 
@@ -140,7 +140,7 @@ describe('what the user reads', () => {
     // It names what the screen really offers: the editor link and the text file's button.
     expect(tr['wizard.moreSettings']).toContain('editörde aç');
     expect(tr['transcript.file.txt']).toContain('Metni indir');
-    expect(en['wizard.yazi.keepNote']).toMatch(/not kept yet/);
+    expect(en['wizard.yazi.keepNote']).toMatch(/not saved yet/);
     // The sentence is the wizard's own now: the cloud route's table has no copy of it.
     expect(Object.keys(cloudTr).filter((key) => key.startsWith('cloud.keep'))).toEqual([]);
     expect(Object.keys(cloudEn).filter((key) => key.startsWith('cloud.keep'))).toEqual([]);
@@ -150,7 +150,7 @@ describe('what the user reads', () => {
     expect(tr['wizard.yazi.keep.old']).toBe('Eski proje kalsın (bu yazı saklanmaz)');
     expect(tr['wizard.yazi.keep.new']).toBe('Bu yazı saklansın (eski proje silinir)');
     expect(tr['wizard.yazi.keep.hint']).toContain('Vazgeçersen hiçbir şey değişmez');
-    expect(en['wizard.yazi.keep.old']).toMatch(/not kept/);
+    expect(en['wizard.yazi.keep.old']).toMatch(/not saved/);
     expect(en['wizard.yazi.keep.new']).toMatch(/deleted/);
   });
 
@@ -179,7 +179,8 @@ describe('what the user reads', () => {
     expect(body).toContain('hangisinin kalacağı sana sorulur');
     // How it is deleted is the card's own "Ne zaman silinir" row, in the button's words.
     expect(tr['privacy.stored.project.delete']).toContain(tr['relink.discard']);
-    expect(en['privacy.stored.project.body']).toContain('One exception, “Yazıya dök”');
+    // ADR-048: the English page names the English card.
+    expect(en['privacy.stored.project.body']).toContain(`One exception, “${en['task.yazi.label']}”`);
     expect(en['privacy.stored.project.body']).toContain(en['wizard.moreSettings']);
     expect(en['privacy.stored.project.delete']).toContain(en['relink.discard']);
     // …and where it is while a video is open (ADR-012 addendum, 14 Oct 2026): the editor's "Diğer" sheet.

@@ -19,6 +19,8 @@ export default defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${port}/capcut/`,
     trace: 'off',
+    // A Turkish browser (ADR-048); the English site is checked with `locale: 'en-US'` where a test says so.
+    locale: 'tr-TR',
     acceptDownloads: true,
   },
   projects: [{ name: 'pages', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],

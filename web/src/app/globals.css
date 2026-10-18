@@ -556,3 +556,28 @@ svg.icon {
   margin-top: 8px;
   padding: 0 20px;
 }
+
+/*
+ * The language button (ADR-048): "English" on a Turkish page, "Türkçe" on an
+ * English one. Small and quiet, but a full 44 px target.
+ */
+.language-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-height: var(--tap);
+  min-width: var(--tap);
+  padding: 0 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.language-switch:hover {
+  background: var(--raised);
+}

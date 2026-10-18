@@ -9,7 +9,6 @@ export interface WatchdogConfig {
   staticPrefix: string;
   scope: string;
   cachePrefix: string;
-  enPrefix: string;
   graceS: number;
   errorS: number;
   stuckS: number;

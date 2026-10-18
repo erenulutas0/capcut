@@ -116,9 +116,11 @@ describe('the product name has one source', () => {
   });
 
   it('the page titles, the wordmark and the placeholder worker come from the name', () => {
-    expect(code(read('src', 'app', 'layout.tsx'))).toContain('title: pageTitle(');
-    expect(code(read('src', 'app', 'editor', 'page.tsx'))).toContain('title: pageTitle(');
-    expect(code(read('src', 'app', 'yap', '[id]', 'page.tsx'))).toContain('title: pageTitle(');
+    // Both root layouts take their title from RootParts (ADR-048); both editors and both wizard routes from the name.
+    expect(code(read('src', 'components', 'root', 'RootParts.tsx'))).toContain('title: pageTitle(');
+    expect(code(read('src', 'app', '(tr)', 'editor', 'page.tsx'))).toContain('title: pageTitle(');
+    expect(code(read('src', 'app', '(en)', 'en', 'editor', 'page.tsx'))).toContain('title: pageTitle(');
+    expect(code(read('src', 'components', 'wizard', 'taskPage.ts'))).toContain('title: pageTitle(');
     expect(code(read('src', 'components', 'Icon.tsx'))).toMatch(/<\/span>\s*\{APP_NAME\}\s*<\/span>/);
     expect(code(read('src', 'components', 'editor', 'useProjectPersistence.ts'))).toContain('${BACKUP_FILE_SUFFIX}');
   });

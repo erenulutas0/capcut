@@ -33,7 +33,9 @@ import { totalOutputDurationUs } from '@/domain/timeline';
 import { resolveEdgeTrim, resolvePendingEdge } from '@/domain/timelineEdit';
 import { computeSourceView } from '@/domain/transform';
 import { frameStepUs, type TrimEdge } from '@/domain/trim';
-import { translator, type MessageKey } from '@/i18n/messages';
+import { LanguageSwitch } from '@/components/LanguageSwitch';
+import { useT } from '@/i18n/locale';
+import type { MessageKey } from '@/i18n/messages';
 import { listenForUncaughtErrors, recordError } from '@/adapters/diagnostics';
 import { transcriptLines } from '@/domain/transcript';
 import { Dialog, Sheet } from './Dialog';
@@ -58,7 +60,6 @@ import { useProjectPersistence } from './useProjectPersistence';
 import { useSilenceAnalysis } from './useSilenceAnalysis';
 import { useThumbnails } from './useThumbnails';
 
-const t = translator('tr');
 
 /*
  * Three screens of the editor that exist only after a press — the transcript beside the video, the
@@ -168,6 +169,7 @@ export function EditorApp() {
  * asked first when a project with work in it was already stored.
  */
 export function EditorView({ state, stored, adopt = false }: { state: EditorState; stored: boolean; adopt?: boolean }) {
+  const t = useT();
   const hydrated = useHydrated();
   const layout = useLayoutMode();
   const phone = layout === 'phone';
@@ -272,7 +274,7 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
     if (hasWork && !window.confirm(t('sources.replaceWarning'))) return;
     setMoreOpen(false);
     videoInputRef.current?.click();
-  }, [state.project.clips.length, state.project.captionTracks.length]);
+  }, [state.project.clips.length, state.project.captionTracks.length, t]);
 
   const pickAudio = useCallback(() => audioInputRef.current?.click(), []);
 
@@ -1196,6 +1198,13 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
             />
           }
         />
+        {/* The language of the app (ADR-048): the same editor in the other language, after a page load. */}
+        <div className="settings-language" data-testid="settings-language">
+          <hr className="divider" />
+          <p className="field-label">{t('language.title')}</p>
+          <LanguageSwitch testId="editor-language" />
+          <p className="hint-small">{t('language.note')}</p>
+        </div>
       </Sheet>
 
       <Sheet

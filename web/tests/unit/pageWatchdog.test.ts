@@ -82,6 +82,8 @@ interface TabOptions {
   /** What sessionStorage holds; shared by every load of the tab. */
   storage?: Map<string, string> | 'blocked';
   path?: string;
+  /** `<html lang>` of the page (ADR-048: every English page says "en"). */
+  lang?: 'tr' | 'en';
   controlled?: boolean;
   online?: boolean;
   readyState?: string;
@@ -93,6 +95,7 @@ function load(options: TabOptions = {}) {
   const windowListeners = new Map<string, Listener[]>();
   const documentListeners = new Map<string, Listener[]>();
   const root = new FakeElement();
+  root.setAttribute('lang', options.lang ?? 'tr');
   const notice = fakeNotice();
   const state = { reloads: 0, pending: false, unregistered: [] as string[], deletedCaches: [] as string[], styleLinks: [] as Array<{ sheet: object | null; href: string }> };
   const registrations = [
@@ -436,12 +439,22 @@ describe('a page that does not come alive', () => {
     expect(page.state.reloads).toBe(1);
   });
 
-  it('speaks English on the English page', () => {
-    const storage = new Map<string, string>([[PAGE_RECOVERY_KEY, JSON.stringify({ s: 'reloading', t: Date.now(), p: '/capcut/gizlilik/en/', why: 'timeout' })]]);
-    const page = load({ storage, path: '/capcut/gizlilik/en/' });
+  it('speaks English on the English page: the one whose <html lang> says so', () => {
+    for (const path of ['/capcut/gizlilik/en/', '/capcut/en/', '/capcut/en/yap/kes/']) {
+      const storage = new Map<string, string>([[PAGE_RECOVERY_KEY, JSON.stringify({ s: 'reloading', t: Date.now(), p: path, why: 'timeout' })]]);
+      const page = load({ storage, path, lang: 'en' });
+      page.loaded();
+      page.seconds(15);
+      expect(page.visiblePanel(), path).toEqual(['en']);
+    }
+  });
+
+  it('speaks Turkish on a Turkish page, whatever its address looks like', () => {
+    const storage = new Map<string, string>([[PAGE_RECOVERY_KEY, JSON.stringify({ s: 'reloading', t: Date.now(), p: '/capcut/', why: 'timeout' })]]);
+    const page = load({ storage, path: '/capcut/', lang: 'tr' });
     page.loaded();
     page.seconds(15);
-    expect(page.visiblePanel()).toEqual(['en']);
+    expect(page.visiblePanel()).toEqual(['tr']);
   });
 });
 
@@ -565,13 +578,12 @@ describe('the inline script', () => {
       staticPrefix: '/_next/static/',
       scope: '/',
       cachePrefix: 'clip-app-',
-      enPrefix: '/gizlilik/en',
       graceS: 15,
       errorS: 4,
       stuckS: 45,
       quietMs: 300_000,
     });
-    expect(watchdogConfig('/capcut')).toMatchObject({ staticPrefix: '/capcut/_next/static/', scope: '/capcut/', enPrefix: '/capcut/gizlilik/en' });
+    expect(watchdogConfig('/capcut')).toMatchObject({ staticPrefix: '/capcut/_next/static/', scope: '/capcut/' });
     expect(SCRIPT).toContain(JSON.stringify(watchdogConfig('/capcut')));
   });
 

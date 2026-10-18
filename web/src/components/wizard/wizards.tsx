@@ -31,11 +31,12 @@ import { WEB_LOCAL_POLICY, formatByteLimit, formatBytes } from '@/domain/policy'
 import { SIZE_PRESETS, type SizePresetId, type TargetSizeRequest } from '@/domain/targetSize';
 import type { AvailableTaskId } from '@/domain/tasks';
 import { formatTimecode } from '@/domain/time';
-import { translator, type MessageKey } from '@/i18n/messages';
+import { useT } from '@/i18n/locale';
+import type { MessageKey } from '@/i18n/messages';
+import type { Translate } from '@/i18n/translate';
 import { ChoiceOption } from './ChoiceOption';
 import { VideoPreview, WizardFlow, fill, lengthText, type FlowInfo, type WizardHostProps } from './WizardFlow';
 
-const t = translator('tr');
 
 /** Envelope frames are 10 ms; progress is a share of the video. */
 function percentOf(done: number, total: number): number | null {
@@ -54,12 +55,13 @@ function percentOf(done: number, total: number): number | null {
  * (ADR-027) only copies pictures at the source's own size.
  */
 function KesWizard(host: WizardHostProps) {
+  const t = useT();
   const { state, onOpenEditor } = host;
   return (
     <WizardFlow
       {...host}
       titleKey="task.kes.label"
-      fileTag="kesit"
+      fileTag={t('file.tag.kes')}
       recipe={null}
       working
       openVideo={async (file) => {
@@ -82,6 +84,7 @@ function KesWizard(host: WizardHostProps) {
  * choice: long gaps only (the default) or short pauses too.
  */
 function BoslukWizard(host: WizardHostProps) {
+  const t = useT();
   const { state } = host;
   const silence = useSilenceAnalysis();
   const [choice, setChoice] = useState<GapChoice>('long');
@@ -115,7 +118,7 @@ function BoslukWizard(host: WizardHostProps) {
     <WizardFlow
       {...host}
       titleKey="wizard.bosluk.title"
-      fileTag="bosluksuz"
+      fileTag={t('file.tag.bosluk')}
       recipe={recipe}
       working={!done || status !== 'ok'}
       openVideo={async (file) => {
@@ -210,8 +213,8 @@ function BoslukWizard(host: WizardHostProps) {
                     </p>
                     <p className="wizard-panel-big" data-testid="bosluk-shorter">
                       {fill(t('wizard.bosluk.shorter'), {
-                        before: lengthText(lengths.beforeUs),
-                        after: lengthText(lengths.afterUs),
+                        before: lengthText(lengths.beforeUs, t),
+                        after: lengthText(lengths.afterUs, t),
                       })}
                     </p>
                     {review.leftOut > 0 ? (
@@ -276,6 +279,7 @@ function BoslukWizard(host: WizardHostProps) {
  * from the download's own plan.
  */
 function DikeyWizard(host: WizardHostProps) {
+  const t = useT();
   const { state } = host;
   const { video } = state;
   const fit = state.settings.fit;
@@ -288,7 +292,7 @@ function DikeyWizard(host: WizardHostProps) {
     <WizardFlow
       {...host}
       titleKey="wizard.dikey.title"
-      fileTag="dikey"
+      fileTag={t('file.tag.dikey')}
       recipe={video && vertical ? state.project : null}
       preview={
         video ? <VideoPreview video={video} shape="vertical" fit={fit} label={t('wizard.dikey.preview')} /> : undefined
@@ -348,6 +352,7 @@ function DikeyWizard(host: WizardHostProps) {
  * alone). The level and the fade-out are set for the user.
  */
 function MuzikWizard(host: WizardHostProps) {
+  const t = useT();
   const { state } = host;
   const hydrated = useHydrated();
   const audioInputRef = useRef<HTMLInputElement | null>(null);
@@ -368,7 +373,7 @@ function MuzikWizard(host: WizardHostProps) {
     <WizardFlow
       {...host}
       titleKey="wizard.muzik.title"
-      fileTag="muzikli"
+      fileTag={t('file.tag.muzik')}
       recipe={ready ? project : null}
       audioFile={audio?.file ?? null}
       blockedText={ready ? null : t('wizard.muzik.first')}
@@ -389,7 +394,7 @@ function MuzikWizard(host: WizardHostProps) {
                   <span className="video-row-name" data-testid="muzik-name">
                     {safeFileName(audio.fileName, 48)}
                   </span>
-                  <span className="video-row-length">{lengthText(audio.durationUs)}</span>
+                  <span className="video-row-length">{lengthText(audio.durationUs, t)}</span>
                 </span>
                 <button
                   type="button"
@@ -406,7 +411,7 @@ function MuzikWizard(host: WizardHostProps) {
               <p className="wizard-hint" data-testid="muzik-length-note">
                 {musicOutlastsVideo(project)
                   ? t('wizard.muzik.longer')
-                  : fill(t('wizard.muzik.shorter'), { length: lengthText(musicLengthUs(project)) })}
+                  : fill(t('wizard.muzik.shorter'), { length: lengthText(musicLengthUs(project), t) })}
               </p>
             </div>
           ) : (
@@ -484,13 +489,14 @@ function MuzikWizard(host: WizardHostProps) {
  * told so; the download then keeps its pictures where the fast cut allows.
  */
 function CevirWizard(host: WizardHostProps) {
+  const t = useT();
   const { state } = host;
   const { video } = state;
   return (
     <WizardFlow
       {...host}
       titleKey="wizard.cevir.title"
-      fileTag="uyumlu"
+      fileTag={t('file.tag.cevir')}
       recipe={video ? state.project : null}
       openVideo={async (file) => {
         const outcome = await state.importVideo(file, ownSizeRecipe);
@@ -585,7 +591,7 @@ function defaultSizeChoice(previews: SizePreviews, videoBytes: number): SizeChoi
  * picture — "already fits", or the honest "does not fit" with the smallest
  * size that would. The pixel size is in the result's "Ayrıntılar".
  */
-function sizeHint(id: SizeChoiceId, preview: TargetSizePreview | undefined, videoBytes: number): string {
+function sizeHint(t: Translate, id: SizeChoiceId, preview: TargetSizePreview | undefined, videoBytes: number): string {
   const mark = t('time.decimalMark');
   const state = sizeState(id, preview, videoBytes);
   if (state === 'already') return fill(t('wizard.kucult.alreadyFits'), { size: formatBytes(videoBytes, mark) });
@@ -627,6 +633,7 @@ function SizeChoice({
   previews: SizePreviews;
   onPreviews: (key: string, previews: SizePreviews) => void;
 }) {
+  const t = useT();
   const { previewSize } = info;
   useEffect(() => {
     let live = true;
@@ -670,7 +677,7 @@ function SizeChoice({
                 data-short-edge={state === 'shrinks' && preview?.ok ? preview.decision.shortEdge : undefined}
                 data-min-bytes={preview && !preview.ok && preview.reason === 'target_too_small' ? preview.refusal.minBytes : undefined}
               >
-                {sizeHint(id, preview, videoBytes)}
+                {sizeHint(t, id, preview, videoBytes)}
               </span>
             </span>
           </label>
@@ -695,6 +702,7 @@ function SizeChoice({
  * saved file really weighs.
  */
 function KucultWizard(host: WizardHostProps) {
+  const t = useT();
   const { state } = host;
   const { video } = state;
   /** The user's own pick; null while the default stands. */
@@ -733,7 +741,7 @@ function KucultWizard(host: WizardHostProps) {
     <WizardFlow
       {...host}
       titleKey="wizard.kucult.title"
-      fileTag="kucuk"
+      fileTag={t('file.tag.kucult')}
       // Nothing to download unless the file would really come out smaller: an
       // impossible target and a video that already fits are both said here,
       // before the save dialog.
@@ -777,6 +785,7 @@ function KucultWizard(host: WizardHostProps) {
  * decoded. A video without sound is told so and nothing can be downloaded.
  */
 function SesWizard(host: WizardHostProps) {
+  const t = useT();
   const { state } = host;
   const { video } = state;
   const silent = video?.hasAudio === false;
@@ -784,7 +793,7 @@ function SesWizard(host: WizardHostProps) {
     <WizardFlow
       {...host}
       titleKey="wizard.ses.title"
-      fileTag="ses"
+      fileTag={t('file.tag.ses')}
       recipe={video && !silent ? state.project : null}
       exportExtras={{ output: 'audio' }}
       blockedText={silent ? t('wizard.ses.noSound') : null}
@@ -811,6 +820,7 @@ function SesWizard(host: WizardHostProps) {
  * begin with is told so; there is nothing to download.
  */
 function SusturWizard(host: WizardHostProps) {
+  const t = useT();
   const { state } = host;
   const { video, settings } = state;
   const already = video?.hasAudio === false;
@@ -818,7 +828,7 @@ function SusturWizard(host: WizardHostProps) {
     <WizardFlow
       {...host}
       titleKey="wizard.sustur.title"
-      fileTag="sessiz"
+      fileTag={t('file.tag.sustur')}
       // Only with the sound really switched off: never a download that still has it.
       recipe={video && !already && settings.muted ? state.project : null}
       blockedText={already ? t('wizard.sustur.already') : null}

@@ -25,6 +25,8 @@
   "walk.*.*.completed": { "equals": true, "why": "kart ne söz verdiyse dosya o olmalı" },
   "walk.desktop.*.clicks": { "max": 4, "why": "ölçülen en çok: Kes ve Müzik ekle 4; ötekiler 3 (kart, video, indir)" },
   "walk.phone.*.clicks": { "max": 5, "why": "masaüstü + telefonda Kaydet" },
+  "walk.desktop-en.*.clicks": { "max": 4, "why": "ADR-048: İngilizce aynı akış, aynı bütçe (Türkçe masaüstünün aynası)" },
+  "walk.phone-en.*.clicks": { "max": 5, "why": "ADR-048: İngilizce aynı akış, aynı bütçe (Türkçe telefonun aynası)" },
   "walk.*.*.decisions": { "max": 1, "why": "ADR-034: bir sihirbazda en çok bir karar" },
   "walk.*.*.screens": { "max": 4, "why": "ana ekran, video seç, seçim, sonuç" },
   "walk.*.*.wordsMax": { "max": 160, "why": "ölçülen en kalabalık ekran 152 (Kes’in editörü, masaüstü); ana ekran 109" },
@@ -45,6 +47,18 @@
   "search.cannotPrecision": { "min": 95, "why": "'yapamıyoruz' dendiğinde doğru olmalı" },
   "search.outsideHonest": { "min": 80, "why": "ilke: listede olmayan isteğe kart önerilmemeli" },
   "search.nothingQuiet": { "min": 90, "why": "anlamsız yazıya kart önerilmemeli" },
+
+  "search.en.firstHit": { "min": 85, "why": "ADR-048: Türkçe başlık bütçesinin aynası (İngilizce kör küme); bugün aşılıyor — bulgu" },
+  "search.en.top3": { "min": 90, "why": "ADR-048: Türkçe bütçenin aynası" },
+  "search.en.wrongConfident": { "max": 5, "why": "ADR-048: Türkçe bütçenin aynası — başka iş yapan tek kart, 20 istekte birden az" },
+  "search.en.askedOnTasks": { "max": 33, "why": "ADR-048: Türkçe bütçenin aynası" },
+  "search.en.askRightPresent": { "min": 80, "why": "ADR-048: Türkçe bütçenin aynası" },
+  "search.en.clearAsked": { "max": 15, "why": "ADR-048: Türkçe bütçenin aynası (açık yazılmış isteğe soru sorulmamalı)" },
+  "search.en.taskDenied": { "max": 0, "why": "ADR-048: Türkçe bütçenin aynası" },
+  "search.en.cannotRecall": { "min": 95, "why": "ADR-048: Türkçe bütçenin aynası" },
+  "search.en.cannotPrecision": { "min": 95, "why": "ADR-048: Türkçe bütçenin aynası" },
+  "search.en.outsideHonest": { "min": 80, "why": "ADR-048: Türkçe bütçenin aynası" },
+  "search.en.nothingQuiet": { "min": 90, "why": "ADR-048: Türkçe bütçenin aynası" },
 
   "errors.broken": { "max": 0, "why": "hiçbir hata yolu sessiz ya da takılı kalmamalı" },
   "errors.unclear": { "max": 0, "why": "ilke: her mesaj ne yapılacağını da söylemeli" },
@@ -110,5 +124,9 @@
   "text.defaultPath.medianScore": { "min": 60, "why": "Ateşman: 'orta'nın üst yarısı" },
   "text.defaultPath.hardPercent": { "max": 15, "why": "zor metin azınlıkta kalmalı" },
   "text.defaultPath.veryHard": { "max": 0, "why": "'çok zor' metin olmamalı" },
-  "text.defaultPath.sentencesOver20Words": { "max": 3, "why": "uzun cümle çocuk için okunmaz" }
+  "text.defaultPath.sentencesOver20Words": { "max": 3, "why": "uzun cümle çocuk için okunmaz" },
+  "text.en.defaultPath.medianScore": { "min": 60, "why": "ADR-048: Flesch 60 'sade İngilizce'nin alt sınırı — Türkçede Ateşman 60'ın aynası" },
+  "text.en.defaultPath.hardPercent": { "max": 15, "why": "ADR-048: Türkçe bütçenin aynası (Flesch 50 altı)" },
+  "text.en.defaultPath.veryHard": { "max": 0, "why": "ADR-048: Türkçe bütçenin aynası (Flesch 30 altı)" },
+  "text.en.defaultPath.sentencesOver20Words": { "max": 3, "why": "ADR-048: Türkçe bütçenin aynası" }
 }
