@@ -246,7 +246,8 @@ test('pre-flight: the privacy page has the internet section and names who answer
 
   for (const [path, words, cloudWords] of [
     ['gizlilik/', tr, cloudTr],
-    ['gizlilik/en/', en, cloudEn],
+    // A Turkish browser is sent to the Turkish page unless it asks (ADR-048): ask for English.
+    ['gizlilik/en/?lang=en', en, cloudEn],
   ] as const) {
     await page.goto(path);
     const section = page.getByTestId('privacy-cloud');
