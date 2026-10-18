@@ -378,7 +378,7 @@ const REGISTRY = [
     steps: ['pick', 'choose', 'download'],
     words: {
       strong: [
-        'kisik', 'kisikti', 'kisiktir', 'duyulmuyor', 'duyulmuyo', 'duyulmuyordu', 'duyamiyorum', 'duyamiyoruz', 'duyulmadi',
+        'kisik', 'kisikti', 'kisiktir', 'duyulmuyor', 'duyulmuyo', 'duyulmuyordu', 'duyamiyorum', 'duyamiyoruz',
         'normallestir', 'esitle', 'dengele', 'volume', 'louder', 'loudness', 'normalize', 'normalise', 'inaudible',
         'normalization', 'normalisation',
       ],
