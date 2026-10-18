@@ -16,7 +16,9 @@ import {
   type FailurePhase,
   type FailureVia,
 } from '@/domain/exportFailureDetail';
+import type { FastCutFallbackReason } from '@/domain/fastPath';
 import type { HdrTransfer } from '@/domain/hdr';
+import type { SoundFixSettings } from '@/domain/soundFix';
 import { TERMINAL_EXPORT_TYPES } from '@/domain/exportEvents';
 import type { RenderPlan } from '@/domain/renderPlan';
 import { STALL_LIMITS_MS, takeWorkerFault, unsendable, unsentDetail, watchWorker } from '../workerWatch';
@@ -198,6 +200,52 @@ export class ExportWorkerClient {
   }
 
   /**
+   * ADR-049: whether a download of `plan` would copy the source's pictures
+   * (ADR-027) — the export's own checks, before anything is decoded. `null`
+   * when it could not be told (the worker did not answer in time, or broke):
+   * the screen then promises nothing about the picture.
+   */
+  copyCheck(plan: RenderPlan, videoFile: File, timeoutMs = CAPABILITY_TIMEOUT_MS): Promise<{ copy: boolean; reason: FastCutFallbackReason | null } | null> {
+    let worker: Worker;
+    try {
+      worker = this.ensureWorker();
+    } catch {
+      return Promise.resolve(null);
+    }
+    const requestId = this.nextId('copy');
+    return new Promise((resolve) => {
+      const onMessage = (event: MessageEvent<WorkerResponse>) => {
+        const data = event.data;
+        if (data.type !== 'copyCheck' || data.requestId !== requestId) return;
+        cleanup();
+        resolve({ copy: data.copy, reason: data.reason });
+      };
+      const onError = () => {
+        cleanup();
+        resolve(null);
+      };
+      const cleanup = () => {
+        window.clearTimeout(timer);
+        worker.removeEventListener('message', onMessage);
+        worker.removeEventListener('error', onError);
+      };
+      const timer = window.setTimeout(() => {
+        cleanup();
+        resolve(null);
+      }, timeoutMs);
+      worker.addEventListener('message', onMessage);
+      worker.addEventListener('error', onError);
+      const request: WorkerRequest = { type: 'copyCheck', requestId, plan, videoFile };
+      try {
+        worker.postMessage(request);
+      } catch {
+        cleanup();
+        resolve(null);
+      }
+    });
+  }
+
+  /**
    * Runs one export attempt. The returned iterable always ends with exactly one
    * terminal event (`succeeded`, `failed` or `canceled`).
    */
@@ -218,6 +266,8 @@ export class ExportWorkerClient {
        * video a second time. Ignored unless they were made for this very plan.
        */
       enhanceAnalysis?: EnhanceAnalysis | null;
+      /** ADR-049: the sound goes through the loudness chain with these measured gains ("Sesi düzelt"). */
+      soundFix?: SoundFixSettings | null;
     },
   ): AsyncGenerator<ExportEvent, void, unknown> {
     const worker = this.ensureWorker();
@@ -336,6 +386,7 @@ export class ExportWorkerClient {
       output: options.output ?? 'video',
       targetSize: options.targetSize ?? null,
       enhanceAnalysis: options.enhanceAnalysis ?? null,
+      soundFix: options.soundFix ?? null,
       enhanceEngine: enhanceEngineHook(),
       bitrateMode: bitrateModeHook(),
       outputLimitBytes: outputLimitHook(),

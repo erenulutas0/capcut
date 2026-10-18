@@ -143,6 +143,19 @@ export function soundlessRecipe(project: Project): Project {
   return removeMusic(ownSizeRecipe(project));
 }
 
+// ------------------------------------------------------------ Sesi düzelt
+
+/**
+ * Opening a video in "Sesi düzelt" (ADR-049): the video at its own size, its
+ * own sound on, and nothing else that makes a sound — no music left over from
+ * elsewhere, since the measurement is of the video's sound alone. The chain
+ * itself is not in the recipe: its measured gains go with the download
+ * (`ExportExtras.soundFix`).
+ */
+export function soundFixRecipe(project: Project): Project {
+  return removeMusic(ownSizeRecipe(project));
+}
+
 // ------------------------------------------------------------ Her yerde açılsın
 
 /**

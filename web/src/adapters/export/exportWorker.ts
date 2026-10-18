@@ -38,8 +38,10 @@ import {
 import { cueIndexAtFrame, preflightCaptions } from '@/domain/captionBurnIn';
 import type { CaptionLayout } from '@/domain/captionLayout';
 import { paramsAtFrame, planEnhancement, summarize, type EnhanceTimeline, type PictureRect } from '@/domain/enhance';
+import { SoundFixChain, usableSettings, type SoundFixSettings } from '@/domain/soundFix';
 import type {
   EnhanceOutcome,
+  SoundFixOutcome,
   ExportEvent,
   ExportFailureCode,
   ExportProbe,
@@ -888,6 +890,8 @@ interface ExportRequestOptions {
   enhanceAnalysis: EnhanceAnalysis | null;
   /** ADR-037, test hook: the reference renderer instead of the GPU. */
   enhanceForceCpu: boolean;
+  /** ADR-049: the loudness chain's measured gains ("Sesi düzelt"); null: the sound is mixed as always. */
+  soundFix: SoundFixSettings | null;
   /** ADR-045, measurement hook: the rate control an ordinary download asks for instead of `ORDINARY_BITRATE_MODE`. */
   bitrateModeOverride: VideoBitrateMode | null;
   /** ADR-045, test builds only: the encoder is taken to refuse `constant` (false everywhere else). */
@@ -1012,6 +1016,23 @@ interface ExportSources {
   /** Measurement only: how clearly the calibration marker came back, and how long measuring took. */
   audioDelayCorrelation: number | null;
   audioDelayMs: number | null;
+}
+
+/** ADR-049: the loudness chain of one output file, or null when the download does not ask for it. */
+function soundFixChain(options: ExportRequestOptions, plan: RenderPlan): SoundFixChain | null {
+  return options.soundFix ? new SoundFixChain(plan.audio.sampleRate, plan.audio.channelCount, options.soundFix) : null;
+}
+
+/** What the loudness chain did, for the result (ADR-049). */
+function soundFixOutcome(options: ExportRequestOptions, chain: SoundFixChain | null | undefined): { soundFix?: SoundFixOutcome } {
+  if (!options.soundFix || !chain) return {};
+  return {
+    soundFix: {
+      inputGainDb: options.soundFix.inputGainDb,
+      outputGainDb: options.soundFix.outputGainDb,
+      deepestLimitingDb: Math.round(chain.deepestLimitingDb * 10) / 10,
+    },
+  };
 }
 
 /** The export's AAC settings (the plan's rate, channels and bitrate). */
@@ -1269,6 +1290,34 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
   }
 }
 
+/**
+ * ADR-049: whether a download of `plan` would keep the source's pictures — the
+ * fast cut's own preparation (eligibility, packet scan, the cut of every
+ * moment), run and dropped before any output exists. `copy` only when every
+ * picture would be copied; a few re-encoded seam frames (`smart`) are not "untouched".
+ */
+async function runCopyCheck(plan: RenderPlan, videoFile: File): Promise<{ copy: boolean; reason: FastCutFallbackReason | null }> {
+  const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(videoFile) });
+  try {
+    const track = await input.getPrimaryVideoTrack();
+    if (!track || !(await track.canDecode())) return { copy: false, reason: 'codec' };
+    let hdr = false;
+    try {
+      hdr = hdrTransferOf((await track.getColorSpace()).transfer) !== null;
+    } catch {
+      hdr = false;
+    }
+    const needsReorderFix = await correctAvcReorder(track, plan.segments);
+    const prepared = await prepareFastCut({ plan, input, track, hdr, needsReorderFix, mode: 'auto', checkCanceled: () => undefined });
+    if (!prepared.ok) return { copy: false, reason: prepared.reason };
+    const method = prepared.job.method;
+    prepared.job.close();
+    return { copy: method === 'copy', reason: null };
+  } finally {
+    input.dispose();
+  }
+}
+
 /** ADR-032: the AAC encoder's delay for this plan's audio settings (cached per setting). */
 async function measureAudioDelay(sources: ExportSources, plan: RenderPlan): Promise<void> {
   if (!sources.wantsAudio) return;
@@ -1394,6 +1443,7 @@ async function runAudioExport(options: ExportRequestOptions, startedAt: number):
     clipReader:
       sourceAudioUsable && sourceAudioTrack ? new AudioStreamReader(new AudioSampleSink(sourceAudioTrack)) : null,
     musicReader: musicTrack ? new AudioStreamReader(new AudioSampleSink(musicTrack)) : null,
+    fix: soundFixChain(options, plan),
   };
 
   // Progress is the share of the sound written, on the plan's frame grid so
@@ -1476,6 +1526,7 @@ async function runAudioExport(options: ExportRequestOptions, startedAt: number):
       framesCopied: 0,
       framesEncoded: 0,
       output: 'audio',
+      ...soundFixOutcome(options, audioSources.fix),
     };
     if (!emitSucceeded(requestId, collected, result)) throw new ExportFailure('output_probe_failed');
     succeeded = true;
@@ -1696,6 +1747,7 @@ async function produceOutput(
     clipReader:
       sourceAudioUsable && sourceAudioTrack ? new AudioStreamReader(new AudioSampleSink(sourceAudioTrack)) : null,
     musicReader: musicTrack ? new AudioStreamReader(new AudioSampleSink(musicTrack)) : null,
+    fix: soundFixChain(options, plan),
   };
 
   const audioLane = clock.lane();
@@ -2064,6 +2116,7 @@ async function produceOutput(
       fallbackReason: fastJob ? null : fallbackReason,
       framesCopied: fastJob ? fastJob.framesCopied : 0,
       framesEncoded: fastJob ? fastJob.framesEncoded : framesDone,
+      ...(audioSource ? soundFixOutcome(options, audioSources.fix) : {}),
       ...(enhancement && enhancer && plan.enhance
         ? {
             enhance: {
@@ -2424,6 +2477,19 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
     return;
   }
 
+  if (request.type === 'copyCheck') {
+    let answer: { copy: boolean; reason: FastCutFallbackReason | null };
+    try {
+      answer = await runCopyCheck(request.plan, request.videoFile);
+    } catch {
+      // Nothing is promised about the picture when the check itself broke.
+      answer = { copy: false, reason: null };
+    }
+    const response: WorkerResponse = { type: 'copyCheck', requestId: request.requestId, ...answer };
+    scope.postMessage(response);
+    return;
+  }
+
   if (request.type === 'capability') {
     const result = await runSelfTest(request.config, request.captionFontOrigin, request.hdrTransfer);
     const response: WorkerResponse = { type: 'capability', requestId: request.requestId, result };
@@ -2451,6 +2517,8 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
         target: null,
         enhanceAnalysis: request.enhanceAnalysis ?? null,
         enhanceForceCpu: request.enhanceEngine === 'cpu',
+        // Only gains made for this worker's own chain: an older page's numbers are not guessed at.
+        soundFix: usableSettings(request.soundFix) ? request.soundFix : null,
         bitrateModeOverride:
           request.bitrateMode === 'constant' || request.bitrateMode === 'variable' ? request.bitrateMode : null,
         refuseConstantBitrate: TEST_HOOKS && request.refuseConstantBitrate === true,

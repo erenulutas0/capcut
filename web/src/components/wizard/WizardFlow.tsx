@@ -120,6 +120,11 @@ interface Props extends WizardHostProps {
   editorNote?: string | null;
   /** The task saves a file of its own (see `OwnDownload`). */
   ownDownload?: OwnDownload;
+  /**
+   * No "Daha fazla ayar → editörde aç": the editor cannot make what this task makes ("Sesi düzelt",
+   * ADR-049 — the editor would download the sound as it was), so offering it would be a false promise.
+   */
+  noEditor?: boolean;
   /** The one decision (or the one-line explanation) of this task. */
   children: ReactNode | ((info: FlowInfo) => ReactNode);
 }
@@ -157,6 +162,7 @@ export function WizardFlow({
   downloadLabelKey = 'wizard.download',
   editorNote = null,
   ownDownload,
+  noEditor = false,
   children,
 }: Props) {
   const t = useT();
@@ -304,7 +310,7 @@ export function WizardFlow({
 
   const finished = resultPhase === 'saved' || resultPhase === 'ready';
   const moreSettings =
-    video && !working && !busy && !ownDownload ? (
+    video && !working && !busy && !ownDownload && !noEditor ? (
       <button type="button" className="link-button wizard-more" onClick={openEditor} data-testid="wizard-open-editor">
         {t('wizard.moreSettings')}
       </button>

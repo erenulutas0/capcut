@@ -116,6 +116,17 @@ export const PHRASES: ReadonlyArray<readonly [string, TaskId]> = [
   ['sesini al', 'ses'],
   ['sesini çıkar', 'ses'],
   ['audio only', 'ses'],
+  // Sesi düzelt (18 Oct 2026, ADR-049): the LEVEL of the sound — not the sound taken out, not a silent place, not noise.
+  ['sesi düzelt', 'duzelt'],
+  ['ses çok kısık', 'duzelt'],
+  ['sesini yükselt', 'duzelt'],
+  ['konuşma duyulmuyor', 'duzelt'],
+  ['ses seviyesi', 'duzelt'],
+  ['too quiet', 'duzelt'],
+  ['fix the audio', 'duzelt'],
+  ['make it louder', 'duzelt'],
+  ['normalize audio', 'duzelt'],
+  ['volume', 'duzelt'],
   // Asked for, not possible yet: found, so that the answer is "Bunu henüz yapamıyoruz."
   ['döndür', 'dondur'],
   ['sağa döndür', 'dondur'],
@@ -464,7 +475,8 @@ describe('searchTasks: rules', () => {
 
 describe('task registry', () => {
   // 17 Oct 2026: "GIF yap" (ADR-046) became the eleventh card; the sticker it used to answer for stays "not yet".
-  const CARDS = ['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'sustur', 'cevir', 'iyilestir', 'gif'];
+  // 18 Oct 2026: "Sesi düzelt" (ADR-049) the twelfth, after Sesi kapat; noise removal stays "not yet".
+  const CARDS = ['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'sustur', 'duzelt', 'cevir', 'iyilestir', 'gif'];
   const CANNOT_YET = [
     'dondur', 'hiz', 'birlestir', 'sticker', 'filigran', 'efekt', 'arkaplan', 'ters', 'foto', 'stabil',
     // 10 Oct 2026
@@ -473,7 +485,7 @@ describe('task registry', () => {
     'indir', 'yukle', 'kayit', 'yayin',
   ];
 
-  it('lists the eleven tasks in card order — Kes first, Sesi kapat next to Sesini al — then what cannot be done yet', () => {
+  it('lists the twelve tasks in card order — Kes first, Sesi kapat next to Sesini al, Sesi düzelt after them — then what cannot be done yet', () => {
     expect(TASKS.map((task) => task.id)).toEqual([...CARDS, ...CANNOT_YET]);
     expect(new Set(TASKS.map((task) => task.id)).size).toBe(TASKS.length);
   });

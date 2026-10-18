@@ -12,9 +12,10 @@
 
 import { sanitizeExportFailureDetail, type ExportFailureDetail } from '@/domain/exportFailureDetail';
 import type { LoudnessEnvelope } from '@/domain/silence';
+import type { SoundCheck } from '@/domain/soundFix';
 import type { Micros } from '@/domain/time';
 import { STALL_LIMITS_MS, gaveUpCode, takeWorkerFault, unsendable, unsentDetail, watchWorker } from '../workerWatch';
-import type { AnalysisFailure, AnalysisRange, SilenceWorkerRequest, SilenceWorkerResponse } from './protocol';
+import type { AnalysisFailure, AnalysisRange, SilenceWorkerRequest, SilenceWorkerResponse, SoundListen } from './protocol';
 
 export type { AnalysisFailure } from './protocol';
 
@@ -143,7 +144,7 @@ export class SilenceAnalyzer {
           remember(data.key, { startUs: data.startUs, frameUs: data.frameUs, db: Array.from(data.db) });
         } else if (data.type === 'done') {
           finish({ ok: true });
-        } else {
+        } else if (data.type === 'failed') {
           const detail = sanitizeExportFailureDetail(data.detail);
           finish({ ok: false, reason: data.reason, ...(detail ? { detail: watch.pageSide(detail, 'analysing') } : {}) });
         }
@@ -173,6 +174,124 @@ export class SilenceAnalyzer {
    * asked to stop: a decode in flight cannot be interrupted any other way.
    * Envelopes that already arrived stay cached.
    */
+  cancel(): void {
+    const finish = this.finishActive;
+    if (!finish) return;
+    this.dispose();
+    finish({ ok: false, reason: 'canceled' });
+  }
+
+  dispose(): void {
+    this.worker?.terminate();
+    this.worker = null;
+  }
+}
+
+/* ------------------------------------------------------------ Sesi düzelt (ADR-049) */
+
+export type SoundCheckOutcome =
+  | { ok: true; check: SoundCheck; listen: SoundListen | null }
+  | { ok: false; reason: AnalysisFailure | 'worker_unavailable' | 'canceled'; detail?: ExportFailureDetail };
+
+/** One answer per file for the session: a second look at the same video does not decode it twice more. */
+const soundChecks = new Map<string, { check: SoundCheck; listen: SoundListen | null }>();
+const SOUND_CHECK_CACHE_LIMIT = 4;
+
+/**
+ * Page side of "Sesi düzelt"'s measurement: the loudness worker decodes the
+ * sound twice (as it is, and through the chain) and answers with the gains,
+ * the words of the screen and five seconds to listen to. The same watch as the
+ * silence search: a worker that breaks or stands still ends the run with a
+ * failure that says so (ADR-042), never an endless "listening".
+ */
+export class SoundChecker {
+  private worker: Worker | null = null;
+  private counter = 0;
+  private finishActive: ((outcome: SoundCheckOutcome) => void) | null = null;
+
+  check(file: File, durationUs: Micros, onProgress: (progress: AnalysisProgress) => void): Promise<SoundCheckOutcome> {
+    this.cancel();
+    const key = `${fileFingerprint(file)}|${durationUs}`;
+    const known = soundChecks.get(key);
+    if (known) return Promise.resolve({ ok: true, ...known });
+
+    let worker: Worker;
+    try {
+      worker = this.worker ?? createWorker();
+      this.worker = worker;
+    } catch {
+      return Promise.resolve({ ok: false, reason: 'worker_unavailable' });
+    }
+    this.counter += 1;
+    const requestId = `snd_${Date.now().toString(36)}_${this.counter}`;
+
+    return new Promise<SoundCheckOutcome>((resolve) => {
+      let settled = false;
+      const finish = (outcome: SoundCheckOutcome) => {
+        if (settled) return;
+        settled = true;
+        watch.stop();
+        worker.removeEventListener('message', onMessage);
+        if (this.finishActive === finish) this.finishActive = null;
+        resolve(outcome);
+      };
+      const watch = watchWorker(worker, {
+        limitMs: () => STALL_LIMITS_MS.silence,
+        askWhere: () => {
+          const where: SilenceWorkerRequest = { type: 'where', requestId };
+          worker.postMessage(where);
+        },
+        onGiveUp: (via, detail) => {
+          const heard = watch.hasHeard();
+          if (this.worker === worker) this.dispose();
+          else worker.terminate();
+          finish({ ok: false, reason: gaveUpCode(via, heard), detail: watch.pageSide(detail, heard ? 'analysing' : 'waiting') });
+        },
+      });
+      const onMessage = (event: MessageEvent<SilenceWorkerResponse>) => {
+        const data = event.data;
+        if (data.requestId !== requestId) return;
+        if (data.type === 'where') {
+          watch.answer(data.detail);
+          return;
+        }
+        watch.heard();
+        if (data.type === 'progress') {
+          onProgress({ framesDone: data.framesDone, framesTotal: data.framesTotal });
+        } else if (data.type === 'soundCheck') {
+          soundChecks.delete(key);
+          soundChecks.set(key, { check: data.check, listen: data.listen });
+          while (soundChecks.size > SOUND_CHECK_CACHE_LIMIT) {
+            const oldest = soundChecks.keys().next().value;
+            if (oldest === undefined) break;
+            soundChecks.delete(oldest);
+          }
+          finish({ ok: true, check: data.check, listen: data.listen });
+        } else if (data.type === 'failed') {
+          const detail = sanitizeExportFailureDetail(data.detail);
+          finish({ ok: false, reason: data.reason, ...(detail ? { detail: watch.pageSide(detail, 'analysing') } : {}) });
+        }
+      };
+      this.finishActive = finish;
+      worker.addEventListener('message', onMessage);
+      const fault = takeWorkerFault('silence');
+      const request: SilenceWorkerRequest = {
+        type: 'soundCheck',
+        requestId,
+        file,
+        durationUs,
+        ...(fault && fault.kind !== 'unsendable' ? { testFault: fault } : {}),
+        ...(fault?.kind === 'unsendable' ? { unsendable: unsendable() } : {}),
+      };
+      try {
+        worker.postMessage(request);
+      } catch (error) {
+        finish({ ok: false, reason: 'internal_error', detail: unsentDetail(error) });
+      }
+    });
+  }
+
+  /** Stops a running measurement at once (the decode cannot be interrupted any other way). */
   cancel(): void {
     const finish = this.finishActive;
     if (!finish) return;

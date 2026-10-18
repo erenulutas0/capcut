@@ -49,6 +49,8 @@ const PATHS = {
   taskSound: 'M11 5L6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7',
   // "Sesi kapat": the same speaker, crossed out.
   taskMute: 'M11 5L6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6',
+  // "Sesi düzelt" (ADR-049): the same speaker, and three bars of one height — sound made even.
+  taskFixSound: 'M11 5L6 9H2v6h4l5 4zM15 9v6M18 9v6M21 9v6',
   // Asked for, not possible yet (search results only): a clock.
   taskLater: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 7v5l3 2',
   taskConvert: 'M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5',

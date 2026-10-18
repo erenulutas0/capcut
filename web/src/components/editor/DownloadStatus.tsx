@@ -303,6 +303,23 @@ function EnhanceLine({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase
   );
 }
 
+/** ADR-049: the sound went through "Sesi düzelt"'s chain — with the gains tests read back. */
+function SoundFixLine({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase: 'saved' | 'ready' }> }) {
+  const outcome = entry.result.soundFix;
+  if (!outcome) return null;
+  return (
+    <span
+      className="dl-sub"
+      data-testid="export-sound-fix"
+      data-input-gain={outcome.inputGainDb}
+      data-output-gain={outcome.outputGainDb}
+      data-deepest-limiting={outcome.deepestLimitingDb}
+    >
+      {t('export.soundFix.done')}
+    </span>
+  );
+}
+
 /** Measured from the produced file, never copied from the plan. */
 function Details({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase: 'saved' | 'ready' }> }) {
   const { result } = entry;
@@ -460,6 +477,7 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
             <TargetSizeLine t={t} entry={entry} />
             <MethodLine t={t} entry={entry} />
             <EnhanceLine t={t} entry={entry} />
+            <SoundFixLine t={t} entry={entry} />
             {entry.hdr ? (
               <span className="dl-sub" data-testid="export-hdr-note">
                 {t('export.hdrNote')}
@@ -491,6 +509,7 @@ export function DownloadStatus({ t, entry, kind, onCancel, onDismiss, onReportPr
             <TargetSizeLine t={t} entry={entry} />
             <MethodLine t={t} entry={entry} />
             <EnhanceLine t={t} entry={entry} />
+            <SoundFixLine t={t} entry={entry} />
             {entry.hdr ? (
               <span className="dl-sub" data-testid="export-hdr-note">
                 {t('export.hdrNote')}

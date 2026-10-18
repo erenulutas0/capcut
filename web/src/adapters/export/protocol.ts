@@ -10,7 +10,8 @@ import type { AnalysisPoint, EnhanceParams, EnhanceSummary } from '@/domain/enha
 import type { ExportEvent, ExportFailureCode } from '@/domain/exportEvents';
 import type { ExportFailureDetail } from '@/domain/exportFailureDetail';
 import type { WorkerTestFault } from '../workerWatch';
-import type { ExportMode } from '@/domain/fastPath';
+import type { ExportMode, FastCutFallbackReason } from '@/domain/fastPath';
+import type { SoundFixSettings } from '@/domain/soundFix';
 import type { HdrTransfer } from '@/domain/hdr';
 import type { RenderPlan } from '@/domain/renderPlan';
 import type { TargetSizeRequest } from '@/domain/targetSize';
@@ -216,6 +217,12 @@ export type WorkerRequest =
        */
       enhanceAnalysis?: EnhanceAnalysis | null;
       /**
+       * ADR-049 ("Sesi düzelt"): the sound of the download goes through the
+       * loudness chain with these measured gains (`domain/soundFix.ts`). Used
+       * only when made for the worker's own chain version (`usableSettings`).
+       */
+      soundFix?: SoundFixSettings | null;
+      /**
        * Test/measurement hook only (`window.__clipEnhanceEngine = 'cpu'`):
        * enhance with the reference renderer even where the GPU path works.
        */
@@ -259,6 +266,17 @@ export type WorkerRequest =
       /** Test builds only: something that cannot be copied to a worker, so the request cannot be sent. */
       unsendable?: unknown;
     }
+  | {
+      /**
+       * ADR-049: would a download of `plan` keep the source's pictures (the fast cut's copy, ADR-027)?
+       * The same checks the export makes before an output exists; nothing is decoded, encoded or written.
+       * So a screen says "görüntüye dokunulmaz" only where it is true.
+       */
+      type: 'copyCheck';
+      requestId: string;
+      plan: RenderPlan;
+      videoFile: File;
+    }
   | { type: 'cancel'; requestId: string }
   /**
    * "Where are you?" — asked by the page when an export has stood still (it
@@ -272,5 +290,7 @@ export type WorkerResponse =
   | { type: 'enhancePreviewProgress'; requestId: string; progress: number }
   | { type: 'enhancePreview'; requestId: string; result: EnhancePreviewResult }
   | { type: 'event'; requestId: string; event: ExportEvent }
+  /** ADR-049: `copy` when the pictures would be copied; else why not (null: the check itself failed). */
+  | { type: 'copyCheck'; requestId: string; copy: boolean; reason: FastCutFallbackReason | null }
   /** The answer to `where`: stage, frame count and codecs of the running export (no error: nothing was thrown). */
   | { type: 'where'; requestId: string; detail: ExportFailureDetail };

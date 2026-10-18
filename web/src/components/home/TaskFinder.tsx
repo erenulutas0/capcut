@@ -35,7 +35,7 @@ export function wideColumns(count: number): 3 | 4 {
 }
 
 /**
- * An odd number of cards (eleven since "GIF yap", ADR-046): the lead card takes two places, so the
+ * An odd number of cards (eleven with "GIF yap", ADR-046; twelve since "Sesi düzelt", ADR-049): the lead card takes two places, so the
  * phone's two columns have no card alone on the last row, and the wider grids fill too (12 places:
  * 4 + 4 + 4, or 3 + 3 + 3 + 3).
  */

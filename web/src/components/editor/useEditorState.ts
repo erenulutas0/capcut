@@ -111,7 +111,7 @@ export interface MediaError {
  */
 export type VideoImportOutcome =
   | { kind: 'rejected' }
-  | { kind: 'opened'; lengthUs: Micros; aspect: AspectRatio | null };
+  | { kind: 'opened'; lengthUs: Micros; aspect: AspectRatio | null; /** Whether the file has sound; undefined when it could not be told. */ hasAudio: boolean | undefined };
 
 const VIDEO_LIMITS = {
   maxBytes: WEB_LOCAL_POLICY.maxTotalSourceBytes,
@@ -262,7 +262,7 @@ export function useEditorState() {
             : replaced;
         return commit(current, prepare ? prepare(framed) : framed);
       });
-      return { kind: 'opened', lengthUs: outcome.handle.durationUs, aspect };
+      return { kind: 'opened', lengthUs: outcome.handle.durationUs, aspect, hasAudio: outcome.handle.hasAudio };
     },
     [],
   );

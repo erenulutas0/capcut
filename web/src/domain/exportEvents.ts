@@ -123,6 +123,8 @@ export interface ExportResult {
   targetSize?: TargetSizeOutcome;
   /** ADR-037: set when the picture was enhanced — what was really done to it. */
   enhance?: EnhanceOutcome;
+  /** ADR-049: set when the sound went through the loudness chain ("Sesi düzelt"). */
+  soundFix?: SoundFixOutcome;
   /**
    * ADR-045: set for a full encode — the video bitrate and rate control the
    * encoder was really configured with, and the rate control that was asked
@@ -141,6 +143,15 @@ export interface VideoEncodingOutcome {
    * download (`OUTPUT_FILE_LIMIT_BYTES`); false when it was not touched.
    */
   heldForFileLimit?: boolean;
+}
+
+/** What "Sesi düzelt" did to the sound of one download (ADR-049). */
+export interface SoundFixOutcome {
+  /** The measured gains the chain ran with, dB. */
+  inputGainDb: number;
+  outputGainDb: number;
+  /** The deepest the limiter had to go, dB (≤ 0; 0: it never touched a peak). */
+  deepestLimitingDb: number;
 }
 
 /** What "İyileştir" did in one download (ADR-037). */

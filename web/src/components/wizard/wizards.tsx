@@ -862,6 +862,8 @@ const YaziWizard = dynamic<WizardHostProps>(() => import('./YaziWizard'));
 const IyilestirWizard = dynamic<WizardHostProps>(() => import('./IyilestirWizard'));
 /** "GIF yap" (ADR-046): its own screen, its own worker and encoder — a chunk of its own too. */
 const GifWizard = dynamic<WizardHostProps>(() => import('@/components/gif/GifWizard'));
+/** "Sesi düzelt" (ADR-049): its measurement, its before/after player — a chunk of its own too. */
+const DuzeltWizard = dynamic<WizardHostProps>(() => import('./DuzeltWizard'));
 
 /**
  * The wizard of every task that works today. Enabling a task is one line in
@@ -877,6 +879,7 @@ export const WIZARDS: Record<AvailableTaskId, ComponentType<WizardHostProps>> = 
   muzik: MuzikWizard,
   ses: SesWizard,
   sustur: SusturWizard,
+  duzelt: DuzeltWizard,
   cevir: CevirWizard,
   iyilestir: IyilestirWizard,
   gif: GifWizard,
