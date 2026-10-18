@@ -2,6 +2,8 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { searchTasks } from '@/domain/taskSearch';
+import { TASK_EXAMPLES, TASK_EXAMPLES_EN } from '@/domain/tasks';
 import { formatSpokenTime } from '@/domain/time';
 import { cloudTr } from '@/i18n/cloudMessages';
 import { cloudEn } from '@/i18n/cloudMessages.en';
@@ -141,6 +143,18 @@ describe('the English reads as English', () => {
       ),
     );
     expect(offenders).toEqual([]);
+  });
+
+  it('the English example chips find the same tasks as the Turkish ones, as the answer', () => {
+    const answer = (text: string) => {
+      const result = searchTasks(text);
+      return result.kind === 'results' ? `${result.confidence}:${result.matches[0]?.task.id}` : result.kind;
+    };
+    expect(TASK_EXAMPLES_EN.map(answer)).toEqual(TASK_EXAMPLES.map(answer));
+    expect(TASK_EXAMPLES_EN.map(answer).every((item) => item.startsWith('sure:'))).toBe(true);
+    // The placeholder of the box is the first example, in both languages.
+    expect(en['home.search.placeholder']).toBe(`Type: ${TASK_EXAMPLES_EN[0]}`);
+    expect(tr['home.search.placeholder']).toBe(`Yaz: ${TASK_EXAMPLES[0]}`);
   });
 
   it('the cards (ADR-048 term list)', () => {
