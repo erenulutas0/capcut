@@ -16,6 +16,12 @@
 > O andan sonra bu belgenin §1, §2.4, §4.1 ve §6 satırları **§8'e göre okunur**: cihazdan yalnızca kullanıcı
 > "Sesi gönder ve yaz"a bastığında ve yalnızca ses çıkar (§8.2).
 
+> **18 Ekim 2026 — İngilizce arayüz (ADR-048).** Her sayfa iki dilde önceden çizilir (`/…` Türkçe, `/en/…`
+> ve `/gizlilik/en` İngilizce). localStorage'da bir anahtar daha olabilir: `clip.language` (`tr` / `en`),
+> yalnızca kullanıcı dil düğmesine bastığında yazılır (§2.4c). Hangi dilin açılacağına sayfa, bu anahtara ve
+> yoksa tarayıcının dil listesine **cihazda** bakarak karar verir; dil listesi gönderilmez, saklanmaz.
+> Çevrimdışı kopyada İngilizce sayfalar da vardır (§2.5: 15 → 28 sayfa). Ağ değişmedi (§4).
+
 > **17 Ekim 2026 — "LiloCut'a paylaş" (ADR-047).** Telefonun paylaşma menüsünden uygulamaya paylaşılan
 > video, bir iş onu alana kadar geçici bir kopya olarak bu tarayıcıda durur (§2.9). Bulut yolu açık ve kapalı
 > derlemede aynıdır; açık derlemede yalnız "İnternette" seçilirse sesi gider (§8.2).
@@ -46,7 +52,7 @@ doğrulanır (`web/tests/e2e/privacy.spec.ts` → "nothing leaves the machine").
 | Analitik, hata raporlama servisi, reklam? | Yok. Üçüncü taraf script yok. | `web/next.config.ts`, `web/src/app/layout.tsx`, `package.json` bağımlılıkları |
 | Çevrimdışı kopya? | Evet, 30 Eylül 2026'dan beri (ADR-031): bir service worker uygulamanın **kendi dosyalarını** (sayfalar, derleme dosyaları, altyazı yazı tipi, simgeler, manifest) Cache Storage'da tutar ki site internetsiz açılsın. Medya, dışa aktarılan dosya, proje ya da başka bir origin'in dosyası bu önbelleğe girmez (§2.5). | `web/scripts/lib/service-worker.js`, `web/scripts/lib/precache.mjs`, e2e `pwa.spec.ts` |
 | Paylaşılan video? | **17 Ekim 2026'dan beri (ADR-047):** telefonun paylaşma menüsünden uygulamaya paylaşılan videonun bir kopyası, bir iş onu alana kadar bu tarayıcıda durur (Cache Storage `clip-shared`, en çok bir video; alınınca, 15 dakika sonra ya da sonraki açılışta silinir). Service worker varken cihazdan çıkmaz; worker yokken tarayıcı paylaşımı sitenin sunucusuna gönderir ve sunucu reddeder (§2.9). | `web/scripts/lib/share-target.mjs`, e2e `share-target.spec.ts` |
-| Çerez, localStorage, sessionStorage? | Çerez kullanılmıyor. **13 Ekim 2026 (ADR-044):** sessionStorage'da tek anahtar olabilir — `clip:page-recovery`, yalnızca bir sayfa açılamayıp kendini yeniden yüklediğinde yazılır (§2.4a); sorunsuz oturumda sessionStorage boştur. localStorage'da yalnızca ilk kullanım ipucunun kapatıldığı (`clip.firstRunHint.dismissed` = `1`) durur, o da yalnızca kullanıcı "Anladım"a basınca yazılır (§2.4). **14 Ekim 2026 (ADR-036 eki):** localStorage'da bir anahtar daha olabilir — `clip.transcriptLargeFailed` = `1`, yalnızca büyük konuşma modeli bu tarayıcıda yazıya dökerken durduğunda yazılır (§2.8a). e2e testi ipucu kapatılmamış oturumun sonunda üçünün de boş olduğunu, kapatınca yalnızca o anahtarın yazıldığını doğrular. | `web/src/components/editor/FirstRunHint.tsx` + e2e testleri |
+| Çerez, localStorage, sessionStorage? | Çerez kullanılmıyor. **13 Ekim 2026 (ADR-044):** sessionStorage'da tek anahtar olabilir — `clip:page-recovery`, yalnızca bir sayfa açılamayıp kendini yeniden yüklediğinde yazılır (§2.4a); sorunsuz oturumda sessionStorage boştur. localStorage'da yalnızca ilk kullanım ipucunun kapatıldığı (`clip.firstRunHint.dismissed` = `1`) durur, o da yalnızca kullanıcı "Anladım"a basınca yazılır (§2.4). **14 Ekim 2026 (ADR-036 eki):** localStorage'da bir anahtar daha olabilir — `clip.transcriptLargeFailed` = `1`, yalnızca büyük konuşma modeli bu tarayıcıda yazıya dökerken durduğunda yazılır (§2.8a). **18 Ekim 2026 (ADR-048):** `clip.language` = `tr` / `en`, yalnızca dil düğmesine basılınca (§2.4c). e2e testi ipucu kapatılmamış oturumun sonunda üçünün de boş olduğunu, kapatınca yalnızca o anahtarın yazıldığını doğrular. | `web/src/components/editor/FirstRunHint.tsx` + e2e testleri |
 | Cihaz parmak izi? | Yok. Tanı dosyasındaki tarayıcı bilgisi yalnızca kullanıcı indirirse oluşur ve kendiliğinden gönderilmez. | `web/src/adapters/diagnostics.ts` |
 | Model dosyası / AI? | Bu sürümde yok. | — |
 | Kendiliğinden gönderilen bir şey? | Yok. Yayındaki derlemenin kodunda başka bir adrese giden `fetch`/XHR/WebSocket/beacon yok: `fetch` yalnızca kendi origin'imizden okur (yazı tipi — `useCaptionFont.ts`; "Modeli indir"e basılınca model dosyaları — §2.8). Bulut yolunun istemcisi (`web/src/adapters/cloud/`) depoda durur ama yayındaki derlemeye **girmez** (§8.1). | e2e testleri; `scripts/apply-csp.mjs` (durağan çıktıda bulut kodu bulursa derlemeyi durdurur); `tests/e2e/cloud-off.spec.ts` |
@@ -210,6 +216,30 @@ gösterilir. "Uygulamayı baştan indir" düğmesi yalnızca bu uygulamanın ser
 `web/src/components/PageWatchdog.tsx`; testler: `web/tests/unit/pageWatchdog.test.ts`,
 `web/tests/e2e/page-watchdog.spec.ts` ("touches nothing else the browser keeps"); `/gizlilik` sayfasındaki
 "Sayfa yeniden yükleme notu" kartı aynı değişiklikte eklendi.
+
+### 2.4c localStorage — dil seçimi (2026-10-18, ADR-048)
+
+Tek anahtar: `clip.language`, değeri `tr` ya da `en`. **Yalnızca** kullanıcı dil düğmesine
+("English" / "Türkçe": ana ekranın çubuğunda, editörün Ayarlar panelinde, gizlilik sayfasında)
+bastığında ya da sonunda `?lang=tr` / `?lang=en` olan bir adresi açtığında yazılır (düğmenin açtığı
+adres budur; sayfa betiği değeri saklar ve kelimeyi adresten siler). Ne içindir: sonraki sayfaların
+seçilen dilde açılması. Kimlik, proje, video, dosya adı ya da zaman içermez; hiçbir yere gönderilmez;
+tanı dosyasına girmez.
+
+**Yazılmadan önce ne okunur:** her uygulama sayfasının `<head>`'indeki dil betiği
+(`web/scripts/lib/language-redirect.js`, derleme sonrası `apply-csp.mjs` ile yazılır, hash'i CSP'de)
+bu anahtarı ve yoksa tarayıcının kendi dil listesini (`navigator.languages`) **cihazda** okur:
+listede Türkçe İngilizceden önce geliyorsa Türkçe, İngilizce önce geliyorsa ya da ikisi de yoksa
+İngilizce; liste boşsa sayfa olduğu gibi kalır. Sayfanın dili farklıysa sayfa gizlenir ve aynı sayfanın
+öbür dildeki önceden çizilmiş ikizi açılır (sorgu ve hash korunur). Dil listesi hiçbir yere gönderilmez,
+saklanmaz. Tarayıcı depolamayı reddederse okuma ve yazma `try/catch` içindedir: seçim hatırlanmaz,
+tarayıcının dili karar verir.
+
+Silinmesi: `/gizlilik` "Dil seçimi" kartında **"Dil seçimini unut"**; tarayıcının site verisini
+temizleyince. Kaynak: `web/src/adapters/languageChoice.ts`, `web/src/components/LanguageSwitch.tsx`,
+`web/src/components/LanguageChoicePanel.tsx`, `web/scripts/lib/language-redirect.js`; testler:
+`web/tests/unit/languageRedirect.test.ts` (sayfaya giden betiğin kendisi), `web/tests/e2e/english.spec.ts`
+("the language button", "the privacy page lists the choice and forgets it").
 
 ### 2.5 Cache Storage ve service worker — çevrimdışı kopya (2026-09-30, ADR-031)
 

@@ -248,6 +248,23 @@ her kontrolün adı ve görünür yazısı, sihirbazlarda klavye (Tab) sırası 
 `web/src/i18n/messages.ts` içindeki Türkçe metinlerin Ateşman okunabilirlik puanı (hece = ünlü sayısı),
 en zor 20 metinle birlikte. Ateşman kaba bir cetveldir: bir kelimenin tanıdık olup olmadığını bilmez.
 
+### İngilizce (18 Ekim 2026, ADR-048)
+
+Uygulama iki dilde olduğundan ölçümlerin bir kısmı iki kez alınır. `playwright.quality.config.ts`'de
+`desktop-en` ve `phone-en` projeleri aynı görünümlerdir, tarayıcının dili `en-US`'dir (sayfalar ona uyar):
+
+- **Yürüyüşler** (bölüm 1) ve **görsel tabanlar** (bölüm 8) dört görünümde koşar; İngilizce tabanlar
+  `…-desktop-en.png`, `…-phone-en.png`. Akışlar düğmeleri sayfanın dilindeki adlarıyla bulur
+  (`tests/quality/lib/app.ts` → `langOf`, `wordsFor`, `pathFor`). Yazıya dökmenin betikli ve bulut
+  yürüyüşleri yalnız Türkçedir (İngilizce bulut yolu `tests/cloud/cloud-english.spec.ts`'te sınanır).
+- **Teknik terim:** `jargon.ts` → `STRONG_EN` / `MILD_EN`; ekran okuması listeyi `<html lang>`'e göre seçer.
+- **Okunabilirlik:** `messages.en.ts` + `cloudMessages.en.ts`, **Flesch okuma kolaylığı**
+  (206,835 − 1,015 × cümle başına kelime − 84,6 × kelime başına hece; hece İngilizce yazımdan kuralla
+  sayılır). Bütçeler Türkçenin aynası: ortanca ≥ 60 ("sade İngilizce"nin alt sınırı), zor (50 altı) ≤ %15,
+  çok zor (30 altı) 0, 20 kelimeden uzun cümlesi olan metin ≤ 3.
+- **Arama:** İngilizce kör küme (`data/search-eval-en-fresh.ts`) ve ayar kümesi (`search-eval-en-dev.ts`);
+  `search.en.*` bütçeleri Türkçe başlık bütçelerinin aynası.
+
 ## Bütçeler
 
 `web/scripts/quality/budgets.json`: ölçü kimliği → `max`, `min` ya da `equals`, yanında neden (`why`).

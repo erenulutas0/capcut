@@ -1,6 +1,6 @@
-# Kalite raporu — 2026-10-17
+# Kalite raporu — 2026-10-18
 
-> Üreten: `npm run quality` (`web/scripts/quality/run.mjs`). Commit `5e75b58` + kaydedilmemiş değişiklikler. Rapor 2026-10-17 15:27 UTC; bu koşu 12 dk sürdü ve şu bölümleri yeniden ölçtü: search, text, walkthrough, errors, honesty, output, perf, visual, a11y.
+> Üreten: `npm run quality` (`web/scripts/quality/run.mjs`). Commit `f35b76d` + kaydedilmemiş değişiklikler. Rapor 2026-10-18 13:21 UTC; bu koşu 12 dk sürdü ve şu bölümleri yeniden ölçtü: search, text, walkthrough, errors, honesty, output, perf, visual, a11y.
 > Makine: Windows_NT 10.0.26200, 12th Gen Intel(R) Core(TM) i5-12500 × 12, 64 GB bellek. Tarayıcı: Playwright’ın Chromium’u. Bütün medya üretilmiş (ffmpeg) ya da depodaki haklı örneklerdir; hiçbir şey makineden çıkmadı.
 > Bu rapor bir kullanıcı testinin yerini TUTMAZ; neyi söylemediği en altta ve `docs/quality/README.md` içinde.
 
@@ -201,20 +201,20 @@ Yayındaki sitede bir şey değişmedi; aşağıdakiler yalnızca yolun açık o
 
 ## Özet
 
-676 ölçü: **598 bütçe içinde**, **8 bütçe dışı**, **5 ölçülemedi**, 65 bütçesiz (yalnızca bildirilir). Bütçeler: `web/scripts/quality/budgets.json`.
+913 ölçü: **799 bütçe içinde**, **16 bütçe dışı**, **9 ölçülemedi**, 89 bütçesiz (yalnızca bildirilir). Bütçeler: `web/scripts/quality/budgets.json`.
 
 
 | Bölüm | Ölçüm zamanı | Derleme | Bütçe içinde | Bütçe dışı | Ölçülemedi | Bütçesiz |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1. Görev tamamlama yürüyüşleri | 2026-10-17 15:18 UTC | statik çıktı + test kancalı + bulut (sahte sunucu) | 240 | 0 | **4** | 0 |
-| 2. Arama kalitesi | 2026-10-17 15:16 UTC | tarayıcısız | 5 | **7** | 0 | 32 |
-| 3. Hata yolları | 2026-10-17 15:18 UTC | statik çıktı | 5 | 0 | 0 | 2 |
-| 4. Dürüstlük denetimleri | 2026-10-17 15:21 UTC | statik çıktı | 22 | 0 | 0 | 0 |
-| 5. Çıktı kalitesi | 2026-10-17 15:24 UTC | statik çıktı | 71 | **1** | 0 | 0 |
+| 1. Görev tamamlama yürüyüşleri | 2026-10-18 13:14 UTC | statik çıktı + test kancalı + bulut (sahte sunucu) | 431 | **3** | **8** | 0 |
+| 2. Arama kalitesi | 2026-10-18 13:11 UTC | tarayıcısız | 11 | **12** | 0 | 51 |
+| 3. Hata yolları | 2026-10-18 13:15 UTC | statik çıktı | 5 | 0 | 0 | 2 |
+| 4. Dürüstlük denetimleri | 2026-10-18 13:15 UTC | statik çıktı | 22 | 0 | 0 | 0 |
+| 5. Çıktı kalitesi | 2026-10-18 13:18 UTC | statik çıktı | 71 | **1** | 0 | 0 |
 | 6. Yazıya dökme kalitesi | koşulmadı | — | 0 | 0 | **1** | 8 |
-| 7. Performans bütçeleri | 2026-10-17 15:26 UTC | statik çıktı | 39 | 0 | 0 | 0 |
-| 8. Görsel regresyon | 2026-10-17 15:27 UTC | statik çıktı + bulut (sahte sunucu) + test kancalı | 2 | 0 | 0 | 2 |
-| 9. Erişilebilirlik ve çocuk-dostu ölçüler | 2026-10-17 15:27 UTC | statik çıktı + tarayıcısız | 214 | 0 | 0 | 21 |
+| 7. Performans bütçeleri | 2026-10-18 13:20 UTC | statik çıktı | 39 | 0 | 0 | 0 |
+| 8. Görsel regresyon | 2026-10-18 13:21 UTC | statik çıktı + bulut (sahte sunucu) + test kancalı | 2 | 0 | 0 | 2 |
+| 9. Erişilebilirlik ve çocuk-dostu ölçüler | 2026-10-18 13:21 UTC | statik çıktı + tarayıcısız | 218 | 0 | 0 | 26 |
 
 **Başlık sayıları**
 
@@ -224,36 +224,44 @@ Yayındaki sitede bir şey değişmedi; aşağıdakiler yalnızca yolun açık o
 | Dosyası doğrulanan görev (Yazıya dök hariç; masaüstü / telefon) | 10 / 10 · 10 / 10 |
 | Ana ekrandan dosyaya en çok tıklama (masaüstü / telefon) | 4 / 5 |
 | Varsayılan yolda görülen, teknik terim içeren farklı cümle | 0 |
-| Arama (yeni ayrı küme): ilk satır doğru / ilk üçte / yanlış ama emin | %75,8 / %80,5 / %3 |
-| Arama: sordu (“Bunu mu demek istedin?”) / sorduğunda doğrusu seçeneklerde / açık isteğe soru / doğrudan doğru | %25,7 / %88,9 / %5,6 / %53,7 |
-| Arama, eski küme (KİRLENMİŞ): ilk satır doğru / yanlış ama emin | %92,5 / %0,9 |
+| Arama (yeni ayrı küme): ilk satır doğru / ilk üçte / yanlış ama emin | %77,2 / %81,9 / %3 |
+| Arama: sordu (“Bunu mu demek istedin?”) / sorduğunda doğrusu seçeneklerde / açık isteğe soru / doğrudan doğru | %25,2 / %88,6 / %5,6 / %55,7 |
+| Arama, eski küme (KİRLENMİŞ): ilk satır doğru / yanlış ama emin | %93,6 / %0,9 |
 | Hata hücreleri: iyi / belirsiz / bozuk | 74 / 0 / 0 |
 | İlerleme çubuğu geri gitti (kez) · iptalden sonra kalan bayt | 0 · 0 |
 | Kaynağından büyük çıkan dosya (9 yol × 360p, 480p, 720p kaynak) | 0 / 27 |
 | Eklenen ses–görüntü sapması (en kötü) · süre hatası (en kötü) | 1 ms · 16 ms |
-| Görüntü sadakati, en düşük: SSIM · VMAF | 0,9658 · 84,7 |
+| Görüntü sadakati, en düşük: SSIM · VMAF | 0,9658 · 84,6 |
 | Küçült → WhatsApp hedefe sığdı | evet |
-| Ana ekran: LCP (mobil kısıtlama) · aktarılan JS | 612 ms · 188 KB |
-| En yavaş yeniden işleme hızı | 1,9 × gerçek zaman |
+| Ana ekran: LCP (mobil kısıtlama) · aktarılan JS | 604 ms · 191 KB |
+| En yavaş yeniden işleme hızı | 2,2 × gerçek zaman |
 | Tabanından farklı ekran | 0 |
 | Telefonda 44 px’ten küçük dokunma hedefi · adsız kontrol | 0 · 0 |
 | Okunabilirlik (varsayılan yol): ortanca Ateşman · zor metin payı | 83,9 · %1,7 |
 
-**Bütçe dışı ölçüler** (8)
+**Bütçe dışı ölçüler** (16)
 
 
 | Ölçü | Değer | Bütçe |
 | --- | --- | --- |
-| İlk satır doğru iş — cevap ya da ilk seçenek olarak (önceki raporların “ilk sonuç doğru”su) | %75,8 | ≥ %85 |
-| İlk üç satırda var | %80,5 | ≥ %90 |
+| Cut (masaüstü EN): en kalabalık ekranda kelime | 172 | ≤ 160 |
+| Enhance (masaüstü EN): en kalabalık ekranda kelime | 174 | ≤ 160 |
+| Enhance (telefon EN): en kalabalık ekranda kelime | 174 | ≤ 160 |
+| İlk satır doğru iş — cevap ya da ilk seçenek olarak (önceki raporların “ilk sonuç doğru”su) | %77,2 | ≥ %85 |
+| İlk üç satırda var | %81,9 | ≥ %90 |
 | Yapılabilen işe “Bunu henüz yapamıyoruz.” | %2 | ≤ %0 |
 | “Bunu henüz yapamıyoruz.” — yakalama (recall) | %87,5 | ≥ %95 |
 | “Bunu henüz yapamıyoruz.” — isabet (precision) | %87,5 | ≥ %95 |
 | Listede hiç olmayan isteğe dürüst cevap (yapamıyoruz ya da bulamadım) | %65 | ≥ %80 |
 | Anlamsız yazı / sohbete kart önerilmedi | %88,9 | ≥ %90 |
+| İlk satır doğru iş — cevap ya da ilk seçenek olarak (önceki raporların “ilk sonuç doğru”su) (İngilizce kör küme) | %76,2 | ≥ %85 |
+| İlk üç satırda var (İngilizce kör küme) | %79,5 | ≥ %90 |
+| Yapılabilen işe “Bunu henüz yapamıyoruz.” (İngilizce kör küme) | %0,8 | ≤ %0 |
+| “Bunu henüz yapamıyoruz.” — yakalama (recall) (İngilizce kör küme) | %85,7 | ≥ %95 |
+| Listede hiç olmayan isteğe dürüst cevap (yapamıyoruz ya da bulamadım) (İngilizce kör küme) | %62,5 | ≥ %80 |
 | Dizini (moov) sonda olan dosya — “faststart” değil | 10 / 10 | ≤ 0 |
 
-**Ölçülemeyenler** (5)
+**Ölçülemeyenler** (9)
 
 
 | Ölçü | Neden |
@@ -262,6 +270,10 @@ Yayındaki sitede bir şey değişmedi; aşağıdakiler yalnızca yolun açık o
 | Yazıya dök (masaüstü): karttan dosyaya süre | “Modeli indir (≈108,8 MB, bir kez)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi. |
 | Yazıya dök (telefon): dosya çıktı ve doğru | “Modeli indir (≈108,8 MB, bir kez)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi. |
 | Yazıya dök (telefon): karttan dosyaya süre | “Modeli indir (≈108,8 MB, bir kez)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi. |
+| Speech to text (masaüstü EN): dosya çıktı ve doğru | “Download the model (≈108.8 MB, once)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi. |
+| Speech to text (masaüstü EN): karttan dosyaya süre | “Download the model (≈108.8 MB, once)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi. |
+| Speech to text (telefon EN): dosya çıktı ve doğru | “Download the model (≈108.8 MB, once)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi. |
+| Speech to text (telefon EN): karttan dosyaya süre | “Download the model (≈108.8 MB, once)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi. |
 | Gerçek küçük model, tek cümle: WER | `--with-transcript` verilmedi; varsayılan koşu modeli çalıştırmaz |
 
 Tablolarda **kalın** yazılan değer bütçesinin dışındadır; “ölçülemedi” yazan hücre ölçülememiştir, sıfır değildir.
@@ -274,17 +286,17 @@ Betikli “ilk kez kullanan”: ana ekrandan başlar, yalnızca görünen ve ad�
 
 | Görev | Dosya çıktı ve doğru | Tıklama | Yazılan alan | Karar ekranı | Ekran | En kalabalık ekran (kelime) | Toplam kelime | Karttan dosyaya | Teknik terim | Adıyla bulunamayan | Konsol hatası |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| GIF yap | evet | 3 | 1 | 1 | 4 | 110 | 231 | 3,4 sn | 0 | 0 | 0 |
-| Kes | evet | 4 | 2 | 1 | 3 | 152 | 285 | 1,5 sn | 0 | 0 | 0 |
-| Boşlukları at | evet | 3 | 0 | 1 | 4 | 110 | 240 | 1,5 sn | 0 | 0 | 0 |
-| Dikey yap | evet | 3 | 0 | 1 | 4 | 110 | 238 | 1,4 sn | 0 | 0 | 0 |
-| Küçült | evet | 3 | 0 | 1 | 4 | 110 | 275 | 3,9 sn | 0 | 0 | 0 |
-| Yazıya dök | ölçülemedi | 2 | 0 | 1 | 3 | 110 | 201 | ölçülemedi | 0 | 0 | 0 |
-| Müzik ekle | evet | 4 | 0 | 1 | 4 | 110 | 231 | 1,4 sn | 0 | 0 | 0 |
-| Sesini al | evet | 3 | 0 | 0 | 4 | 110 | 232 | 1,3 sn | 0 | 0 | 0 |
-| Sesi kapat | evet | 3 | 0 | 0 | 4 | 110 | 223 | 0,9 sn | 0 | 0 | 0 |
-| Her yerde açılsın | evet | 3 | 0 | 0 | 4 | 110 | 239 | 1,3 sn | 0 | 0 | 0 |
-| İyileştir | evet | 3 | 0 | 1 | 4 | 136 | 327 | 4,6 sn | 0 | 0 | 0 |
+| GIF yap | evet | 3 | 1 | 1 | 4 | 111 | 232 | 3 sn | 0 | 0 | 0 |
+| Kes | evet | 4 | 2 | 1 | 3 | 152 | 286 | 1,6 sn | 0 | 0 | 0 |
+| Boşlukları at | evet | 3 | 0 | 1 | 4 | 111 | 241 | 1,5 sn | 0 | 0 | 0 |
+| Dikey yap | evet | 3 | 0 | 1 | 4 | 111 | 239 | 1,4 sn | 0 | 0 | 0 |
+| Küçült | evet | 3 | 0 | 1 | 4 | 111 | 276 | 4 sn | 0 | 0 | 0 |
+| Yazıya dök | ölçülemedi | 2 | 0 | 1 | 3 | 111 | 202 | ölçülemedi | 0 | 0 | 0 |
+| Müzik ekle | evet | 4 | 0 | 1 | 4 | 111 | 232 | 1,4 sn | 0 | 0 | 0 |
+| Sesini al | evet | 3 | 0 | 0 | 4 | 111 | 233 | 1,4 sn | 0 | 0 | 0 |
+| Sesi kapat | evet | 3 | 0 | 0 | 4 | 111 | 224 | 0,9 sn | 0 | 0 | 0 |
+| Her yerde açılsın | evet | 3 | 0 | 0 | 4 | 111 | 240 | 1,4 sn | 0 | 0 | 0 |
+| İyileştir | evet | 3 | 0 | 1 | 4 | 136 | 328 | 5,2 sn | 0 | 0 | 0 |
 
 Notlar (masaüstü (1440 × 900)):
 
@@ -294,53 +306,115 @@ Notlar (masaüstü (1440 × 900)):
 
 | Görev | Dosya çıktı ve doğru | Tıklama | Yazılan alan | Karar ekranı | Ekran | En kalabalık ekran (kelime) | Toplam kelime | Karttan dosyaya | Teknik terim | Adıyla bulunamayan | Konsol hatası |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| GIF yap | evet | 4 | 1 | 1 | 4 | 110 | 234 | 3,4 sn | 0 | 0 | 0 |
-| Kes | evet | 5 | 2 | 1 | 3 | 110 | 229 | 1 sn | 0 | 0 | 0 |
-| Boşlukları at | evet | 4 | 0 | 1 | 4 | 110 | 253 | 1,5 sn | 0 | 0 | 0 |
-| Dikey yap | evet | 4 | 0 | 1 | 4 | 110 | 250 | 1,4 sn | 0 | 0 | 0 |
-| Küçült | evet | 4 | 0 | 1 | 4 | 110 | 287 | 4 sn | 0 | 0 | 0 |
-| Yazıya dök | ölçülemedi | 2 | 0 | 1 | 3 | 110 | 203 | ölçülemedi | 0 | 0 | 0 |
-| Müzik ekle | evet | 5 | 0 | 1 | 4 | 110 | 243 | 1,4 sn | 0 | 0 | 0 |
-| Sesini al | evet | 4 | 0 | 0 | 4 | 110 | 244 | 1,3 sn | 0 | 0 | 0 |
-| Sesi kapat | evet | 4 | 0 | 0 | 4 | 110 | 235 | 0,9 sn | 0 | 0 | 0 |
-| Her yerde açılsın | evet | 4 | 0 | 0 | 4 | 110 | 251 | 1,4 sn | 0 | 0 | 0 |
-| İyileştir | evet | 4 | 0 | 1 | 4 | 136 | 341 | 4,6 sn | 0 | 0 | 0 |
+| GIF yap | evet | 4 | 1 | 1 | 4 | 111 | 235 | 3,5 sn | 0 | 0 | 0 |
+| Kes | evet | 5 | 2 | 1 | 3 | 111 | 230 | 1,6 sn | 0 | 0 | 0 |
+| Boşlukları at | evet | 4 | 0 | 1 | 4 | 111 | 254 | 1,6 sn | 0 | 0 | 0 |
+| Dikey yap | evet | 4 | 0 | 1 | 4 | 111 | 251 | 1,4 sn | 0 | 0 | 0 |
+| Küçült | evet | 4 | 0 | 1 | 4 | 111 | 288 | 4,5 sn | 0 | 0 | 0 |
+| Yazıya dök | ölçülemedi | 2 | 0 | 1 | 3 | 111 | 204 | ölçülemedi | 0 | 0 | 0 |
+| Müzik ekle | evet | 5 | 0 | 1 | 4 | 111 | 244 | 1,5 sn | 0 | 0 | 0 |
+| Sesini al | evet | 4 | 0 | 0 | 4 | 111 | 245 | 1,4 sn | 0 | 0 | 0 |
+| Sesi kapat | evet | 4 | 0 | 0 | 4 | 111 | 236 | 1,5 sn | 0 | 0 | 0 |
+| Her yerde açılsın | evet | 4 | 0 | 0 | 4 | 111 | 252 | 1,4 sn | 0 | 0 | 0 |
+| İyileştir | evet | 4 | 0 | 1 | 4 | 136 | 342 | 4,8 sn | 0 | 0 | 0 |
 
 Notlar (telefon (390 × 844, dokunmatik)):
 
 - **Yazıya dök:** “Modeli indir (≈108,8 MB, bir kez)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi.
 
+**masaüstü, İngilizce (1440 × 900, en-US)**
+
+| Görev | Dosya çıktı ve doğru | Tıklama | Yazılan alan | Karar ekranı | Ekran | En kalabalık ekran (kelime) | Toplam kelime | Karttan dosyaya | Teknik terim | Adıyla bulunamayan | Konsol hatası |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Make a GIF | evet | 3 | 1 | 1 | 4 | 153 | 315 | 4,2 sn | 0 | 0 | 0 |
+| Cut | evet | 4 | 2 | 1 | 3 | **172** (bütçe ≤ 160) | 359 | 1,6 sn | 0 | 0 | 0 |
+| Remove silences | evet | 3 | 0 | 1 | 4 | 153 | 321 | 1,6 sn | 0 | 0 | 0 |
+| Make it vertical | evet | 3 | 0 | 1 | 4 | 153 | 337 | 1,4 sn | 0 | 0 | 0 |
+| Shrink | evet | 3 | 0 | 1 | 4 | 153 | 377 | 5,1 sn | 0 | 0 | 0 |
+| Speech to text | ölçülemedi | 2 | 0 | 1 | 3 | 153 | 282 | ölçülemedi | 0 | 0 | 0 |
+| Add music | evet | 4 | 0 | 1 | 4 | 153 | 325 | 1,6 sn | 0 | 0 | 0 |
+| Get the sound | evet | 3 | 0 | 0 | 4 | 153 | 320 | 2,1 sn | 0 | 0 | 0 |
+| Mute | evet | 3 | 0 | 0 | 4 | 153 | 313 | 1,6 sn | 0 | 0 | 0 |
+| Make it play everywhere | evet | 3 | 0 | 0 | 4 | 153 | 331 | 1,5 sn | 0 | 0 | 0 |
+| Enhance | evet | 3 | 0 | 1 | 4 | **174** (bütçe ≤ 160) | 436 | 6,4 sn | 0 | 0 | 0 |
+
+Notlar (masaüstü, İngilizce (1440 × 900, en-US)):
+
+- **Speech to text:** “Download the model (≈108.8 MB, once)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi.
+
+**telefon, İngilizce (390 × 844, dokunmatik, en-US)**
+
+| Görev | Dosya çıktı ve doğru | Tıklama | Yazılan alan | Karar ekranı | Ekran | En kalabalık ekran (kelime) | Toplam kelime | Karttan dosyaya | Teknik terim | Adıyla bulunamayan | Konsol hatası |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Make a GIF | evet | 4 | 1 | 1 | 4 | 153 | 324 | 3,1 sn | 0 | 0 | 0 |
+| Cut | evet | 5 | 2 | 1 | 3 | 153 | 291 | 1,8 sn | 0 | 0 | 0 |
+| Remove silences | evet | 4 | 0 | 1 | 4 | 153 | 341 | 1 sn | 0 | 0 | 0 |
+| Make it vertical | evet | 4 | 0 | 1 | 4 | 153 | 357 | 1,4 sn | 0 | 0 | 0 |
+| Shrink | evet | 4 | 0 | 1 | 4 | 153 | 397 | 4 sn | 0 | 0 | 0 |
+| Speech to text | ölçülemedi | 2 | 0 | 1 | 3 | 153 | 286 | ölçülemedi | 0 | 0 | 0 |
+| Add music | evet | 5 | 0 | 1 | 4 | 153 | 344 | 1 sn | 0 | 0 | 0 |
+| Get the sound | evet | 4 | 0 | 0 | 4 | 153 | 340 | 1,4 sn | 0 | 0 | 0 |
+| Mute | evet | 4 | 0 | 0 | 4 | 153 | 333 | 0,9 sn | 0 | 0 | 0 |
+| Make it play everywhere | evet | 4 | 0 | 0 | 4 | 153 | 350 | 1,3 sn | 0 | 0 | 0 |
+| Enhance | evet | 4 | 0 | 1 | 4 | **174** (bütçe ≤ 160) | 458 | 4,8 sn | 0 | 0 | 0 |
+
+Notlar (telefon, İngilizce (390 × 844, dokunmatik, en-US)):
+
+- **Speech to text:** “Download the model (≈108.8 MB, once)” düğmesine kadar gelindi. Model dosyaları bu makinede olmadığı için yazıya dökme ve dosya ölçülmedi.
+
 **Varsayılan yolda görülen teknik terimler** (Ayarlar ve Ayrıntılar açılmadan; liste: `web/tests/quality/lib/jargon.ts`)
 _Yok._
 
-Yarı teknik (sayıldı, yargılanmadı): MP4 / MOV / WebM × 71 · 9:16 / 1080 × 1920 × 2 · MB / GB × 28 · M4A / MP3 / WAV × 7 · model × 7
+Yarı teknik (sayıldı, yargılanmadı): MP4 / MOV / WebM × 142 · 9:16 / 1080 × 1920 × 4 · MB / GB × 56 · M4A / MP3 / WAV × 14 · model × 14
 
 **Çıkan dosyalar** (ffprobe)
 
 | Görev | Görünüm | Kaynak | Dosya | Süre | İzler | Denetimler |
 | --- | --- | --- | --- | --- | --- | --- |
 | GIF yap | masaüstü | sample-24s.mp4 (1280 × 720, 24 sn); üste yazı yazılır, kısım ve boyut değiştirilmeden | 173 KB, 320 × 180 | 4 sn | video:gif | tuttu: dosya boş değil (172.835 bayt); tuttu: GIF (gif / gif); tuttu: 320 × 180 (Küçük, kaynaktan büyük değil) (320 × 180); tuttu: 50 kare, 4 sn, durmadan döner (50 kare, 4 sn, döngü 0) |
+| Make a GIF | masaüstü EN | sample-24s.mp4 (1280 × 720, 24 sn); üste yazı yazılır, kısım ve boyut değiştirilmeden | 173 KB, 320 × 180 | 4 sn | video:gif | tuttu: dosya boş değil (172.835 bayt); tuttu: GIF (gif / gif); tuttu: 320 × 180 (Küçük, kaynaktan büyük değil) (320 × 180); tuttu: 50 kare, 4 sn, durmadan döner (50 kare, 4 sn, döngü 0) |
 | GIF yap | telefon | sample-24s.mp4 (1280 × 720, 24 sn); üste yazı yazılır, kısım ve boyut değiştirilmeden | 173 KB, 320 × 180 | 4 sn | video:gif | tuttu: dosya boş değil (172.835 bayt); tuttu: GIF (gif / gif); tuttu: 320 × 180 (Küçük, kaynaktan büyük değil) (320 × 180); tuttu: 50 kare, 4 sn, durmadan döner (50 kare, 4 sn, döngü 0) |
+| Make a GIF | telefon EN | sample-24s.mp4 (1280 × 720, 24 sn); üste yazı yazılır, kısım ve boyut değiştirilmeden | 173 KB, 320 × 180 | 4 sn | video:gif | tuttu: dosya boş değil (172.835 bayt); tuttu: GIF (gif / gif); tuttu: 320 × 180 (Küçük, kaynaktan büyük değil) (320 × 180); tuttu: 50 kare, 4 sn, durmadan döner (50 kare, 4 sn, döngü 0) |
 | Kes | masaüstü | sample-24s.mp4 (1280 × 720, 24 sn); 2–5. saniyeler istenir | 83 KB, 1280 × 720 | 3,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (82.744 bayt); tuttu: süre ≈ 3 sn (3,008 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: görüntü kaynaktan büyük değil (1280 × 720 → 1280 × 720); tuttu: kesit, videonun tamamından küçük (472,91 KB → 82,74 KB) |
+| Cut | masaüstü EN | sample-24s.mp4 (1280 × 720, 24 sn); 2–5. saniyeler istenir | 83 KB, 1280 × 720 | 3,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (82.744 bayt); tuttu: süre ≈ 3 sn (3,008 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: görüntü kaynaktan büyük değil (1280 × 720 → 1280 × 720); tuttu: kesit, videonun tamamından küçük (472,91 KB → 82,74 KB) |
 | Kes | telefon | sample-24s.mp4 (1280 × 720, 24 sn); 2–5. saniyeler istenir | 83 KB, 1280 × 720 | 3,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (82.744 bayt); tuttu: süre ≈ 3 sn (3,008 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: görüntü kaynaktan büyük değil (1280 × 720 → 1280 × 720); tuttu: kesit, videonun tamamından küçük (472,91 KB → 82,74 KB) |
+| Cut | telefon EN | sample-24s.mp4 (1280 × 720, 24 sn); 2–5. saniyeler istenir | 83 KB, 1280 × 720 | 3,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (82.744 bayt); tuttu: süre ≈ 3 sn (3,008 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: görüntü kaynaktan büyük değil (1280 × 720 → 1280 × 720); tuttu: kesit, videonun tamamından küçük (472,91 KB → 82,74 KB) |
 | Boşlukları at | masaüstü | bursts.mp4 (4,5 sn, içinde 1,2 sn’lik bir sessizlik) | 62 KB, 256 × 144 | 3,61 sn | video:h264 + audio:aac | tuttu: dosya boş değil (62.140 bayt); tuttu: süre ≈ 3,6 sn (3,605 sn); tuttu: kaynaktan kısa (4,5 → 3,61 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
+| Remove silences | masaüstü EN | bursts.mp4 (4,5 sn, içinde 1,2 sn’lik bir sessizlik) | 62 KB, 256 × 144 | 3,61 sn | video:h264 + audio:aac | tuttu: dosya boş değil (62.140 bayt); tuttu: süre ≈ 3,6 sn (3,605 sn); tuttu: kaynaktan kısa (4,5 → 3,61 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
 | Boşlukları at | telefon | bursts.mp4 (4,5 sn, içinde 1,2 sn’lik bir sessizlik) | 62 KB, 256 × 144 | 3,61 sn | video:h264 + audio:aac | tuttu: dosya boş değil (62.140 bayt); tuttu: süre ≈ 3,6 sn (3,605 sn); tuttu: kaynaktan kısa (4,5 → 3,61 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
+| Remove silences | telefon EN | bursts.mp4 (4,5 sn, içinde 1,2 sn’lik bir sessizlik) | 62 KB, 256 × 144 | 3,61 sn | video:h264 + audio:aac | tuttu: dosya boş değil (62.140 bayt); tuttu: süre ≈ 3,6 sn (3,605 sn); tuttu: kaynaktan kısa (4,5 → 3,61 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
 | Dikey yap | masaüstü | other-8s.mp4 (640 × 360 yatay, 8 sn) | 385 KB, 202 × 360 | 8 sn | video:h264 + audio:aac | tuttu: dosya boş değil (384.942 bayt); tuttu: dikey (9:16) ve kaynaktan büyük değil (202 × 360); tuttu: süre ≈ 8 sn (8 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
+| Make it vertical | masaüstü EN | other-8s.mp4 (640 × 360 yatay, 8 sn) | 385 KB, 202 × 360 | 8 sn | video:h264 + audio:aac | tuttu: dosya boş değil (384.942 bayt); tuttu: dikey (9:16) ve kaynaktan büyük değil (202 × 360); tuttu: süre ≈ 8 sn (8 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
 | Dikey yap | telefon | other-8s.mp4 (640 × 360 yatay, 8 sn) | 385 KB, 202 × 360 | 8 sn | video:h264 + audio:aac | tuttu: dosya boş değil (384.942 bayt); tuttu: dikey (9:16) ve kaynaktan büyük değil (202 × 360); tuttu: süre ≈ 8 sn (8 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
-| Küçült | masaüstü | noisy-720p30-14s.mp4 (yaklaşık 25 MB, 14 sn); seçim değiştirilmeden | 14.026 KB, 1280 × 720 | 14,02 sn | video:h264 + audio:aac | tuttu: dosya boş değil (14.025.782 bayt); tuttu: süre ≈ 14 sn (14,016 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: dosya kaynaktan küçük (24,74 MB → 14,03 MB); tuttu: WhatsApp sınırına (16 MB) sığıyor (14,03 MB) |
-| Küçült | telefon | noisy-720p30-14s.mp4 (yaklaşık 25 MB, 14 sn); seçim değiştirilmeden | 14.028 KB, 1280 × 720 | 14,02 sn | video:h264 + audio:aac | tuttu: dosya boş değil (14.028.294 bayt); tuttu: süre ≈ 14 sn (14,016 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: dosya kaynaktan küçük (24,74 MB → 14,03 MB); tuttu: WhatsApp sınırına (16 MB) sığıyor (14,03 MB) |
+| Make it vertical | telefon EN | other-8s.mp4 (640 × 360 yatay, 8 sn) | 385 KB, 202 × 360 | 8 sn | video:h264 + audio:aac | tuttu: dosya boş değil (384.942 bayt); tuttu: dikey (9:16) ve kaynaktan büyük değil (202 × 360); tuttu: süre ≈ 8 sn (8 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
+| Küçült | masaüstü | noisy-720p30-14s.mp4 (yaklaşık 25 MB, 14 sn); seçim değiştirilmeden | 14.043 KB, 1280 × 720 | 14,02 sn | video:h264 + audio:aac | tuttu: dosya boş değil (14.042.833 bayt); tuttu: süre ≈ 14 sn (14,016 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: dosya kaynaktan küçük (24,74 MB → 14,04 MB); tuttu: WhatsApp sınırına (16 MB) sığıyor (14,04 MB) |
+| Shrink | masaüstü EN | noisy-720p30-14s.mp4 (yaklaşık 25 MB, 14 sn); seçim değiştirilmeden | 14.022 KB, 1280 × 720 | 14,02 sn | video:h264 + audio:aac | tuttu: dosya boş değil (14.022.111 bayt); tuttu: süre ≈ 14 sn (14,016 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: dosya kaynaktan küçük (24,74 MB → 14,02 MB); tuttu: WhatsApp sınırına (16 MB) sığıyor (14,02 MB) |
+| Küçült | telefon | noisy-720p30-14s.mp4 (yaklaşık 25 MB, 14 sn); seçim değiştirilmeden | 14.029 KB, 1280 × 720 | 14,02 sn | video:h264 + audio:aac | tuttu: dosya boş değil (14.028.694 bayt); tuttu: süre ≈ 14 sn (14,016 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: dosya kaynaktan küçük (24,74 MB → 14,03 MB); tuttu: WhatsApp sınırına (16 MB) sığıyor (14,03 MB) |
+| Shrink | telefon EN | noisy-720p30-14s.mp4 (yaklaşık 25 MB, 14 sn); seçim değiştirilmeden | 14.038 KB, 1280 × 720 | 14,02 sn | video:h264 + audio:aac | tuttu: dosya boş değil (14.037.789 bayt); tuttu: süre ≈ 14 sn (14,016 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: dosya kaynaktan küçük (24,74 MB → 14,04 MB); tuttu: WhatsApp sınırına (16 MB) sığıyor (14,04 MB) |
 | Yazıya dök | masaüstü | sample-24s.mp4; yayınlanan derleme, model dosyaları bu makinede yok | — | — | — | — |
+| Speech to text | masaüstü EN | sample-24s.mp4; yayınlanan derleme, model dosyaları bu makinede yok | — | — | — | — |
 | Yazıya dök | telefon | sample-24s.mp4; yayınlanan derleme, model dosyaları bu makinede yok | — | — | — | — |
+| Speech to text | telefon EN | sample-24s.mp4; yayınlanan derleme, model dosyaları bu makinede yok | — | — | — | — |
 | Müzik ekle | masaüstü | other-8s.mp4 + tone-30s.m4a | 184 KB, 640 × 360 | 8 sn | video:h264 + audio:aac | tuttu: dosya boş değil (183.809 bayt); tuttu: süre ≈ 8 sn (8 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
+| Add music | masaüstü EN | other-8s.mp4 + tone-30s.m4a | 184 KB, 640 × 360 | 8 sn | video:h264 + audio:aac | tuttu: dosya boş değil (183.809 bayt); tuttu: süre ≈ 8 sn (8 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
 | Müzik ekle | telefon | other-8s.mp4 + tone-30s.m4a | 184 KB, 640 × 360 | 8 sn | video:h264 + audio:aac | tuttu: dosya boş değil (183.809 bayt); tuttu: süre ≈ 8 sn (8 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
+| Add music | telefon EN | other-8s.mp4 + tone-30s.m4a | 184 KB, 640 × 360 | 8 sn | video:h264 + audio:aac | tuttu: dosya boş değil (183.809 bayt); tuttu: süre ≈ 8 sn (8 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac) |
 | Sesini al | masaüstü | sample-24s.mp4 | 390 KB | 24 sn | audio:aac | tuttu: dosya boş değil (389.662 bayt); tuttu: süre ≈ 24 sn (24 sn); tuttu: izler: audio:aac (audio:aac) |
+| Get the sound | masaüstü EN | sample-24s.mp4 | 390 KB | 24 sn | audio:aac | tuttu: dosya boş değil (389.662 bayt); tuttu: süre ≈ 24 sn (24 sn); tuttu: izler: audio:aac (audio:aac) |
 | Sesini al | telefon | sample-24s.mp4 | 390 KB | 24 sn | audio:aac | tuttu: dosya boş değil (389.662 bayt); tuttu: süre ≈ 24 sn (24 sn); tuttu: izler: audio:aac (audio:aac) |
+| Get the sound | telefon EN | sample-24s.mp4 | 390 KB | 24 sn | audio:aac | tuttu: dosya boş değil (389.662 bayt); tuttu: süre ≈ 24 sn (24 sn); tuttu: izler: audio:aac (audio:aac) |
 | Sesi kapat | masaüstü | sample-24s.mp4 | 262 KB, 1280 × 720 | 24 sn | video:h264 | tuttu: dosya boş değil (262.213 bayt); tuttu: süre ≈ 24 sn (24 sn); tuttu: izler: video:h264 (video:h264) |
+| Mute | masaüstü EN | sample-24s.mp4 | 262 KB, 1280 × 720 | 24 sn | video:h264 | tuttu: dosya boş değil (262.213 bayt); tuttu: süre ≈ 24 sn (24 sn); tuttu: izler: video:h264 (video:h264) |
 | Sesi kapat | telefon | sample-24s.mp4 | 262 KB, 1280 × 720 | 24 sn | video:h264 | tuttu: dosya boş değil (262.213 bayt); tuttu: süre ≈ 24 sn (24 sn); tuttu: izler: video:h264 (video:h264) |
+| Mute | telefon EN | sample-24s.mp4 | 262 KB, 1280 × 720 | 24 sn | video:h264 | tuttu: dosya boş değil (262.213 bayt); tuttu: süre ≈ 24 sn (24 sn); tuttu: izler: video:h264 (video:h264) |
 | Her yerde açılsın | masaüstü | tarayici-kaydi.webm (VP9 + Opus, 640 × 360, 2 sn) | 503 KB, 640 × 360 | 2,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (502.990 bayt); tuttu: süre ≈ 2 sn (2,005 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: MP4 (mov,mp4,m4a,3gp,3g2,mj2) |
+| Make it play everywhere | masaüstü EN | tarayici-kaydi.webm (VP9 + Opus, 640 × 360, 2 sn) | 503 KB, 640 × 360 | 2,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (502.990 bayt); tuttu: süre ≈ 2 sn (2,005 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: MP4 (mov,mp4,m4a,3gp,3g2,mj2) |
 | Her yerde açılsın | telefon | tarayici-kaydi.webm (VP9 + Opus, 640 × 360, 2 sn) | 503 KB, 640 × 360 | 2,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (502.990 bayt); tuttu: süre ≈ 2 sn (2,005 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: MP4 (mov,mp4,m4a,3gp,3g2,mj2) |
-| İyileştir | masaüstü | karanlik.mp4 (yaklaşık iki durak karanlık, 1280 × 720, 3 sn) | 2.828 KB, 1280 × 720 | 3,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (2.828.123 bayt); tuttu: süre ≈ 3 sn (3,008 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: görüntü aydınlandı (ortalama parlaklık en az +10) (69,8 → 121); tuttu: boyut aynı (1280 × 720) |
-| İyileştir | telefon | karanlik.mp4 (yaklaşık iki durak karanlık, 1280 × 720, 3 sn) | 2.818 KB, 1280 × 720 | 3,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (2.818.413 bayt); tuttu: süre ≈ 3 sn (3,008 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: görüntü aydınlandı (ortalama parlaklık en az +10) (69,8 → 121); tuttu: boyut aynı (1280 × 720) |
+| Make it play everywhere | telefon EN | tarayici-kaydi.webm (VP9 + Opus, 640 × 360, 2 sn) | 503 KB, 640 × 360 | 2,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (502.990 bayt); tuttu: süre ≈ 2 sn (2,005 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: MP4 (mov,mp4,m4a,3gp,3g2,mj2) |
+| İyileştir | masaüstü | karanlik.mp4 (yaklaşık iki durak karanlık, 1280 × 720, 3 sn) | 2.831 KB, 1280 × 720 | 3,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (2.831.143 bayt); tuttu: süre ≈ 3 sn (3,008 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: görüntü aydınlandı (ortalama parlaklık en az +10) (69,8 → 121); tuttu: boyut aynı (1280 × 720) |
+| Enhance | masaüstü EN | karanlik.mp4 (yaklaşık iki durak karanlık, 1280 × 720, 3 sn) | 2.820 KB, 1280 × 720 | 3,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (2.820.105 bayt); tuttu: süre ≈ 3 sn (3,008 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: görüntü aydınlandı (ortalama parlaklık en az +10) (69,8 → 121); tuttu: boyut aynı (1280 × 720) |
+| İyileştir | telefon | karanlik.mp4 (yaklaşık iki durak karanlık, 1280 × 720, 3 sn) | 2.824 KB, 1280 × 720 | 3,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (2.824.493 bayt); tuttu: süre ≈ 3 sn (3,008 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: görüntü aydınlandı (ortalama parlaklık en az +10) (69,8 → 121); tuttu: boyut aynı (1280 × 720) |
+| Enhance | telefon EN | karanlik.mp4 (yaklaşık iki durak karanlık, 1280 × 720, 3 sn) | 2.830 KB, 1280 × 720 | 3,01 sn | video:h264 + audio:aac | tuttu: dosya boş değil (2.829.572 bayt); tuttu: süre ≈ 3 sn (3,008 sn); tuttu: izler: video:h264 + audio:aac (video:h264 + audio:aac); tuttu: görüntü aydınlandı (ortalama parlaklık en az +10) (69,8 → 121); tuttu: boyut aynı (1280 × 720) |
 
 **Yazıya dök, baştan sona — TEST KANCALI derleme, betikli tanıyıcı**
 Bu satırlar `CLIP_TEST_HOOKS=1` derlemesinde, küçük bir model listesi ve konuşmayı DUYMAYAN betikli bir tanıyıcıyla alındı. Ölçülen şey akıştır (tıklama, ekran, kelime, dosyanın çıkması). **Yazının doğruluğu hakkında hiçbir şey söylemez** (bkz. bölüm 6).
@@ -348,8 +422,8 @@ Bu satırlar `CLIP_TEST_HOOKS=1` derlemesinde, küçük bir model listesi ve kon
 
 | Görünüm | Dosya çıktı | Tıklama | Karar ekranı | Ekran | En kalabalık ekran (kelime) | Karttan dosyaya | Teknik terim | Adıyla bulunamayan |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| masaüstü | evet | 5 | 1 | 4 | 110 | 5,1 sn (model 360 KB’lık test dosyası) | 0 | 0 |
-| telefon | evet | 6 | 1 | 4 | 110 | 5,5 sn (model 360 KB’lık test dosyası) | 0 | 0 |
+| masaüstü | evet | 5 | 1 | 4 | 111 | 6,9 sn (model 360 KB’lık test dosyası) | 0 | 0 |
+| telefon | evet | 6 | 1 | 4 | 111 | 6,2 sn (model 360 KB’lık test dosyası) | 0 | 0 |
 
 **Yazıya dök → İnternette, baştan sona — SAHTE SUNUCUYA KARŞI (bulut derlemesi; yayındaki sitede bu yol yok)**
 Bu satırlar, vekil sunucumuzun **yerel bir sahtesine** (`cloud/fake-worker/`, 127.0.0.1) karşı, bulut yolunun açık olduğu test kancalı derlemede alındı. Hiçbir dış hizmete istek atılmadı. Sahte sunucu konuşmayı DUYMAZ; betikte yazan kelimeleri döndürür. Ölçülen şey rıza ekranının ve akışın kendisidir (tıklama, ekran, okunacak kelime, sade dil, dosyanın çıkması, giden şeyin yalnız ses olması). **Yazının doğruluğu, hızı ya da gerçek sunucunun davranışı hakkında hiçbir şey söylemez.**
@@ -357,17 +431,17 @@ Bu satırlar, vekil sunucumuzun **yerel bir sahtesine** (`cloud/fake-worker/`, 1
 
 | Görünüm | Dosya çıktı | Tıklama | Yazılan alan | Karar ekranı | Ekran | En kalabalık ekran (kelime) | Teknik terim | Adıyla bulunamayan | Giden dosya | Sunucuda kalan |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| masaüstü | evet | 5 | 1 | 1 | 5 | 125 | 0 | 0 | 1 × audio/webm, 85 KB | 0 |
-| telefon | evet | 6 | 1 | 1 | 5 | 125 | 0 | 0 | 1 × audio/webm, 85 KB | 0 |
+| masaüstü | evet | 5 | 1 | 1 | 5 | 126 | 0 | 0 | 1 × audio/webm, 85 KB | 0 |
+| telefon | evet | 6 | 1 | 1 | 5 | 126 | 0 | 0 | 1 × audio/webm, 85 KB | 0 |
 
 Ekran ekran okunacak kelime:
 
-- masaüstü: “Ne yapmak istiyorsun?” (ana ekran) — 125 kelime
+- masaüstü: “Ne yapmak istiyorsun?” (ana ekran) — 126 kelime
 - masaüstü: “Videonu seç” (video seç) — 24 kelime
 - masaüstü: “Yazıyı nerede çıkaralım?” (nerede (kodsuz)) — 110 kelime
 - masaüstü: “Videonu yazıya dökelim” (yazı) — 122 kelime
 - masaüstü: “Kaydedildi” (sonuç) — 69 kelime
-- telefon: “Ne yapmak istiyorsun?” (ana ekran) — 125 kelime
+- telefon: “Ne yapmak istiyorsun?” (ana ekran) — 126 kelime
 - telefon: “Videonu seç” (video seç) — 20 kelime
 - telefon: “Yazıyı nerede çıkaralım?” (nerede (kodsuz)) — 110 kelime
 - telefon: “Videonu yazıya dökelim” (yazı) — 122 kelime
@@ -389,7 +463,7 @@ Beş küme var ve hangisinin ne olduğu önemlidir:
 
 - **Yeni ayrı küme** (`web/tests/quality/data/search-eval-fresh3.ts`, 280 ifade; sayılan 202): kendisine yalnızca işlerin listesi ve birer satırlık açıklamaları verilen, aramanın kodunu, kelime listelerini, eşiklerini ve öteki ifadeleri GÖRMEYEN bir yazar tarafından yazıldı; eminlik kuralı dondurulduktan sonra BİR KEZ ölçüldü. **Başlık sayıları ve bütçeler bu kümedendir.** Kaçanları aşağıda yazılı olduğu için bundan sonra bu küme de görülmüş sayılır: arama onun kaçanlarına bakılarak ayarlanırsa yeni bir küme yazılmalıdır.
 - **İkinci yeni küme** (`search-eval-fresh2.ts`, 243 ifade; sayılan 209): 10–11 Ekim raporlarının başlığıydı (o ölçüm: ilk sonuç doğru %81,8, yanlış ama emin %12,0). Kaçanları raporda yazılıydı ve eminlik kuralı bu kümeye de bakılarak ayarlandı: **artık ayar kümesidir**, bugünkü sayıları (yanlış ama emin %1, sordu %27,3) bir tahmin değildir.
-- **İlk yeni küme** (`search-eval-fresh.ts`, 178 ifade; sayılan 139): 10 Ekim’den beri ayar kümesi (bugün: yanlış ama emin %0, sordu %13,7).
+- **İlk yeni küme** (`search-eval-fresh.ts`, 178 ifade; sayılan 139): 10 Ekim’den beri ayar kümesi (bugün: yanlış ama emin %0, sordu %12,9).
 - **Eski ayrı küme** (`search-eval.ts` içindeki `HELD_OUT`, 282 ifade; sayılan 225): **KİRLENMİŞ.** 10 Ekim’deki arama çalışması bu kümenin kaçanları okunduktan sonra yapıldı; eminlik kuralı da ona bakılarak ayarlandı. Sayıları bir tahmin değildir.
 - **Geliştirme kümesi** (`DEV`, 175 ifade): üzerinde ayar yapıldı; ölçüm değildir. Açık yazılmış isteklerin soruya düşmediği burada da izlenir.
 
@@ -401,15 +475,15 @@ Ayar tablolarında (`tests/unit/taskSearch*.test.ts`) ya da daha eski bir kümed
 | Ölçü | Değer | Bütçe | Durum |
 | --- | --- | --- | --- |
 | Yanlış ama emin: TEK bir iş cevap diye sunuldu ve başka iş yapıyor (bütün ifadelerde) — 202 ifadede | %3 | ≤ %5 | bütçe içinde |
-| Tahmin etmek yerine sordu: “Bunu mu demek istedin?” (bütün ifadelerde) — 52 kez; 16 tanesinde tek seçenek; 7 tanesi yapılabilen bir iş değildi | %25,7 | — | bütçesiz |
-| Yapılabilen işlerde sorma oranı — 149 ifadede | %30,2 | ≤ %33 | bütçe içinde |
-| Sorduğunda doğru iş seçeneklerin arasında — 45 soruda; 5 tanesinde yok | %88,9 | ≥ %80 | bütçe içinde |
+| Tahmin etmek yerine sordu: “Bunu mu demek istedin?” (bütün ifadelerde) — 51 kez; 16 tanesinde tek seçenek; 7 tanesi yapılabilen bir iş değildi | %25,2 | — | bütçesiz |
+| Yapılabilen işlerde sorma oranı — 149 ifadede | %29,5 | ≤ %33 | bütçe içinde |
+| Sorduğunda doğru iş seçeneklerin arasında — 44 soruda; 5 tanesinde yok | %88,6 | ≥ %80 | bütçe içinde |
 | Açık yazılmış isteğe (“kolay”) doğrudan cevap yerine soru — 18 ifadede | %5,6 | ≤ %15 | bütçe içinde |
-| Doğrudan doğru: tek cevap ve doğru iş (yapılabilen işler) | %53,7 | — | bütçesiz |
-| Doğru işe yeniden yazmadan varıldı: doğrudan ya da seçeneklerden | %80,5 | — | bütçesiz |
-| İlk satır doğru iş — cevap ya da ilk seçenek olarak (önceki raporların “ilk sonuç doğru”su) — 149 ifadede | %75,8 | ≥ %85 | BÜTÇE DIŞI |
-| İlk üç satırda var | %80,5 | ≥ %90 | BÜTÇE DIŞI |
-| Yapılabilen işe “Bunu bulamadım.” | %12,1 | — | bütçesiz |
+| Doğrudan doğru: tek cevap ve doğru iş (yapılabilen işler) | %55,7 | — | bütçesiz |
+| Doğru işe yeniden yazmadan varıldı: doğrudan ya da seçeneklerden | %81,9 | — | bütçesiz |
+| İlk satır doğru iş — cevap ya da ilk seçenek olarak (önceki raporların “ilk sonuç doğru”su) — 149 ifadede | %77,2 | ≥ %85 | BÜTÇE DIŞI |
+| İlk üç satırda var | %81,9 | ≥ %90 | BÜTÇE DIŞI |
+| Yapılabilen işe “Bunu bulamadım.” | %10,7 | — | bütçesiz |
 | Yapılabilen işe “Bunu henüz yapamıyoruz.” | %2 | ≤ %0 | BÜTÇE DIŞI |
 | “Bunu henüz yapamıyoruz.” — yakalama (recall) — 24 ifadede | %87,5 | ≥ %95 | BÜTÇE DIŞI |
 | “Bunu henüz yapamıyoruz.” — isabet (precision) — 32 kez söylendi | %87,5 | ≥ %95 | BÜTÇE DIŞI |
@@ -420,11 +494,11 @@ Ayar tablolarında (`tests/unit/taskSearch*.test.ts`) ya da daha eski bir kümed
 
 | İş | İfade | Doğrudan doğru | Soruldu (doğrusu içinde) | İlk üçte | Yanlış ama emin | Bulunamadı |
 | --- | --- | --- | --- | --- | --- | --- |
-| Kes | 18 | 11 (%61,1) | 4 (4) | 15 | 0 | 3 |
-| Boşlukları at | 16 | 8 (%50) | 6 (6) | 14 | 1 | 1 |
+| Kes | 18 | 12 (%66,7) | 4 (4) | 16 | 0 | 2 |
+| Boşlukları at | 16 | 9 (%56,3) | 5 (5) | 14 | 1 | 1 |
 | Dikey yap | 15 | 7 (%46,7) | 4 (4) | 11 | 0 | 4 |
 | Küçült | 16 | 13 (%81,3) | 2 (2) | 15 | 0 | 1 |
-| Yazıya dök | 13 | 2 (%15,4) | 6 (4) | 6 | 1 | 4 |
+| Yazıya dök | 13 | 3 (%23,1) | 6 (4) | 7 | 1 | 3 |
 | Müzik ekle | 15 | 6 (%40) | 7 (7) | 13 | 1 | 1 |
 | Sesini al | 16 | 11 (%68,8) | 4 (4) | 15 | 0 | 0 |
 | Sesi kapat | 13 | 7 (%53,8) | 3 (1) | 8 | 0 | 2 |
@@ -438,20 +512,19 @@ Ayar tablolarında (`tests/unit/taskSearch*.test.ts`) ya da daha eski bir kümed
 | --- | --- | --- | --- | --- |
 | Türkçe | 114 | 62 (%54,4) | 32 (30) | 3 |
 | kısa ve açık (“kolay”) | 18 | 17 (%94,4) | 1 (1) | 0 |
-| İngilizce | 35 | 18 (%51,4) | 13 (10) | 0 |
+| İngilizce | 35 | 21 (%60) | 12 (9) | 0 |
 | yazım hatalı | 16 | 7 (%43,8) | 7 (7) | 0 |
 | Türkçe harfsiz | 20 | 16 (%80) | 4 (4) | 0 |
 | argo / kısaltma | 23 | 9 (%39,1) | 8 (8) | 0 |
-| uzun cümle | 40 | 14 (%35) | 15 (12) | 1 |
+| uzun cümle | 40 | 15 (%37,5) | 15 (12) | 1 |
 
-**Kaçanlar, yeni küme** (80) — ifade → beklenen → çıkan. “Soruldu, doğrusu seçeneklerde” de burada sayılır (doğrudan cevap değildir), ama kullanıcı doğru işe bir dokunuşla varır.
+**Kaçanlar, yeni küme** (77) — ifade → beklenen → çıkan. “Soruldu, doğrusu seçeneklerde” de burada sayılır (doğrudan cevap değildir), ama kullanıcı doğru işe bir dokunuşla varır.
 
 | İfade | Beklenen | Çıkan | Tür |
 | --- | --- | --- | --- |
 | “vidyoyu kesmek istiyorm” | Kes | Bunu mu demek istedin? Kes | soruldu, doğrusu seçeneklerde |
 | “vidyonun sonu çok saçma olmuş orayı atsak ya” | Kes | Bunu bulamadım. | bulunamadı |
 | “düğün videosu iki saat sürüyor ben sadece takı töreninin olduğu yeri arkadaşıma göstermek istiyorum” | Kes | Bunu bulamadım. | bulunamadı |
-| “i only want the part from 1:20 to 2:05” | Kes | Bunu bulamadım. | bulunamadı |
 | “my recording has like two minutes of me setting up the camera at the start and i want that gone” | Kes | Bunu mu demek istedin? Kes (+ yapılamayan satır) | soruldu, doğrusu seçeneklerde |
 | “klibin fazlalıklarını ayıkla” | Kes | Bunu mu demek istedin? Kes | soruldu, doğrusu seçeneklerde |
 | “sessizlikleri sil” | Boşlukları at | Bunu mu demek istedin? Boşlukları at / Kes | soruldu, doğrusu seçeneklerde |
@@ -461,7 +534,6 @@ Ayar tablolarında (`tests/unit/taskSearch*.test.ts`) ya da daha eski bir kümed
 | “videoda konuşurken sürekli düşünüp duruyorum aralarda uzun uzun bekliyorum bunlar tek tek uğraşmadan kendiliğinden gitsin istiyorum” | Boşlukları at | Kes | **yanlış ama emin** |
 | “sunum kaydı aldım ama cümleler arasında çok bekleme var izleyen sıkılıyor daha akıcı olsun” | Boşlukları at | Bunu mu demek istedin? Boşlukları at | soruldu, doğrusu seçeneklerde |
 | “podcast çekiyoruz misafir cevap vermeden önce hep beş saniye susuyor o ölü anları ayıklayabilir misin” | Boşlukları at | Bunu mu demek istedin? Boşlukları at / Sesini al / Kes | soruldu, doğrusu seçeneklerde |
-| “auto cut the pauses where nobody talks” | Boşlukları at | Bunu mu demek istedin? Boşlukları at / Kes | soruldu, doğrusu seçeneklerde |
 | “dkey video yapma” | Dikey yap | Bunu bulamadım. | bulunamadı |
 | “hikayeye sigmiyor yanlar kesilsin” | Dikey yap | Bunu mu demek istedin? Küçült / Dikey yap / Kes | soruldu, doğrusu seçeneklerde |
 | “tt ye atcam ama yatay çekmişim” | Dikey yap | Bunu bulamadım. | bulunamadı |
@@ -478,7 +550,6 @@ Ayar tablolarında (`tests/unit/taskSearch*.test.ts`) ya da daha eski bir kümed
 | “dedemin kulakları iyi duymuyor videoda ne konuşulduğunu ekranda okuyabilsin istiyorum” | Yazıya dök | Bunu bulamadım. | bulunamadı |
 | “röportaj yaptım bir saatlik şimdi oturup hepsini tek tek elle yazmak istemiyorum bunu benim yerime yapar mısın” | Yazıya dök | Bunu bulamadım. | bulunamadı |
 | “add captions so people can watch without sound” | Yazıya dök | Bunu mu demek istedin? Sesi kapat / Yazıya dök | soruldu, doğrusu seçeneklerde |
-| “i recorded a long meeting and need everything that was said written down so i can paste it into a doc” | Yazıya dök | Bunu bulamadım. | bulunamadı |
 | “sessiz izleyenler için konuşmalar ekranda çıksın” | Yazıya dök | Boşlukları at | **yanlış ama emin** |
 | “srt dosyası çıkar” | Yazıya dök | Bunu mu demek istedin? Yazıya dök / Sesini al / Kes | soruldu, doğrusu seçeneklerde |
 | “müzk eklme” | Müzik ekle | Bunu bulamadım. | bulunamadı |
@@ -535,17 +606,17 @@ Ayar tablolarında (`tests/unit/taskSearch*.test.ts`) ya da daha eski bir kümed
 | Ölçü | Değer | Bütçe | Durum |
 | --- | --- | --- | --- |
 | Yanlış ama emin: TEK bir iş cevap diye sunuldu ve başka iş yapıyor (bütün ifadelerde) — 209 ifadede | %1 | — | bütçesiz |
-| Tahmin etmek yerine sordu: “Bunu mu demek istedin?” (bütün ifadelerde) — 57 kez; 22 tanesinde tek seçenek; 7 tanesi yapılabilen bir iş değildi | %27,3 | — | bütçesiz |
-| Yapılabilen işlerde sorma oranı — 148 ifadede | %33,8 | — | bütçesiz |
-| Sorduğunda doğru iş seçeneklerin arasında — 50 soruda; 9 tanesinde yok | %82 | — | bütçesiz |
-| Doğrudan doğru: tek cevap ve doğru iş (yapılabilen işler) | %58,1 | — | bütçesiz |
-| Doğru işe yeniden yazmadan varıldı: doğrudan ya da seçeneklerden | %85,8 | — | bütçesiz |
-| İlk satır doğru iş — cevap ya da ilk seçenek olarak (önceki raporların “ilk sonuç doğru”su) — 148 ifadede | %81,8 | — | bütçesiz |
-| İlk üç satırda var | %86,5 | — | bütçesiz |
-| Yapılabilen işe “Bunu bulamadım.” | %4,7 | — | bütçesiz |
-| Yapılabilen işe “Bunu henüz yapamıyoruz.” | %2 | — | bütçesiz |
-| “Bunu henüz yapamıyoruz.” — yakalama (recall) — 31 ifadede | %87,1 | — | bütçesiz |
-| “Bunu henüz yapamıyoruz.” — isabet (precision) — 35 kez söylendi | %91,4 | — | bütçesiz |
+| Tahmin etmek yerine sordu: “Bunu mu demek istedin?” (bütün ifadelerde) — 57 kez; 21 tanesinde tek seçenek; 8 tanesi yapılabilen bir iş değildi | %27,3 | — | bütçesiz |
+| Yapılabilen işlerde sorma oranı — 148 ifadede | %33,1 | — | bütçesiz |
+| Sorduğunda doğru iş seçeneklerin arasında — 49 soruda; 9 tanesinde yok | %81,6 | — | bütçesiz |
+| Doğrudan doğru: tek cevap ve doğru iş (yapılabilen işler) | %60,1 | — | bütçesiz |
+| Doğru işe yeniden yazmadan varıldı: doğrudan ya da seçeneklerden | %87,2 | — | bütçesiz |
+| İlk satır doğru iş — cevap ya da ilk seçenek olarak (önceki raporların “ilk sonuç doğru”su) — 148 ifadede | %83,1 | — | bütçesiz |
+| İlk üç satırda var | %87,8 | — | bütçesiz |
+| Yapılabilen işe “Bunu bulamadım.” | %4,1 | — | bütçesiz |
+| Yapılabilen işe “Bunu henüz yapamıyoruz.” | %1,4 | — | bütçesiz |
+| “Bunu henüz yapamıyoruz.” — yakalama (recall) — 31 ifadede | %83,9 | — | bütçesiz |
+| “Bunu henüz yapamıyoruz.” — isabet (precision) — 33 kez söylendi | %93,9 | — | bütçesiz |
 | Listede hiç olmayan isteğe dürüst cevap (yapamıyoruz ya da bulamadım) — 20 ifadede; 0 tanesine tek kart cevap diye sunuldu, 4 tanesinde seçenek soruldu | %80 | — | bütçesiz |
 | Anlamsız yazı / sohbete kart önerilmedi — 10 ifadede | %90 | — | bütçesiz |
 
@@ -555,19 +626,157 @@ Ayar tablolarında (`tests/unit/taskSearch*.test.ts`) ya da daha eski bir kümed
 | Ölçü | Değer | Bütçe | Durum |
 | --- | --- | --- | --- |
 | Yanlış ama emin: TEK bir iş cevap diye sunuldu ve başka iş yapıyor (bütün ifadelerde) — 225 ifadede | %0,9 | — | bütçesiz |
-| Tahmin etmek yerine sordu: “Bunu mu demek istedin?” (bütün ifadelerde) — 26 kez; 12 tanesinde tek seçenek; 0 tanesi yapılabilen bir iş değildi | %11,6 | — | bütçesiz |
-| Yapılabilen işlerde sorma oranı — 173 ifadede | %15 | — | bütçesiz |
-| Sorduğunda doğru iş seçeneklerin arasında — 26 soruda; 2 tanesinde yok | %92,3 | — | bütçesiz |
-| Doğrudan doğru: tek cevap ve doğru iş (yapılabilen işler) | %80,3 | — | bütçesiz |
-| Doğru işe yeniden yazmadan varıldı: doğrudan ya da seçeneklerden | %94,2 | — | bütçesiz |
-| İlk satır doğru iş — cevap ya da ilk seçenek olarak (önceki raporların “ilk sonuç doğru”su) — 173 ifadede | %92,5 | — | bütçesiz |
-| İlk üç satırda var | %94,2 | — | bütçesiz |
-| Yapılabilen işe “Bunu bulamadım.” | %3,5 | — | bütçesiz |
-| Yapılabilen işe “Bunu henüz yapamıyoruz.” | %0,6 | — | bütçesiz |
+| Tahmin etmek yerine sordu: “Bunu mu demek istedin?” (bütün ifadelerde) — 25 kez; 11 tanesinde tek seçenek; 0 tanesi yapılabilen bir iş değildi | %11,1 | — | bütçesiz |
+| Yapılabilen işlerde sorma oranı — 173 ifadede | %14,5 | — | bütçesiz |
+| Sorduğunda doğru iş seçeneklerin arasında — 25 soruda; 2 tanesinde yok | %92 | — | bütçesiz |
+| Doğrudan doğru: tek cevap ve doğru iş (yapılabilen işler) | %82,1 | — | bütçesiz |
+| Doğru işe yeniden yazmadan varıldı: doğrudan ya da seçeneklerden | %95,4 | — | bütçesiz |
+| İlk satır doğru iş — cevap ya da ilk seçenek olarak (önceki raporların “ilk sonuç doğru”su) — 173 ifadede | %93,6 | — | bütçesiz |
+| İlk üç satırda var | %95,4 | — | bütçesiz |
+| Yapılabilen işe “Bunu bulamadım.” | %2,9 | — | bütçesiz |
+| Yapılabilen işe “Bunu henüz yapamıyoruz.” | %0 | — | bütçesiz |
 | “Bunu henüz yapamıyoruz.” — yakalama (recall) — 28 ifadede | %100 | — | bütçesiz |
-| “Bunu henüz yapamıyoruz.” — isabet (precision) — 38 kez söylendi | %97,4 | — | bütçesiz |
+| “Bunu henüz yapamıyoruz.” — isabet (precision) — 37 kez söylendi | %100 | — | bütçesiz |
 | Listede hiç olmayan isteğe dürüst cevap (yapamıyoruz ya da bulamadım) — 12 ifadede; 1 tanesine tek kart cevap diye sunuldu, 0 tanesinde seçenek soruldu | %91,7 | — | bütçesiz |
 | Anlamsız yazı / sohbete kart önerilmedi — 12 ifadede | %100 | — | bütçesiz |
+
+### İngilizce arama (ADR-048)
+
+- **İngilizce kör küme** (`web/tests/quality/data/search-eval-en-fresh.ts`, 200 ifade; sayılan 155): yalnızca İngilizce iş adlarını ve birer satırlık açıklamaları gören bir yazar yazdı; ifadeler sayılar dışında okunmadan dönüştürüldü ve İngilizce kelime listeleri ayrı ayar kümesine bakılarak dondurulduktan sonra ölçüldü. Kaçanları aşağıda yazılı: bundan sonra görülmüş sayılır.
+- **İngilizce ayar kümesi** (`search-eval-en-dev.ts`, 140 ifade): İngilizce kelime listeleri bunun kaçanlarına bakılarak genişletildi; ölçüm değildir.
+- Sayımdan çıkanlar: Türkçe ayar tablolarında, Türkçe kümelerde ya da İngilizce ayar kümesinde zaten bulunan ifadeler (kör kümede 45).
+
+**İngilizce kör küme**
+
+
+| Ölçü | Değer | Bütçe | Durum |
+| --- | --- | --- | --- |
+| Yanlış ama emin: TEK bir iş cevap diye sunuldu ve başka iş yapıyor (bütün ifadelerde) — 155 ifadede | %2,6 | ≤ %5 | bütçe içinde |
+| Tahmin etmek yerine sordu: “Bunu mu demek istedin?” (bütün ifadelerde) — 33 kez; 13 tanesinde tek seçenek; 4 tanesi yapılabilen bir iş değildi | %21,3 | — | bütçesiz |
+| Yapılabilen işlerde sorma oranı — 122 ifadede | %23,8 | ≤ %33 | bütçe içinde |
+| Sorduğunda doğru iş seçeneklerin arasında — 29 soruda; 2 tanesinde yok | %93,1 | ≥ %80 | bütçe içinde |
+| Açık yazılmış isteğe (“kolay”) doğrudan cevap yerine soru — 11 ifadede | %0 | ≤ %15 | bütçe içinde |
+| Doğrudan doğru: tek cevap ve doğru iş (yapılabilen işler) | %57,4 | — | bütçesiz |
+| Doğru işe yeniden yazmadan varıldı: doğrudan ya da seçeneklerden | %79,5 | — | bütçesiz |
+| İlk satır doğru iş — cevap ya da ilk seçenek olarak (önceki raporların “ilk sonuç doğru”su) — 122 ifadede | %76,2 | ≥ %85 | BÜTÇE DIŞI |
+| İlk üç satırda var | %79,5 | ≥ %90 | BÜTÇE DIŞI |
+| Yapılabilen işe “Bunu bulamadım.” | %15,6 | — | bütçesiz |
+| Yapılabilen işe “Bunu henüz yapamıyoruz.” | %0,8 | ≤ %0 | BÜTÇE DIŞI |
+| “Bunu henüz yapamıyoruz.” — yakalama (recall) — 21 ifadede | %85,7 | ≥ %95 | BÜTÇE DIŞI |
+| “Bunu henüz yapamıyoruz.” — isabet (precision) — 21 kez söylendi | %95,2 | ≥ %95 | bütçe içinde |
+| Listede hiç olmayan isteğe dürüst cevap (yapamıyoruz ya da bulamadım) — 8 ifadede; 0 tanesine tek kart cevap diye sunuldu, 3 tanesinde seçenek soruldu | %62,5 | ≥ %80 | BÜTÇE DIŞI |
+| Anlamsız yazı / sohbete kart önerilmedi — 4 ifadede | %100 | ≥ %90 | bütçe içinde |
+
+**İşe göre** (İngilizce kör küme)
+
+| İş | İfade | Doğrudan doğru | Soruldu (doğrusu içinde) | İlk üçte | Yanlış ama emin | Bulunamadı |
+| --- | --- | --- | --- | --- | --- | --- |
+| Cut | 13 | 10 (%76,9) | 1 (1) | 11 | 0 | 2 |
+| Remove silences | 11 | 6 (%54,5) | 4 (4) | 10 | 1 | 0 |
+| Make it vertical | 12 | 7 (%58,3) | 2 (2) | 9 | 0 | 3 |
+| Shrink | 10 | 4 (%40) | 4 (4) | 8 | 0 | 1 |
+| Speech to text | 10 | 7 (%70) | 1 (1) | 8 | 0 | 2 |
+| Add music | 11 | 5 (%45,5) | 5 (5) | 10 | 0 | 1 |
+| Get the sound | 9 | 6 (%66,7) | 1 (1) | 7 | 0 | 2 |
+| Mute | 11 | 6 (%54,5) | 1 (0) | 6 | 2 | 2 |
+| Make it play everywhere | 11 | 6 (%54,5) | 3 (2) | 8 | 0 | 2 |
+| Enhance | 12 | 8 (%66,7) | 1 (1) | 9 | 0 | 3 |
+| Make a GIF | 12 | 5 (%41,7) | 6 (6) | 11 | 0 | 1 |
+
+**Yazış biçimine göre** (İngilizce kör küme)
+
+| Biçim | İfade | Doğrudan doğru | Soruldu (doğrusu içinde) | Yanlış ama emin |
+| --- | --- | --- | --- | --- |
+| İngilizce | 122 | 70 (%57,4) | 29 (27) | 3 |
+| kısa ve açık (“kolay”) | 11 | 11 (%100) | 0 (0) | 0 |
+| çocuk | 14 | 5 (%35,7) | 4 (4) | 1 |
+| uzun cümle | 22 | 11 (%50) | 6 (5) | 0 |
+| yazım hatalı | 17 | 7 (%41,2) | 5 (5) | 0 |
+| argo / kısaltma | 16 | 10 (%62,5) | 2 (2) | 1 |
+
+**Kaçanlar, İngilizce kör küme** (58)
+
+| İfade | Beklenen | Çıkan | Tür |
+| --- | --- | --- | --- |
+| “trimm vidoe” | Cut | Did you mean this? Cut | soruldu, doğrusu seçeneklerde |
+| “keep just the goal from the football match” | Cut | I couldn’t find that. | bulunamadı |
+| “cutt the vid in half” | Cut | I couldn’t find that. | bulunamadı |
+| “remove the dead air from my podcast” | Remove silences | Did you mean this? Remove silences / Get the sound | soruldu, doğrusu seçeneklerde |
+| “My lecture recording has loads of long pauses, can you cut them out automatically?” | Remove silences | Did you mean this? Cut / Remove silences | soruldu, doğrusu seçeneklerde |
+| “jump cut my talking head video” | Remove silences | Did you mean this? Remove silences / Cut | soruldu, doğrusu seçeneklerde |
+| “skip the bits where i forgot what to say” | Remove silences | Cut | **yanlış ama emin** |
+| “trim the silent bits out of my vlog” | Remove silences | Did you mean this? Remove silences / Cut | soruldu, doğrusu seçeneklerde |
+| “verticle video for tik tok” | Make it vertical | Did you mean this? Make it vertical | soruldu, doğrusu seçeneklerde |
+| “my video is wide and i want it to fill the whole phone screen when people watch it” | Make it vertical | I couldn’t find that. | bulunamadı |
+| “On TikTok it has big black bars at the top and bottom, I want it full screen.” | Make it vertical | Did you mean this? Make it vertical / Shrink / Cut | soruldu, doğrusu seçeneklerde |
+| “resize for snapchat” | Make it vertical | I couldn’t find that. | bulunamadı |
+| “portrate mode pls” | Make it vertical | I couldn’t find that. | bulunamadı |
+| “make it under 25mb so i can email it” | Shrink | Did you mean this? Shrink | soruldu, doğrusu seçeneklerde |
+| “compres vidio” | Shrink | Did you mean this? Shrink | soruldu, doğrusu seçeneklerde |
+| “make it less heavy so it sends faster” | Shrink | We can’t do that yet. [Speed up or slow down] | bulunamadı |
+| “this video takes up too much space on my phone” | Shrink | I couldn’t find that. | bulunamadı |
+| “squash the video so i can send it to grandma” | Shrink | Did you mean this? Shrink | soruldu, doğrusu seçeneklerde |
+| “reduse the size of my clip” | Shrink | Did you mean this? Shrink / Cut | soruldu, doğrusu seçeneklerde |
+| “My grandpa is hard of hearing so he needs the words on screen to follow along.” | Speech to text | I couldn’t find that. | bulunamadı |
+| “get the text out of my lecture video” | Speech to text | Did you mean this? Speech to text | soruldu, doğrusu seçeneklerde |
+| “i want to read what the teacher said instead of watching the whole video again” | Speech to text | I couldn’t find that. | bulunamadı |
+| “put a beat on it” | Add music | I couldn’t find that. | bulunamadı |
+| “can i add my own mp3 to the video” | Add music | Did you mean this? Get the sound / Add music | soruldu, doğrusu seçeneklerde |
+| “my birthday video is so boring without music” | Add music | Did you mean this? Add music / Remove silences / Mute | soruldu, doğrusu seçeneklerde |
+| “I want to add a song from my phone to the video I made for my mum's birthday.” | Add music | Did you mean this? Add music / Get the sound | soruldu, doğrusu seçeneklerde |
+| “swap the sound for a song” | Add music | Did you mean this? Add music / Get the sound | soruldu, doğrusu seçeneklerde |
+| “put a tune in the background” | Add music | Did you mean this? Add music (+ yapılamayan satır) | soruldu, doğrusu seçeneklerde |
+| “turn the video into music i can listen to” | Get the sound | Did you mean this? Add music / Get the sound | soruldu, doğrusu seçeneklerde |
+| “i recorded my band playing live and i want just the sound as a file” | Get the sound | I couldn’t find that. | bulunamadı |
+| “make a ringtone from this video” | Get the sound | I couldn’t find that. | bulunamadı |
+| “take all the sound out” | Mute | I couldn’t find that. | bulunamadı |
+| “mutte vidoe” | Mute | I couldn’t find that. | bulunamadı |
+| “silence my video” | Mute | Remove silences | **yanlış ama emin** |
+| “kill the audio” | Mute | Get the sound | **yanlış ama emin** |
+| “There is swearing in it so I want to remove all the audio before I show my teacher.” | Mute | Did you mean this? Get the sound / Cut | soruldu, doğrusu seçeneklerde YOK |
+| “make it work on my tv” | Make it play everywhere | Did you mean this? Make it play everywhere | soruldu, doğrusu seçeneklerde |
+| “the video only shows a black screen on android” | Make it play everywhere | I couldn’t find that. | bulunamadı |
+| “make it work on any phone” | Make it play everywhere | Did you mean this? Make it vertical | soruldu, doğrusu seçeneklerde YOK |
+| “My friend can't open the video I sent her, can you fix it so it works?” | Make it play everywhere | Did you mean this? Make it play everywhere | soruldu, doğrusu seçeneklerde |
+| “plz fix my vidio it wont opun” | Make it play everywhere | I couldn’t find that. | bulunamadı |
+| “it was filmed at night and you can barely see anything” | Enhance | I couldn’t find that. | bulunamadı |
+| “brighen my vidoe” | Enhance | Did you mean this? Enhance | soruldu, doğrusu seçeneklerde |
+| “make it look less dull and grey” | Enhance | I couldn’t find that. | bulunamadı |
+| “my videos look washed out, can you make them nicer” | Enhance | I couldn’t find that. | bulunamadı |
+| “i want to make a reaction gif of my cat” | Make a GIF | Did you mean this? Make a GIF | soruldu, doğrusu seçeneklerde |
+| “meme gif with words at the top and bottom” | Make a GIF | Did you mean this? Make a GIF / Speech to text / Cut | soruldu, doğrusu seçeneklerde |
+| “make a gif for discord” | Make a GIF | Did you mean this? Shrink / Make a GIF | soruldu, doğrusu seçeneklerde |
+| “turn this funny bit into a moving picture” | Make a GIF | Did you mean this? Make a GIF / Make it play everywhere (+ yapılamayan satır) | soruldu, doğrusu seçeneklerde |
+| “convert mp4 to gif” | Make a GIF | Did you mean this? Make a GIF / Make it play everywhere | soruldu, doğrusu seçeneklerde |
+| “giff of my dog falling off the couch” | Make a GIF | I couldn’t find that. | bulunamadı |
+| “I need a small animated image of me waving to put in my email signature.” | Make a GIF | Did you mean this? Make a GIF / Shrink (+ yapılamayan satır) | soruldu, doğrusu seçeneklerde |
+| “translate the subtitles into spanish” | “Bunu henüz yapamıyoruz.” | Did you mean this? Speech to text (+ yapılamayan satır) | soruldu (yapılabilen bir iş değildi) |
+| “clean up the background hum” | “Bunu henüz yapamıyoruz.” | I couldn’t find that. | bulunamadı |
+| “save this insta reel from a link” | “Bunu henüz yapamıyoruz.” | Make it vertical | **yanlış ama emin** |
+| “buy more storage” | kart önerilmemesi | Did you mean this? Shrink | soruldu (yapılabilen bir iş değildi) |
+| “how do i get more followers on instagram” | kart önerilmemesi | Did you mean this? Make it vertical | soruldu (yapılabilen bir iş değildi) |
+| “my phone keeps crashing” | kart önerilmemesi | Did you mean this? Make it vertical / Cut | soruldu (yapılabilen bir iş değildi) |
+
+**İngilizce ayar kümesi — ölçüm değil**
+
+
+| Ölçü | Değer | Bütçe | Durum |
+| --- | --- | --- | --- |
+| Yanlış ama emin: TEK bir iş cevap diye sunuldu ve başka iş yapıyor (bütün ifadelerde) — 106 ifadede | %0 | — | bütçesiz |
+| Tahmin etmek yerine sordu: “Bunu mu demek istedin?” (bütün ifadelerde) — 15 kez; 3 tanesinde tek seçenek; 1 tanesi yapılabilen bir iş değildi | %14,2 | — | bütçesiz |
+| Yapılabilen işlerde sorma oranı — 86 ifadede | %16,3 | — | bütçesiz |
+| Sorduğunda doğru iş seçeneklerin arasında — 14 soruda; 0 tanesinde yok | %100 | — | bütçesiz |
+| Açık yazılmış isteğe (“kolay”) doğrudan cevap yerine soru — 15 ifadede | %6,7 | — | bütçesiz |
+| Doğrudan doğru: tek cevap ve doğru iş (yapılabilen işler) | %81,4 | — | bütçesiz |
+| Doğru işe yeniden yazmadan varıldı: doğrudan ya da seçeneklerden | %97,7 | — | bütçesiz |
+| İlk satır doğru iş — cevap ya da ilk seçenek olarak (önceki raporların “ilk sonuç doğru”su) — 86 ifadede | %95,3 | — | bütçesiz |
+| İlk üç satırda var | %97,7 | — | bütçesiz |
+| Yapılabilen işe “Bunu bulamadım.” | %2,3 | — | bütçesiz |
+| Yapılabilen işe “Bunu henüz yapamıyoruz.” | %0 | — | bütçesiz |
+| “Bunu henüz yapamıyoruz.” — yakalama (recall) — 13 ifadede | %100 | — | bütçesiz |
+| “Bunu henüz yapamıyoruz.” — isabet (precision) — 16 kez söylendi | %100 | — | bütçesiz |
+| Listede hiç olmayan isteğe dürüst cevap (yapamıyoruz ya da bulamadım) — 5 ifadede; 0 tanesine tek kart cevap diye sunuldu, 1 tanesinde seçenek soruldu | %80 | — | bütçesiz |
+| Anlamsız yazı / sohbete kart önerilmedi — 2 ifadede | %100 | — | bütçesiz |
 
 Geliştirme kümesi (`DEV`, ayar yapılırken kullanılabilir; başlık sayısı değildir): 85 ifade, doğrudan doğru %86,2, yanlış ama emin %0, yapılabilen işe soru %12,3 (bütçe ≤ %15; bütçe içinde), kaçan 15 (“sessizligi sil” → Bunu mu demek istedin? Boşlukları at / Kes; “arkadaki konuşmalar duyulmasın” → Bunu henüz yapamıyoruz. [Sesteki gürültüyü temizle]; “videoyu sessize almak istiyorum çünkü arkada çok konuşan var” → Bunu mu demek istedin? Sesi kapat / Boşlukları at; “aradaki boşlukları silmek istiyorum” → Bunu mu demek istedin? Boşlukları at / Kes; “videoda çok duraksıyorum onları at” → Bunu mu demek istedin? Boşlukları at / Kes; “sonunu atmak istiyorum” → Bunu mu demek istedin? Kes; “dosyayı küçültmem lazım” → Bunu mu demek istedin? Küçült; “videoda söylediklerimin metnini istiyorum” → Bunu mu demek istedin? Yazıya dök; “gece çektiğim videoda hiçbir şey görünmüyor biraz açmak istiyorum” → Bunu mu demek istedin? Her yerde açılsın; “kesinlikle çok güzel olmuş” → Bunu mu demek istedin? İyileştir; “bugün hava çok güzel” → Bunu mu demek istedin? İyileştir; “videoyu instagramda paylaş” → Bunu mu demek istedin? Dikey yap (+ yapılamayan satır); “şarkının adını bul” → Bunu mu demek istedin? Müzik ekle / İyileştir (+ yapılamayan satır); “dvd ye yaz” → Bunu mu demek istedin? Yazıya dök; “oyun oyna” → Bunu mu demek istedin? Her yerde açılsın).
 
@@ -607,8 +816,8 @@ Her sihirbaza sekiz tür sorunlu dosya verildi; ekranda görülen metin kelimesi
 | --- | --- | --- | --- | --- | --- |
 | Video olmayan dosya (.txt) | hepsi | iyi | ““notlar.txt” açılamadı: bu dosya bir video gibi görünmüyor; bozuk ya da başka türde bir dosya olabilir. Başka bir video seç.” | ne olduğunu ve ne yapılacağını söylüyor | 0,2 sn |
 | Sıfır baytlık .mp4 | hepsi | iyi | ““bos.mp4” açılamadı: bu dosya boş; içinde hiçbir şey yok. İnerken ya da kopyalanırken bir sorun olmuş olabilir. Dosyayı yeniden indir ya da yeniden kopyala; ya da başka bir dosya seç.” | ne olduğunu ve ne yapılacağını söylüyor | 0 sn |
-| İçi rastgele bayt olan .mp4 | hepsi | iyi | ““bozuk.mp4” açılamadı: bu dosya bir video gibi görünmüyor; bozuk ya da başka türde bir dosya olabilir. Başka bir video seç.” | ne olduğunu ve ne yapılacağını söylüyor | 0,2 sn |
-| Yarıda kesilmiş MP4 (baytların %55’i) | Boşlukları at, Her yerde açılsın, Dikey yap, Kes, Küçült, Müzik ekle, Sesini al, Sesi kapat, Yazıya dök | iyi | ““yarim-inmis.mp4” açılamadı: bu video yarım kalmış görünüyor: 24,0 sn uzunluğunda olması gerekirken dosyada yalnızca ilk 12,3 sn var. İnerken ya da kopyalanırken yarıda kesilmiş olabilir. Videoyu yeniden indir ya da yeniden kopyala, sonra tekrar dene.” | ne olduğunu ve ne yapılacağını söylüyor | 0,4 sn |
+| İçi rastgele bayt olan .mp4 | hepsi | iyi | ““bozuk.mp4” açılamadı: bu dosya bir video gibi görünmüyor; bozuk ya da başka türde bir dosya olabilir. Başka bir video seç.” | ne olduğunu ve ne yapılacağını söylüyor | 0,3 sn |
+| Yarıda kesilmiş MP4 (baytların %55’i) | Boşlukları at, Her yerde açılsın, Dikey yap, Kes, Küçült, Müzik ekle, Sesini al, Sesi kapat, Yazıya dök | iyi | ““yarim-inmis.mp4” açılamadı: bu video yarım kalmış görünüyor: 24,0 sn uzunluğunda olması gerekirken dosyada yalnızca ilk 12,3 sn var. İnerken ya da kopyalanırken yarıda kesilmiş olabilir. Videoyu yeniden indir ya da yeniden kopyala, sonra tekrar dene.” | ne olduğunu ve ne yapılacağını söylüyor | 0,3 sn |
 | Yarıda kesilmiş MP4 (baytların %55’i) | İyileştir | iyi | ““yarim-inmis.mp4” açılamadı: bu video yarım kalmış görünüyor: 3,0 sn uzunluğunda olması gerekirken dosyada yalnızca ilk 1,5 sn var. İnerken ya da kopyalanırken yarıda kesilmiş olabilir. Videoyu yeniden indir ya da yeniden kopyala, sonra tekrar dene.” | ne olduğunu ve ne yapılacağını söylüyor | 0,5 sn |
 | Yalnızca ses dosyası (.m4a) | hepsi | iyi | ““tone-30s.m4a” açılamadı: bu dosyada görüntü yok, yalnızca ses var. Görüntüsü olan bir video seç.” | ne olduğunu ve ne yapılacağını söylüyor | 0,2 sn |
 | Sesi olmayan video | Her yerde açılsın, Dikey yap, İyileştir, Kes | geçerli değil | (metin yok) | bu iş videonun sesine ihtiyaç duymaz; video açıldı | 0,2 sn |
@@ -628,9 +837,9 @@ Her sihirbaza sekiz tür sorunlu dosya verildi; ekranda görülen metin kelimesi
 
 | Senaryo | Sonuç | Örnek / farklı değer | İlk → son | Geri gitti | Geçiş arasında geri gitti | %100’de bekleme | “Kaydedildi” anında dosya | Dosyasız başarı |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Dikey yap: 12 sn’lik 1920 × 1080 video yeniden işlenir | saved | 72 / 11 | %0 → %94 | 0 kez | 0 kez | 0 ms | 8.139 KB, 12,01 sn, video:h264 + audio:aac | hayır |
-| İyileştir: ışığı değişen 10 sn’lik video | saved | 191 / 25 | %0 → %100 | 0 kez | 0 kez | 40 ms | 9.439 KB, 10,01 sn, video:h264 + audio:aac | hayır |
-| Küçült → WhatsApp: yaklaşık 24 MB’lık video 16 MB’ın altına iner | saved | 124 / 19 | %0 → %99 | 0 kez | 0 kez | 0 ms | 15.480 KB, 12,01 sn, video:h264 + audio:aac | hayır |
+| Dikey yap: 12 sn’lik 1920 × 1080 video yeniden işlenir | saved | 66 / 10 | %0 → %90 | 0 kez | 0 kez | 0 ms | 8.150 KB, 12,01 sn, video:h264 + audio:aac | hayır |
+| İyileştir: ışığı değişen 10 sn’lik video | saved | 177 / 21 | %0 → %95 | 0 kez | 0 kez | 0 ms | 9.443 KB, 10,01 sn, video:h264 + audio:aac | hayır |
+| Küçült → WhatsApp: yaklaşık 24 MB’lık video 16 MB’ın altına iner | saved | 124 / 18 | %0 → %96 | 0 kez | 0 kez | 0 ms | 15.479 KB, 12,01 sn, video:h264 + audio:aac | hayır |
 
 Kaydetme penceresi olmayan yol (telefon, Firefox, Safari): “hazır” dendiğinde bağlantının arkasındaki dosya 503 KB; dosyasız başarı: hayır (bütçe içinde).
 
@@ -639,8 +848,8 @@ Kaydetme penceresi olmayan yol (telefon, Firefox, Safari): “hazır” dendiği
 
 | Yol | Durdu | Durma süresi | Ekrandaki metin | İş sürerken sayfa deposunda | İptalden 4 sn sonra kalan | Kalan bayt | İptalden sonra “kaydedildi” |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| kaydetme penceresiz (telefon, Firefox, Safari) | evet | 73 ms | “İndirme durduruldu; yarım dosya bırakılmadı.” | clip-export-exp_mvcjnd8z_2.mp4 (38.927 KB) | hiçbir şey | 0 | hayır |
-| kaydetme pencereli (Chrome / Edge) | evet | 77 ms | “İndirme durduruldu; yarım dosya bırakılmadı.” | saved-sample-24s_dikey.mp4.crswap (38.927 KB), saved-sample-24s_dikey.mp4 (0 KB) | hiçbir şey | 0 | hayır |
+| kaydetme penceresiz (telefon, Firefox, Safari) | evet | 87 ms | “İndirme durduruldu; yarım dosya bırakılmadı.” | clip-export-exp_mvdulz4b_2.mp4 (38.927 KB) | hiçbir şey | 0 | hayır |
+| kaydetme pencereli (Chrome / Edge) | evet | 73 ms | “İndirme durduruldu; yarım dosya bırakılmadı.” | saved-sample-24s_dikey.mp4.crswap (38.927 KB), saved-sample-24s_dikey.mp4 (0 KB) | hiçbir şey | 0 | hayır |
 
 Not: kaydetme pencereli yolda testin “kaydetme penceresi” kullanıcının seçtiği dosya yerine sayfa deposunda bir dosya verir. İptalden sonra o dosyanın 0 bayt olarak kalması, gerçek pencerede kullanıcının seçtiği adda boş bir dosya kalması demektir; bayt kalması yarım dosya demektir.
 
@@ -693,10 +902,10 @@ Kaynakların kendi sapması: H.264 MP4 0,08 ms (37 olay), VP9 WebM 0,1 ms (37 ol
 
 | Durum | Yol | Çıktı | Karşılaştırma boyutu | SSIM | PSNR | VMAF | Süre hatası | Hedef boyut | Her yerde açılır (dizin yeri hariç) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Her yerde açılsın, kamera benzeri 720p VP9 WebM | yeniden işlendi | 1280 × 720, 5,7 MB | 1280 × 720 | 0,9766 | 42,6 dB | 84,7 | 8 ms | — | 10 denetimin hepsi tuttu |
+| Her yerde açılsın, kamera benzeri 720p VP9 WebM | yeniden işlendi | 1280 × 720, 5,7 MB | 1280 × 720 | 0,9765 | 42,59 dB | 84,6 | 8 ms | — | 10 denetimin hepsi tuttu |
 | Dikey yap (Doldur), kamera benzeri 1080p | yeniden işlendi | 608 × 1080, 8,1 MB | 608 × 1080 | 0,9713 | 43,83 dB | 89,8 | 11 ms | — | 10 denetimin hepsi tuttu |
 | Kes 2,5–5,5 sn, kamera benzeri 1080p | karma (kesim yerleri yeniden işlendi, arası kopya) | 1920 × 1080, 6,7 MB | 1920 × 1080 | 0,9978 | 55,19 dB | 99,2 | 8 ms | — | 10 denetimin hepsi tuttu |
-| Küçült → WhatsApp (16 MB), kamera benzeri 1080p, yaklaşık 24 MB | yeniden işlendi | 1920 × 1080, 15,5 MB | 1920 × 1080 | 0,9658 | 42,84 dB | 87,3 | 11 ms | 15,5 MB / 16 MB: sığdı: evet; hedefin kullanılan payı %96,8 (kaynak 24,3 MB) | 10 denetimin hepsi tuttu |
+| Küçült → WhatsApp (16 MB), kamera benzeri 1080p, yaklaşık 24 MB | yeniden işlendi | 1920 × 1080, 15,5 MB | 1920 × 1080 | 0,9658 | 42,84 dB | 87,3 | 11 ms | 15,5 MB / 16 MB: sığdı: evet; hedefin kullanılan payı %96,7 (kaynak 24,3 MB) | 10 denetimin hepsi tuttu |
 
 **Dizin başta mı (faststart)?** Dizini dosyanın sonunda olan: 10 / 10 dosya (BÜTÇE DIŞI, bütçe ≤ 0). Dizin sondaysa dosya indirilirken ya da bir sayfaya gömülüyken tamamı gelmeden oynatılamaz; yerel oynatmayı etkilemez. Yukarıdaki “her yerde açılır” sütunu bu denetimi saymaz.
 
@@ -720,10 +929,10 @@ Kaynakların kendi sapması: H.264 MP4 0,08 ms (37 olay), VP9 WebM 0,1 ms (37 ol
 
 | Video | Uygulamanın dediği | İndirme sunuldu | Parlaklık önce → sonra | Keskinlik önce → sonra | Eklenen en büyük parlaklık sıçraması | Kare |
 | --- | --- | --- | --- | --- | --- | --- |
-| karanlık | “Yapılacaklar: video belirgin biçimde aydınlatılır, renkler toparlanır.” | evet | 69,2 → 120 (+50,8) | 50,7 → 109,2 | 0,15 | 90 / 90 |
-| bulanık | “Yapılacaklar: renkler toparlanır, kenarlar keskinleştirilir.” | evet | 140,3 → 141,6 | 24,7 → 28,3 (× 1,15) | 0,05 | 90 / 90 |
-| kumlu | “Yapılacaklar: ışık ve kontrast biraz düzeltilir, renkler toparlanır, kumlanma azaltılır.” | evet | 104,8 → 119,1 | 373,9 → 116 | 0,17 | 90 / 90 |
-| iyi (doğru pozlanmış, keskin) | “Yapılacaklar: renkler toparlanır.” | evet | 140,3 → 141,7 (1,4 kaydı) | 198 → 176,8 (× 0,89) | 0,1 | 90 / 90 |
+| karanlık | “Yapılacaklar: video belirgin biçimde aydınlatılır, renkler toparlanır.” | evet | 69,2 → 120 (+50,8) | 50,7 → 108,9 | 0,15 | 90 / 90 |
+| bulanık | “Yapılacaklar: renkler toparlanır, kenarlar keskinleştirilir.” | evet | 140,3 → 141,6 | 24,7 → 27,9 (× 1,13) | 0,05 | 90 / 90 |
+| kumlu | “Yapılacaklar: ışık ve kontrast biraz düzeltilir, renkler toparlanır, kumlanma azaltılır.” | evet | 104,8 → 119,1 | 373,9 → 117,4 | 0,17 | 90 / 90 |
+| iyi (doğru pozlanmış, keskin) | “Yapılacaklar: renkler toparlanır.” | evet | 140,3 → 141,7 (1,4 kaydı) | 198 → 176,7 (× 0,89) | 0,1 | 90 / 90 |
 
 Gerçek kayıtlardaki “zarar verme” ölçümü (ADR-037, Ölçüm 2; `web/scripts/enhance-eval/no-harm.mjs`) kurucunun kendi videolarını gerektirir; bu betik onlara dokunmaz ve o ölçümü yeniden koşmaz.
 
@@ -759,96 +968,96 @@ Statik çıktı, gzip’li yerel sunucu (GitHub Pages gibi), her ölçüm yeni t
 
 | Sayfa | Profil | Aktarılan JS | Toplam aktarılan | FCP | LCP | TBT | load | JS yığını (yükleme sonrası) | Dış istek |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Ana ekran `/` | bu makine | 188 KB (11 dosya) | 201 KB | 112 ms | 112 ms (84–136) | 0 ms | 155 ms | 2,6 MB | 0 |
-| Ana ekran `/` | mobil kısıtlama (150 ms, 1,6 Mbit/s, 4× yavaş CPU) | 188 KB (11 dosya) | 201 KB | 612 ms | 612 ms (572–628) | 161 ms (150–211) | 1.560 ms | 2,6 MB | 0 |
-| Editör `/editor/` | bu makine | 243 KB (14 dosya) | 325 KB | 108 ms | 108 ms (100–120) | 0 ms | 146 ms | 3,2 MB | 0 |
-| Editör `/editor/` | mobil kısıtlama (150 ms, 1,6 Mbit/s, 4× yavaş CPU) | 243 KB (14 dosya) | 325 KB | 836 ms | 836 ms (824–852) | 175 ms (165–179) | 1.856 ms | 3,2 MB | 0 |
-| Sihirbaz `/yap/dikey/` | bu makine | 235 KB (13 dosya) | 256 KB | 76 ms | 76 ms (60–80) | 0 ms | 120 ms | 2,9 MB | 0 |
-| Sihirbaz `/yap/dikey/` | mobil kısıtlama (150 ms, 1,6 Mbit/s, 4× yavaş CPU) | 235 KB (13 dosya) | 256 KB | 620 ms | 620 ms (620–636) | 162 ms (158–187) | 1.829 ms | 2,9 MB | 0 |
+| Ana ekran `/` | bu makine | 191 KB (10 dosya) | 205 KB | 80 ms | 80 ms (72–156) | 0 ms | 120 ms | 2,7 MB | 0 |
+| Ana ekran `/` | mobil kısıtlama (150 ms, 1,6 Mbit/s, 4× yavaş CPU) | 191 KB (10 dosya) | 205 KB | 604 ms | 604 ms (604–608) | 108 ms (102–109) | 1.552 ms | 2,7 MB | 0 |
+| Editör `/editor/` | bu makine | 246 KB (14 dosya) | 328 KB | 104 ms | 104 ms (104–108) | 0 ms | 129 ms | 3,3 MB | 0 |
+| Editör `/editor/` | mobil kısıtlama (150 ms, 1,6 Mbit/s, 4× yavaş CPU) | 246 KB (14 dosya) | 328 KB | 824 ms | 824 ms (808–836) | 118 ms (113–121) | 1.849 ms | 3,3 MB | 0 |
+| Sihirbaz `/yap/dikey/` | bu makine | 238 KB (13 dosya) | 260 KB | 60 ms | 60 ms (52–64) | 0 ms | 102 ms | 3 MB | 0 |
+| Sihirbaz `/yap/dikey/` | mobil kısıtlama (150 ms, 1,6 Mbit/s, 4× yavaş CPU) | 238 KB (13 dosya) | 260 KB | 660 ms | 660 ms (644–664) | 114 ms (110–115) | 1.832 ms | 3 MB | 0 |
 
-**Bellek:** 12 sn’lik 1920 × 1080 video dikey yapılırken ana iş parçacığının JS yığını — boşta 2,9 MB, video açıkken 5,5 MB, tepe 6,7 MB (bütçe içinde, bütçe ≤ 150 MB), bittikten sonra 5,7 MB; 34 örnek. Dışa aktarmanın işçileri (worker) ve kodlayıcı bu sayının DIŞINDADIR; bütün süreç ağacının belleği `web/scripts/measure-export-memory.mjs` ile ölçülür (ADR-029), burada yeniden koşulmadı.
+**Bellek:** 12 sn’lik 1920 × 1080 video dikey yapılırken ana iş parçacığının JS yığını — boşta 2,7 MB, video açıkken 5,6 MB, tepe 6,8 MB (bütçe içinde, bütçe ≤ 150 MB), bittikten sonra 5,7 MB; 32 örnek. Dışa aktarmanın işçileri (worker) ve kodlayıcı bu sayının DIŞINDADIR; bütün süreç ağacının belleği `web/scripts/measure-export-memory.mjs` ile ölçülür (ADR-029), burada yeniden koşulmadı.
 
 **Dışa aktarma hızı** — “İndir”e basıştan dosyanın hazır olmasına; × gerçek zaman = çıktı süresi / geçen süre. Ölçüm kilidi altında, bu makinede.
 
 
 | Durum | Yol | Çıktı | Geçen süre | × gerçek zaman |
 | --- | --- | --- | --- | --- |
-| Her yerde açılsın, senkron klibi (H.264 MP4) | kopya | 12 sn, 1080 × 1920 | 0,84 sn | 14,3 × |
-| Her yerde açılsın, senkron klibi (VP9 WebM) | yeniden işlendi | 12 sn, 1080 × 1920 | 3,36 sn | 3,6 × |
-| Dikey yap, senkron klibi (zaten 9:16) | kopya | 12 sn, 1080 × 1920 | 0,82 sn | 14,6 × |
-| Kes 2–8 sn, senkron klibi (H.264 MP4) | kopya | 6 sn, 1080 × 1920 | 0,85 sn | 7,1 × |
-| Kes 2–8 sn, senkron klibi (VP9 WebM) | yeniden işlendi | 6 sn, 1080 × 1920 | 2,37 sn | 2,5 × |
-| Küçült (seçim değişmeden: WhatsApp), ağır senkron klibi (H.264, yaklaşık 33 MB) | yeniden işlendi | 12 sn, 1080 × 1920 | 4,91 sn | 2,4 × |
-| Her yerde açılsın, kamera benzeri 720p VP9 WebM | yeniden işlendi | 6 sn, 1280 × 720 | 1,85 sn | 3,3 × |
-| Dikey yap (Doldur), kamera benzeri 1080p | yeniden işlendi | 12 sn, 608 × 1080 | 3,9 sn | 3,1 × |
+| Her yerde açılsın, senkron klibi (H.264 MP4) | kopya | 12 sn, 1080 × 1920 | 0,88 sn | 13,7 × |
+| Her yerde açılsın, senkron klibi (VP9 WebM) | yeniden işlendi | 12 sn, 1080 × 1920 | 3,94 sn | 3,1 × |
+| Dikey yap, senkron klibi (zaten 9:16) | kopya | 12 sn, 1080 × 1920 | 0,87 sn | 13,8 × |
+| Kes 2–8 sn, senkron klibi (H.264 MP4) | kopya | 6 sn, 1080 × 1920 | 0,87 sn | 6,9 × |
+| Kes 2–8 sn, senkron klibi (VP9 WebM) | yeniden işlendi | 6 sn, 1080 × 1920 | 2,42 sn | 2,5 × |
+| Küçült (seçim değişmeden: WhatsApp), ağır senkron klibi (H.264, yaklaşık 33 MB) | yeniden işlendi | 12 sn, 1080 × 1920 | 5 sn | 2,4 × |
+| Her yerde açılsın, kamera benzeri 720p VP9 WebM | yeniden işlendi | 6 sn, 1280 × 720 | 1,89 sn | 3,2 × |
+| Dikey yap (Doldur), kamera benzeri 1080p | yeniden işlendi | 12 sn, 608 × 1080 | 3,46 sn | 3,5 × |
 | Kes 2,5–5,5 sn, kamera benzeri 1080p | karma | 3 sn, 1920 × 1080 | 1,35 sn | 2,2 × |
-| Küçült → WhatsApp (16 MB), kamera benzeri 1080p, yaklaşık 24 MB | yeniden işlendi | 12 sn, 1920 × 1080 | 6,39 sn | 1,9 × |
-| İyileştir, karanlık video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 2,86 sn | 1,1 × |
-| İyileştir, bulanık video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 4,9 sn | 0,6 × |
-| İyileştir, kumlu video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 10,46 sn | 0,3 × |
-| İyileştir, iyi video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 2,84 sn | 1,1 × |
+| Küçült → WhatsApp (16 MB), kamera benzeri 1080p, yaklaşık 24 MB | yeniden işlendi | 12 sn, 1920 × 1080 | 5,52 sn | 2,2 × |
+| İyileştir, karanlık video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 2,91 sn | 1 × |
+| İyileştir, bulanık video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 4,46 sn | 0,7 × |
+| İyileştir, kumlu video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 9,21 sn | 0,3 × |
+| İyileştir, iyi video | yeniden işlendi + görüntü işleme (grafik hızlandırma YOK) | 3 sn, 1280 × 720 | 2,92 sn | 1 × |
 
 İyileştir satırları grafik hızlandırma olmadan alındı: Playwright’ın Chromium’u bu makinede WebGL’i yazılımla çiziyor (uygulama da bunu söylüyor). Grafik kartı kullanan gerçek bir tarayıcıdaki hız BURADA ÖLÇÜLMEDİ; bu sayı en kötü durumdur.
 
 ## 8. Görsel regresyon
 
-Taban resimler: `web/tests/quality/baselines/` (84 PNG; Windows’ta Chromium’un sistem yazı tipleriyle çizdiği hâl). Karşılaştırma toleranslıdır: bir pikselin bir renk kanalı 40 / 255’ten fazla ayrışırsa “farklı” sayılır; piksellerin %1’inden fazlası farklıysa ekran “farklı” sayılır. Video, canvas ve saate ya da kodlayıcıya bağlı metinler maskelenir. **CI’da koşulmaz** (aşağıda neden).
+Taban resimler: `web/tests/quality/baselines/` (154 PNG; Windows’ta Chromium’un sistem yazı tipleriyle çizdiği hâl). Karşılaştırma toleranslıdır: bir pikselin bir renk kanalı 40 / 255’ten fazla ayrışırsa “farklı” sayılır; piksellerin %1’inden fazlası farklıysa ekran “farklı” sayılır. Video, canvas ve saate ya da kodlayıcıya bağlı metinler maskelenir. **CI’da koşulmaz** (aşağıda neden).
 
 
 |  | Ekran | Bütçe | Durum |
 | --- | --- | --- | --- |
-| Karşılaştırılan ekran | 84 | — | bütçesiz |
+| Karşılaştırılan ekran | 126 | — | bütçesiz |
 | Farklı | 0 | ≤ 0 | bütçe içinde |
 | Karşılaştırılamadı | 0 | ≤ 0 | bütçe içinde |
-| Bu koşuda taban yazıldı / yenilendi (karşılaştırma değil) | 0 | — | bütçesiz |
+| Bu koşuda taban yazıldı / yenilendi (karşılaştırma değil) | 28 | — | bütçesiz |
 
 **Ekranlar**
 
 
-| Ekran | Masaüstü | Telefon |
-| --- | --- | --- |
-| `ana-ekran` | aynı | aynı |
-| `ana-ekran-arama` | aynı | aynı |
-| `ana-ekran-bulunamadi` | aynı | aynı |
-| `ana-ekran-soru` | aynı | aynı |
-| `ana-ekran-yapamiyoruz` | aynı (%0,1) | aynı (%0,4) |
-| `editor-bos` | aynı | aynı |
-| `sihirbaz-bosluk-secim` | aynı | aynı |
-| `sihirbaz-dikey-secim` | aynı | aynı |
-| `sihirbaz-gif-secim` | aynı | aynı |
-| `sihirbaz-iyilestir-secim` | aynı | aynı |
-| `sihirbaz-kucult-secim` | aynı | aynı |
-| `sihirbaz-muzik-secim` | aynı | aynı |
-| `sihirbaz-sonuc` | aynı | aynı |
-| `sihirbaz-yazi-model` | aynı | aynı (%0,18) |
-| `yol-bosluk-ilk` | aynı | aynı |
-| `yol-bosluk-sonuc` | aynı | aynı |
-| `yol-cevir-ilk` | aynı | aynı |
-| `yol-cevir-sonuc` | aynı | aynı |
-| `yol-dikey-ilk` | aynı | aynı |
-| `yol-dikey-sonuc` | aynı | aynı |
-| `yol-gif-ilk` | aynı | aynı |
-| `yol-gif-sonuc` | aynı | aynı |
-| `yol-iyilestir-ilk` | aynı | aynı |
-| `yol-iyilestir-sonuc` | aynı | aynı |
-| `yol-kes-ilk` | aynı | aynı |
-| `yol-kes-sonuc` | aynı | aynı |
-| `yol-kucult-ilk` | aynı | aynı |
-| `yol-kucult-sonuc` | aynı | aynı |
-| `yol-muzik-ilk` | aynı | aynı |
-| `yol-muzik-sonuc` | aynı | aynı |
-| `yol-ses-ilk` | aynı | aynı |
-| `yol-ses-sonuc` | aynı | aynı |
-| `yol-sustur-ilk` | aynı | aynı |
-| `yol-sustur-sonuc` | aynı | aynı |
-| `yol-yazi-bulut-ilk` | aynı | aynı |
-| `yol-yazi-bulut-secim` | aynı (%0,19) | aynı (%0,5) |
-| `yol-yazi-bulut-secim-kodsuz` | aynı (%0,18) | aynı (%0,45) |
-| `yol-yazi-bulut-sonuc` | aynı | aynı |
-| `yol-yazi-bulut-yazi` | aynı | aynı |
-| `yol-yazi-ilk` | aynı | aynı |
-| `yol-yazi-kancali-ilk` | aynı | aynı |
-| `yol-yazi-kancali-sonuc` | aynı | aynı |
+| Ekran | Masaüstü | Telefon | Masaüstü EN | Telefon EN |
+| --- | --- | --- | --- | --- |
+| `ana-ekran` | aynı (%0,03) | aynı (%0,08) | taban yazıldı | taban yazıldı |
+| `ana-ekran-arama` | aynı (%0,04) | aynı (%0,14) | taban yazıldı | taban yazıldı |
+| `ana-ekran-bulunamadi` | aynı (%0,04) | aynı (%0,14) | taban yazıldı | taban yazıldı |
+| `ana-ekran-soru` | aynı (%0,04) | aynı (%0,14) | taban yazıldı | taban yazıldı |
+| `ana-ekran-yapamiyoruz` | aynı (%0,14) | aynı (%0,53) | taban yazıldı | taban yazıldı |
+| `editor-bos` | aynı | aynı | taban yazıldı | taban yazıldı |
+| `sihirbaz-bosluk-secim` | aynı | aynı | taban yazıldı | taban yazıldı |
+| `sihirbaz-dikey-secim` | aynı | aynı | taban yazıldı | taban yazıldı |
+| `sihirbaz-gif-secim` | aynı | aynı | taban yazıldı | taban yazıldı |
+| `sihirbaz-iyilestir-secim` | aynı | aynı | taban yazıldı | taban yazıldı |
+| `sihirbaz-kucult-secim` | aynı | aynı | taban yazıldı | taban yazıldı |
+| `sihirbaz-muzik-secim` | aynı | aynı | taban yazıldı | taban yazıldı |
+| `sihirbaz-sonuc` | aynı | aynı | taban yazıldı | taban yazıldı |
+| `sihirbaz-yazi-model` | aynı | aynı (%0,18) | taban yazıldı | taban yazıldı |
+| `yol-bosluk-ilk` | aynı | aynı | aynı | aynı |
+| `yol-bosluk-sonuc` | aynı | aynı | aynı | aynı |
+| `yol-cevir-ilk` | aynı | aynı | aynı | aynı |
+| `yol-cevir-sonuc` | aynı | aynı | aynı | aynı |
+| `yol-dikey-ilk` | aynı | aynı | aynı | aynı |
+| `yol-dikey-sonuc` | aynı | aynı | aynı | aynı |
+| `yol-gif-ilk` | aynı | aynı | aynı | aynı |
+| `yol-gif-sonuc` | aynı | aynı | aynı | aynı |
+| `yol-iyilestir-ilk` | aynı | aynı | aynı | aynı |
+| `yol-iyilestir-sonuc` | aynı | aynı | aynı | aynı |
+| `yol-kes-ilk` | aynı | aynı | aynı | aynı |
+| `yol-kes-sonuc` | aynı | aynı | aynı | aynı |
+| `yol-kucult-ilk` | aynı | aynı | aynı | aynı |
+| `yol-kucult-sonuc` | aynı | aynı | aynı | aynı |
+| `yol-muzik-ilk` | aynı | aynı | aynı | aynı |
+| `yol-muzik-sonuc` | aynı | aynı | aynı | aynı |
+| `yol-ses-ilk` | aynı | aynı | aynı | aynı |
+| `yol-ses-sonuc` | aynı | aynı | aynı | aynı |
+| `yol-sustur-ilk` | aynı | aynı | aynı | aynı |
+| `yol-sustur-sonuc` | aynı | aynı | aynı | aynı |
+| `yol-yazi-bulut-ilk` | aynı | aynı | — | — |
+| `yol-yazi-bulut-secim` | aynı (%0,19) | aynı (%0,5) | — | — |
+| `yol-yazi-bulut-secim-kodsuz` | aynı (%0,18) | aynı (%0,45) | — | — |
+| `yol-yazi-bulut-sonuc` | aynı | aynı | — | — |
+| `yol-yazi-bulut-yazi` | aynı | aynı | — | — |
+| `yol-yazi-ilk` | aynı | aynı | aynı | aynı |
+| `yol-yazi-kancali-ilk` | aynı | aynı | — | — |
+| `yol-yazi-kancali-sonuc` | aynı | aynı | — | — |
 
 **CI kararı:** bu karşılaştırma CI’da kapı değildir ve `.github/workflows/ci.yml` dosyasına eklenmedi. CI da Windows’ta koşar, ama GitHub’ın Windows Server görüntüsündeki yazı tipi çizimi bu makinedekiyle (Windows 11) aynı tabanları verecek mi, ölçülmedi; tabanlar bu makinede üretildi. Kararlı olduğu CI’da gösterilmeden kapı yapılmamalı.
 
@@ -861,11 +1070,11 @@ Kontrast, rol ve ad kuralları axe ile zaten denetleniyor (`web/tests/e2e/a11y.s
 
 | Ekran | Kontrol | 44 px’ten küçük hedef | 24 px’ten küçük | Adsız kontrol | En küçük yazı; 14 px altı kelime | 12 px altı kelime | Klavye (Tab) sırası | Odak halkası görünmeyen |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Ana ekran, arama sonucu (“sessiz yerleri sil”) | 6 | 0 | 0 | 0 | 14 px; %0 | 0 | 5 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
-| Ana ekran, “Bunu bulamadım.” | 5 | 0 | 0 | 0 | 14 px; %0 | 0 | 5 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
-| Ana ekran, emin değilken seçenekler (“tiktok için kes”) | 7 | 0 | 0 | 0 | 14 px; %0 | 0 | 5 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
-| Ana ekran, “Bunu henüz yapamıyoruz.” (“videoyu döndür”) | 6 | 0 | 0 | 0 | 14 px; %0 | 0 | 5 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
-| Ana ekran | 18 | 0 | 0 | 0 | 14 px; %0 | 0 | 18 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
+| Ana ekran, arama sonucu (“sessiz yerleri sil”) | 7 | 0 | 0 | 0 | 14 px; %0 | 0 | 6 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
+| Ana ekran, “Bunu bulamadım.” | 6 | 0 | 0 | 0 | 14 px; %0 | 0 | 6 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
+| Ana ekran, emin değilken seçenekler (“tiktok için kes”) | 8 | 0 | 0 | 0 | 14 px; %0 | 0 | 6 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
+| Ana ekran, “Bunu henüz yapamıyoruz.” (“videoyu döndür”) | 7 | 0 | 0 | 0 | 14 px; %0 | 0 | 6 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
+| Ana ekran | 19 | 0 | 0 | 0 | 14 px; %0 | 0 | 19 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
 | Editör, video yok | 7 | 0 | 0 | 0 | 14 px; %0 | 0 | 6 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
 | Editör, video ve bir kesit | 19 | 0 | 0 | 0 | 12 px; %17 | 0 | 19 durak; ulaşılamayan 0; geri sıçrama 1 (çok sütunlu; yargılanmaz) | 0 |
 | Boşlukları at, seçim | 8 | 0 | 0 | 0 | 14 px; %0 | 0 | 7 durak; ulaşılamayan 0; geri sıçrama 0 | 0 |
@@ -886,11 +1095,11 @@ Kontrast, rol ve ad kuralları axe ile zaten denetleniyor (`web/tests/e2e/a11y.s
 
 | Ekran | Kontrol | 44 px’ten küçük hedef | 24 px’ten küçük | Adsız kontrol | En küçük yazı; 14 px altı kelime | 12 px altı kelime | Klavye (Tab) sırası | Odak halkası görünmeyen |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Ana ekran, arama sonucu (“sessiz yerleri sil”) | 6 | 1 (fareyle; yargılanmaz) | 0 | 0 | 12 px; %65 | 0 | 5 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
-| Ana ekran, “Bunu bulamadım.” | 5 | 1 (fareyle; yargılanmaz) | 0 | 0 | 12 px; %53 | 0 | 5 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
-| Ana ekran, emin değilken seçenekler (“tiktok için kes”) | 7 | 1 (fareyle; yargılanmaz) | 0 | 0 | 12 px; %49 | 0 | 5 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
-| Ana ekran, “Bunu henüz yapamıyoruz.” (“videoyu döndür”) | 6 | 1 (fareyle; yargılanmaz) | 0 | 0 | 12 px; %68 | 0 | 5 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
-| Ana ekran | 18 | 1 (fareyle; yargılanmaz) | 0 | 0 | 12 px; %29 | 0 | 18 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
+| Ana ekran, arama sonucu (“sessiz yerleri sil”) | 7 | 1 (fareyle; yargılanmaz) | 0 | 0 | 12 px; %64 | 0 | 6 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
+| Ana ekran, “Bunu bulamadım.” | 6 | 1 (fareyle; yargılanmaz) | 0 | 0 | 12 px; %52 | 0 | 6 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
+| Ana ekran, emin değilken seçenekler (“tiktok için kes”) | 8 | 1 (fareyle; yargılanmaz) | 0 | 0 | 12 px; %49 | 0 | 6 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
+| Ana ekran, “Bunu henüz yapamıyoruz.” (“videoyu döndür”) | 7 | 1 (fareyle; yargılanmaz) | 0 | 0 | 12 px; %67 | 0 | 6 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
+| Ana ekran | 19 | 1 (fareyle; yargılanmaz) | 0 | 0 | 12 px; %29 | 0 | 19 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
 | Editör, video yok | 8 | 3 (fareyle; yargılanmaz) | 0 | 0 | 12 px; %47 | 0 | 7 durak; ulaşılamayan 0; geri sıçrama 0 (çok sütunlu; yargılanmaz) | 0 |
 | Editör, video ve bir kesit | 20 | 4 (fareyle; yargılanmaz) | 0 | 0 | 12 px; %84 | 0 | 20 durak; ulaşılamayan 0; geri sıçrama 1 (çok sütunlu; yargılanmaz) | 0 |
 | Boşlukları at, seçim | 8 | 0 (fareyle; yargılanmaz) | 0 | 0 | 13 px; %45 | 0 | 7 durak; ulaşılamayan 0; geri sıçrama 0 | 0 |
@@ -909,7 +1118,7 @@ Kontrast, rol ve ad kuralları axe ile zaten denetleniyor (`web/tests/e2e/a11y.s
 | Metinler | Metin | Puanlanan (5+ kelime) | Ortanca puan | Zor + çok zor | Çok zor | 20 kelimeden uzun cümle | En uzun cümle | En uzun kelime |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Varsayılan yol (ana ekran, kartlar, sihirbazlar, yazıya dökme, indirme, hata) | 575 | 298 | 83,9 | %1,7 | 0 | 1 | 22 kelime | birleştirilebiliyor |
-| Bütün metinler (editör dahil) | 1.270 | 621 | 79,8 | %3,9 | 2 | 7 | 25 kelime | transcriptLargeFailed |
+| Bütün metinler (editör dahil) | 1.305 | 629 | 79,8 | %3,8 | 2 | 8 | 28 kelime | transcriptLargeFailed |
 
 Varsayılan yolun metinlerinden teknik terim içeren: 11 (bütçesiz). Bu, metin tablosunun taramasıdır: bir metnin ekrana hangi koşulda geldiğini bilmez (bir kısmı yalnızca hata olduğunda ya da “Ayrıntılar” açıldığında görünür). Gerçekten görülenler bölüm 1’dedir.
 
@@ -938,6 +1147,42 @@ Varsayılan yolun metinlerinden teknik terim içeren: 11 (bütçesiz). Bu, metin
 | 55,9 (orta) | `cloud.done.skipped` | 6 | 3,17 | “{n} satır altyazı kurallarına uymadığı için atlandı.” |
 | 56,7 (orta) | `wizard.yazi.editorHint` | 13 | 2,69 | “Satırları seçip onlardan kesit yapmak ya da altyazının görünüşünü değiştirmek için editörde aç.” |
 | 57,1 (orta) | `cloud.online.off` | 3 | 3,33 | “Şu an internette yazamıyoruz. Cihazında yazabiliriz.” |
+
+**Okunabilirlik, İngilizce** — `web/src/i18n/messages.en.ts` ve `cloudMessages.en.ts`; Flesch okuma kolaylığı (90–100 çok kolay · 80–89 kolay · 70–79 oldukça kolay · 60–69 sade · 50–59 oldukça zor · 30–49 zor · 30 altı çok zor). Aynı anahtarlar, aynı “varsayılan yol”, İngilizce teknik terim listesi (`STRONG_EN`). Heceler İngilizce yazımdan kural ile sayılır (ünlü öbekleri, sondaki sessiz “e”): çoğu kelimede doğru, bazılarında bir eksik ya da fazla.
+
+
+| Metinler (İngilizce) | Metin | Puanlanan (5+ kelime) | Ortanca puan | Zor + çok zor | Çok zor | 20 kelimeden uzun cümle | En uzun cümle | En uzun kelime |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Varsayılan yol (İngilizce) | 575 | 364 | 87,9 | %1,9 | 0 | 3 | 26 kelime | automatically |
+| Bütün metinler (İngilizce, editör dahil) | 1.305 | 773 | 86,8 | %3,2 | 5 | 27 | 39 kelime | transcriptLargeFailed |
+
+Varsayılan yolun İngilizce metinlerinden teknik terim içeren: 11 (bütçesiz).
+
+**En zor 20 İngilizce metin (varsayılan yol)**
+
+
+| Puan | Anahtar | Cümle başına kelime | Kelime başına hece | Metin |
+| --- | --- | --- | --- | --- |
+| 34,2 (difficult) | `cloud.file.header` | 11 | 1,91 | “Written automatically on the internet with LiloCut — it may be wrong.” |
+| 41,9 (difficult) | `transcript.file.header` | 11 | 1,82 | “Written automatically on this device with LiloCut — it may be wrong.” |
+| 45,6 (difficult) | `task.tercume.sub` | 6 | 1,83 | “Subtitles or speech in another language” |
+| 49,5 (difficult) | `task.filigran.label` | 5 | 1,8 | “Remove a watermark or logo” |
+| 49,5 (difficult) | `wizard.dikey.preview` | 5 | 1,8 | “Preview of the vertical video” |
+| 49,5 (difficult) | `wizard.yazi.downloadVideo` | 5 | 1,8 | “Download the video with subtitles” |
+| 49,5 (difficult) | `cloud.done.speakers` | 5 | 1,8 | “{n} different people were told apart.” |
+| 50,7 (fairly difficult) | `export.fail.audio_undecodable` | 8 | 1,75 | “This browser cannot decode the selected audio file.” |
+| 51,9 (fairly difficult) | `silence.failed.internal_error` | 4,5 | 1,78 | “The analysis stopped with an unexpected error. Try again.” |
+| 52 (fairly difficult) | `transcript.model.turbo` | 2,5 | 1,8 | “Recommended: large model (≈{size}, downloaded once)” |
+| 52 (fairly difficult) | `transcript.model.baseRecommended` | 2,5 | 1,8 | “Recommended: small model (≈{size}, downloaded once)” |
+| 54,7 (fairly difficult) | `cloud.online.body` | 4 | 1,75 | “More accurate, much faster. Also tells speakers apart.” |
+| 57,2 (fairly difficult) | `transcript.machine` | 11 | 1,64 | “Written automatically — it may be wrong, and you can correct it.” |
+| 59,7 (fairly difficult) | `task.gif.sub` | 6 | 1,67 | “An animated picture from the video” |
+| 59,7 (fairly difficult) | `task.indir.label` | 6 | 1,67 | “Download a video from the internet” |
+| 59,7 (fairly difficult) | `wizard.moreSettings` | 6 | 1,67 | “More settings → open in the editor” |
+| 59,7 (fairly difficult) | `wizard.muzik.keepHint` | 6 | 1,67 | “The music plays quietly behind it.” |
+| 59,7 (fairly difficult) | `cloud.online.fact.who` | 6 | 1,67 | “It goes to a company called **AssemblyAI**. Its computers are in Europe.” |
+| 60,6 (plain) | `wizard.cevir.body` | 21 | 1,48 | “Videos shot on an iPhone, or that will not open on other devices, become an MP4 that opens on every device.” |
+| 62,2 (plain) | `export.fail.source_reorder_unfixable` | 12,5 | 1,56 | “This video understates its frame reordering, so this browser’s decoder skips frames. It stopped instead of producing a file whose picture lags behind its sound.” |
 
 ## Bu rapor neyi söylemez
 
