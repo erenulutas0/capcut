@@ -1,6 +1,6 @@
 /**
  * Local web limits. The single source of truth is
- * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-10-17.v11)
+ * `video-editor-blueprint/docs/15_PRICING_FREE_PRO.md` (policy id 2026-10-18.v12)
  * plus the web guard rails in doc 11. Plan names are deliberately NOT hardcoded
  * into the domain: this is one policy object the app passes in.
  *
@@ -48,7 +48,9 @@ export const WEB_LOCAL_POLICY: ExportPolicy = {
   // not in this object; the on-device route and every limit below are unchanged.
   // v11 (2026-10-17): "GIF yap" (ADR-046) is a free basic feature, made on this device, at most
   // 10 seconds of the video per GIF (`maxGifDurationUs`); no other limit changed.
-  policyId: '2026-10-17.v11/web-local',
+  // v12 (2026-10-18): "Sesi düzelt" (ADR-049) is a free basic feature, made on this device (the
+  // loudness chain, `domain/soundFix.ts`); no limit here changes.
+  policyId: '2026-10-18.v12/web-local',
   // Raised from 5 min by founder decision (doc 15 v3): on the disk (OPFS)
   // route export memory stays flat with output length (ADR-013, ADR-020).
   maxOutputDurationUs: 60 * 60 * US_PER_SECOND,
