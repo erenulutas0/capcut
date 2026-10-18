@@ -88,7 +88,7 @@ export async function walkCard(page: Page, testInfo: TestInfo, flow: Flow): Prom
       // A file refused in words (it cannot be opened here) ends the wait: no two minutes for a preview that will not come.
       const refused = page.getByTestId('media-error');
       await Promise.race([
-        flow.middle(novice, page),
+        flow.middle(novice, page, t),
         refused.waitFor({ state: 'visible', timeout: 200_000 }).then(
           () => Promise.reject(new Error('the picked file was refused (media-error)')),
           () => new Promise<never>(() => undefined),
@@ -129,7 +129,7 @@ export async function walkCard(page: Page, testInfo: TestInfo, flow: Flow): Prom
       return cell;
     }
 
-    await novice.press('button', flow.download.name, flow.download.testId);
+    await novice.press('button', t(flow.download.key), flow.download.testId);
     reached.push('indir’e basıldı');
     const phase = await waitForResult(page, RESULT_WAIT_MS);
     cell.seconds = round((Date.now() - started) / 1000, 1);

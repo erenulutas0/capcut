@@ -47,5 +47,19 @@ export default defineConfig({
         hasTouch: true,
       },
     },
+    // ADR-048: the same two views for a browser whose language is English (the pages follow it). The
+    // name's "-en" is what the measurements read (tests/quality/lib/app.ts `langOf`).
+    { name: 'desktop-en', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, locale: 'en-US' } },
+    {
+      name: 'phone-en',
+      use: {
+        ...devices['Pixel 7'],
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 2,
+        isMobile: true,
+        hasTouch: true,
+        locale: 'en-US',
+      },
+    },
   ],
 });

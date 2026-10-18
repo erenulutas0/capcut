@@ -16,7 +16,8 @@ import { enhanceFixture, frameRgb, rgbMeans } from '../../e2e/enhance-media';
 import { silenceFixture } from '../../e2e/silence-media';
 import { noisyLongFixture } from '../../e2e/targetsize-media';
 import { wizardFixture } from '../../e2e/wizard-media';
-import { MUSIC, OTHER, SAMPLE, isPhone, setupSaving, startsWith, t, takeDownloadedFile, takeSavedFile, waitForResult } from './app';
+import type { MessageKey } from '../../../src/i18n/messages';
+import { MUSIC, OTHER, SAMPLE, isPhone, langOf, pathFor, setupSaving, startsWith, takeDownloadedFile, takeSavedFile, waitForResult, wordsFor } from './app';
 import { probeFile, type FileInfo } from './media';
 import { Novice, VIDEO } from './novice';
 import { round, tr } from './record';
@@ -35,9 +36,9 @@ export interface Flow {
   sourceNote: string;
   source: () => string;
   /** From "the video is picked" to "the download button can be pressed". */
-  middle: (novice: Novice, page: Page) => Promise<void>;
+  middle: (novice: Novice, page: Page, t: (key: MessageKey) => string) => Promise<void>;
   /** The download button: its name and, for a step that cannot be reached by name, its test id. */
-  download: { name: string; testId: string };
+  download: { key: MessageKey; testId: string };
   verify: (out: FileInfo, source: FileInfo, files: { out: string; source: string }) => Check[];
   /** Name of this flow's screenshots when it is not the task id (the stand-in build's screens). */
   shotId?: string;
@@ -97,7 +98,7 @@ export const FLOWS: Flow[] = [
     id: 'kes',
     sourceNote: 'sample-24s.mp4 (1280 × 720, 24 sn); 2–5. saniyeler istenir',
     source: () => SAMPLE,
-    middle: async (novice, page) => {
+    middle: async (novice, page, t) => {
       await wait(page, 'preview-video');
       await novice.look('editör', ['başlangıç ve bitiş zamanı']);
       await novice.type(t('range.start'), '2', 'range-start');
@@ -105,7 +106,7 @@ export const FLOWS: Flow[] = [
       await novice.press('button', startsWith(t('mark.add')), 'add-moment');
       await expect(page.getByTestId('kesit-card')).toHaveCount(1);
     },
-    download: { name: t('download.one'), testId: 'download-all' },
+    download: { key: 'download.one', testId: 'download-all' },
     verify: (out, source) => [
       lengthCheck(out, 3),
       codecCheck(out, ['video:h264', 'audio:aac']),
@@ -131,7 +132,7 @@ export const FLOWS: Flow[] = [
       await wait(page, 'bosluk-summary');
       await novice.look('seçim');
     },
-    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    download: { key: 'wizard.download', testId: 'wizard-download' },
     verify: (out, source) => [
       lengthCheck(out, 3.6),
       { name: 'kaynaktan kısa', ok: out.durationS < source.durationS - 0.5, value: `${tr(source.durationS)} → ${tr(out.durationS)} sn` },
@@ -146,7 +147,7 @@ export const FLOWS: Flow[] = [
       await wait(page, 'dikey-choice');
       await novice.look('seçim');
     },
-    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    download: { key: 'wizard.download', testId: 'wizard-download' },
     verify: (out, source) => [
       // ADR-041: the 9:16 slice at its own pixels — vertical, and no larger than the 640 × 360 it was cut from.
       {
@@ -172,7 +173,7 @@ export const FLOWS: Flow[] = [
       }
       await novice.look('seçim');
     },
-    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    download: { key: 'wizard.download', testId: 'wizard-download' },
     verify: (out, source) => [
       lengthCheck(out, 14),
       codecCheck(out, ['video:h264', 'audio:aac']),
@@ -189,13 +190,13 @@ export const FLOWS: Flow[] = [
     id: 'muzik',
     sourceNote: 'other-8s.mp4 + tone-30s.m4a',
     source: () => OTHER,
-    middle: async (novice, page) => {
+    middle: async (novice, page, t) => {
       await wait(page, 'muzik-pick');
       await novice.look('seçim', ['müzik dosyası']);
       await novice.pickFile(startsWith(t('wizard.muzik.pick')), MUSIC, 'muzik-pick');
       await wait(page, 'muzik-picked');
     },
-    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    download: { key: 'wizard.download', testId: 'wizard-download' },
     verify: (out) => [lengthCheck(out, 8), codecCheck(out, ['video:h264', 'audio:aac'])],
   },
   {
@@ -206,7 +207,7 @@ export const FLOWS: Flow[] = [
       await wait(page, 'ses-info');
       await novice.look('seçim');
     },
-    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    download: { key: 'wizard.download', testId: 'wizard-download' },
     verify: (out) => [lengthCheck(out, 24, 0.05), codecCheck(out, ['audio:aac'])],
   },
   {
@@ -217,7 +218,7 @@ export const FLOWS: Flow[] = [
       await wait(page, 'sustur-info');
       await novice.look('seçim');
     },
-    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    download: { key: 'wizard.download', testId: 'wizard-download' },
     verify: (out) => [lengthCheck(out, 24), codecCheck(out, ['video:h264'])],
   },
   {
@@ -228,7 +229,7 @@ export const FLOWS: Flow[] = [
       await wait(page, 'cevir-info');
       await novice.look('seçim');
     },
-    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    download: { key: 'wizard.download', testId: 'wizard-download' },
     verify: (out) => [lengthCheck(out, 2), codecCheck(out, ['video:h264', 'audio:aac']), { name: 'MP4', ok: /mp4/.test(out.format), value: out.format }],
   },
   {
@@ -240,7 +241,7 @@ export const FLOWS: Flow[] = [
       await wait(page, 'iyilestir-summary');
       await novice.look('seçim');
     },
-    download: { name: t('wizard.download'), testId: 'wizard-download' },
+    download: { key: 'wizard.download', testId: 'wizard-download' },
     verify: (out, source, files) => {
       const before = rgbMeans(frameRgb(files.source, 1.5, 320, 180)).luma;
       const after = rgbMeans(frameRgb(files.out, 1.5, 320, 180)).luma;
@@ -257,14 +258,14 @@ export const FLOWS: Flow[] = [
     id: 'gif',
     sourceNote: 'sample-24s.mp4 (1280 × 720, 24 sn); üste yazı yazılır, kısım ve boyut değiştirilmeden',
     source: () => SAMPLE,
-    middle: async (novice, page) => {
+    middle: async (novice, page, t) => {
       const estimate = page.getByTestId('gif-estimate');
       await expect(estimate).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
       await novice.look('seçim', ['üst ya da alt yazı (isteğe bağlı)']);
       await novice.type(t('wizard.gif.topLabel'), 'PAZARTESİ SABAHI', 'gif-text-top');
       await expect(estimate).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
     },
-    download: { name: t('wizard.gif.download'), testId: 'wizard-download' },
+    download: { key: 'wizard.gif.download', testId: 'wizard-download' },
     verify: (out, _source, files) => {
       const gif = inspectGif(new Uint8Array(readFileSync(files.out)));
       return [
@@ -290,7 +291,7 @@ export const YAZI_PUBLISHED: Flow = {
     await page.waitForSelector('[data-testid="model-download"], [data-testid="transcribe-start"]', { timeout: 60_000 });
     await novice.look('model', ['model indirme (bir kez)']);
   },
-  download: { name: t('wizard.yazi.downloadVideo'), testId: 'wizard-download' },
+  download: { key: 'wizard.yazi.downloadVideo', testId: 'wizard-download' },
   stopBeforeDownload: async (page) => {
     const button = page.getByTestId('model-download');
     const text = (await button.count()) > 0 ? ((await button.textContent()) ?? '').trim() : '';
@@ -301,9 +302,10 @@ export const YAZI_PUBLISHED: Flow = {
 
 /** A task that has not been walked yet: what stays in the results when the script itself is cut short. */
 export function blankResult(testInfo: TestInfo, flow: Flow, stopped: string | null): WalkResult {
+  const t = wordsFor(testInfo);
   return {
     id: flow.id,
-    label: t(`task.${flow.id}.label` as Parameters<typeof t>[0]),
+    label: t(`task.${flow.id}.label` as MessageKey),
     project: testInfo.project.name,
     sourceNote: flow.sourceNote,
     completed: false,
@@ -330,7 +332,9 @@ export function blankResult(testInfo: TestInfo, flow: Flow, stopped: string | nu
 
 export async function walk(page: Page, testInfo: TestInfo, flow: Flow, visual: VisualEntry[]): Promise<WalkResult> {
   const phone = isPhone(testInfo);
-  const label = t(`task.${flow.id}.label` as Parameters<typeof t>[0]);
+  // ADR-048: the project's language — its words, and the start screen of that language.
+  const t = wordsFor(testInfo);
+  const label = t(`task.${flow.id}.label` as MessageKey);
   const novice = new Novice(page, phone);
   const problems = await watchProblems(page);
   await setupSaving(page, phone);
@@ -362,7 +366,7 @@ export async function walk(page: Page, testInfo: TestInfo, flow: Flow, visual: V
   };
   try {
     const sourceFile = flow.source();
-    await page.goto('/');
+    await page.goto(pathFor('/', langOf(testInfo)));
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await novice.look('ana ekran');
     const started = Date.now();
@@ -371,14 +375,14 @@ export async function walk(page: Page, testInfo: TestInfo, flow: Flow, visual: V
     await novice.look('video seç', [VIDEO]);
     await shot(page, testInfo, visual, `yol-${flow.shotId ?? flow.id}-ilk`);
     await novice.pickFile(startsWith(t('preview.pickVideo')), sourceFile, 'pick-video');
-    await flow.middle(novice, page);
+    await flow.middle(novice, page, t);
 
     const stop = await flow.stopBeforeDownload?.(page);
     if (stop) {
       result.stopped = stop;
     } else {
       const pressed = Date.now();
-      await novice.press('button', flow.download.name, flow.download.testId);
+      await novice.press('button', t(flow.download.key), flow.download.testId);
       const phase = await waitForResult(page);
       const ended = Date.now();
       result.exportS = round((ended - pressed) / 1000, 2);

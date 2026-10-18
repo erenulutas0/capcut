@@ -664,6 +664,48 @@ test('share to the app under /capcut/: the worker takes the POST, the opening sc
 });
 
 /**
+ * ADR-048 under the sub-path: an English browser at the published address lands on the English start
+ * screen, the English pages are in the offline copy, a share lands on the English start screen with the
+ * video, and the language button is remembered — on the files GitHub Pages serves.
+ */
+test('the English site under /capcut/: first visit, offline copy, share target, language button', async ({ browser }, testInfo) => {
+  test.setTimeout(120_000);
+  const origin = new URL(testInfo.project.use.baseURL ?? '').origin;
+  const context = await browser.newContext({ locale: 'en-US', baseURL: testInfo.project.use.baseURL });
+  const page = await context.newPage();
+  const seen = watchRequests(page);
+  await page.goto('./');
+  await expect(page).toHaveURL(`${origin}/capcut/en/`);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.getByTestId('home-title')).toHaveText('What do you want to do?');
+  await expect(page.getByTestId('task-kes')).toHaveAttribute('href', '/capcut/en/yap/kes/');
+  await expect(page.locator('link[rel="alternate"][hreflang="tr"]')).toHaveAttribute('href', '/capcut/');
+  await waitForWorker(page);
+  // Every English page is in the worker's list (offline, ADR-031).
+  const cached = await page.evaluate(async () => {
+    const names = (await caches.keys()).filter((name) => name.startsWith('clip-app-'));
+    const cache = await caches.open(names[0] ?? '');
+    return (await cache.keys()).map((request) => new URL(request.url).pathname);
+  });
+  for (const path of ['/capcut/en/', '/capcut/en/editor/', '/capcut/en/yap/kes/', '/capcut/gizlilik/en/']) expect(cached, path).toContain(path);
+
+  const landed = await shareFiles(page, [OTHER_VIDEO], `${origin}/capcut/paylas/`);
+  expect(landed.pathname).toBe('/capcut/en/');
+  const id = landed.searchParams.get('paylasim') ?? '';
+  await expect(page.getByTestId('home-title')).toHaveText('What do you want to do with this video?');
+  await expect(page.getByTestId('task-dikey')).toHaveAttribute('href', `/capcut/en/yap/dikey/?paylasim=${id}`);
+
+  await page.getByTestId('language-switch').click();
+  await expect(page).toHaveURL(new RegExp(`^${origin}/capcut/\\?paylasim=`));
+  await expect(page.locator('html')).toHaveAttribute('lang', 'tr');
+  expect(await page.evaluate(() => localStorage.getItem('clip.language'))).toBe('tr');
+  await page.goto('./en/yap/kes/');
+  await expect(page).toHaveURL(`${origin}/capcut/yap/kes/`);
+  expect(seen.outside).toEqual([]);
+  await context.close();
+});
+
+/**
  * ADR-044 under the sub-path: the watchdog of a page that never came alive is
  * in every published page as an inline script, its hash is in that page's
  * policy, it knows the site lives under /capcut/ — and it does its work on
@@ -682,21 +724,24 @@ test.describe('the page watchdog under /capcut/', () => {
     test.setTimeout(120_000);
     // It breaks a page load on purpose: its recovery is counted apart (tests/e2e/fixtures.ts).
     expectPageRecovery();
-    for (const path of ['./', 'editor/', 'yap/cevir/', 'gizlilik/', 'gizlilik/en/']) {
+    for (const path of ['./', 'editor/', 'yap/cevir/', 'gizlilik/', 'gizlilik/en/', 'en/', 'en/yap/cevir/']) {
       const html = await (await request.get(path)).text();
       const ours = [...html.matchAll(/<script data-clip-watchdog="">([\s\S]*?)<\/script>/g)].map((match) => match[1] ?? '');
       expect(ours.length, `${path}: one watchdog script`).toBe(1);
       const script = ours[0] ?? '';
       expect(script).toContain('clip:page-recovery');
-      // The first script of the page, before any stylesheet is asked for.
-      expect(html.search(/<script[\s>]/), path).toBe(html.indexOf('<script data-clip-watchdog'));
+      // ADR-048: the language script first, the watchdog right after it, both before any stylesheet is asked for.
+      expect(html.search(/<script[\s>]/), path).toBe(html.indexOf('<script data-clip-language'));
+      expect(html.indexOf('<script data-clip-language'), path).toBeLessThan(html.indexOf('<script data-clip-watchdog'));
       expect(html.indexOf('<script data-clip-watchdog'), path).toBeLessThan(html.search(/<link[\s>]/));
+      const language = /<script data-clip-language="">([\s\S]*?)<\/script>/.exec(html)?.[1] ?? '';
+      expect(language).toContain('"base":"/capcut","slash":true');
       const policy = /<meta http-equiv="Content-Security-Policy"[^>]*content="([^"]*)"/.exec(html)?.[1] ?? '';
       expect(policy, path).toContain(`'sha256-${createHash('sha256').update(script, 'utf8').digest('base64')}'`);
+      expect(policy, path).toContain(`'sha256-${createHash('sha256').update(language, 'utf8').digest('base64')}'`);
       expect(policy).not.toContain('unsafe-inline');
       expect(script).toContain('"staticPrefix":"/capcut/_next/static/"');
       expect(script).toContain('"scope":"/capcut/"');
-      expect(script).toContain('"enPrefix":"/capcut/gizlilik/en"');
       expect(script).toContain('"graceS":15');
       expect(html).toContain('id="clip-page-dead"');
       expect(html).toContain('Sayfa tam açılamadı.');

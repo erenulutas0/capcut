@@ -42,6 +42,34 @@ export const MILD: readonly JargonTerm[] = [
   { term: 'MB / GB', pattern: word('\\d+(?:,\\d+)? ?(?:kb|mb|gb)') },
 ];
 
+/**
+ * The same two lists for the English screens (ADR-048): the same ideas, in the words an English
+ * screen would use for them.
+ */
+export const STRONG_EN: readonly JargonTerm[] = [
+  { term: 'codec', pattern: word('codecs?') },
+  { term: 'encode / encoder / re-encode', pattern: word('(?:re-?)?encod\\p{L}*') },
+  { term: 'bitrate / bit rate', pattern: word('bit ?rates?') },
+  { term: 'fps / frame rate', pattern: word('fps|frame rates?') },
+  { term: 'H.264 / H.265 / HEVC / AVC', pattern: word('h\\.?26[45]|hevc|avc') },
+  { term: 'AAC / Opus / VP9', pattern: word('aac|opus|vp9') },
+  { term: 'resolution', pattern: word('resolutions?') },
+  { term: '720p / 1080p', pattern: word('\\d{3,4}p') },
+  { term: 'HDR / SDR', pattern: word('hdr|sdr') },
+  { term: 'WebGPU / WebGL / WASM / GPU', pattern: word('webgpu|webgl|wasm|webassembly|gpu') },
+  { term: 'pixel', pattern: word('pixels?') },
+  { term: 'track (audio track, video track)', pattern: word('(?:audio|video) tracks?') },
+];
+
+export const MILD_EN: readonly JargonTerm[] = [
+  { term: 'MP4 / MOV / WebM', pattern: word('mp4|mov|webm') },
+  { term: 'M4A / MP3 / WAV', pattern: word('m4a|mp3|wav') },
+  { term: 'SRT / VTT', pattern: word('srt|vtt') },
+  { term: 'model', pattern: word('models?') },
+  { term: '9:16 / 1080 × 1920', pattern: word('9:16|\\d{3,4} ?[×x] ?\\d{3,4}') },
+  { term: 'MB / GB', pattern: word('\\d+(?:\\.\\d+)? ?(?:kb|mb|gb)') },
+];
+
 export interface JargonHit {
   term: string;
   /** The sentence (or line) it was found in, shortened. */
@@ -62,12 +90,12 @@ function hits(text: string, terms: readonly JargonTerm[]): JargonHit[] {
   return found;
 }
 
-export function strongJargon(text: string): JargonHit[] {
-  return hits(text, STRONG);
+export function strongJargon(text: string, lang: 'tr' | 'en' = 'tr'): JargonHit[] {
+  return hits(text, lang === 'en' ? STRONG_EN : STRONG);
 }
 
-export function mildJargon(text: string): JargonHit[] {
-  return hits(text, MILD);
+export function mildJargon(text: string, lang: 'tr' | 'en' = 'tr'): JargonHit[] {
+  return hits(text, lang === 'en' ? MILD_EN : MILD);
 }
 
 /** Words as a reader counts them: runs of letters or digits. */

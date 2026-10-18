@@ -151,7 +151,15 @@ function git(webDir, command) {
 // ------------------------------------------------------------------ sections
 
 const TASK_ORDER = ['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'sustur', 'cevir', 'iyilestir'];
-const PROJECT_LABEL = { desktop: 'masaüstü (1440 × 900)', phone: 'telefon (390 × 844, dokunmatik)' };
+const PROJECT_LABEL = {
+  desktop: 'masaüstü (1440 × 900)',
+  phone: 'telefon (390 × 844, dokunmatik)',
+  // ADR-048: the same views with an English browser, on the English pages.
+  'desktop-en': 'masaüstü, İngilizce (1440 × 900, en-US)',
+  'phone-en': 'telefon, İngilizce (390 × 844, dokunmatik, en-US)',
+};
+/** The short name of a view, for measure labels and tables. */
+const VIEW = { desktop: 'masaüstü', phone: 'telefon', 'desktop-en': 'masaüstü EN', 'phone-en': 'telefon EN' };
 
 function sectionWalkthrough(results, M) {
   const out = [];
@@ -169,7 +177,7 @@ function sectionWalkthrough(results, M) {
       'küçük bir deneme videosuyla işi bitirir, kaydedilen dosya ffprobe / ffmpeg ile denetlenir. Derleme: yayınlanan statik çıktı. ' +
       'Sistem pencereleri (dosya seçme, masaüstünde kaydetme) uygulamanın tıklaması sayılmaz. Süre, hiç duraksamayan bir betiğin süresidir: alt sınırdır.\n',
   );
-  for (const project of ['desktop', 'phone']) {
+  for (const project of ['desktop', 'phone', 'desktop-en', 'phone-en']) {
     const tasks = parts.filter((part) => part.part.startsWith(`${project}.`)).flatMap((part) => part.data.tasks);
     if (tasks.length === 0) continue;
     tasks.sort((a, b) => TASK_ORDER.indexOf(a.id) - TASK_ORDER.indexOf(b.id));
@@ -181,7 +189,7 @@ function sectionWalkthrough(results, M) {
     let jargonTotal = 0;
     for (const original of tasks) {
       // Measure labels say which view they belong to; the table's first column keeps the plain name.
-      const task = { ...original, plain: original.label, label: `${original.label} (${project === 'phone' ? 'telefon' : 'masaüstü'})` };
+      const task = { ...original, plain: original.label, label: `${original.label} (${VIEW[project]})` };
       const id = `walk.${project}.${task.id}`;
       const model = task.id === 'yazi';
       if (task.cutShort) {
@@ -277,7 +285,7 @@ function sectionWalkthrough(results, M) {
         .sort((a, b) => TASK_ORDER.indexOf(a.id) - TASK_ORDER.indexOf(b.id) || a.project.localeCompare(b.project))
         .map((task) => [
           task.label,
-          task.project === 'phone' ? 'telefon' : 'masaüstü',
+          VIEW[task.project] ?? task.project,
           task.sourceNote,
           task.output ? `${kb(task.output.bytes)}${task.output.width ? `, ${task.output.width} × ${task.output.height}` : ''}` : '—',
           task.output ? `${num(task.output.durationS, 2)} sn` : '—',
@@ -587,6 +595,35 @@ function sectionSearch(results, M) {
   if (fresh) {
     head.oldFirstHit = old.firstRowPercent ?? old.firstHitPercent;
     head.oldWrongConfident = old.wrongConfidentPercent;
+  }
+
+  // ADR-048: the English search, with sets of its own.
+  const enFresh = part.data.enFresh ?? null;
+  const enDev = part.data.enDev ?? null;
+  if (enFresh) {
+    out.push(
+      '\n### İngilizce arama (ADR-048)\n\n' +
+        `- **İngilizce kör küme** (\`web/tests/quality/data/${part.data.enFreshFile ?? 'search-eval-en-fresh.ts'}\`, ${num(enFresh.phrases, 0)} ifade; sayılan ${num(enFresh.counted, 0)}): ` +
+        'yalnızca İngilizce iş adlarını ve birer satırlık açıklamaları gören bir yazar yazdı; ifadeler sayılar dışında okunmadan dönüştürüldü ve İngilizce kelime listeleri ayrı ' +
+        'ayar kümesine bakılarak dondurulduktan sonra ölçüldü. Kaçanları aşağıda yazılı: bundan sonra görülmüş sayılır.\n' +
+        `- **İngilizce ayar kümesi** (\`search-eval-en-dev.ts\`, ${num(enDev?.phrases ?? 0, 0)} ifade): İngilizce kelime listeleri bunun kaçanlarına bakılarak genişletildi; ölçüm değildir.\n` +
+        `- Sayımdan çıkanlar: Türkçe ayar tablolarında, Türkçe kümelerde ya da İngilizce ayar kümesinde zaten bulunan ifadeler (kör kümede ${num(enFresh.seenBefore, 0)}).\n\n`,
+    );
+    out.push('**İngilizce kör küme**\n\n');
+    out.push(numbers(enFresh, 'search.en', ' (İngilizce kör küme)'));
+    out.push('\n**İşe göre** (İngilizce kör küme)\n');
+    out.push(byTask(enFresh));
+    out.push('\n**Yazış biçimine göre** (İngilizce kör küme)\n');
+    out.push(byTag(enFresh));
+    out.push(`\n**Kaçanlar, İngilizce kör küme** (${num(enFresh.misses.length, 0)})\n`);
+    out.push(misses(enFresh));
+    if (enDev) {
+      out.push('\n**İngilizce ayar kümesi — ölçüm değil**\n\n');
+      out.push(numbers(enDev, 'search.en.dev', ' (İngilizce ayar kümesi)'));
+    }
+    head.enFirstHit = enFresh.firstRowPercent;
+    head.enDirect = enFresh.firstHitPercent;
+    head.enWrongConfident = enFresh.wrongConfidentPercent;
   }
 
   // The clear-request guard on the tuning set: its doable phrases are plainly worded ones.
@@ -1223,10 +1260,10 @@ function sectionVisual(results, M, docsDir, scratch, baselineCount) {
   const names = [...new Set(shots.map((shot) => shot.name))].sort();
   out.push(
     table(
-      ['Ekran', 'Masaüstü', 'Telefon'],
+      ['Ekran', 'Masaüstü', 'Telefon', 'Masaüstü EN', 'Telefon EN'],
       names.map((name) => [
         `\`${name}\``,
-        ...['desktop', 'phone'].map((project) => {
+        ...['desktop', 'phone', 'desktop-en', 'phone-en'].map((project) => {
           const shot = shots.find((item) => item.name === name && item.project === project);
           if (!shot) return '—';
           return `${WORD[shot.status]}${shot.differentPercent ? ` (${pct(shot.differentPercent, 2)})` : ''}`;
@@ -1361,6 +1398,46 @@ function sectionA11y(results, M) {
       ),
     );
   }
+
+  // ADR-048: the English table, with the English ruler.
+  const textEn = partsOf(results, 'text-en')[0]?.data ?? null;
+  out.push(
+    '\n**Okunabilirlik, İngilizce** — `web/src/i18n/messages.en.ts` ve `cloudMessages.en.ts`; Flesch okuma kolaylığı (90–100 çok kolay · 80–89 kolay · 70–79 oldukça kolay · ' +
+      '60–69 sade · 50–59 oldukça zor · 30–49 zor · 30 altı çok zor). Aynı anahtarlar, aynı “varsayılan yol”, İngilizce teknik terim listesi (`STRONG_EN`). ' +
+      'Heceler İngilizce yazımdan kural ile sayılır (ünlü öbekleri, sondaki sessiz “e”): çoğu kelimede doğru, bazılarında bir eksik ya da fazla.\n\n',
+  );
+  if (!textEn) {
+    M.add('a11y', 'text.en.run', 'Okunabilirlik (İngilizce)', null, { note: 'bu bölümün sonuç dosyası yok (koşulmadı)' });
+    out.push('_Koşulmadı._\n');
+  } else {
+    const rowEn = (label, key, data) => [
+      label,
+      num(data.strings, 0),
+      num(data.scoredStrings, 0),
+      M.cell('a11y', `text.en.${key}.medianScore`, `${label}: ortanca Flesch puanı`, data.medianScore, { format: (v) => num(v, 1) }),
+      M.cell('a11y', `text.en.${key}.hardPercent`, `${label}: “zor” ya da “çok zor” (50 altı) metin payı`, data.hardPercent, { format: (v) => pct(v) }),
+      M.cell('a11y', `text.en.${key}.veryHard`, `${label}: “çok zor” (30 altı) metin`, data.veryHard, { format: (v) => num(v, 0) }),
+      M.cell('a11y', `text.en.${key}.sentencesOver20Words`, `${label}: 20 kelimeden uzun cümlesi olan metin`, data.sentencesOver20Words, { format: (v) => num(v, 0) }),
+      `${num(data.longestSentenceWords, 0)} kelime`,
+      data.longestWord,
+    ];
+    out.push(
+      table(
+        ['Metinler (İngilizce)', 'Metin', 'Puanlanan (5+ kelime)', 'Ortanca puan', 'Zor + çok zor', 'Çok zor', '20 kelimeden uzun cümle', 'En uzun cümle', 'En uzun kelime'],
+        [rowEn('Varsayılan yol (İngilizce)', 'defaultPath', textEn.defaultPath), rowEn('Bütün metinler (İngilizce, editör dahil)', 'all', textEn.all)],
+      ),
+    );
+    head.readabilityMedianEn = textEn.defaultPath.medianScore;
+    const jargonEn = M.add('a11y', 'text.en.defaultPath.jargonStrings', 'Varsayılan yolun İngilizce metinlerinde teknik terim içeren metin', textEn.jargonDefaultPath.strings, { format: (v) => num(v, 0) });
+    out.push(`\nVarsayılan yolun İngilizce metinlerinden teknik terim içeren: ${jargonEn.shown} (${STATUS_WORD[jargonEn.status]}).\n`);
+    out.push('\n**En zor 20 İngilizce metin (varsayılan yol)**\n\n');
+    out.push(
+      table(
+        ['Puan', 'Anahtar', 'Cümle başına kelime', 'Kelime başına hece', 'Metin'],
+        textEn.hardestDefaultPath.map((item) => [`${num(item.score, 1)} (${item.band})`, `\`${item.key}\``, num(item.wordsPerSentence, 1), num(item.syllablesPerWord, 2), `“${item.text}”`]),
+      ),
+    );
+  }
   return { md: out.join(''), head };
 }
 
@@ -1388,7 +1465,7 @@ const SECTION_RESULTS = {
   transcript: ['transcript'],
   perf: ['perf', 'output'],
   visual: ['visual'],
-  a11y: ['a11y', 'text'],
+  a11y: ['a11y', 'text', 'text-en'],
 };
 
 export function writeReport({ webDir, resultsDir, ran, failedSpecs, runSeconds, history, updatedBaselines, reportOnly = false }) {

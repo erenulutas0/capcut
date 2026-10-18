@@ -930,9 +930,12 @@ export const en: Record<MessageKey, string> = {
   'wizard.iyilestir.nothing': 'Nothing to change in the video was found with this setting: it already looks fine.',
   'wizard.iyilestir.nothingBlocked':
     'Nothing in the video changes with this setting; there is nothing new to download. You can try another setting or use your video as it is.',
-  'enhance.slow': 'This device has no graphics-card acceleration. Enhancing still works, but slowly: a 5-minute video may take more than half an hour.',
-  'enhance.slow.minutes': 'This device has no graphics-card acceleration. Enhancing still works, but slowly: this video may take about {n} minutes.',
-  'enhance.slow.hours': 'This device has no graphics-card acceleration. Enhancing still works, but very slowly: this video may take about {n} hours.',
+  'enhance.slow':
+    'This device has no graphics card to speed this up. Enhancing still works, but slowly: a 5-minute video may take more than half an hour.',
+  'enhance.slow.minutes':
+    'This device has no graphics card to speed this up. Enhancing still works, but slowly: this video may take about {n} minutes.',
+  'enhance.slow.hours':
+    'This device has no graphics card to speed this up. Enhancing still works, but very slowly: this video may take about {n} hours.',
   'enhance.preview.label': 'Before and after',
   'enhance.preview.before': 'Before',
   'enhance.preview.after': 'After',
@@ -951,18 +954,18 @@ export const en: Record<MessageKey, string> = {
   'enhance.preview.retry': 'Try again',
   'enhance.will.title': 'What will be done:',
   'enhance.will.light.some': 'light and contrast are corrected a little',
-  'enhance.will.light.much': 'the video is brightened noticeably',
+  'enhance.will.light.much': 'the video is made a lot brighter',
   'enhance.will.colour': 'the colours are tidied up',
   'enhance.will.sharpen': 'edges are sharpened',
   'enhance.will.denoise': 'grain is reduced',
   'enhance.did.title': 'Enhanced ({strength}):',
   'enhance.did.light.some': 'light and contrast corrected a little',
-  'enhance.did.light.much': 'the video brightened noticeably',
+  'enhance.did.light.much': 'the video made a lot brighter',
   'enhance.did.colour': 'colours tidied up',
   'enhance.did.sharpen': 'edges sharpened',
   'enhance.did.denoise': 'grain reduced',
   'enhance.did.nothing': 'Enhancement was on, but nothing to change was found in this video; the picture was re-processed as it is.',
-  'enhance.did.cpu': 'Done without graphics-card acceleration.',
+  'enhance.did.cpu': 'Done without help from a graphics card.',
   'enhance.setting.label': 'Enhance the picture',
   'enhance.setting.off': 'Off',
   'enhance.setting.hint':

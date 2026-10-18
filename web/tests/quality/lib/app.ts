@@ -10,11 +10,26 @@ import { copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page, TestInfo } from '@playwright/test';
 
+import { localizedPath } from '../../../src/i18n/localePath';
 import { translator, type MessageKey } from '../../../src/i18n/messages';
+import '../../../src/i18n/messages.en';
+import type { Locale } from '../../../src/i18n/translate';
 import { installSavePicker, noSavePicker, pickerCalls, readSaved } from '../../e2e/kesitFlow';
 import { OUTPUTS, ensureDir } from './record';
 
 export const t: (key: MessageKey) => string = translator('tr');
+
+/** ADR-048: the projects named "-en" are an English browser (playwright.quality.config.ts). */
+export const langOf = (testInfo: TestInfo): Locale => (testInfo.project.name.endsWith('-en') ? 'en' : 'tr');
+
+/** The words of the project's language. */
+export const wordsFor = (testInfo: TestInfo): ((key: MessageKey) => string) => translator(langOf(testInfo));
+
+/** An app address in the project's language, with the trailing slash of the static export: `/yap/kes/` → `/en/yap/kes/`. */
+export function pathFor(path: string, lang: Locale): string {
+  const localized = localizedPath(path, lang);
+  return localized.endsWith('/') ? localized : `${localized}/`;
+}
 
 export const SAMPLE = join(process.cwd(), 'tests', 'media', 'sample-24s.mp4'); // 1280×720, H.264 + AAC, 24 s, a test card
 export const OTHER = join(process.cwd(), 'tests', 'media', 'other-8s.mp4'); // 640×360, H.264 + AAC, 8 s
