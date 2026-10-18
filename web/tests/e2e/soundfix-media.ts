@@ -14,12 +14,22 @@ import { join } from 'node:path';
 
 export const SOUNDFIX_MEDIA_DIR = join(process.cwd(), 'tests', 'media', 'soundfix');
 
-const LINE_A = 'Hello and welcome. Today I will show you how to make a small paper boat. First, take a square sheet of paper and fold it in half.';
-const LINE_B = 'Now fold the corners down to the middle, and open the bottom. That is all. Thank you for watching, and see you next time.';
+/**
+ * The two spoken lines, recorded once with ffmpeg's `flite` voice (slt, 48 kHz mono, its own level —
+ * about −17 LUFS) and committed: the ffmpeg on CI runners has no `flite`. Made with
+ *   ffmpeg -f lavfi -i "flite=text='<line>':voice=slt" -af aresample=48000 -ac 1 -c:a flac line-a.flac
+ * from "Hello and welcome. Today I will show you how to make a small paper boat. First take a square
+ * sheet of paper and fold it in half." and "Now fold the corners down to the middle and open the bottom.
+ * That is all. Thank you for watching and see you next time."
+ */
+const VOICE_DIR = join(process.cwd(), 'tests', 'media', 'soundfix-voice');
+const LINES = ['-i', join(VOICE_DIR, 'line-a.flac'), '-i', join(VOICE_DIR, 'line-b.flac')];
+const LINE_A = 1;
+const LINE_B = 2;
 
-/** One spoken line, at 48 kHz, `gainDb` from the voice's own level (flite: about −17 LUFS mono). */
-const voice = (text: string, gainDb: number, label: string) =>
-  `flite=text='${text.replace(/[,']/g, '')}':voice=slt,aresample=48000,volume=${gainDb}dB[${label}]`;
+/** One spoken line (input 1 or 2), at 48 kHz, `gainDb` from the voice's own level. */
+const voice = (input: number, gainDb: number, label: string) =>
+  `[${input}:a]aresample=48000,volume=${gainDb}dB[${label}]`;
 const pause = (seconds: number, label: string) => `anullsrc=r=48000:cl=mono:d=${seconds}[${label}]`;
 /** Two lines with pauses around them, as stereo. */
 const speech = (gainA: number, gainB: number) =>
@@ -58,7 +68,8 @@ export function soundFixFixture(name: SoundFixFixture): string {
   mkdirSync(SOUNDFIX_MEDIA_DIR, { recursive: true });
   const partial = `${file}.part.mp4`;
   rmSync(partial, { force: true });
-  execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...PICTURE, '-filter_complex', spec.audio, ...ENCODE, partial], {
+  const inputs = spec.audio.includes('[1:a]') ? [...PICTURE, ...LINES] : PICTURE;
+  execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...inputs, '-filter_complex', spec.audio, ...ENCODE, partial], {
     stdio: 'pipe',
   });
   // Rename only when complete: an interrupted run never leaves half a fixture.
