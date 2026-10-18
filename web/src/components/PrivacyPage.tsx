@@ -182,7 +182,8 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
   return (
     <div className="landing legal" lang={locale}>
       <header className="landing-bar">
-        <Link href={localizedPath('/', locale)} aria-label={t('privacy.back')} className="legal-home">
+        {/* No prefetch (as everywhere): the static export names the start screen's segment file differently from what the prefetcher asks for (404 on Pages since the pages have two root layouts, ADR-048). */}
+        <Link href={localizedPath('/', locale)} prefetch={false} aria-label={t('privacy.back')} className="legal-home">
           <Wordmark />
         </Link>
         {/* The app's one language button (ADR-048): the other language's page, and the choice remembered. */}
@@ -335,7 +336,7 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
       </main>
 
       <footer className="landing-footer">
-        <Link href={localizedPath('/', locale)}>{t('privacy.back')}</Link>
+        <Link href={localizedPath('/', locale)} prefetch={false}>{t('privacy.back')}</Link>
       </footer>
     </div>
   );

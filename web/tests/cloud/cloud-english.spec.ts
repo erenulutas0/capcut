@@ -79,7 +79,9 @@ test('the English route end to end: only the sound goes, the text comes back, th
   await openEnglishChoice(page, invite);
   await page.getByTestId('route-online-go').click();
   await expect(page.getByTestId('transcript-panel')).toBeVisible({ timeout: 120_000 });
-  await expect(page.getByTestId('yazi-cloud-summary')).toContainText(fill(cloudEn['cloud.done'], { lines: 4 }));
+  // The fake's default script: its line count is the fake's, the sentence is the English one.
+  await expect(page.getByTestId('yazi-cloud-summary')).toContainText(/^\d+ lines written\./);
+  await expect(page.getByTestId('yazi-cloud-summary')).toContainText(fill(cloudEn['cloud.done.speakers'], { n: 2 }));
   await expect(page.getByTestId('yazi-cloud-summary')).toContainText(fill(cloudEn['cloud.done.minutes'], { y: 59 }));
   await expect(page.getByTestId('wizard-footer')).toHaveText(cloudEn['cloud.footer.sent']);
   // The speakers are named the English way.

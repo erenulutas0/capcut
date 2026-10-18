@@ -301,6 +301,8 @@ test('installable and offline under /capcut/: manifest, service worker, offline 
   }
   const allowed = [
     /^\/capcut\/((editor|gizlilik|gizlilik\/en|yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|cevir|iyilestir|gif))\/)?$/,
+    // ADR-048: the same pages in English.
+    /^\/capcut\/en\/((editor|yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|cevir|iyilestir|gif))\/)?$/,
     /^\/capcut\/_next\/static\/.+\.(js|css|png|svg)$/,
     /^\/capcut\/fonts\/caption\/inter-latin(-ext)?-700-normal\.woff2$/,
     /^\/capcut\/icons\/(icon-192|icon-512|maskable-512)\.png$/,
