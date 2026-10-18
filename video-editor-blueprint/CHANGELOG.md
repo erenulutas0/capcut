@@ -3,6 +3,48 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Yeni kart "Sesi düzelt" / "Fix the sound" — 18 Ekim 2026 (ADR-049; politika `2026-10-18.v12`, şema değişmedi)
+
+Kısık ya da dengesiz ses cihazda duyulur ve eşit olur; görüntüye dokunulmaz. Dış hizmet yok, yeni bağımlılık yok.
+
+- **Zincir** (`domain/soundFix.ts`): 60 Hz hafif alçak kesim → kaynağı hedefe getiren giriş kazancı → konuşma
+  algılayıcının yavaş seviye ayarı (ADR-036; artık çok kanallı, yalnız açar, en çok 15 dB, arka plandan yükselmeyen
+  yerde durur) → 2:1 yumuşak dizli sıkıştırıcı → ölçülen çıkış kazancı → 5 ms ileri bakışlı, 4× örneklenmiş gerçek
+  tepe sınırlayıcı. Hedef **−16 LUFS**, dosyanın gerçek tepesi **≤ −1 dBTP**. Gürültü silmez; ekran bunu söyler.
+- **Ölçüm** (`domain/r128.ts`, ses yüksekliği worker'ı): BS.1770-4 / EBU Tech 3342, ffmpeg `ebur128` ile aynı
+  sayılar; iki geçiş (olduğu gibi, zincirden geçmiş). Gerçek ilerleme, Vazgeç, bekçi ve arıza ayrıntısı (ADR-042).
+- **Ekran:** "Ses: çok kısık → normal", dengesizse "Bazı yerler ötekilerden kısıktı; onlar da açılır.", 5 sn
+  önce / sonra dinletme, "Sesin zaten iyi" (indirme yine açık), sesi olmayan ve sesi sessizlik olan videoya ret.
+  "Görüntüye dokunulmaz" yalnızca dışa aktarmanın kendi hızlı kesim denetimi (yeni `copyCheck`) evet derse yazılır.
+  Editör zinciri bilmediği için bu kartta "Daha fazla ayar" yok.
+- **Ölçülen** (ffmpeg, yayın derlemesinin kodu): kısık −37,7 → −16,0 LUFS; dengesiz (LRA 22,7) → −16,0, LRA 5,4;
+  zaten iyi −15,3 → −16,0; patlamış −1,1 (+1,8 dBTP) → −16,0 (−8,7 dBTP); yüksek müzik −7,3 → −16,0; WebM
+  −21,8 → −16,0. Görüntü paketleri kaynağınki (ilk anahtar karenin önüne kaynağın SPS/PPS'i, ADR-027), çözülen
+  kareler aynı; senkron klibi 0,08 ms → 0,08 ms; süre aynı.
+- **12 kart:** ızgara 4 + 4 + 4 (masaüstü), 3 × 4, telefonda 6 satır × 2; öncü kart yeniden tek hücre.
+- **Arama:** yeni sözcükler ve çiftler ("ses çok kısık", "duyulmuyor", "too quiet", "turn it up", "fix the
+  audio"…); gürültü istekleri "Bunu henüz yapamıyoruz." kalır. Eski kümelerin hiçbir sayısı değişmedi; yeni kör
+  kümede (131 + 131 ifade, bir kez ölçüldü) ilk satır doğru Türkçe %46,9 → %87,5, İngilizce %51,4 → %90,3; yanlış
+  ama emin %4,9 → %0 ve %3 → %2.
+
+**Sınamalar (son kodla, yerel):** `tsc`, `eslint` temiz; birim **1610 / 1610** (93 dosya; +33); olağan e2e
+**498: 494 geçti, 4 atlandı, 0 başarısız** (yeni `sound-fix.spec.ts` 12 sınama + a11y 4 + worker arızası 1), zorlanmamış
+sayfa kurtarma 0, ölü sayfa 0; son arama sözcüğü düzeltmesinden sonra ana ekran, İngilizce, kart ve Sesi düzelt
+sınamaları yeniden: 63 / 63; bulut e2e **62: 58 geçti, 4 atlandı**; durağan çıktı (`/capcut`) + Pages duman iki kez:
+bulutsuz **16: 10 geçti, 6 atlandı**, bulut yolu açık **16: 14 geçti, 2 atlandı**; dışa aktarma matrisi Chromium,
+Chrome, Edge **32 / 32 PASS** her birinde; kalite katmanı 967 ölçü: 855 bütçe içinde, 13 dışında (hepsi önceden
+açık: arama 12, faststart 1; İngilizce kelime bütçesi aşımları kapandı), farklı ekran 0 (7 ekrana bakılıp taban
+yenilendi, 12 yeni taban); `npm audit --omit=dev` 0.
+
+**Doğrulanmayan:** gerçek kayıtlar ve kulakla dinleme; gerçek telefon, Safari, Firefox; bir saatlik video (10
+dakikalık yapay kaynakta ölçüm 20 sn, kopya indirme 12 sn); 44,1 kHz kaynak.
+
+Aynı dalda iki küçük İngilizce düzeltme (ADR-048):
+
+- İngilizce sayfalarda yeni altyazı izinin dili artık `en` (yazılan satır, seçilen biçim, okunan dosya izi sayfanın
+  dilinde yaratır; var olan izler dilini korur; bulutun dil söylemediği yazı sayfanın dilini alır).
+- İngilizce İyileştir seçimi 174 → 155, masaüstü editör 172 → 158 kelime (bütçe 160); hiçbir uyarı düşmedi.
+
 ## Uygulamanın tamamı İngilizce — 18 Ekim 2026 (ADR-048; politika ve şema değişmedi)
 
 Kurucunun hedefi "web, her telefon". Dış hizmet ve makine çevirisi yok; yeni bağımlılık yok.

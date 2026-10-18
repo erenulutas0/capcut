@@ -131,14 +131,39 @@ sessizlik, kırpılmış kayıt; 640 × 360 30 fps H.264, her saniye anahtar kar
   bıraktı); birim sınamasında 4 kat yükseltilmiş müzikte −6 dB'den derin indi ve gerçek tepe −2 dBTP'nin
   0,1 dB içinde kaldı.
 
-Arama ("Yaz, bulalım"): ölçüm `docs/quality/latest.md` §2 ve CHANGELOG'da.
+## Arama ("Yaz, bulalım")
+
+Yeni sözcükler seviyeyi söyler ("kısık", "duyulmuyor", "ses seviyesi", "volume", "too quiet", "normalize"),
+çiftler sesi ve ona yapılanı ("sesi biraz yükselt", "the audio is way too low"); "ses" / "sound" tek başına
+Sesini al'da, "sessiz" / "quiet" tek başına Boşlukları at'ta, gürültü sözcükleri "henüz yapamıyoruz"da kalır.
+Ayar tabloları ve eski kör kümeler değişmedi (her sayı kartın eklenmesinden önceki ile aynı: Türkçe yeni
+küme ilk satır %77,2, yanlış ama emin %3; İngilizce kör küme %76,2 / %2,6). "duyulmadı" güçlü sözcük
+yapılmadı: yazım payı onu "duyulmasın"a (Sesi kapat) yaklaştırıyordu.
+
+**Yeni kör küme** (dördüncü; yazar yalnızca iş listesini ve açıklamaları gördü, kodu ve sözcük listelerini
+görmedi; 131 Türkçe + 131 İngilizce ifade, her dilde 35'i Sesi düzelt, 25'i komşu işler; ayar tablolarında
+geçen ifadeler sayılmadı; BİR KEZ ölçüldü, kaçanlarına bakılmadı). Kartsız (önce) → kartlı (sonra):
+
+| | Türkçe (81 sayılan) | İngilizce (99 sayılan) |
+|---|---|---|
+| Doğrudan doğru (yapılabilen işler) | %37,5 → %71,9 | %45,8 → %76,4 |
+| İlk satır doğru | %46,9 → %87,5 | %51,4 → %90,3 |
+| İlk üçte | %46,9 → %93,8 | %52,8 → %93,1 |
+| Yanlış ama emin | %4,9 → %0 | %3 → %2 |
+| Yapılabilen işte sorma | %51,6 → %28,1 | %27,8 → %20,8 |
+| Yalnız Sesi düzelt ifadeleri: doğrudan / ilk üçte / yanlış ama emin | 23 / 30 / 0 (34'ten) | 22 / 29 / 0 (33'ten) |
+| "Bunu henüz yapamıyoruz." yakalama · isabet | %92,9 · %100 (değişmedi) | %81,8 · %100 (değişmedi) |
+
+Küme dosyası depoya konmadı (`tests/quality/data`'ya eklemek bir sonraki arama işinin kararı; artık
+ölçülmüş sayılır).
 
 ## Doğrulanmayanlar
 
 - Gerçek kayıtlar (rüzgârlı dış çekim, iki kişilik röportaj, müzikli vlog): yalnızca yapay ses ve üretilmiş
   müzikle ölçüldü. Kulakla dinleme testi yapılmadı (sıkıştırma ve seviyenin "doğal" duyulup duyulmadığı).
-- Gerçek telefon, Safari, Firefox; bir saatlik videoda iki geçişin süresi (yalnızca hesap: dakika başına
-  ≈ 1,4 sn işlem + iki çözme) ve belleği.
+- Gerçek telefon, Safari, Firefox; bir saatlik videoda iki geçişin süresi ve belleği. Ölçülen: 10 dakikalık
+  yapay kaynakta (640 × 360) video seçilinceden özet ekranına 20,3 sn, kopya indirme 12,1 sn (bu makine,
+  Playwright'ın Chromium'u); bir saat için yalnızca hesap (≈ 2 dk ölçüm).
 - 44,1 kHz kaynakta ölçüm kaynağın hızında, dışa aktarma 48 kHz'de çalışır; fark deneme kaynaklarında
   ölçülmedi (yalnızca 48 kHz kaynaklar).
 - Bir kaynağın sesi videodan kısa ya da uzunsa ölçüm videonun boyuyla sınırlıdır; böyle bir kaynak
