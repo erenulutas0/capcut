@@ -39,6 +39,7 @@ import {
   type Project,
 } from '@/domain/edl';
 import { formatTimecode, parseTimecode, type Micros } from '@/domain/time';
+import { useLocale } from '@/i18n/locale';
 import type { MessageKey } from '@/i18n/messages';
 import {
   CaptionClockSection,
@@ -466,6 +467,8 @@ export function CaptionsPanel({
   onSeek,
 }: Props) {
   const uid = useId();
+  // Without a track, the language the first line will give it: the page's (ADR-048).
+  const locale = useLocale();
   const track = primaryCaptionTrack(project);
   const cues = useMemo(() => sortCues(track?.cues ?? []), [track]);
   const style = track?.style ?? DEFAULT_CAPTION_STYLE;
@@ -821,7 +824,7 @@ export function CaptionsPanel({
       <ChoiceGroup
         legend={t('captions.language')}
         name={`${uid}-language`}
-        value={LANGUAGES.find((language) => language === (track?.language ?? 'tr'))}
+        value={LANGUAGES.find((language) => language === (track?.language ?? locale))}
         options={LANGUAGES}
         labelFor={(option) => t(`captions.language.${option}`)}
         onChange={onLanguage}
