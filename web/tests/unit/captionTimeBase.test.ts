@@ -221,6 +221,17 @@ describe('shift and import', () => {
     expect(shiftCaptions(project, -1.5 * S)).toEqual({ ok: false, reason: 'caption_shift_out_of_range' });
   });
 
+  it('a file read where there is no track makes one in the page’s language; a track that exists keeps its own (ADR-048)', () => {
+    const lines = [{ startUs: 1 * S, endUs: 2 * S, text: 'one' }];
+    const fresh = importCaptionTrack(withMoments([[0, 10]]), lines, 'source', 'en');
+    expect(fresh.ok && fresh.project.captionTracks[0]?.language).toBe('en');
+    const unnamed = importCaptionTrack(withMoments([[0, 10]]), lines, 'source');
+    expect(unnamed.ok && unnamed.project.captionTracks[0]?.language).toBe('tr');
+    // The stored Turkish track of `withOutputTrack` stays Turkish on an English page.
+    const kept = importCaptionTrack(withOutputTrack(withMoments([[0, 10]])), lines, 'output', 'en');
+    expect(kept.ok && kept.project.captionTracks[0]?.language).toBe('tr');
+  });
+
   it('imports what follows the rules and reports every skipped line by file position', () => {
     const project = withMoments([[0, 10]]);
     const result = importCaptionTrack(

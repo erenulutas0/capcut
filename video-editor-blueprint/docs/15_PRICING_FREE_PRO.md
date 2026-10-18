@@ -7,7 +7,7 @@
 
 **Bu belge bütün fiyat/kota sayıların tek kaynağıdır.** Bunlar pazar araştırmasıyla doğrulanmış ideal fiyatlar veya yapılmış özellikler değildir. P0/P1/P2 alfa-beta sırasında ödeme kapalıdır; teslim edilen temel özellikler ücretsiz denenir. P3 satış, gerçek Pro değeri + billing/restore + hukuk + destek + maliyet kapıları geçince açılır.
 
-Politika kimliği: `2026-10-17.v11`. Limitler ürün güvenliği için başlangıç önerisidir; teknik motorların mutlak maksimum kapasitesi değildir. Daha fazla para ödemek desteklenmeyen codec/donanımı destekli yapmaz.
+Politika kimliği: `2026-10-18.v12`. Limitler ürün güvenliği için başlangıç önerisidir; teknik motorların mutlak maksimum kapasitesi değildir. Daha fazla para ödemek desteklenmeyen codec/donanımı destekli yapmaz.
 
 ## Planlar
 
@@ -32,11 +32,14 @@ Politika kimliği: `2026-10-17.v11`. Limitler ürün güvenliği için başlang�
 | Cihaz üstü yazıya dökme ve otomatik altyazı (web, yalnız İngilizce; model tarayıcıda çalışır) | Dahil; adet ve dakika kotası yok | Aynı |
 | Cihaz üstü görüntü iyileştirme (web; ışık, renk, keskinlik, kumlanma; klasik görüntü işleme, AI değil) | Dahil; adet ve dakika kotası yok | Aynı |
 | GIF yap (web, cihazda; videonun bir kısmından durmadan dönen GIF, üst ve alt yazıyla) | Dahil; GIF başına en çok 10 saniye, adet kotası yok | Aynı |
+| Sesi düzelt (web, cihazda; kısık ya da dengesiz sesi duyulur ve eşit yapar; klasik ses işleme, AI değil; gürültü silmez) | Dahil; adet ve dakika kotası yok | Aynı |
 | AI işlemleri (bulut / ücretli) | Yok | Başlangıç aboneliğine dahil değil |
 | İnternette yazıya dökme — davetli deneme (bulut, isteğe bağlı; web, "Yazıya dök" sihirbazı) | Yalnızca davet koduyla, ücretsiz: davet başına dakika hakkı (varsayılan 60 dakika), iş başına en çok 120 dakika ses; aylık harcama tavanı dolunca kapanır; kalıcı hak değildir | Aynı; Pro'ya bağlı değildir |
 | Kalıcı cloud arşivi / cihazlar arası medya senkronu | Yok | Yok |
 
 GiB = 1.073.741.824 byte, MiB = 1.048.576 byte. Kullanıcı arayüzü hangi birimi gösteriyorsa gerçek kontrol aynı birimde yapılmalı. “2 GB” deyip farklı limit uygulama.
+
+**Değişiklik `2026-10-18.v12` (kurucu kararı, 18 Ekim 2026):** "Sesi düzelt" (`docs/adr/ADR-049-sound-fix.md`) **ücretsiz temel özellik** oldu (yeni satır). Kısık ya da dengesiz ses tarayıcıda, kullanıcının cihazında duyulur ve eşit yapılır: ses önce ses yüksekliği worker'ında ölçülür (ITU-R BS.1770, iki geçiş), sonra indirmede hafif bir alçak kesim, yavaş bir seviye ayarı, yumuşak bir sıkıştırıcı ve gerçek tepe sınırlayıcıdan geçer; hedef **−16 LUFS**, dosyanın gerçek tepesi en çok **−1 dBTP**. Görüntü, hızlı kesimin izin verdiği her videoda olduğu gibi kopyalanır (ADR-027). Klasik ses işlemedir, AI değildir; **gürültüyü silmez** ("Sesteki gürültüyü temizle" hâlâ "Bunu henüz yapamıyoruz." der) ve ekran bunu söyler. Bize hiçbir işlem maliyeti çıkarmaz, video ve sesi cihazdan çıkmaz, hesap gerekmez, adet ve dakika kotası yoktur; uzunluk sınırı web yerel sınırlarının aynısıdır (60 dakika çıktı). Değişmeyenler: bütün öbür satırlar, fiyat ve ücretli haklar; "AI işlemleri (bulut / ücretli)" satırı aynen. Mevcut kullanıcı haklarına etkisi: yalnızca genişleme; şema değişmedi (EDL v5; ses düzeltme tarife yazılmaz, sihirbaz proje saklamaz). Ölçülmeyen: gerçek telefon, Safari ve Firefox; gerçek kayıtlarda (yapay sesle ölçüldü) ve bir saatlik videoda çalışma süresi.
 
 **Değişiklik `2026-10-17.v11` (kurucu kararı, 17 Ekim 2026):** "GIF yap" (`docs/adr/ADR-046-gif.md`) **ücretsiz temel özellik** oldu (yeni satır). Videonun seçilen bir kısmı — **GIF başına en çok 10 saniye** (`WEB_LOCAL_POLICY.maxGifDurationUs`) — tarayıcıda, GIF worker'ında, kullanıcının yazdığı üst ve alt yazıyla durmadan dönen bir GIF olur; boyut "Küçük" (uzun kenar 320) ya da "Orta" (480), hiçbiri videodan büyük değil (ADR-041), saniyede 12,5 kare. Bize hiçbir işlem maliyeti çıkarmaz, video cihazdan çıkmaz, hesap gerekmez, adet kotası yoktur. 10 saniye sınırı bir maliyet sınırı değil, ürün sınırıdır: GIF'te video sıkıştırması yoktur, her kare tam bir resimdir; 10 saniyelik "Orta" GIF, kumlu ya da yumuşak geçişli (gerçek çekime benzeyen) yapay görüntülerde 5,3–6,6 MB ölçüldü (ADR-046) ve sohbet uygulamalarının çoğu daha büyüğünü GIF olarak almaz. Değişmeyenler: bütün öbür satırlar, fiyat ve ücretli haklar; "AI işlemleri (bulut / ücretli)" satırı aynen. Mevcut kullanıcı haklarına etkisi: yalnızca genişleme; şema değişmedi (EDL v5; GIF ekranı proje saklamaz). Ölçülmeyen: gerçek telefon, Safari ve Firefox; gerçek çekim görüntüsünde boyut (ölçüm yapay görüntüyle yapıldı).
 

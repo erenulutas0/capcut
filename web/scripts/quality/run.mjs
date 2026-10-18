@@ -54,7 +54,7 @@ export const SECTIONS = [
   { id: 'walkthrough', results: ['walkthrough', 'walkthrough-yazi', 'walkthrough-yazi-bulut', 'walkthrough-yazi-bulut-kisiler'], runs: [
     { build: 'cloud', spec: 'walkthrough-yazi-bulut.spec.ts', projects: ['desktop', 'phone'] },
     { build: 'hooks', spec: 'walkthrough-yazi.spec.ts', projects: ['desktop', 'phone'] },
-    // ADR-048: the eleven cards in English too (an English browser, on the English pages).
+    // ADR-048: the cards in English too (an English browser, on the English pages); twelve since ADR-049.
     { build: 'static', spec: 'walkthrough.spec.ts', projects: ['desktop', 'phone', 'desktop-en', 'phone-en'] },
   ] },
   { id: 'search', results: ['search'], runs: [{ build: 'none', spec: 'search.spec.ts', projects: ['desktop'] }] },

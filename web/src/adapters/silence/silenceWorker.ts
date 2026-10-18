@@ -17,6 +17,8 @@ import { originOf, stageOf, tagStage, withOrigin } from '@/adapters/export/failu
 import { applyWorkerFault } from '@/adapters/workerFault';
 import { caughtFailureDetail, stalledFailureDetail, type ExportStage } from '@/domain/exportFailureDetail';
 import { ENVELOPE_FRAME_US, joinEnvelopes, LoudnessMeter, splitMeterRange, type MeterPart } from '@/domain/loudness';
+import { R128Meter, SUB_BLOCK_S } from '@/domain/r128';
+import { SILENT_BELOW_LUFS, SoundRehearsal, decideSoundFix, inputGainFor, listenStartPart } from '@/domain/soundFix';
 import { US_PER_SECOND } from '@/domain/time';
 import type { AnalysisFailure, SilenceWorkerRequest, SilenceWorkerResponse } from './protocol';
 
@@ -200,6 +202,129 @@ async function analyze(request: Extract<SilenceWorkerRequest, { type: 'analyze' 
   }
 }
 
+/* ------------------------------------------------------------ Sesi düzelt (ADR-049) */
+
+/** The download's two channels: output channel c is source channel c mod n, as the export's mix takes them. */
+const OUTPUT_CHANNELS = 2;
+
+/**
+ * Decodes the whole sound once, handing each chunk — as the download's two
+ * channels, on the source's own sample clock from 0 — to `take`.
+ */
+async function eachChunk(
+  sink: AudioSampleSink,
+  durationUs: number,
+  onProgress: (seconds: number) => void,
+  take: (channels: Float32Array[], frames: number, sampleRate: number) => void,
+): Promise<void> {
+  const planes: Float32Array[] = [];
+  let next = 0;
+  let rate = 0;
+  const endS = durationUs / US_PER_SECOND;
+  for await (const sample of sink.samples(0, endS)) {
+    try {
+      rate ||= sample.sampleRate;
+      const total = Math.round(endS * rate);
+      let first = Math.round(sample.timestamp * rate);
+      let frames = sample.numberOfFrames;
+      const sourceChannels = Math.max(1, sample.numberOfChannels);
+      const decoded: Float32Array[] = [];
+      for (let channel = 0; channel < Math.min(sourceChannels, OUTPUT_CHANNELS); channel += 1) {
+        let plane = planes[channel];
+        if (!plane || plane.length < frames) {
+          plane = new Float32Array(frames);
+          planes[channel] = plane;
+        }
+        const view = plane.subarray(0, frames);
+        sample.copyTo(view, { format: 'f32-planar', planeIndex: channel });
+        decoded.push(view);
+      }
+      // What lies before the sound already handed over (an overlap of the decoder) or past the end is not the download's.
+      const skip = Math.max(0, next - first);
+      if (first + frames > total) frames = Math.max(0, total - first);
+      if (skip < frames) {
+        first += skip;
+        const length = frames - skip;
+        const channels = Array.from({ length: OUTPUT_CHANNELS }, (_, c) => (decoded[c % decoded.length] as Float32Array).subarray(skip, skip + length));
+        take(channels, length, rate);
+        next = first + length;
+      }
+    } finally {
+      sample.close();
+    }
+    onProgress(next / Math.max(1, rate));
+  }
+}
+
+async function soundCheck(request: Extract<SilenceWorkerRequest, { type: 'soundCheck' }>): Promise<void> {
+  const { requestId, durationUs } = request;
+  const input = new Input({
+    formats: ALL_FORMATS,
+    source: new BlobSource(request.file, { useStreamReader: false }),
+  });
+  try {
+    stage = 'open_source';
+    const track = await openTrack(input);
+    const sink = new AudioSampleSink(track);
+    // Progress in 10 ms frames over both passes, like the silence search's.
+    const perPass = Math.max(1, Math.ceil(durationUs / ENVELOPE_FRAME_US));
+    const framesTotal = perPass * 2;
+    let lastPost = 0;
+    const progress = (pass: 0 | 1) => (seconds: number) => {
+      const now = performance.now();
+      if (now - lastPost < PROGRESS_INTERVAL_MS) return;
+      lastPost = now;
+      const done = Math.min(perPass, Math.round((seconds * US_PER_SECOND) / ENVELOPE_FRAME_US));
+      post({ type: 'progress', requestId, framesDone: pass * perPass + done, framesTotal });
+    };
+    post({ type: 'progress', requestId, framesDone: 0, framesTotal });
+    stage = 'audio_decode';
+    if (TEST_HOOKS) await applyWorkerFault(request.testFault);
+
+    // Pass 1: the sound as it is.
+    let meter: R128Meter | null = null;
+    let rate = 0;
+    try {
+      await eachChunk(sink, durationUs, progress(0), (channels, frames, sampleRate) => {
+        rate = sampleRate;
+        meter ??= new R128Meter(sampleRate, OUTPUT_CHANNELS);
+        meter.push(channels, frames);
+      });
+    } catch (error) {
+      throw withOrigin(new AnalysisError('undecodable'), tagStage(error, 'audio_decode'));
+    }
+    stage = 'loudness';
+    const before = (meter as R128Meter | null)?.result() ?? null;
+    if (!before || before.integratedLufs < SILENT_BELOW_LUFS || !Number.isFinite(before.integratedLufs)) {
+      const silent = before ?? { integratedLufs: Number.NEGATIVE_INFINITY, lraLu: 0, truePeakDbtp: Number.NEGATIVE_INFINITY };
+      post({ type: 'soundCheck', requestId, check: decideSoundFix(silent, 0, silent), listen: null });
+      return;
+    }
+
+    // Pass 2: what steps 1–4 and the limiter make of it at the input gain pass 1 decided.
+    stage = 'audio_decode';
+    const inputGainDb = inputGainFor(before.integratedLufs);
+    const partFrames = Math.round(SUB_BLOCK_S * rate);
+    const listenStart = listenStartPart(before.parts, before.integratedLufs) * partFrames;
+    const shapedMeter = new R128Meter(rate, OUTPUT_CHANNELS);
+    const rehearsal = new SoundRehearsal(rate, OUTPUT_CHANNELS, inputGainDb, shapedMeter, listenStart, Math.round((durationUs * rate) / US_PER_SECOND));
+    try {
+      await eachChunk(sink, durationUs, progress(1), (channels, frames) => rehearsal.push(channels, frames));
+    } catch (error) {
+      throw withOrigin(new AnalysisError('undecodable'), tagStage(error, 'audio_decode'));
+    }
+    stage = 'loudness';
+    rehearsal.end();
+    const check = decideSoundFix(before, inputGainDb, shapedMeter.result());
+    const heard = rehearsal.listen(check.settings.outputGainDb);
+    const listen = { sampleRate: rate, startS: heard.startS, before: heard.before, after: heard.after };
+    post({ type: 'progress', requestId, framesDone: framesTotal, framesTotal });
+    post({ type: 'soundCheck', requestId, check, listen }, [...heard.before, ...heard.after].map((channel) => channel.buffer));
+  } finally {
+    input.dispose();
+  }
+}
+
 scope.onmessage = (message: MessageEvent<SilenceWorkerRequest>) => {
   const request = message.data;
   if (request.type === 'where') {
@@ -207,9 +332,9 @@ scope.onmessage = (message: MessageEvent<SilenceWorkerRequest>) => {
     post({ type: 'where', requestId: request.requestId, detail: stalledFailureDetail(stage) });
     return;
   }
-  if (request.type !== 'analyze') return;
+  if (request.type !== 'analyze' && request.type !== 'soundCheck') return;
   stage = 'unknown';
-  analyze(request).catch((error: unknown) => {
+  (request.type === 'analyze' ? analyze(request) : soundCheck(request)).catch((error: unknown) => {
     // Never forward a raw error message: it can contain file paths. For an
     // error that is not one of this file's own refusals, what is sent is its
     // name (if it is a known one) and the stage — `caughtFailureDetail`.

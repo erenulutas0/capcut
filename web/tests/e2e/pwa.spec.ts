@@ -397,10 +397,10 @@ const APP_PATH = [
   /^\/editor$/,
   /^\/gizlilik(\/en)?$/,
   // The task wizards (ADR-034).
-  /^\/yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|cevir|iyilestir|gif)$/,
+  /^\/yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|duzelt|cevir|iyilestir|gif)$/,
   // The same pages in English (ADR-048).
   /^\/en(\/editor)?$/,
-  /^\/en\/yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|cevir|iyilestir|gif)$/,
+  /^\/en\/yap\/(kes|bosluk|dikey|kucult|yazi|muzik|ses|sustur|duzelt|cevir|iyilestir|gif)$/,
   /^\/_next\/static\/[^?]+$/,
   /^\/fonts\/caption\/inter-latin(-ext)?-700-normal\.woff2$/,
   /^\/icons\/(icon-192|icon-512|maskable-512)\.png$/,

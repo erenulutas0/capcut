@@ -21,6 +21,7 @@ export type TaskId =
   | 'muzik'
   | 'ses'
   | 'sustur'
+  | 'duzelt'
   | 'cevir'
   | 'iyilestir'
   | 'gif'
@@ -55,6 +56,7 @@ export type TaskIcon =
   | 'taskMusic'
   | 'taskSound'
   | 'taskMute'
+  | 'taskFixSound'
   | 'taskConvert'
   | 'taskEnhance'
   | 'taskGif'
@@ -358,6 +360,54 @@ const REGISTRY = [
             'istemiyorum', 'istemem', 'istemiyoruz', 'olmadan', 'gitsin', 'sifirla', 'sustur', 'mute', 'off', 'remove',
             'delete', 'without', 'no', 'dont', 'rid',
           ],
+        ],
+      ],
+    },
+  },
+  {
+    // "Sesi düzelt" (ADR-049, 18 Oct 2026): quiet or uneven sound made audible and even, on the device.
+    // Its words say what is wrong with the LEVEL of the sound ("kısık", "duyulmuyor", "too quiet",
+    // "volume") or what is done to it ("sesi aç", "turn it up", "normalize"). Not "ses" / "sound" alone
+    // (Sesini al), not "sessiz" / "quiet" alone (Boşlukları at: a silent PLACE), not noise ("gürültü",
+    // "wind", "hum": an honest "not yet" of its own — this card does not remove noise, and says so).
+    id: 'duzelt',
+    icon: 'taskFixSound',
+    labelKey: 'task.duzelt.label',
+    subKey: 'task.duzelt.sub',
+    available: true,
+    steps: ['pick', 'choose', 'download'],
+    words: {
+      strong: [
+        'kisik', 'kisikti', 'kisiktir', 'duyulmuyor', 'duyulmuyo', 'duyulmuyordu', 'duyamiyorum', 'duyamiyoruz',
+        'normallestir', 'esitle', 'dengele', 'volume', 'louder', 'loudness', 'normalize', 'normalise', 'inaudible',
+        'normalization', 'normalisation',
+      ],
+      weak: [
+        'seviye', 'seviyesi', 'seviyesini', 'yukselt', 'artir', 'guclendir', 'dusuk', 'alcak', 'dengesiz', 'esit',
+        'boost', 'level', 'levels', 'low', 'soft', 'uneven', 'even', 'hear', 'audible', 'mic', 'microphone', 'mikrofon',
+      ],
+      phrases: [
+        'sesi duzelt', 'sesini duzelt', 'ses duzelt', 'sesi ac', 'sesini ac', 'sesi yukselt', 'sesini yukselt', 'sesi artir',
+        'sesini artir', 'ses seviyesi', 'ses seviyesini', 'sesi esitle', 'sesi dengele', 'ses kisik', 'sesi kisik', 'sesim kisik',
+        'ses dusuk', 'sesi dusuk', 'ses cok dusuk', 'sesi cok dusuk', 'sesi duyulmuyor', 'ses duyulmuyor', 'sesi guclendir',
+        'sesi normallestir', 'daha yuksek', 'fix the sound', 'fix the audio', 'fix sound', 'fix audio', 'fix my audio',
+        'fix my sound', 'too quiet', 'very quiet', 'so quiet', 'too soft', 'too low', 'cant hear', 'can t hear', 'hard to hear',
+        'barely hear', 'turn up', 'turn it up', 'make it louder', 'even out', 'audio levels', 'sound levels', 'audio level',
+        'sound level', 'volume up', 'boost the audio', 'boost audio', 'boost the sound', 'boost volume', 'increase volume',
+        'increase the volume', 'raise the volume', 'normalize audio', 'normalise audio', 'quiet voice', 'quiet audio',
+        'quiet sound',
+      ],
+      // The sound and what is wrong with its level, or what is done to it: "ses çok kısık çıkmış",
+      // "sesini biraz yükseltmek istiyorum", "the audio is way too low".
+      pairs: [
+        [
+          ['ses', 'sesi', 'sesim', 'konusma', 'konusmalar', 'audio', 'sound', 'voice', 'voices', 'speech', 'volume'],
+          [
+            'kisik', 'dusuk', 'alcak', 'yukselt', 'artir', 'guclendir', 'esitle', 'dengele', 'dengesiz', 'duzelt', 'ac',
+            'duyulmuyor', 'duyulmuyo', 'louder', 'quiet', 'quieter', 'low', 'soft', 'up', 'boost', 'uneven', 'even', 'level',
+            'normalize', 'normalise', 'fix', 'inaudible',
+          ],
+          1,
         ],
       ],
     },

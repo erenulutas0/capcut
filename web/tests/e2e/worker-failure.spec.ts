@@ -121,6 +121,35 @@ test.describe('the loudness worker', () => {
   });
 });
 
+// ------------------------------------------------------------------ Sesi düzelt (the same loudness worker, ADR-049)
+
+test.describe('Sesi düzelt’s measuring', () => {
+  test('every way of breaking ends as a failure that says where, keeps nothing of the error text, and trying again works', async ({ page }) => {
+    const logs = watchLogs(page);
+    await faultBeforeLoad(page, fault('silence', 'throw'), STALL_MS);
+    await startTask(page, 'duzelt', SAMPLE);
+
+    for (const kind of KINDS) {
+      await test.step(kind, async () => {
+        const problem = page.getByTestId('duzelt-problem');
+        await expect(problem.getByRole('alert')).toHaveText('Ses dinlenirken beklenmedik bir hata oldu. Tekrar dene.', { timeout: 60_000 });
+        const want = expected(kind, 'audio_decode', kind === 'unsendable' ? null : 'analysing');
+        await expectDetail(page, logs, { testId: 'duzelt-failed', area: 'silence', code: 'internal_error', label: `duzelt/${kind}`, ...want });
+        // Nothing was measured, and nothing is offered for download.
+        await expect(page.getByTestId('duzelt-summary')).toHaveCount(0);
+        await expect(page.getByTestId('wizard-download')).toHaveCount(0);
+        const next = KINDS[KINDS.indexOf(kind) + 1];
+        await nextFault(page, next ? fault('silence', next) : null, STALL_MS);
+        await page.getByTestId('duzelt-retry').click();
+      });
+    }
+    // The same page, the same video, no fault: the measuring finishes and "İndir" is there.
+    await expect(page.getByTestId('duzelt-summary')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId('wizard-download')).toBeEnabled();
+    await expect(page.getByTestId('duzelt-problem')).toHaveCount(0);
+  });
+});
+
 // ------------------------------------------------------------------ Yazıya dök (transcript worker)
 
 test.describe('the transcript worker', () => {

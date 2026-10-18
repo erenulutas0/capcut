@@ -39,7 +39,7 @@ test.describe('opening screen', () => {
 
     // The cards, in the registry's order: exactly the tasks that work today.
     const cards = page.getByTestId('task-grid').getByRole('link');
-    await expect(cards).toHaveCount(11);
+    await expect(cards).toHaveCount(12);
     expect(await cards.evaluateAll((links) => links.map((link) => link.getAttribute('href')))).toEqual(
       availableTasks().map((task) => `/yap/${task.id}`),
     );
@@ -55,6 +55,8 @@ test.describe('opening screen', () => {
     await expect(page.getByTestId('task-ses')).toContainText('Sesini al');
     await expect(page.getByTestId('task-sustur')).toContainText('Sesi kapat');
     await expect(page.getByTestId('task-sustur')).toContainText('Videoyu sessiz yap');
+    await expect(page.getByTestId('task-duzelt')).toContainText('Sesi düzelt');
+    await expect(page.getByTestId('task-duzelt')).toContainText('Kısık sesi aç, eşitle');
     await expect(page.getByTestId('task-cevir')).toContainText('Her yerde açılsın');
     await expect(page.getByTestId('task-gif')).toContainText('GIF yap');
     await expect(page.getByTestId('task-gif')).toContainText('Videodan hareketli resim');
@@ -62,6 +64,7 @@ test.describe('opening screen', () => {
     const order = await cards.evaluateAll((links) => links.map((link) => link.getAttribute('data-testid')));
     expect(order[0]).toBe('task-kes');
     expect(order.indexOf('task-sustur')).toBe(order.indexOf('task-ses') + 1);
+    expect(order.indexOf('task-duzelt')).toBe(order.indexOf('task-sustur') + 1);
     // What cannot be done yet (eighteen entries the search knows): no card, no mention on the screen.
     expect(TASKS.filter((item) => !item.available)).toHaveLength(18);
     for (const task of TASKS.filter((item) => !item.available)) {
@@ -93,7 +96,7 @@ test.describe('opening screen', () => {
           return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
         }),
       );
-      expect(boxes).toHaveLength(11);
+      expect(boxes).toHaveLength(12);
       for (const rect of boxes) {
         expect(rect.width).toBeGreaterThanOrEqual(120);
         expect(rect.height).toBeGreaterThanOrEqual(120);
@@ -104,16 +107,18 @@ test.describe('opening screen', () => {
       const sorted = [...boxes].sort((a, b) => a.y - b.y || a.x - b.x);
       expect(boxes).toEqual(sorted);
       // Two columns on a phone; from 700 px three; from 1000 px four when that leaves no card
-      // alone. Eleven cards ("GIF yap" is the eleventh, ADR-046): the lead card takes two places,
-      // so the rows are full — Kes + 2, 4, 4 on a desktop; Kes alone across the phone, then five of two.
+      // alone. Twelve cards since "Sesi düzelt" (ADR-049; eleven with "GIF yap" made the lead card two
+      // wide): an even count fills every row with the lead card in one place — 4, 4, 4 on a desktop,
+      // six rows of two on a phone.
       const columns = new Set(boxes.map((rect) => Math.round(rect.x))).size;
       expect(columns).toBe(size.width >= 1000 ? 4 : size.width >= 700 ? 3 : 2);
       const rows = new Map<number, number>();
       for (const rect of boxes) rows.set(Math.round(rect.y), (rows.get(Math.round(rect.y)) ?? 0) + 1);
-      expect([...rows.values()]).toEqual(size.width >= 1000 ? [3, 4, 4] : [1, 2, 2, 2, 2, 2]);
-      // The lead card is two cards wide (and a gap).
+      expect([...rows.values()]).toEqual(size.width >= 1000 ? [4, 4, 4] : [2, 2, 2, 2, 2, 2]);
+      // The lead card is one card wide again: no card is wider than the others.
       const [lead, second] = boxes;
-      expect(lead && second ? lead.width : 0).toBeGreaterThan((second?.width ?? 0) * 2);
+      expect(Math.abs((lead?.width ?? 0) - (second?.width ?? 0))).toBeLessThanOrEqual(1);
+      await expect(page.getByTestId('task-grid')).toHaveAttribute('data-lead-wide', 'false');
 
       // Every other control is at least 44 px tall.
       for (const testId of ['home-editor-link', 'finder-input', 'finder-example']) {

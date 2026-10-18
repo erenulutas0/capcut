@@ -84,6 +84,7 @@ import { totalOutputDurationUs } from '@/domain/timeline';
 import type { ClipSilence } from '@/domain/silence';
 import type { Micros } from '@/domain/time';
 import { aspectForVideo } from '@/domain/timelineEdit';
+import { useLocale } from '@/i18n/locale';
 import type { MessageKey } from '@/i18n/messages';
 
 export interface MediaError {
@@ -110,7 +111,7 @@ export interface MediaError {
  */
 export type VideoImportOutcome =
   | { kind: 'rejected' }
-  | { kind: 'opened'; lengthUs: Micros; aspect: AspectRatio | null };
+  | { kind: 'opened'; lengthUs: Micros; aspect: AspectRatio | null; /** Whether the file has sound; undefined when it could not be told. */ hasAudio: boolean | undefined };
 
 const VIDEO_LIMITS = {
   maxBytes: WEB_LOCAL_POLICY.maxTotalSourceBytes,
@@ -146,6 +147,8 @@ function settingsOf(project: Project): KesitSettings | null {
 }
 
 export function useEditorState() {
+  /** A caption track this editor has to create is in the page's language (ADR-048); a stored one keeps its own. */
+  const locale = useLocale();
   const [title, setTitle] = useState('');
   const [history, setHistory] = useState<History<Project>>(() =>
     initHistory(createEmptyProject()),
@@ -259,7 +262,7 @@ export function useEditorState() {
             : replaced;
         return commit(current, prepare ? prepare(framed) : framed);
       });
-      return { kind: 'opened', lengthUs: outcome.handle.durationUs, aspect };
+      return { kind: 'opened', lengthUs: outcome.handle.durationUs, aspect, hasAudio: outcome.handle.hasAudio };
     },
     [],
   );
@@ -588,8 +591,8 @@ export function useEditorState() {
   );
 
   const addCaption = useCallback(
-    (input: CaptionCueInput) => runCommand((base) => addCaptionCue(base, input)),
-    [runCommand],
+    (input: CaptionCueInput) => runCommand((base) => addCaptionCue(base, input, locale)),
+    [runCommand, locale],
   );
 
   const updateCaption = useCallback(
@@ -613,8 +616,8 @@ export function useEditorState() {
   /** Replaces the track with lines from a subtitle file. One undo step. */
   const importCaptions = useCallback(
     (cues: readonly ImportedCueInput[], timeBase: 'output' | 'source'): CaptionImportResult =>
-      runCommand((base) => importCaptionTrack(base, cues, timeBase)),
-    [runCommand],
+      runCommand((base) => importCaptionTrack(base, cues, timeBase, locale)),
+    [runCommand, locale],
   );
 
   /**
@@ -665,8 +668,8 @@ export function useEditorState() {
   }, []);
 
   const changeCaptionStyle = useCallback((patch: Partial<CaptionStyleV2>) => {
-    setHistory((current) => commit(current, setCaptionStyle(current.present, patch)));
-  }, []);
+    setHistory((current) => commit(current, setCaptionStyle(current.present, patch, locale)));
+  }, [locale]);
 
   const changeCaptionLanguage = useCallback((language: string) => {
     setHistory((current) => commit(current, setCaptionLanguage(current.present, language)));

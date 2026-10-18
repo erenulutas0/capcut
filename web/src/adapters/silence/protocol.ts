@@ -7,6 +7,7 @@
  */
 
 import type { ExportFailureDetail } from '@/domain/exportFailureDetail';
+import type { SoundCheck } from '@/domain/soundFix';
 import type { Micros } from '@/domain/time';
 import type { WorkerTestFault } from '../workerWatch';
 
@@ -24,12 +25,36 @@ export interface AnalysisRange {
  */
 export type AnalysisFailure = 'no_audio' | 'undecodable' | 'unreadable' | 'internal_error';
 
+/** Five seconds of the sound as it is and as the download will have it (ADR-049). */
+export interface SoundListen {
+  sampleRate: number;
+  /** Where in the video the five seconds start. */
+  startS: number;
+  before: Float32Array[];
+  after: Float32Array[];
+}
+
 export type SilenceWorkerRequest =
   | {
       type: 'analyze';
       requestId: string;
       file: File;
       ranges: AnalysisRange[];
+      /** Test builds only (`window.__clipWorkerFault`). Ignored in every other build. */
+      testFault?: WorkerTestFault | null;
+      /** Test builds only: something that cannot be copied to a worker, so the request cannot be sent. */
+      unsendable?: unknown;
+    }
+  /**
+   * "Sesi düzelt" (ADR-049): how loud the whole sound is, and what the chain would make of it — two
+   * passes over the sound, decoded here and never sent anywhere. Answered with `soundCheck`.
+   */
+  | {
+      type: 'soundCheck';
+      requestId: string;
+      file: File;
+      /** The video's length: the sound is measured over [0, durationUs). */
+      durationUs: Micros;
       /** Test builds only (`window.__clipWorkerFault`). Ignored in every other build. */
       testFault?: WorkerTestFault | null;
       /** Test builds only: something that cannot be copied to a worker, so the request cannot be sent. */
@@ -50,6 +75,16 @@ export type SilenceWorkerResponse =
       db: Float32Array;
     }
   | { type: 'done'; requestId: string }
+  /**
+   * ADR-049: the two measurements, and five seconds before and after to listen to (planar, at
+   * `sampleRate`, transferred) — null when the sound is silent and nothing would be changed.
+   */
+  | {
+      type: 'soundCheck';
+      requestId: string;
+      check: SoundCheck;
+      listen: SoundListen | null;
+    }
   /**
    * `detail`: only for a failure nobody planned for — where it broke and with
    * what kind of error (enums and counts, never the error's text; ADR-042).

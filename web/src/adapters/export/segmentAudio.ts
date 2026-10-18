@@ -14,6 +14,7 @@ import { AudioSample } from 'mediabunny';
 import { clampBuffers, interleave, mixStreamInto, musicEnvelope } from '@/domain/audioMix';
 import { frameToUs, type RenderPlan, type RenderSegment } from '@/domain/renderPlan';
 import { US_PER_SECOND } from '@/domain/time';
+import type { SoundFixChain } from '@/domain/soundFix';
 import type { AudioStreamReader } from './audioStream';
 import { staged } from './failureStage';
 import type { StageLane } from './exportProfile';
@@ -42,12 +43,21 @@ export function audioEndFrame(plan: RenderPlan): number {
 export interface AudioContextSources {
   clipReader: AudioStreamReader | null;
   musicReader: AudioStreamReader | null;
+  /**
+   * ADR-049 ("Sesi düzelt"): the loudness chain, one for the whole download
+   * (its gains carry on from one moment to the next). It replaces the common
+   * headroom: its limiter is what keeps the peaks down.
+   */
+  fix?: SoundFixChain | null;
 }
 
 export class SegmentAudioWriter {
   private readonly lastAudioFrame: number;
   private readonly segmentStartUs: number;
+  /** The next output frame to be mixed. */
   private frame: number;
+  /** The next output frame to be handed to the encoder (behind `frame` while the loudness chain holds some). */
+  private written: number;
   private opened = false;
 
   constructor(
@@ -63,6 +73,7 @@ export class SegmentAudioWriter {
     this.segmentStartUs = frameToUs(segment.startFrame, plan.fpsNum, plan.fpsDen);
     const segmentEndUs = frameToUs(segment.endFrame, plan.fpsNum, plan.fpsDen);
     this.frame = Math.round((this.segmentStartUs * outRate) / US_PER_SECOND);
+    this.written = this.frame;
     this.lastAudioFrame = Math.round((segmentEndUs * outRate) / US_PER_SECOND);
   }
 
@@ -144,6 +155,21 @@ export class SegmentAudioWriter {
         }
       }
 
+      const fix = sources.fix ?? null;
+      if (fix) {
+        // ADR-049: the loudness chain, whose limiter is the headroom. It gives back what is ready
+        // (its look-ahead holds the newest samples); sample n out is sample n in.
+        this.frame = frame + chunkFrames;
+        const ready = fix.push(planar, chunkFrames);
+        // The end of the moment: everything the chain still holds, so the moment is exactly as long as before.
+        const last = this.frame >= this.lastAudioFrame ? fix.flush() : null;
+        clock.lap('audioMix');
+        await this.write(ready);
+        if (last) await this.write(last);
+        clock.lap('audioEncode');
+        continue;
+      }
+
       // --- headroom + limiter ------------------------------------------------
       if (plan.audio.safetyGain !== 1) {
         for (const channel of planar) {
@@ -152,25 +178,33 @@ export class SegmentAudioWriter {
           }
         }
       }
-      clampBuffers(planar, chunkFrames);
-
-      const sample = new AudioSample({
-        data: interleave(planar, chunkFrames),
-        format: 'f32',
-        numberOfChannels: channels,
-        sampleRate: outRate,
-        timestamp: frame / outRate,
-      });
       clock.lap('audioMix');
-      try {
-        await staged('audio_encode', () => audioSource.add(sample));
-      } finally {
-        // `add` has copied it to the encoder by the time it resolves; closing is ours.
-        sample.close();
-      }
+      await this.write(planar);
       clock.lap('audioEncode');
       this.frame = frame + chunkFrames;
     }
+  }
+
+  /** Hands mixed sound to the encoder at the next output position (clamped: nothing past full scale). */
+  private async write(planar: Float32Array[]): Promise<void> {
+    const frames = planar[0]?.length ?? 0;
+    if (frames === 0) return;
+    const outRate = this.plan.audio.sampleRate;
+    clampBuffers(planar, frames);
+    const sample = new AudioSample({
+      data: interleave(planar, frames),
+      format: 'f32',
+      numberOfChannels: this.plan.audio.channelCount,
+      sampleRate: outRate,
+      timestamp: this.written / outRate,
+    });
+    try {
+      await staged('audio_encode', () => this.audioSource.add(sample));
+    } finally {
+      // `add` has copied it to the encoder by the time it resolves; closing is ours.
+      sample.close();
+    }
+    this.written += frames;
   }
 
   get done(): boolean {

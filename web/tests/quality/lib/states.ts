@@ -8,6 +8,7 @@ import { expect, type Page } from '@playwright/test';
 import { enhanceFixture } from '../../e2e/enhance-media';
 import { addKesit } from '../../e2e/kesitFlow';
 import { silenceFixture } from '../../e2e/silence-media';
+import { soundFixFixture } from '../../e2e/soundfix-media';
 import { wizardFixture } from '../../e2e/wizard-media';
 import type { Locale } from '../../../src/i18n/translate';
 import { MUSIC, OTHER, SAMPLE, pathFor, waitForResult } from './app';
@@ -159,6 +160,17 @@ export const STATES: ScreenState[] = [
       await page.getByTestId('gif-video').evaluate((video: HTMLVideoElement) => {
         video.style.display = 'none';
       });
+    },
+  },
+  {
+    // ADR-049: the summary of an uneven recording (the longest the screen gets: the change, "uneven", the listen buttons).
+    id: 'sihirbaz-duzelt-secim',
+    label: 'Sesi düzelt, özet (dengesiz konuşma)',
+    wizard: true,
+    open: async (page, lang = 'tr') => {
+      await pick(page, 'duzelt', soundFixFixture('uneven'), lang);
+      await expect(page.getByTestId('duzelt-summary')).toBeVisible({ timeout: 120_000 });
+      await expect(page.getByTestId('duzelt-summary')).not.toHaveAttribute('data-copy', '');
     },
   },
   {

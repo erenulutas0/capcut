@@ -32,10 +32,10 @@ import { watchProblems, type PageProblems } from './lib/screen';
 test.use({ storageState: { cookies: [], origins: [] } });
 test.skip(BUILD !== 'static', 'runs against the static export');
 
-const TASKS = ['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'sustur', 'cevir', 'iyilestir'] as const;
+const TASKS = ['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'sustur', 'duzelt', 'cevir', 'iyilestir'] as const;
 type Task = (typeof TASKS)[number];
 /** Tasks that have nothing to do without the video's own sound. */
-const NEEDS_SOUND: readonly Task[] = ['bosluk', 'yazi', 'ses', 'sustur'];
+const NEEDS_SOUND: readonly Task[] = ['bosluk', 'yazi', 'ses', 'sustur', 'duzelt'];
 
 type FilePayload = string | { name: string; mimeType: string; buffer: Buffer };
 

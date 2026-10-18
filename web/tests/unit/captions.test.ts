@@ -178,6 +178,33 @@ describe('caption commands', () => {
     expect(validateProject(project).ok).toBe(true);
   });
 
+  it('a track a command creates is in the language it is given (the page’s, ADR-048), Turkish when none is given', () => {
+    const cue = { startUs: 1 * S, endUs: 2 * S, text: 'one' };
+    const english = addCaptionCue(projectOf(10), cue, 'en');
+    expect(english.ok && english.project.captionTracks[0]?.language).toBe('en');
+    const turkish = addCaptionCue(projectOf(10), cue, 'tr');
+    expect(turkish.ok && turkish.project.captionTracks[0]?.language).toBe('tr');
+    const unnamed = addCaptionCue(projectOf(10), cue);
+    expect(unnamed.ok && unnamed.project.captionTracks[0]?.language).toBe('tr');
+    // Something that is no language tag never reaches the recipe.
+    const broken = addCaptionCue(projectOf(10), cue, 'english!');
+    expect(broken.ok && broken.project.captionTracks[0]?.language).toBe('tr');
+    // A style picked before any line creates the track too.
+    expect(setCaptionStyle(projectOf(10), { position: 'top' }, 'en').captionTracks[0]?.language).toBe('en');
+    if (english.ok) expect(validateProject(english.project).ok).toBe(true);
+  });
+
+  it('a track that exists keeps its language whatever the page’s is', () => {
+    const turkishTrack = add(projectOf(10), 1, 2, 'bir');
+    expect(turkishTrack.captionTracks[0]?.language).toBe('tr');
+    const more = addCaptionCue(turkishTrack, { startUs: 3 * S, endUs: 4 * S, text: 'iki' }, 'en');
+    expect(more.ok && more.project.captionTracks[0]?.language).toBe('tr');
+    expect(setCaptionStyle(turkishTrack, { size: 'large' }, 'en').captionTracks[0]?.language).toBe('tr');
+    const englishTrack = setCaptionLanguage(turkishTrack, 'en');
+    const again = addCaptionCue(englishTrack, { startUs: 5 * S, endUs: 6 * S, text: 'three' }, 'tr');
+    expect(again.ok && again.project.captionTracks[0]?.language).toBe('en');
+  });
+
   it('undo and redo restore caption edits', () => {
     const start = projectOf(10);
     let history = initHistory(start);

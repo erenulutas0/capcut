@@ -59,15 +59,39 @@ const CONTRAST_FLOOR = 10 ** (-100 / 20);
 
 const fromDb = (db: number) => 10 ** (db / 20);
 
-export class LevelNormaliser {
+/**
+ * What a listener's copy needs beyond the detector's (ADR-049, "Sesi düzelt"):
+ * the same slow gain, for every channel at once (one gain from all of them, so
+ * the picture of a stereo sound does not move), allowed above full scale (a
+ * limiter after it decides the peaks), and moving at most this fast.
+ */
+export interface ListeningLevelParams extends LevelParams {
+  /** Clamp to ±1 as the detector's copy does (default true). */
+  clip?: boolean;
+  /** The fastest the gain may rise, dB per second (default: no limit). */
+  maxRiseDbPerS?: number;
+  /** The fastest the gain may fall, dB per second (default: no limit). */
+  maxFallDbPerS?: number;
+}
+
+/**
+ * The slow gain over planar channels. With one channel, clamping on and no
+ * speed limits it is exactly the detector's `LevelNormaliser`, sample for
+ * sample (the mono class below is this one).
+ */
+export class MultiLevelNormaliser {
   private readonly block: number;
   private readonly back: number;
   private readonly ahead: number;
   private readonly target: number;
   private readonly maxGain: number;
   private readonly minContrast: number;
-  /** Samples waiting for their gain: whole blocks first, then the block being filled. */
-  private held: Float32Array;
+  private readonly clip: boolean;
+  /** Per-block gain ratios for the speed limits (Infinity: none). */
+  private readonly maxRise: number;
+  private readonly maxFall: number;
+  /** Samples waiting for their gain, per channel: whole blocks first, then the block being filled. */
+  private held: Float32Array[];
   private heldLength = 0;
   /** RMS of every completed block still inside some window, oldest first; `firstLevel` is the index of the oldest. */
   private levels: number[] = [];
@@ -79,7 +103,11 @@ export class LevelNormaliser {
   private fillCount = 0;
   private lastGain: number | null = null;
 
-  constructor(sampleRate: number, params: Partial<LevelParams> = {}) {
+  constructor(
+    sampleRate: number,
+    params: Partial<ListeningLevelParams> = {},
+    readonly channelCount = 1,
+  ) {
     const p = { ...DEFAULT_LEVEL, ...params };
     this.block = Math.max(1, Math.round(p.blockS * sampleRate));
     this.back = Math.max(0, Math.round(p.backS / p.blockS));
@@ -87,9 +115,13 @@ export class LevelNormaliser {
     this.target = fromDb(p.targetDb);
     this.maxGain = fromDb(Math.max(0, p.maxGainDb));
     this.minContrast = fromDb(Math.max(0, p.minContrastDb));
-    this.held = new Float32Array(this.block * (this.ahead + 4));
+    this.clip = params.clip !== false;
+    this.maxRise = params.maxRiseDbPerS === undefined ? Infinity : fromDb(params.maxRiseDbPerS * p.blockS);
+    this.maxFall = params.maxFallDbPerS === undefined ? Infinity : fromDb(params.maxFallDbPerS * p.blockS);
+    this.held = Array.from({ length: channelCount }, () => new Float32Array(this.block * (this.ahead + 4)));
   }
 
+  /** The gain the loudest block near this one asks for (before any speed limit). */
   private gainFor(index: number, lastKnown: number): number {
     let loudest = 0;
     let quietest = Infinity;
@@ -110,36 +142,50 @@ export class LevelNormaliser {
   }
 
   /** Sends out every block whose whole window is known (`all`: whatever is left, at the end). */
-  private drain(all: boolean): Float32Array {
+  private drain(all: boolean): Float32Array[] {
     const lastKnown = this.completed - 1;
     const ready = all ? this.completed : Math.max(this.nextOut, this.completed - this.ahead);
     const count = ready - this.nextOut;
     const tail = all ? this.fillCount : 0;
-    const out = new Float32Array(Math.max(0, count) * this.block + tail);
+    const length = Math.max(0, count) * this.block + tail;
+    const out = this.held.map(() => new Float32Array(length));
+    const clip = this.clip;
     let at = 0;
     for (let index = this.nextOut; index < ready; index += 1) {
-      const gain = this.gainFor(index, lastKnown);
+      let gain = this.gainFor(index, lastKnown);
+      if (this.lastGain !== null) {
+        if (gain > this.lastGain * this.maxRise) gain = this.lastGain * this.maxRise;
+        else if (gain < this.lastGain / this.maxFall) gain = this.lastGain / this.maxFall;
+      }
       const from = this.lastGain ?? gain;
       // The gain glides across the block, so no step is ever heard (or detected) at a block edge.
-      for (let i = 0; i < this.block; i += 1) {
-        const g = from + ((gain - from) * (i + 1)) / this.block;
-        const value = (this.held[at + i] as number) * g;
-        out[at + i] = value > 1 ? 1 : value < -1 ? -1 : value;
+      for (let c = 0; c < this.channelCount; c += 1) {
+        const source = this.held[c] as Float32Array;
+        const target = out[c] as Float32Array;
+        for (let i = 0; i < this.block; i += 1) {
+          const g = from + ((gain - from) * (i + 1)) / this.block;
+          const value = (source[at + i] as number) * g;
+          target[at + i] = clip ? (value > 1 ? 1 : value < -1 ? -1 : value) : value;
+        }
       }
       this.lastGain = gain;
       at += this.block;
     }
     if (tail > 0) {
       const gain = this.lastGain ?? 1;
-      for (let i = 0; i < tail; i += 1) {
-        const value = (this.held[at + i] as number) * gain;
-        out[at + i] = value > 1 ? 1 : value < -1 ? -1 : value;
+      for (let c = 0; c < this.channelCount; c += 1) {
+        const source = this.held[c] as Float32Array;
+        const target = out[c] as Float32Array;
+        for (let i = 0; i < tail; i += 1) {
+          const value = (source[at + i] as number) * gain;
+          target[at + i] = clip ? (value > 1 ? 1 : value < -1 ? -1 : value) : value;
+        }
       }
       at += tail;
     }
     this.nextOut = ready;
     // Keep what has not gone out, and only the levels a later window can still reach.
-    this.held.copyWithin(0, at, this.heldLength);
+    for (const channel of this.held) channel.copyWithin(0, at, this.heldLength);
     this.heldLength -= at;
     if (all) this.fillCount = 0;
     const keepFrom = Math.max(this.firstLevel, this.nextOut - this.back);
@@ -150,20 +196,30 @@ export class LevelNormaliser {
     return out;
   }
 
-  push(samples: Float32Array): Float32Array {
-    if (this.heldLength + samples.length > this.held.length) {
-      const grown = new Float32Array(Math.max(this.held.length * 2, this.heldLength + samples.length));
-      grown.set(this.held.subarray(0, this.heldLength));
-      this.held = grown;
+  /** Planar input, `frames` samples per channel; returns what is ready, planar, in order. */
+  pushChannels(channels: readonly Float32Array[], frames: number): Float32Array[] {
+    if (this.heldLength + frames > (this.held[0]?.length ?? 0)) {
+      const size = Math.max((this.held[0]?.length ?? 0) * 2, this.heldLength + frames);
+      this.held = this.held.map((channel) => {
+        const grown = new Float32Array(size);
+        grown.set(channel.subarray(0, this.heldLength));
+        return grown;
+      });
     }
-    this.held.set(samples, this.heldLength);
-    this.heldLength += samples.length;
-    for (let i = 0; i < samples.length; i += 1) {
-      const value = samples[i] as number;
-      this.fillSum += value * value;
+    for (let c = 0; c < this.channelCount; c += 1) {
+      (this.held[c] as Float32Array).set((channels[c] ?? channels[0] ?? new Float32Array(frames)).subarray(0, frames), this.heldLength);
+    }
+    const start = this.heldLength;
+    this.heldLength += frames;
+    const divisor = this.block * this.channelCount;
+    for (let i = 0; i < frames; i += 1) {
+      for (let c = 0; c < this.channelCount; c += 1) {
+        const value = (this.held[c] as Float32Array)[start + i] as number;
+        this.fillSum += value * value;
+      }
       this.fillCount += 1;
       if (this.fillCount === this.block) {
-        this.levels.push(Math.sqrt(this.fillSum / this.block));
+        this.levels.push(Math.sqrt(this.fillSum / divisor));
         this.completed += 1;
         this.fillSum = 0;
         this.fillCount = 0;
@@ -172,8 +228,26 @@ export class LevelNormaliser {
     return this.drain(false);
   }
 
-  flush(): Float32Array {
+  /** Everything still held back (the end of a stretch of sound); the gain carries on into the next. */
+  flushChannels(): Float32Array[] {
     return this.drain(true);
+  }
+}
+
+/** The detector's mono copy (ADR-036). */
+export class LevelNormaliser {
+  private readonly inner: MultiLevelNormaliser;
+
+  constructor(sampleRate: number, params: Partial<LevelParams> = {}) {
+    this.inner = new MultiLevelNormaliser(sampleRate, params, 1);
+  }
+
+  push(samples: Float32Array): Float32Array {
+    return this.inner.pushChannels([samples], samples.length)[0] as Float32Array;
+  }
+
+  flush(): Float32Array {
+    return this.inner.flushChannels()[0] as Float32Array;
   }
 }
 

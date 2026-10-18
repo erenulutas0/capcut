@@ -155,6 +155,7 @@ Silme: `/gizlilik` sayfasında ve "Sorun bildir" penceresinde **"Günlüğü tem
 |---|---|
 | Seçilen dosyalar için `blob:` URL'leri (önizleme) | `web/src/adapters/browserMedia.ts` |
 | Sessizlik bulucunun ses yüksekliği zarfları; anahtar `dosyaAdı|boyut|lastModified|aralık`, en çok 200 | `web/src/adapters/silence/silenceClient.ts` (`sessionCache`) |
+| "Sesi düzelt"in ölçümü (ADR-049): iki ses yüksekliği sonucu, iki kazanç ve dinletilecek 5 saniyelik iki ses parçası (önce / sonra, çözülmüş PCM, ≈ 4 MB); anahtar `dosyaAdı|boyut|lastModified|süre`, en çok 4 video | `web/src/adapters/silence/silenceClient.ts` (`soundChecks`) |
 | Bellek rotasında üretilen MP4 baytları (indirme sunulduğu sürece) | `useExport.ts` |
 | Son yetenek kontrolünün aşama sonuçları ve bu oturumda görülen hata **kodları** (en çok 30); arka plan işlerinin beklenmeyen hatasında ayrıca hatanın **nerede ve ne tür** olduğu (`detail`, 13 Ekim 2026 — aşağıda) | `web/src/adapters/diagnostics.ts` |
 | Undo/redo geçmişi, editör durumu | `web/src/application/history.ts`, `useEditorState.ts` |
@@ -352,6 +353,11 @@ Yeni saklanan veri **yok**.
   yalnızca açık sekmenin belleğindedir ve sekme kapanınca gider, hiçbir yere gönderilmez.
   Editörde ayar açılırsa tarifte yalnızca `enhance: { strength }` saklanır (EDL v4): hangi güç
   seçildiği; görüntüden türetilmiş hiçbir şey değil. Sihirbaz proje saklamaz.
+- **"Sesi düzelt" (ADR-049, 18 Ekim 2026):** yeni saklanan veri yok. Videonun sesi ses yüksekliği
+  worker'ında iki kez çözülür ve ölçülür (ses yüksekliği, aralık, tepe, iki kazanç: birkaç sayı);
+  "Önce / Sonra" düğmeleri için 5 saniyelik iki ses parçası açık sekmenin belleğinde tutulur ve
+  sayfanın kendi ses çıkışından çalınır. Hiçbiri saklanmaz, hiçbir yere gönderilmez; sekme kapanınca
+  gider. Tarife bir şey yazılmaz (şema değişmedi); kazançlar yalnızca o indirmeyle worker'a gider.
 - **Transkript metni:** altyazı izi olarak proje tarifinin içindedir (`captionTracks[0]`,
   `origin: 'transcript'`, EDL v3). Editörde (`/editor`) diğer altyazı satırları gibi IndexedDB'ye
   saklanır ve proje yedeğine girer (§2.1); sihirbazın (`/yap/yazi`) sonuç ekranında hiçbir şey saklanmaz,

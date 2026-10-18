@@ -16,6 +16,8 @@ import {
 } from '@/domain/policy';
 import { CAPTION_LIMITS } from '@/domain/captions';
 import { GIF_LONG_EDGE, GIF_MAX_DURATION_US } from '@/domain/gif';
+import { FILE_TRUE_PEAK_DBTP, TARGET_LUFS } from '@/domain/soundFix';
+import { taskById } from '@/domain/tasks';
 import { DEFAULT_EXPORT_SPEC } from '@/domain/edl';
 import { MIN_CAPTION_SHORT_EDGE, MIN_OUTPUT_SHORT_EDGE } from '@/domain/outputSize';
 import { formatClock, US_PER_SECOND } from '@/domain/time';
@@ -63,10 +65,38 @@ describe('web local policy', () => {
     expect(WEB_LOCAL_POLICY.maxTotalSourceBytes).toBe(4_294_967_296);
   });
 
-  it('records the v11 change ("GIF yap" is a free basic feature on this device, at most 10 seconds) in doc 15, as the code has it', () => {
+  it('records the v12 change ("Sesi düzelt" is a free basic feature on this device; it does not remove noise) in doc 15, as the code and the screens have it', () => {
     const [docId] = WEB_LOCAL_POLICY.policyId.split('/');
-    expect(docId).toBe('2026-10-17.v11');
+    expect(docId).toBe('2026-10-18.v12');
     expect(doc15).toContain(`Politika kimliği: \`${docId}\`.`);
+    const note = doc15.split(/\r?\n/).find((line) => line.startsWith(`**Değişiklik \`${docId}\``));
+    expect(note).toBeDefined();
+    expect(note).toContain('kurucu kararı, 18 Ekim 2026');
+    expect(note).toContain('ADR-049');
+    expect(note).toContain('ücretsiz temel özellik');
+    expect(note).toContain('**gürültüyü silmez**');
+    expect(note).toContain('yalnızca genişleme');
+    expect(note).toContain('Ölçülmeyen');
+    expect(doc15).toContain(
+      '| Sesi düzelt (web, cihazda; kısık ya da dengesiz sesi duyulur ve eşit yapar; klasik ses işleme, AI değil; gürültü silmez) | Dahil; adet ve dakika kotası yok | Aynı |',
+    );
+    expect(doc15).toContain('| AI işlemleri (bulut / ücretli) | Yok | Başlangıç aboneliğine dahil değil |');
+    // The numbers the note states are the chain's.
+    expect(note).toContain(`**${String(TARGET_LUFS).replace('-', '−')} LUFS**`);
+    expect(note).toContain(`**${String(FILE_TRUE_PEAK_DBTP).replace('-', '−')} dBTP**`);
+    // The screens make the same promise and no larger one: no noise removal, and noise removal stays "not yet".
+    expect(tr['wizard.duzelt.keeps']).toContain('Gürültüyü silmez');
+    expect(en['wizard.duzelt.keeps']).toContain('does not remove noise');
+    expect(taskById('gurultu')?.available).toBe(false);
+    expect(taskById('duzelt')?.available).toBe(true);
+    for (const [key, text] of [...Object.entries(tr), ...Object.entries(en)]) {
+      if (!/duzelt|soundFix/.test(key)) continue;
+      expect(text, key).not.toMatch(/yapay zek|\bAI\b|gürültüyü (siler|temizler)|removes noise/i);
+    }
+  });
+
+  it('records the v11 change ("GIF yap" is a free basic feature on this device, at most 10 seconds) in doc 15, as the code has it', () => {
+    const docId = '2026-10-17.v11';
     const note = doc15.split(/\r?\n/).find((line) => line.startsWith(`**Değişiklik \`${docId}\``));
     expect(note).toBeDefined();
     expect(note).toContain('kurucu kararı, 17 Ekim 2026');

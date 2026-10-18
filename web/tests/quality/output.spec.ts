@@ -236,7 +236,7 @@ for (const item of CASES) {
  * "Dikey yap" made all three 1080 × 1920. ("Yazıya dök" and "Sesini al" save no picture.)
  */
 
-type SizeRoad = 'editor' | 'kes' | 'bosluk' | 'dikey' | 'kucult' | 'muzik' | 'sustur' | 'cevir' | 'iyilestir';
+type SizeRoad = 'editor' | 'kes' | 'bosluk' | 'dikey' | 'kucult' | 'muzik' | 'sustur' | 'duzelt' | 'cevir' | 'iyilestir';
 
 const SIZE_ROADS: ReadonlyArray<{ id: SizeRoad; label: string }> = [
   { id: 'editor', label: 'Editör (doğrudan açıldı, Ayarlar’a dokunulmadı)' },
@@ -246,6 +246,7 @@ const SIZE_ROADS: ReadonlyArray<{ id: SizeRoad; label: string }> = [
   { id: 'kucult', label: 'Küçült (Daha da küçült)' },
   { id: 'muzik', label: 'Müzik ekle' },
   { id: 'sustur', label: 'Sesi kapat' },
+  { id: 'duzelt', label: 'Sesi düzelt' },
   { id: 'cevir', label: 'Her yerde açılsın (WebM kaynak)' },
   { id: 'iyilestir', label: 'İyileştir (karanlık, kamera benzeri kaynak)' },
 ];
@@ -280,6 +281,8 @@ async function toDownload(page: Page, road: SizeRoad, source: string): Promise<{
     await expect(page.getByTestId('muzik-picked')).toBeVisible({ timeout: 60_000 });
   } else if (road === 'sustur') {
     await expect(page.getByTestId('sustur-info')).toBeVisible({ timeout: 120_000 });
+  } else if (road === 'duzelt') {
+    await expect(page.getByTestId('duzelt-summary')).toBeVisible({ timeout: 120_000 });
   } else if (road === 'cevir') {
     await expect(page.getByTestId('cevir-info')).toBeVisible({ timeout: 120_000 });
   } else {

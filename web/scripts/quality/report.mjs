@@ -150,7 +150,7 @@ function git(webDir, command) {
 
 // ------------------------------------------------------------------ sections
 
-const TASK_ORDER = ['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'sustur', 'cevir', 'iyilestir'];
+const TASK_ORDER = ['kes', 'bosluk', 'dikey', 'kucult', 'yazi', 'muzik', 'ses', 'sustur', 'duzelt', 'cevir', 'iyilestir', 'gif'];
 const PROJECT_LABEL = {
   desktop: 'masaüstü (1440 × 900)',
   phone: 'telefon (390 × 844, dokunmatik)',

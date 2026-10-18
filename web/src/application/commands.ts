@@ -486,25 +486,37 @@ function resolveCue(
  * picture in every kesit that shows it. Without a video (nothing to anchor
  * to) it is an output track, as before.
  */
-function newTrack(project: Project): CaptionTrackV2 {
+function newTrack(project: Project, language: string = DEFAULT_CAPTION_LANGUAGE): CaptionTrackV2 {
   const video = primaryVideoAsset(project);
   const base = {
     trackId: 't_001',
     origin: 'manual' as const,
-    language: 'tr',
+    language: isCaptionLanguage(language) ? language : DEFAULT_CAPTION_LANGUAGE,
     style: { ...DEFAULT_CAPTION_STYLE },
     cues: [],
   };
   return video ? { ...base, timeBase: 'source', assetId: video.assetId } : { ...base, timeBase: 'output' };
 }
 
-function withTrack(project: Project, update: (track: CaptionTrackV2) => CaptionTrackV2): Project {
-  const existing = primaryCaptionTrack(project) ?? newTrack(project);
+/**
+ * The language a track gets when a command has to create it and the caller names none: Turkish, the
+ * language the app was first written in. The editor passes the page's own language instead (ADR-048:
+ * a line typed on `/en/editor` makes an English track); a track that exists keeps its language.
+ */
+export const DEFAULT_CAPTION_LANGUAGE = 'tr';
+
+function withTrack(
+  project: Project,
+  update: (track: CaptionTrackV2) => CaptionTrackV2,
+  newTrackLanguage?: string,
+): Project {
+  const existing = primaryCaptionTrack(project) ?? newTrack(project, newTrackLanguage);
   const next = update(existing);
   return bump(project, { captionTracks: [{ ...next, cues: sortCues(next.cues) }] });
 }
 
-export function addCaptionCue(project: Project, input: CaptionCueInput): CaptionResult {
+/** `newTrackLanguage`: the language of the track this line creates when there is none yet (the page's, ADR-048). */
+export function addCaptionCue(project: Project, input: CaptionCueInput, newTrackLanguage?: string): CaptionResult {
   const cues = primaryCaptionTrack(project)?.cues ?? [];
   if (cues.length >= CAPTION_LIMITS.maxCuesPerTrack) {
     return { ok: false, reason: 'caption_limit_exceeded' };
@@ -516,10 +528,14 @@ export function addCaptionCue(project: Project, input: CaptionCueInput): Caption
   return {
     ok: true,
     cueId,
-    project: withTrack(project, (track) => ({
-      ...track,
-      cues: [...track.cues, { cueId, ...resolved.cue }],
-    })),
+    project: withTrack(
+      project,
+      (track) => ({
+        ...track,
+        cues: [...track.cues, { cueId, ...resolved.cue }],
+      }),
+      newTrackLanguage,
+    ),
   };
 }
 
@@ -560,7 +576,8 @@ export function removeCaptionCue(project: Project, cueId: string): Project {
   }));
 }
 
-export function setCaptionStyle(project: Project, patch: Partial<CaptionStyleV2>): Project {
+/** `newTrackLanguage`: as for `addCaptionCue` — a style picked before any line also creates the track. */
+export function setCaptionStyle(project: Project, patch: Partial<CaptionStyleV2>, newTrackLanguage?: string): Project {
   const style = primaryCaptionTrack(project)?.style ?? DEFAULT_CAPTION_STYLE;
   const next = { ...style, ...patch };
   if (
@@ -571,7 +588,7 @@ export function setCaptionStyle(project: Project, patch: Partial<CaptionStyleV2>
   ) {
     return project;
   }
-  return withTrack(project, (track) => ({ ...track, style: next }));
+  return withTrack(project, (track) => ({ ...track, style: next }), newTrackLanguage);
 }
 
 export function setCaptionLanguage(project: Project, language: string): Project {
@@ -790,14 +807,17 @@ export type CaptionImportResult =
  * reported by its position in the file; nothing is stretched or merged to
  * make it fit. Output-time lines past the current end are kept, like typed
  * lines (the render plan cuts them); source-time lines must lie in the video.
- * Style and language of an existing track are kept. One undo step.
+ * Style and language of an existing track are kept; a file read where there
+ * is no track yet makes one in `newTrackLanguage` (the page's, ADR-048). One
+ * undo step.
  */
 export function importCaptionTrack(
   project: Project,
   cues: readonly ImportedCueInput[],
   timeBase: CaptionTrackV2['timeBase'],
+  newTrackLanguage?: string,
 ): CaptionImportResult {
-  return replaceCaptionTrack(project, cues, timeBase, null);
+  return replaceCaptionTrack(project, cues, timeBase, null, newTrackLanguage);
 }
 
 /**
@@ -844,6 +864,7 @@ function replaceCaptionTrack(
   cues: readonly ImportedCueInput[],
   timeBase: CaptionTrackV2['timeBase'],
   transcript: { unclear: readonly CaptionUnclearV3[]; language: string } | null,
+  newTrackLanguage?: string,
 ): CaptionImportResult {
   const video = primaryVideoAsset(project);
   if (timeBase === 'source' && !video) return { ok: false, reason: 'caption_no_video' };
@@ -893,7 +914,7 @@ function replaceCaptionTrack(
       cues: numbered,
       ...(unclear.length > 0 ? { unclear } : {}),
     };
-  });
+  }, newTrackLanguage);
   return { ok: true, project: next, report };
 }
 

@@ -385,7 +385,8 @@ export default function CloudRoute({ video, transcription, apply, deviceSteps, s
     if (signal.aborted) return fail('canceled');
     if (cues.length === 0) return fail('empty');
     // Each line goes in with the voice that said it: the recipe stores it (EDL v5, ADR-043).
-    const applied = apply(cues, [], result.language ?? undefined);
+    // A language the provider did not name is taken to be the page's (ADR-048), not English.
+    const applied = apply(cues, [], result.language ?? locale);
     if (!applied.ok) return fail(applied.reason === 'caption_import_empty' ? 'empty' : 'internal_error');
 
     // The result is on screen from this moment (the wizard shows the transcript): its words go with it at once.

@@ -66,6 +66,9 @@ web/transcript-results/
 # Generated fixtures for the target-size / sound-only e2e tests (ffmpeg, ADR-035)
 web/tests/media/targetsize/
 
+# "Sesi düzelt" fixtures (ffmpeg's synthetic voice, generated sound; ADR-049)
+web/tests/media/soundfix/
+
 # "İyileştir" measurements (ADR-037): generated frames and results, local only
 web/tests/media/enhance/
 web/enhance-results/

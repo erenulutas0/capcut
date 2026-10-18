@@ -350,6 +350,24 @@
   color: var(--success);
 }
 
+/* "Sesi düzelt" (ADR-049): five seconds before and after, side by side. */
+.wizard-listen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.wizard-listen-label {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.wizard-listen .btn {
+  min-height: 44px;
+  gap: 6px;
+}
+
 .wizard-actions {
   display: flex;
   flex-direction: column;
