@@ -841,12 +841,12 @@ export const en: Record<MessageKey, string> = {
   'kesit.downloadTitle': 'Download just this clip',
   'kesit.deleteTitle': 'Delete this clip',
   'hint.title': 'How to cut: three steps',
-  'hint.step1': 'Play the video, or tap a point on the strip.',
+  'hint.step1': 'Play the video or tap the strip.',
   'hint.step1NoVideo': 'Open your video with “Choose a video”; play it, or go to a point on the strip.',
   'hint.step2': 'Press “Mark start” where your part starts.',
   'hint.step3':
-    'Press “Mark end” where it ends: the clip appears in this list. ▶ plays it; “Download” saves just that clip.',
-  'hint.more': 'Several clips? The top button joins them into one video. None? It saves the whole video.',
+    'Press “Mark end” where it ends; the clip appears here. ▶ plays it, “Download” saves it.',
+  'hint.more': 'Several clips? The top button joins them. None? It saves the whole video.',
   'hint.dismiss': 'Got it',
   'kesit.moveHint':
     'Change its place with the up and down arrow keys. The order only affects the joined download.',
@@ -901,7 +901,7 @@ export const en: Record<MessageKey, string> = {
   'download.details': 'Details',
   'download.dismiss': 'Dismiss the message',
   'download.overwriteNote':
-    'If you save over an existing file, the old file is deleted at once; stopping the download does not bring it back.',
+    'Saving over a file deletes the old one at once; stopping the download does not bring it back.',
   'download.overLimit.kesit':
     'The clip is {total}. To download it, shorten it by at least {excess} — the limit is {limit} minutes.',
   'download.overLimit.merged':
@@ -920,7 +920,7 @@ export const en: Record<MessageKey, string> = {
   'task.iyilestir.result': 'Tidies up the light, colour and sharpness. It cannot make a very blurry video sharp.',
   'wizard.iyilestir.title': 'Let’s tidy up your video',
   'wizard.iyilestir.body': 'Tidies up the light, colour and sharpness. It cannot make a very blurry video sharp.',
-  'wizard.iyilestir.keeps': 'Done on this device. Your video stays as it is; a new file is saved.',
+  'wizard.iyilestir.keeps': 'Done on this device; your own video is not changed.',
   'wizard.iyilestir.choice': 'How much?',
   'wizard.iyilestir.light': 'Light',
   'wizard.iyilestir.lightHint': 'Small touches.',
@@ -928,27 +928,25 @@ export const en: Record<MessageKey, string> = {
   'wizard.iyilestir.autoHint': 'Set for your video. Best for most videos.',
   'wizard.iyilestir.strong': 'Strong',
   'wizard.iyilestir.strongHint':
-    'Brighter and sharper. On some videos it looks worse than Automatic: more grain and blocky marks, and colours that are too strong.',
+    'Brighter and sharper. Some videos look worse than with Automatic: more grain, blocky marks, too-strong colours.',
   'wizard.iyilestir.nothing': 'Nothing to change in the video was found with this setting: it already looks fine.',
   'wizard.iyilestir.nothingBlocked':
     'Nothing in the video changes with this setting; there is nothing new to download. You can try another setting or use your video as it is.',
   'enhance.slow':
-    'No graphics card here to speed this up: it still works, but slowly — a 5-minute video may take more than half an hour.',
-  'enhance.slow.minutes':
-    'No graphics card here to speed this up: it still works, but slowly — about {n} minutes for this video.',
-  'enhance.slow.hours':
-    'No graphics card here to speed this up: it still works, but very slowly — about {n} hours for this video.',
+    'No graphics card to help: it still works, but slowly — a 5-minute video may take over half an hour.',
+  'enhance.slow.minutes': 'No graphics card to help: it still works, but slowly — about {n} minutes for this video.',
+  'enhance.slow.hours': 'No graphics card to help: it still works, but very slowly — about {n} hours for this video.',
   'enhance.preview.label': 'Before and after',
   'enhance.preview.before': 'Before',
   'enhance.preview.after': 'After',
   'enhance.preview.slider': 'The line between before and after',
   'enhance.preview.sliderValue': '{n} percent of the picture is the earlier version',
-  'enhance.preview.sliderHint': 'Drag the line, or use the arrow keys: left is your video now, right is enhanced.',
+  'enhance.preview.sliderHint': 'Drag the line or use the arrow keys: left is now, right is enhanced.',
   'enhance.preview.other': 'Show another frame',
   'enhance.preview.loading': 'Looking at your video…',
   'enhance.preview.loadingHint': 'A few frames of the video are being examined. Nothing leaves your device.',
   'enhance.preview.making': 'Preparing the preview…',
-  'enhance.preview.note': 'A real frame of your video: the download will look like this.',
+  'enhance.preview.note': 'A real frame: the download will look like this.',
   'enhance.preview.failed.hdr_source_unsupported':
     'This browser cannot convert this HDR video correctly, so it cannot be enhanced here. Try opening the video in Chrome.',
   'enhance.preview.failed.source_undecodable': 'This browser cannot decode this video; it cannot be enhanced here.',
@@ -1105,7 +1103,7 @@ export const en: Record<MessageKey, string> = {
   'task.sustur.label': 'Mute',
   'task.sustur.sub': 'Make the video silent',
   'task.duzelt.label': 'Fix the sound',
-  'task.duzelt.sub': 'Quiet sound louder and even',
+  'task.duzelt.sub': 'Louder, more even',
   'task.cevir.label': 'Make it play everywhere',
   'task.cevir.sub': 'Turn it into a standard MP4',
   // Asked for, not possible yet: no card, no page; the search says “We cannot do this yet.”
