@@ -72,6 +72,9 @@ const nextConfig: NextConfig = {
   // `next start` (e2e, local checks) does not announce itself; GitHub Pages
   // serves files and sends no such header anyway.
   poweredByHeader: false,
+  // Two root layouts (ADR-048: the Turkish pages and the English ones), so an address that is no page
+  // is answered by app/global-not-found.tsx, which draws its own document in both languages.
+  experimental: { globalNotFound: true },
   // No remote media, no analytics, no third-party scripts.
   // The editor is a client-only module; nothing here enables uploads.
   ...(staticExport ? { output: 'export' as const, trailingSlash: true } : {}),

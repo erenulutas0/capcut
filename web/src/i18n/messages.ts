@@ -4,9 +4,21 @@
  */
 
 import { APP_NAME, BACKUP_FILE_SUFFIX } from '../appIdentity';
+import { registerMessages } from './translate';
 
 export const tr = {
   'app.name': APP_NAME,
+  // The tab title and description of the pages (ADR-048: until 18 Oct 2026 written into app/layout.tsx).
+  'meta.home.title': 'videonla ne yapmak istiyorsun?',
+  'meta.description':
+    'Videonu kes, küçült, dikey yap, sesini al ya da yazıya dök. Birkaç dokunuşta; dosyalar cihazından çıkmaz.',
+  'meta.editor.title': 'editör',
+  // An address that is no page (app/global-not-found.tsx): said in both languages.
+  'notFound.title': 'Bu sayfa yok.',
+  'notFound.home': 'Ana sayfaya dön',
+  // The language button (ADR-048) in the editor's settings: the name of the other language is the button itself.
+  'language.title': 'Dil',
+  'language.note': 'Dil değişince sayfa yeniden yüklenir; videoyu yeniden seçmen gerekir.',
   'landing.note':
     'Bu bir deneme sürümüdür. İndirme en iyi Chrome ve Edge’de çalışır. Hesap, abonelik ve bulut yükleme yok; her şey cihazında çalışır.',
   'landing.note.online':
@@ -91,8 +103,7 @@ export const tr = {
   'privacy.draftBadge.named': 'Taslak — hukuki inceleme ve bazı veri sorumlusu bilgileri eksik (belge 30 K02)',
   'privacy.draftBody':
     'Bu sayfa uygulamanın bugünkü davranışını anlatır; hukuki incelemeden geçmiş bir aydınlatma metni değildir. “belirlenmedi” yazan bilgiler henüz karara bağlanmadı.',
-  'privacy.updated': 'Son güncelleme: 17 Ekim 2026 · sürüm {version} · derleme {commit}',
-  'privacy.otherLanguage': 'English',
+  'privacy.updated': 'Son güncelleme: 18 Ekim 2026 · sürüm {version} · derleme {commit}',
   'privacy.back': 'Ana sayfa',
   'privacy.undecided': 'belirlenmedi',
 
@@ -177,10 +188,21 @@ export const tr = {
   'privacy.stored.largeNote.where': 'localStorage, “clip.transcriptLargeFailed” anahtarı (yalnızca büyük model burada durunca yazılır)',
   'privacy.stored.largeNote.delete':
     'Büyük model bu tarayıcıda bir kez yazıya dökebilirse kendiliğinden silinir. “Konuşma modeli” kartındaki “Bu notu sil” ile ya da tarayıcının bu siteye ait verisini temizleyerek de silebilirsin.',
+  // ADR-048: written only when the language button is used.
+  'privacy.stored.language.name': 'Dil seçimi',
+  'privacy.stored.language.body':
+    'Dil düğmesine (“English” / “Türkçe”) bastığında seçtiğin dil: tek bir değer (“tr” ya da “en”). Sonraki sayfalar o dilde açılır. Seçmediysen hiçbir şey yazılmaz; sayfa, tarayıcının dil ayarına bu cihazda bakarak Türkçe ya da İngilizce açılır. Ne seçtiğin de dil ayarın da hiçbir yere gönderilmez.',
+  'privacy.stored.language.where':
+    'localStorage, “clip.language” anahtarı (yalnızca dil düğmesine basınca ya da sonunda “?lang=tr” veya “?lang=en” olan bir adresi açınca yazılır)',
+  'privacy.stored.language.delete': 'Aşağıdaki “Dil seçimini unut” ile ya da tarayıcının bu siteye ait verisini temizleyerek.',
+  'privacy.language.present': 'Bu tarayıcı bir dil seçimini hatırlıyor: {name}.',
+  'privacy.language.absent': 'Bu tarayıcıda kayıtlı dil seçimi yok.',
+  'privacy.language.forget': 'Dil seçimini unut',
+  'privacy.language.forgotten': 'Dil seçimi silindi. Sayfalar yine tarayıcının dil ayarına göre açılır.',
   'privacy.model.checking':
     'Bakılıyor…',
   'privacy.stored.none':
-    'Çerez kullanılmaz. localStorage’da yalnızca yukarıdaki ipucu bilgisi ve (büyük model burada durduysa) büyük model notu, sessionStorage’da yalnızca yukarıdaki yeniden yükleme notu durur.',
+    'Çerez kullanılmaz. localStorage’da yalnızca yukarıdaki ipucu bilgisi, (büyük model burada durduysa) büyük model notu ve (seçtiysen) dil seçimin, sessionStorage’da yalnızca yukarıdaki yeniden yükleme notu durur.',
 
   'privacy.downloads.title': 'Senin indirdiğin dosyalar',
   'privacy.downloads.body':
@@ -537,7 +559,30 @@ export const tr = {
   'captions.export.none': 'Birleştirilmiş videoda görünen satır yok; indirilecek bir şey yok.',
   'output.overLimit': 'Sonuç {total}. İndirmek için en az {excess} sil — sınır {limit} dakika.',
   'time.minute': 'dakika',
+  'time.minutes': 'dakika',
   'time.second': 'saniye',
+  'time.seconds': 'saniye',
+  // How the browser writes a clock time for this language ("14:05").
+  'time.localeTag': 'tr-TR',
+  // Words in the names of the files the app suggests (plain ASCII, no spaces): `tatil_bosluksuz.mp4`.
+  'file.tag.kes': 'kesit',
+  'file.tag.bosluk': 'bosluksuz',
+  'file.tag.dikey': 'dikey',
+  'file.tag.muzik': 'muzikli',
+  'file.tag.cevir': 'uyumlu',
+  'file.tag.kucult': 'kucuk',
+  'file.tag.ses': 'ses',
+  'file.tag.sustur': 'sessiz',
+  'file.tag.yazi': 'altyazili',
+  'file.tag.iyilestir': 'iyilestirilmis',
+  'file.whole': 'tamami',
+  'file.merged': '{n}-kesit',
+  'file.text': 'yazi',
+  'file.subtitles': 'altyazi',
+  'file.diagnostics': 'tani',
+  'file.project': 'projesi',
+  // A percentage: Turkish writes the sign first.
+  'number.percent': '%{n}',
   'time.decimalMark': ',',
   'time.minuteShort': 'dk',
   'time.secondShort': 'sn',
@@ -1032,6 +1077,7 @@ export const tr = {
     'Kesitin “İndir” düğmesiyle yalnızca onu indir ya da üstteki “Hepsini birleştirip indir”. Dosyayı nereye kaydedeceğini sorar ve oraya yazar.',
   'help.shortcut.add': 'Kutulara yazılan zamanlarla kesit ekle',
   'help.shortcut.zoom': 'Şeridi yakınlaştır / uzaklaştır',
+  'help.shortcut.zoomKeys': 'Ctrl / ⌘ + tekerlek',
   'help.shortcut.fullscreen': 'Tam ekran izle',
   'footer.local': 'Yerel düzenleme · kaynak dosya değişmez · bulut yüklemesi yok',
   'footer.local.online': 'Yerel düzenleme · kaynak dosya değişmez',
@@ -1440,26 +1486,15 @@ export const tr = {
 
 export type MessageKey = keyof typeof tr;
 
-export type Locale = 'tr' | 'en';
+export type { Locale, Translate } from './translate';
+export { translator } from './translate';
 
 /**
- * The dictionaries known to this page. Turkish is always here. English lives
- * in `messages.en.ts` and adds itself when that module is loaded — which only
- * the English privacy page does (10 Oct 2026, page weight: every page was
- * carrying both languages, 83 KB of text nobody on a Turkish screen reads).
+ * Loading this module is what makes Turkish available to `translator('tr')`
+ * (ADR-048): the Turkish pages load it through their `LanguageProvider`, the
+ * English pages never do. Until 18 Oct 2026 the registry lived here with
+ * Turkish always in it, and English came only to the English privacy page
+ * (10 Oct 2026, page weight: 83 KB of text nobody on a Turkish screen reads).
+ * Now every page carries the words of its own language alone.
  */
-const dictionaries: Partial<Record<Locale, Record<MessageKey, string>>> = { tr };
-
-/** Makes a language available to `translator` (called by the language's own module). */
-export function registerMessages(locale: Locale, dictionary: Record<MessageKey, string>): void {
-  dictionaries[locale] = dictionary;
-}
-
-/**
- * The words of `locale`. Looked up at the moment of use, so a language that
- * arrives after this was called is used from then on; a language that is not
- * loaded reads in Turkish rather than not at all.
- */
-export function translator(locale: Locale = 'tr') {
-  return (key: MessageKey): string => (dictionaries[locale] ?? tr)[key];
-}
+registerMessages('tr', tr);

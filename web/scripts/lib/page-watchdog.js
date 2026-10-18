@@ -177,7 +177,8 @@
     // A page that crashed while starting may have had its body replaced.
     if (!box.isConnected && doc.body) doc.body.appendChild(box);
     shown = kind;
-    var english = win.location.pathname.indexOf(cfg.enPrefix) === 0;
+    // The page's own language (ADR-048: `<html lang="en">` on every English page).
+    var english = root.getAttribute('lang') === 'en';
     var controlled = false;
     try {
       controlled = Boolean(win.navigator.serviceWorker && win.navigator.serviceWorker.controller) && win.navigator.onLine !== false;

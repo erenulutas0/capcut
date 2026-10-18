@@ -10,10 +10,8 @@ import { withHeldVideo } from '@/adapters/pwa/sharedVideo';
 import { useHeldVideo } from '@/components/home/HomeIntro';
 import { isPlainPress } from '@/components/home/navigationFallback';
 import { searchTasks } from '@/domain/taskSearch';
-import { TASK_EXAMPLES, availableTasks, type TaskDefinition } from '@/domain/tasks';
-import { translator } from '@/i18n/messages';
-
-const t = translator('tr');
+import { availableTasks, taskExamples, type TaskDefinition } from '@/domain/tasks';
+import { useLocale, useLocalePath, useT } from '@/i18n/locale';
 
 const LISTBOX_ID = 'finder-results';
 
@@ -72,6 +70,9 @@ function fill(template: string, values: Record<string, string>): string {
  * shared with "Kendim düzenleyeceğim" and the privacy link.
  */
 export function TaskFinder() {
+  const t = useT();
+  const locale = useLocale();
+  const localePath = useLocalePath();
   const router = useRouter();
   const { pendingPath, begin } = useNavigationScope();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -98,7 +99,8 @@ export function TaskFinder() {
   const cards = availableTasks();
   // With a video in hand (shared to the app, ADR-047), every task opens with it: the address says which.
   const video = useHeldVideo();
-  const hrefOf = (task: Pick<TaskDefinition, 'id'>) => withHeldVideo(taskHref(task), video);
+  // In the page's language (ADR-048): `/en/yap/kes` on an English page.
+  const hrefOf = (task: Pick<TaskDefinition, 'id'>) => withHeldVideo(localePath(taskHref(task)), video);
 
   const type = (text: string) => {
     setQuery(text);
@@ -293,7 +295,7 @@ export function TaskFinder() {
                 {t('home.examples')}
               </h2>
               <ul className="chip-list" aria-labelledby="finder-examples-title">
-                {TASK_EXAMPLES.map((example) => (
+                {taskExamples(locale).map((example) => (
                   <li key={example}>
                     <button
                       type="button"

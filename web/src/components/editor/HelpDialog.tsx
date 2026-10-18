@@ -1,11 +1,14 @@
 'use client';
 
 import { withBasePath } from '@/basePath';
+import { useLocale } from '@/i18n/locale';
+import { localizedPath } from '@/i18n/localePath';
 import { Icon } from '@/components/Icon';
 import { ModelStoragePanel } from '@/components/transcript/ModelStoragePanel';
 import { Dialog } from './Dialog';
 import type { MessageKey } from '@/i18n/messages';
 
+/** The keys of each shortcut; a message key where the keys have a word in them ("tekerlek", "wheel"). */
 const SHORTCUTS: Array<[string, MessageKey]> = [
   ['Space', 'help.shortcut.space'],
   ['← / → · Shift · Home / End', 'help.shortcut.playhead'],
@@ -13,7 +16,7 @@ const SHORTCUTS: Array<[string, MessageKey]> = [
   ['Enter', 'help.shortcut.add'],
   ['Delete · Backspace', 'help.shortcut.delete'],
   ['← / → · Shift', 'help.shortcut.trim'],
-  ['Ctrl / ⌘ + tekerlek', 'help.shortcut.zoom'],
+  ['help.shortcut.zoomKeys', 'help.shortcut.zoom'],
   ['F', 'help.shortcut.fullscreen'],
   ['Ctrl+Z · Ctrl+Shift+Z', 'help.shortcut.undo'],
   ['Esc', 'help.shortcut.escape'],
@@ -40,6 +43,7 @@ export function HelpDialog({
   /** Opens "Sorun bildir" on top of this dialog. */
   onReportProblem: () => void;
 }) {
+  const locale = useLocale();
   return (
     <Dialog open={open} onClose={onClose} labelledBy="help-title">
       <div className="dialog-head">
@@ -62,7 +66,7 @@ export function HelpDialog({
         {SHORTCUTS.map(([keys, labelKey]) => (
           <li key={labelKey}>
             <span className="meta-key">{t(labelKey)}</span>
-            <span className="meta-value">{keys}</span>
+            <span className="meta-value">{keys.startsWith('help.') ? t(keys as MessageKey) : keys}</span>
           </li>
         ))}
       </ul>
@@ -83,14 +87,14 @@ export function HelpDialog({
 
       {/* ADR-036: the speech model is the one large thing the app keeps; it is deleted here. */}
       <p className="field-label">{t('help.model.title')}</p>
-      <ModelStoragePanel locale="tr" buttonClassName="btn" />
+      <ModelStoragePanel locale={locale} buttonClassName="btn" />
 
       <hr className="divider" />
 
       <p className="field-label">{t('support.section')}</p>
       <div className="help-support">
         {/* A new tab: leaving the editor would close the files opened in it. */}
-        <a className="btn" href={withBasePath('/gizlilik')} target="_blank" rel="noopener" data-testid="help-privacy-link">
+        <a className="btn" href={withBasePath(localizedPath('/gizlilik', locale))} target="_blank" rel="noopener" data-testid="help-privacy-link">
           <Icon name="shield" />
           {t('privacy.linkNewTab')}
         </a>

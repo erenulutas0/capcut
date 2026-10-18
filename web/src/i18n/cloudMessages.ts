@@ -16,7 +16,7 @@
  */
 
 import { APP_NAME } from '../appIdentity';
-import type { Locale } from './messages';
+import { registerCloudMessages } from './cloudTranslate';
 
 export const cloudTr = {
   // ------------------------------------------------------------ the choice ("İki yol yan yana")
@@ -113,7 +113,7 @@ export const cloudTr = {
     'Bunun tek istisnası “İnternette yazıya dökme”dir: onu sen seçersen tarayıcın bizim aracı sunucumuza da istek yapar. Ayrıntısı aşağıda.',
   'cloud.privacy.notCollected.body':
     'Hesap veya e-posta, analitik ya da kullanım istatistiği, çerez, reklam kimliği, cihaz parmak izi, konum, otomatik hata veya çökme raporu. Videonun görüntüsü de toplanmaz. Videonun sesi ve yazıya dökülmüş metni yalnızca sen “İnternette”yi seçersen cihazından çıkar; “Cihazımda”yı seçersen hiçbiri çıkmaz.',
-  'cloud.privacy.stored.none': 'Çerez kullanılmaz. localStorage’da yalnızca yukarıdaki ipucu bilgisi, (büyük model burada durduysa) büyük model notu ve (kaydettiysen) davet kodun, sessionStorage’da yalnızca yukarıdaki yeniden yükleme notu durur.',
+  'cloud.privacy.stored.none': 'Çerez kullanılmaz. localStorage’da yalnızca yukarıdaki ipucu bilgisi, (büyük model burada durduysa) büyük model notu, (seçtiysen) dil seçimin ve (kaydettiysen) davet kodun, sessionStorage’da yalnızca yukarıdaki yeniden yükleme notu durur.',
   'cloud.privacy.title': 'İnternette yazıya dökme (isteğe bağlı, davetli deneme)',
   'cloud.privacy.intro':
     '“Yazıya dök”te iki yol vardır: “Cihazımda” ve “İnternette”. İnternette yolu yalnızca davet koduyla çalışır ve her seferinde sen “Sesi gönder ve yaz”a basınca başlar; kendiliğinden seçilmez, seçimin hatırlanmaz.',
@@ -162,22 +162,7 @@ export const cloudTr = {
 
 export type CloudMessageKey = keyof typeof cloudTr;
 
-/**
- * The provider's own pages the privacy page links to: the ones ADR-039 quotes (read 10 Oct 2026) for
- * retention, model training and the data processing addendum. Not fetched by the app; plain links.
- */
-export const PROVIDER_PAGES = {
-  retention: 'https://www.assemblyai.com/docs/data-retention-and-model-training',
-  dpa: 'https://www.assemblyai.com/legal/data-processing-addendum',
-} as const;
+export { PROVIDER_PAGES, cloudTranslator } from './cloudTranslate';
 
-const dictionaries: Partial<Record<Locale, Record<CloudMessageKey, string>>> = { tr: cloudTr };
-
-/** Makes English available (called by `cloudMessages.en.ts`, which only the English privacy page loads). */
-export function registerCloudMessages(locale: Locale, dictionary: Record<CloudMessageKey, string>): void {
-  dictionaries[locale] = dictionary;
-}
-
-export function cloudTranslator(locale: Locale = 'tr') {
-  return (key: CloudMessageKey): string => (dictionaries[locale] ?? cloudTr)[key];
-}
+/** Loading this module makes the Turkish words available to `cloudTranslator('tr')` (ADR-048). */
+registerCloudMessages('tr', cloudTr);

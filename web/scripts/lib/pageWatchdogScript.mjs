@@ -42,8 +42,6 @@ export function watchdogConfig(base = '') {
     scope: `${base}/`,
     // The app-shell caches ("clip-app-<version>"); the speech model's cache is not one of them.
     cachePrefix: 'clip-app-',
-    // The pages that speak English.
-    enPrefix: `${base}/gizlilik/en`,
     graceS: 15,
     errorS: 4,
     stuckS: 45,

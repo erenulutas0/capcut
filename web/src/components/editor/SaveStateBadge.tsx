@@ -39,7 +39,7 @@ export function SaveStateBadge({
     state.kind === 'saving'
       ? t('topbar.saveState.saving')
       : state.kind === 'saved'
-        ? `${t('topbar.saveState.saved')} · ${new Date(state.at).toLocaleTimeString('tr-TR', {
+        ? `${t('topbar.saveState.saved')} · ${new Date(state.at).toLocaleTimeString(t('time.localeTag'), {
             hour: '2-digit',
             minute: '2-digit',
           })}`

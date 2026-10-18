@@ -31,6 +31,8 @@ export default defineConfig({
   use: {
     baseURL,
     trace: 'off',
+    // A Turkish browser (ADR-048): the published pages follow the browser's language.
+    locale: 'tr-TR',
     acceptDownloads: true,
   },
   projects: [{ name: 'live', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],

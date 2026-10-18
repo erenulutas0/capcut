@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { BASE_PATH } from '@/basePath';
-import { translator } from '@/i18n/messages';
+import { useLocale } from '@/i18n/locale';
+import { localeOfPath } from '@/i18n/localePath';
+import { translator } from '@/i18n/translate';
 import { PAGE_PENDING_ATTRIBUTE, wasPageAlive } from '@/pageWatchdog';
 
 /**
@@ -27,8 +29,11 @@ import { PAGE_PENDING_ATTRIBUTE, wasPageAlive } from '@/pageWatchdog';
  */
 export function PageCrash({ error }: { error: unknown }) {
   const part = (error as { name?: unknown } | null)?.name === 'ChunkLoadError';
-  const english = typeof window !== 'undefined' && window.location.pathname.startsWith(`${BASE_PATH}/gizlilik/en`);
-  const t = translator(english ? 'en' : 'tr');
+  // The page's language (ADR-048). The address says it even where the root layout itself stopped
+  // (app/global-error.tsx, outside the language's provider).
+  const context = useLocale();
+  const locale = typeof window !== 'undefined' ? localeOfPath(window.location.pathname.slice(BASE_PATH.length) || '/') : context;
+  const t = translator(locale);
   // Decided once, when the screen first appears: the layout's own "alive" effect runs after it.
   const [starting] = useState(() => !wasPageAlive());
   const heading = useRef<HTMLHeadingElement>(null);

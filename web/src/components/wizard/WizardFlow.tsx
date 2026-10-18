@@ -20,11 +20,11 @@ import type { Project } from '@/domain/edl';
 import type { TargetSizeRequest } from '@/domain/targetSize';
 import type { TaskDefinition } from '@/domain/tasks';
 import { formatLengthShort } from '@/domain/time';
-import { translator, type MessageKey } from '@/i18n/messages';
+import { useT } from '@/i18n/locale';
+import type { MessageKey } from '@/i18n/messages';
+import type { Translate } from '@/i18n/translate';
 import { PAGE_PENDING_ATTRIBUTE } from '@/pageWatchdog';
 import { useWizardExport } from './useWizardExport';
-
-const t = translator('tr');
 
 /** "Sorun bildir": opened by a press after a failure, so its code comes with that press, not with the page. */
 const ReportDialog = lazyPart(() => import('@/components/editor/ReportDialog').then((module) => module.ReportDialog), { close: (props) => props.onClose });
@@ -37,7 +37,7 @@ export function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
 }
 
-export function lengthText(us: number): string {
+export function lengthText(us: number, t: Translate): string {
   return formatLengthShort(us, { second: t('time.secondShort'), decimalMark: t('time.decimalMark') });
 }
 
@@ -159,6 +159,7 @@ export function WizardFlow({
   ownDownload,
   children,
 }: Props) {
+  const t = useT();
   const hydrated = useHydrated();
   const phone = useLayoutMode() === 'phone';
   const touchScreen = useTouchScreen();
@@ -512,6 +513,7 @@ export function WizardFlow({
 
 /** The picked video: its name, its length and "Değiştir". */
 function VideoRow({ video, onChange, changing = false }: { video: MediaHandle; onChange?: () => void; changing?: boolean }) {
+  const t = useT();
   return (
     <div className="video-row" data-testid="wizard-video-row">
       <span className="video-row-text">
@@ -519,7 +521,7 @@ function VideoRow({ video, onChange, changing = false }: { video: MediaHandle; o
           {safeFileName(video.fileName, 48)}
         </span>
         <span className="video-row-length" data-testid="wizard-video-length">
-          {lengthText(video.durationUs)}
+          {lengthText(video.durationUs, t)}
         </span>
       </span>
       {onChange ? (
@@ -564,9 +566,10 @@ export function VideoPreview({
   /** The video's own time in µs, as it plays or is moved. */
   onTime?: (us: number) => void;
 }) {
+  const t = useT();
   const ref = useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = useState(false);
-  const report = (event: { currentTarget: HTMLVideoElement }) => onTime?.(Math.round(event.currentTarget.currentTime * 1_000_000));
+  const report =(event: { currentTarget: HTMLVideoElement }) => onTime?.(Math.round(event.currentTarget.currentTime * 1_000_000));
   const portrait = (video.displayHeight ?? 0) > (video.displayWidth ?? 0);
 
   const toggle = () => {

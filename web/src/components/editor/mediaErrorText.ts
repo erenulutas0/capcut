@@ -66,7 +66,8 @@ export function refusedFileText(t: T, file: RefusedFile, policy = WEB_LOCAL_POLI
     ...(file.typeName === undefined ? {} : { type: file.typeName }),
   };
   const reason = t(reasonKey(file)).replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
-  const lowered = `${reason.charAt(0).toLocaleLowerCase('tr-TR')}${reason.slice(1)}`;
+  // Lower case by the rules of the page's language (ADR-048: Turkish "I" is "ı", English "I" is "i").
+  const lowered = `${reason.charAt(0).toLocaleLowerCase(t('time.localeTag'))}${reason.slice(1)}`;
   return t('error.rejectedFile').replace(/\{(\w+)\}/g, (match, key: string) =>
     key === 'name' ? file.name : key === 'reason' ? lowered : match,
   );

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { BACKUP_DEFAULT_BASENAME, BACKUP_FILE_SUFFIX } from '@/appIdentity';
+import { APP_SLUG, BACKUP_FILE_SUFFIX } from '@/appIdentity';
+import { useT } from '@/i18n/locale';
 import { createIndexedDbStore, type StoreFailure } from '@/adapters/projectStore';
 import type { Project } from '@/domain/edl';
 import {
@@ -57,6 +58,9 @@ interface Args {
  */
 export function useProjectPersistence({ project, title, bindings, onRestore, enabled = true, adopt = false }: Args) {
   const storeRef = useRef(createIndexedDbStore());
+  // The backup's name when the project has none, in the page's language (`lilocut-projesi`, `lilocut-project`).
+  const t = useT();
+  const backupBaseName = `${APP_SLUG}-${t('file.project')}`;
   const [saveState, setSaveState] = useState<SaveState>({ kind: 'idle' });
   const [restored, setRestored] = useState(false);
   const [loadFailure, setLoadFailure] = useState<StoreFailure | null>(null);
@@ -211,11 +215,11 @@ export function useProjectPersistence({ project, title, bindings, onRestore, ena
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    const safeTitle = (currentTitle || BACKUP_DEFAULT_BASENAME).replace(/[^\p{L}\p{N}\-_ ]/gu, '').trim();
-    anchor.download = `${safeTitle || BACKUP_DEFAULT_BASENAME}${BACKUP_FILE_SUFFIX}`;
+    const safeTitle = (currentTitle || backupBaseName).replace(/[^\p{L}\p{N}\-_ ]/gu, '').trim();
+    anchor.download = `${safeTitle || backupBaseName}${BACKUP_FILE_SUFFIX}`;
     anchor.click();
     URL.revokeObjectURL(url);
-  }, []);
+  }, [backupBaseName]);
 
   /** Reads a backup file back in. Validated like any other untrusted input. */
   const importBackup = useCallback(

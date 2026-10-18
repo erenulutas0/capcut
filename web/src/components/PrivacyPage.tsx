@@ -2,10 +2,15 @@ import Link from 'next/link';
 
 import { Wordmark } from '@/components/Icon';
 import { ExportLogPanel } from '@/components/ExportLogPanel';
+import { LanguageChoicePanel } from '@/components/LanguageChoicePanel';
+import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { CloudInviteSlot } from '@/components/transcript/CloudInviteSlot';
 import { ModelStoragePanel } from '@/components/transcript/ModelStoragePanel';
-import { PROVIDER_PAGES, cloudTranslator, type CloudMessageKey } from '@/i18n/cloudMessages';
-import { translator, type Locale, type MessageKey } from '@/i18n/messages';
+import type { CloudMessageKey } from '@/i18n/cloudMessages';
+import { PROVIDER_PAGES, cloudTranslator } from '@/i18n/cloudTranslate';
+import { localizedPath } from '@/i18n/localePath';
+import type { MessageKey } from '@/i18n/messages';
+import { translator, type Locale } from '@/i18n/translate';
 
 /**
  * The in-app privacy page (/gizlilik, /gizlilik/en).
@@ -120,6 +125,14 @@ const STORED: Array<{ name: MessageKey; body: MessageKey; where: MessageKey; del
     where: 'privacy.stored.largeNote.where',
     delete: 'privacy.stored.largeNote.delete',
   },
+  {
+    // ADR-048: written only when the language button is used.
+    id: 'language',
+    name: 'privacy.stored.language.name',
+    body: 'privacy.stored.language.body',
+    where: 'privacy.stored.language.where',
+    delete: 'privacy.stored.language.delete',
+  },
 ];
 
 const DOWNLOADS: MessageKey[] = [
@@ -169,21 +182,11 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
   return (
     <div className="landing legal" lang={locale}>
       <header className="landing-bar">
-        <Link href="/" aria-label={t('privacy.back')} className="legal-home">
+        <Link href={localizedPath('/', locale)} aria-label={t('privacy.back')} className="legal-home">
           <Wordmark />
         </Link>
-        <Link
-          // No prefetch: Next 16's static export writes nested segment payloads
-          // under a different name than the prefetcher asks for (404s on Pages).
-          prefetch={false}
-          className="btn-ghost-light"
-          href={locale === 'tr' ? '/gizlilik/en' : '/gizlilik'}
-          hrefLang={locale === 'tr' ? 'en' : 'tr'}
-          lang={locale === 'tr' ? 'en' : 'tr'}
-          data-testid="privacy-language"
-        >
-          {t('privacy.otherLanguage')}
-        </Link>
+        {/* The app's one language button (ADR-048): the other language's page, and the choice remembered. */}
+        <LanguageSwitch className="btn-ghost-light" testId="privacy-language" />
       </header>
 
       <main className="legal-main">
@@ -258,6 +261,7 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
                 <ExportLogPanel locale={locale} buttonClassName="btn-ghost-light" />
               ) : null}
               {item.id === 'model' ? <ModelStoragePanel locale={locale} buttonClassName="btn-ghost-light" /> : null}
+              {item.id === 'language' ? <LanguageChoicePanel buttonClassName="btn-ghost-light" /> : null}
             </article>
           ))}
           {CLOUD_ON ? (
@@ -331,7 +335,7 @@ export function PrivacyPage({ locale }: { locale: Locale }) {
       </main>
 
       <footer className="landing-footer">
-        <Link href="/">{t('privacy.back')}</Link>
+        <Link href={localizedPath('/', locale)}>{t('privacy.back')}</Link>
       </footer>
     </div>
   );

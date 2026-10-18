@@ -30,6 +30,18 @@
   color: var(--accent);
 }
 
+/* The language button and "Kendim düzenleyeceğim", side by side at the end of the bar (ADR-048). */
+.home-bar-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.home .language-switch {
+  color: var(--text);
+}
+
 .home-editor-link {
   display: inline-flex;
   align-items: center;

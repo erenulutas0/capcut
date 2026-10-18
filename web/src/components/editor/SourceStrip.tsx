@@ -133,7 +133,13 @@ export function SourceStrip({
   const maxZoom = maxStripZoom(durationUs);
 
   const spoken = (us: Micros) =>
-    formatSpokenTime(us, { minute: t('time.minute'), second: t('time.second'), decimalMark: t('time.decimalMark') });
+    formatSpokenTime(us, {
+      minute: t('time.minute'),
+      minutes: t('time.minutes'),
+      second: t('time.second'),
+      seconds: t('time.seconds'),
+      decimalMark: t('time.decimalMark'),
+    });
   const pct = (us: Micros) => `${(Math.max(0, Math.min(us, durationUs)) / safeDuration) * 100}%`;
 
   // ---------------------------------------------------------- the view

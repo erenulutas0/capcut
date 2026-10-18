@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { exportLog } from '@/adapters/exportLogStore';
 import type { ExportLogEntry } from '@/domain/exportLog';
 import { formatTimecode } from '@/domain/time';
-import { translator, type Locale, type MessageKey } from '@/i18n/messages';
+import type { MessageKey } from '@/i18n/messages';
+import { translator, type Locale } from '@/i18n/translate';
 
 type LogState =
   | { status: 'loading' }

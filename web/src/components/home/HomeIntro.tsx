@@ -14,12 +14,10 @@ import {
   type HeldVideo,
   type ShareError,
 } from '@/adapters/pwa/sharedVideo';
-import { BASE_PATH } from '@/basePath';
 import { useBrowserValue } from '@/components/useBrowserValue';
 import { formatLengthShort } from '@/domain/time';
-import { translator, type MessageKey } from '@/i18n/messages';
-
-const t = translator('tr');
+import { useT } from '@/i18n/locale';
+import type { MessageKey } from '@/i18n/messages';
 
 /** What a share that brought no video says (ADR-047). */
 const SHARE_ERROR_TEXT: Record<ShareError, MessageKey> = {
@@ -55,7 +53,8 @@ function fill(template: string, values: Record<string, string>): string {
 /** The opening screen's address without the share's query: what a reload should show from now on. */
 function clearShareAddress(): void {
   try {
-    if (window.location.search !== '') window.history.replaceState(null, '', `${BASE_PATH}/`);
+    // This screen's own address (`/capcut/`, or `/capcut/en/` in English), without the query.
+    if (window.location.search !== '') window.history.replaceState(null, '', window.location.pathname);
   } catch {
     // The address could not change: the stored copy is gone, so a reload says "artık burada değil".
   }
@@ -72,6 +71,7 @@ function clearShareAddress(): void {
  * A share that brought no video says why, in the same place; the cards stay as they are.
  */
 export function HomeIntro() {
+  const t = useT();
   const video = useHeldVideo();
   // The address says which share this is (the service worker's redirect), or why there is none.
   const marker = useBrowserValue(readMarker, null);

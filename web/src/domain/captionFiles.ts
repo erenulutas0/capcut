@@ -44,7 +44,7 @@ const MAX_BASE_LENGTH = 60;
  * name can never carry a path, a reserved character or a hidden extension.
  * Falls back to "altyazi" when nothing usable is left.
  */
-export function subtitleFileName(title: string, format: SubtitleFormat): string {
+export function subtitleFileName(title: string, format: SubtitleFormat, fallback = 'altyazi'): string {
   const folded = Array.from(title)
     .map((char) => TURKISH_FOLD[char] ?? char)
     .join('')
@@ -56,7 +56,7 @@ export function subtitleFileName(title: string, format: SubtitleFormat): string 
     .replace(/^[-_]+|[-_]+$/g, '')
     .slice(0, MAX_BASE_LENGTH)
     .replace(/[-_]+$/g, '');
-  return `${base || 'altyazi'}.${format}`;
+  return `${base || fallback}.${format}`;
 }
 
 /**

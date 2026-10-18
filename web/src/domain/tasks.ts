@@ -788,6 +788,19 @@ export const TASK_EXAMPLES: readonly string[] = [
   'müzik koy',
 ];
 
+/** The same four, as an English speaker would type them (ADR-048): each finds the same task. */
+export const TASK_EXAMPLES_EN: readonly string[] = [
+  'remove the silent parts',
+  'vertical for TikTok',
+  'cut the start',
+  'add music',
+];
+
+/** The example chips of the opening screen, in the page's language. */
+export function taskExamples(locale: 'tr' | 'en'): readonly string[] {
+  return locale === 'en' ? TASK_EXAMPLES_EN : TASK_EXAMPLES;
+}
+
 export function taskById(id: string): TaskDefinition | undefined {
   return TASKS.find((task) => task.id === id);
 }

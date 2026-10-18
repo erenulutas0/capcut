@@ -3,17 +3,16 @@
 import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
 
 import { Icon } from '@/components/Icon';
-import { translator, type MessageKey } from '@/i18n/messages';
+import { useT } from '@/i18n/locale';
+import type { MessageKey } from '@/i18n/messages';
 import { CHUNK_ERROR_ATTRIBUTE } from '@/pageWatchdog';
 
 type Words = (key: MessageKey) => string;
 
-const turkish = translator('tr');
-
-/** The part's own words when it is given some (`t`), Turkish otherwise. */
-function wordsOf(props: object): Words {
+/** The part's own words when it is given some (`t`), the page's language otherwise (ADR-048). */
+function wordsOf(props: object, page: Words): Words {
   const given = (props as { t?: unknown }).t;
-  return typeof given === 'function' ? (given as Words) : turkish;
+  return typeof given === 'function' ? (given as Words) : page;
 }
 
 /**
@@ -100,6 +99,7 @@ export function lazyPart<P extends object>(load: () => Promise<ComponentType<P>>
   let ready: ComponentType<P> | null = null;
 
   function LazyPart(props: P) {
+    const pageWords = useT();
     const [Part, setPart] = useState<ComponentType<P> | null>(() => ready);
     const [failedAttempt, setFailedAttempt] = useState(-1);
     const [attempt, setAttempt] = useState(0);
@@ -133,7 +133,7 @@ export function lazyPart<P extends object>(load: () => Promise<ComponentType<P>>
     if (failedAttempt === attempt) {
       const retry = () => setAttempt((value) => value + 1);
       if (options.failed) return <>{options.failed(retry, props)}</>;
-      return <PartFailed t={wordsOf(props)} variant={options.variant ?? 'notice'} onRetry={retry} onClose={options.close?.(props)} />;
+      return <PartFailed t={wordsOf(props, pageWords)} variant={options.variant ?? 'notice'} onRetry={retry} onClose={options.close?.(props)} />;
     }
     return <>{options.loading?.() ?? null}</>;
   }

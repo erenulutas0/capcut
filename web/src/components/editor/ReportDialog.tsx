@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { withBasePath } from '@/basePath';
+import { useLocale } from '@/i18n/locale';
+import { localizedPath } from '@/i18n/localePath';
 import { Icon } from '@/components/Icon';
 import { ExportLogPanel } from '@/components/ExportLogPanel';
 import { SUPPORT_CONTACT, collectDiagnostics } from '@/adapters/diagnostics';
@@ -45,6 +47,7 @@ export function ReportDialog({
   onClose: () => void;
   project: Project;
 }) {
+  const locale = useLocale();
   const [report, setReport] = useState<DiagnosticsReport | null>(null);
   // Bumped when the log is cleared, so the preview matches what is stored.
   const [revision, setRevision] = useState(0);
@@ -68,11 +71,11 @@ export function ReportDialog({
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = diagnosticsFileName(new Date(report.createdAt));
+    anchor.download = diagnosticsFileName(new Date(report.createdAt), t('file.diagnostics'));
     anchor.click();
     // Revoked on the next task: some browsers start the download after click returns.
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
-  }, [json, report]);
+  }, [json, report, t]);
 
   return (
     <Dialog open onClose={onClose} labelledBy="report-title" stacked>
@@ -147,10 +150,10 @@ export function ReportDialog({
       <hr className="divider" />
 
       <h3 className="report-heading">{t('support.log.title')}</h3>
-      <ExportLogPanel locale="tr" buttonClassName="btn" onChanged={() => setRevision((value) => value + 1)} />
+      <ExportLogPanel locale={locale} buttonClassName="btn" onChanged={() => setRevision((value) => value + 1)} />
 
       <div className="dialog-actions">
-        <a className="btn" href={withBasePath('/gizlilik')} target="_blank" rel="noopener" data-testid="report-privacy-link">
+        <a className="btn" href={withBasePath(localizedPath('/gizlilik', locale))} target="_blank" rel="noopener" data-testid="report-privacy-link">
           {t('privacy.linkNewTab')}
         </a>
         <button type="button" className="btn" onClick={onClose}>

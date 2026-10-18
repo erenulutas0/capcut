@@ -202,10 +202,12 @@ export function suggestedFileName(
     | { kind: 'kesit'; sourceInUs: Micros; sourceOutUs: Micros }
     | { kind: 'merged'; count: number }
     | { kind: 'whole' },
+  /** The words of the page's language (ADR-048: `tatil_whole.mp4`, `tatil_3-clips.mp4` in English). */
+  words: { whole: string; merged: string } = { whole: 'tamami', merged: '{n}-kesit' },
 ): string {
   const base = fileBaseName(videoFileName);
-  if (download.kind === 'whole') return `${base}_tamami.mp4`;
-  if (download.kind === 'merged') return `${base}_${download.count}-kesit.mp4`;
+  if (download.kind === 'whole') return `${base}_${words.whole}.mp4`;
+  if (download.kind === 'merged') return `${base}_${words.merged.replace('{n}', String(download.count))}.mp4`;
   const part = (us: Micros) => formatPosition(us).replace(/:/g, '-');
   return `${base}_${part(download.sourceInUs)}-${part(download.sourceOutUs)}.mp4`;
 }

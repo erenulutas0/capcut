@@ -1,12 +1,9 @@
 import { FallbackLink, NavigationFallbackScope } from '@/components/FallbackLink';
 import { Wordmark } from '@/components/Icon';
+import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { HomeIntro } from '@/components/home/HomeIntro';
 import { TaskFinder } from '@/components/home/TaskFinder';
-import { translator } from '@/i18n/messages';
-
-import './home.css';
-
-const t = translator('tr');
+import { translator, type Locale } from '@/i18n/translate';
 
 /**
  * A build with the internet route of "Yazıya dök" (ADR-039) cannot say "no cloud upload" here: the
@@ -22,6 +19,9 @@ const ONLINE_ROUTE = process.env.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1';
  * (`/yap/<id>/`): pick the video, at most one choice, İndir. The editor
  * stays one quiet link away ("Kendim düzenleyeceğim").
  *
+ * The same screen in both languages (ADR-048): `/` in Turkish, `/en/` in
+ * English; the small language button in the bar opens the other one.
+ *
  * It is the installed app's start page (`manifest.ts`) and is kept for
  * offline use by the service worker like every other page.
  *
@@ -31,22 +31,26 @@ const ONLINE_ROUTE = process.env.NEXT_PUBLIC_CLOUD_TRANSCRIPT === '1';
  * "Açılıyor…", and a page whose data never arrives is loaded in full after
  * 10 s, once per visit of this screen.
  */
-export default function HomePage() {
+export function HomePage({ locale }: { locale: Locale }) {
+  const t = translator(locale);
   return (
     <NavigationFallbackScope>
     <div className="home">
       <header className="home-bar">
         <Wordmark />
-        {/*
-          prefetch={false} on every link here (FallbackLink): Next 16's static
-          export writes nested segment payloads
-          (editor/__next.editor/__PAGE__.txt) under a different name than its
-          prefetcher requests, which 404s on GitHub Pages. A click still
-          navigates normally.
-        */}
-        <FallbackLink className="home-editor-link" href="/editor" data-testid="home-editor-link">
-          {t('home.editorLink')}
-        </FallbackLink>
+        <div className="home-bar-end">
+          <LanguageSwitch />
+          {/*
+            prefetch={false} on every link here (FallbackLink): Next 16's static
+            export writes nested segment payloads
+            (editor/__next.editor/__PAGE__.txt) under a different name than its
+            prefetcher requests, which 404s on GitHub Pages. A click still
+            navigates normally.
+          */}
+          <FallbackLink className="home-editor-link" href="/editor" data-testid="home-editor-link">
+            {t('home.editorLink')}
+          </FallbackLink>
+        </div>
       </header>
 
       <main className="home-main">

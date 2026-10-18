@@ -3,6 +3,8 @@
 import { useEffect } from 'react';
 
 import { APP_NAME } from '@/appIdentity';
+import { BASE_PATH } from '@/basePath';
+import { localeOfPath } from '@/i18n/localePath';
 import { PageCrash } from '@/components/PageCrash';
 import { markPageAlive } from '@/pageWatchdog';
 
@@ -18,8 +20,10 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
   useEffect(() => {
     markPageAlive();
   }, []);
+  // Outside both root layouts (ADR-048): the address says which language the page spoke.
+  const lang = typeof window !== 'undefined' ? localeOfPath(window.location.pathname.slice(BASE_PATH.length) || '/') : 'tr';
   return (
-    <html lang="tr">
+    <html lang={lang}>
       <head>
         <title>{APP_NAME}</title>
       </head>

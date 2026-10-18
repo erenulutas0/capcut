@@ -23,6 +23,7 @@ import { join, relative } from 'node:path';
 
 import { cloudOriginFromEnv } from './lib/cloudOrigin.mjs';
 import { applyCsp } from './lib/csp.mjs';
+import { hasTwin, insertLanguageScript, languageScript } from './lib/languageScript.mjs';
 import { insertWatchdog, watchdogScript } from './lib/pageWatchdogScript.mjs';
 
 const root = process.cwd();
@@ -35,6 +36,9 @@ const connectOrigin = cloudOriginFromEnv();
 // files are the app's own and which service worker is its own.
 const base = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/+$/, '');
 const watchdog = watchdogScript(base);
+// The page in the reader's language (ADR-048, scripts/lib/language-redirect.js): first in <head> of every
+// app page, before the watchdog — a page about to be replaced by its twin should start nothing.
+const language = languageScript(base, staticExport);
 
 function walk(folder) {
   return readdirSync(folder).flatMap((name) => {
@@ -50,13 +54,20 @@ if (pages.length === 0) {
   process.exit(1);
 }
 
+let twins = 0;
 for (const file of pages) {
-  const { html, policy } = applyCsp(insertWatchdog(readFileSync(file, 'utf8'), watchdog), { connectOrigin });
+  let page = insertWatchdog(readFileSync(file, 'utf8'), watchdog);
+  if (hasTwin(relative(dir, file).split('\\').join('/'))) {
+    page = insertLanguageScript(page, language);
+    twins += 1;
+  }
+  const { html, policy } = applyCsp(page, { connectOrigin });
   writeFileSync(file, html);
   const hashes = (policy.match(/'sha256-/g) ?? []).length;
   console.log(`apply-csp: ${relative(root, file)} (${hashes} hashes)`);
 }
 console.log(`apply-csp: page watchdog in every page (${watchdog.length} characters, base "${base}")`);
+console.log(`apply-csp: language script in ${twins} pages (${language.length} characters)`);
 console.log(connectOrigin ? `apply-csp: connect-src 'self' ${connectOrigin} (cloud transcript route ON in this build)` : "apply-csp: connect-src 'self' (no other origin)");
 
 if (staticExport) {

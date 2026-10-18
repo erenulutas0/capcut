@@ -27,12 +27,11 @@ import { formatBytes } from '@/domain/policy';
 import { CUE_RULES } from '@/domain/subtitleSegmentation';
 import type { Micros } from '@/domain/time';
 import { lineClock } from '@/domain/transcript';
-import { cloudTranslator, type CloudMessageKey } from '@/i18n/cloudMessages';
-import { translator } from '@/i18n/messages';
+import type { CloudMessageKey } from '@/i18n/cloudMessages';
+import { useCloudT, useLocale, useT } from '@/i18n/locale';
+import { localizedPath } from '@/i18n/localePath';
 import { frameTest, type Transcription } from './useTranscription';
 
-const t = translator('tr');
-const ct = cloudTranslator('tr');
 
 const fill = (template: string, values: Record<string, string>): string => template.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
 
@@ -195,6 +194,9 @@ function useElapsedSeconds(startedAt: number | null): number {
  * build that names the proxy; the wizard loads it lazily behind that check.
  */
 export default function CloudRoute({ video, transcription, apply, deviceSteps, startDevice, onView, onApplied }: CloudRouteProps) {
+  const t = useT();
+  const ct = useCloudT();
+  const locale = useLocale();
   const uid = useId();
   const mark = t('time.decimalMark');
   const [route, setRoute] = useState<'choose' | 'device'>('choose');
@@ -244,7 +246,7 @@ export default function CloudRoute({ video, transcription, apply, deviceSteps, s
   const choosing = route === 'choose' && !busy;
   useEffect(() => {
     onView({ title: choosing ? ct('cloud.choice.title') : null, footer: busy ? ct('cloud.footer.sending') : null });
-  }, [choosing, busy, onView]);
+  }, [choosing, busy, onView, ct]);
   useEffect(() => () => onView({ title: null, footer: null }), [onView]);
 
   // Focus follows what replaced the pressed button: the status while it runs, the notice when it ended.
@@ -666,7 +668,7 @@ export default function CloudRoute({ video, transcription, apply, deviceSteps, s
 
       <div className="route-privacy">
         {/* A new tab: leaving the wizard would close the video opened in it. */}
-        <a href={withBasePath('/gizlilik')} target="_blank" rel="noopener" data-testid="route-privacy">
+        <a href={withBasePath(localizedPath('/gizlilik', locale))} target="_blank" rel="noopener" data-testid="route-privacy">
           {ct('cloud.privacyLink')}
           <span className="visually-hidden"> — {ct('cloud.newTab')}</span>
         </a>
