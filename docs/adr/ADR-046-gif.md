@@ -251,3 +251,68 @@ Hepsi yerel, bu dalın son koduyla (Windows, Playwright Chromium):
 4. ~~**Varsayılan kısım ilk 4 saniye.**~~ **Karar (17 Ekim, ana oturum):** 10 saniyeye sığan video bütünüyle seçili gelir; daha uzunu ilk 4 saniyeyle başlar (`initialGifRange`).
 5. **Sticker ayrı "henüz yapamıyoruz" girdisi** oldu. WhatsApp çıkartması (512 × 512 WebP) ayrı bir iş.
 6. `gifenc`'in bakımı etkin değil; yerine kendi kodlayıcımız gerekirse tek dosya.
+
+---
+
+## Ek — 19 Ekim 2026: gerçek çekimde görüntü kalitesi (kurucunun telefonu)
+
+Kurucu S23'te galeriden paylaştığı gerçek bir telefon videosundan GIF yaptı: "görüntü kalitesi baya kötü
+çıktı ama sevdim, bunu düzeltebilir miyiz". Yukarıdaki palet / titreşim kararları yalnızca dört yapay
+kaynakta ölçülmüştü. Gerçek kamera görüntüsü (ten, yumuşak geçiş, az ışık, kumlanma) 256 renklik tek bir
+paletin titreşimsiz en kötü göründüğü yer; ayrıca dikey videoda "Küçük" 180 × 320 piksel — telefon
+ekranında 1080 piksel genişliğe büyütülür.
+
+### Ön kayıt (ölçümden ÖNCE yazıldı; bu bölüm ölçüm sonuçlarından sonra değiştirilmedi)
+
+**Görüntüler.** (1) *Gerçek:* yerelde duran gerçek telefon kayıtları (`web/tests/media/real/`, depoda yok;
+yalnızca ölçüm için okunur; burada ve her yerde R1, R2 … diye anılır — dosya adı, kare, küçük resim
+depoya girmez). HDR kaynaklar (HLG/PQ) dışarıda: GIF yolu onları ayrı ton eşlemeyle çizer. Az ışık için
+iki gerçek kaydın karartılmış + kumlanma eklenmiş kopyası (R-karanlık; yalnızca yerel). (2) *Yapay:* eski
+tablonun dört kaynağı (`desen`, `yumusak`, `kaydirma`, `gurultulu`; ffmpeg komutları kayıtlı olmadığı için
+aynı tarife göre yeniden üretildi — eski sayılarla doğrudan değil, aynı tablodaki "bugünkü" sütunla
+karşılaştırılır) ve bir "kamera benzeri" yapay kaynak (yumuşak renk geçişi + kesirli gürültü + bulanıklık
++ az ışık eğrisi + zamanla değişen kumlanma).
+
+**Yöntem.** Kaynak, uygulamanın çizdiği boyutta ve kare zamanlarında ffmpeg ile RGBA karelere çevrilir
+(döndürme uygulanır, Lanczos küçültme); her aday bu karelerden Node'da uygulamanın kendi koduyla (aynı
+`gifenc`, aynı eşleme) GIF yazar; GIF ffmpeg'in GIF çözücüsüyle geri açılır (saydamlık ve "atma" kuralları
+uygulanmış kareler) ve aynı boyuttaki kaynak karelerle karşılaştırılır.
+
+**Ölçüler.**
+- **SSIM** (ffmpeg `ssim`, yuv420p, "All") ve **VMAF** (libvmaf v0.6.1, GIF'in kendi boyutunda): renk
+  azaltmanın sadakati.
+- **Bant (ΔCAMBI):** Netflix'in bant ölçüsü CAMBI (libvmaf `cambi`, referanssız; 0 = bant yok, ~5 üstü
+  göze batar). Ölçü: CAMBI(GIF) − CAMBI(kaynak kareleri) — kaynağın kendi bandı çıkarılır, GIF'in eklediği
+  kalır.
+- **Telefonda görünen (VMAF-tel):** GIF ve kaynak video, ikisi de kısa kenarı 1080 piksel olacak biçimde
+  (telefon ekranının genişliği) bikübik büyütülüp VMAF. Yalnızca boyut seçeneklerini karşılaştırmak için
+  (aynı boyuttaki karşılaştırma çözünürlük kaybını görmez).
+- **Boyut** (bayt) ve **süre:** palet + eşleme + LZW, bu masaüstünde Node'da, tek iş parçacığı (kare çözme
+  hariç; her adayda aynıdır).
+
+**Adaylar.** Palet: tek palet (bugün) / kare başı palet / daha çok örnekten tek palet / PnnQuant'tan sonra
+algısal uzayda birkaç k-means adımı. Titreşim: yok (bugün) / Floyd–Steinberg (yılan, güç 1, 0,75, 0,5) /
+sıralı: Bayer 8 × 8, mavi gürültü (void-and-cluster 64 × 64), R2 dizisi — sıralı titreşim yer başına
+sabittir, değişmeyen piksel değişmeyen kalır. Saydamlık: tam eşitlik (bugün) / eşikli ("rengi gösterilen
+renge şu kadar yakınsa değişmemiş say"; eşik T birkaç değerde). Kare hızı 12,5 / 15. Boyut: uzun kenar 320
+/ 480 / 640.
+
+**Karar kuralı.**
+1. *Yöntem* (palet + titreşim + saydamlık), Küçük 4 sn, 12,5 kare/sn, gerçek kümede ortanca:
+   - **Uygun** olmak için: (a) SSIM bugünkünden en çok 0,002, VMAF en çok 1,0 puan düşük — gerçek **ve**
+     yapay kümede; (b) boyut: aynı yöntemle 10 sn Küçük gerçek kümede ortanca ≤ 5 MB, 10 sn Orta ortanca
+     ≤ 8 MB ve en büyüğü ≤ 10 MB (Discord'un ücretsiz yükleme sınırı 10 MB; X/Twitter GIF 15 MB; WhatsApp
+     GIF'i videoya çevirir, 16 MB); (c) süre: 4 sn Küçük ≤ 0,6 sn, 10 sn Orta ≤ 3 sn (bu masaüstü, Node;
+     telefon ~3 kat yavaş varsayılır).
+   - Uygunlar içinde **kazanan:** gerçek kümede en düşük ortanca ΔCAMBI; en iyiye 0,2 içinde olanlar
+     arasında en yüksek ortanca VMAF; o da eşitse en küçük ortanca boyut.
+   - Kazanan bugünkünün yerine **ancak** ortanca ΔCAMBI'yi en az %30 düşürüyorsa ya da ortanca VMAF'ı en az
+     2 puan artırıyorsa geçer; yoksa bugünkü yöntem kalır.
+2. *Kare hızı:* hareketin akıcılığını ölçen bir ölçümüz yok; 15 kare/sn ancak gerçek kümede ortanca boyut
+   bedeli ≤ %10 ise alınır (15 kare/sn GIF'te tam değil: 7, 7, 6 / 100 sn).
+3. *Boyutlar:* varsayılan, kazanan yöntemle 10 sn GIF'i gerçek kümede ortanca ≤ 5 MB olan en büyük boyut.
+   Bir üst boyut ("Büyük", 640) ancak VMAF-tel'i bir altındakinden ortanca ≥ 3 puan yüksekse, 10 sn ortancası
+   ≤ 15 MB ise ve 10 sn'lik karelerin bellekte tutulan hali ≤ 300 MB ise eklenir. Ekrandaki tahmin her
+   boyutta gerçek dosyanın ±%10'u içinde kalmalı (yeniden ölçülür).
+
+Sonuçlar ve uygulanan karar bu bölümün altına eklenir.
