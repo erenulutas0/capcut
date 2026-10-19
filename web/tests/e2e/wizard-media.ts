@@ -40,6 +40,19 @@ const SPECS = {
       '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest',
     ],
   },
+  /**
+   * A phone-shaped video (360 × 640) whose tone stops for a second every 2,5 s (6 s): "Boşlukları at"
+   * finds gaps to cut, so its whole step — the gaps and the download — is on the screen (the phone layout
+   * test, ADR-046 addendum).
+   */
+  verticalGaps: {
+    name: 'dikey-bosluklu.mp4',
+    args: [
+      '-f', 'lavfi', '-i', 'testsrc2=size=360x640:rate=30:duration=6',
+      '-f', 'lavfi', '-i', `aevalsrc=exprs=${`${TONE}*lt(mod(t,2.5),1.5)`.replace(/,/g, '\\,')}:s=48000:d=6`,
+      '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest',
+    ],
+  },
   /** VP9 + Opus in WebM: opens in Chromium, but is not the MP4 every device plays. */
   webm: {
     name: 'tarayici-kaydi.webm',

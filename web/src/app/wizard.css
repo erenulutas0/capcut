@@ -375,6 +375,40 @@
   margin-top: 4px;
 }
 
+/*
+ * The main action of a step, on a phone or a short window (19 Oct 2026, the founder's phone: a
+ * vertical video made the GIF preview so tall that "GIF'i indir" sat below the screen and he could not
+ * find it). The bar stays at the bottom of the screen while the step is longer than the screen, and
+ * sits in its own place once it is reached; a soft edge above it shows that the page goes on under
+ * it. The focus is never hidden under it: the page keeps its height free when it scrolls to a
+ * focused control (WCAG 2.4.11).
+ */
+@media (max-width: 699px), (max-height: 820px) {
+  .wizard-action-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    margin-top: 4px;
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg);
+  }
+
+  .wizard-action-bar::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 12px;
+    background: linear-gradient(to bottom, transparent, var(--bg));
+    pointer-events: none;
+  }
+
+  html:has(.wizard-action-bar) {
+    scroll-padding-bottom: 104px;
+  }
+}
+
 .wizard-blocked {
   margin: 0;
   font-size: 14px;
@@ -701,7 +735,7 @@
 }
 
 .gif-preview-frame {
-  --gif-max-height: min(52vh, 420px);
+  --gif-max-height: min(52svh, 420px);
   position: relative;
   width: min(100%, calc(var(--gif-max-height) * var(--gif-ratio, 1.78)));
   margin: 0 auto;
@@ -913,6 +947,11 @@
   font-size: 16px;
   font-weight: 650;
   cursor: pointer;
+}
+
+.gif-size-hint {
+  flex-basis: 100%;
+  margin: 0;
 }
 
 .gif-size-option[data-checked='true'] {

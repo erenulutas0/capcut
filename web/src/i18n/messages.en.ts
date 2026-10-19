@@ -1140,6 +1140,8 @@ export const en: Record<MessageKey, string> = {
   'wizard.gif.size': 'Size',
   'wizard.gif.small': 'Small',
   'wizard.gif.medium': 'Medium',
+  'wizard.gif.large': 'Large',
+  'wizard.gif.sizeHint': 'The larger the GIF, the sharper it looks on a phone — and the larger the file.',
   'wizard.gif.oneSize': 'This video is small; the GIF keeps the video’s own size.',
   'wizard.gif.download': 'Download the GIF',
   'wizard.gif.ready': 'Your GIF is ready',

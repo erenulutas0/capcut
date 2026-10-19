@@ -1184,6 +1184,8 @@ export const tr = {
   'wizard.gif.size': 'Boyut',
   'wizard.gif.small': 'Küçük',
   'wizard.gif.medium': 'Orta',
+  'wizard.gif.large': 'Büyük',
+  'wizard.gif.sizeHint': 'Büyüdükçe GIF telefonda daha net görünür; dosyası da büyür.',
   'wizard.gif.oneSize': 'Bu video küçük; GIF videonun kendi boyutunda olur.',
   'wizard.gif.download': 'GIF’i indir',
   'wizard.gif.ready': 'GIF’in hazır',

@@ -114,10 +114,18 @@ export function gifFrameTimesUs(range: GifRange): Micros[] {
 
 // ---------------------------------------------------------------- size
 
-export type GifSizeId = 'small' | 'medium';
+export type GifSizeId = 'small' | 'medium' | 'large';
 
-/** The long edge of each size ("Küçük", "Orta"). */
-export const GIF_LONG_EDGE: Record<GifSizeId, number> = { small: 320, medium: 480 };
+/** Smallest first. */
+export const GIF_SIZE_IDS: readonly GifSizeId[] = ['small', 'medium', 'large'];
+
+/**
+ * The long edge of each size ("Küçük", "Orta", "Büyük"). "Büyük" since 19 October 2026 (ADR-046
+ * addendum): measured on real phone recordings, what a phone shows of a GIF depends far more on its
+ * size than on its colours — VMAF of the GIF shown at the phone's width, median of 13 recordings,
+ * 36 (320) → 62 (480) → 78 (640), while every palette and dithering choice moved it by 3 at most.
+ */
+export const GIF_LONG_EDGE: Record<GifSizeId, number> = { small: 320, medium: 480, large: 640 };
 
 export interface GifSize {
   width: number;
@@ -135,11 +143,20 @@ export function planGifSize(videoWidth: number, videoHeight: number, size: GifSi
   return { width: Math.max(1, Math.round(w * scale)), height: Math.max(1, Math.round(h * scale)) };
 }
 
-/** Whether "Orta" would be any larger than "Küçük" for this video (a small video has one size only). */
-export function mediumIsLarger(videoWidth: number, videoHeight: number): boolean {
-  const small = planGifSize(videoWidth, videoHeight, 'small');
-  const medium = planGifSize(videoWidth, videoHeight, 'medium');
-  return medium.width > small.width;
+/**
+ * The sizes offered for this video, smallest first: each one larger than the one before it — a size
+ * that would only be the video's own size again is not offered (nothing is enlarged, ADR-041). A
+ * small video has one size only.
+ */
+export function gifSizeChoices(videoWidth: number, videoHeight: number): GifSizeId[] {
+  const choices: GifSizeId[] = [];
+  let previous = 0;
+  for (const id of GIF_SIZE_IDS) {
+    const { width } = planGifSize(videoWidth, videoHeight, id);
+    if (width > previous) choices.push(id);
+    previous = width;
+  }
+  return choices;
 }
 
 // ---------------------------------------------------------------- the estimate

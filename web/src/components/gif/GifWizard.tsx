@@ -19,7 +19,7 @@ import {
   gifTextMaxPx,
   initialGifRange,
   layoutGifText,
-  mediumIsLarger,
+  gifSizeChoices,
   normalizeGifRange,
   planGifSize,
   type GifRange,
@@ -38,6 +38,12 @@ import { useGifDownload, useGifEstimate } from './useGif';
 
 /** Refusals the estimate already proves: the GIF could not be made either, so "GIF'i indir" waits. */
 const BLOCKING = new Set(['no_video_track', 'source_undecodable', 'source_incomplete', 'hdr_source_unsupported', 'no_frames_decoded', 'source_frames_missing', 'text_font_unavailable']);
+
+const SIZE_LABEL: Record<GifSizeId, 'wizard.gif.small' | 'wizard.gif.medium' | 'wizard.gif.large'> = {
+  small: 'wizard.gif.small',
+  medium: 'wizard.gif.medium',
+  large: 'wizard.gif.large',
+};
 
 let pageMeasureFn: MeasureGifText | null = null;
 
@@ -285,8 +291,10 @@ export default function GifWizard(host: WizardHostProps) {
   const part = video && range ? normalizeGifRange(range, videoUs) : null;
   const videoWidth = video?.displayWidth ?? 0;
   const videoHeight = video?.displayHeight ?? 0;
-  const twoSizes = videoWidth > 0 && videoHeight > 0 && mediumIsLarger(videoWidth, videoHeight);
-  const chosenSize: GifSizeId = twoSizes ? sizeId : 'small';
+  const sizeChoices = videoWidth > 0 && videoHeight > 0 ? gifSizeChoices(videoWidth, videoHeight) : (['small'] as GifSizeId[]);
+  const twoSizes = sizeChoices.length > 1;
+  // A size this video does not have (a smaller video after a larger one): its largest.
+  const chosenSize: GifSizeId = sizeChoices.includes(sizeId) ? sizeId : (sizeChoices[sizeChoices.length - 1] ?? 'small');
   const size = planGifSize(videoWidth || 1, videoHeight || 1, chosenSize);
 
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
@@ -390,9 +398,9 @@ export default function GifWizard(host: WizardHostProps) {
           </div>
 
           {twoSizes ? (
-            <fieldset className="gif-size" data-testid="gif-size">
+            <fieldset className="gif-size" data-testid="gif-size" aria-describedby="gif-size-hint">
               <legend>{t('wizard.gif.size')}</legend>
-              {(['small', 'medium'] as const).map((id) => (
+              {sizeChoices.map((id) => (
                 <label className="gif-size-option" data-checked={chosenSize === id} key={id}>
                   <input
                     type="radio"
@@ -403,9 +411,13 @@ export default function GifWizard(host: WizardHostProps) {
                     onChange={() => setSizeId(id)}
                     data-testid={`gif-size-${id}`}
                   />
-                  <span>{t(id === 'small' ? 'wizard.gif.small' : 'wizard.gif.medium')}</span>
+                  <span>{t(SIZE_LABEL[id])}</span>
                 </label>
               ))}
+              {/* The honest trade (ADR-046 addendum): a larger GIF looks sharper on a phone, and its file is larger. */}
+              <p className="wizard-hint gif-size-hint" id="gif-size-hint" data-testid="gif-size-hint">
+                {t('wizard.gif.sizeHint')}
+              </p>
             </fieldset>
           ) : (
             <p className="wizard-hint" data-testid="gif-one-size">
@@ -429,7 +441,7 @@ export default function GifWizard(host: WizardHostProps) {
             </div>
           ) : null}
 
-          <div className="wizard-actions">
+          <div className="wizard-actions wizard-action-bar" data-testid="wizard-actions">
             <button
               type="button"
               className="btn btn-accent wizard-go"

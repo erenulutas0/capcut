@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { inspectGif, type GifInspection } from '../../src/domain/gifInspect';
 import { expect, test, type Page } from './fixtures';
 import { installSavePicker, noSavePicker, opfsFiles, pickerCalls, readSaved } from './kesitFlow';
+import { wizardFixture } from './wizard-media';
 import { SECRETS, diagnosticsFrom, fault, nextFault, watchLogs } from './workerFaultKit';
 
 /**
@@ -170,13 +171,44 @@ test('ten seconds at most, said in words; "Orta" is 480 pixels; the part is the 
 
 test('a small video has one size, its own; the GIF is never larger than the video', async ({ page }, testInfo) => {
   await openGif(page, OTHER);
-  // 640 × 360: Küçük 320, Orta 480 — both offered.
+  // 640 × 360: Küçük 320, Orta 480, Büyük 640 — Büyük is the video's own size, not more (ADR-041).
   await expect(page.getByTestId('gif-size')).toBeVisible();
+  await expect(page.getByTestId('gif-size').getByRole('radio')).toHaveCount(3);
+  await expect(page.getByTestId('gif-size-hint')).toHaveText('Büyüdükçe GIF telefonda daha net görünür; dosyası da büyür.');
   await page.getByTestId('gif-size-medium').check();
   await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
   await expect(estimate(page)).toHaveAttribute('data-width', '480');
   const made = await saveGif(page, testInfo, 'other-8s_gif.gif');
   expect(made.gif).toMatchObject({ width: 480, height: 270, frames: 100 });
+
+  // 320 × 240: Küçük is already the video's own size — no choice, and the screen says why.
+  await page.getByTestId('wizard-again').click();
+  await page.getByTestId('video-input').setInputFiles(wizardFixture('noAudio'));
+  await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'choose', { timeout: 60_000 });
+  await expect(page.getByTestId('gif-one-size')).toBeVisible();
+  await expect(page.getByTestId('gif-size')).toHaveCount(0);
+  await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+  await expect(estimate(page)).toHaveAttribute('data-width', '320');
+  await expect(estimate(page)).toHaveAttribute('data-height', '240');
+});
+
+test('"Büyük" (ADR-046 addendum): a phone video at 360 × 640 — twice as wide on a phone as "Küçük" — about the size it said', async ({ page }, testInfo) => {
+  await openGif(page, wizardFixture('vertical')); // 360 × 640, 2 s: taken whole
+  await expect(page.getByTestId('gif-size-small')).toBeChecked();
+  await expect(estimate(page)).toHaveAttribute('data-width', '180');
+  await page.getByTestId('gif-size-large').check();
+  await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+  await expect(estimate(page)).toHaveAttribute('data-width', '360');
+  await expect(estimate(page)).toHaveAttribute('data-height', '640');
+  const estimated = Number(await estimate(page).getAttribute('data-bytes'));
+  const made = await saveGif(page, testInfo, 'dikey-telefon_gif.gif');
+  expect(made.gif).toMatchObject({ width: 360, height: 640, frames: 25, loops: 0, durationCs: 200 });
+  expect(ffprobeGif(made.path)).toEqual({ frames: 25, width: 360, height: 640 });
+  const ratio = made.bytes / estimated;
+  console.log(`GIF-ESTIMATE-LARGE ${JSON.stringify({ estimated, actual: made.bytes, ratio })}`);
+  // The same bound as the Küçük test above (a quarter); the ±10 % of real recordings is ADR-046's table.
+  expect(ratio).toBeGreaterThan(0.75);
+  expect(ratio).toBeLessThan(1.33);
 });
 
 test('refusals: sound only, one frame, a broken index — the screens’ own sentences, nothing made', async ({ page }) => {

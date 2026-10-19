@@ -402,25 +402,28 @@ export function WizardFlow({
               ? children({ capability: exporter.capability, busy, previewSize: exporter.previewSize })
               : children}
             {working || ownDownload ? null : (
-              <div className="wizard-actions">
-                {blockedText ? (
-                  <p className="wizard-blocked" id="wizard-blocked" data-testid="wizard-blocked">
-                    {blockedText}
-                  </p>
-                ) : null}
-                <button
-                  type="button"
-                  className="btn btn-accent wizard-go"
-                  onClick={exporter.start}
-                  disabled={!recipe || busy || importing}
-                  aria-describedby={blockedText ? 'wizard-blocked' : undefined}
-                  data-testid="wizard-download"
-                >
-                  <Icon name="download" />
-                  {t(downloadLabelKey)}
-                </button>
+              <>
+                {/* On a phone this bar stays at the bottom of the screen (wizard.css): the main action is never below it. */}
+                <div className="wizard-actions wizard-action-bar" data-testid="wizard-actions">
+                  {blockedText ? (
+                    <p className="wizard-blocked" id="wizard-blocked" data-testid="wizard-blocked">
+                      {blockedText}
+                    </p>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="btn btn-accent wizard-go"
+                    onClick={exporter.start}
+                    disabled={!recipe || busy || importing}
+                    aria-describedby={blockedText ? 'wizard-blocked' : undefined}
+                    data-testid="wizard-download"
+                  >
+                    <Icon name="download" />
+                    {t(downloadLabelKey)}
+                  </button>
+                </div>
                 {moreSettings}
-              </div>
+              </>
             )}
           </>
         ) : null}
