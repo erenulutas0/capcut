@@ -104,7 +104,9 @@ function bridge(client, upstreamUrl, show) {
         info.type === 'browser' ||
         childOfOwn ||
         isOwnTarget(info) ||
-        (!foreign.has(info.targetId) && creating > 0 && info.type === 'page');
+        // A page that appears while the script creates one is the script's only if it starts blank: an
+        // app window or tab the phone's owner opens at that moment starts at its own address (19 Oct).
+        (!foreign.has(info.targetId) && creating > 0 && info.type === 'page' && !/^https?:/.test(info.url ?? ''));
       if (!mine) {
         hide(message.params.sessionId);
         return;
