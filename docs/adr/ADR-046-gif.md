@@ -3,6 +3,9 @@
 > Tarih: 2026-10-17 · Durum: UYGULANDI (web; birim, e2e, kalite katmanı). Telefonda, Safari'de ve Firefox'ta
 > denenmedi. Politika **değişti** (doc 15 `2026-10-17.v11`: GIF yap ücretsiz, cihazda, GIF başına en çok
 > 10 saniye); şema değişmedi (EDL v5 — GIF ekranı proje saklamaz).
+> **Ek, 19–20 Ekim 2026** (en altta): gerçek telefon kayıtlarıyla ölçüm; renk yöntemi ve 12,5 kare/sn
+> değişmedi; yeni boyut "Büyük" (640), varsayılan "Orta" (kurucu kararı), 10 MB üstü uyarı, tahmin 8 × 3
+> kare; telefonda her sihirbazın ana düğmesi ekranın altında.
 > Kaynak: kurucunun kararı (yeni kart "GIF yap", taslak tuvalinden seçenek **B "Tek ekran, yazı önizlemenin
 > üstünde"**). Taslak ve uygulanan ekranlar: [`docs/ux/2026-10-17-gif/`](../ux/2026-10-17-gif/README.md).
 > İlgili: [ADR-034](ADR-034-task-first-home.md) (iş kartları ve sihirbaz çatısı), [ADR-015] (altyazı yazı
@@ -316,3 +319,124 @@ renge şu kadar yakınsa değişmemiş say"; eşik T birkaç değerde). Kare hı
    boyutta gerçek dosyanın ±%10'u içinde kalmalı (yeniden ölçülür).
 
 Sonuçlar ve uygulanan karar bu bölümün altına eklenir.
+
+### Sonuçlar (19–20 Ekim; ölçüm bu masaüstünde, `web/scripts/gif-eval/`)
+
+Kümeler: **gerçek** = 11 gerçek telefon kaydı (R1–R11: altısı dikey, dördü HEVC, 30–120 kare/sn; ikisi
+iPhone, biri Pixel, ikisi Samsung, biri GoPro, dördü sosyal medya videosu) + iki az ışık kopyası (K1, K2:
+iki gerçek kaydın karartılıp kumlandırılmışı) = 13; R2 4,4 sn olduğu için 10 sn ölçümlerinde yok (12).
+**yapay** = S1 `desen`, S2 `yumusak`, S3 `kaydirma`, S4 `gurultulu`, S5 kamera benzeri dikey az ışık.
+Değerler ortanca. Süreler dört ölçüm aynı anda koşarken alındı (kaba; tek başına daha kısa).
+Aday A, uygulamanın kodlayıcısıyla bayt bayt aynı GIF'i yazar (bir kez denetlendi).
+
+**1. Yöntem** (Küçük, 4 sn, 12,5 kare/sn):
+
+| Aday | Gerçek: SSIM · VMAF · ΔCAMBI · boyut · süre | Yapay: SSIM · VMAF · ΔCAMBI · boyut |
+|---|---|---|
+| **A — bugünkü** (tek palet, titreşimsiz, tam eşitlikte saydam) | **0,9808 · 99,2 · 0,01 · 1,65 MB · 248 ms** | **0,9887 · 92,9 · 0,09 · 1,21 MB** |
+| Kare başı palet | 0,9823 · 99,5 · 0,02 · 1,70 · **864 ms** | 0,9904 · 93,4 · 0,08 · 1,21 |
+| 4 kat örnekten tek palet | 0,9805 · 99,6 · 0,01 · 1,62 · 237 | 0,9887 · 92,8 · 0,08 · 1,21 |
+| PnnQuant + 3 k-means adımı | 0,9822 · 98,8 · 0,02 · 1,71 · 225 | 0,9915 · 94,0 · 0,06 · 1,24 |
+| Floyd–Steinberg 1 / 0,75 / 0,5 | 0,9573 / 0,9722 / 0,9771 · 99,4–99,5 · 0,00–0,07 · 1,82–2,02 · 354–470 | 0,9822–0,9880 · 94,3–94,7 · 0,05–0,06 · 1,36–1,53 |
+| Sıralı: Bayer 12 / mavi gürültü 8, 12, 16 / R2 12 | 0,9424–0,9701 · 98,4–99,1 · −0,02–0,00 · 1,83–1,91 | 0,9431–0,9711 · 92,0–92,7 · −0,00–0,07 · 1,20–1,39 |
+| Eşikli saydamlık T 3 / 6 | 0,9774 / 0,9668 · 98,3 / 97,1 · 0,02 · 1,27 / 0,99 · 204–223 | 0,9801 / 0,9638 · 91,9 / 89,9 · 0,17 · 0,74 / 0,46 |
+| Titreşim + eşik (mavi 12, F–S 0,75; T 3, 6; k-means'li) | 0,9459–0,9711 · 96,8–99,1 · −0,02–0,04 · 1,04–1,43 | 0,9390–0,9792 · 89,3–95,5 · −0,00–0,08 · 0,51–0,94 |
+
+(ΔCAMBI: GIF'in kaynağın kendi bandına eklediği bant; 0 = yok, ~5 göze batar.)
+
+- **Kural uygulandı:** titreşimlerin ve eşikli saydamlığın hepsi SSIM sınırını (−0,002) aştı; kare başı
+  palet süre sınırını (0,6 sn). Sınırların içinde kalan iki aday (4 kat örnek, k-means) bant ölçüsünde
+  A'yla aynı (0,01–0,02; en iyiye 0,2 içinde), VMAF'ı en yüksek olan (4 kat örnek, +0,4) ne bandı %30 azaltıyor
+  ne VMAF'ı 2 puan artırıyor → **yöntem değişmedi.** Gerçek görüntüde, GIF'in kendi boyutunda, 255 renklik
+  tek palet neredeyse hiç bant eklemiyor (13 kaydın en kötüsü K2: +0,65); bant yalnızca yapay yumuşak
+  geçişte (S2: 4,45; titreşim onu 0'a indiriyor) belirgin.
+- Ayrıca: bugünkü yöntem **boyut sınırını gerçek görüntüde aşıyor** — 10 sn Orta ortanca 8,28 MB, en büyüğü
+  11,3 MB (sınır 8 / 10 MB); kuralda (b) her aday için yazılmıştı, A'yı da tutmuyor. Hiçbir aday (b)'yi
+  geçmedi (eşikli saydamlık T 3: 6,71 MB ortanca ama en büyüğü 10,07 MB ve SSIM'i sınırın dışında).
+
+**2. Kare hızı:** 15 kare/sn gerçek kümede dosyayı ortanca **%19,5** büyüttü (13 kaydın hepsinde %14–21);
+sınır %10 → **12,5 kalıyor.**
+
+**3. Boyut — telefonda görünen** (VMAF-tel: GIF ve kaynak, kısa kenarı 1080 olacak biçimde büyütülüp; 4 sn):
+
+| | Küçük (320) | Orta (480) | Büyük (640) |
+|---|---|---|---|
+| Gerçek, VMAF-tel | **36,2** | **62,1** | **77,5** |
+| — dikey (7) / yatay (6) | 26,7 / 38,4 | 56,0 / 62,9 | 77,5 / 78,6 |
+| Yapay, VMAF-tel | 36,8 | 57,9 | 73,9 |
+| Gerçek, 4 sn boyut (ortanca / en çok) | 1,65 / 2,51 MB | 3,44 / 5,65 MB | 5,93 / 10,08 MB |
+| Gerçek, 10 sn boyut (ortanca / en çok) | 3,90 / 5,09 MB | 8,28 / 11,31 MB | 14,12 / 20,02 MB |
+| Yapay, 10 sn boyut (ortanca / en çok) | 3,03 / 3,89 MB | 7,15 / 9,93 MB | 13,65 / 19,67 MB |
+| 10 sn kodlama süresi, gerçek (bu masaüstü, Node) | 0,43 sn | 0,86 sn | 1,48 sn |
+
+**Bulgu:** kurucunun "kalite kötü"sünün asıl sebebi renk değil **boyut**: dikey bir telefon videosu
+Küçük'te 180 × 320 piksel ve telefon ekranında 6 kat büyütülür (VMAF-tel 26,7). Hiçbir palet / titreşim
+seçimi VMAF-tel'i 3 puandan fazla oynatmadı (A 36,2; F–S 0,5 36,3; T 3 33,1; F–S 0,75 + T 3 34,3); bir üst
+boyut 15–26 puan.
+
+- **Kural uygulandı (boyutlar):** varsayılan = 10 sn ortancası ≤ 5 MB olan en büyük boyut → **Küçük**
+  (3,90 MB; Orta 8,28). "Büyük": VMAF-tel Orta'dan +15,4 (≥ 3), 10 sn ortanca 14,12 MB (≤ 15), 10 sn'lik
+  kareler bellekte 640 × 360 × 4 × 125 = 115 MB (≤ 300) → **eklendi.**
+- **Kurucu kararı (20 Ekim, ana oturum aracılığıyla) — kuralın varsayılan sonucunu geçersiz kıldı:**
+  varsayılan **Orta** (video izin veriyorsa; yoksa videonun kendi boyutu), çünkü kurucunun şikâyeti
+  telefonda netlikti. Bedeli dürüstçe: 10 sn Orta gerçek görüntüde ortanca 8,3 MB, en çok 11,3 MB. Bunun
+  için, tahmin **10 MB'ı** (10 000 000 bayt, ekranın "10 MB"ı) geçince boyut seçiminin altında
+  engellemeyen bir uyarı: "Bu GIF 10 MB'tan büyük olacak; bazı uygulamalar kabul etmeyebilir. Küçük
+  seçebilir ya da süreyi kısaltabilirsin." Uzun videonun varsayılan kısmı 4 sn olduğundan çoğu GIF
+  uyarısız kalır (4 sn Orta gerçek ortanca 3,44 MB, en çok 5,65).
+- Döngülü MP4 ("Video olarak") **yapılmadı** (kurucu kararı: şimdilik yok).
+- Ekranda boyutun altında tek satır: "Büyüdükçe GIF telefonda daha net görünür; dosyası da büyür."
+
+Keşif (kurala girmedi, karar değil): eşikli saydamlık (T 3) gerçek görüntüde dosyayı %15–23 küçültüyor
+(10 sn Orta 8,28 → 6,71 MB), VMAF'ta −0,4–0,6, SSIM'de −0,003 bedelle; boyut uyarısını seyreltmek için
+bir sonraki aday olabilir, ama yeni bir ön kayıtla.
+
+**Ekrandaki tahmin, uygulamada** (`/yap/gif`, Playwright Chromium, kaydetme penceresi yok; tahmin =
+ekranın `data-bytes`'ı, gerçek = dosya; × = gerçek ÷ tahmin):
+
+Dokuz gerçek kayıt (HEVC olan R1, R3 Playwright'ın Chromium'unda açılmıyor; R4, R5 yerine onlardan türeyen K1,
+K2) ve beş yapay kaynak; kısım baştan 4 sn ya da 10 sn (R2 4,4 sn: bütünü). Hücre: dosya (MB) × gerçek ÷
+tahmin, Küçük / Orta / Büyük. Son sütun: 10 sn Orta'yı yapma süresi · tahminin süresi (bu masaüstü).
+
+| Kaynak | Küçük | 4 sn: Küçük / Orta / Büyük | 10 sn: Küçük / Orta / Büyük | Yapma · tahmin |
+|---|---|---|---|---|
+| R2 | 180 × 320 | 1,96 ×1,01 / 4,24 ×1,01 / 7,12 ×1,00 | 2,15 ×0,99 / 4,65 ×1,01 / 7,77 ×0,99 | 1,4 sn · 1,8 sn |
+| R6 | 180 × 320 | 0,04 ×1,15 / 0,06 ×1,17 / 0,10 ×1,17 | 0,10 ×1,45 / 0,17 ×1,50 / 0,25 ×1,47 | 1,2 sn · 1,3 sn |
+| R7 | 180 × 320 | 1,06 ×1,05 / 1,99 ×1,05 / 3,13 ×1,06 | 2,68 ×1,06 / 4,97 ×1,08 / 7,73 ×1,07 | 1,3 sn · 1,3 sn |
+| R8 | 148 × 320 | 1,06 ×1,00 / 1,94 ×0,98 / 3,04 ×0,99 | 2,49 ×1,01 / 4,63 ×1,02 / 7,09 ×1,00 | 1,8 sn · 1,8 sn |
+| R9 | 212 × 320 | 1,12 ×1,06 / 2,23 ×1,06 / 3,51 ×1,04 | 2,76 ×0,98 / 5,48 ×0,99 / 8,76 ×0,99 | 0,8 sn · 0,8 sn |
+| R10 | 320 × 180 | 1,65 ×1,01 / 3,34 ×0,99 / 5,90 ×1,02 | 3,92 ×1,01 / 7,92 ×1,00 / 13,99 ×0,98 | 1,7 sn · 2,3 sn |
+| R11 | 320 × 180 | 1,54 ×0,98 / 3,17 ×0,99 / 5,70 ×1,00 | 3,39 ×0,99 / 6,83 ×0,98 / 12,07 ×0,98 | 3,2 sn · 3,3 sn |
+| K1 | 320 × 180 | 1,87 ×1,00 / 4,50 ×1,01 / 8,21 ×1,01 | 4,64 ×1,00 / 11,15 ×1,01 / 20,30 ×1,01 | 4,2 sn · 4,3 sn |
+| K2 | 320 × 180 | 1,81 ×1,00 / 3,95 ×1,00 / 6,77 ×0,99 | 4,30 ×1,00 / 9,54 ×1,01 / 16,32 ×1,00 | 3,9 sn · 3,8 sn |
+| S1 | 320 × 180 | 0,22 ×0,99 / 0,43 ×1,00 / 0,78 ×0,99 | 0,51 ×1,01 / 0,99 ×0,99 / 1,88 ×0,98 | 1,3 sn · 1,3 sn |
+| S2 | 320 × 180 | 1,00 ×1,00 / 2,46 ×1,00 / 6,35 ×1,01 | 2,47 ×1,02 / 5,91 ×1,00 / 15,70 ×1,03 | 2,2 sn · 2,3 sn |
+| S3 | 320 × 180 | 1,43 ×1,00 / 3,52 ×0,96 / 7,21 ×0,99 | 3,53 ×1,01 / 8,81 ×1,01 / 17,70 ×0,98 | 4,9 sn · 5,9 sn |
+| S4 | 320 × 180 | 2,12 ×0,98 / 5,06 ×0,99 / 9,96 ×0,99 | 4,95 ×1,02 / 11,71 ×1,01 / 23,26 ×1,00 | 7,4 sn · 9,4 sn |
+| S5 | 180 × 320 | 1,29 ×1,00 / 2,70 ×1,01 / 4,91 ×1,00 | 3,36 ×1,01 / 6,80 ×0,98 / 12,57 ×1,00 | 2,4 sn · 2,3 sn |
+
+- **Tahmin değişti** (ön kayıttaki ±%10 şartı ilk ölçümde tutmadı): eski tahmin (kısmın 4 yerinden 2'şer kare)
+  gerçek kayıtlarda 54 GIF'in **37'sinde** ±%10 içindeydi — R7'de (açılışı geri kalanından çok hareketli bir
+  sosyal medya videosu) dosya tahminden %17–19 büyük, R9'da %11 büyük, R11'in 10 sn'sinde %11–12 küçük çıktı.
+  Yeni tahmin **8 yerden 3'er ardışık kare**; anahtar kareler seyrekse (ör. bir uygulamanın yeniden
+  kaydettiği, 8 sn'de bir anahtar kareli video) kısmı tek geçişte çözer: **54'te 48** içinde; dışında kalan
+  altısının hepsi R6 — neredeyse hiç kıpırdamayan bir video (40–250 KB): dosya tahminden 4 sn'de %15–17
+  büyük, 10 sn'de %31–33 küçük (tahmin 10 sn'de iki kat fazla söylüyor; ekran "yaklaşık" der). Yapay
+  kaynakların 30'unun 30'u içinde. Tahminin süresi önce 1,3–22 sn, şimdi 0,8–9,9 sn (en uzunu yoğun kumlu,
+  seyrek anahtar kareli yapay kaynak); "GIF'i indir" onu hiç beklemez.
+- Uygulamada 10 sn Büyük GIF yapmak 1,2–8,1 sn sürdü (bu masaüstü); telefonda ölçülmedi.
+
+### Telefonda ana düğme (aynı gün)
+
+Kurucu dikey videoda "GIF'i indir"i bulamadı: önizleme ekranı doldurmuş, düğme ekranın altında kalmıştı.
+Ölçüm (eski derleme, dikey 360 × 640 deneme videosu, düğmenin alt kenarı): 360 × 780'de Küçült 1025,
+Müzik ekle 905, İyileştir 1507, GIF yap 898 px (ekranın dışında); 320 × 640'ta ayrıca Sesi düzelt 719 ve
+Çevir 733. **Düzeltme:** her sihirbazın ana düğmesi (ortak `WizardFlow`, GIF yap'ın kendi düğmesi ve
+Yazıya dök'ün "Modeli indir" ve "Yazıya dök" düğmeleri) telefonda ve kısa pencerede (`max-width: 699px` ya da
+`max-height: 820px`) ekranın altına yapışan bir çubukta; adım ekrandan kısaysa yerinde durur. Çubuğun
+üstünde 12 px yumuşak geçiş; "Daha fazla ayar" çubuğun dışına, altına alındı; odak çubuğun altında
+kalmasın diye sayfa kaydırırken alttan 104 px boşluk bırakır (WCAG 2.4.11). GIF önizlemesinin yüksekliği
+`52svh` (tarayıcı çubuğu açıkken görünen yükseklik). Sonra: 10 sihirbazda düğme 360 × 780'de 716–772,
+320 × 640'ta 576–632 px'te, kaydırmadan; GIF'in iki yazı kutusu düğmenin üstünde, Tab hiçbir denetimi
+çubuğun altına düşürmüyor. Yeni sınama `tests/e2e/wizard-phone-action.spec.ts`. "Kes" editörü açar (kendi
+telefon çubuğu, ADR-030), sınamada yok.

@@ -13,7 +13,7 @@
  * (ADR-041): the size comes from `planGifSize`.
  *
  * Two jobs:
- * - `estimate`: a few moments of the part, two frames each, encoded exactly
+ * - `estimate`: a few moments of the part, three frames each, encoded exactly
  *   as the GIF will be — what the "yaklaşık 3 MB" on the screen is made of;
  * - `make`: every frame of the part, the text drawn on each, one palette,
  *   the GIF's bytes back to the page.
@@ -56,8 +56,14 @@ const TEST_HOOKS = process.env.NEXT_PUBLIC_CLIP_TEST_HOOKS === '1';
 /** Progress is posted at most this often (and always for the last frame). */
 const PROGRESS_INTERVAL_MS = 100;
 
-/** The estimate looks at this many moments of the part, two frames at each. */
-const ESTIMATE_MOMENTS = 4;
+/**
+ * The estimate looks at this many moments of the part, `ESTIMATE_RUN` consecutive frames at each.
+ * 8 × 3 since 20 Oct 2026 (ADR-046 addendum), measured in the app on 9 real phone recordings × 3 sizes
+ * × 4 or 10 s: with 4 × 2, 37 of 54 GIFs were within 10 % of the estimate (up to 19 % larger, 12 %
+ * smaller); with 8 × 3, 48 of 54 — the other six all of one almost-still video of 40–250 KB.
+ */
+const ESTIMATE_MOMENTS = 8;
+const ESTIMATE_RUN = 3;
 
 /** Where the running job is, for the day it fails or stands still (ADR-042): this file's own word, nothing of the video. */
 let stage: ExportStage = 'unknown';
@@ -272,10 +278,10 @@ async function make(request: Extract<GifWorkerRequest, { type: 'make' }>): Promi
 }
 
 /**
- * The estimate: `ESTIMATE_MOMENTS` moments spread over the part, two
- * consecutive frames at each, encoded with one palette made of them. The
- * first frame of a pair is what a whole picture costs; the second is what a
- * following frame costs once the unchanged pixels are left out.
+ * The estimate: `ESTIMATE_MOMENTS` moments spread over the part,
+ * `ESTIMATE_RUN` consecutive frames at each, encoded with one palette made of
+ * them. The first frame of a run is what a whole picture costs; each following
+ * one is what a later frame costs once the unchanged pixels are left out.
  */
 async function estimate(request: Extract<GifWorkerRequest, { type: 'estimate' }>): Promise<void> {
   const { requestId } = request;
@@ -285,28 +291,58 @@ async function estimate(request: Extract<GifWorkerRequest, { type: 'estimate' }>
     const duration = await source.track.computeDuration().catch(() => request.range.endUs / US_PER_SECOND);
     const range = normalizeGifRange(request.range, Math.round(duration * US_PER_SECOND));
     const times = gifFrameTimesUs(range);
-    const pairs: Uint8Array[][] = [];
+    const runs: Uint8Array[][] = [];
+    const run = Math.min(ESTIMATE_RUN, times.length);
     const moments = Math.min(ESTIMATE_MOMENTS, Math.max(1, Math.floor(times.length / 2)));
+    const starts: number[] = [];
     for (let m = 0; m < moments; m += 1) {
-      const at = Math.min(times.length - 2, Math.round((m * (times.length - 2)) / Math.max(1, moments - 1)));
-      const pick = at >= 0 ? [times[at] as number, times[at + 1] as number] : [times[0] as number];
-      const pair: Uint8Array[] = [];
-      await drawFrames(source, pick, (rgba) => pair.push(rgba));
-      if (pair.length > 0) pairs.push(pair);
+      starts.push(Math.max(0, Math.min(times.length - run, Math.round((m * (times.length - run)) / Math.max(1, moments - 1)))));
     }
-    if (pairs.length === 0) throw new GifError('no_frames_decoded');
+    // The cheaper road to those frames: a seek to each moment decodes from the key frame before it, one
+    // pass decodes the whole part. Key frames far apart (a video an app saved again, one every 8 s) make
+    // the seeks the dearer road: measured on such videos, eight seeks took 6–22 s on this desktop, one pass 2–10.
+    const frameS = GIF_FRAME_US / US_PER_SECOND;
+    const partS = ((times[times.length - 1] as number) - (times[0] as number)) / US_PER_SECOND + frameS;
+    const packets = new EncodedPacketSink(source.track);
+    let seekS = 0;
+    for (const at of starts) {
+      const t = (times[at] as number) / US_PER_SECOND;
+      const key = await packets.getKeyPacket(t, { metadataOnly: true }).catch(() => null);
+      seekS += (key ? Math.max(0, t - key.timestamp) : t) + run * frameS;
+    }
+    if (seekS >= partS) {
+      const wanted = [...new Set(starts.flatMap((at) => Array.from({ length: run }, (_, k) => at + k)))].sort((a, b) => a - b);
+      const byIndex = new Map<number, Uint8Array>();
+      await drawFrames(
+        source,
+        wanted.map((i) => times[i] as number),
+        (rgba, k) => byIndex.set(wanted[k] as number, rgba),
+      );
+      for (const at of starts) {
+        const frames = Array.from({ length: run }, (_, k) => byIndex.get(at + k)).filter((frame): frame is Uint8Array => frame !== undefined);
+        if (frames.length > 0) runs.push(frames);
+      }
+    } else {
+      for (const at of starts) {
+        const frames: Uint8Array[] = [];
+        await drawFrames(source, times.slice(at, at + run), (rgba) => frames.push(rgba));
+        if (frames.length > 0) runs.push(frames);
+      }
+    }
+    if (runs.length === 0) throw new GifError('no_frames_decoded');
     stage = 'gif_encode';
-    const palette = buildGifPalette(pairs.flat(), source.layouts.length > 0);
+    const palette = buildGifPalette(runs.flat(), source.layouts.length > 0);
     const firsts: number[] = [];
     const laters: number[] = [];
-    for (const pair of pairs) {
+    for (const frames of runs) {
       const writer = new GifWriter(source.size.width, source.size.height, palette);
-      writer.add(pair[0] as Uint8Array);
-      const afterFirst = writer.byteLength;
-      firsts.push(afterFirst - (GIF_FIXED_BYTES - 1));
-      if (pair[1]) {
-        writer.add(pair[1]);
-        laters.push(writer.byteLength - afterFirst);
+      writer.add(frames[0] as Uint8Array);
+      let before = writer.byteLength;
+      firsts.push(before - (GIF_FIXED_BYTES - 1));
+      for (const frame of frames.slice(1)) {
+        writer.add(frame);
+        laters.push(writer.byteLength - before);
+        before = writer.byteLength;
       }
     }
     const mean = (values: number[]) => (values.length === 0 ? 0 : values.reduce((sum, value) => sum + value, 0) / values.length);
