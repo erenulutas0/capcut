@@ -614,8 +614,9 @@ test('GIF yap under /capcut/: its worker, the typeface of its text and the saved
   const savedPath = await readSaved(page, testInfo, 'saved-other-8s_gif.gif');
   const bytes = readFileSync(savedPath);
   expect(bytes.subarray(0, 6).toString('latin1')).toBe('GIF89a');
-  expect(bytes.readUInt16LE(6)).toBe(320);
-  expect(bytes.readUInt16LE(8)).toBe(180);
+  // "Orta" by default since 20 Oct 2026 (ADR-046 addendum): 480 × 270 from the 640 × 360 video.
+  expect(bytes.readUInt16LE(6)).toBe(480);
+  expect(bytes.readUInt16LE(8)).toBe(270);
   expect(seen.outside).toEqual([]);
   expect(watch.violations).toEqual([]);
   expect(seen.failures).toEqual([]);

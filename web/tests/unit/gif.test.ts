@@ -15,6 +15,7 @@ import {
   gifRangeLength,
   initialGifRange,
   layoutGifText,
+  gifIsLarge,
   gifSizeChoices,
   moveGifEdge,
   moveGifRange,
@@ -118,6 +119,12 @@ describe('GIF yap: the size', () => {
     expect(gifSizeChoices(640, 360)).toEqual(['small', 'medium', 'large']);
     expect(gifSizeChoices(1920, 1080)).toEqual(['small', 'medium', 'large']);
     expect(gifSizeChoices(1080, 1920)).toEqual(['small', 'medium', 'large']);
+  });
+
+  it('says "over 10 MB" only above ten million bytes, the "10 MB" the screen shows', () => {
+    expect(gifIsLarge(10_000_000)).toBe(false);
+    expect(gifIsLarge(10_000_001)).toBe(true);
+    expect(gifIsLarge(9_500_000)).toBe(false);
   });
 
   it('names the file after the video', () => {

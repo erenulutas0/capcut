@@ -19,6 +19,7 @@ import {
   gifTextMaxPx,
   initialGifRange,
   layoutGifText,
+  gifIsLarge,
   gifSizeChoices,
   normalizeGifRange,
   planGifSize,
@@ -282,7 +283,9 @@ export default function GifWizard(host: WizardHostProps) {
   const measure = video ? pageMeasure() : null;
   const [range, setRange] = useState<GifRange | null>(null);
   const [capped, setCapped] = useState(false);
-  const [sizeId, setSizeId] = useState<GifSizeId>('small');
+  // "Orta" first where the video has it (founder's decision, 20 Oct 2026: on a phone "Küçük" looked blurred;
+  // ADR-046 addendum). A video that has no "Orta" gets its largest size, which is its own.
+  const [sizeId, setSizeId] = useState<GifSizeId>('medium');
   const [texts, setTexts] = useState<GifTexts>({ top: '', bottom: '' });
   const download = useGifDownload();
   const busy = download.busy;
@@ -424,6 +427,13 @@ export default function GifWizard(host: WizardHostProps) {
               {t('wizard.gif.oneSize')}
             </p>
           )}
+
+          {current?.status === 'ready' && gifIsLarge(current.bytes) ? (
+            // Said, never blocked: the GIF is still made if the user wants it this large.
+            <p className="wizard-blocked" role="status" data-testid="gif-too-large">
+              {t('wizard.gif.tooLarge')}
+            </p>
+          ) : null}
 
           {refusal ? (
             <div className="wizard-panel" data-testid="gif-refused" data-reason={refusal.reason}>

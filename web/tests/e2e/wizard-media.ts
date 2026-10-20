@@ -53,6 +53,17 @@ const SPECS = {
       '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest',
     ],
   },
+  /**
+   * 10 s of a test pattern under heavy moving grain (640 × 360): every pixel changes in every frame, the
+   * worst case for a GIF — a 10 s "Büyük" GIF of it is estimated far over 10 MB ("GIF yap" warning).
+   */
+  grainy: {
+    name: 'kumlu-10s.mp4',
+    args: [
+      '-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=30:duration=10',
+      '-vf', 'noise=alls=30:allf=t+u', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p',
+    ],
+  },
   /** VP9 + Opus in WebM: opens in Chromium, but is not the MP4 every device plays. */
   webm: {
     name: 'tarayici-kaydi.webm',

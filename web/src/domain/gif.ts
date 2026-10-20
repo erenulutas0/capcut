@@ -161,6 +161,19 @@ export function gifSizeChoices(videoWidth: number, videoHeight: number): GifSize
 
 // ---------------------------------------------------------------- the estimate
 
+/**
+ * Above this the screen says that some apps may not take the GIF (founder's decision, 20 Oct 2026,
+ * ADR-046 addendum): Discord's free upload limit is 10 MB; X/Twitter takes GIFs up to 15 MB; WhatsApp
+ * turns a GIF into a video. Decimal megabytes, as the screen shows sizes ("10 MB" = 10 000 000 bytes).
+ * Nothing is blocked.
+ */
+export const GIF_LARGE_FILE_BYTES = 10_000_000;
+
+/** Whether the GIF, as estimated, is larger than many apps take. */
+export function gifIsLarge(estimatedBytes: number): boolean {
+  return estimatedBytes > GIF_LARGE_FILE_BYTES;
+}
+
 /** GIF header, logical screen, 256-entry colour table, loop extension, trailer. */
 export const GIF_FIXED_BYTES = 6 + 7 + 768 + 19 + 1;
 

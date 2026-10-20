@@ -384,7 +384,7 @@
  * focused control (WCAG 2.4.11).
  */
 @media (max-width: 699px), (max-height: 820px) {
-  .wizard-action-bar {
+  .wizard .wizard-action-bar {
     position: sticky;
     bottom: 0;
     z-index: 5;
@@ -393,7 +393,7 @@
     background: var(--bg);
   }
 
-  .wizard-action-bar::before {
+  .wizard .wizard-action-bar::before {
     content: '';
     position: absolute;
     left: 0;
@@ -404,7 +404,7 @@
     pointer-events: none;
   }
 
-  html:has(.wizard-action-bar) {
+  html:has(.wizard .wizard-action-bar) {
     scroll-padding-bottom: 104px;
   }
 }

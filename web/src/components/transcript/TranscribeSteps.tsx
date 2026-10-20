@@ -204,8 +204,12 @@ export function TranscribeSteps({
       ) : null}
 
       {!busy && status !== null && !ready && !smallLeads ? (
+        <>
         <div className="wizard-panel" data-testid="model-needed">
           <p className="wizard-panel-title">{t('transcript.model.need')}</p>
+        </div>
+        {/* The step's main action: on a phone it stays at the bottom of the screen, as in every wizard (wizard.css). */}
+        <div className="wizard-actions wizard-action-bar" data-testid="wizard-actions">
           <button
             type="button"
             className="btn btn-accent wizard-go"
@@ -218,6 +222,7 @@ export function TranscribeSteps({
             })}
           </button>
         </div>
+        </>
       ) : null}
 
       {job.kind === 'transcribing' ? (
@@ -308,7 +313,8 @@ export function TranscribeSteps({
       ) : null}
 
       {!busy && ready && job.kind !== 'done' && !smallLeads ? (
-        <div className="wizard-actions">
+        // The step's main action: on a phone it stays at the bottom of the screen, as in every wizard (wizard.css).
+        <div className="wizard-actions wizard-action-bar" data-testid="wizard-actions">
           {replaceNote ? (
             <p className="wizard-hint" data-testid="transcribe-replace-note">
               {replaceNote}

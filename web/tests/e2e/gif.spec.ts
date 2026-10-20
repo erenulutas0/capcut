@@ -88,7 +88,13 @@ test('card → video → text → GIF: a real looping GIF of the part, its text 
   await expect(page.getByLabel('Alt yazı')).toBeVisible();
   await expect(page.getByTestId('gif-range-window')).toHaveAttribute('data-end-us', '4000000');
   await expect(page.getByTestId('wizard-open-editor')).toHaveCount(0);
+  // "Orta" first where the video has it (founder's decision, 20 Oct 2026; ADR-046 addendum: on a phone "Küçük"
+  // looked blurred). This test then makes the Küçük GIF on purpose: its text bands below are measured at 320 px.
+  await expect(page.getByTestId('gif-size-medium')).toBeChecked();
+  await expect(estimate(page)).toHaveAttribute('data-width', '480');
+  await page.getByTestId('gif-size-small').check();
   await expect(page.getByTestId('gif-size-small')).toBeChecked();
+  await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
   await expect(estimate(page)).toHaveText(/^4,0 sn · yaklaşık \d+(,\d)? (KB|MB)$/);
   await expect(estimate(page)).toHaveAttribute('data-frames', '50');
   await expect(estimate(page)).toHaveAttribute('data-width', '320');
@@ -192,10 +198,30 @@ test('a small video has one size, its own; the GIF is never larger than the vide
   await expect(estimate(page)).toHaveAttribute('data-height', '240');
 });
 
+test('over 10 MB: said in plain words under the size, never blocked; gone again on "Küçük"', async ({ page }) => {
+  await openGif(page, wizardFixture('grainy')); // 640 × 360, 10 s of heavy grain: taken whole
+  await page.getByTestId('gif-size-large').check();
+  await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+  await expect(estimate(page)).toHaveAttribute('data-width', '640');
+  const bytes = Number(await estimate(page).getAttribute('data-bytes'));
+  console.log(`GIF-LARGE-WARNING ${JSON.stringify({ bytes })}`);
+  expect(bytes).toBeGreaterThan(10_000_000);
+  await expect(page.getByTestId('gif-too-large')).toHaveText(
+    'Bu GIF 10 MB’tan büyük olacak; bazı uygulamalar kabul etmeyebilir. Küçük seçebilir ya da süreyi kısaltabilirsin.',
+  );
+  await expect(page.getByTestId('wizard-download')).toBeEnabled();
+  await page.getByTestId('gif-size-small').check();
+  await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+  expect(Number(await estimate(page).getAttribute('data-bytes'))).toBeLessThanOrEqual(10_000_000);
+  await expect(page.getByTestId('gif-too-large')).toHaveCount(0);
+});
+
 test('"Büyük" (ADR-046 addendum): a phone video at 360 × 640 — twice as wide on a phone as "Küçük" — about the size it said', async ({ page }, testInfo) => {
   await openGif(page, wizardFixture('vertical')); // 360 × 640, 2 s: taken whole
-  await expect(page.getByTestId('gif-size-small')).toBeChecked();
-  await expect(estimate(page)).toHaveAttribute('data-width', '180');
+  // "Orta" first (20 Oct 2026): 270 × 480; "Küçük" would be 180 × 320.
+  await expect(page.getByTestId('gif-size-medium')).toBeChecked();
+  await expect(estimate(page)).toHaveAttribute('data-width', '270');
+  await expect(page.getByTestId('gif-too-large')).toHaveCount(0);
   await page.getByTestId('gif-size-large').check();
   await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
   await expect(estimate(page)).toHaveAttribute('data-width', '360');
@@ -289,7 +315,8 @@ test.describe('without a save dialog (Firefox, Safari)', () => {
     const path = testInfo.outputPath('fallback.gif');
     await download.saveAs(path);
     const inspected = inspectGif(new Uint8Array(readFileSync(path)));
-    expect(inspected.ok && inspected.gif).toMatchObject({ width: 320, height: 180, frames: 100, loops: 0 });
+    // The default size since 20 Oct 2026 is "Orta" (ADR-046 addendum): 480 × 270 from 640 × 360.
+    expect(inspected.ok && inspected.gif).toMatchObject({ width: 480, height: 270, frames: 100, loops: 0 });
   });
 });
 
