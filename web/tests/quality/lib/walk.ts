@@ -291,7 +291,8 @@ export const FLOWS: Flow[] = [
       const gif = inspectGif(new Uint8Array(readFileSync(files.out)));
       return [
         { name: 'GIF', ok: out.format === 'gif' && out.video?.codec === 'gif', value: `${out.format} / ${out.video?.codec ?? 'yok'}` },
-        { name: '320 × 180 (Küçük, kaynaktan büyük değil)', ok: out.video?.width === 320 && out.video?.height === 180, value: `${out.video?.width} × ${out.video?.height}` },
+        // "Orta" is the size offered first since 20 Oct 2026 (founder's decision, ADR-046 addendum).
+        { name: '480 × 270 (Orta, kaynaktan büyük değil)', ok: out.video?.width === 480 && out.video?.height === 270, value: `${out.video?.width} × ${out.video?.height}` },
         {
           name: '50 kare, 4 sn, durmadan döner',
           ok: gif.ok && gif.gif.frames === 50 && gif.gif.durationCs === 400 && gif.gif.loops === 0,

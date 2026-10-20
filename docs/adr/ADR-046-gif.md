@@ -322,7 +322,7 @@ Sonuçlar ve uygulanan karar bu bölümün altına eklenir.
 
 ### Sonuçlar (19–20 Ekim; ölçüm bu masaüstünde, `web/scripts/gif-eval/`)
 
-Kümeler: **gerçek** = 11 gerçek telefon kaydı (R1–R11: altısı dikey, dördü HEVC, 30–120 kare/sn; ikisi
+Kümeler: **gerçek** = 11 gerçek telefon kaydı (R1–R11: yedisi dikey, ikisi HEVC, 30–120 kare/sn; üçü
 iPhone, biri Pixel, ikisi Samsung, biri GoPro, dördü sosyal medya videosu) + iki az ışık kopyası (K1, K2:
 iki gerçek kaydın karartılıp kumlandırılmışı) = 13; R2 4,4 sn olduğu için 10 sn ölçümlerinde yok (12).
 **yapay** = S1 `desen`, S2 `yumusak`, S3 `kaydirma`, S4 `gurultulu`, S5 kamera benzeri dikey az ışık.
@@ -436,7 +436,39 @@ Yazıya dök'ün "Modeli indir" ve "Yazıya dök" düğmeleri) telefonda ve kıs
 `max-height: 820px`) ekranın altına yapışan bir çubukta; adım ekrandan kısaysa yerinde durur. Çubuğun
 üstünde 12 px yumuşak geçiş; "Daha fazla ayar" çubuğun dışına, altına alındı; odak çubuğun altında
 kalmasın diye sayfa kaydırırken alttan 104 px boşluk bırakır (WCAG 2.4.11). GIF önizlemesinin yüksekliği
-`52svh` (tarayıcı çubuğu açıkken görünen yükseklik). Sonra: 10 sihirbazda düğme 360 × 780'de 716–772,
-320 × 640'ta 576–632 px'te, kaydırmadan; GIF'in iki yazı kutusu düğmenin üstünde, Tab hiçbir denetimi
+`52svh` (tarayıcı çubuğu açıkken görünen yükseklik). Yazıya dök'ün ilk düğmesi ("Modeli indir") de 320 ×
+640'ta ekranın altındaydı (alt kenarı 696). Sonra: 11 sihirbazın hepsinde ana düğmenin alt kenarı 360 × 780'de
+634–772, 320 × 640'ta 610–632 px, kaydırmadan; GIF'in iki yazı kutusu düğmenin üstünde, Tab hiçbir denetimi
 çubuğun altına düşürmüyor. Yeni sınama `tests/e2e/wizard-phone-action.spec.ts`. "Kes" editörü açar (kendi
 telefon çubuğu, ADR-030), sınamada yok.
+
+### Sınamalar (ek; son kodla, yerel, Windows, Playwright Chromium)
+
+- `tsc`, `eslint` temiz; birim **1611 / 1611** (93 dosya; `gif.test.ts` boyut seçenekleri, Büyük, 10 MB sınırı).
+- Olağan e2e **523: 519 geçti, 4 atlandı, 0 başarısız**; `PAGE-RECOVERED-TOTAL 0`, `PAGE-DEAD-TOTAL 0` (bekçinin
+  kendi sınamalarındaki bilerek yapılanlar hariç). İçinde yeni `wizard-phone-action.spec.ts` (23: 11 sihirbaz × 360 ×
+  780 ve 320 × 640, dikey video, kaydırmadan; GIF'in yazı kutuları çubuğun üstünde, Tab çubuğun altına düşmüyor) ve
+  `gif.spec.ts`'in yeni üç sınaması (Orta varsayılan, 10 MB uyarısı engellemiyor, Büyük 360 × 640: tahmin ×0,99). Eski
+  sınamaların beklentileri yalnızca varsayılan boyut için değişti (Küçük → Orta, kaynağı bu ek); hiçbir eşik gevşemedi.
+- Bulut e2e **62: 58 geçti, 4 atlandı**. Durağan çıktı (`/capcut`) + Pages duman iki kez: bulutsuz **16: 10 geçti, 6
+  atlandı**, bulut yolu açık **16: 14 geçti, 2 atlandı** (Pages'te GIF artık 480 × 270).
+- Kalite katmanı: farklı ekran 0 (32 ekrana bakılıp yenilendi); bütçe dışı 16 (ayrıntı `docs/quality/bulgular.md`).
+  `npm audit --omit=dev` 0.
+
+### Doğrulanmayanlar (ek)
+
+- **Telefon:** kurucunun S23'ünde ne GIF'in görünüşü ne süreler ne de alt çubuk denendi (ana oturum yeniden
+  deneyecek). Telefonda tahmin ve yapma masaüstünün ~3 katı varsayıldı, ölçülmedi.
+- HEVC kayıtlar (R1, R3) uygulamanın içinde ölçülemedi (Playwright'ın Chromium'u açmıyor); ölçüm aracında ölçüldü.
+- VMAF-tel bir model; telefonun galerisinin ya da sohbet uygulamasının büyütme biçimi farklı olabilir. Gözle
+  karşılaştırma yapılmadı (gerçek kayıtların karelerine depoda yer yok).
+- "Büyük"ün 10 sn'lik GIF'i bellekte ~115 MB kare tutar (yatay 640 × 360); düşük bellekli telefonda denenmedi.
+
+### Kurucu kararları (ek)
+
+1. ~~Varsayılan boyut~~ **Karar (20 Ekim):** Orta (kural Küçük diyordu; yukarıda).
+2. ~~10 MB üstü~~ **Karar:** engellemeyen uyarı.
+3. ~~Döngülü MP4~~ **Karar:** şimdilik yok.
+4. Açık: eşikli saydamlık (dosyayı %15–23 küçültüyor, SSIM'de −0,003) yeni bir ön kayıtla denensin mi?
+5. Açık: üç boyut 390 px'te iki satıra kırılıyor ("Büyük" alta iniyor); istenirse seçenekler daraltılabilir.
+

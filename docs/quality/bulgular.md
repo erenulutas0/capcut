@@ -1,5 +1,20 @@
 **Yazıldığı koşu:** 11 Ekim 2026 öğleden sonra, dal `worktree-agent-a511c0275d7647e51` (önceki bulgular: aynı gün, `b8e355f`). O raporda açık kalan üç şey üzerinde çalışıldı: aramanın yanlış karta göndermesi, editörün her videoyu 1080p’ye büyütmesi, 720p’den küçük kaynakların büyütülmesi. Aşağıda her biri için aynı ölçünün önceki → şimdiki değeri var. Açık kalanlar en başta.
 
+### 20 Ekim — GIF: "Orta" varsayılan, "Büyük", 10 MB uyarısı; telefonda ana düğme ekranda (ADR-046 eki; dal `worktree-agent-a0999750006c187e8`)
+
+967 ölçü: **852 bütçe içinde, 16 dışında**, 9 ölçülemedi, 90 bütçesiz. Farklı ekran **0** — ilk koşuda 32 ekran
+"farklı"ydı, hepsi bu işin bilerek yaptığı değişiklik: telefonda (ve kısa pencerede) ana düğme ekranın altına yapışan
+bir çubukta (tam sayfa görüntüde çubuk görünümün altında durur, arkasındaki son satır kaydırınca görünür), "Daha
+fazla ayar" çubuğun altında (sayfa 8–20 px uzadı), GIF ekranında üç boyut ve bir açıklama satırı, Yazıya dök'te
+"Modeli indir" kutunun dışında. Fark resimlerine bakılıp `--update-baselines` ile yalnız o 32 ekran yenilendi
+(aracın tolerans içinde yeniden yazdığı 28 taban geri alındı). Yürüyüşte GIF'in beklediği boyut 320 × 180 → 480 × 270
+(varsayılan Orta, kurucu kararı); dört GIF yürüyüşü yine "dosya çıktı ve doğru". Bütçe dışı 16'nın 12'si aramanın
+önceden açık ölçüleri, 1'i `out.notFaststart` (önceden açık). **Bu koşuda görülen 3 yeni madde:** "Editör, video yok
+(telefon)" — "Proje adı" kutusu 22 × 38 px ve Tab'la ulaşılamıyor (44 px, 24 px, Tab: üçü aynı kutu). Bu iş editöre
+dokunmadı; aynı kodla yapılan iki önceki koşuda (ilk koşu ve taban yenileme koşusu) bu madde yoktu, ikincisinde
+onun yerine bir kez "Sihirbaz, mobil kısıtlama: TBT" 205 ms çıktı (≤ 200; ilk ve son koşuda bütçe içinde). İkisi de
+kararsız bir ölçüm gibi görünüyor; ayrıca bakılmalı, bütçeler gevşetilmedi.
+
 ### 17 Ekim akşamı — "LiloCut'a paylaş" (ADR-047; dal `worktree-agent-a586f5ccf4bee0ed2`)
 
 676 ölçü: **598 bütçe içinde, 8 dışında** (aynı açık maddeler; bu işten yeni bütçe dışı ölçü yok), 5 ölçülemedi,

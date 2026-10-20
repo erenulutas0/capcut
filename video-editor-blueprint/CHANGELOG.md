@@ -3,6 +3,41 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## GIF yap: telefonda net GIF ("Orta" varsayılan, "Büyük" eklendi) ve her sihirbazda ana düğme ekranda — 20 Ekim 2026 (ADR-046 eki; politika ve şema değişmedi)
+
+Kurucu S23'te gerçek bir videodan GIF yaptı: görüntü kötüydü ve dikey videoda "GIF'i indir" ekranın altında
+kalmıştı. Dış hizmet yok, yeni bağımlılık yok.
+
+- **Ölçüm önce, karar sonra:** kural ölçümden önce ADR-046'ya yazıldı. 13 gerçek telefon kaydı (yalnızca
+  yerelde, R1… diye; depoda hiçbir türevi yok) ve 5 yapay kaynak; 20 aday (kare başı palet, daha çok örnek,
+  k-means, Floyd–Steinberg, Bayer / mavi gürültü / R2 titreşim, eşikli saydamlık ve birleşimleri); SSIM,
+  VMAF, CAMBI (bant) ve telefonda görünen VMAF. Araç: `web/scripts/gif-eval/`.
+- **Bulgu:** sorun renk değil boyut. GIF'in kendi boyutunda bugünkü tek palet gerçek görüntüde neredeyse hiç
+  bant eklemiyor (ΔCAMBI 0,01); hiçbir titreşim kuralın SSIM sınırını geçmedi → **renk yöntemi değişmedi**,
+  12,5 kare/sn kaldı (15 kare/sn dosyayı %19,5 büyüttü). Telefonda görünen VMAF: Küçük 36, Orta 62, Büyük 78
+  (dikey videoda Küçük yalnızca 180 × 320).
+- **Boyutlar:** yeni **"Büyük"** (uzun kenar 640; kuralın üç şartını geçti). Varsayılan **"Orta"** — kural
+  "Küçük" diyordu (10 sn Orta gerçek görüntüde ortanca 8,3 MB); kurucu netlik için Orta'yı seçti. Tahmin
+  10 MB'ı geçince boyutun altında engellemeyen uyarı: "Bu GIF 10 MB'tan büyük olacak; bazı uygulamalar kabul
+  etmeyebilir. Küçük seçebilir ya da süreyi kısaltabilirsin." Altında tek satır: "Büyüdükçe GIF telefonda daha
+  net görünür; dosyası da büyür." Videodan büyük boyut hiç sunulmaz (ADR-041). Döngülü MP4 yapılmadı.
+- **Tahmin:** 8 yerden 3'er kare (önce 4 × 2), anahtar kareler seyrekse tek geçiş: uygulamada gerçek kayıtlarla
+  ±%10 içinde 37 / 54 → **48 / 54** (dışındakilerin hepsi neredeyse hiç kıpırdamayan tek bir video, 40–250 KB);
+  tahminin süresi 1,3–22 → 0,8–9,9 sn (bu masaüstü).
+- **Ana düğme hep ekranda:** telefonda ve kısa pencerede her sihirbazın ana düğmesi (GIF yap, Küçült, Müzik
+  ekle, İyileştir, Sesi düzelt, Çevir, Boşlukları at, Dikey yap, Sesini al, Sesi kapat, Yazıya dök'ün "Modeli
+  indir" ve "Yazıya dök" düğmeleri) ekranın altına yapışan bir çubukta; "Daha fazla ayar" çubuğun altına alındı;
+  odak çubuğun altında kalmaz. Önce 360 × 780'de dört sihirbazda, 320 × 640'ta altısında düğme ekranın dışındaydı.
+
+**Sınamalar (son kodla, yerel):** `tsc`, `eslint` temiz; birim **1611 / 1611** (93 dosya); olağan e2e **523: 519 geçti,
+4 atlandı, 0 başarısız** (yeni `wizard-phone-action.spec.ts` 23; `gif.spec.ts`'e Büyük ve 10 MB uyarısı), zorlanmamış sayfa
+kurtarma 0, ölü sayfa 0; bulut e2e **62: 58 geçti, 4 atlandı**; durağan çıktı (`/capcut`) + Pages duman iki kez: bulutsuz
+**16: 10 geçti, 6 atlandı**, bulut yolu açık **16: 14 geçti, 2 atlandı**; kalite katmanı 967 ölçü: 852 bütçe içinde, 16 dışında (12 arama ve faststart önceden açık; 3 yeni, editörün boş telefon ekranındaki "Proje adı" kutusu — bu işin dokunmadığı ve önceki iki koşuda çıkmayan bir ölçü, kararsız görünüyor), farklı ekran 0 (32 ekrana bakılıp taban yenilendi); `npm audit --omit=dev` 0.
+
+**Doğrulanmayan:** gerçek telefon (S23), Safari, Firefox; HEVC kaynaklar uygulamanın içinde (Playwright'ın Chromium'u
+açmıyor; ölçüm aracında ölçüldü); telefonda tahminin ve yapmanın süresi.
+
+
 ## Yeni kart "Sesi düzelt" / "Fix the sound" — 18 Ekim 2026 (ADR-049; politika `2026-10-18.v12`, şema değişmedi)
 
 Kısık ya da dengesiz ses cihazda duyulur ve eşit olur; görüntüye dokunulmaz. Dış hizmet yok, yeni bağımlılık yok.
