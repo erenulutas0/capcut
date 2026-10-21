@@ -575,3 +575,13 @@ kayıtta yoktu** — eksik bir aday. Bu ek, sonucu bilerek yazıldığı için a
   yoksa `high` kalır.
 - Adım 2–4 bu adımın sonucuyla, yazıldıkları gibi.
 
+### Ön kayda ikinci ek (21 Ekim, ilk ekin adayları ölçülürken, `mip2` ölçülmeden önce yazıldı)
+
+Adım 1'in kayıt başı sayıları: 1080p kaynaklarda (R2, R6, R10, R11) `mip` Büyük'te VMAF-tel-NEG'i 5–10 puan
+artırdı (Chrome'un `high`'ı bu kaynaklarda örtüşüyor); `mip`'in elenme sebebi tek bir 4K kaynakta (R1) çok
+seviyeli ara çizimin süresiydi. Ucuz bir ara yol ön kayıtta yoktu. Yeni aday: **`mip2`** — kaynak GIF boyutunun en az
+2 katıysa önce GIF boyutunun **yalnızca 2 katına** `high` ile çizilir, sonra bir kez yarıya (çift doğrusal = 2 × 2
+ortalama); değilse `high` ile aynı. Ve `mip2+s0.25`, `mip2+s0.5`. Kural ilk ekinkiyle aynı: adım 1'in a–c'si ve geçme
+eşikleri, `high`'a karşı, ana kümede **ve** saklı kümede (ilk ekin saklı kümesi; `high` aynı koşuda yeniden ölçülür).
+İki kümede de geçen bütün adaylar (ilk ekinkiler dahil) arasından kazanan ana kümedeki adım 1 sıralamasıyla seçilir.
+
