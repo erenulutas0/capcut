@@ -95,7 +95,7 @@ test('opened in the editor, the transcript is the stored project: a reload bring
   await expect(page.getByTestId('save-state')).toContainText('Düzenleme saklandı', { timeout: 15_000 });
   await expect(page.getByTestId('save-state-off')).toHaveCount(0);
   expect(await storedShape(page)).toEqual(TRANSCRIPT_SHAPE);
-  expect((await storedRecord(page))?.edl.schemaVersion).toBe(5);
+  expect((await storedRecord(page))?.edl.schemaVersion).toBe(6);
   // The same video is still open: no second file dialog.
   await expect(page.getByTestId('preview-video')).toBeVisible();
   await expect(page.getByTestId('relink-video')).toHaveCount(0);

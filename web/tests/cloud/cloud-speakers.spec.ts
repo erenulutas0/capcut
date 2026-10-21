@@ -178,7 +178,7 @@ test('who spoke stays with the lines: wizard, files, edit, editor, kesit, the st
   await page.getByTestId('backup-download').click();
   const backupText = await saved(testInfo, await backupDownload);
   const backup = JSON.parse(backupText) as Stored;
-  expect(backup.edl.schemaVersion).toBe(5);
+  expect(backup.edl.schemaVersion).toBe(6);
   expect(backup.edl.captionTracks[0]?.origin).toBe('transcript');
   // (A stored line may be two lines of text; the panel shows it joined by a space.)
   expect(backup.edl.captionTracks[0]?.cues.map((cue) => [cue.text.split('\n').join(' '), cue.speaker])).toEqual([
