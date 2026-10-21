@@ -10,6 +10,7 @@ import { addKesit } from '../../e2e/kesitFlow';
 import { silenceFixture } from '../../e2e/silence-media';
 import { soundFixFixture } from '../../e2e/soundfix-media';
 import { wizardFixture } from '../../e2e/wizard-media';
+import { layoutModeFor } from '../../../src/components/editor/layoutMode';
 import type { Locale } from '../../../src/i18n/translate';
 import { MUSIC, OTHER, SAMPLE, pathFor, waitForResult } from './app';
 
@@ -28,6 +29,21 @@ const TYPED: Record<'found' | 'ask' | 'cannot', Record<Locale, string>> = {
   ask: { tr: 'tiktok için kes', en: 'cut it for tiktok' },
   cannot: { tr: 'videoyu döndür', en: 'rotate the video' },
 };
+
+/**
+ * The editor as it is once it is live, laid out for this window. The prerendered page is the wide
+ * layout (`useLayoutMode`), and a phone switches to its own after hydration, in a transition: what
+ * is measured before that is the wide top bar squeezed into 390 px. Seen 20 Oct 2026 in one quality
+ * run of three on the same code: "Proje adı" (the wide bar's title box) 22 × 38 px, and not reached
+ * by Tab — it was gone by the time Tab ran; "Ayarlar" with its word, as the wide bar has it.
+ * `download-all` is in the prerendered page, so waiting for it is not enough. The hidden video input
+ * exists only once the page is hydrated; then the root says which layout it shows.
+ */
+async function editorLaidOut(page: Page): Promise<void> {
+  await expect(page.getByTestId('video-input')).toBeAttached({ timeout: 30_000 });
+  const width = page.viewportSize()?.width ?? (await page.evaluate(() => window.innerWidth));
+  await expect(page.locator('.editor-root')).toHaveAttribute('data-mode', layoutModeFor(width), { timeout: 30_000 });
+}
 
 async function pick(page: Page, task: string, file: string, lang: Locale = 'tr'): Promise<void> {
   await page.goto(pathFor(`/yap/${task}/`, lang));
@@ -198,6 +214,7 @@ export const STATES: ScreenState[] = [
     label: 'Editör, video yok',
     open: async (page, lang = 'tr') => {
       await page.goto(pathFor('/editor/', lang));
+      await editorLaidOut(page);
       await expect(page.getByTestId('download-all')).toBeVisible();
     },
   },
@@ -206,6 +223,7 @@ export const STATES: ScreenState[] = [
     label: 'Editör, video ve bir kesit',
     open: async (page, lang = 'tr') => {
       await page.goto(pathFor('/editor/', lang));
+      await editorLaidOut(page);
       await page.getByTestId('video-input').setInputFiles(OTHER);
       await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 60_000 });
       await addKesit(page, '1', '3');
