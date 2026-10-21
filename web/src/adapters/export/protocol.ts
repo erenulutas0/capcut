@@ -257,6 +257,11 @@ export type WorkerRequest =
        * pictures are then always encoded (no fast cut). Absent or empty: no text.
        */
       overlayText?: GifTexts | null;
+      /**
+       * ADR-052: the "GIF yap" card's video — always encoded, at the plan's own bitrate on every encoder
+       * (not the software encoder's 3×). Ignored with a target size and for sound only.
+       */
+      planBitrateOnly?: boolean;
     }
   | {
       /** ADR-037: one frame of `plan` (which must ask for enhancement) before and after. Nothing is encoded. */

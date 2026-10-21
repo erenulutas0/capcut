@@ -25,8 +25,17 @@ Kurucunun hedefi: "bence her zaman en neti vermeliyiz".
   çözünürlüğünde bu masaüstünün yazılım kodlayıcısıyla ilk seçilen GIF'ten çoğu zaman büyük (10 sn 1080p 18–21 MB).
   Ekran dosya boyutu için bir şey vaat etmiyor.
 
-**Sınamalar (yerel):** `tsc`, `eslint` temiz; birim **1665 / 1665** (96 dosya); e2e GIF dört dosya **58 / 58**,
-`english` **23 / 23**, dışa aktarma beşlisi **31 / 31**; kalite katmanı ADR-052'de.
+- **Ana oturumun kararları (aynı gün, ADR-052 eki):** arama **en çok 8 sn** sürer, sonra ölçülüp sığan en büyük
+  boyut (yoksa Küçük) seçilir, satır bunu söyler ve seçim bir daha kendiliğinden değişmez; ilk seçim **tahmin ≤ 9 MB**
+  (uyarı 10 MB'ta kaldı); varsayılan GIF; ses yok. Video artık **kendi bit hızıyla**: planınki (1080p30 ≈ 5,6 Mbit/sn,
+  telefonun donanım kodlayıcısının aldığı), yazılım kodlayıcının 3 katı değil; kaynağın resimleri ancak bu kodlamadan
+  büyük değilse kopyalanır (yeni sebep `clip_size`). Ölçüm: 4 sn 1080p video 8,4 → 2,8 MB, 10 sn 20,9 → 7,0 MB; video
+  16 durumun 12'sinde ilk seçilen GIF'ten küçük, 9 ölçümün 8'inde açıkça net (VMAF +22–55); ekran yine "dosyası da
+  çoğu zaman daha küçük" der. Bedel: 10 sn'lik 1080p kayıtta 8 sn dolup GIF "Küçük"e düşebiliyor (S23'te bakılacak).
+
+**Sınamalar (yerel):** `tsc`, `eslint` temiz; birim **1666 / 1666** (96 dosya); e2e GIF dört dosya + `english` +
+dışa aktarma beşlisi **113 / 113**; kalite katmanı (visual, a11y, text, walkthrough) 705 bütçe içinde, 0 dışında,
+farklı ekran 0.
 
 **Doğrulanmayan:** telefon, Safari, Firefox; hiçbir sohbet uygulamasına gönderilmedi (döngü uygulamaya bağlı);
 telefonda donanım kodlayıcıyla videonun boyutu.

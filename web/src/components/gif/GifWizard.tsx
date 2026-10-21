@@ -23,7 +23,9 @@ import {
   gifSizeChoices,
   normalizeGifRange,
   planGifSize,
+  GIF_AUTO_PICK_LIMIT_MS,
   sharpestShareableGifSize,
+  type GifAutoSize,
   type GifOutput,
   type GifRange,
   type GifSize,
@@ -52,6 +54,18 @@ const SIZE_LABEL: Record<GifSizeId, 'wizard.gif.small' | 'wizard.gif.medium' | '
 };
 
 let pageMeasureFn: MeasureGifText | null = null;
+
+/** '1' only in a test build (`CLIP_TEST_HOOKS=1`); the published site is built with ''. */
+const TEST_HOOKS = process.env.NEXT_PUBLIC_CLIP_TEST_HOOKS === '1';
+
+/** `GIF_AUTO_PICK_LIMIT_MS`; a test build may shorten it (`window.__clipGifPickLimitMs`) to see the search run out of time. */
+function autoPickLimitMs(): number {
+  if (TEST_HOOKS) {
+    const hook = (globalThis as { __clipGifPickLimitMs?: unknown }).__clipGifPickLimitMs;
+    if (typeof hook === 'number' && hook >= 0) return hook;
+  }
+  return GIF_AUTO_PICK_LIMIT_MS;
+}
 
 /**
  * A width measure of the caption typeface on this page; null outside a browser. The preview is drawn
@@ -327,11 +341,27 @@ export default function GifWizard(host: WizardHostProps) {
     const finished = done[keyFor(id)];
     if (finished) known[id] = finished.status === 'ready' ? finished.bytes : 'failed';
   }
-  const auto = sharpestShareableGifSize(sizeChoices, known);
+  // The search for this part and text, and where it settled when it ran out of time (never changed afterwards).
+  const searchKey = video && part ? `${video.objectUrl}|${part.startUs}|${part.endUs}|${texts.top}|${texts.bottom}` : '';
+  const [settled, setSettled] = useState<{ key: string; auto: GifAutoSize } | null>(null);
+  const auto = settled && settled.key === searchKey ? settled.auto : sharpestShareableGifSize(sizeChoices, known);
   const userChose = userSize !== null && sizeChoices.includes(userSize);
   const chosenSize: GifSizeId = userChose ? (userSize as GifSizeId) : auto.size;
   // Still measuring the sizes from the largest down: no size is "chosen" yet, and no GIF is made at a guess.
   const picking = !asVideo && twoSizes && !userChose && auto.kind === 'measure';
+  // At most `GIF_AUTO_PICK_LIMIT_MS` of that (main session's decision): then what is known decides, and says so.
+  const searchRef = useRef({ sizeChoices, known });
+  useEffect(() => {
+    searchRef.current = { sizeChoices, known };
+  });
+  useEffect(() => {
+    if (!picking || !searchKey) return undefined;
+    const timer = window.setTimeout(() => {
+      const now = searchRef.current;
+      setSettled({ key: searchKey, auto: sharpestShareableGifSize(now.sizeChoices, now.known, true) });
+    }, autoPickLimitMs());
+    return () => window.clearTimeout(timer);
+  }, [picking, searchKey]);
   const size = planGifSize(videoWidth || 1, videoHeight || 1, chosenSize);
 
   const job: GifJob | null = video && part && !asVideo ? { file: video.file, range: part, size: chosenSize, texts, origin } : null;
@@ -353,7 +383,8 @@ export default function GifWizard(host: WizardHostProps) {
     const compiled = compileRenderPlan(videoRecipe, WEB_LOCAL_POLICY);
     return compiled.ok ? compiled.plan : null;
   }, [videoRecipe]);
-  const videoExtras = useMemo(() => ({ overlayText: texts }), [texts]);
+  // The text, and a bitrate for a short silent clip on a phone screen: the plan's own on every encoder (ADR-052).
+  const videoExtras = useMemo(() => ({ overlayText: texts, planBitrateOnly: true }), [texts]);
   const previewSize: GifSize = asVideo && videoPlan ? { width: videoPlan.width, height: videoPlan.height } : size;
 
   const onRange = useCallback((next: GifRange, wasCapped: boolean) => {
@@ -502,6 +533,10 @@ export default function GifWizard(host: WizardHostProps) {
                     </span>
                   ) : !userChose && auto.kind === 'chosen' && auto.why === 'fits' ? (
                     <span data-testid="gif-size-picked">{t('wizard.gif.autoPicked')}</span>
+                  ) : !userChose && auto.kind === 'chosen' && (auto.why === 'timeout_fits' || auto.why === 'timeout_smallest') ? (
+                    <span data-testid="gif-size-picked">
+                      {t(auto.why === 'timeout_fits' ? 'wizard.gif.autoTimeoutFits' : 'wizard.gif.autoTimeoutSmallest')}
+                    </span>
                   ) : (
                     t('wizard.gif.sizeHint')
                   )}

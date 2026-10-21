@@ -772,10 +772,13 @@ async function exportVideoBitrate(
   plan: RenderPlan,
   sourceBitrate: number | null,
   fileLimitBytes: number,
+  planBitrateOnly = false,
 ): Promise<{ bitrate: number; unlimited: number; kind: VideoEncoderKind; heldForFileLimit: boolean }> {
   const kind = await videoEncoderKind(plan);
   const planned = plan.enhance ? plan.videoBitrate : sourceBoundedBitrate(plan.videoBitrate, sourceBitrate);
-  let unlimited = encoderVideoBitrate(planned, kind);
+  // ADR-052: "GIF yap → Video olarak" asks every encoder for the plan's own bitrate — what a phone's hardware
+  // encoder is given — not the software encoder's three times: a short silent clip for a phone screen.
+  let unlimited = planBitrateOnly ? planned : encoderVideoBitrate(planned, kind);
   if (unlimited !== planned) {
     // A software encoder that would refuse the higher bitrate keeps the plan's.
     const supported = await canEncodeVideo('avc', {
@@ -921,6 +924,11 @@ interface ExportRequestOptions {
    * way (`layoutGifText` at the output's size, `drawGifText`); null when there is none. Already cleaned.
    */
   overlayText: GifTexts | null;
+  /**
+   * ADR-052: the plan's own bitrate on every encoder (`exportVideoBitrate`), not the software encoder's three
+   * times; the source's own pictures are kept only when they are no larger than that encode (`clip_size`).
+   */
+  planBitrateOnly: boolean;
 }
 
 /** ADR-052: the text as the worker draws it — only strings, cleaned like the GIF's; null when both are empty. */
@@ -1390,6 +1398,13 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
           }) >
         fileLimitOf(options);
       if (copyOverLimit) throw new FastCutFallback('output_size');
+      // ADR-052: the GIF card's video keeps the source's own pictures only when they are no larger than the
+      // encode at its own bitrate would be (a social-media clip, compressed hard already); a phone recording's
+      // pictures are several times that, and are encoded.
+      if (options.planBitrateOnly) {
+        const encodeBytes = (sourceBoundedBitrate(plan.videoBitrate, sources.sourceBitrate) * plan.expectedDurationUs) / 8 / US_PER_SECOND;
+        if (job.videoBytes > encodeBytes) throw new FastCutFallback('clip_size');
+      }
       if (target) {
         const copyBytes = Math.ceil(
           job.videoBytes +
@@ -1742,7 +1757,7 @@ async function produceOutput(
   // encoder's bitrate (ADR-024). A target-size attempt's bitrate is the
   // planner's, as it is: the size decides, no factor is put on top (ADR-035).
   const fileLimit = fileLimitOf(options);
-  const ordinary = fastJob || target ? null : await exportVideoBitrate(plan, sources.sourceBitrate, fileLimit);
+  const ordinary = fastJob || target ? null : await exportVideoBitrate(plan, sources.sourceBitrate, fileLimit, options.planBitrateOnly);
   const videoBitrate = fastJob
     ? Math.ceil((fastJob.videoBytes * 8) / Math.max(durationSeconds, 0.001))
     : target
@@ -2704,6 +2719,7 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
             : null,
         testFault: TEST_HOOKS ? (request.testFault ?? null) : null,
         overlayText: request.output === 'audio' ? null : usableOverlayText(request.overlayText),
+        planBitrateOnly: request.output !== 'audio' && request.planBitrateOnly === true && !request.targetSize,
       });
     } catch (error) {
       if (error instanceof CanceledError) {

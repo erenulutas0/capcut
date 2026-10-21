@@ -4,6 +4,8 @@ import { createEmptyProject, setEnhance, setFraming, setMusicAsset, setSoundFix,
 import { gifVideoRecipe, taggedFileName } from '@/application/taskRecipes';
 import type { AssetV1, Project } from '@/domain/edl';
 import {
+  GIF_AUTO_PICK_LIMIT_MS,
+  GIF_AUTO_PICK_MAX_BYTES,
   GIF_HELD_FRAMES_MAX_BYTES,
   GIF_LARGE_FILE_BYTES,
   gifFramesBudget,
@@ -40,10 +42,14 @@ describe('GIF yap: the sharpest size that stays shareable', () => {
     expect(sharpestShareableGifSize(four, { small: 1 * MB, medium: 3 * MB })).toEqual({ kind: 'measure', size: 'xlarge' });
   });
 
-  it('the largest that fits 10 MB is the one; exactly 10 MB fits, one byte more does not', () => {
-    expect(sharpestShareableGifSize(four, { xlarge: 9.9 * MB })).toEqual({ kind: 'chosen', size: 'xlarge', why: 'fits' });
-    expect(sharpestShareableGifSize(four, { xlarge: GIF_LARGE_FILE_BYTES })).toEqual({ kind: 'chosen', size: 'xlarge', why: 'fits' });
-    expect(sharpestShareableGifSize(four, { xlarge: GIF_LARGE_FILE_BYTES + 1, large: 5 * MB })).toEqual({ kind: 'chosen', size: 'large', why: 'fits' });
+  it('the largest estimated at 9 MB or less is the one (the file then stays under 10 MB, ±10 %); exactly 9 MB fits, one byte more does not', () => {
+    expect(GIF_AUTO_PICK_MAX_BYTES).toBe(9_000_000);
+    expect(GIF_LARGE_FILE_BYTES).toBe(10_000_000);
+    expect(sharpestShareableGifSize(four, { xlarge: 8.9 * MB })).toEqual({ kind: 'chosen', size: 'xlarge', why: 'fits' });
+    expect(sharpestShareableGifSize(four, { xlarge: GIF_AUTO_PICK_MAX_BYTES })).toEqual({ kind: 'chosen', size: 'xlarge', why: 'fits' });
+    expect(sharpestShareableGifSize(four, { xlarge: GIF_AUTO_PICK_MAX_BYTES + 1, large: 5 * MB })).toEqual({ kind: 'chosen', size: 'large', why: 'fits' });
+    // 9,5 MB: under the warning's 10 MB, but too near it to promise "under 10 MB": not chosen for the user.
+    expect(sharpestShareableGifSize(four, { xlarge: 9.5 * MB })).toEqual({ kind: 'measure', size: 'large' });
     expect(sharpestShareableGifSize(four, { xlarge: 28 * MB, large: 13.7 * MB, medium: 7.8 * MB })).toEqual({ kind: 'chosen', size: 'medium', why: 'fits' });
   });
 
@@ -51,6 +57,15 @@ describe('GIF yap: the sharpest size that stays shareable', () => {
     expect(sharpestShareableGifSize(four, { xlarge: 40 * MB, large: 30 * MB, medium: 20 * MB, small: 11 * MB })).toEqual({ kind: 'chosen', size: 'small', why: 'none_fit' });
     expect(sharpestShareableGifSize(four, { xlarge: 'failed' })).toEqual({ kind: 'chosen', size: 'small', why: 'unknown' });
     expect(sharpestShareableGifSize(four, { xlarge: 20 * MB, large: 'failed' })).toEqual({ kind: 'chosen', size: 'small', why: 'unknown' });
+  });
+
+  it('out of time: the largest size measured to fit, else the smallest — nothing still unmeasured', () => {
+    expect(sharpestShareableGifSize(four, {}, true)).toEqual({ kind: 'chosen', size: 'small', why: 'timeout_smallest' });
+    expect(sharpestShareableGifSize(four, { xlarge: 20 * MB }, true)).toEqual({ kind: 'chosen', size: 'small', why: 'timeout_smallest' });
+    // Sizes measured earlier (the user looked at them) count.
+    expect(sharpestShareableGifSize(four, { xlarge: 20 * MB, medium: 4 * MB, small: 1 * MB }, true)).toEqual({ kind: 'chosen', size: 'medium', why: 'timeout_fits' });
+    expect(sharpestShareableGifSize(four, { large: 'failed', small: 1 * MB }, true)).toEqual({ kind: 'chosen', size: 'small', why: 'timeout_fits' });
+    expect(GIF_AUTO_PICK_LIMIT_MS).toBe(8_000);
   });
 
   it('only the sizes this video has (never larger than the video, ADR-041)', () => {

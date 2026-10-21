@@ -34,6 +34,8 @@ export type FastCutFallbackReason =
   | 'captions'
   /** ADR-052: the text of "GIF yap" is drawn on every picture. */
   | 'text'
+  /** ADR-052: the GIF card's video — the source's own pictures would be larger than its encode. */
+  | 'clip_size'
   /** HDR needs tone mapping to SDR (ADR-022): copying would keep HDR pictures. */
   | 'hdr'
   /** Not H.264, or not in MP4/MOV. */

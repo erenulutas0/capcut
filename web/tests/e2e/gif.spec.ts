@@ -106,7 +106,7 @@ test('card → video → text → GIF: a real looping GIF of the part, its text 
   await expect(page.getByTestId('gif-size')).toHaveAttribute('data-auto-why', 'fits');
   await expect(page.getByTestId('gif-size-picked')).toHaveText('Paylaşması kolay olsun diye 10 MB’ı geçmeyen en net boyutu seçtik.');
   await expect(estimate(page)).toHaveAttribute('data-width', '960');
-  expect(Number(await estimate(page).getAttribute('data-bytes'))).toBeLessThanOrEqual(10_000_000);
+  expect(Number(await estimate(page).getAttribute('data-bytes'))).toBeLessThanOrEqual(9_000_000);
   await expect(page.getByTestId('gif-output-gif')).toBeChecked();
   await page.getByTestId('gif-size-small').check();
   // The user's own choice: the line about the chosen size is gone.
@@ -221,15 +221,15 @@ test('a small video has one size, its own; the GIF is never larger than the vide
 
 test('over 10 MB: said in plain words under the size, never blocked; gone again on "Küçük"', async ({ page }) => {
   await openGif(page, wizardFixture('grainy')); // 640 × 360, 10 s of heavy grain: taken whole
-  // ADR-052: the size chosen first is the sharpest whose MEASURED estimate is under 10 MB — not "Büyük", which
-  // is measured over 10 MB below; no warning until the user chooses a larger one.
+  // ADR-052: the size chosen first is the sharpest whose MEASURED estimate is at most 9 MB (so that the file stays
+  // under 10 MB) — not "Büyük", which is measured over 10 MB below; no warning until the user chooses a larger one.
   const auto = page.getByTestId('gif-size');
   await expect(auto).toHaveAttribute('data-auto-why', 'fits');
   await expect(page.getByTestId('gif-size-large')).not.toBeChecked();
   const first = Number(await estimate(page).getAttribute('data-bytes'));
   const firstWidth = await estimate(page).getAttribute('data-width');
   console.log(`GIF-AUTO-SIZE ${JSON.stringify({ bytes: first, width: firstWidth })}`);
-  expect(first).toBeLessThanOrEqual(10_000_000);
+  expect(first).toBeLessThanOrEqual(9_000_000);
   await expect(page.getByTestId('gif-too-large')).toHaveCount(0);
   await expect(page.getByTestId('gif-size-picked')).toBeVisible();
   await page.getByTestId('gif-size-large').check();
@@ -294,6 +294,23 @@ test('"Çok büyük" (ADR-046 addendum 2): a 720 × 1280 phone video gives 540 �
   await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'choose', { timeout: 60_000 });
   await expect(page.getByTestId('gif-size').getByRole('radio')).toHaveCount(3);
   await expect(page.getByTestId('gif-size-xlarge')).toHaveCount(0);
+});
+
+test('the search for the sharpest size waits 8 s at most, then settles on what is known and says so — and stays', async ({ page }) => {
+  // A test build only: the limit made 0 ms, so the search runs out at once (before anything is measured).
+  await page.addInitScript(() => {
+    (window as unknown as { __clipGifPickLimitMs: number }).__clipGifPickLimitMs = 0;
+  });
+  await openGif(page, SAMPLE);
+  await expect(page.getByTestId('gif-size')).toHaveAttribute('data-auto-why', 'timeout_smallest');
+  await expect(page.getByTestId('gif-size-small')).toBeChecked();
+  await expect(page.getByTestId('gif-size-hint')).toHaveText('Ölçmek uzun sürdü; en küçük boyutu seçtik. Daha büyüğünü kendin seçebilirsin.');
+  await expect(page.getByTestId('wizard-download')).toBeEnabled();
+  await expect(estimate(page)).toHaveAttribute('data-width', '320');
+  // It never changes by itself afterwards.
+  await page.waitForTimeout(3000);
+  await expect(page.getByTestId('gif-size-small')).toBeChecked();
+  await expect(page.getByTestId('gif-size-xlarge')).not.toBeChecked();
 });
 
 test('refusals: sound only, one frame, a broken index — the screens’ own sentences, nothing made', async ({ page }) => {
@@ -420,7 +437,7 @@ test('"Video olarak (en net)" (ADR-052): the same part and text as a short H.264
   await expect(page.getByTestId('gif-output-video')).not.toBeChecked();
   await expect(page.getByTestId('gif-output').getByRole('radio')).toHaveCount(2);
   await expect(page.getByTestId('gif-output-hint')).toHaveText(
-    'Video çok daha net ve akıcı olur. Sohbet uygulamaları kısa, sessiz videoları çoğu zaman GIF gibi gösterir.',
+    'Video çok daha net ve akıcı olur, dosyası da çoğu zaman daha küçük. Sohbet uygulamaları kısa, sessiz videoları çoğu zaman GIF gibi gösterir.',
   );
   // The part from 6 s to 10 s, with text on top.
   await page.getByTestId('gif-range-window').focus();
@@ -458,6 +475,11 @@ test('"Video olarak (en net)" (ADR-052): the same part and text as a short H.264
   const path = await readSaved(page, testInfo, 'saved-sample-24s_gif.mp4');
   const probed = probeMp4(path);
   console.log(`GIF-VS-VIDEO ${JSON.stringify({ gif: { bytes: gif.bytes, width: gif.gif.width, height: gif.gif.height }, video: { bytes: readFileSync(path).length, ...probed } })}`);
+  // ADR-052: a short clip's own bitrate — the plan's (0,09 bit a pixel: 2,49 Mbit/s at 720p30), never the
+  // software encoder's three times: at most that over four seconds (+10 %), and smaller than the GIF.
+  const videoBytes = readFileSync(path).length;
+  expect(videoBytes).toBeLessThanOrEqual(((1280 * 720 * 30 * 0.09 * 4) / 8) * 1.1);
+  expect(videoBytes).toBeLessThan(gif.bytes);
   // H.264, no sound at all, the video's own 1280 × 720, four seconds.
   expect(probed).toMatchObject({ videoCodec: 'h264', audioCodec: null, width: 1280, height: 720 });
   expect(Math.abs(probed.durationS - 4)).toBeLessThan(0.1);

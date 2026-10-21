@@ -5,6 +5,8 @@
 > ücretsiz, cihazda, en çok 10 sn; video çıktısı olağan, ücretsiz, cihazda indirmenin aynısı ve aynı 10 sn'lik kısım);
 > şema **değişmedi** (EDL v6; GIF ekranı proje saklamaz).
 > Kaynak: kurucunun hedefi — "bence her zaman en neti vermeliyiz" — ve ana oturumun iki kararı (kurucu devretti).
+> **Ek (aynı gün, en altta):** ana oturumun beş kararı — bekleme en çok 8 sn, ilk seçim tahmin ≤ 9 MB, varsayılan GIF,
+> videonun kendi bit hızı (planınki; kopya ancak ondan küçükse), ses yok.
 > İlgili: [ADR-046](ADR-046-gif.md) (GIF yap; ekleri: tahmin ±%10, 10 MB uyarısı, bellek, "Çok büyük"),
 > [ADR-041](ADR-041-never-upscale.md) (büyütme yok), [ADR-042](ADR-042-export-failure-detail.md) (hata ayrıntısı,
 > bekçi), [ADR-045](ADR-045-constant-bitrate-ordinary-download.md) (donanım kodlayıcıda sabit bit hızı),
@@ -186,12 +188,87 @@ Aynı kısım (baştan 4 sn ya da 10 sn), yazısız. "960 kopya": kaynağın 960
 - 4:3 gibi çerçeve dışı bir videoda videonun kırpılması e2e'de sınanmadı (birim: tarif; görsel: önizleme kuralı).
 - Gerçek kayıtlarda yazılı video (ölçüm yazısızdı; yazı yalnızca test deseninde).
 
-## Kurucu kararları
+## Kurucu kararları (ilk hali — ana oturum aynı gün karar verdi, aşağıdaki ek)
 
-1. **Bekleme:** ilk GIF, en net boyut bulunana dek bekler (bu masaüstünde 1,3–10,6 sn; telefonda ~3 katı, ölçülmedi).
-   Alternatif: düğme hemen basılabilir ve o anda ölçülmüş en büyük sığan boyutla yapılır (ya da "Küçük"le).
-2. **10 MB payı:** tahmin ±%10; seçim tahmin ≤ 10 MB. İstenirse ≤ 9 MB ile seçilir (bir boy küçük GIF daha sık).
-3. **Varsayılan çıktı GIF.** İstenirse video varsayılan olur (kart adı "GIF yap" kalırken).
-4. **Videonun boyutu:** masaüstünde yazılım kodlayıcıyla 1080p video ilk seçilen GIF'ten büyük olabiliyor (10 sn 18–21
-   MB). İstenirse video çıktısı için bit hızı tavanı ya da 720p sınırı (netlikten verir).
-5. Sesli seçenek yok (yukarıdaki gerekçe); istenirse bir onay kutusu.
+1. ~~Bekleme~~ → Ek, karar 1. 2. ~~10 MB payı~~ → Ek, karar 2. 3. ~~Varsayılan çıktı~~ → GIF kalır.
+4. ~~Videonun boyutu~~ → Ek, karar 4. 5. ~~Ses~~ → şimdilik yok (sessiz).
+
+---
+
+## Ek — 21 Ekim 2026 (aynı gün): ana oturumun beş kararı (kurucu devretti)
+
+Yukarıdaki iki bölüm ve tablolar ilk halin ölçümüdür; değiştirilmedi. Bu ek onları şu kararlarla günceller.
+
+1. **Bekleme sınırlı: en çok 8 sn** (`GIF_AUTO_PICK_LIMIT_MS`). Arama 8 sn'de bitmezse, o ana dek ölçülmüş ve sığan
+   en büyük boyut (yoksa "Küçük") seçilir ve aynı satır söyler: "Ölçmek uzun sürdü; 10 MB'ı geçmediği ölçülen en büyük
+   boyutu seçtik." ya da "Ölçmek uzun sürdü; en küçük boyutu seçtik. Daha büyüğünü kendin seçebilirsin." Seçim **bir
+   daha kendiliğinden değişmez** (o anki seçim bu kısım ve yazı için dondurulur; sonradan gelen ölçüm onu değiştirmez).
+   Sınama derlemesinde süre kısaltılabilir (`window.__clipGifPickLimitMs`); e2e: 0 ms → "Küçük", satır, düğme açık,
+   3 sn sonra hâlâ Küçük. Telefondaki süre S23'te sonra ölçülecek.
+2. **Pay: ilk seçim tahmin ≤ 9 MB** (`GIF_AUTO_PICK_MAX_BYTES`; ekran "10 MB'ı geçmeyen" der, tahmin ±%10). Uyarı eşiği
+   10 MB kaldı.
+3. **Varsayılan çıktı GIF** (değişmedi).
+4. **Videonun kendi bit hızı:** "Video olarak" artık olağan indirmenin yazılım kodlayıcıya verdiği 3 katı değil, planın
+   kendi bit hızını ister (her kodlayıcıda; 0,09 bit/piksel: 1080p30 ≈ 5,6 Mbit/sn, 720p30 ≈ 2,5 — telefonun donanım
+   kodlayıcısının aldığı; kaynağın 2 katıyla sınırlı, 1080p tavanı ve büyütmeme aynen). Hız denetimi ADR-045'inki
+   (donanım: sabit, yazılım: değişken). Yeni istek alanı `planBitrateOnly` (`exportVideoBitrate`). Kaynağın kendi
+   resimleri (hızlı kesim, yazısız video) **ancak bu kodlamadan büyük değilse** tutulur; büyükse kodlanır, sebep yeni
+   değer **`clip_size`** ("görüntü olduğu gibi kopyalansaydı dosya gereğinden büyük olurdu"). Yazılıysa yine `text`.
+5. **Ses yok, seçenek yok** (değişmedi).
+
+### Ölçülen (aynı kaynaklar, bu masaüstü, yazılım kodlayıcı; yazısız; `video-vs-gif.mjs --no-xlarge`)
+
+İlk seçilen GIF (kuralın seçtiği, 9 MB ve 8 sn ile) · video (öncesi → şimdi) · netlik: VMAF (v0.6.1) ve SSIM, ikisi
+de **videonun çerçevesinde** kaynağa karşı (GIF bikübik büyütülerek — telefonda göründüğü gibi; 12,5 kare/sn, baştan),
+`GIF / video`. Yerel betik, depoya girmedi.
+
+| Kaynak, süre | Seçilen GIF | Video: önce → şimdi (çözünürlük) | VMAF GIF / video | SSIM GIF / video |
+|---|---|---|---|---|
+| R1, 4 sn | Büyük 640 · 4,87 MB | 8,38 → **2,80 MB** (1920 × 1080) | 20,9 / **53,4** | 0,842 / **0,884** |
+| R2, 4,4 sn | Büyük 360 × 640 · 7,77 | 9,37 → **5,14** (1080 × 1920) | 5,7 / **27,5** | 0,648 / **0,722** |
+| R3, 4 sn | Büyük · 5,98 | 7,45 → **2,78** (1920 × 1080) | 4,3 / **26,3** | 0,750 / **0,782** |
+| R4, 4 sn | Büyük · 5,90 | 5,37 → **1,22** (1280 × 720) | 16,2 / **61,7** | 0,760 / **0,848** |
+| R5, 4 sn | Çok büyük · 5,70 | 0,36 → **0,36** (kopya; 720 × 1280) | 69,8 / **99,7** | 0,975 / **1,000** |
+| R6, 4 sn | Çok büyük · 0,17 | 0,22 → 0,22 (kopya) | — | — |
+| S1, 4 sn | Çok büyük · 1,49 | 2,38 → **1,24** (1280 × 720) | — | — |
+| S2, 4 sn | Büyük · 6,86 | 9,15 → **1,24** | **79,0** / 75,3 | **0,959** / 0,956 |
+| S3, 4 sn | Büyük · 7,21 | 22,56 → **1,22** | 35,6 / **81,8** | 0,745 / **0,794** |
+| S4, 4 sn | Küçük (8 sn doldu) · 2,12 | 45,79 → 2,30 | 24,8 / **55,1** | 0,397 / **0,452** |
+| R1, 10 sn | Küçük (8 sn doldu) · 3,57 | 20,85 → 6,95 | 0,2 / **55,3** | 0,802 / **0,879** |
+| R3, 10 sn | Küçük (8 sn doldu) · 4,03 | 18,45 → 6,98 | — | — |
+| R4, 10 sn | Orta · 7,92 | 13,55 → **3,05** | 17,2 / **58,7** | 0,748 / **0,826** |
+| R5, 10 sn | Büyük · 7,73 | 0,98 → **0,98** (kopya) | — | — |
+| S2, 10 sn | Orta · 7,71 | — → **3,10** | — | — |
+| S3, 10 sn | Küçük (8 sn doldu) · 3,53 | — → **3,06** | — | — |
+
+- **Video artık 16 durumun 12'sinde ilk seçilen GIF'ten küçük;** büyük kalan dördü: GIF'in 8 sn dolup "Küçük"e düştüğü
+  üç durum (S4 4 sn, R1 ve R3 10 sn) ve neredeyse kıpırdamayan R6 (0,22 / 0,17 MB). 1080p 4 sn ≈ 2,8 MB, 10 sn ≈ 7 MB
+  (R2 değişken hızda isteneni ×1,65 aştı: çok ayrıntılı 60 kare/sn kaynak). Ekrana bu yüzden yeniden "dosyası da çoğu
+  zaman daha küçük" yazıldı.
+- **Netlik:** ölçülen 9 durumun 8'inde video GIF'ten açıkça net (VMAF +22 ile +55, SSIM +0,03 ile +0,09); tek istisna
+  yapay yumuşak geçiş S2 (VMAF −3,7, SSIM −0,003: düz renk alanlarında GIF'in paleti iyi, yazılım kodlayıcının düşük
+  bit hızı az geride). Not: yazılım kodlayıcıda planın bit hızı mutlak olarak orta bir netlik veriyor (1080p'de VMAF
+  26–53); ADR-024 bu yüzden olağan indirmeye 3 kat verir. Donanım kodlayıcıda (telefon) aynı bit hızıyla netlik
+  daha yüksek beklenir — **ölçülmedi.**
+- **8 sn sınırının bedeli:** 10 sn'lik 1080p kayıtta (R1, R3) arama 8 sn'de bitmedi (960 ve 640 ölçülüp 9 MB'ı geçti,
+  480 sürerken) ve GIF eskiden seçilecek "Orta" yerine **"Küçük"** oldu; ekran bunu söyler. Telefonda bu daha sık olur
+  (ölçüm ~3 kat yavaş varsayılır). S23 ölçümünden sonra sınır ya da arama sırası (ör. 10 sn'lik kısımda Orta'dan
+  başlamak) yeniden düşünülmeli.
+
+### Sınamalar (ek; yerel, port 3195, kilit altında)
+
+- `tsc`, `eslint` temiz; birim **1666 / 1666** (`gifSharpest.test.ts` 10: tam 9 MB sığar, 9,5 MB seçilmez, süre doldu:
+  ölçülüp sığan en büyük ya da en küçük, ölçülmemiş boyut sayılmaz).
+- e2e **113 / 113:** `gif` (yeni: 8 sn sınırı; video sınaması artık dosyanın planın bit hızını ×1,1'den fazla
+  geçmediğini ve GIF'ten küçük olduğunu da sınar: 1280 × 720, 4 sn, 246 KB, GIF 839 KB), `gif-a11y`, `gif-memory`,
+  `wizard-phone-action`, `english`, `fast-cut`, `export-failure`, `worker-failure`, `share-target`, `captions-export`.
+  `PAGE-RECOVERED-TOTAL 0`.
+- Kalite katmanı (`visual`, `a11y`, `text`, `walkthrough`): ilk koşuda farklı ekran 3 (`sihirbaz-gif-secim` telefon
+  TR / EN ve masaüstü EN: yalnız değişen açıklama cümlesi); fark resimlerine bakılıp bu üç taban yenilendi; sonra
+  **705 bütçe içinde, 0 dışında, farklı ekran 0.**
+
+### Hâlâ açık (kurucuya)
+
+1. 8 sn sınırı 10 sn'lik telefon videosunda GIF'i "Küçük"e düşürebiliyor (yukarıda); S23 ölçümüyle karar.
+2. Yazılım kodlayıcıda (masaüstü) planın bit hızı videoda orta netlik veriyor; istenirse yalnız yazılım kodlayıcı için
+   1,5–2 kat (dosya ~4–6 MB / 4 sn 1080p).

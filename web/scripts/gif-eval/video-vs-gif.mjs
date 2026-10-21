@@ -3,14 +3,14 @@
  * the GIF at "Çok büyük" (960) where the video has it, and the same part as "Video olarak (en net)":
  * file size, frame size and the time from the press to the file, for each clip.
  *
- *   node scripts/gif-eval/video-vs-gif.mjs --clips=<clips.json> --out=<rows.jsonl> [--url=http://127.0.0.1:3195] [--seconds=4]
+ *   node scripts/gif-eval/video-vs-gif.mjs --clips=<clips.json> --out=<rows.jsonl> [--url=http://127.0.0.1:3195] [--seconds=4] [--keep=<dir>] [--no-xlarge]
  *
  * `clips.json`: [{ "id": "S1", "path": "…" }, …]. Needs a running build at --url. No save dialog (the
  * download link road): each file arrives as a download, is measured (bytes; ffprobe for the video) and
- * deleted. Recordings are named by their ids only; nothing derived from them is kept but the numbers.
+ * deleted (`--keep`: kept in that directory, outside the repository, for a quality comparison). Recordings are named by their ids only; nothing derived from them is kept but the numbers.
  */
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { appendFileSync, copyFileSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from '@playwright/test';
@@ -20,6 +20,7 @@ const url = args.url ?? 'http://127.0.0.1:3195';
 const seconds = Number(args.seconds ?? '4');
 const clips = JSON.parse(readFileSync(args.clips, 'utf8'));
 const out = args.out;
+const keep = args.keep ?? null;
 
 function probe(file) {
   const r = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_type,codec_name,width,height,avg_frame_rate:format=duration', '-of', 'json', file], { encoding: 'utf8' });
@@ -34,7 +35,7 @@ await context.addInitScript(() => {
   delete window.showSaveFilePicker;
 });
 
-async function save(page) {
+async function save(page, tag) {
   const started = Date.now();
   await page.getByTestId('wizard-download').click();
   const link = page.getByTestId('export-download');
@@ -45,6 +46,7 @@ async function save(page) {
   await download.saveAs(file);
   const bytes = statSync(file).size;
   const facts = file.endsWith('.mp4') ? probe(file) : {};
+  if (keep && tag) copyFileSync(file, join(keep, `${tag}${file.endsWith('.mp4') ? '.mp4' : '.gif'}`));
   rmSync(file, { force: true });
   return { bytes, ms, ...facts };
 }
@@ -67,10 +69,10 @@ for (const clip of clips) {
     const pickMs = Date.now() - pickStarted;
     const why = (await sizes.count()) > 0 ? await sizes.getAttribute('data-auto-why') : 'one_size';
     const chosen = { width: Number(await est.getAttribute('data-width')), height: Number(await est.getAttribute('data-height')), estimated: Number(await est.getAttribute('data-bytes')) };
-    const autoGif = await save(page);
+    const autoGif = await save(page, `${clip.id}-${seconds}-gif`);
     const row = { id: clip.id, seconds, pickMs, why, autoGif: { ...chosen, ...autoGif } };
     await page.getByTestId('wizard-again-same').click();
-    if ((await page.getByTestId('gif-size-xlarge').count()) > 0 && chosen.width !== 960 && chosen.height !== 960) {
+    if (!args['no-xlarge'] && (await page.getByTestId('gif-size-xlarge').count()) > 0 && chosen.width !== 960 && chosen.height !== 960) {
       await page.getByTestId('gif-size-xlarge').check();
       await page.locator('[data-testid="gif-estimate"][data-state="ready"]').waitFor({ timeout: 300_000 });
       const xl = { width: Number(await est.getAttribute('data-width')), height: Number(await est.getAttribute('data-height')), estimated: Number(await est.getAttribute('data-bytes')) };
@@ -78,7 +80,7 @@ for (const clip of clips) {
       await page.getByTestId('wizard-again-same').click();
     }
     await page.getByTestId('gif-output-video').check();
-    row.video = await save(page);
+    row.video = await save(page, `${clip.id}-${seconds}-video`);
     console.log(JSON.stringify(row));
     if (out) appendFileSync(out, `${JSON.stringify(row)}\n`);
   } catch (error) {

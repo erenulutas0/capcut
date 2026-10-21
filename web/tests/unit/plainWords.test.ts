@@ -20,6 +20,7 @@ const REASONS: Record<FastCutFallbackReason, true> = {
   enhance: true,
   captions: true,
   text: true,
+  clip_size: true,
   hdr: true,
   codec: true,
   bitstream: true,

@@ -271,6 +271,8 @@ export class ExportWorkerClient {
       soundFix?: SoundFixSettings | null;
       /** ADR-052: the "GIF yap" card's top and bottom text, drawn on every frame the GIF's way. */
       overlayText?: GifTexts | null;
+      /** ADR-052: always encoded, at the plan's own bitrate on every encoder. */
+      planBitrateOnly?: boolean;
     },
   ): AsyncGenerator<ExportEvent, void, unknown> {
     const worker = this.ensureWorker();
@@ -395,6 +397,7 @@ export class ExportWorkerClient {
       enhanceAnalysis: options.enhanceAnalysis ?? null,
       soundFix: options.soundFix ?? null,
       overlayText: options.overlayText ?? null,
+      planBitrateOnly: options.planBitrateOnly === true,
       enhanceEngine: enhanceEngineHook(),
       bitrateMode: bitrateModeHook(),
       outputLimitBytes: outputLimitHook(),

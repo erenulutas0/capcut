@@ -220,28 +220,55 @@ export function gifIsLarge(estimatedBytes: number): boolean {
 
 /**
  * The size chosen before the user chooses one (ADR-052, 21 Oct 2026: "her zaman en neti vermeliyiz"):
- * the LARGEST size this video has whose measured estimate stays within `GIF_LARGE_FILE_BYTES` — the
- * sharpest GIF that is still easy to share. Never guessed: the sizes are measured from the largest
- * down (`measure`), one at a time, and the first that fits is the one (`fits`). When none fits, the
- * smallest (`none_fit`; the 10 MB warning then says so); when a measurement itself failed, the
+ * the LARGEST size this video has whose measured estimate stays within `GIF_AUTO_PICK_MAX_BYTES` (9 MB, so
+ * that the file stays under 10 MB) — the sharpest GIF that is still easy to share. Never guessed: the sizes
+ * are measured from the largest down (`measure`), one at a time, and the first that fits is the one (`fits`).
+ * When none fits, the smallest (`none_fit`; over 10 MB the warning then says so); when a measurement itself failed, the
  * smallest too (`unknown`: the screen cannot say it fits, and "Küçük" is the size that fitted every
  * real recording measured — 10 s at most 5,1 MB, ADR-046 addendum).
  */
 export type GifAutoSize =
   | { kind: 'measure'; size: GifSizeId }
-  | { kind: 'chosen'; size: GifSizeId; why: 'fits' | 'none_fit' | 'unknown' };
+  | { kind: 'chosen'; size: GifSizeId; why: 'fits' | 'none_fit' | 'unknown' | 'timeout_fits' | 'timeout_smallest' };
 
 /** What is known of each size's estimate: bytes, `failed`, or nothing yet (absent). */
 export type GifSizeEstimates = Partial<Record<GifSizeId, number | 'failed'>>;
 
-export function sharpestShareableGifSize(choices: readonly GifSizeId[], estimates: GifSizeEstimates): GifAutoSize {
+/**
+ * The estimate a size chosen FOR the user may have (ADR-052, main session's decision of 21 Oct 2026): 9 MB,
+ * not 10. The screen says the GIF stays under 10 MB and the estimate is right to about ±10 % (ADR-046), so a
+ * GIF estimated at 9 MB comes out under 10. The warning stays at `GIF_LARGE_FILE_BYTES` (10 MB): a size the
+ * user chooses is said to be large only when its estimate passes 10 MB.
+ */
+export const GIF_AUTO_PICK_MAX_BYTES = 9_000_000;
+
+/**
+ * How long the search may make the user wait (ADR-052, main session's decision): after this the size is
+ * settled on what is known — the largest size already measured under `GIF_AUTO_PICK_MAX_BYTES`, or the
+ * smallest — and the screen says so. It never changes by itself afterwards.
+ */
+export const GIF_AUTO_PICK_LIMIT_MS = 8_000;
+
+/**
+ * `timedOut`: the search ran past `GIF_AUTO_PICK_LIMIT_MS`; nothing more is measured, the largest size
+ * measured to fit is the one (`timeout_fits`), else the smallest (`timeout_smallest`).
+ */
+export function sharpestShareableGifSize(choices: readonly GifSizeId[], estimates: GifSizeEstimates, timedOut = false): GifAutoSize {
   const smallest = choices[0] ?? 'small';
+  const fits = (known: number | 'failed' | undefined): known is number => typeof known === 'number' && known <= GIF_AUTO_PICK_MAX_BYTES;
+  if (timedOut) {
+    for (let i = choices.length - 1; i >= 0; i -= 1) {
+      const size = choices[i] as GifSizeId;
+      if (fits(estimates[size])) return { kind: 'chosen', size, why: 'timeout_fits' };
+    }
+    return { kind: 'chosen', size: smallest, why: 'timeout_smallest' };
+  }
   for (let i = choices.length - 1; i >= 0; i -= 1) {
     const size = choices[i] as GifSizeId;
     const known = estimates[size];
     if (known === undefined) return { kind: 'measure', size };
     if (known === 'failed') return { kind: 'chosen', size: smallest, why: 'unknown' };
-    if (!gifIsLarge(known)) return { kind: 'chosen', size, why: 'fits' };
+    if (fits(known)) return { kind: 'chosen', size, why: 'fits' };
   }
   return { kind: 'chosen', size: smallest, why: 'none_fit' };
 }
