@@ -472,3 +472,89 @@ telefon çubuğu, ADR-030), sınamada yok.
 4. Açık: eşikli saydamlık (dosyayı %15–23 küçültüyor, SSIM'de −0,003) yeni bir ön kayıtla denensin mi?
 5. Açık: üç boyut 390 px'te iki satıra kırılıyor ("Büyük" alta iniyor); istenirse seçenekler daraltılabilir.
 
+---
+
+## Ek 2 — 21 Ekim 2026: ikinci tur (küçültme süzgeci, keskinleştirme, eşikli saydamlık, daha büyük boyutlar)
+
+Kurucu yeni GIF'i (Orta varsayılan, Büyük eklendi) S23'te denedi: "daha güzel olmuş, daha da geliştirebiliriz";
+sonra ana oturum aracılığıyla: fark "240p 720p olmuş gibi" açık; **daha yüksek çözünürlüklü** GIF istiyor.
+Birinci tur sebebin çözünürlük olduğunu buldu; palet / titreşim değişiklikleri kuralı geçmedi. Birinci turun
+ölçmediği şey: ölçüm aracı kareleri **ffmpeg'in Lanczos küçültmesiyle** çiziyordu; uygulamanın kendi
+küçültmesi (tarayıcının `drawImage`'ı, `imageSmoothingQuality: 'high'`) hiç ölçülmedi.
+
+### Ön kayıt (ölçümden ÖNCE yazıldı ve ayrı bir işlemle kaydedildi; sonuçlardan sonra değiştirilmedi)
+
+Ölçümden önce yalnızca kod okundu: `gifWorker.ts` her kareyi `VideoSample.draw` ile doğrudan GIF boyutuna çizer;
+mediabunny'nin kendi `_drawWithFitAndMipmapping` açıklaması "2 kattan fazla küçültmede çift doğrusal süzgeç piksel
+atlar, sonuç örtüşür (aliasing); `imageSmoothingQuality` güvenilmez" diyor. Hiçbir kayıtta, hiçbir aday ölçülmedi.
+
+**Görüntüler.** Birinci turun kümesi: 11 gerçek telefon kaydı (`web/tests/media/real/`, depoda yok, yalnızca ölçüm
+için okunur; dikey 7, HEVC 2, 30–120 kare/sn, iPhone 3, Pixel 1, Samsung 2, GoPro 1, sosyal medya 4; HDR olan
+ikisi, 224 × 128'lik bir kayıt ve 854 × 480'lik 32 dakikalık bir kayıt dışarıda) + iki az ışık kopyası (K1, K2).
+Birinci turun R numaralarının dosya eşlemesi kaydedilmemiş: numaralar yeniden verildi (yalnızca yerel bir dosyada);
+K1, K2 yeniden üretildi: iki yatay gerçek kaydın ilk 12 sn'si, `lutrgb` ile R, G × 0,45, B × 0,5 karartılmış,
+`noise=alls=12:allf=t` kumlanması, H.264 CRF 18 (yalnızca yerel). Yapay: S1–S5, `evaluate.mjs`'in tarifleri.
+Kısım baştan 4 sn (R2 ve S'lerin bütünü daha kısaysa bütünü); 10 sn ölçümlerinde 10 sn'den kısa kayıt yok sayılır.
+
+**Yöntem.** Kareleri bu kez **tarayıcının kendisi** çizer: bu masaüstündeki Google Chrome (155, Playwright ile),
+uygulamanın çözme yolu (mediabunny `VideoSampleSink`, `pickFrames`, `holdDecoder`, `VideoSample.draw`), uygulamanın
+kare zamanları (`gifFrameTimesUs`) ve boyut planı. Her adayın kareleri aynı geçişte, aynı çözülmüş kareden çizilir.
+**Telefonda görünenin kaynağı**: tarayıcının aynı karelerinin kendi boyutunda (1:1, büyütme / küçültme yok) okunmuşu,
+ffmpeg Lanczos ile kısa kenarı 1080'e getirilmiş hali (aynı çözücü, aynı renk dönüşümü, aynı kare). GIF, birinci
+turdaki gibi bikübik büyütülür. GIF'i aday yöntemle Node'da uygulamanın kodlayıcısı yazar (`candidates.ts`), ffmpeg
+geri açar.
+
+**Ölçüler.**
+- **VMAF-tel** (v0.6.1) ve **VMAF-tel-NEG** (`vmaf_v0.6.1neg`, "no enhancement gain": keskinleştirmeyi
+  ödüllendirmeyen model) — telefonda görünen; **SSIM-tel**; **ΔCAMBI-tel** (bant; GIF'in kaynağa eklediği).
+- GIF boyutunda (eşikli saydamlık için): GIF ile **kendi girdisi olan kareler** arasında SSIM ve VMAF (birinci tur
+  gibi) ve kare başı SSIM'in **en kötü %5'i** (5. yüzdelik; gölge / iz bırakmayı yakalar).
+- **Boyut** (bayt); **çizme süresi** (tarayıcıda kare başına çizme + okuma + küçültme + keskinleştirme, bu
+  masaüstü); **kodlama süresi** (Node, birinci tur gibi); yeni boyutlar için **bellek**: 10 sn'lik karelerin
+  bellekte tutulan hali (genişlik × yükseklik × 4 × 125) ve uygulamada GIF yaparken tarayıcı süreç ağacının en
+  yüksek özel belleği (`scripts/lib/process-memory.ps1`).
+
+**Adaylar.**
+1. *Küçültme:* `high` (bugünkü: `VideoSample.draw` doğrudan GIF boyutuna, `imageSmoothingQuality 'high'`), `medium`,
+   `low`; `mip` (önce GIF boyutunun 2^k katına `high` ile, sonra her adımda yarıya — çift doğrusal, yani 2 × 2
+   ortalama — GIF boyutuna dek; mediabunny'nin kendi yolu); `box` (kare 1:1 çizilip okunur, JS'te alan ortalaması).
+   *Keskinleştirme:* `mip` ve `box`'ın üstüne 3 × 3 bulanıklık farkıyla keskinleştirme (unsharp mask), güç 0,25 ve 0,5.
+2. *Eşikli saydamlık:* T = 2, 3, 4 (birinci turun tanımı: gösterilen renk, en iyi yeni renkten en çok T düzey
+   uzaksa piksel değişmemiş sayılır; hata kareden kareye birikmez), 1'in kazananının üstüne.
+3. *Kare farkı kırpma:* sonraki her kare, değişen piksellerin çevreleyen dikdörtgenine kırpılır (kayıpsız).
+4. *Daha büyük boyutlar:* uzun kenar 960, 1280, 1920 (16:9 / 9:16'da kısa kenar 540, 720, 1080); hiçbiri videodan
+   büyük değil (ADR-041); her biri yalnızca videosu o boyuta yeten kayıtlarda ölçülür.
+
+**Karar kuralı.**
+1. *Küçültme ve keskinleştirme* (Küçük, Orta, Büyük; 4 sn; palet ve saydamlık bugünkü):
+   - **Uygun** olmak için: (a) çizme süresi: gerçek kümede kare başı ortanca, `high`'ınkinden en çok 15 ms fazla;
+     kayıt başı ortancaların en kötüsü en çok 40 ms fazla (Büyük'te; telefon ~3 kat yavaş varsayılır: 125 karede
+     ~6 sn); (b) boyut: her boyutta gerçek kümede ortanca bayt `high`'ın en çok %5 üstü; (c) SSIM-tel ortancası
+     `high`'ınkinden en çok 0,002 düşük — gerçek **ve** yapay kümede; keskinleştirilen aday ayrıca VMAF-tel-NEG'de
+     keskinleştirilmemiş halinden düşük olmamalı (gerçek kümede ortanca).
+   - **Puan:** üç boyutun gerçek kümedeki ortanca VMAF-tel-NEG'lerinin ortalaması. Uygunlar içinde **kazanan** en
+     yüksek puanlı; en iyiye 0,3 içinde olanlardan Orta'da ortanca baytı en küçük olan.
+   - Kazanan `high`'ın yerine **ancak** puanı en az 2,0 yüksekse, ya da en az 1,0 yüksek ve Orta'da ortanca baytı
+     en az %5 küçükse geçer; ve yapay kümede puanı `high`'ınkinden en çok 1,0 düşükse.
+2. *Eşikli saydamlık* (1'in sonucunun üstüne; Orta ve Büyük; 4 sn kalite, 4 ve 10 sn boyut):
+   - Bir T **uygun**: (a) VMAF-tel-NEG ortancası T = 0'dan en çok 1,0, kayıt başına en çok 2,5 düşük (gerçek; yapayda
+     ortanca en çok 1,0); (b) GIF boyutunda SSIM ortancası en çok 0,004, kare başı SSIM'in 5. yüzdeliğinin ortancası
+     en çok 0,010 düşük (gerçek ve yapay); (c) ΔCAMBI-tel ortancası en çok 0,3 artar.
+   - **Kazanan:** uygun T'lerin en büyüğü. **Ancak** 10 sn'de hem Orta hem Büyük için gerçek kümede ortanca bayt
+     T = 0'dan en az %10 küçükse geçer. 10 sn Orta'nın 10 MB'ı aşan kayıt sayısı önce / sonra yazılır.
+3. *Kare farkı kırpma:* geri açılan GIF kare kare bit bit aynıysa (kayıpsız) ve 10 sn Orta'da gerçek kümede ortanca
+   bayt en az %2 küçükse geçer.
+4. *Daha büyük boyutlar* (1–3'ün sonucuyla; küçükten büyüğe, her biri bir öncekinin kabulüne bakarak):
+   bir boyut ancak şunların hepsi tutarsa **sunulur**:
+   (a) VMAF-tel-NEG ortancası sunulan bir alt boyuttan en az 3 puan yüksek (o boyuta yeten kayıtlarda, ikisi aynı
+   kayıtlarda); (b) 4 sn gerçek kümede ortanca ≤ 15 MB (X/Twitter GIF sınırı; 10 MB üstü uyarısı zaten var) ve en
+   büyüğü ≤ 50 MiB (Chromium'un paylaşma sınırı); (c) uygulamada, bu masaüstünde, 4 sn GIF yapmak ortanca ≤ 10 sn ve
+   10 sn GIF yapmak ortanca ≤ 25 sn; (d) **bellek:** 10 sn'lik kareler bellekte ≤ 300 MB (birinci turun sınırı)
+   — (a)–(c) tutup (d) tutmayan boyut **şimdi sunulmaz**; "kareleri iki geçişte işleyen yol gelince güvenli"
+   diye yazılır (bu iş başka bir ajanda; bu tur kare saklamayı değiştirmez); (e) ekrandaki tahmin o boyutta da
+   gerçek dosyanın ±%10'u içinde (uygulamada yeniden ölçülür).
+5. Neyi kabul edilirse edilsin: ekrandaki tahmin her boyutta gerçeğin ±%10'u içinde kalmalı — gerçek kayıtlarda
+   birinci turun ölçtüğü gibi yeniden ölçülür. Tutmazsa tahmin düzeltilir ya da değişiklik geri alınır.
+
+Sonuçlar ve uygulanan karar bu bölümün altına eklenir.
+
