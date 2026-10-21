@@ -62,15 +62,19 @@ export async function connectToPage(port, urlPart) {
 
   /** name -> sessionId of each worker the page started (latest wins). */
   const workers = new Map();
+  /** sessionId -> name of every worker attached and not yet gone (two workers may share a name). */
+  const workerSessions = new Map();
   listeners.push((message) => {
     if (message.method === 'Target.attachedToTarget' && message.params.targetInfo.type === 'worker') {
       const { sessionId, targetInfo } = message.params;
       workers.set(targetInfo.title || targetInfo.url, sessionId);
+      workerSessions.set(sessionId, targetInfo.title || targetInfo.url);
       // A worker attached this way waits for nothing, but must be told to run.
       send('Runtime.runIfWaitingForDebugger', {}, sessionId).catch(() => undefined);
     }
     if (message.method === 'Target.detachedFromTarget') {
       for (const [name, id] of workers) if (id === message.params.sessionId) workers.delete(name);
+      workerSessions.delete(message.params.sessionId);
     }
   });
   await send('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: false, flatten: true }, pageSession);
@@ -155,6 +159,7 @@ export async function connectToPage(port, urlPart) {
     startSampling,
     stopSampling,
     workers,
+    workerSessions,
     /** The session of the worker whose name starts with `prefix`, or null. */
     worker(prefix) {
       for (const [name, id] of workers) if (name.startsWith(prefix)) return id;

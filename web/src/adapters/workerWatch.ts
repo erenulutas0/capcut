@@ -116,11 +116,19 @@ export interface WorkerTestFault {
    * `throw`: the job throws an error with `errorName` and `message`;
    * `crash`: the worker itself throws outside every handler (its `error`
    * event fires on the page); `stall`: the job stops for ever without an
-   * error; `unsendable`: the request cannot be copied to the worker.
+   * error; `unsendable`: the request cannot be copied to the worker;
+   * `oom`: the job asks for a buffer no browser gives, and the engine's own
+   * `RangeError` ("Invalid array buffer length") comes back — what running
+   * out of memory throws.
    */
-  kind: 'throw' | 'crash' | 'stall' | 'unsendable';
+  kind: 'throw' | 'crash' | 'stall' | 'unsendable' | 'oom';
   errorName?: string;
   message?: string;
+  /**
+   * The GIF worker only: the fault happens once this many frames of the job
+   * were drawn (mid-way, frames held), not at the start. Others ignore it.
+   */
+  atFrame?: number;
 }
 
 export type WatchedWorker = 'silence' | 'model_download' | 'transcript' | 'cloud_audio' | 'enhance_preview' | 'gif';
@@ -135,14 +143,15 @@ export function takeWorkerFault(worker: WatchedWorker): WorkerTestFault | null {
   const holder = globalThis as { __clipWorkerFault?: unknown };
   const value = holder.__clipWorkerFault;
   if (typeof value !== 'object' || value === null) return null;
-  const fault = value as { worker?: unknown; kind?: unknown; errorName?: unknown; message?: unknown };
+  const fault = value as { worker?: unknown; kind?: unknown; errorName?: unknown; message?: unknown; atFrame?: unknown };
   if (fault.worker !== worker) return null;
-  if (fault.kind !== 'throw' && fault.kind !== 'crash' && fault.kind !== 'stall' && fault.kind !== 'unsendable') return null;
+  if (fault.kind !== 'throw' && fault.kind !== 'crash' && fault.kind !== 'stall' && fault.kind !== 'unsendable' && fault.kind !== 'oom') return null;
   delete holder.__clipWorkerFault;
   return {
     kind: fault.kind,
     ...(typeof fault.errorName === 'string' ? { errorName: fault.errorName } : {}),
     ...(typeof fault.message === 'string' ? { message: fault.message } : {}),
+    ...(typeof fault.atFrame === 'number' && Number.isInteger(fault.atFrame) && fault.atFrame > 0 ? { atFrame: fault.atFrame } : {}),
   };
 }
 

@@ -1170,6 +1170,7 @@ export const en: Record<MessageKey, string> = {
   'gif.details.frames': 'Frames',
   'gif.failedTitle': 'The GIF could not be made.',
   'gif.fail.font': 'The letters of the text could not be loaded. Try once more; if it still fails, delete the text and make the GIF without it.',
+  'gif.fail.memory': 'The browser ran out of memory. Choose a smaller size or a shorter part; closing other tabs helps too.',
   'task.filigran.label': 'Remove a watermark or logo',
   'task.filigran.sub': 'Take text or a logo off the video',
   'task.efekt.label': 'Filters and colour',

@@ -35,29 +35,68 @@ const BLACK: GifencColor = [0, 0, 0];
  */
 export function buildGifPalette(frames: readonly Uint8Array[], text: boolean): GifPalette {
   if (frames.length === 0) throw new RangeError('no frames');
-  const framePixels = (frames[0] as Uint8Array).length / 4;
-  const total = framePixels * frames.length;
-  const step = Math.max(1, Math.ceil(total / PALETTE_SAMPLE_PIXELS));
-  const sample = new Uint8Array(Math.ceil(total / step) * 4);
-  let written = 0;
-  // Pixel `p` of the whole run, every `step`-th: every frame gives its share, wherever it lies.
-  for (let p = 0; p < total; p += step) {
-    const frame = frames[Math.floor(p / framePixels)] as Uint8Array;
-    const offset = (p % framePixels) * 4;
-    sample[written] = frame[offset]!;
-    sample[written + 1] = frame[offset + 1]!;
-    sample[written + 2] = frame[offset + 2]!;
-    sample[written + 3] = 255;
-    written += 4;
+  const sampler = new GifPaletteSampler((frames[0] as Uint8Array).length / 4, frames.length);
+  for (const frame of frames) sampler.add(frame);
+  return sampler.palette(text);
+}
+
+/**
+ * The palette's pixel sample, gathered one frame at a time (ADR-046 memory
+ * addendum, 21 Oct 2026): the GIF worker no longer has to hold every frame
+ * before it can choose the colours. The number of frames is known before the
+ * first one is decoded (one per moment of the part), so the sample is the
+ * very same one `buildGifPalette` takes from all frames at once: pixel `p` of
+ * the whole run, every `step`-th — the same pixels, the same order, the same
+ * palette (unit test: byte for byte).
+ */
+export class GifPaletteSampler {
+  private readonly step: number;
+  private readonly sample: Uint8Array;
+  private written = 0;
+  private frames = 0;
+
+  constructor(
+    readonly framePixels: number,
+    readonly frameCount: number,
+  ) {
+    if (!(framePixels > 0) || !(frameCount > 0)) throw new RangeError('no frames');
+    const total = framePixels * frameCount;
+    this.step = Math.max(1, Math.ceil(total / PALETTE_SAMPLE_PIXELS));
+    this.sample = new Uint8Array(Math.ceil(total / this.step) * 4);
   }
-  // `quantize` reads the whole buffer as 32-bit pixels: hand it an exact one.
-  const exact = written === sample.length ? sample : sample.slice(0, written);
-  const picked = quantize(exact, text ? 253 : 255);
-  const rows: GifencColor[] = picked.map((color) => [color[0], color[1], color[2]]);
-  if (text) rows.push(WHITE, BLACK);
-  const colors = new Uint8Array(256 * 3);
-  rows.slice(0, TRANSPARENT_INDEX).forEach((color, index) => colors.set([color[0], color[1], color[2]], index * 3));
-  return { colors, count: Math.min(rows.length, TRANSPARENT_INDEX) };
+
+  /** The next frame (RGBA, `framePixels` pixels); frames come in order. */
+  add(rgba: Uint8Array | Uint8ClampedArray): void {
+    const { framePixels, step, sample } = this;
+    if (this.frames >= this.frameCount) throw new RangeError('more frames than planned');
+    const start = this.frames * framePixels;
+    const end = start + framePixels;
+    // The first sampled pixel of the whole run that lies in this frame.
+    let written = this.written;
+    for (let p = Math.ceil(start / step) * step; p < end; p += step) {
+      const offset = (p - start) * 4;
+      sample[written] = rgba[offset]!;
+      sample[written + 1] = rgba[offset + 1]!;
+      sample[written + 2] = rgba[offset + 2]!;
+      sample[written + 3] = 255;
+      written += 4;
+    }
+    this.written = written;
+    this.frames += 1;
+  }
+
+  /** With `text`: 253 picked colours + white + black; without: 255. Entry 255 is left for transparency. */
+  palette(text: boolean): GifPalette {
+    if (this.written === 0) throw new RangeError('no frames');
+    // `quantize` reads the whole buffer as 32-bit pixels: hand it an exact one.
+    const exact = this.written === this.sample.length ? this.sample : this.sample.slice(0, this.written);
+    const picked = quantize(exact, text ? 253 : 255);
+    const rows: GifencColor[] = picked.map((color) => [color[0], color[1], color[2]]);
+    if (text) rows.push(WHITE, BLACK);
+    const colors = new Uint8Array(256 * 3);
+    rows.slice(0, TRANSPARENT_INDEX).forEach((color, index) => colors.set([color[0], color[1], color[2]], index * 3));
+    return { colors, count: Math.min(rows.length, TRANSPARENT_INDEX) };
+  }
 }
 
 function paletteRows(palette: GifPalette): GifencColor[] {

@@ -15,9 +15,11 @@ function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
 }
 
-/** The words of a failure: the download card's own sentences, and two of the GIF's. */
+/** The words of a failure: the download card's own sentences, and a few of the GIF's. */
 export function gifFailureText(t: T, code: GifFailureCode | 'worker_unavailable'): string {
   if (code === 'text_font_unavailable') return t('gif.fail.font');
+  // The GIF's own way out: its size and its part, not "a shorter output".
+  if (code === 'out_of_memory') return t('gif.fail.memory');
   return t(`export.fail.${code}` as MessageKey);
 }
 
@@ -147,7 +149,7 @@ export function GifStatus({
         ? fill(t(`gif.running.${state.step}`), { done: String(state.done), total: String(state.total) })
         : t(`gif.running.${state.step}`);
     return (
-      <div className="dl-status" data-phase="running" data-testid="download-running" data-step={state.step} data-done={state.done} data-total={state.total}>
+      <div className="dl-status" data-phase="running" data-testid="download-running" data-step={state.step} data-done={state.done} data-total={state.total} data-passes={state.passes ?? 1}>
         <p className="visually-hidden" role="status" data-testid="download-status">
           {t('wizard.result.running')}
         </p>
