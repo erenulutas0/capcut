@@ -27,7 +27,7 @@
   "dependencies": {
     "@huggingface/transformers": "4.3.1",
     "gifenc": "1.0.3",
-    "mediabunny": "1.58.1",
+    "mediabunny": "1.61.3",
     "next": "16.4.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"

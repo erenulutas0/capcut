@@ -20,7 +20,7 @@
  * reclaiming it) cannot be held: `decoderClosed()` then says so, and frames
  * drawn after it are counted as missing, never as real.
  *
- * `_createDecoder` is mediabunny's internal factory (1.58.1, pinned). The
+ * `_createDecoder` is mediabunny's internal factory (1.61.3, pinned; unchanged since 1.58.1). The
  * unit test fails if a mediabunny upgrade removes it; `holdDecoder` throws
  * rather than export without the hold.
  */
