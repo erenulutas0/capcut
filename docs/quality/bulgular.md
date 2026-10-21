@@ -1,5 +1,40 @@
 **Yazıldığı koşu:** 11 Ekim 2026 öğleden sonra, dal `worktree-agent-a511c0275d7647e51` (önceki bulgular: aynı gün, `b8e355f`). O raporda açık kalan üç şey üzerinde çalışıldı: aramanın yanlış karta göndermesi, editörün her videoyu 1080p’ye büyütmesi, 720p’den küçük kaynakların büyütülmesi. Aşağıda her biri için aynı ölçünün önceki → şimdiki değeri var. Açık kalanlar en başta.
 
+### 21 Ekim — 20 Ekim raporunda bütçe dışı kalan 13 ölçü: hangisi neden duruyor (dal `worktree-agent-a5fb112d824a4f8e6`)
+
+20 Ekim raporunun 16 bütçe dışı ölçüsünden üçü ("Editör, video yok (telefon)": 44 px, 24 px, Tab) ölçüm hatasıydı ve
+`3868d4c`'de düzeltildi (editör canlanmadan ölçülüyordu). Kalan 13'ün her biri okundu; **hiçbiri ucuz bir ürün hatası
+değil, hiçbir bütçe değişmedi.** Bu not yeni bir ölçüm koşusu değildir; sayılar 20 Ekim raporunundur (`a922aec`).
+
+**Arama — 12 ölçü** (Türkçe kör küme 7, İngilizce kör küme 5). Türkçe: ilk satır doğru iş %77,2 (≥ %85), ilk üçte
+%81,9 (≥ %90), yapılabilen işe "Bunu henüz yapamıyoruz." %2 (≤ %0; 149 ifadenin 3'ü), "yapamıyoruz" yakalama %87,5 ve
+isabet %87,5 (≥ %95), listede olmayan isteğe dürüst cevap %65 (≥ %80), anlamsız yazıya kart önermeme %88,9 (≥ %90).
+İngilizce: ilk satır %76,2, ilk üç %79,5, yapılabilen işe "yapamıyoruz" %0,8 (122'nin 1'i), yakalama %85,7, listede
+olmayana dürüst cevap %62,5 (8 ifadenin 5'i). Neden duruyor:
+- Hepsi **eşleştirmenin** sınırı, bir kod hatası değil. En pahalı hata ("yanlış ama emin") iki kümede de bütçe
+  içinde (%3 / %2,6). Kaçanların çoğu uzun, derdini anlatan cümleler ya da başka bir işin kelimesini taşıyan
+  istekler: "i just need the sound, not the picture" → *picture* "Videodan fotoğraf al" (yapılamayan) satırını
+  getiriyor; "…yüzler neredeyse hiç seçilmiyor… aydınlansa yeter" → *yüz* "Yüzü gizle"yi.
+- Bunlar ucuz görünür (bir kelime, bir kural) ama **kör kümenin kaçanlarına bakarak kural eklemek ölçümü bozar**
+  (README, "Ayar / ayrı tutma kuralı"): sayı bir daha kullanılamaz ve yeni bir kör küme yazdırmak gerekir. 11 Ekim'deki
+  iki tur kelime listesi + ek kuralı da bunu düzeltmedi (aşağıda "Hâlâ açık", madde 1). Doğru yol bir arama çalışmasıdır:
+  önce dördüncü bir kör küme (Türkçe ve İngilizce) yazdırılır, sonra ya gerçek kullanıcı cümleleri ya da cihazda
+  küçük bir anlam modeli (ücretsiz, makineden çıkmayan) denenir. Bu iş bu dalda yapılmadı.
+
+**`out.notFaststart` — 1 ölçü** (10 / 10 kaydedilen dosyada dizin sonda; bütçe 0). Neden: diske yazan yol (kaydetme
+penceresi ve sayfanın kendi deposu, `web/src/adapters/export/outputSink.ts`) dosyayı `fastStart: false` ile yazar —
+hiçbir parça bellekte tutulmaz; 60 dakikalık / 4 GiB'lık sınırlar bu yüzden tutuyor (ADR-013, ADR-029). Bellekteki yol
+zaten `'in-memory'` ile dizini başa koyuyor. Dizini başa almanın üç yolu var, üçü de ucuz değil:
+- mediabunny `fastStart: 'reserve'`: başta yer ayırır ama **her iz için en çok paket sayısını önceden** ister; iki
+  dışa aktarma yolunun (yeniden kodlama ve görüntüye dokunmayan kopya) ikisinde de iz başına sayı hesaplanmalı ve az
+  tahmin edilirse dosya sonunda kapatılamaz — indirmenin sonunda hata. Bütün yolların uzun dosya ölçümüyle
+  (`docs/perf/2026-10-15-long-export.md`) yeniden doğrulanması gerekir.
+- `'fragmented'`: parçalı MP4 olur; "Her yerde açılsın"ın sözüyle çelişir (bazı oynatıcılar ve siteler sevmez).
+- Bitince dosyayı yeniden yazmak (dizini başa taşıyıp kaydırmak): 4 GiB'lık bir dosyada diske iki kez yazmak.
+Etkisi: dosya bilgisayarda ve telefonda olağan biçimde açılır; yalnızca **internetten inerken ya da bir sayfaya
+gömülüyken** tamamı gelmeden oynamaz. Bir ADR ve kurucu kararı gerektirir (hangi yol, hangi bedel); bu dalda
+değiştirilmedi.
+
 ### 20 Ekim — GIF: "Orta" varsayılan, "Büyük", 10 MB uyarısı; telefonda ana düğme ekranda (ADR-046 eki; dal `worktree-agent-a0999750006c187e8`)
 
 967 ölçü: **852 bütçe içinde, 16 dışında**, 9 ölçülemedi, 90 bütçesiz. Farklı ekran **0** — ilk koşuda 32 ekran
