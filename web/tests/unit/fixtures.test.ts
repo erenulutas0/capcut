@@ -24,7 +24,7 @@ function load(file: string): unknown {
   return JSON.parse(readFileSync(join(FIXTURE_ROOT, file), 'utf8'));
 }
 
-describe('EDL v5 shared fixtures', () => {
+describe('EDL v6 shared fixtures', () => {
   it('manifest covers every file on disk', () => {
     const onDisk = [
       ...readdirSync(join(FIXTURE_ROOT, 'valid')).map((f) => `valid/${f}`),
@@ -33,6 +33,7 @@ describe('EDL v5 shared fixtures', () => {
       ...readdirSync(join(FIXTURE_ROOT, 'legacy-v2')).map((f) => `legacy-v2/${f}`),
       ...readdirSync(join(FIXTURE_ROOT, 'legacy-v3')).map((f) => `legacy-v3/${f}`),
       ...readdirSync(join(FIXTURE_ROOT, 'legacy-v4')).map((f) => `legacy-v4/${f}`),
+      ...readdirSync(join(FIXTURE_ROOT, 'legacy-v5')).map((f) => `legacy-v5/${f}`),
     ].sort();
     const listed = [
       ...manifest.valid.map((entry) => entry.file),
@@ -84,9 +85,12 @@ describe('EDL v5 shared fixtures', () => {
       const result = loadProject(raw);
       expect(result.ok).toBe(verdict === 'valid');
       if (result.ok) {
-        expect(result.project.schemaVersion).toBe(5);
+        expect(result.project.schemaVersion).toBe(6);
         // No migration gives a line a speaker: only a transcript that told voices apart does (ADR-043).
-        expect(JSON.stringify(result.project)).not.toContain('"speaker"');
+        // (A v5 recipe may already carry them; they are kept as they are.)
+        if (!file.startsWith('legacy-v5/')) expect(JSON.stringify(result.project)).not.toContain('"speaker"');
+        // No migration turns "Sesi düzelt" on (ADR-050): an old project sounds as it did.
+        expect('soundFix' in result.project).toBe(false);
         if (file.startsWith('legacy-v1/')) {
           // v1 never had captions: an empty list is added, nothing else changes.
           expect(result.project.captionTracks).toEqual([]);
@@ -94,10 +98,11 @@ describe('EDL v5 shared fixtures', () => {
           const { schemaVersion: _c, captionTracks: _d, ...after } = result.project as unknown as Record<string, unknown>;
           expect(after).toEqual(before);
         } else {
-          // v2 → v3 (ADR-036), v3 → v4 (ADR-037) and v4 → v5 (ADR-043) are the number alone: captions,
-          // cues and all the rest are kept as they were, and no enhancement setting appears that was not there.
+          // v2 → v3 (ADR-036), v3 → v4 (ADR-037), v4 → v5 (ADR-043) and v5 → v6 (ADR-050) are the number
+          // alone: captions, cues and all the rest are kept as they were, and no enhancement setting appears
+          // that was not there.
           expect('enhance' in result.project).toBe('enhance' in (raw as Record<string, unknown>));
-          if (!file.startsWith('legacy-v4/')) expect('enhance' in result.project).toBe(false);
+          if (!file.startsWith('legacy-v4/') && !file.startsWith('legacy-v5/')) expect('enhance' in result.project).toBe(false);
           const { schemaVersion: _a, ...before } = raw as Record<string, unknown>;
           const { schemaVersion: _c, ...after } = result.project as unknown as Record<string, unknown>;
           expect(after).toEqual(before);

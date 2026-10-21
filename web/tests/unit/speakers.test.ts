@@ -65,8 +65,8 @@ const label = (speaker: number) => `${speaker}. kişi`;
 describe('the shape: a small position number on a transcript line, nothing else', () => {
   it('is stored on the line, and left off where the voice is not known', () => {
     const project = spoken();
-    expect(project.schemaVersion).toBe(5);
-    expect(EDL_SCHEMA_VERSION).toBe(5);
+    expect(project.schemaVersion).toBe(EDL_SCHEMA_VERSION);
+    expect(EDL_SCHEMA_VERSION).toBe(6);
     expect(cues(project)).toEqual([
       { cueId: 'q_001', startUs: 1 * S, endUs: 3 * S, text: 'Merhaba, başlayalım mı?', speaker: 1 },
       { cueId: 'q_002', startUs: 4 * S, endUs: 6 * S, text: 'Olur, hazırım.', speaker: 2 },
@@ -124,13 +124,13 @@ describe('the shape: a small position number on a transcript line, nothing else'
 describe('old recipes: the number changes and nothing else', () => {
   const legacy = readdirSync(join(FIXTURES, 'legacy-v4')).filter((name) => name !== 'v4-with-speaker.json');
 
-  it.each(legacy)('legacy-v4/%s opens as v5, identical apart from the number', (name) => {
+  it.each(legacy)('legacy-v4/%s opens as the current version (v6 since ADR-050), identical apart from the number', (name) => {
     const raw = fixture(`legacy-v4/${name}`);
     expect(raw.schemaVersion).toBe(4);
     const loaded = loadProject(raw);
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
-    expect(loaded.project.schemaVersion).toBe(5);
+    expect(loaded.project.schemaVersion).toBe(EDL_SCHEMA_VERSION);
     expect({ ...loaded.project, schemaVersion: 4 }).toEqual(raw);
     // To the byte, in the order the keys were written: nothing is re-sorted or dropped on the way.
     expect(JSON.stringify({ ...loaded.project, schemaVersion: 4 })).toBe(JSON.stringify(raw));
@@ -160,10 +160,10 @@ describe('old recipes: the number changes and nothing else', () => {
     expect(issueCodes(loadProject(nonsense))).toEqual(['schema_version_unsupported']);
   });
 
-  it('v1, v2 and v3 still arrive at v5 by their own rules', () => {
+  it('v1, v2 and v3 still arrive at the current version by their own rules', () => {
     for (const dir of ['legacy-v1', 'legacy-v2', 'legacy-v3']) {
       const loaded = loadProject(fixture(`${dir}/single-clip.json`));
-      expect(loaded.ok && loaded.project.schemaVersion, dir).toBe(5);
+      expect(loaded.ok && loaded.project.schemaVersion, dir).toBe(EDL_SCHEMA_VERSION);
     }
   });
 });
@@ -194,9 +194,9 @@ describe('the stored project and the backup file', () => {
       const parsed = parseRecord(JSON.parse(before));
       expect(parsed.ok, name).toBe(true);
       if (!parsed.ok) continue;
-      // What autosave writes back on the first load: the same record with the recipe at v5.
+      // What autosave writes back on the first load: the same record with the recipe at the current version (v6).
       const after = JSON.stringify(parsed.record);
-      expect(after, name).toBe(before.replace('"schemaVersion":4', '"schemaVersion":5'));
+      expect(after, name).toBe(before.replace('"schemaVersion":4', '"schemaVersion":6'));
     }
     // A v4 project with NO kesit (a video that was opened and not cut) too.
     const noKesit = { ...fixture('legacy-v4/single-clip.json'), clips: [] };
@@ -208,17 +208,17 @@ describe('the stored project and the backup file', () => {
     const project = spoken();
     const newer = { ...createRecord('p', 'Yarın', project, []), edl: { schemaVersion: EDL_SCHEMA_VERSION + 1, whatever: 'this build cannot know' } };
     expect(parseRecord(JSON.parse(JSON.stringify(newer)))).toEqual({ ok: false, reason: 'edl_newer' });
-    expect(isNewerRecipe({ schemaVersion: 6 })).toBe(true);
+    expect(isNewerRecipe({ schemaVersion: 7 })).toBe(true);
     expect(isNewerRecipe({ schemaVersion: 99 })).toBe(true);
     // Not newer: this build's own, older ones, and anything that is not a version number.
-    for (const edl of [{ schemaVersion: 5 }, { schemaVersion: 4 }, { schemaVersion: 1 }, { schemaVersion: '6' }, { schemaVersion: 6.5 }, { schemaVersion: Number.POSITIVE_INFINITY }, {}, null, 'x', [6]]) {
+    for (const edl of [{ schemaVersion: 6 }, { schemaVersion: 5 }, { schemaVersion: 4 }, { schemaVersion: 1 }, { schemaVersion: '7' }, { schemaVersion: 6.5 }, { schemaVersion: Number.POSITIVE_INFINITY }, {}, null, 'x', [7]]) {
       expect(isNewerRecipe(edl), JSON.stringify(edl)).toBe(false);
     }
     // A broken recipe of this build's own version is still "invalid", as before.
     const broken = { ...createRecord('p', '', project, []), edl: { ...project, extra: true } };
     expect(parseRecord(JSON.parse(JSON.stringify(broken)))).toEqual({ ok: false, reason: 'edl_invalid' });
     // The validator's own answer for a newer number is unchanged: refused before anything else is looked at.
-    expect(issueCodes(validateProject({ schemaVersion: 6 }))).toEqual(['schema_version_unsupported']);
+    expect(issueCodes(validateProject({ schemaVersion: 7 }))).toEqual(['schema_version_unsupported']);
   });
 });
 

@@ -1,12 +1,13 @@
 /**
- * EDL v5 — the canonical, portable editing recipe (doc 10).
+ * EDL v6 — the canonical, portable editing recipe (doc 10).
  *
  * v2 = v1 + `captionTracks` (ADR-015). v3 = v2 + caption tracks written by
  * the on-device transcript (ADR-036): `origin: 'transcript'`, the spans that
  * could not be written (`unclear`), and a higher line limit. v4 = v3 + the
  * optional `enhance` setting ("İyileştir", ADR-037). v5 = v4 + an optional
- * `speaker` on a line of a transcript track (ADR-043). Everything else is
- * unchanged, so v1 … v4 recipes are read through `migrateProject`
+ * `speaker` on a line of a transcript track (ADR-043). v6 = v5 + the optional
+ * `soundFix` setting ("Sesi düzelt" in the editor, ADR-050). Everything else
+ * is unchanged, so v1 … v5 recipes are read through `migrateProject`
  * (migration.ts) and never rejected.
  *
  * It carries asset *identities* and edit semantics only. Local URIs, blob URLs,
@@ -16,7 +17,7 @@
 
 import type { Micros } from './time';
 
-export const EDL_SCHEMA_VERSION = 5;
+export const EDL_SCHEMA_VERSION = 6;
 
 export type AssetKind = 'video' | 'audio';
 export type AspectRatio = '9:16' | '16:9' | '1:1';
@@ -168,23 +169,47 @@ export interface EnhanceV4 {
 
 export const ENHANCE_STRENGTHS_V4: readonly EnhanceStrengthV4[] = ['light', 'auto', 'strong'];
 
+/**
+ * "Sesi düzelt" in the editor (ADR-050): the whole mixed sound of every
+ * download — the video's sound and the music together — is measured and
+ * brought to `targetLufs` on the device, with the true-peak limit of the
+ * "Sesi düzelt" card (`domain/soundFix.ts`, ADR-049). Absent: off, the sound
+ * is mixed as always. Like `enhance`, the recipe only says that it is wanted:
+ * the gains are measured from the sound itself at download time.
+ *
+ * `targetLufs` is the only target there is (`TARGET_LUFS`, −16). It is
+ * written so the recipe says what it asks for; any other number is refused
+ * (`sound_fix_invalid`) rather than quietly read as −16.
+ */
+export const SOUND_FIX_TARGET_LUFS_V6 = -16;
+export const SOUND_FIX_TARGETS_V6: readonly number[] = [SOUND_FIX_TARGET_LUFS_V6];
+
+export interface SoundFixV6 {
+  targetLufs: number;
+}
+
+/** The v5 recipe (ADR-043): the same shape, before `soundFix` existed. */
+export interface LegacyProjectV5 extends Omit<Project, 'schemaVersion' | 'soundFix'> {
+  schemaVersion: 5;
+}
+
 /** The v4 recipe (ADR-037): the same shape, before a line could name its speaker. */
-export interface LegacyProjectV4 extends Omit<Project, 'schemaVersion'> {
+export interface LegacyProjectV4 extends Omit<Project, 'schemaVersion' | 'soundFix'> {
   schemaVersion: 4;
 }
 
 /** The v3 recipe (ADR-036): the same shape, before `enhance` existed. */
-export interface LegacyProjectV3 extends Omit<Project, 'schemaVersion' | 'enhance'> {
+export interface LegacyProjectV3 extends Omit<Project, 'schemaVersion' | 'enhance' | 'soundFix'> {
   schemaVersion: 3;
 }
 
 /** The v2 recipe (ADR-015/016): the same shape, before transcript tracks existed. */
-export interface LegacyProjectV2 extends Omit<Project, 'schemaVersion' | 'enhance'> {
+export interface LegacyProjectV2 extends Omit<Project, 'schemaVersion' | 'enhance' | 'soundFix'> {
   schemaVersion: 2;
 }
 
 /** The v1 recipe as stored by older builds. Only migration.ts reads it. */
-export interface LegacyProjectV1 extends Omit<Project, 'schemaVersion' | 'captionTracks' | 'enhance'> {
+export interface LegacyProjectV1 extends Omit<Project, 'schemaVersion' | 'captionTracks' | 'enhance' | 'soundFix'> {
   schemaVersion: 1;
 }
 
@@ -200,6 +225,8 @@ export interface Project {
   captionTracks: CaptionTrackV2[];
   /** v4 (ADR-037). Absent: the picture is not enhanced. */
   enhance?: EnhanceV4;
+  /** v6 (ADR-050). Absent: the sound is not evened out. */
+  soundFix?: SoundFixV6;
 }
 
 export const PROJECT_TOP_LEVEL_KEYS = [
@@ -213,6 +240,7 @@ export const PROJECT_TOP_LEVEL_KEYS = [
   'export',
   'captionTracks',
   'enhance',
+  'soundFix',
 ] as const;
 
 export const ASPECT_RATIOS: readonly AspectRatio[] = ['9:16', '16:9', '1:1'];

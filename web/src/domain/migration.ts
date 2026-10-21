@@ -3,8 +3,8 @@
  *
  * v1 → v2 only adds `captionTracks` (ADR-015), so the migration is lossless
  * and mechanical: a v1 recipe gets an empty caption list and nothing else
- * changes. v2 → v3 (ADR-036), v3 → v4 (ADR-037) and v4 → v5 (ADR-043) change
- * nothing in an existing recipe but the number. Everything that reads stored
+ * changes. v2 → v3 (ADR-036), v3 → v4 (ADR-037), v4 → v5 (ADR-043) and
+ * v5 → v6 (ADR-050) change nothing in an existing recipe but the number. Everything that reads stored
  * or imported recipes goes through `loadProject` or, for a project record,
  * `loadStoredProject`; `validateProject` itself only knows the current schema.
  *
@@ -38,7 +38,13 @@ function carriesSpeaker(input: Record<string, unknown>): boolean {
 export function migrateProject(input: unknown): unknown {
   if (!isPlainObject(input)) return input;
   const version = input.schemaVersion;
-  if (version !== 1 && version !== 2 && version !== 3 && version !== 4) return input;
+  if (version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== 5) return input;
+  // `soundFix` is v6 (ADR-050): no older recipe has it.
+  if ('soundFix' in input) return input;
+  // v5 → v6: the number only. v6 only ADDS the optional `soundFix` setting,
+  // so every valid v5 recipe is a valid v6 recipe whose sound is not evened
+  // out — the download sounds exactly as it did (the setting is off).
+  if (version === 5) return { ...input, schemaVersion: EDL_SCHEMA_VERSION };
   // `speaker` on a line is v5 (ADR-043): no older recipe has it.
   if (carriesSpeaker(input)) return input;
   // v4 → v5: the number only. v5 only ADDS the optional `speaker` of a

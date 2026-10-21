@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "valid": [
     {
       "file": "valid/single-clip.json"
@@ -62,6 +62,12 @@
     },
     {
       "file": "valid/caption-transcript-speaker-highest.json"
+    },
+    {
+      "file": "valid/sound-fix-on.json"
+    },
+    {
+      "file": "valid/sound-fix-with-music-and-enhance.json"
     }
   ],
   "invalid": [
@@ -211,6 +217,36 @@
     },
     {
       "file": "invalid/enhance-not-an-object.json",
+      "expectedIssueCodes": [
+        "not_an_object"
+      ]
+    },
+    {
+      "file": "invalid/sound-fix-other-target.json",
+      "expectedIssueCodes": [
+        "sound_fix_invalid"
+      ]
+    },
+    {
+      "file": "invalid/sound-fix-target-as-text.json",
+      "expectedIssueCodes": [
+        "sound_fix_invalid"
+      ]
+    },
+    {
+      "file": "invalid/sound-fix-no-target.json",
+      "expectedIssueCodes": [
+        "sound_fix_invalid"
+      ]
+    },
+    {
+      "file": "invalid/sound-fix-unknown-field.json",
+      "expectedIssueCodes": [
+        "unknown_field"
+      ]
+    },
+    {
+      "file": "invalid/sound-fix-not-an-object.json",
       "expectedIssueCodes": [
         "not_an_object"
       ]
@@ -405,6 +441,26 @@
     },
     {
       "file": "legacy-v4/v4-with-speaker.json",
+      "expect": "invalid"
+    },
+    {
+      "file": "legacy-v5/single-clip.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v5/doc10-example.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v5/caption-transcript-speakers.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v5/enhance-light-with-music.json",
+      "expect": "valid"
+    },
+    {
+      "file": "legacy-v5/v5-with-sound-fix.json",
       "expect": "invalid"
     }
   ]
