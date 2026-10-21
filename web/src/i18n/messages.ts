@@ -921,6 +921,8 @@ export const tr = {
   'download.one': 'Kesiti indir',
   'download.all': 'Hepsini birleştirip indir',
   'download.allShort': 'Hepsini indir',
+  'download.waitMusic': 'Müzik açılıyor… İndirme, müzik hazır olunca açılır.',
+  'download.waitVideo': 'Video okunuyor… İndirme, video hazır olunca açılır.',
   'download.running.waiting': 'Hazırlanıyor…',
   'download.saved': 'Kaydedildi: {name}',
   'download.savedWhere': 'Kaydetme penceresinde seçtiğin klasörde.',

@@ -167,6 +167,52 @@ test.describe('editor', () => {
     expect(external, `beklenmeyen dış istek: ${external.join(', ')}`).toEqual([]);
   });
 
+  test('download waits while the music is still being read, and says so', async ({ page }) => {
+    // CI run 39557873032: a press while the music was being read made the
+    // file without it, and its "Kaydedildi" vanished when the music arrived.
+    // Here the music's read is made slow on purpose (its probe element hears
+    // `loadedmetadata` 1.5 s late), so the press always lands inside it.
+    test.setTimeout(120_000);
+    await page.addInitScript(() => {
+      const own = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'onloadedmetadata');
+      if (!own?.get || !own.set) return;
+      const { get, set } = own;
+      Object.defineProperty(HTMLAudioElement.prototype, 'onloadedmetadata', {
+        configurable: true,
+        get() {
+          return get.call(this);
+        },
+        set(handler: unknown) {
+          if (typeof handler !== 'function') {
+            set.call(this, handler);
+            return;
+          }
+          set.call(this, function (this: HTMLMediaElement, event: Event) {
+            window.setTimeout(() => (handler as (event: Event) => void).call(this, event), 1500);
+          });
+        },
+      });
+    });
+    await installSavePicker(page);
+    await openEditor(page);
+    await importSample(page);
+    await addKesit(page, '00:00.000', '00:02.000');
+    await page.getByTestId('audio-input').setInputFiles(SAMPLE_AUDIO);
+
+    await expect(page.getByTestId('kesit-download')).toBeDisabled();
+    await expect(page.getByTestId('download-all')).toBeDisabled();
+    await expect(page.getByTestId('download-wait-source')).toHaveText(/Müzik açılıyor/);
+    // Nothing was started by the wait.
+    expect(await page.evaluate(() => (window as unknown as { __pickerCalls: string[] }).__pickerCalls)).toEqual([]);
+
+    // The music arrives; a press now makes the download with it.
+    await expect(page.locator('audio.visually-hidden')).toHaveCount(1);
+    await expect(page.getByTestId('download-wait-source')).toHaveCount(0);
+    await page.getByTestId('kesit-download').click();
+    await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
+    expect(await page.evaluate(() => (window as unknown as { __pickerCalls: string[] }).__pickerCalls)).toHaveLength(1);
+  });
+
   test('aspect presets change the preview frame geometry', async ({ page }) => {
     await openEditor(page);
     await importSample(page);
