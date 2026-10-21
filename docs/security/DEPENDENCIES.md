@@ -12,12 +12,12 @@ yazı tipi veya stil yüklenmez (CSP `default-src 'self'`, e2e "nothing leaves t
 
 | Paket | Sürüm | Lisans | Nerede çalışır | Not |
 |---|---|---|---|---|
-| `next` (istemci çalışma zamanı, yönlendirici) | 16.3.8 | MIT | Her sayfa | |
-| `react` | 19.3.1 | MIT | Her sayfa | Sayfalara giden kopya Next'in derlediği `19.3.0-canary-cbb046ab-20260731`'dir (App Router kendi React'ını paketler; `_next/static`'te başka sürüm yok, 2026-10-15). `node_modules`'taki sürüm birim testlerinde ve tiplerde çalışır |
+| `next` (istemci çalışma zamanı, yönlendirici) | 16.4.0 | MIT | Her sayfa | 2026-10-21'de 16.3.8'den (ADR-051) |
+| `react` | 19.3.1 | MIT | Her sayfa | Sayfalara giden kopya Next'in derlediği `19.3.0-canary-278794d7-20261002`'dir (App Router kendi React'ını paketler; `_next/static`'te başka sürüm yok, Next 16.4.0 ile 2026-10-21; 16.3.8'de `cbb046ab-20260731` idi). `node_modules`'taki sürüm birim testlerinde ve tiplerde çalışır |
 | `react-dom` | 19.3.1 | MIT | Her sayfa | aynı |
 | `scheduler` (react-dom bağımlılığı) | 0.28.0 | MIT | Her sayfa | |
 | `@swc/helpers` (next bağımlılığı) | 0.5.23 | Apache-2.0 | Derleyici yardımcıları | |
-| `mediabunny` | 1.58.1 | **MPL-2.0** | Yalnız editör: dosya açma/probe (sayfada, `import()` ile tembel), dışa aktarma ve sessizlik worker'ları | Değiştirilmeden kullanılıyor |
+| `mediabunny` | 1.61.3 | **MPL-2.0** | Yalnız editör: dosya açma/probe (sayfada, `import()` ile tembel), dışa aktarma ve sessizlik worker'ları | Değiştirilmeden kullanılıyor |
 | Inter (yazı tipi, 700, latin + latin-ext `woff2`) | — | **SIL OFL 1.1** | Yalnız altyazı yakma/önizleme ve GIF yazısı, ihtiyaç olunca | Lisans metni dosyaların yanında yayınlanıyor: `web/public/fonts/caption/OFL.txt` |
 | `gifenc` | 1.0.3 | MIT (© 2017 Matt DesLauriers) | Yalnız "GIF yap"ın worker'ında (ADR-046): renk seçimi (PnnQuant) ve GIF/LZW yazıcısı | 2026-10-17 eklendi. Bağımlılığı yok; pakete giren `dist/gifenc.esm.js` 9 KB (küçültülmüş). Son sürüm 1.0.3 (npm kaydı en son 2022-05'te değişmiş): bakımı **etkin değil**, ama yalnızca hesap yapar (ağ, dosya, `eval` yok) ve GIF89a biçimi donmuş bir biçimdir. Sarıldığı yer tek dosya (`web/src/adapters/gif/gifEncode.ts`): gerekirse kendi kodlayıcımızla değiştirilebilir. `npm audit --omit=dev` eklendikten sonra 0. Tipleri bizim (`web/src/types/gifenc.d.ts`) |
 
@@ -30,7 +30,7 @@ parça; açılış ekranı ve diğer işler bunu indirmez — ölçüm ADR-036 "
 
 | Paket | Sürüm (tam kilitli) | Lisans | Not |
 |---|---|---|---|
-| `@huggingface/transformers` | 4.3.0 | Apache-2.0 | Whisper ön/son işleme, kelime zamanı. Değiştirilmeden; bir kütüphane sızıntısı çağıran tarafta gideriliyor (`engine.ts`, `trackDecoderCaches`) |
+| `@huggingface/transformers` | 4.3.1 | Apache-2.0 | Whisper ön/son işleme, kelime zamanı. Değiştirilmeden; bir kütüphane sızıntısı çağıran tarafta gideriliyor (`engine.ts`, `trackDecoderCaches`) |
 | `onnxruntime-web` (transformers bağımlılığı) | 1.31.0-dev.20260914-8d85527a0 | MIT | JS yapıştırıcısı pakete girer; WebAssembly dosyası (aşağıda) paketten değil model deposundan çalışır |
 | `onnxruntime-common` | 1.31.0-dev.20260911-2a43ec07e | MIT | |
 | `@huggingface/jinja`, `@huggingface/tokenizers` | 0.5.10, 0.2.0 | MIT, Apache-2.0 | transformers bağımlılıkları |
@@ -68,19 +68,19 @@ girmez.
 
 | Paket | Sürüm | Lisans |
 |---|---|---|
-| `@next/env` | 16.3.8 | MIT |
-| `@next/swc-win32-x64-msvc` (platforma göre) | 16.3.8 | MIT |
+| `@next/env` | 16.4.0 | MIT |
+| `@next/swc-win32-x64-msvc` (platforma göre) | 16.4.0 | MIT |
 | `postcss`, `nanoid`, `picocolors`, `source-map-js` | 8.5.23, 3.3.19, 1.1.1, 1.2.1 | MIT, MIT, ISC, BSD-3-Clause |
 | `styled-jsx`, `client-only` | 5.1.6, 0.0.1 | MIT |
 | `caniuse-lite`, `baseline-browser-mapping` | 1.0.30001810, 2.11.25 | CC-BY-4.0, Apache-2.0 |
-| `sharp`, `@img/colour`, `detect-libc`, `semver` (next/image; statik dışa aktarmada kullanılmıyor) | 0.35.4, 1.1.0, 2.1.2, 7.8.5 | Apache-2.0, MIT, Apache-2.0, ISC |
-| `@img/sharp-win32-x64`, `@img/sharp-wasm32` (sharp'ın yerel ikilisi) | 0.35.4 | Apache-2.0 AND LGPL-3.0-or-later (libvips) |
+| `sharp`, `@img/colour`, `detect-libc`, `semver` (next/image; statik dışa aktarmada kullanılmıyor) | 0.35.5, 1.1.0, 2.1.2, 7.8.5 | Apache-2.0, MIT, Apache-2.0, ISC |
+| `@img/sharp-win32-x64`, `@img/sharp-wasm32` (sharp'ın yerel ikilisi) | 0.35.5 | Apache-2.0 AND LGPL-3.0-or-later (libvips) |
 | `@emnapi/runtime`, `tslib` | 1.11.3, 2.8.1 | MIT, 0BSD |
 | `@types/dom-webcodecs`, `@types/dom-mediacapture-transform` (mediabunny tipleri) | 0.1.13, 0.1.12 | MIT |
 
 Geliştirme bağımlılıkları (test, lint, tip): `@playwright/test` 1.63.0 (Apache-2.0),
-`@axe-core/playwright` 4.13.0 (MPL-2.0), `eslint` 9.39.1 (MIT), `eslint-config-next` 16.3.8 (MIT),
-`typescript` 5.9.3 (Apache-2.0), `vitest` 4.1.11 (MIT), `picomatch` 4.0.7 (MIT), `@types/*` (MIT).
+`@axe-core/playwright` 4.13.0 (MPL-2.0), `eslint` 9.39.5 (MIT), `eslint-config-next` 16.4.0 (MIT),
+`typescript` 6.0.3 (Apache-2.0), `vitest` 4.1.11 (MIT), `picomatch` 4.0.7 (MIT), `@types/*` (MIT).
 Hiçbiri yayınlanan siteye girmez.
 
 ## 3. Güvenlik taraması (2026-09-30)
@@ -134,6 +134,24 @@ Yükseltmenin zinciri değiştirmeyeceği görüldüğü için yükseltilmedi.
 Aynı gün tek yama yükseltmesi: `react`/`react-dom` 19.3.0 → 19.3.1 (14 Ekim; kilit dosyasında yalnız bu iki paket
 değişti, `scheduler` aynı). Yayınlanan pakete etkisi yok (yukarıdaki tablo notu).
 
+### 3.2 Yükseltme turu (2026-10-21, ADR-051)
+
+Yükseltilenler, alınmayanlar ve nedenleri [ADR-051](../adr/ADR-051-dependency-upgrades-october.md)'dedir. Tarama:
+
+| Komut | Önce | Sonra |
+|---|---|---|
+| `npm audit --omit=dev` (web) | 0 | 0 |
+| `npm audit` (web, dev dahil) | 6 high: `braces` zinciri (5, §3.1) + `vite` 6.4.3 (paketlediği `launch-editor`) | 5 high: yalnız `braces` zinciri (`vite` 6.4.4) |
+| `npm audit --omit=dev` (cloud/) | 0 | 0 |
+| `npm audit` (cloud/, dev dahil) | 1 moderate (`@vitest/mocker`) + high: miniflare'in `undici` 7.29.0 ve `sharp` 0.35.2'si | yalnız miniflare'in `undici`/`sharp`'ı (5 high; `@cloudflare/vitest-pool-workers` 0.22.0 → wrangler 4.124.0'a sabit) |
+
+**npm audit'in göremediği:** Next.js'in 14 Ekim 2026'da yayımladığı üç tavsiye (GHSA-673q-mjm6-r5xr ve
+GHSA-2464-fhr4-w9xw kritik uzaktan kod çalıştırma, GHSA-p3m5-59mp-jv5r Server Actions ile hizmet dışı bırakma)
+`next` `>=16.0.0 <=16.4.0`'ı kapsar; düzeltme 16.4.1. 21 Ekim'de bu tavsiyeler GitHub'ın genel tavsiye veritabanında
+henüz yoktu (`npm audit` 0 diyor). Üçü de bir Next **sunucusu** gerektirir; yayınlanan site statik dosyadır, sunucu
+yoktur. Yerel `next start`'ta (e2e) da koşulları yok: `src/`'de `'use cache'` ve `'use server'` yok (Server Action
+yok); görüntü açığı glibc Linux'ta ve `sharp` < 0.35.5 iledir, kilitte `sharp` 0.35.5. Ayrıntı ve karar ADR-051'de.
+
 ## 4. Kaynak haritası ve kaynak dosyalar (belge 11 "private source map")
 
 - `productionBrowserSourceMaps` kapalı (varsayılan; `web/next.config.ts` içinde açıkça yazıldı).
@@ -151,7 +169,7 @@ değişti, `scheduler` aynı). Yayınlanan pakete etkisi yok (yukarıdaki tablo 
 
 - **MPL-2.0 (mediabunny):** yürütülebilir biçimde dağıtımda (§3.2) alıcıya kaynak kodun nereden
   alınabileceği ve lisans bildirilmeli. Kaynak değiştirilmedi ve herkese açık
-  (npm `mediabunny@1.58.1`, github.com/Vanilagy/mediabunny), ama sitede bu bildirim henüz yok.
+  (npm `mediabunny@1.61.3`, github.com/Vanilagy/mediabunny), ama sitede bu bildirim henüz yok.
 - **MIT/Apache-2.0 (Next, React):** küçültülmüş paketlerde telif bildirimleri kalmıyor
   (paketlerde `@license` yorumu bulunmadı). Yaygın çözüm: sitede bir "üçüncü taraf bildirimleri"
   sayfası/dosyası. Bu belge o dosyanın kaynağı olarak kullanılabilir; eklenip eklenmeyeceği

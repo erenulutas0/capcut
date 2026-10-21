@@ -3,6 +3,30 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Bağımlılıklar: Next 16.4.0, mediabunny 1.61.3, TypeScript 6 — 21 Ekim 2026 (ADR-051; politika ve şema değişmedi)
+
+Yalnız en az iki haftalık sürümler, notları okunarak; bir grup bütün denetimlerden geçince kaldı.
+
+- **Yükseltilen:** `next` ve `eslint-config-next` 16.3.8 → 16.4.0, `mediabunny` 1.58.1 → 1.61.3,
+  `@huggingface/transformers` 4.3.0 → 4.3.1, `typescript` 5.9.3 → 6.0.3 (web ve cloud/), `eslint` 9.39.1 → 9.39.5,
+  `@types/node` 20.19.9 → 20.19.43, kilitte `vite` 6.4.3 → 6.4.4; cloud/'da `vitest` 4.1.9 → 4.1.11.
+- **Alınmayan:** Next 16.4.1/16.4.2, Playwright 1.64, axe 4.14, mediabunny 1.61.4+ (iki haftalık değil); ESLint 10
+  (Next'in React/import/jsx-a11y eklentileri desteklemiyor), TypeScript 7 (typescript-eslint desteklemiyor), vitest 5
+  (Node 22.12+ ister, CI Node 20), `@types/node` 21+ (çalışma zamanı Node 20), cloud/'da wrangler ve
+  `@cloudflare/vitest-pool-workers` (yayın aracı burada sınanamaz; paket yeni ada taşındı).
+- **Güvenlik:** `npm audit --omit=dev` web ve cloud/'da 0. Dev tarafında web 6 → 5 "high" (vite gitti; `braces`
+  zinciri sürüyor). Next.js'in 14 Ekim tavsiyeleri (iki kritik, bir yüksek) 16.4.0'ı da kapsıyor ama npm audit henüz
+  görmüyor; üçü de sunucu ister, yayınlanan site statik ve bizde `'use cache'`/Server Action yok. 16.4.1+ 28 Ekim'den
+  sonra alınmalı.
+- Sayfalara giden React kopyası `19.3.0-canary-278794d7-20261002`; e2e yapısının önbellek listesi 4,43 → 4,32 MB.
+
+**Sınamalar (yerel):** `tsc`, `eslint` temiz; birim **1614 / 1614** (93 dosya); e2e ve `/capcut` derlemeleri geçti;
+sayfalar sınaması **10 geçti, 6 atlandı** (bulut yolu kapalı, model dosyası yok); bütün e2e **527 geçti, 4 atlandı, 0
+düştü** (port 3198); cloud/ 39 + 32 + 60 geçti.
+
+**Doğrulanmayan:** CI; telefon, Safari, Firefox; gerçek Whisper modeliyle sınamalar (model dosyası yoktu);
+`npm run quality`; `wrangler dev`/`deploy`.
+
 ## Editör: müzik okunurken indirme bekler ve nedenini söyler — 21 Ekim 2026 (politika ve şema değişmedi)
 
 CI koşusu 39557873032'de "nothing is sent off the machine" iki dakika bekleyip düştü. Neden ürünün kendisiydi:
