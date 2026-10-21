@@ -1195,6 +1195,7 @@ export const tr = {
   'wizard.gif.small': 'Küçük',
   'wizard.gif.medium': 'Orta',
   'wizard.gif.large': 'Büyük',
+  'wizard.gif.xlarge': 'Çok büyük',
   'wizard.gif.tooLarge': 'Bu GIF 10 MB’tan büyük olacak; bazı uygulamalar kabul etmeyebilir. Küçük seçebilir ya da süreyi kısaltabilirsin.',
   'wizard.gif.sizeHint': 'Büyüdükçe GIF telefonda daha net görünür; dosyası da büyür.',
   'wizard.gif.oneSize': 'Bu video küçük; GIF videonun kendi boyutunda olur.',

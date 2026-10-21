@@ -971,6 +971,11 @@
    word, so the widest word ("Medium", "Küçük") fits a third of 320 px with room to spare; no word is
    shortened, and every option stays at least 44 px in both directions. */
 @media (max-width: 699px) {
+  /* All options of the row as tall as the tallest (a two-line "Çok büyük"): one row, one height. */
+  .gif-size {
+    align-items: stretch;
+  }
+
   .gif-size legend {
     float: none;
     margin: 0 0 6px;
@@ -984,7 +989,12 @@
     min-width: var(--tap);
     padding: 8px 4px;
     text-align: center;
-    white-space: nowrap;
+    /* Four sizes since 21 Oct 2026 ("Çok büyük", ADR-046 addendum 2): a two-word name may take two
+       lines inside its option, broken between its words only — never inside a word. */
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: keep-all;
+    line-height: 1.15;
   }
 }
 

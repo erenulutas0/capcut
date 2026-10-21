@@ -41,6 +41,8 @@ export interface Candidate {
   tolerance: number;
   /** Frame delays in hundredths, repeated: [8] = 12,5 fps; [7, 7, 6] = 15 fps. */
   delaysCs: number[];
+  /** Round 2: write each later frame as the rectangle around its changed pixels only (lossless). */
+  crop?: boolean;
 }
 
 // ------------------------------------------------------------------ palette
@@ -389,6 +391,48 @@ export interface Encoded {
   changedShare: number;
 }
 
+/**
+ * Round 2 (ADR-046 addendum 2), "kare farkı kırpma": a later frame written as only the rectangle around
+ * its changed (non-transparent) pixels. gifenc always writes the image at (0, 0); the four bytes of
+ * the image descriptor's left / top are patched right after it is written (the graphic control
+ * extension before it is 8 bytes: 21 F9 04 packed delay×2 index 00).
+ */
+function writeCropped(encoder: ReturnType<typeof GIFEncoder>, out: Uint8Array, width: number, height: number, delay: number): void {
+  let x0 = width;
+  let y0 = height;
+  let x1 = -1;
+  let y1 = -1;
+  for (let y = 0; y < height; y += 1) {
+    const row = y * width;
+    for (let x = 0; x < width; x += 1) {
+      if (out[row + x] !== TRANSPARENT) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        y1 = y;
+      }
+    }
+  }
+  if (x1 < 0) {
+    x0 = 0;
+    y0 = 0;
+    x1 = 0;
+    y1 = 0;
+  }
+  const cw = x1 - x0 + 1;
+  const ch = y1 - y0 + 1;
+  const sub = new Uint8Array(cw * ch);
+  for (let y = 0; y < ch; y += 1) sub.set(out.subarray((y0 + y) * width + x0, (y0 + y) * width + x0 + cw), y * cw);
+  const at = encoder.bytesView().length;
+  encoder.writeFrame(sub, cw, ch, { palette: null, repeat: 0, delay, transparent: true, transparentIndex: TRANSPARENT, dispose: 1 });
+  const view = encoder.bytesView();
+  if (view[at] !== 0x21 || view[at + 8] !== 0x2c) throw new Error('unexpected GIF frame layout');
+  view[at + 9] = x0 & 0xff;
+  view[at + 10] = x0 >> 8;
+  view[at + 11] = y0 & 0xff;
+  view[at + 12] = y0 >> 8;
+}
+
 export function encodeCandidate(frames: readonly Uint8Array[], width: number, height: number, c: Candidate): Encoded {
   const started = performance.now();
   const encoder = GIFEncoder({ initialCapacity: 1 << 20 });
@@ -406,6 +450,10 @@ export function encodeCandidate(frames: readonly Uint8Array[], width: number, he
       const changed = mapFrame(frame, width, height, cache, out, first ? null : shown, c.dither, c.tolerance);
       if (first) shown.set(out);
       else changedSum += changed / pixels;
+      if (!first && c.crop) {
+        writeCropped(encoder, out, width, height, c.delaysCs[i % c.delaysCs.length]! * 10);
+        return;
+      }
       encoder.writeFrame(out, width, height, {
         palette: first ? rowsOf(palette) : null,
         repeat: 0,

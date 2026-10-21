@@ -27,6 +27,11 @@ const SPECS = {
       '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest',
     ],
   },
+  /** A 9:16 phone-sized picture (720 × 1280, 2 s, no sound): large enough for GIF yap's fourth size, "Çok büyük" (540 × 960). */
+  verticalHd: {
+    name: 'dikey-hd.mp4',
+    args: ['-f', 'lavfi', '-i', 'testsrc2=size=720x1280:rate=30:duration=2', '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p'],
+  },
   /**
    * Speech-like tone with 0.5 s pauses only (1.5 s on, 0.5 s off, 6 s): the
    * default finds nothing (a gap is 0.7 s or more), "Kısa duraksamalar da"

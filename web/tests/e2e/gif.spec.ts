@@ -237,6 +237,31 @@ test('"Büyük" (ADR-046 addendum): a phone video at 360 × 640 — twice as wid
   expect(ratio).toBeLessThan(1.33);
 });
 
+test('"Çok büyük" (ADR-046 addendum 2): a 720 × 1280 phone video gives 540 × 960 — three times as wide as "Küçük" — about the size it said', async ({ page }, testInfo) => {
+  await openGif(page, wizardFixture('verticalHd')); // 720 × 1280, 2 s: taken whole
+  await expect(page.getByTestId('gif-size').getByRole('radio')).toHaveCount(4);
+  // "Orta" stays the first choice (founder's decision, 20 Oct 2026).
+  await expect(page.getByTestId('gif-size-medium')).toBeChecked();
+  await page.getByTestId('gif-size-xlarge').check();
+  await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+  await expect(estimate(page)).toHaveAttribute('data-width', '540');
+  await expect(estimate(page)).toHaveAttribute('data-height', '960');
+  const estimated = Number(await estimate(page).getAttribute('data-bytes'));
+  const made = await saveGif(page, testInfo, 'dikey-hd_gif.gif');
+  expect(made.gif).toMatchObject({ width: 540, height: 960, frames: 25, loops: 0, durationCs: 200 });
+  expect(ffprobeGif(made.path)).toEqual({ frames: 25, width: 540, height: 960 });
+  const ratio = made.bytes / estimated;
+  console.log(`GIF-ESTIMATE-XLARGE ${JSON.stringify({ estimated, actual: made.bytes, ratio })}`);
+  expect(ratio).toBeGreaterThan(0.75);
+  expect(ratio).toBeLessThan(1.33);
+  // Never larger than the video (ADR-041): a 640 × 360 video has no "Çok büyük" — its "Büyük" is already its own size.
+  await page.getByTestId('wizard-again').click();
+  await page.getByTestId('video-input').setInputFiles(OTHER);
+  await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'choose', { timeout: 60_000 });
+  await expect(page.getByTestId('gif-size').getByRole('radio')).toHaveCount(3);
+  await expect(page.getByTestId('gif-size-xlarge')).toHaveCount(0);
+});
+
 test('refusals: sound only, one frame, a broken index — the screens’ own sentences, nothing made', async ({ page }) => {
   await page.goto('/yap/gif/');
   await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'pick');

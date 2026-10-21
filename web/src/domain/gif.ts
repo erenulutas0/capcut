@@ -114,18 +114,22 @@ export function gifFrameTimesUs(range: GifRange): Micros[] {
 
 // ---------------------------------------------------------------- size
 
-export type GifSizeId = 'small' | 'medium' | 'large';
+export type GifSizeId = 'small' | 'medium' | 'large' | 'xlarge';
 
 /** Smallest first. */
-export const GIF_SIZE_IDS: readonly GifSizeId[] = ['small', 'medium', 'large'];
+export const GIF_SIZE_IDS: readonly GifSizeId[] = ['small', 'medium', 'large', 'xlarge'];
 
 /**
- * The long edge of each size ("Küçük", "Orta", "Büyük"). "Büyük" since 19 October 2026 (ADR-046
- * addendum): measured on real phone recordings, what a phone shows of a GIF depends far more on its
- * size than on its colours — VMAF of the GIF shown at the phone's width, median of 13 recordings,
- * 36 (320) → 62 (480) → 78 (640), while every palette and dithering choice moved it by 3 at most.
+ * The long edge of each size ("Küçük", "Orta", "Büyük", "Çok büyük"). "Büyük" since 19 October 2026
+ * (ADR-046 addendum): measured on real phone recordings, what a phone shows of a GIF depends far more
+ * on its size than on its colours — VMAF of the GIF shown at the phone's width, median of 13
+ * recordings, 36 (320) → 62 (480) → 78 (640), while every palette and dithering choice moved it by 3
+ * at most. "Çok büyük" (960) since 21 October (addendum 2, its pre-registered rule): phone-view VMAF
+ * (NEG model) 78 → 88; a 4-second GIF 11,5 MB (median of 12 recordings, at most 22 MB); ten seconds of
+ * its frames 259 MB in memory. 1280 and 1920 failed that rule on file size (4 s: 20 / 39 MB median)
+ * and on memory (461 / 1037 MB).
  */
-export const GIF_LONG_EDGE: Record<GifSizeId, number> = { small: 320, medium: 480, large: 640 };
+export const GIF_LONG_EDGE: Record<GifSizeId, number> = { small: 320, medium: 480, large: 640, xlarge: 960 };
 
 export interface GifSize {
   width: number;

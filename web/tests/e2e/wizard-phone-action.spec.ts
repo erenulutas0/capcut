@@ -14,6 +14,7 @@ import { wizardFixture } from './wizard-media';
  */
 
 const VERTICAL = () => wizardFixture('vertical'); // 360 × 640, 2 s, with sound
+const VERTICAL_HD = () => wizardFixture('verticalHd'); // 720 × 1280, 2 s: GIF yap has four sizes
 
 /**
  * The wizards with a step of their own (ADR-034), what each shows when it has looked at the video, and
@@ -98,53 +99,74 @@ for (const size of [
  * sized target (44 × 44, the quality budget `a11y.phone.*.under44`) and no word is cut or spills out
  * of its option.
  */
+// 21 October 2026 (ADR-046 addendum 2): a fourth size, "Çok büyük", where the video is larger than
+// "Büyük" — the four share the row the same way; a two-word name may take two lines inside its
+// option, broken between its words.
 for (const language of [
-  { prefix: '', locale: 'tr-TR', words: ['Küçük', 'Orta', 'Büyük'] },
-  { prefix: '/en', locale: 'en-US', words: ['Small', 'Medium', 'Large'] },
+  { prefix: '', locale: 'tr-TR', words: ['Küçük', 'Orta', 'Büyük'], words4: ['Küçük', 'Orta', 'Büyük', 'Çok büyük'] },
+  { prefix: '/en', locale: 'en-US', words: ['Small', 'Medium', 'Large'], words4: ['Small', 'Medium', 'Large', 'Extra large'] },
 ]) {
   for (const width of [320, 360, 390]) {
-    test.describe(`GIF yap's three sizes, ${width} px, ${language.locale}`, () => {
-      test.use({ viewport: { width, height: 780 }, hasTouch: true, locale: language.locale });
+    for (const four of [false, true]) {
+      test.describe(`GIF yap's ${four ? 'four' : 'three'} sizes, ${width} px, ${language.locale}`, () => {
+        test.use({ viewport: { width, height: 780 }, hasTouch: true, locale: language.locale });
 
-      test('Küçük, Orta and Büyük share one row, each at least 44 × 44, no word cut', async ({ page }) => {
-        await openWizard(
-          page,
-          'gif',
-          (p) => expect(p.getByTestId('gif-estimate')).toHaveAttribute('data-state', 'ready', { timeout: 60_000 }),
-          VERTICAL,
-          language.prefix,
-        );
-        const options = page.getByTestId('gif-size').locator('label.gif-size-option');
-        await expect(options).toHaveCount(3);
-        await expect(options).toHaveText(language.words);
-        const boxes = await options.evaluateAll((labels) =>
-          labels.map((label) => {
-            const box = label.getBoundingClientRect();
-            const word = label.querySelector('span') as HTMLElement;
-            const wordBox = word.getBoundingClientRect();
-            return {
-              top: box.top,
-              left: box.left,
-              right: box.right,
-              width: box.width,
-              height: box.height,
-              // The word is whole: it is not wider than it is drawn, and it lies inside its option.
-              wordWhole: word.scrollWidth <= Math.ceil(wordBox.width) && wordBox.left >= box.left && wordBox.right <= box.right,
-            };
-          }),
-        );
-        console.log(`GIF-SIZE-ROW ${JSON.stringify({ width, locale: language.locale, boxes })}`);
-        for (const box of boxes) {
-          expect(Math.abs(box.top - boxes[0]!.top), 'one row').toBeLessThan(1);
-          expect(box.width).toBeGreaterThanOrEqual(44);
-          expect(box.height).toBeGreaterThanOrEqual(44);
-          expect(box.left).toBeGreaterThanOrEqual(0);
-          expect(box.right).toBeLessThanOrEqual(width);
-          expect(box.wordWhole, 'the word is whole').toBe(true);
-        }
-        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        test(`${four ? 'Küçük, Orta, Büyük and Çok büyük' : 'Küçük, Orta and Büyük'} share one row, each at least 44 × 44, no word cut`, async ({ page }) => {
+          await openWizard(
+            page,
+            'gif',
+            (p) => expect(p.getByTestId('gif-estimate')).toHaveAttribute('data-state', 'ready', { timeout: 60_000 }),
+            four ? VERTICAL_HD : VERTICAL,
+            language.prefix,
+          );
+          const options = page.getByTestId('gif-size').locator('label.gif-size-option');
+          const words = four ? language.words4 : language.words;
+          await expect(options).toHaveCount(words.length);
+          await expect(options).toHaveText(words);
+          const boxes = await options.evaluateAll((labels) =>
+            labels.map((label) => {
+              const box = label.getBoundingClientRect();
+              const word = label.querySelector('span') as HTMLElement;
+              const wordBox = word.getBoundingClientRect();
+              return {
+                top: box.top,
+                left: box.left,
+                right: box.right,
+                width: box.width,
+                height: box.height,
+                // The word is whole: it is not wider than it is drawn, and it lies inside its option.
+                wordWhole: word.scrollWidth <= Math.ceil(wordBox.width) && wordBox.left >= box.left && wordBox.right <= box.right,
+                // A name of two words may take two lines, but no single word is broken across them.
+                eachWordOneLine: (() => {
+                  const text = word.firstChild as Text;
+                  let at = 0;
+                  for (const part of (text.textContent ?? '').split(' ')) {
+                    const range = document.createRange();
+                    range.setStart(text, at);
+                    range.setEnd(text, at + part.length);
+                    const lines = new Set([...range.getClientRects()].map((r) => Math.round(r.top)));
+                    if (lines.size !== 1) return false;
+                    at += part.length + 1;
+                  }
+                  return true;
+                })(),
+              };
+            }),
+          );
+          console.log(`GIF-SIZE-ROW ${JSON.stringify({ width, locale: language.locale, boxes })}`);
+          for (const box of boxes) {
+            expect(Math.abs(box.top - boxes[0]!.top), 'one row').toBeLessThan(1);
+            expect(box.width).toBeGreaterThanOrEqual(44);
+            expect(box.height).toBeGreaterThanOrEqual(44);
+            expect(box.left).toBeGreaterThanOrEqual(0);
+            expect(box.right).toBeLessThanOrEqual(width);
+            expect(box.wordWhole, 'the word is whole').toBe(true);
+            expect(box.eachWordOneLine, 'no word broken across lines').toBe(true);
+          }
+          expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        });
       });
-    });
+    }
   }
 }
 

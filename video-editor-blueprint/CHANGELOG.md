@@ -87,6 +87,36 @@ e2e `gif-memory.spec.ts` (yeni, 2) + `gif.spec.ts` (11) + `gif-a11y.spec.ts` (3)
 32 MiB / 8 GB bir yargı); telefonda iki geçişin süresi; yoğun kumlu kaynakta kareler dışındaki ~80 MiB'ın nedeni;
 olağan e2e takımının geri kalanı ve kalite katmanı.
 
+## GIF yap: dördüncü boyut "Çok büyük" (960) — ikinci kalite turu, 21 Ekim 2026 (ADR-046 ek 2; politika ve şema değişmedi)
+
+Kurucu yeni GIF'i telefonda denedi ("daha güzel olmuş, daha da geliştirebiliriz"; fark "240p 720p olmuş gibi") ve
+daha yüksek çözünürlüklü GIF istedi. Karar kuralı ölçümden önce yazıldı ve ayrı işlemle kaydedildi; iki ek (sonucu
+gördükten sonra, yeni adaylar ölçülmeden önce, saklı kümede doğrulama şartıyla) de öyle. Kareler bu kez ffmpeg'le
+değil **tarayıcının kendisiyle** (Chrome, GIF worker'ının çözme yolu) çizildi; 13 gerçek + 5 yapay kayıt, ölçü
+telefon ekranı genişliğinde VMAF-NEG (keskinleştirmeyi ödüllendirmeyen model), SSIM, bant, boyut, süre, bellek.
+
+- **Yeni boyut "Çok büyük"** (uzun kenar 960; dikey videoda 540 × 960): telefonda VMAF-NEG 78 → 88; 4 sn ortanca
+  11,5 MB (en çok 22 MB), 10 sn 28 MB; uygulamada 4 sn 1,9 sn'de, 10 sn 3,9 sn'de yapıldı (bu masaüstü); 10 sn'lik
+  kareler bellekte 259 MB. Tahmin gerçek kayıtlarda 25'te 23 ±%10 içinde; dışındaki ikisi her boyutta olduğu gibi
+  neredeyse kıpırdamayan tek video. Videodan büyük değil; varsayılan yine Orta; 10 MB uyarısı aynen.
+- **Değişmeyenler (kural geçirmedi):** küçültme süzgeci (`mip`, `box`: 4K kaynakta kare başına +107 / +157 ms; tek
+  seviyeli `mip2`: kazanç eşiğin altında), keskinleştirme (0,25 güçte telefonda +6–8 puan ama iki kümenin birinde
+  birer alt şartı ince farkla kaçırdı — kurucu kararına açık), eşikli saydamlık (T 2 bile Büyük'te −1,3 puan;
+  yapayda −4,1), kare farkı kırpma (kayıpsız ama kamera görüntüsünde %0).
+- **1280 ve 1920 sunulmadı:** 4 sn'de 20 / 39 MB (ortanca) ve 10 sn'lik kareler 461 / 1037 MB; iki geçişli yol
+  belleği çözer, dosya boyutunu çözmez.
+- Ölçüm araçları: `web/scripts/gif-eval/round2.mjs` (tarayıcıda çizim, `capture-page.ts`), `round2-summarize.mjs`
+  (kural adım adım), `app-check.mjs` (uygulamada tahmin, süre, tarayıcı belleği).
+
+**Sınamalar (yerel):** `tsc`, `eslint` temiz; birim **1614 / 1614**; `gif.spec.ts` + `gif-a11y.spec.ts` +
+`wizard-phone-action.spec.ts` **50 / 50** (yeni "Çok büyük" sınaması ve dört seçeneğin 320 / 360 / 390 px'te TR / EN
+tek satırda olduğu 6 sınama; ilk koşuda bu 6'sı düştü, seçenekler aynı boya getirilince geçti); `english.spec.ts` ve
+`share-target.spec.ts`'in GIF sınamaları 2 / 2. Kalite katmanının `visual`, `a11y`, `text`, `walkthrough` bölümleri:
+farklı ekran 2 (GIF seçim ekranı telefon TR / EN; bakılıp yalnız bu iki taban yenilendi), sonra 0; a11y 34 / 34.
+
+**Doğrulanmayan:** telefonda "Çok büyük" (görünüş, süre, bellek); tam e2e, bulut, Pages; Safari / Firefox. Masaüstü
+Chrome'un küçültmesi ölçüldü, Android Chrome'unki değil.
+
 ## Editör: müzik okunurken indirme bekler ve nedenini söyler — 21 Ekim 2026 (politika ve şema değişmedi)
 
 CI koşusu 39557873032'de "nothing is sent off the machine" iki dakika bekleyip düştü. Neden ürünün kendisiydi:
