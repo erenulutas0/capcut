@@ -966,6 +966,28 @@
   accent-color: var(--accent);
 }
 
+/* On a phone the three sizes share one row (21 Oct 2026: at 390 px and below "Büyük" fell to a second
+   line). "Boyut" stands above them, each option takes a third of the row and its dot sits above its
+   word, so the widest word ("Medium", "Küçük") fits a third of 320 px with room to spare; no word is
+   shortened, and every option stays at least 44 px in both directions. */
+@media (max-width: 699px) {
+  .gif-size legend {
+    float: none;
+    margin: 0 0 6px;
+  }
+
+  .gif-size-option {
+    flex: 1 1 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    min-width: var(--tap);
+    padding: 8px 4px;
+    text-align: center;
+    white-space: nowrap;
+  }
+}
+
 /* "Bu tarayıcı video dosyası hazırlayamıyor": said under the heading, before the user picks or chooses anything. */
 .browser-notice {
   align-items: flex-start;

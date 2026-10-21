@@ -46,9 +46,9 @@ const WIZARDS: { id: string; ready?: (page: Page) => Promise<void>; file?: () =>
 test.describe.configure({ timeout: 240_000 });
 test.use({ storageState: { cookies: [], origins: [] } });
 
-async function openWizard(page: Page, id: string, ready?: (page: Page) => Promise<void>, file = VERTICAL): Promise<void> {
+async function openWizard(page: Page, id: string, ready?: (page: Page) => Promise<void>, file = VERTICAL, language = ''): Promise<void> {
   await installSavePicker(page);
-  await page.goto(`/yap/${id}/`);
+  await page.goto(`${language}/yap/${id}/`);
   await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'pick');
   await page.getByTestId('video-input').setInputFiles(file());
   await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'choose', { timeout: 60_000 });
@@ -90,6 +90,62 @@ for (const size of [
       });
     }
   });
+}
+
+/**
+ * 21 October 2026: at 390 px and below, "Büyük" of GIF yap's size choice fell to a second line. The
+ * three sizes share one row at 320, 360 and 390 px, in Turkish and in English; each stays a finger-
+ * sized target (44 × 44, the quality budget `a11y.phone.*.under44`) and no word is cut or spills out
+ * of its option.
+ */
+for (const language of [
+  { prefix: '', locale: 'tr-TR', words: ['Küçük', 'Orta', 'Büyük'] },
+  { prefix: '/en', locale: 'en-US', words: ['Small', 'Medium', 'Large'] },
+]) {
+  for (const width of [320, 360, 390]) {
+    test.describe(`GIF yap's three sizes, ${width} px, ${language.locale}`, () => {
+      test.use({ viewport: { width, height: 780 }, hasTouch: true, locale: language.locale });
+
+      test('Küçük, Orta and Büyük share one row, each at least 44 × 44, no word cut', async ({ page }) => {
+        await openWizard(
+          page,
+          'gif',
+          (p) => expect(p.getByTestId('gif-estimate')).toHaveAttribute('data-state', 'ready', { timeout: 60_000 }),
+          VERTICAL,
+          language.prefix,
+        );
+        const options = page.getByTestId('gif-size').locator('label.gif-size-option');
+        await expect(options).toHaveCount(3);
+        await expect(options).toHaveText(language.words);
+        const boxes = await options.evaluateAll((labels) =>
+          labels.map((label) => {
+            const box = label.getBoundingClientRect();
+            const word = label.querySelector('span') as HTMLElement;
+            const wordBox = word.getBoundingClientRect();
+            return {
+              top: box.top,
+              left: box.left,
+              right: box.right,
+              width: box.width,
+              height: box.height,
+              // The word is whole: it is not wider than it is drawn, and it lies inside its option.
+              wordWhole: word.scrollWidth <= Math.ceil(wordBox.width) && wordBox.left >= box.left && wordBox.right <= box.right,
+            };
+          }),
+        );
+        console.log(`GIF-SIZE-ROW ${JSON.stringify({ width, locale: language.locale, boxes })}`);
+        for (const box of boxes) {
+          expect(Math.abs(box.top - boxes[0]!.top), 'one row').toBeLessThan(1);
+          expect(box.width).toBeGreaterThanOrEqual(44);
+          expect(box.height).toBeGreaterThanOrEqual(44);
+          expect(box.left).toBeGreaterThanOrEqual(0);
+          expect(box.right).toBeLessThanOrEqual(width);
+          expect(box.wordWhole, 'the word is whole').toBe(true);
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      });
+    });
+  }
 }
 
 test.describe('the action bar covers nothing a finger or the keyboard needs (GIF yap, 360 × 780, vertical video)', () => {
