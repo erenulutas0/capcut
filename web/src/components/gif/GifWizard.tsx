@@ -40,10 +40,11 @@ import { useGifDownload, useGifEstimate } from './useGif';
 /** Refusals the estimate already proves: the GIF could not be made either, so "GIF'i indir" waits. */
 const BLOCKING = new Set(['no_video_track', 'source_undecodable', 'source_incomplete', 'hdr_source_unsupported', 'no_frames_decoded', 'source_frames_missing', 'text_font_unavailable']);
 
-const SIZE_LABEL: Record<GifSizeId, 'wizard.gif.small' | 'wizard.gif.medium' | 'wizard.gif.large'> = {
+const SIZE_LABEL: Record<GifSizeId, 'wizard.gif.small' | 'wizard.gif.medium' | 'wizard.gif.large' | 'wizard.gif.xlarge'> = {
   small: 'wizard.gif.small',
   medium: 'wizard.gif.medium',
   large: 'wizard.gif.large',
+  xlarge: 'wizard.gif.xlarge',
 };
 
 let pageMeasureFn: MeasureGifText | null = null;

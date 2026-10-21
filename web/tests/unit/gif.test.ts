@@ -5,6 +5,7 @@ import {
   GIF_DEFAULT_DURATION_US,
   GIF_FIXED_BYTES,
   GIF_FRAME_DELAY_CS,
+  GIF_LONG_EDGE,
   GIF_MAX_DURATION_US,
   GIF_TEXT_MAX_CHARS,
   GIF_TEXT_MIN_PX,
@@ -97,7 +98,7 @@ describe('GIF yap: the part', () => {
 });
 
 describe('GIF yap: the size', () => {
-  it('is 320 (Küçük), 480 (Orta) or 640 (Büyük) on the long edge, in the video’s own shape', () => {
+  it('is 320 (Küçük), 480 (Orta), 640 (Büyük) or 960 (Çok büyük) on the long edge, in the video’s own shape', () => {
     expect(planGifSize(1280, 720, 'small')).toEqual({ width: 320, height: 180 });
     expect(planGifSize(1280, 720, 'medium')).toEqual({ width: 480, height: 270 });
     expect(planGifSize(1280, 720, 'large')).toEqual({ width: 640, height: 360 });
@@ -105,6 +106,10 @@ describe('GIF yap: the size', () => {
     // The founder's phone video (1080 × 1920): "Büyük" is twice as wide as "Küçük" on the phone's screen.
     expect(planGifSize(1080, 1920, 'large')).toEqual({ width: 360, height: 640 });
     expect(planGifSize(1080, 1080, 'medium')).toEqual({ width: 480, height: 480 });
+    // "Çok büyük" (ADR-046 addendum 2): 540 × 960 from a phone video, three times as wide as "Küçük".
+    expect(planGifSize(1080, 1920, 'xlarge')).toEqual({ width: 540, height: 960 });
+    expect(planGifSize(1920, 1080, 'xlarge')).toEqual({ width: 960, height: 540 });
+    expect(GIF_LONG_EDGE).toEqual({ small: 320, medium: 480, large: 640, xlarge: 960 });
   });
 
   it('is never larger than the video (ADR-041)', () => {
@@ -112,13 +117,18 @@ describe('GIF yap: the size', () => {
     expect(planGifSize(300, 200, 'small')).toEqual({ width: 300, height: 200 });
     expect(planGifSize(300, 200, 'medium')).toEqual({ width: 300, height: 200 });
     expect(planGifSize(400, 300, 'large')).toEqual({ width: 400, height: 300 });
+    expect(planGifSize(640, 360, 'xlarge')).toEqual({ width: 640, height: 360 });
+    expect(planGifSize(800, 600, 'xlarge')).toEqual({ width: 800, height: 600 });
     // Only sizes larger than the one before are offered: a size that is the video's own size again is not.
     expect(gifSizeChoices(300, 200)).toEqual(['small']);
     expect(gifSizeChoices(400, 300)).toEqual(['small', 'medium']);
     expect(gifSizeChoices(480, 270)).toEqual(['small', 'medium']);
     expect(gifSizeChoices(640, 360)).toEqual(['small', 'medium', 'large']);
-    expect(gifSizeChoices(1920, 1080)).toEqual(['small', 'medium', 'large']);
-    expect(gifSizeChoices(1080, 1920)).toEqual(['small', 'medium', 'large']);
+    // "Çok büyük" only where the video is larger than "Büyük": 800 × 600 has it at its own size.
+    expect(gifSizeChoices(800, 600)).toEqual(['small', 'medium', 'large', 'xlarge']);
+    expect(gifSizeChoices(1280, 720)).toEqual(['small', 'medium', 'large', 'xlarge']);
+    expect(gifSizeChoices(1920, 1080)).toEqual(['small', 'medium', 'large', 'xlarge']);
+    expect(gifSizeChoices(1080, 1920)).toEqual(['small', 'medium', 'large', 'xlarge']);
   });
 
   it('says "over 10 MB" only above ten million bytes, the "10 MB" the screen shows', () => {
