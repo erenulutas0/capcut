@@ -4,6 +4,8 @@ import { createEmptyProject, setEnhance, setFraming, setMusicAsset, setSoundFix,
 import { gifVideoRecipe, taggedFileName } from '@/application/taskRecipes';
 import type { AssetV1, Project } from '@/domain/edl';
 import {
+  GIF_PREDICT_FACTOR,
+  predictGifBytes,
   GIF_AUTO_PICK_LIMIT_MS,
   GIF_AUTO_PICK_MAX_BYTES,
   GIF_HELD_FRAMES_MAX_BYTES,
@@ -60,12 +62,28 @@ describe('GIF yap: the sharpest size that stays shareable', () => {
   });
 
   it('out of time: the largest size measured to fit, else the smallest — nothing still unmeasured', () => {
-    expect(sharpestShareableGifSize(four, {}, true)).toEqual({ kind: 'chosen', size: 'small', why: 'timeout_smallest' });
-    expect(sharpestShareableGifSize(four, { xlarge: 20 * MB }, true)).toEqual({ kind: 'chosen', size: 'small', why: 'timeout_smallest' });
+    expect(sharpestShareableGifSize(four, {}, { timedOut: true })).toEqual({ kind: 'chosen', size: 'small', why: 'timeout_smallest' });
+    expect(sharpestShareableGifSize(four, { xlarge: 20 * MB }, { timedOut: true })).toEqual({ kind: 'chosen', size: 'small', why: 'timeout_smallest' });
     // Sizes measured earlier (the user looked at them) count.
-    expect(sharpestShareableGifSize(four, { xlarge: 20 * MB, medium: 4 * MB, small: 1 * MB }, true)).toEqual({ kind: 'chosen', size: 'medium', why: 'timeout_fits' });
-    expect(sharpestShareableGifSize(four, { large: 'failed', small: 1 * MB }, true)).toEqual({ kind: 'chosen', size: 'small', why: 'timeout_fits' });
+    expect(sharpestShareableGifSize(four, { xlarge: 20 * MB, medium: 4 * MB, small: 1 * MB }, { timedOut: true })).toEqual({ kind: 'chosen', size: 'medium', why: 'timeout_fits' });
+    expect(sharpestShareableGifSize(four, { large: 'failed', small: 1 * MB }, { timedOut: true })).toEqual({ kind: 'chosen', size: 'small', why: 'timeout_fits' });
     expect(GIF_AUTO_PICK_LIMIT_MS).toBe(8_000);
+  });
+
+  it('out of time: a size not measured is predicted from a larger one measured over the limit (pixels × 1,3), and chosen if that fits', () => {
+    const pixels = { small: 320 * 180, medium: 480 * 270, large: 640 * 360, xlarge: 960 * 540 };
+    expect(GIF_PREDICT_FACTOR).toBe(1.3);
+    // Only Çok büyük measured (20 MB): Büyük 20 × 0,444 × 1,3 = 11,6 MB, Orta 20 × 0,25 × 1,3 = 6,5 MB → Orta.
+    expect(predictGifBytes('medium', ['large', 'xlarge'], { xlarge: 20 * MB }, pixels)).toBeCloseTo(6.5 * MB, -3);
+    expect(sharpestShareableGifSize(four, { xlarge: 20 * MB }, { timedOut: true, pixels })).toEqual({ kind: 'chosen', size: 'medium', why: 'timeout_predicted' });
+    // The nearest larger size measured is the one predicted from (Büyük 12 MB → Orta 12 × 0,5625 × 1,3 = 8,8 MB).
+    expect(predictGifBytes('medium', ['large', 'xlarge'], { xlarge: 40 * MB, large: 12 * MB }, pixels)).toBeCloseTo(8.775 * MB, -3);
+    expect(sharpestShareableGifSize(four, { xlarge: 40 * MB, large: 12 * MB }, { timedOut: true, pixels })).toEqual({ kind: 'chosen', size: 'medium', why: 'timeout_predicted' });
+    // A measured fit larger than any prediction wins; nothing measured larger: nothing predicted.
+    expect(sharpestShareableGifSize(four, { xlarge: 40 * MB, large: 8 * MB }, { timedOut: true, pixels })).toEqual({ kind: 'chosen', size: 'large', why: 'timeout_fits' });
+    expect(predictGifBytes('xlarge', [], {}, pixels)).toBeNull();
+    // Without pixel counts nothing is predicted.
+    expect(sharpestShareableGifSize(four, { xlarge: 28 * MB }, { timedOut: true })).toEqual({ kind: 'chosen', size: 'small', why: 'timeout_smallest' });
   });
 
   it('only the sizes this video has (never larger than the video, ADR-041)', () => {

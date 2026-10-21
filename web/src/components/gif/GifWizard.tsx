@@ -344,21 +344,27 @@ export default function GifWizard(host: WizardHostProps) {
   // The search for this part and text, and where it settled when it ran out of time (never changed afterwards).
   const searchKey = video && part ? `${video.objectUrl}|${part.startUs}|${part.endUs}|${texts.top}|${texts.bottom}` : '';
   const [settled, setSettled] = useState<{ key: string; auto: GifAutoSize } | null>(null);
+  // Each size's pixels, for the out-of-time prediction (bytes follow pixels; ADR-052 addendum 2).
+  const pixels: Partial<Record<GifSizeId, number>> = {};
+  for (const id of sizeChoices) {
+    const planned = planGifSize(videoWidth || 1, videoHeight || 1, id);
+    pixels[id] = planned.width * planned.height;
+  }
   const auto = settled && settled.key === searchKey ? settled.auto : sharpestShareableGifSize(sizeChoices, known);
   const userChose = userSize !== null && sizeChoices.includes(userSize);
   const chosenSize: GifSizeId = userChose ? (userSize as GifSizeId) : auto.size;
   // Still measuring the sizes from the largest down: no size is "chosen" yet, and no GIF is made at a guess.
   const picking = !asVideo && twoSizes && !userChose && auto.kind === 'measure';
   // At most `GIF_AUTO_PICK_LIMIT_MS` of that (main session's decision): then what is known decides, and says so.
-  const searchRef = useRef({ sizeChoices, known });
+  const searchRef = useRef({ sizeChoices, known, pixels });
   useEffect(() => {
-    searchRef.current = { sizeChoices, known };
+    searchRef.current = { sizeChoices, known, pixels };
   });
   useEffect(() => {
     if (!picking || !searchKey) return undefined;
     const timer = window.setTimeout(() => {
       const now = searchRef.current;
-      setSettled({ key: searchKey, auto: sharpestShareableGifSize(now.sizeChoices, now.known, true) });
+      setSettled({ key: searchKey, auto: sharpestShareableGifSize(now.sizeChoices, now.known, { timedOut: true, pixels: now.pixels }) });
     }, autoPickLimitMs());
     return () => window.clearTimeout(timer);
   }, [picking, searchKey]);
@@ -366,10 +372,12 @@ export default function GifWizard(host: WizardHostProps) {
 
   const job: GifJob | null = video && part && !asVideo ? { file: video.file, range: part, size: chosenSize, texts, origin } : null;
   const key = job ? keyFor(chosenSize) : '';
-  // The next size of the search follows the last one at once: nothing was changed by hand in between.
-  const searching = picking && sizeChoices.some((id) => done[keyFor(id)] !== undefined);
-  const latest = useGifEstimate(download.maker, job, key, done, record, searching ? 0 : undefined);
-  const current = job ? (done[key] ?? (latest.status !== 'idle' && latest.key === key ? latest : null)) : null;
+  // ADR-052 addendum 2: the search asks for every size in ONE measurement (one decode; sizes already known are
+  // left out when it starts) — the same request while its answers come in, so it is not started again; a size
+  // the user chose, or the one settled on, alone.
+  const toMeasure = picking ? sizeChoices : [chosenSize];
+  useGifEstimate(download.maker, job, toMeasure, keyFor, done, record);
+  const current = job ? (done[key] ?? null) : null;
   const refusal = current?.status === 'failed' && BLOCKING.has(current.reason) ? current : null;
   const estimateProblem = current?.status === 'failed' && !refusal ? current : null;
 
@@ -503,6 +511,8 @@ export default function GifWizard(host: WizardHostProps) {
                 data-testid="gif-size"
                 data-auto={userChose ? 'user' : picking ? 'picking' : 'picked'}
                 data-auto-why={!userChose && auto.kind === 'chosen' ? auto.why : undefined}
+                // What is known of each size (bytes), for the measurements in ADR-052; nothing private.
+                data-measured={sizeChoices.map((id) => `${id}:${typeof known[id] === 'number' ? known[id] : '-'}`).join(',')}
                 aria-describedby="gif-size-hint"
               >
                 <legend>{t('wizard.gif.size')}</legend>
@@ -533,9 +543,15 @@ export default function GifWizard(host: WizardHostProps) {
                     </span>
                   ) : !userChose && auto.kind === 'chosen' && auto.why === 'fits' ? (
                     <span data-testid="gif-size-picked">{t('wizard.gif.autoPicked')}</span>
-                  ) : !userChose && auto.kind === 'chosen' && (auto.why === 'timeout_fits' || auto.why === 'timeout_smallest') ? (
+                  ) : !userChose && auto.kind === 'chosen' && auto.why.startsWith('timeout') ? (
                     <span data-testid="gif-size-picked">
-                      {t(auto.why === 'timeout_fits' ? 'wizard.gif.autoTimeoutFits' : 'wizard.gif.autoTimeoutSmallest')}
+                      {t(
+                        auto.why === 'timeout_fits'
+                          ? 'wizard.gif.autoTimeoutFits'
+                          : auto.why === 'timeout_predicted'
+                            ? 'wizard.gif.autoTimeoutPredicted'
+                            : 'wizard.gif.autoTimeoutSmallest',
+                      )}
                     </span>
                   ) : (
                     t('wizard.gif.sizeHint')

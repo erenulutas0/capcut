@@ -43,7 +43,19 @@ export type GifWorkerRequest =
       /** Test builds only: the frames budget instead of `GIF_HELD_FRAMES_MAX_BYTES` (0: always two passes). */
       testHeldFramesBytes?: number;
     } & GifJob)
-  | ({ type: 'estimate'; requestId: string; testFault?: WorkerTestFault | null; unsendable?: unknown } & GifJob)
+  | ({
+      type: 'estimate';
+      requestId: string;
+      /**
+       * ADR-052: the sizes to measure, from one decode where their frames fit the budget together (absent: `size`
+       * alone). Each is answered with its own `estimated`, largest first, then `estimateDone`.
+       */
+      sizes?: GifSizeId[];
+      testFault?: WorkerTestFault | null;
+      unsendable?: unknown;
+      /** Test builds only: the frames budget the sizes are grouped by. */
+      testHeldFramesBytes?: number;
+    } & GifJob)
   /** "Where are you?" — asked by the page when the job has stood still (ADR-042). */
   | { type: 'where'; requestId: string };
 
@@ -59,7 +71,9 @@ export type GifWorkerResponse =
    * `passes`: 2 when the part is decoded once more while the GIF is written (its frames were not held).
    */
   | { type: 'progress'; requestId: string; step: 'frames' | 'encoding'; done: number; total: number; passes?: 1 | 2 }
-  | { type: 'estimated'; requestId: string; width: number; height: number; frames: number; sample: GifSample }
+  | { type: 'estimated'; requestId: string; size: GifSizeId; width: number; height: number; frames: number; sample: GifSample }
+  /** Every size asked for was answered. */
+  | { type: 'estimateDone'; requestId: string }
   | {
       type: 'made';
       requestId: string;

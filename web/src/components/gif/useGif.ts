@@ -9,7 +9,7 @@ import { removeEmptyPick, savePicker } from '@/adapters/saveFile';
 import { shareVerdictFor, shareVideo } from '@/adapters/share';
 import type { ShareOffer } from '@/components/editor/useDownloads';
 import type { ExportFailureDetail } from '@/domain/exportFailureDetail';
-import { GIF_MIME, estimateGifBytes } from '@/domain/gif';
+import { GIF_MIME, estimateGifBytes, type GifSizeId } from '@/domain/gif';
 import { inspectGif } from '@/domain/gifInspect';
 
 /** What a finished GIF really is: read back from its own bytes (`inspectGif`), never copied from the plan. */
@@ -254,27 +254,33 @@ export function useGifDownload() {
   return { state, busy, start, cancel, dismiss, share, maker };
 }
 
-export type GifEstimateState =
-  | { status: 'idle' }
-  | { status: 'measuring'; key: string }
+/** One size's measurement that finished, one way or the other; `key` says which choice (part, size, text) it is for. */
+export type GifEstimateDone =
   | { status: 'ready'; key: string; bytes: number; width: number; height: number; frames: number }
   | { status: 'failed'; key: string; reason: GifFailure | 'worker_unavailable'; detail?: ExportFailureDetail };
 
-/** A measurement that finished, one way or the other. */
-export type GifEstimateDone = Extract<GifEstimateState, { status: 'ready' | 'failed' }>;
+/** The measurement running now, and the sizes it is for (nothing: `idle`). */
+export type GifEstimateState = { status: 'idle' } | { status: 'measuring'; key: string; sizes: GifSizeId[] };
 
 /**
  * Every finished measurement of one screen, by its key (ADR-052): a choice measured once is not
- * measured again — the screen measures the sizes one after the other to find the sharpest that fits,
- * and a size chosen back is known at once. Kept by the screen, which reads it before it knows which
- * size to ask the estimate for.
+ * measured again — a size chosen back is known at once. Kept by the screen, which reads it before it
+ * knows which sizes to ask the estimate for.
  */
 export type GifEstimatesDone = Readonly<Record<string, GifEstimateDone>>;
 
-/** The screen's record of finished measurements, and how the estimate adds one. */
-export function useGifEstimatesDone(): [GifEstimatesDone, (result: GifEstimateDone) => void] {
+/** The screen's record of finished measurements, and how the estimate adds some. */
+export function useGifEstimatesDone(): [GifEstimatesDone, (results: GifEstimateDone[]) => void] {
   const [done, setDone] = useState<GifEstimatesDone>({});
-  const record = useCallback((result: GifEstimateDone) => setDone((before) => ({ ...before, [result.key]: result })), []);
+  const record = useCallback(
+    (results: GifEstimateDone[]) =>
+      setDone((before) => {
+        const next = { ...before };
+        for (const result of results) next[result.key] = result;
+        return next;
+      }),
+    [],
+  );
   return [done, record];
 }
 
@@ -284,55 +290,73 @@ export const ESTIMATE_PAUSE_MS = 450;
 /**
  * "yaklaşık 3 MB" (ADR-046): measured, not guessed — a few frames of the part
  * are made the GIF's way in the worker each time the part, the size or the
- * text has stood still for a moment. `key` says which choice a number is for:
- * a number for an older choice is never shown as the current one. A key in
- * `done` was measured before and is not measured again (ADR-052).
+ * text has stood still for a moment. ADR-052: several sizes at once (`sizes`,
+ * decoded once), each recorded under its own key (`keyOf`) as soon as it is
+ * known; a size already in `done` is not measured again. A number for an older
+ * choice is never shown as the current one: the keys say which choice it is for.
  */
 export function useGifEstimate(
   maker: () => GifMaker,
   job: GifJob | null,
-  key: string,
+  sizes: readonly GifSizeId[],
+  keyOf: (size: GifSizeId) => string,
   done: GifEstimatesDone,
-  record: (result: GifEstimateDone) => void,
-  /** 0 when nobody is changing anything: the next size of the search for the sharpest (ADR-052). */
+  record: (results: GifEstimateDone[]) => void,
+  /** 0 when nobody is changing anything. */
   pauseMs: number = ESTIMATE_PAUSE_MS,
 ): GifEstimateState {
   const [state, setState] = useState<GifEstimateState>({ status: 'idle' });
   const jobRef = useRef(job);
   const doneRef = useRef(done);
   const pauseRef = useRef(pauseMs);
+  const keyOfRef = useRef(keyOf);
   useEffect(() => {
     jobRef.current = job;
     doneRef.current = done;
     pauseRef.current = pauseMs;
+    keyOfRef.current = keyOf;
   });
   const hasJob = job !== null;
+  const wanted = sizes.join(',');
+  // What this request is for: the part and text (every size's key) and the sizes.
+  const requestKey = hasJob ? `${sizes.map((size) => keyOf(size)).join('&')}` : '';
   useEffect(() => {
     const current = jobRef.current;
+    if (!hasJob || !current || !wanted) return undefined;
+    const keyFor = keyOfRef.current;
     // Measured before: known at once, nothing runs.
-    if (!hasJob || !current || doneRef.current[key]) return undefined;
+    const missing = (wanted.split(',') as GifSizeId[]).filter((size) => !doneRef.current[keyFor(size)]);
+    if (missing.length === 0) return undefined;
     let live = true;
-    const finish = (result: GifEstimateDone) => {
-      setState(result);
-      record(result);
-    };
     const timer = window.setTimeout(() => {
-      setState({ status: 'measuring', key });
+      setState({ status: 'measuring', key: requestKey, sizes: missing });
+      const recorded = new Set<GifSizeId>();
       void maker()
-        .estimate(current)
+        .estimate(current, missing, (one) => {
+          if (!live) return;
+          recorded.add(one.size);
+          record([
+            {
+              status: 'ready',
+              key: keyFor(one.size),
+              bytes: estimateGifBytes(one.sample, one.frames),
+              width: one.width,
+              height: one.height,
+              frames: one.frames,
+            },
+          ]);
+        })
         .then((outcome) => {
           if (!live) return;
-          if (outcome.ok) {
-            finish({
-              status: 'ready',
-              key,
-              bytes: estimateGifBytes(outcome.sample, outcome.frames),
-              width: outcome.width,
-              height: outcome.height,
-              frames: outcome.frames,
-            });
-          } else if (outcome.reason !== 'canceled') {
-            finish({ status: 'failed', key, reason: outcome.reason, ...(outcome.detail ? { detail: outcome.detail } : {}) });
+          setState({ status: 'idle' });
+          if (!outcome.ok && outcome.reason !== 'canceled') {
+            const reason = outcome.reason;
+            const detail = outcome.detail;
+            record(
+              missing
+                .filter((size) => !recorded.has(size))
+                .map((size) => ({ status: 'failed' as const, key: keyFor(size), reason, ...(detail ? { detail } : {}) })),
+            );
           }
         });
     }, pauseRef.current);
@@ -340,6 +364,6 @@ export function useGifEstimate(
       live = false;
       window.clearTimeout(timer);
     };
-  }, [hasJob, key, maker, record]);
+  }, [hasJob, requestKey, wanted, maker, record]);
   return state;
 }

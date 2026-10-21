@@ -7,6 +7,8 @@
 > Kaynak: kurucunun hedefi — "bence her zaman en neti vermeliyiz" — ve ana oturumun iki kararı (kurucu devretti).
 > **Ek (aynı gün, en altta):** ana oturumun beş kararı — bekleme en çok 8 sn, ilk seçim tahmin ≤ 9 MB, varsayılan GIF,
 > videonun kendi bit hızı (planınki; kopya ancak ondan küçükse), ses yok.
+> **Ek 2 (aynı gün, en altta):** bütün boyutlar tek çözmeden ölçülür (tahminler bayt bayt aynı; 10 sn'lik aramada
+> süre yarıya), süre dolunca ölçülmüş büyük boyuttan ×1,3 tahmin, videoda yazılım kodlayıcıya 1,5 kat.
 > İlgili: [ADR-046](ADR-046-gif.md) (GIF yap; ekleri: tahmin ±%10, 10 MB uyarısı, bellek, "Çok büyük"),
 > [ADR-041](ADR-041-never-upscale.md) (büyütme yok), [ADR-042](ADR-042-export-failure-detail.md) (hata ayrıntısı,
 > bekçi), [ADR-045](ADR-045-constant-bitrate-ordinary-download.md) (donanım kodlayıcıda sabit bit hızı),
@@ -267,8 +269,109 @@ de **videonun çerçevesinde** kaynağa karşı (GIF bikübik büyütülerek —
   TR / EN ve masaüstü EN: yalnız değişen açıklama cümlesi); fark resimlerine bakılıp bu üç taban yenilendi; sonra
   **705 bütçe içinde, 0 dışında, farklı ekran 0.**
 
+### Hâlâ açık (kurucuya) — ikisi de Ek 2'de ele alındı
+
+1. ~~8 sn sınırı 10 sn'lik telefon videosunda GIF'i "Küçük"e düşürebiliyor~~ → Ek 2: arama ucuzladı, tahminle düşüş.
+2. ~~Yazılım kodlayıcıda planın bit hızı~~ → Ek 2: yazılım kodlayıcıda 1,5 kat.
+
+---
+
+## Ek 2 — 21 Ekim 2026 (aynı gün): aramayı ucuzlatmak, süre dolunca tahmin, yazılım kodlayıcıda 1,5 kat
+
+Ana oturumun kararları: 8 sn sınırının 10 sn'lik 1080p kısmı "Küçük"e düşürmesi "her zaman en net" hedefine aykırı —
+sınırı değil sebebi düzelt.
+
+### A. Bütün boyutlar tek çözmeden
+
+- **Önce:** her boyut kendi tahminini yapıyordu (kısmın 8 yerinden 3'er kare **yeniden çözülür**); arama en büyükten
+  aşağı 1–3 tahmin = 1–3 çözme.
+- **Şimdi** (`gifWorker.ts` `estimate`, `sizes`): arama **bütün boyutları tek istekte** ister; örnek anlar **bir kez
+  çözülür**, her çözülen kare her boyuta, o boyutun GIF'inin çizdiği gibi (`VideoSample.draw` doğrudan o boyuta) çizilir;
+  sonra her boyut kendi paletiyle kodlanır ve sonucu **hemen** gönderilir (büyükten küçüğe), en sonda `estimateDone`.
+  Kareler birlikte cihazın kare bütçesine (`gifFramesBudget`: 32 / 128 MiB) sığmazsa boyutlar sığan gruplara bölünür
+  (büyükten başlayarak, grup başına bir çözme): 8 GB'lık cihazda 4 boyut ~90 MB, tek grup; az bellekli cihazda
+  Çok büyük / Büyük / Orta+Küçük — eskisinden yine az çözme. Arama sürerken istek değişmez (yarıda kesilip yeniden
+  başlamaz); kullanıcı bir boyut seçerse yalnızca o ölçülür.
+- **Tahmin değişmedi — bayt bayt:** aynı kareler, aynı çizim, aynı palet, aynı kodlama. 16 kaynak/süre durumunun
+  hepsinde seçilen boyutun tahmini eskisiyle **aynı bayt sayısı**; önceki turlarda ölçülen öbür boyutlar da (ör. R1 4 sn
+  Çok büyük 10 353 924, Büyük 4 883 629; R3 10 sn Çok büyük 28 641 174, Orta 8 302 166). Ön kayıttaki ±%10 ölçümü (ADR-046, R6 istisnası) bu yüzden aynen geçerli; yeniden ölçülmesi gerekmedi.
+- **Arama süresi, önce → sonra** (bu masaüstü, sınırsız; ekran hazır olunca "seçildi"ye kadar):
+
+| Durum | Bütün çekirdekler | 2 çekirdek (telefon yerine) |
+|---|---|---|
+| R1 10 sn | 12,7 → **5,9 sn** | 38,1 → **17,6 sn** |
+| R3 10 sn | 12,2 → **5,5 sn** | 27,4 → **10,6 sn** |
+| R4 10 sn | 6,0 → **3,9 sn** | 10,1 → **5,0 sn** |
+| S3 10 sn | 14,1 → **9,0 sn** | — |
+| S2 10 sn | 6,4 → **3,9 sn** | — |
+| R1 4 sn | 3,3 → 3,4 sn | 11,8 → 12,6 sn |
+| R3 4 sn | 3,3 → 3,4 sn | 7,6 → **6,6 sn** |
+| S3 4 sn | 6,4 → **5,4 sn** | 16,1 → **10,4 sn** |
+| S4 4 sn (yoğun kumlu) | 15,5 → **14,2 sn** | — |
+| S1, R5, R6 4 sn (ilk boyut sığar) | 1,3 → 1,8–1,9 sn | — |
+
+  10 sn'lik kısım yarıya iner (3 tahmin yerine 1 çözme); 4 sn'de çoğunlukla 2 tahmin olduğu için kazanç küçük; ilk
+  boyutun sığdığı durumda dört boyutu birden çizmek ~0,5 sn ekler. Yoğun kumda zamanın çoğu kodlama (LZW), çözme değil.
+- **Telefon yerine:** CDP'nin `Emulation.setCPUThrottlingRate` (3 kat) GIF işleyicisine ulaşmıyor — ölçüldü: 16 durumun
+  süreleri değişmedi. Bunun yerine tarayıcı **2 çekirdeğe** sınırlandı (Windows işlemci yakınlığı; sonradan başlayan
+  süreçler devralır): süreler ~2–3 kat. Bir telefonun gerçek hızı değil; S23 ölçümü yerine geçmez.
+
+### B. Süre dolunca: ölçülmüş daha büyük boyuttan tahmin
+
+- 8 sn dolduğunda, ölçülmemiş bir boyut **ölçülmüş en yakın büyük boyuttan** tahmin edilir: bayt × piksel oranı ×
+  `GIF_PREDICT_FACTOR` (**1,3**). İlişki ölçüldü: 5 gerçek kayıt ve 3 yapay kaynak, 4 ve 10 sn, 19 komşu boyut
+  çiftinde küçük boyutun tahmini, büyüğünün piksele göre küçültülmüşünün **0,83–1,25** katı (ortanca 1,06); 1,3 hepsinin
+  üstünde (en büyüğü R5 10 sn, Büyük / Çok büyük: 1,25). Büyükten küçüğe: ölçülüp sığan boyut ya da tahmini ≤ 9 MB olan
+  ölçülmemiş boyut seçilir; ikisi de yoksa Küçük. Satır: "Ölçmek uzun sürdü; ölçtüğümüz daha büyük boyuttan tahminle
+  10 MB'ı geçmemesi beklenen en net boyutu seçtik." Seçim yine donar.
+- Gerçek 8 sn sınırıyla ölçülen: bütün çekirdeklerde R1 / R3 10 sn artık **Orta, ölçülerek** (5,9 / 5,5 sn; önceki
+  turda Küçük'e düşüyordu). S3 10 sn (yapay, kaydırma + kum) 8 sn'de Çok büyük ve Büyük ölçülmüştü → tahminle Küçük
+  (Orta tahmini 13,2 MB; gerçek tahmini 8,7 — pay ihtiyatlı). S4 4 sn: tahminle Orta (Büyük ölçülmeden; Orta'nın
+  tahmini sonra 5,1 MB çıktı).
+- **2 çekirdekte** R1, R3, S3 10 sn: 8 sn'de hiçbir boyut bitmemişti (çözme sürüyordu) → **Küçük** ("en küçük boyutu
+  seçtik"). Telefonda 10 sn'lik 1080p kısım bu yüzden hâlâ Küçük'e düşebilir; S23 ölçümü belirleyecek. (Kısa yol olarak
+  düşünülebilecek: önce yalnız Orta'yı ölçmek — bu ek bunu yapmadı.)
+
+### C. "Video olarak": yazılım kodlayıcıda planın 1,5 katı
+
+Donanım kodlayıcı planın bit hızında (sabit, ADR-045), yazılım kodlayıcı **1,5 katında** (`SHORT_CLIP_SOFTWARE_BITRATE_FACTOR`);
+kopya bütçesi (`clip_size`) aynı bit hızıyla. Ölçüm (bu masaüstü, yazılım kodlayıcı, yazısız; ilk seçilen GIF · video ·
+VMAF / SSIM videonun çerçevesinde):
+
+| Durum | Seçilen GIF | Video: 1 kat → **1,5 kat** | VMAF GIF / video (1,5 kat) | SSIM GIF / video |
+|---|---|---|---|---|
+| R1 4 sn | Büyük · 4,87 MB | 2,80 → **4,18 MB** (1080p) | 20,9 / **55,6** (1 katta 53,4) | 0,842 / 0,889 |
+| R2 4,4 sn | Büyük · 7,77 | 5,14 → **5,52** | 5,7 / **27,8** (27,5) | 0,648 / 0,722 |
+| R3 4 sn | Büyük · 5,98 | 2,78 → **4,18** | 4,3 / **28,8** (26,3) | 0,750 / 0,785 |
+| R4 4 sn | Büyük · 5,90 | 1,22 → **1,81** (720p) | 16,2 / **64,7** (61,7) | 0,760 / 0,854 |
+| R5 4 sn | Çok büyük · 5,70 | 0,36 (kopya) | — | — |
+| R6 4 sn | Çok büyük · 0,17 | 0,22 (kopya) | — | — |
+| S1 4 sn | Çok büyük · 1,49 | 1,24 → **1,87** | — | — |
+| S2 4 sn | Büyük · 6,86 | 1,24 → **1,86** | **79,0** / 76,4 (75,3) | 0,959 / 0,957 |
+| S3 4 sn | Büyük · 7,21 | 1,22 → **1,85** | 35,6 / **82,9** (81,8) | 0,745 / 0,797 |
+| S4 4 sn | Orta (tahminle) · 5,06 | 2,30 → **3,10** | — | — |
+| R1 10 sn | Orta · 7,53 | 6,95 → **10,42** | 14,2 / **57,7** | 0,821 / 0,885 |
+| R3 10 sn | Orta · 8,38 | 6,98 → **10,48** | — | — |
+| R4 10 sn | Orta · 7,92 | 3,05 → **4,51** | 17,2 / **61,6** | 0,748 / 0,831 |
+
+- 1,5 kat videoyu ~%50 büyütüyor, netliği ölçüde az artırıyor (VMAF +0,3–3,0). Video 13 durumun **9'unda** ilk seçilen
+  GIF'ten küçük; büyük olanlar: 10 sn'lik 1080p (R1, R3: 10,4–10,5 MB / GIF 7,5–8,4), S1 (düz test deseni) ve R6
+  (neredeyse kıpırdamayan). Ekranın "dosyası da çoğu zaman daha küçük"ü bu ölçümde de doğru; kalıyor.
+- Netlik: ölçülen 8 durumun 7'sinde video açıkça net (VMAF +22–48); istisna yine yapay yumuşak geçiş S2.
+
+### Sınamalar (Ek 2; yerel, port 3195, kilit altında)
+
+- `tsc`, `eslint` temiz; birim **1667 / 1667** (`gifSharpest.test.ts` 11: tahmin en yakın büyük boyuttan ×1,3,
+  ölçülüp sığan büyük boyut tahminden önce gelir, piksel bilgisi yoksa tahmin yok).
+- e2e **113 / 113** (aynı on dosya; video sınaması artık planın 1,5 katını ×1,1 sınır alır: 1280 × 720, 4 sn, 371 KB,
+  GIF 839 KB). `PAGE-RECOVERED-TOTAL 0`.
+- Kalite katmanı (`visual`, `a11y`, `text`, `walkthrough`): **705 bütçe içinde, 0 dışında, farklı ekran 0** — taban
+  yenilenmedi.
+- Ölçüm betiği `scripts/gif-eval/video-vs-gif.mjs`: `--pick-only`, `--cores=2`, `--cpu=3`, `--limit-ms`; ekranın
+  `data-measured`'ı her boyutun bilinen tahminini verir. Gerçek kayıtlardan türeyen hiçbir şey depoya girmedi.
+
 ### Hâlâ açık (kurucuya)
 
-1. 8 sn sınırı 10 sn'lik telefon videosunda GIF'i "Küçük"e düşürebiliyor (yukarıda); S23 ölçümüyle karar.
-2. Yazılım kodlayıcıda (masaüstü) planın bit hızı videoda orta netlik veriyor; istenirse yalnız yazılım kodlayıcı için
-   1,5–2 kat (dosya ~4–6 MB / 4 sn 1080p).
+1. **Telefonda 10 sn'lik 1080p kısım:** 2 çekirdekte arama 10,6–17,6 sn; 8 sn'de hiçbir boyut bitmemiş olabilir →
+   Küçük. S23 ölçümünden sonra: sınırı uzatmak (ör. 15 sn) ya da 10 sn'lik kısımda önce Orta'yı tek başına ölçmek.
+2. **1,5 kat:** netliğe katkısı küçük (VMAF +0,3–3), dosyaya %50; istenirse 1 kata dönülür.

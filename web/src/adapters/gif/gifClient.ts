@@ -14,6 +14,7 @@
 
 import { sanitizeExportFailureDetail, type ExportFailureDetail } from '@/domain/exportFailureDetail';
 import { STALL_LIMITS_MS, gaveUpCode, takeWorkerFault, unsendable, unsentDetail, watchWorker } from '../workerWatch';
+import type { GifSizeId } from '@/domain/gif';
 import type { GifFailure, GifJob, GifSample, GifWorkerRequest, GifWorkerResponse } from './protocol';
 
 export type { GifFailure, GifJob, GifSample } from './protocol';
@@ -25,9 +26,17 @@ export type GifRunFailure = {
   detail?: ExportFailureDetail;
 };
 
-export type GifEstimateOutcome =
-  | { ok: true; width: number; height: number; frames: number; sample: GifSample }
-  | GifRunFailure;
+/** One size's measurement (ADR-052: an estimate measures several sizes, each answered as soon as it is known). */
+export interface GifSizeEstimate {
+  size: GifSizeId;
+  width: number;
+  height: number;
+  frames: number;
+  sample: GifSample;
+}
+
+/** Every size asked for was measured (each was already handed to `onSize`). */
+export type GifEstimateOutcome = { ok: true; sizes: GifSizeEstimate[] } | GifRunFailure;
 
 export type GifMakeOutcome =
   | {
@@ -75,7 +84,7 @@ class Lane {
 
   run(
     type: 'make' | 'estimate',
-    job: GifJob,
+    job: GifJob & { sizes?: GifSizeId[] },
     onMessage: (data: Exclude<GifWorkerResponse, { type: 'where' | 'failed' }>) => GifEstimateOutcome | GifMakeOutcome | null,
   ): Promise<GifEstimateOutcome | GifMakeOutcome> {
     this.cancel();
@@ -133,14 +142,14 @@ class Lane {
       worker.addEventListener('message', listener);
       // A test's fault is for the GIF being made, never for the estimate that runs on its own beforehand.
       const fault = type === 'make' ? takeWorkerFault('gif') : null;
-      const budget = type === 'make' ? testHeldFramesBytes() : null;
+      const budget = testHeldFramesBytes();
       const request: GifWorkerRequest = {
         type,
         requestId,
         ...job,
         ...(fault && fault.kind !== 'unsendable' ? { testFault: fault } : {}),
         ...(fault?.kind === 'unsendable' ? { unsendable: unsendable() } : {}),
-        ...(budget !== null && type === 'make' ? { testHeldFramesBytes: budget } : {}),
+        ...(budget !== null ? { testHeldFramesBytes: budget } : {}),
       };
       try {
         worker.postMessage(request);
@@ -173,11 +182,22 @@ export class GifMaker {
   private readonly estimates = new Lane('gif_est');
   private readonly makes = new Lane('gif');
 
-  /** What a GIF of `job` would weigh, from a few frames encoded its way. A newer call ends an older one. */
-  estimate(job: GifJob): Promise<GifEstimateOutcome> {
-    return this.estimates.run('estimate', job, (data) =>
-      data.type === 'estimated' ? { ok: true, width: data.width, height: data.height, frames: data.frames, sample: data.sample } : null,
-    ) as Promise<GifEstimateOutcome>;
+  /**
+   * What a GIF of `job` would weigh at each of `sizes` (ADR-052; default: `job.size`), from a few frames
+   * encoded its way, decoded once for all of them. Each size goes to `onSize` as soon as it is known, so a
+   * search that runs out of time still has the sizes measured so far. A newer call ends an older one.
+   */
+  estimate(job: GifJob, sizes: GifSizeId[] = [job.size], onSize?: (estimate: GifSizeEstimate) => void): Promise<GifEstimateOutcome> {
+    const done: GifSizeEstimate[] = [];
+    return this.estimates.run('estimate', { ...job, sizes }, (data) => {
+      if (data.type === 'estimated') {
+        const one = { size: data.size, width: data.width, height: data.height, frames: data.frames, sample: data.sample };
+        done.push(one);
+        onSize?.(one);
+        return null;
+      }
+      return data.type === 'estimateDone' ? { ok: true, sizes: done } : null;
+    }) as Promise<GifEstimateOutcome>;
   }
 
   make(job: GifJob, onProgress: (progress: GifProgress) => void): Promise<GifMakeOutcome> {

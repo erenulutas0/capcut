@@ -1210,6 +1210,7 @@ export const tr = {
   'wizard.gif.autoPicking': 'En net boyut ölçülüyor…',
   'wizard.gif.autoPicked': 'Paylaşması kolay olsun diye 10 MB’ı geçmeyen en net boyutu seçtik.',
   'wizard.gif.autoTimeoutFits': 'Ölçmek uzun sürdü; 10 MB’ı geçmediği ölçülen en büyük boyutu seçtik.',
+  'wizard.gif.autoTimeoutPredicted': 'Ölçmek uzun sürdü; ölçtüğümüz daha büyük boyuttan tahminle 10 MB’ı geçmemesi beklenen en net boyutu seçtik.',
   'wizard.gif.autoTimeoutSmallest': 'Ölçmek uzun sürdü; en küçük boyutu seçtik. Daha büyüğünü kendin seçebilirsin.',
   'wizard.gif.output': 'Nasıl kaydedilsin?',
   'wizard.gif.outputGif': 'GIF',

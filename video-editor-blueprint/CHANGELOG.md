@@ -33,7 +33,15 @@ Kurucunun hedefi: "bence her zaman en neti vermeliyiz".
   16 durumun 12'sinde ilk seçilen GIF'ten küçük, 9 ölçümün 8'inde açıkça net (VMAF +22–55); ekran yine "dosyası da
   çoğu zaman daha küçük" der. Bedel: 10 sn'lik 1080p kayıtta 8 sn dolup GIF "Küçük"e düşebiliyor (S23'te bakılacak).
 
-**Sınamalar (yerel):** `tsc`, `eslint` temiz; birim **1666 / 1666** (96 dosya); e2e GIF dört dosya + `english` +
+- **Ek 2 (aynı gün):** arama artık **bütün boyutları tek çözmeden** ölçer (her kare her boyuta çizilir; tahminler
+  eskisiyle bayt bayt aynı, ±%10 ölçümü aynen geçerli); 10 sn'lik 1080p kısımda arama 12,2–12,7 → 5,5–5,9 sn, R1 / R3
+  artık 8 sn içinde Orta. Süre yine dolarsa ölçülmemiş boyut ölçülmüş en yakın büyük boyuttan tahmin edilir (piksel
+  oranı × 1,3; ölçülen ilişki 0,83–1,25, 19 çift) ve satır bunun tahmin olduğunu söyler. 2 çekirdekte (telefon yerine;
+  CDP yavaşlatması işleyiciye ulaşmıyor) 10 sn'lik 1080p arama 10,6–17,6 sn → orada hâlâ Küçük olabilir, S23'te
+  bakılacak. "Video olarak" yazılım kodlayıcıda planın 1,5 katı: 4 sn 1080p 4,2 MB, 10 sn 10,4 MB; video 13 durumun
+  9'unda seçilen GIF'ten küçük, VMAF +22–48.
+
+**Sınamalar (yerel):** `tsc`, `eslint` temiz; birim **1667 / 1667** (96 dosya); e2e GIF dört dosya + `english` +
 dışa aktarma beşlisi **113 / 113**; kalite katmanı (visual, a11y, text, walkthrough) 705 bütçe içinde, 0 dışında,
 farklı ekran 0.
 

@@ -4,6 +4,11 @@
  * file size, frame size and the time from the press to the file, for each clip.
  *
  *   node scripts/gif-eval/video-vs-gif.mjs --clips=<clips.json> --out=<rows.jsonl> [--url=http://127.0.0.1:3195] [--seconds=4] [--keep=<dir>] [--no-xlarge]
+ *       [--pick-only] [--cpu=3] [--cores=1] [--limit-ms=600000]
+ *
+ * `--pick-only`: only the search for the size chosen first (its time and result), nothing made. `--cpu=3`: the
+ * page's processor slowed three times through CDP (`Emulation.setCPUThrottlingRate`) — a rough stand-in for a
+ * phone. `--limit-ms`: the search's time limit in a test build (`window.__clipGifPickLimitMs`).
  *
  * `clips.json`: [{ "id": "S1", "path": "…" }, …]. Needs a running build at --url. No save dialog (the
  * download link road): each file arrives as a download, is measured (bytes; ffprobe for the video) and
@@ -29,11 +34,27 @@ function probe(file) {
   return { codec: video?.codec_name, width: video?.width, height: video?.height, fps: video?.avg_frame_rate, audio: json.streams.some((s) => s.codec_type === 'audio'), durationS: Number(json.format.duration) };
 }
 
-const browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
+// `--cores=1`: the browser (and every process it starts later: Windows hands the affinity down) on one processor
+// core — the GIF worker included, which CDP's throttling does not reach (measured: `--cpu=3` changed nothing).
+let browser;
+let server = null;
+if (args.cores) {
+  server = await chromium.launchServer({ args: ['--autoplay-policy=no-user-gesture-required'] });
+  const mask = (1 << Number(args.cores)) - 1;
+  spawnSync('powershell', ['-NoProfile', '-Command', `(Get-Process -Id ${server.process().pid}).ProcessorAffinity = ${mask}`]);
+  browser = await chromium.connect(server.wsEndpoint());
+} else {
+  browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
+}
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true, locale: 'tr-TR' });
 await context.addInitScript(() => {
   delete window.showSaveFilePicker;
 });
+if (args['limit-ms']) {
+  await context.addInitScript((ms) => {
+    window.__clipGifPickLimitMs = ms;
+  }, Number(args['limit-ms']));
+}
 
 async function save(page, tag) {
   const started = Date.now();
@@ -54,6 +75,10 @@ async function save(page, tag) {
 for (const clip of clips) {
   const page = await context.newPage();
   try {
+    if (args.cpu) {
+      const cdp = await context.newCDPSession(page);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: Number(args.cpu) });
+    }
     await page.goto(`${url}/yap/gif/`);
     await page.getByTestId('video-input').setInputFiles(clip.path);
     await page.getByTestId('wizard').and(page.locator('[data-step="choose"]')).waitFor({ timeout: 120_000 });
@@ -69,6 +94,14 @@ for (const clip of clips) {
     const pickMs = Date.now() - pickStarted;
     const why = (await sizes.count()) > 0 ? await sizes.getAttribute('data-auto-why') : 'one_size';
     const chosen = { width: Number(await est.getAttribute('data-width')), height: Number(await est.getAttribute('data-height')), estimated: Number(await est.getAttribute('data-bytes')) };
+    if (args['pick-only']) {
+      const measured = (await sizes.count()) > 0 ? await sizes.getAttribute('data-measured') : null;
+      const row = { id: clip.id, seconds, cpu: Number(args.cpu ?? 1), cores: Number(args.cores ?? 0) || 'all', pickMs, why, chosen, measured };
+      console.log(JSON.stringify(row));
+      if (out) appendFileSync(out, `${JSON.stringify(row)}
+`);
+      continue;
+    }
     const autoGif = await save(page, `${clip.id}-${seconds}-gif`);
     const row = { id: clip.id, seconds, pickMs, why, autoGif: { ...chosen, ...autoGif } };
     await page.getByTestId('wizard-again-same').click();
@@ -90,3 +123,4 @@ for (const clip of clips) {
   }
 }
 await browser.close();
+await server?.close();

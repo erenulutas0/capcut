@@ -44,9 +44,11 @@ import {
   gifFrameTimesUs,
   gifFramesBudget,
   gifHoldsFrames,
+  gifFramesBytes,
   normalizeGifRange,
   planGifSize,
   type GifSize,
+  type GifSizeId,
   type GifTextLayout,
 } from '@/domain/gif';
 import { hdrTransferOf, type HdrTransfer } from '@/domain/hdr';
@@ -87,22 +89,32 @@ function post(message: GifWorkerResponse, transfer?: Transferable[]): void {
   else scope.postMessage(message);
 }
 
-/** The opened video, ready to draw frames of at the GIF's size. */
-interface Source {
-  input: Input;
-  track: InputVideoTrack;
+/** One size a decoded frame is drawn at: its canvas, its text. */
+interface Target {
+  id: GifSizeId;
   size: GifSize;
-  hdr: HdrTransfer | null;
   layouts: GifTextLayout[];
   canvas: OffscreenCanvas;
   context: OffscreenCanvasRenderingContext2D;
   hdrContext: OffscreenCanvasRenderingContext2D | null;
 }
 
+/**
+ * The opened video, ready to draw frames of at one or more GIF sizes. ADR-052: the estimate draws every
+ * decoded frame at each size it measures — one decode for all of them, and each size drawn exactly as the
+ * GIF of that size is (`VideoSample.draw` straight to its size), so each estimate is what it was alone.
+ */
+interface Source {
+  input: Input;
+  track: InputVideoTrack;
+  hdr: HdrTransfer | null;
+  targets: Target[];
+}
+
 /** HDR tone mapping is checked once per worker, like the export does per run. */
 const toneMapped = new Map<HdrTransfer, Promise<boolean>>();
 
-async function open(job: GifJob): Promise<Source> {
+async function open(job: GifJob, sizeIds: readonly GifSizeId[] = [job.size]): Promise<Source> {
   stage = 'open_source';
   const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(job.file) });
   try {
@@ -133,28 +145,34 @@ async function open(job: GifJob): Promise<Source> {
       if (!(await check)) throw new GifError('hdr_source_unsupported');
     }
 
-    const size = planGifSize(await track.getDisplayWidth(), await track.getDisplayHeight(), job.size);
-    stage = 'setup';
-    const canvas = new OffscreenCanvas(size.width, size.height);
-    const context = canvas.getContext('2d', { alpha: false, willReadFrequently: true });
-    if (!context) throw new GifError('internal_error');
-    context.imageSmoothingEnabled = true;
-    context.imageSmoothingQuality = 'high';
-    const hdrContext = hdr ? createHdrContext(size.width, size.height) : null;
-    if (hdr && !hdrContext) throw new GifError('hdr_source_unsupported');
-    if (hdrContext) {
-      hdrContext.imageSmoothingEnabled = true;
-      hdrContext.imageSmoothingQuality = 'high';
-    }
-
-    stage = 'captions';
-    let layouts: GifTextLayout[] = [];
-    if (job.texts.top.trim() || job.texts.bottom.trim()) {
-      // The caption typeface, as the page's preview uses it: a fallback font would wrap differently.
+    const displayWidth = await track.getDisplayWidth();
+    const displayHeight = await track.getDisplayHeight();
+    const withText = Boolean(job.texts.top.trim() || job.texts.bottom.trim());
+    // The caption typeface, as the page's preview uses it: a fallback font would wrap differently.
+    if (withText) {
+      stage = 'captions';
       if (!(await loadCaptionFont(scope.fonts, job.origin))) throw new GifError('text_font_unavailable');
-      layouts = gifTextLayouts(job.texts, size, gifMeasure(context));
     }
-    return { input, track, size, hdr, layouts, canvas, context, hdrContext };
+    const targets: Target[] = [];
+    for (const id of sizeIds) {
+      const size = planGifSize(displayWidth, displayHeight, id);
+      stage = 'setup';
+      const canvas = new OffscreenCanvas(size.width, size.height);
+      const context = canvas.getContext('2d', { alpha: false, willReadFrequently: true });
+      if (!context) throw new GifError('internal_error');
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
+      const hdrContext = hdr ? createHdrContext(size.width, size.height) : null;
+      if (hdr && !hdrContext) throw new GifError('hdr_source_unsupported');
+      if (hdrContext) {
+        hdrContext.imageSmoothingEnabled = true;
+        hdrContext.imageSmoothingQuality = 'high';
+      }
+      stage = 'captions';
+      const layouts = withText ? gifTextLayouts(job.texts, size, gifMeasure(context)) : [];
+      targets.push({ id, size, layouts, canvas, context, hdrContext });
+    }
+    return { input, track, hdr, targets };
   } catch (error) {
     input.dispose();
     throw error;
@@ -163,15 +181,17 @@ async function open(job: GifJob): Promise<Source> {
 
 /**
  * Decodes the moments `timesUs` (one continuous pass) and hands each frame,
- * drawn at the GIF's size with its text, to `onFrame` as RGBA. Returns how many
- * moments the decoder did not deliver (the frame before is held there).
+ * drawn at every size of `targets` with its text, to `onFrame` as RGBA (one per
+ * target, in their order). Returns how many moments the decoder did not deliver
+ * (the frame before is held there).
  */
 async function drawFrames(
   source: Source,
   timesUs: readonly number[],
-  onFrame: (rgba: Uint8Array, index: number) => void | Promise<void>,
+  onFrame: (rgba: Uint8Array[], index: number) => void | Promise<void>,
+  targets: readonly Target[] = source.targets,
 ): Promise<{ missing: number; drawn: number }> {
-  const { track, size, context, hdrContext, layouts } = source;
+  const { track } = source;
   const times = timesUs.map((us) => us / US_PER_SECOND);
   const first = times[0] ?? 0;
   const last = times[times.length - 1] ?? first;
@@ -191,27 +211,30 @@ async function drawFrames(
     for await (const picked of pickFrames(sink.samples(first, last + 0.001), times, GIF_FRAME_US / US_PER_SECOND, usable)) {
       stage = 'draw';
       if (picked.missing) missing += 1;
-      try {
-        const target = hdrContext ?? context;
-        target.fillStyle = '#000000';
-        target.fillRect(0, 0, size.width, size.height);
-        if (picked.frame) {
-          // The picker owns the sample and closes it.
-          picked.frame.draw(target, 0, 0, size.width, size.height);
-          drawn += 1;
+      if (picked.frame) drawn += 1;
+      const rgba: Uint8Array[] = [];
+      for (const { size, context, hdrContext, layouts } of targets) {
+        stage = 'draw';
+        try {
+          const target = hdrContext ?? context;
+          target.fillStyle = '#000000';
+          target.fillRect(0, 0, size.width, size.height);
+          // The picker owns the sample and closes it (after this loop: every size is drawn from it).
+          if (picked.frame) picked.frame.draw(target, 0, 0, size.width, size.height);
+          if (hdrContext) {
+            const clipped = softClippedImage(hdrContext, size.width, size.height);
+            if (!clipped) throw new GifError('hdr_source_unsupported');
+            context.putImageData(clipped, 0, 0);
+          }
+          drawGifText(context, layouts);
+        } catch (error) {
+          throw tagStage(error, 'draw');
         }
-        if (hdrContext) {
-          const clipped = softClippedImage(hdrContext, size.width, size.height);
-          if (!clipped) throw new GifError('hdr_source_unsupported');
-          context.putImageData(clipped, 0, 0);
-        }
-        drawGifText(context, layouts);
-      } catch (error) {
-        throw tagStage(error, 'draw');
+        stage = 'frame_capture';
+        const pixels = context.getImageData(0, 0, size.width, size.height).data;
+        rgba.push(new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength));
       }
-      stage = 'frame_capture';
-      const pixels = context.getImageData(0, 0, size.width, size.height).data;
-      const pending = onFrame(new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength), index);
+      const pending = onFrame(rgba, index);
       if (pending) await pending;
       index += 1;
       stage = 'decode';
@@ -247,12 +270,13 @@ async function make(request: Extract<GifWorkerRequest, { type: 'make' }>): Promi
     const range = normalizeGifRange(request.range, Math.round(duration * US_PER_SECOND));
     const times = gifFrameTimesUs(range);
     const total = times.length;
-    const { width, height } = source.size;
+    const target = source.targets[0] as Target;
+    const { width, height } = target.size;
     // What the device says of its memory (Chromium, rounded to a power of two; this desktop says 32): nothing from Safari and Firefox.
     const deviceMemory = (scope.navigator as WorkerNavigator & { deviceMemory?: unknown }).deviceMemory;
     const budget =
       TEST_HOOKS && typeof request.testHeldFramesBytes === 'number' ? request.testHeldFramesBytes : gifFramesBudget(deviceMemory);
-    const hold = gifHoldsFrames(source.size, total, budget);
+    const hold = gifHoldsFrames(target.size, total, budget);
     const passes = hold ? 1 : 2;
     let drawnInJob = 0;
     const afterFrame = midway
@@ -267,7 +291,8 @@ async function make(request: Extract<GifWorkerRequest, { type: 'make' }>): Promi
     const frames: Uint8Array[] = [];
     const frameProgress = progressPoster(requestId, 'frames', total, passes);
     frameProgress(0);
-    const first = await drawFrames(source, times, (rgba, index) => {
+    const first = await drawFrames(source, times, ([rgba], index) => {
+      if (!rgba) return undefined;
       sampler.add(rgba);
       // `getImageData` hands out a new buffer for every frame: kept as it is.
       if (hold) frames.push(rgba);
@@ -278,7 +303,7 @@ async function make(request: Extract<GifWorkerRequest, { type: 'make' }>): Promi
     if (first.missing > missingFramesAllowed(total)) throw new GifError('source_frames_missing');
 
     stage = 'gif_encode';
-    const palette = sampler.palette(source.layouts.length > 0);
+    const palette = sampler.palette(target.layouts.length > 0);
     const writer = new GifWriter(width, height, palette);
     const encodeProgress = progressPoster(requestId, 'encoding', total, passes);
     encodeProgress(0);
@@ -292,8 +317,9 @@ async function make(request: Extract<GifWorkerRequest, { type: 'make' }>): Promi
       }
     } else {
       // Pass 2: the same moments decoded again; each frame is written the moment it is drawn, then let go.
-      const second = await drawFrames(source, times, (rgba, index) => {
+      const second = await drawFrames(source, times, ([rgba], index) => {
         stage = 'gif_encode';
+        if (!rgba) return undefined;
         writer.add(rgba);
         encodeProgress(index + 1);
         return afterFrame();
@@ -334,16 +360,22 @@ async function make(request: Extract<GifWorkerRequest, { type: 'make' }>): Promi
  * `ESTIMATE_RUN` consecutive frames at each, encoded with one palette made of
  * them. The first frame of a run is what a whole picture costs; each following
  * one is what a later frame costs once the unchanged pixels are left out.
+ *
+ * ADR-052: for every size asked (`sizes`; the search for the sharpest size asks for all of them) from ONE
+ * decode of those moments — each decoded frame is drawn at every size, the way that size's GIF draws it — as
+ * long as the frames of all sizes fit the device's frames budget (`gifFramesBudget`); otherwise the sizes are
+ * measured in groups that fit, largest first, one decode per group. Each size's result is posted as soon as it
+ * is known (largest first), then `estimateDone`.
  */
 async function estimate(request: Extract<GifWorkerRequest, { type: 'estimate' }>): Promise<void> {
   const { requestId } = request;
   if (TEST_HOOKS) await applyWorkerFault(request.testFault);
-  const source = await open(request);
+  const asked = [...new Set(request.sizes && request.sizes.length > 0 ? request.sizes : [request.size])];
+  const source = await open(request, asked);
   try {
     const duration = await source.track.computeDuration().catch(() => request.range.endUs / US_PER_SECOND);
     const range = normalizeGifRange(request.range, Math.round(duration * US_PER_SECOND));
     const times = gifFrameTimesUs(range);
-    const runs: Uint8Array[][] = [];
     const run = Math.min(ESTIMATE_RUN, times.length);
     const moments = Math.min(ESTIMATE_MOMENTS, Math.max(1, Math.floor(times.length / 2)));
     const starts: number[] = [];
@@ -362,48 +394,92 @@ async function estimate(request: Extract<GifWorkerRequest, { type: 'estimate' }>
       const key = await packets.getKeyPacket(t, { metadataOnly: true }).catch(() => null);
       seekS += (key ? Math.max(0, t - key.timestamp) : t) + run * frameS;
     }
-    if (seekS >= partS) {
-      const wanted = [...new Set(starts.flatMap((at) => Array.from({ length: run }, (_, k) => at + k)))].sort((a, b) => a - b);
-      const byIndex = new Map<number, Uint8Array>();
-      await drawFrames(
-        source,
-        wanted.map((i) => times[i] as number),
-        (rgba, k) => {
-          byIndex.set(wanted[k] as number, rgba);
-        },
-      );
-      for (const at of starts) {
-        const frames = Array.from({ length: run }, (_, k) => byIndex.get(at + k)).filter((frame): frame is Uint8Array => frame !== undefined);
-        if (frames.length > 0) runs.push(frames);
+    const onePass = seekS >= partS;
+
+    // Largest first, in groups whose frames fit the budget together (a group has at least one size).
+    const deviceMemory = (scope.navigator as WorkerNavigator & { deviceMemory?: unknown }).deviceMemory;
+    const budget = TEST_HOOKS && typeof request.testHeldFramesBytes === 'number' ? request.testHeldFramesBytes : gifFramesBudget(deviceMemory);
+    const heldFrames = starts.length * run;
+    const ordered = [...source.targets].sort((a, b) => b.size.width * b.size.height - a.size.width * a.size.height);
+    const groups: Target[][] = [];
+    let group: Target[] = [];
+    let groupBytes = 0;
+    for (const target of ordered) {
+      const bytes = gifFramesBytes(target.size, heldFrames);
+      if (group.length > 0 && groupBytes + bytes > budget) {
+        groups.push(group);
+        group = [];
+        groupBytes = 0;
       }
-    } else {
-      for (const at of starts) {
-        const frames: Uint8Array[] = [];
-        await drawFrames(source, times.slice(at, at + run), (rgba) => {
-          frames.push(rgba);
+      group.push(target);
+      groupBytes += bytes;
+    }
+    if (group.length > 0) groups.push(group);
+
+    for (const targets of groups) {
+      stage = 'decode';
+      // runs[size][moment]: the frames of that run, at that size.
+      const runs: Uint8Array[][][] = targets.map(() => []);
+      if (onePass) {
+        const wanted = [...new Set(starts.flatMap((at) => Array.from({ length: run }, (_, k) => at + k)))].sort((a, b) => a - b);
+        const byIndex = targets.map(() => new Map<number, Uint8Array>());
+        await drawFrames(
+          source,
+          wanted.map((i) => times[i] as number),
+          (rgba, k) => {
+            rgba.forEach((frame, t) => byIndex[t]?.set(wanted[k] as number, frame));
+          },
+          targets,
+        );
+        targets.forEach((_, t) => {
+          for (const at of starts) {
+            const frames = Array.from({ length: run }, (_, k) => byIndex[t]?.get(at + k)).filter((frame): frame is Uint8Array => frame !== undefined);
+            if (frames.length > 0) runs[t]?.push(frames);
+          }
         });
-        if (frames.length > 0) runs.push(frames);
+      } else {
+        for (const at of starts) {
+          const frames: Uint8Array[][] = targets.map(() => []);
+          await drawFrames(
+            source,
+            times.slice(at, at + run),
+            (rgba) => {
+              rgba.forEach((frame, t) => frames[t]?.push(frame));
+            },
+            targets,
+          );
+          frames.forEach((list, t) => {
+            if (list.length > 0) runs[t]?.push(list);
+          });
+        }
+      }
+      for (let t = 0; t < targets.length; t += 1) {
+        const target = targets[t] as Target;
+        const sizeRuns = runs[t] ?? [];
+        if (sizeRuns.length === 0) throw new GifError('no_frames_decoded');
+        stage = 'gif_encode';
+        const palette = buildGifPalette(sizeRuns.flat(), target.layouts.length > 0);
+        const firsts: number[] = [];
+        const laters: number[] = [];
+        for (const frames of sizeRuns) {
+          const writer = new GifWriter(target.size.width, target.size.height, palette);
+          writer.add(frames[0] as Uint8Array);
+          let before = writer.byteLength;
+          firsts.push(before - (GIF_FIXED_BYTES - 1));
+          for (const frame of frames.slice(1)) {
+            writer.add(frame);
+            laters.push(writer.byteLength - before);
+            before = writer.byteLength;
+          }
+        }
+        // This size's frames are let go before the next size is encoded.
+        runs[t] = [];
+        const mean = (values: number[]) => (values.length === 0 ? 0 : values.reduce((sum, value) => sum + value, 0) / values.length);
+        const sample: GifSample = { firstFrameBytes: mean(firsts), laterFrameBytes: laters.length > 0 ? mean(laters) : mean(firsts) };
+        post({ type: 'estimated', requestId, size: target.id, width: target.size.width, height: target.size.height, frames: times.length, sample });
       }
     }
-    if (runs.length === 0) throw new GifError('no_frames_decoded');
-    stage = 'gif_encode';
-    const palette = buildGifPalette(runs.flat(), source.layouts.length > 0);
-    const firsts: number[] = [];
-    const laters: number[] = [];
-    for (const frames of runs) {
-      const writer = new GifWriter(source.size.width, source.size.height, palette);
-      writer.add(frames[0] as Uint8Array);
-      let before = writer.byteLength;
-      firsts.push(before - (GIF_FIXED_BYTES - 1));
-      for (const frame of frames.slice(1)) {
-        writer.add(frame);
-        laters.push(writer.byteLength - before);
-        before = writer.byteLength;
-      }
-    }
-    const mean = (values: number[]) => (values.length === 0 ? 0 : values.reduce((sum, value) => sum + value, 0) / values.length);
-    const sample: GifSample = { firstFrameBytes: mean(firsts), laterFrameBytes: laters.length > 0 ? mean(laters) : mean(firsts) };
-    post({ type: 'estimated', requestId, width: source.size.width, height: source.size.height, frames: times.length, sample });
+    post({ type: 'estimateDone', requestId });
   } finally {
     source.input.dispose();
   }

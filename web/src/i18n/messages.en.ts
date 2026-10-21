@@ -1166,6 +1166,7 @@ export const en: Record<MessageKey, string> = {
   'wizard.gif.autoPicking': 'Finding the sharpest size…',
   'wizard.gif.autoPicked': 'We picked the sharpest size that stays under 10 MB, so it is easy to share.',
   'wizard.gif.autoTimeoutFits': 'Measuring took too long; we picked the largest size measured to stay under 10 MB.',
+  'wizard.gif.autoTimeoutPredicted': 'Measuring took too long; judging from a larger size we measured, we picked the sharpest size expected to stay under 10 MB.',
   'wizard.gif.autoTimeoutSmallest': 'Measuring took too long; we picked the smallest size. You can choose a larger one.',
   'wizard.gif.output': 'Save it as',
   'wizard.gif.outputGif': 'GIF',

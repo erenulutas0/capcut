@@ -475,10 +475,11 @@ test('"Video olarak (en net)" (ADR-052): the same part and text as a short H.264
   const path = await readSaved(page, testInfo, 'saved-sample-24s_gif.mp4');
   const probed = probeMp4(path);
   console.log(`GIF-VS-VIDEO ${JSON.stringify({ gif: { bytes: gif.bytes, width: gif.gif.width, height: gif.gif.height }, video: { bytes: readFileSync(path).length, ...probed } })}`);
-  // ADR-052: a short clip's own bitrate — the plan's (0,09 bit a pixel: 2,49 Mbit/s at 720p30), never the
-  // software encoder's three times: at most that over four seconds (+10 %), and smaller than the GIF.
+  // ADR-052: a short clip's own bitrate — the plan's (0,09 bit a pixel: 2,49 Mbit/s at 720p30), 1,5 times on a
+  // software encoder (this one), never the ordinary download's three times: at most that over four seconds
+  // (+10 %), and smaller than the GIF.
   const videoBytes = readFileSync(path).length;
-  expect(videoBytes).toBeLessThanOrEqual(((1280 * 720 * 30 * 0.09 * 4) / 8) * 1.1);
+  expect(videoBytes).toBeLessThanOrEqual(((1280 * 720 * 30 * 0.09 * 1.5 * 4) / 8) * 1.1);
   expect(videoBytes).toBeLessThan(gif.bytes);
   // H.264, no sound at all, the video's own 1280 × 720, four seconds.
   expect(probed).toMatchObject({ videoCodec: 'h264', audioCodec: null, width: 1280, height: 720 });

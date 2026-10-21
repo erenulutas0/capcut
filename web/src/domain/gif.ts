@@ -229,7 +229,27 @@ export function gifIsLarge(estimatedBytes: number): boolean {
  */
 export type GifAutoSize =
   | { kind: 'measure'; size: GifSizeId }
-  | { kind: 'chosen'; size: GifSizeId; why: 'fits' | 'none_fit' | 'unknown' | 'timeout_fits' | 'timeout_smallest' };
+  | { kind: 'chosen'; size: GifSizeId; why: 'fits' | 'none_fit' | 'unknown' | 'timeout_fits' | 'timeout_predicted' | 'timeout_smallest' };
+
+/**
+ * `size`'s bytes predicted from the nearest larger size measured (`larger`, smallest first: the least
+ * stretched), times `GIF_PREDICT_FACTOR`; null when no larger size was measured.
+ */
+export function predictGifBytes(
+  size: GifSizeId,
+  larger: readonly GifSizeId[],
+  estimates: GifSizeEstimates,
+  pixels: Partial<Record<GifSizeId, number>>,
+): number | null {
+  const own = pixels[size];
+  if (!own) return null;
+  for (const other of larger) {
+    const bytes = estimates[other];
+    const otherPixels = pixels[other];
+    if (typeof bytes === 'number' && otherPixels) return bytes * (own / otherPixels) * GIF_PREDICT_FACTOR;
+  }
+  return null;
+}
 
 /** What is known of each size's estimate: bytes, `failed`, or nothing yet (absent). */
 export type GifSizeEstimates = Partial<Record<GifSizeId, number | 'failed'>>;
@@ -250,16 +270,41 @@ export const GIF_AUTO_PICK_MAX_BYTES = 9_000_000;
 export const GIF_AUTO_PICK_LIMIT_MS = 8_000;
 
 /**
- * `timedOut`: the search ran past `GIF_AUTO_PICK_LIMIT_MS`; nothing more is measured, the largest size
- * measured to fit is the one (`timeout_fits`), else the smallest (`timeout_smallest`).
+ * Out of time, a size not yet measured is predicted from the nearest LARGER size measured: GIF bytes follow
+ * the pixel count. Measured (ADR-052 addendum 2; the estimates of 5 real recordings and 3 synthetic clips, 4
+ * and 10 s, 19 pairs of neighbouring sizes): a size's estimate was 0,83–1,25 times the larger size's scaled by
+ * pixels (median 1,06). The prediction is that scaling times this factor, above every ratio measured. Used only when
+ * the search ran out of time, and the screen then says the size was chosen from an estimate.
  */
-export function sharpestShareableGifSize(choices: readonly GifSizeId[], estimates: GifSizeEstimates, timedOut = false): GifAutoSize {
+export const GIF_PREDICT_FACTOR = 1.3;
+
+export interface GifAutoSizeOptions {
+  /** The search ran past `GIF_AUTO_PICK_LIMIT_MS`: nothing more is measured. */
+  timedOut?: boolean;
+  /** Each size's pixel count, for the prediction. */
+  pixels?: Partial<Record<GifSizeId, number>>;
+}
+
+/**
+ * Out of time (`timedOut`), largest first: a size measured to fit (`timeout_fits`), or a size not measured whose
+ * prediction from a larger measured size fits (`timeout_predicted`); else the smallest (`timeout_smallest`).
+ */
+export function sharpestShareableGifSize(
+  choices: readonly GifSizeId[],
+  estimates: GifSizeEstimates,
+  options: GifAutoSizeOptions = {},
+): GifAutoSize {
   const smallest = choices[0] ?? 'small';
   const fits = (known: number | 'failed' | undefined): known is number => typeof known === 'number' && known <= GIF_AUTO_PICK_MAX_BYTES;
-  if (timedOut) {
+  if (options.timedOut) {
+    const pixels = options.pixels ?? {};
     for (let i = choices.length - 1; i >= 0; i -= 1) {
       const size = choices[i] as GifSizeId;
-      if (fits(estimates[size])) return { kind: 'chosen', size, why: 'timeout_fits' };
+      const known = estimates[size];
+      if (fits(known)) return { kind: 'chosen', size, why: 'timeout_fits' };
+      if (known !== undefined) continue;
+      const predicted = predictGifBytes(size, choices.slice(i + 1), estimates, pixels);
+      if (predicted !== null && predicted <= GIF_AUTO_PICK_MAX_BYTES) return { kind: 'chosen', size, why: 'timeout_predicted' };
     }
     return { kind: 'chosen', size: smallest, why: 'timeout_smallest' };
   }
