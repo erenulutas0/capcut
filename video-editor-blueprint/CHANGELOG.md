@@ -3,6 +3,28 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Editör: müzik okunurken indirme bekler ve nedenini söyler — 21 Ekim 2026 (politika ve şema değişmedi)
+
+CI koşusu 39557873032'de "nothing is sent off the machine" iki dakika bekleyip düştü. Neden ürünün kendisiydi:
+müzik dosyası seçildikten sonra okunurken (`loadedmetadata`, dizin ve bütünlük bakışı) "İndir"e basılırsa indirme
+müziksiz tariften başlıyor, dosya müziksiz kaydediliyor, müzik gelince tarif değiştiği için "Kaydedildi" de
+kayboluyordu: kullanıcı için "bastım, bir şey olmadı" (ve elinde müziksiz bir dosya).
+
+- Video ya da müzik okunurken editörün bütün indirme düğmeleri (kartın "İndir"i, üstteki, telefondaki alt çubuk)
+  kapalı; kesit listesinin başında "Müzik açılıyor… İndirme, müzik hazır olunca açılır." (videoda "Video
+  okunuyor…") yazar. Dosya gelince düğmeler açılır.
+- Yeni e2e: müziğin okunması bilerek 1,5 sn yavaşlatılıp düğmenin kapalı olduğu, yazının göründüğü, hiçbir
+  indirmenin başlamadığı ve müzik gelince indirmenin kaydedildiği sınanır. Düzeltme olmadan ilk adımda düşer.
+
+**Sınamalar (yerel):** düzeltmeden önce CI adımları CPU 6 kat yavaşlatılınca **10 / 10 düştü** (CI'daki görüntünün
+aynısı); düzeltmeyle **10 / 10 geçti**. `tsc`, `eslint` temiz; birim **1611 / 1611**; `editor.spec.ts` **24 / 24**
+(CI'daki `CLIP_TEST_HOOKS=1` yapısıyla `english.spec.ts` ile birlikte 47 / 47); iki ilgili sınama 15'er kez: **30 / 30**.
+Müzik seçen diğer dokuz e2e dosyası (kancasız yapıyla): 159'dan 158 geçti; düşen tek sınama `english.spec.ts`'in
+"Speech to text"i, kancalı yapı istediği için — kancalı yapıyla geçti.
+
+**Doğrulanmayan:** CI'da yeniden koşu; gerçek telefon; tüm e2e takımı; kaydedilen dosyada müziğin gerçekten olduğu bu
+sınamada ayrıca ölçülmedi.
+
 ## GIF yap: telefonda net GIF ("Orta" varsayılan, "Büyük" eklendi) ve her sihirbazda ana düğme ekranda — 20 Ekim 2026 (ADR-046 eki; politika ve şema değişmedi)
 
 Kurucu S23'te gerçek bir videodan GIF yaptı: görüntü kötüydü ve dikey videoda "GIF'i indir" ekranın altında

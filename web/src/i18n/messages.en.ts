@@ -880,6 +880,8 @@ export const en: Record<MessageKey, string> = {
   'download.one': 'Download clip',
   'download.all': 'Join all and download',
   'download.allShort': 'Download all',
+  'download.waitMusic': 'Opening the music… Downloading opens once the music is ready.',
+  'download.waitVideo': 'Reading the video… Downloading opens once the video is ready.',
   'download.running.waiting': 'Getting ready…',
   'download.saved': 'Saved: {name}',
   'download.savedWhere': 'In the folder you chose in the save dialog.',

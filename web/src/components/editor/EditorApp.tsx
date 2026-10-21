@@ -504,7 +504,16 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
   // ------------------------------------------------------------ downloads
 
   const top = topDownload(project);
+  /**
+   * A video or music file is still being read: a press now would make the
+   * download from the recipe without it (a file without the music just
+   * chosen), and its "Kaydedildi" would vanish the moment the file arrives
+   * (21 Oct 2026, CI run 39557873032). The buttons wait, and say why.
+   */
+  const readingSource = state.importing;
+  const downloadBlocked = downloads.activeKey !== null || readingSource !== null;
   const startDownload = (target: DownloadTarget) => {
+    if (readingSource !== null) return;
     playback.stop();
     downloads.start(target);
   };
@@ -539,7 +548,19 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
   };
 
   // With one kesit the top button IS its card's button: one status, on the card.
-  const topStatus = top.kind === 'single' ? null : statusNode({ kind: 'all' });
+  const downloadStatus = top.kind === 'single' ? null : statusNode({ kind: 'all' });
+  const topStatus =
+    readingSource !== null && video ? (
+      <>
+        <p className="notice" role="status" data-testid="download-wait-source">
+          <Icon name={readingSource === 'audio' ? 'music' : 'film'} size={16} />
+          <span>{t(readingSource === 'audio' ? 'download.waitMusic' : 'download.waitVideo')}</span>
+        </p>
+        {downloadStatus}
+      </>
+    ) : (
+      downloadStatus
+    );
 
   // ------------------------------------------------------------ silences
 
@@ -797,7 +818,7 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
       selectedClipId={state.selectedClipId}
       playingClipId={playback.playing ? (playback.range?.clipId ?? null) : null}
       thumbs={thumbs}
-      downloading={downloads.activeKey !== null}
+      downloading={downloadBlocked}
       statusFor={(clipId) => statusNode({ kind: 'kesit', clipId })}
       topStatus={topStatus}
       onSelect={selectKesit}
@@ -927,7 +948,7 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
             type="button"
             className={project.clips.length > 0 ? 'btn btn-accent topbar-download' : 'btn topbar-download'}
             onClick={downloadTop}
-            disabled={!video || downloads.activeKey !== null}
+            disabled={!video || downloadBlocked}
             aria-label={top.kind === 'merged' ? t('download.all') : undefined}
             data-testid="download-all"
           >
@@ -1149,7 +1170,7 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
           t={t}
           count={project.clips.length}
           downloadLabel={t(top.kind === 'merged' ? 'download.all' : 'download.one')}
-          downloadDisabled={downloads.activeKey !== null}
+          downloadDisabled={downloadBlocked}
           onDownload={downloadTop}
         />
       ) : null}
