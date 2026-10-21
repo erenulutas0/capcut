@@ -18,7 +18,7 @@ import { loudness, soundFixFixture } from '../../e2e/soundfix-media';
 import { noisyLongFixture } from '../../e2e/targetsize-media';
 import { wizardFixture } from '../../e2e/wizard-media';
 import type { MessageKey } from '../../../src/i18n/messages';
-import { MUSIC, OTHER, SAMPLE, isPhone, langOf, pathFor, setupSaving, startsWith, takeDownloadedFile, takeSavedFile, waitForResult, wordsFor } from './app';
+import { MUSIC, OTHER, SAMPLE, isPhone, langOf, pageLive, pathFor, setupSaving, startsWith, takeDownloadedFile, takeSavedFile, waitForResult, wizardLive, wordsFor } from './app';
 import { probeFile, type FileInfo } from './media';
 import { Novice, VIDEO } from './novice';
 import { round, tr } from './record';
@@ -390,10 +390,13 @@ export async function walk(page: Page, testInfo: TestInfo, flow: Flow, visual: V
     const sourceFile = flow.source();
     await page.goto(pathFor('/', langOf(testInfo)));
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    // Read and pressed once live: before that the card is a plain link and the wizard opens as a
+    // prerendered page of its own, drawn for a wide window (lib/app.ts, `pageLive`, `wizardLive`).
+    await pageLive(page);
     await novice.look('ana ekran');
     const started = Date.now();
     await novice.press('link', startsWith(label), `task-${flow.id}`);
-    await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'pick');
+    await wizardLive(page);
     await novice.look('video seç', [VIDEO]);
     await shot(page, testInfo, visual, `yol-${flow.shotId ?? flow.id}-ilk`);
     await novice.pickFile(startsWith(t('preview.pickVideo')), sourceFile, 'pick-video');

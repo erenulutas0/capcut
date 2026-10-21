@@ -12,7 +12,7 @@ import { soundFixFixture } from '../../e2e/soundfix-media';
 import { wizardFixture } from '../../e2e/wizard-media';
 import { layoutModeFor } from '../../../src/components/editor/layoutMode';
 import type { Locale } from '../../../src/i18n/translate';
-import { MUSIC, OTHER, SAMPLE, pathFor, waitForResult } from './app';
+import { MUSIC, OTHER, SAMPLE, pageLive, pathFor, waitForResult, wizardLive } from './app';
 
 export interface ScreenState {
   id: string;
@@ -40,14 +40,25 @@ const TYPED: Record<'found' | 'ask' | 'cannot', Record<Locale, string>> = {
  * exists only once the page is hydrated; then the root says which layout it shows.
  */
 async function editorLaidOut(page: Page): Promise<void> {
+  await pageLive(page);
   await expect(page.getByTestId('video-input')).toBeAttached({ timeout: 30_000 });
   const width = page.viewportSize()?.width ?? (await page.evaluate(() => window.innerWidth));
   await expect(page.locator('.editor-root')).toHaveAttribute('data-mode', layoutModeFor(width), { timeout: 30_000 });
 }
 
+/**
+ * The opening screen, live, before a word is typed into its box. The prerendered box takes typing
+ * too (TaskFinder reads what was typed before hydration), but the answer is only drawn by the live
+ * page: what is measured must be that page, not a race between the two.
+ */
+async function openHome(page: Page, lang: Locale): Promise<void> {
+  await page.goto(pathFor('/', lang));
+  await pageLive(page);
+}
+
 async function pick(page: Page, task: string, file: string, lang: Locale = 'tr'): Promise<void> {
   await page.goto(pathFor(`/yap/${task}/`, lang));
-  await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'pick');
+  await wizardLive(page);
   await page.getByTestId('video-input').setInputFiles(file);
 }
 
@@ -58,13 +69,14 @@ export const STATES: ScreenState[] = [
     open: async (page, lang = 'tr') => {
       await page.goto(pathFor('/', lang));
       await expect(page.getByTestId('task-grid')).toBeVisible();
+      await pageLive(page);
     },
   },
   {
     id: 'ana-ekran-arama',
     label: 'Ana ekran, arama sonucu (“sessiz yerleri sil”)',
     open: async (page, lang = 'tr') => {
-      await page.goto(pathFor('/', lang));
+      await openHome(page, lang);
       await page.getByTestId('finder-input').fill(TYPED.found[lang]);
       await expect(page.getByTestId('finder-results')).toBeVisible();
     },
@@ -74,7 +86,7 @@ export const STATES: ScreenState[] = [
     id: 'ana-ekran-soru',
     label: 'Ana ekran, emin değilken seçenekler (“tiktok için kes”)',
     open: async (page, lang = 'tr') => {
-      await page.goto(pathFor('/', lang));
+      await openHome(page, lang);
       await page.getByTestId('finder-input').fill(TYPED.ask[lang]);
       await expect(page.getByTestId('finder-ask-hint')).toBeVisible();
     },
@@ -83,7 +95,7 @@ export const STATES: ScreenState[] = [
     id: 'ana-ekran-yapamiyoruz',
     label: 'Ana ekran, “Bunu henüz yapamıyoruz.” (“videoyu döndür”)',
     open: async (page, lang = 'tr') => {
-      await page.goto(pathFor('/', lang));
+      await openHome(page, lang);
       await page.getByTestId('finder-input').fill(TYPED.cannot[lang]);
       await expect(page.getByTestId('result-unavailable').first()).toBeVisible();
     },
@@ -92,7 +104,7 @@ export const STATES: ScreenState[] = [
     id: 'ana-ekran-bulunamadi',
     label: 'Ana ekran, “Bunu bulamadım.”',
     open: async (page, lang = 'tr') => {
-      await page.goto(pathFor('/', lang));
+      await openHome(page, lang);
       await page.getByTestId('finder-input').fill('qwxz plmk');
       await expect(page.getByTestId('finder-none')).toBeVisible();
     },
@@ -103,7 +115,7 @@ export const STATES: ScreenState[] = [
     wizard: true,
     open: async (page, lang = 'tr') => {
       await page.goto(pathFor('/yap/dikey/', lang));
-      await expect(page.getByTestId('pick-video')).toBeEnabled();
+      await wizardLive(page);
     },
   },
   {

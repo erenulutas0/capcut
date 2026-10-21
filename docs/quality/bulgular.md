@@ -1,5 +1,32 @@
 **Yazıldığı koşu:** 11 Ekim 2026 öğleden sonra, dal `worktree-agent-a511c0275d7647e51` (önceki bulgular: aynı gün, `b8e355f`). O raporda açık kalan üç şey üzerinde çalışıldı: aramanın yanlış karta göndermesi, editörün her videoyu 1080p’ye büyütmesi, 720p’den küçük kaynakların büyütülmesi. Aşağıda her biri için aynı ölçünün önceki → şimdiki değeri var. Açık kalanlar en başta.
 
+### 21 Ekim — ekranlar canlandıktan sonra ölçülür: bütün durumlar tarandı (dal `worktree-agent-a5fb112d824a4f8e6`)
+
+`3868d4c` editörün iki durumunu düzeltmişti (önceden basılmış geniş düzen telefonda ölçülüyordu). Aynı türden yarış
+öteki durumlarda da var mı diye her durum ve yürüyüşlerin ilk iki ekranı tarandı: önceden basılmış sayfayı
+canlanmadan okumak, canlandıktan sonra gelen düzen geçişini beklememek, yazı tipini beklememek.
+- **Yazı tipi:** uygulama yazı tipi indirmez (`@font-face` / `next/font` yok; sistem yazı tipleri); ekran görüntüsü
+  zaten `document.fonts.ready` bekliyor. Buradan yarış çıkmaz.
+- **Ölçüm** (geçici bir sonda, depoya girmedi): sayfanın işlemcisi CDP ile **6× yavaşlatıldı**, her durum açıldığı
+  anda okundu (görünen yazı, her kontrolün boyutu, sayfa canlı mı) ve sayfa canlanıp 4 sn durulduktan sonra yeniden
+  okundu; dört görünüm × iki koşu, 17 okuma (13 durum + iki yürüyüşün ana ekranı ve sihirbaz ilk ekranı; İyileştir,
+  Sesi düzelt, sonuç ekranı ve videolu editör uzun oldukları için dışarıda), toplam 136.
+  - **Önce:** 136 okumanın **24'ü sayfa canlanmadan** yapıldı — "Ana ekran" ve her yürüyüşün ana ekran okuması,
+    dört görünümün hepsinde, her koşuda (yalnızca görev ızgarasının görünmesi bekleniyordu). Ana ekranın önceden
+    basılmış hâli canlısıyla aynı olduğu için **hiçbir sayı değişmedi** (yazı ve kontrol boyutları 136'da 136 aynı).
+    Sihirbazın ilk ekranı ölçüldüğünde canlıydı.
+  - **Sonra:** canlanmadan okunan **0 / 136**, durulmuş ekrandan farklı **0 / 136**.
+- **Ne değişti** (`web/tests/quality/lib/app.ts`, `states.ts`, `walk.ts`): "canlı" sayfa bekçisinin kendi koşuludur —
+  `<html data-clip-alive>` ve bekleyen parça (`data-clip-pending`) yok. Ana ekran durumları, editör ve yürüyüşlerin ana
+  ekranı bunu bekler; sihirbazın ilk ekranı ayrıca "Video seç"in açılmasını (canlanma, pencere düzeni ve dokunmatik
+  ekran aynı geçişte çizilir; önceden basılmış sihirbaz geniş pencere ve fare içindir: telefonda "Dosyalarından seç
+  ya da videoyu buraya sürükleyip bırak" yazar, canlısı "Galeriden ya da dosyalardan"). Kart artık ancak canlı
+  sayfada basılır (önce basılırsa düz bir bağlantıdır ve sihirbaz kendi önceden basılmış sayfasıyla açılır).
+- Gizlilik sayfası bu katmanda ölçülmüyor (durum listesinde yok). Değişiklikten sonra yalnız görsel ve
+  erişilebilirlik bölümleri koşuldu (`--only=visual,a11y --no-build --no-history`, statik çıktı): 60 ekran
+  karşılaştırıldı, **farklı 0**, karşılaştırılamayan 0; 34 erişilebilirlik ölçümü, **bütçe dışı 0**. O kısmi rapor depoya
+  konmadı. Yürüyüşler ve tam `npm run quality` bu dalda koşulmadı; bütçe değişmedi.
+
 ### 21 Ekim — 20 Ekim raporunda bütçe dışı kalan 13 ölçü: hangisi neden duruyor (dal `worktree-agent-a5fb112d824a4f8e6`)
 
 20 Ekim raporunun 16 bütçe dışı ölçüsünden üçü ("Editör, video yok (telefon)": 44 px, 24 px, Tab) ölçüm hatasıydı ve
