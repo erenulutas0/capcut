@@ -558,3 +558,20 @@ geri açar.
 
 Sonuçlar ve uygulanan karar bu bölümün altına eklenir.
 
+### Ön kayda ek (21 Ekim, adım 1'in sonucunu GÖRDÜKTEN SONRA, yeni adaylar ölçülmeden önce yazıldı)
+
+Adım 1'in sonucu (aşağıda): kural bugünkü `high`'ı tuttu. Keskinleştirilen adayların hepsi VMAF-tel-NEG'de büyük
+kazanç gösterdi (puan +8,6 / +12,0) ama ön kayıt keskinleştirmeyi yalnızca `mip` ve `box`'ın üstüne koymuştu; o ikisi
+4K kaynakta (R1) süre sınırını aştı (kare başına +107 / +157 ms). **Bugünkü küçültmenin üstüne keskinleştirme ön
+kayıtta yoktu** — eksik bir aday. Bu ek, sonucu bilerek yazıldığı için ayrıca **saklı bir kümede doğrulama** ister:
+
+- Yeni adaylar: `high+s0.25`, `high+s0.5` (bugünkü küçültme, sonra aynı keskinleştirme). Başka aday eklenmedi.
+- Aynı kural (adım 1'in a–c'si, puan, geçme eşikleri: +2,0, ya da +1,0 ve Orta'da bayt −%5; yapayda en çok −1,0),
+  **iki kümede ayrı ayrı** tutmalı: (1) ana küme (yukarıdaki ölçümün aynı kareleri yeniden çizilir; `high` aynı
+  koşuda yeniden ölçülür); (2) **saklı küme:** aynı kayıtların ortasından bir kısım (başlangıç = süre / 2, en çok
+  süre − 4,5 sn; 4,4 sn'lik R2 yok) + birinci turun dışarıda bıraktığı 854 × 480'lik kayıt (R12, 32 dk, ortasından)
+  + S1–S5'in 6. saniyesinden başlayan kısmı. Saklı kümenin hiçbir karesi bu ekten önce ölçülmedi.
+- İki kümede de geçen adaylar arasından kazanan, ana kümedeki adım 1 sıralamasıyla seçilir; iki kümede de geçen
+  yoksa `high` kalır.
+- Adım 2–4 bu adımın sonucuyla, yazıldıkları gibi.
+
