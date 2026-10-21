@@ -1,6 +1,7 @@
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test, type Page } from './fixtures';
+import { expect, test, type Page, type TestInfo } from './fixtures';
 
 import {
   addKesit,
@@ -14,13 +15,88 @@ import {
   openVideo,
   opfsFiles,
   installSavePicker,
+  pickerCalls,
+  readSaved,
 } from './kesitFlow';
+import { decodeMono } from './targetsize-media';
 
 const SAMPLE_VIDEO = join(process.cwd(), 'tests', 'media', 'sample-24s.mp4');
 const SAMPLE_AUDIO = join(process.cwd(), 'tests', 'media', 'tone-30s.m4a');
 
 async function importSample(page: Page) {
   await openVideo(page, SAMPLE_VIDEO);
+}
+
+/** The video's own sound is a steady 440 Hz tone, the music a steady 220 Hz one (both measured with ffmpeg). */
+const MUSIC_HZ = 220;
+const RATE = 48_000;
+
+/** Amplitude of one frequency in samples [from, to) (Goertzel); a full-scale sine reads 1. */
+function toneAmplitude(samples: Float32Array, hz: number, from: number, to: number): number {
+  const step = (2 * Math.PI * hz) / RATE;
+  const coefficient = 2 * Math.cos(step);
+  let previous = 0;
+  let beforePrevious = 0;
+  for (let i = from; i < to; i += 1) {
+    const value = (samples[i] ?? 0) + coefficient * previous - beforePrevious;
+    beforePrevious = previous;
+    previous = value;
+  }
+  const power = previous * previous + beforePrevious * beforePrevious - coefficient * previous * beforePrevious;
+  return to > from ? Math.sqrt(Math.max(0, power)) / ((to - from) / 2) : 0;
+}
+
+interface SavedSound {
+  /** The file's sound stream: its codec and length (ffprobe), null when there is none. */
+  audio: { codec: string; durationS: number } | null;
+  durationS: number;
+  /** Level of the music's tone in each quarter second of the file. */
+  musicByQuarter: number[];
+}
+
+/** What the saved file really carries, read by ffprobe and ffmpeg — not what the page says it made. */
+function savedSound(file: string): SavedSound {
+  const probe = spawnSync('ffprobe', ['-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', file], { encoding: 'utf8' });
+  if (probe.status !== 0) throw new Error(`ffprobe failed: ${probe.stderr}`);
+  const json = JSON.parse(probe.stdout) as {
+    format: { duration: string };
+    streams: Array<{ codec_type: string; codec_name: string; duration?: string }>;
+  };
+  const stream = json.streams.find((item) => item.codec_type === 'audio');
+  const samples = stream ? decodeMono(file) : new Float32Array();
+  const quarter = RATE / 4;
+  const musicByQuarter: number[] = [];
+  for (let from = 0; from + quarter <= samples.length; from += quarter) {
+    musicByQuarter.push(Math.round(toneAmplitude(samples, MUSIC_HZ, from, from + quarter) * 1000) / 1000);
+  }
+  return {
+    audio: stream ? { codec: stream.codec_name, durationS: Number(stream.duration ?? json.format.duration) } : null,
+    durationS: Number(json.format.duration),
+    musicByQuarter,
+  };
+}
+
+/** The one file the stand-in save dialog received, copied out of the page's storage. */
+async function theSavedFile(page: Page, testInfo: TestInfo): Promise<string> {
+  const calls = await pickerCalls(page);
+  expect(calls).toHaveLength(1);
+  return readSaved(page, testInfo, `saved-${calls[0]}`);
+}
+
+/**
+ * The 2-second kesit 00:00–00:02 was saved with the music under all of it: a sound stream as long as
+ * the video, and the music's tone in every quarter second (the music starts with the kesit). Measured
+ * 21 Oct 2026: saved with the music, 0,029–0,032 at 220 Hz in every quarter (the video's own 440 Hz:
+ * 0,12–0,13); the same 2 s cut by ffmpeg without the music, 0,000–0,001. The line is 0,01.
+ */
+function expectMusicUnderTheWholeKesit(file: string): void {
+  const sound = savedSound(file);
+  expect(sound.durationS).toBeGreaterThan(1.9);
+  expect(sound.durationS).toBeLessThan(2.15);
+  expect(sound.audio?.codec).toBe('aac');
+  expect(sound.audio?.durationS ?? 0).toBeGreaterThan(1.9);
+  expect(sound.musicByQuarter.length).toBeGreaterThanOrEqual(7);
+  expect(sound.musicByQuarter.filter((level) => level < 0.01), `220 Hz by quarter second: ${sound.musicByQuarter.join(' ')}`).toEqual([]);
 }
 
 const exportFiles = async (page: Page) =>
@@ -147,7 +223,7 @@ test.describe('editor', () => {
     await page.getByTestId('kesit-play').click();
   });
 
-  test('nothing is sent off the machine', async ({ page, baseURL }) => {
+  test('nothing is sent off the machine', async ({ page, baseURL }, testInfo) => {
     test.setTimeout(120_000);
     const ownOrigin = new URL(baseURL ?? 'http://127.0.0.1:3100').origin;
     const external: string[] = [];
@@ -165,9 +241,11 @@ test.describe('editor', () => {
     await page.getByTestId('kesit-download').click();
     await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
     expect(external, `beklenmeyen dış istek: ${external.join(', ')}`).toEqual([]);
+    // And what stayed on the machine is the whole thing: the music is in the file.
+    expectMusicUnderTheWholeKesit(await theSavedFile(page, testInfo));
   });
 
-  test('download waits while the music is still being read, and says so', async ({ page }) => {
+  test('download waits while the music is still being read, and says so', async ({ page }, testInfo) => {
     // CI run 39557873032: a press while the music was being read made the
     // file without it, and its "Kaydedildi" vanished when the music arrived.
     // Here the music's read is made slow on purpose (its probe element hears
@@ -211,6 +289,10 @@ test.describe('editor', () => {
     await page.getByTestId('kesit-download').click();
     await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
     expect(await page.evaluate(() => (window as unknown as { __pickerCalls: string[] }).__pickerCalls)).toHaveLength(1);
+    // "Kaydedildi" is not the proof: the saved file is read. It carries the music, under the whole kesit.
+    expectMusicUnderTheWholeKesit(await theSavedFile(page, testInfo));
+    // And it is still said to be saved now that the music is in (CI 39557873032: it vanished then).
+    await expect(page.getByTestId('download-saved')).toBeVisible();
   });
 
   test('aspect presets change the preview frame geometry', async ({ page }) => {
