@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from './fixtures';
 
-import { installSavePicker, pickerCalls, readSaved } from './kesitFlow';
+import { addKesit, closeSheet, installSavePicker, openEditor, openSettings, openVideo, pickerCalls, readSaved } from './kesitFlow';
 import {
   decodedFrameHashes,
   durations,
@@ -125,7 +125,7 @@ test.describe('Sesi düzelt', () => {
       } else {
         await expect(page.getByTestId('duzelt-clipped')).toHaveCount(0);
       }
-      // No choice to make, and no "editor" to continue in (the editor does not know this chain).
+      // No choice to make, and no "editor" to continue in (the card opens no editor; ADR-050 left that link to the founder).
       await expect(page.getByRole('radio')).toHaveCount(0);
       await expect(page.getByTestId('wizard-open-editor')).toHaveCount(0);
       // The page's own measurement, before anything is encoded, agrees with ffmpeg's on the source.
@@ -272,5 +272,204 @@ test.describe('Sesi düzelt in English', () => {
     await expect(page.getByTestId('duzelt-clipped')).toHaveText('The sound in this recording is distorted in places. The volume is fixed, but the distortion stays.');
     // Measured on the page: far over the one-in-a-thousand line (ffmpeg's decoder: 13 % of the samples at or over 0.95).
     expect(Number(await page.getByTestId('duzelt-summary').getAttribute('data-clipped-share'))).toBeGreaterThan(0.01);
+  });
+});
+
+/* ---------------------------------------------------------------- the editor (ADR-050) */
+
+const MUSIC = join(process.cwd(), 'tests', 'media', 'tone-30s.m4a'); // a steady tone, about −22 LUFS
+
+/** Ayarlar → Ses → "Sesi düzelt": off until it is ticked; the noise sentence comes with it. */
+async function turnOnSoundFix(page: Page) {
+  await openSettings(page, 'audio');
+  const box = page.getByTestId('sound-fix');
+  await expect(box).not.toBeChecked();
+  await expect(page.getByTestId('sound-fix-keeps')).toHaveCount(0);
+  await box.check();
+  await expect(box).toBeChecked();
+  await expect(page.getByTestId('sound-fix-keeps')).toContainText('Gürültüyü silmez');
+  await closeSheet(page);
+}
+
+/** The whole video from the top button; every step the download showed is kept, to see that the sound was really listened to. */
+async function downloadFromEditor(page: Page, testInfo: Parameters<Parameters<typeof test>[1]>[1]) {
+  await page.evaluate(() => {
+    const seen = new Set<string>();
+    (window as unknown as { __steps: Set<string> }).__steps = seen;
+    new MutationObserver(() => {
+      for (const node of Array.from(document.querySelectorAll('.dl-step'))) seen.add(node.textContent ?? '');
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  });
+  await page.getByTestId('download-all').click();
+  await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 240_000 });
+  const steps = await page.evaluate(() => Array.from((window as unknown as { __steps: Set<string> }).__steps));
+  const name = (await pickerCalls(page)).at(-1) ?? '';
+  const saved = await readSaved(page, testInfo, `saved-${name}`);
+  const measured = loudness(saved);
+  const body = JSON.stringify({ saved: measured, steps, lengths: durations(saved) }, null, 1);
+  writeFileSync(testInfo.outputPath('measured.json'), body);
+  await testInfo.attach('measured', { body, contentType: 'application/json' });
+  return { saved, measured, steps };
+}
+
+const line = (page: Page) => page.getByTestId('export-sound-fix');
+
+test.describe('Sesi düzelt in the editor (ADR-050)', () => {
+  test('quiet speech: measured at download, the file is at −16 LUFS under −1 dBTP, and the pictures are the source’s', async ({ page }, testInfo) => {
+    const source = soundFixFixture('quiet');
+    const errors = await openEditor(page);
+    await openVideo(page, source);
+    await turnOnSoundFix(page);
+    const { saved, measured, steps } = await downloadFromEditor(page, testInfo);
+    // The sound was listened to (two passes, a real share) before anything was encoded.
+    expect(steps).toContain('Sesin dinleniyor…');
+    await expect(line(page)).toHaveText('Ses düzeltildi: daha duyulur ve eşit.');
+    await expect(line(page)).toHaveAttribute('data-clipped', 'false');
+    await expect(page.getByTestId('export-sound-fix-clipped')).toHaveCount(0);
+    // The export's own measurement of the mix agrees with ffmpeg's on the source (the mix is the source here).
+    const before = Number(await line(page).getAttribute('data-before-lufs'));
+    expect(Math.abs(before - loudness(source).integratedLufs)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(measured.integratedLufs - TARGET), JSON.stringify(measured)).toBeLessThanOrEqual(1);
+    expect(measured.truePeakDbtp, JSON.stringify(measured)).toBeLessThanOrEqual(-1);
+    // Nothing else forces a re-encode: the picture is copied, as the card's is.
+    await expect(page.getByTestId('export-method')).toHaveAttribute('data-method', 'copy');
+    samePictures(saved, source);
+    const lengths = durations(saved);
+    const frame = 1 / 30;
+    expect(Math.abs((lengths.video ?? 0) - (durations(source).video ?? 0))).toBeLessThanOrEqual(frame + 0.001);
+    expect(Math.abs((lengths.audio ?? 0) - (lengths.video ?? 0))).toBeLessThanOrEqual(frame + 0.001);
+    expect(errors).toEqual([]);
+  });
+
+  test('with music: the whole mix (the video’s sound and the music together) is what comes to −16 LUFS', async ({ page }, testInfo) => {
+    const source = soundFixFixture('quiet');
+    await openEditor(page);
+    await openVideo(page, source);
+    await page.getByTestId('audio-input').setInputFiles(MUSIC);
+    await openSettings(page, 'audio');
+    await expect(page.getByTestId('music-in')).toBeVisible({ timeout: 30_000 });
+    await closeSheet(page);
+    await turnOnSoundFix(page);
+    const { saved, measured } = await downloadFromEditor(page, testInfo);
+    await expect(line(page)).toHaveText('Ses düzeltildi: daha duyulur ve eşit.');
+    // The music is in what was measured: the mix is louder than the video's sound alone (−38 LUFS; the tone at −12 dB ≈ −34).
+    const before = Number(await line(page).getAttribute('data-before-lufs'));
+    expect(before).toBeGreaterThan(loudness(source).integratedLufs + 3);
+    expect(Math.abs(measured.integratedLufs - TARGET), JSON.stringify(measured)).toBeLessThanOrEqual(1);
+    expect(measured.truePeakDbtp, JSON.stringify(measured)).toBeLessThanOrEqual(-1);
+    await expect(page.getByTestId('export-method')).toHaveAttribute('data-method', 'copy');
+    samePictures(saved, source);
+  });
+
+  test('two kesitler joined: the one chain carries its gains across the cut, and the joined file is at −16 LUFS', async ({ page }, testInfo) => {
+    const source = soundFixFixture('uneven');
+    await openEditor(page);
+    await openVideo(page, source);
+    // On whole seconds: the fixture has a key frame every second, so the pictures can still be copied.
+    await addKesit(page, '00:01.000', '00:06.000');
+    await addKesit(page, '00:09.000', '00:15.000');
+    await expect(page.getByTestId('moment-count')).toHaveText('(2)');
+    await turnOnSoundFix(page);
+    const { saved, measured } = await downloadFromEditor(page, testInfo);
+    await expect(line(page)).toHaveText('Ses düzeltildi: daha duyulur ve eşit.');
+    expect(Math.abs(measured.integratedLufs - TARGET), JSON.stringify(measured)).toBeLessThanOrEqual(1);
+    expect(measured.truePeakDbtp, JSON.stringify(measured)).toBeLessThanOrEqual(-1);
+    // 5 s + 6 s, the sound as long as the picture.
+    const lengths = durations(saved);
+    expect(Math.abs((lengths.video ?? 0) - 11)).toBeLessThanOrEqual(1 / 30 + 0.001);
+    expect(Math.abs((lengths.audio ?? 0) - (lengths.video ?? 0))).toBeLessThanOrEqual(1 / 30 + 0.001);
+    await expect(page.getByTestId('export-method')).toHaveAttribute('data-method', 'copy');
+  });
+
+  test('a recording cut off in places: the card’s sentence says the distortion stays; the level is still −16 LUFS', async ({ page }, testInfo) => {
+    await openEditor(page);
+    await openVideo(page, soundFixFixture('clipped'));
+    await turnOnSoundFix(page);
+    const { measured } = await downloadFromEditor(page, testInfo);
+    await expect(line(page)).toHaveAttribute('data-clipped', 'true');
+    await expect(page.getByTestId('export-sound-fix-clipped')).toHaveText(
+      'Bu kayıtta ses yer yer patlamış. Sesin yüksekliği düzelir, ama patlama gitmez.',
+    );
+    expect(Number(await line(page).getAttribute('data-clipped-share'))).toBeGreaterThan(0.01);
+    expect(Math.abs(measured.integratedLufs - TARGET)).toBeLessThanOrEqual(1);
+    expect(measured.truePeakDbtp).toBeLessThanOrEqual(-1);
+  });
+
+  test('a sound already good: said so after the download, and the file is still at −16 LUFS', async ({ page }, testInfo) => {
+    await openEditor(page);
+    await openVideo(page, soundFixFixture('good'));
+    await turnOnSoundFix(page);
+    const { measured } = await downloadFromEditor(page, testInfo);
+    await expect(line(page)).toHaveText('Sesin zaten iyiydi; pek bir şey değişmedi.');
+    await expect(line(page)).toHaveAttribute('data-already-good', 'true');
+    await expect(page.getByTestId('export-sound-fix-clipped')).toHaveCount(0);
+    expect(Math.abs(measured.integratedLufs - TARGET)).toBeLessThanOrEqual(1);
+    expect(measured.truePeakDbtp).toBeLessThanOrEqual(-1);
+  });
+
+  test('a sound track of silence: nothing is turned up, the download says so, and its sound is the ordinary mix', async ({ page }, testInfo) => {
+    await openEditor(page);
+    await openVideo(page, soundFixFixture('silence'));
+    await turnOnSoundFix(page);
+    const { measured } = await downloadFromEditor(page, testInfo);
+    await expect(line(page)).toHaveAttribute('data-skipped', 'silent');
+    await expect(line(page)).toHaveText('Sesi düzelt açıktı, ama seste duyulacak bir şey yoktu; ses olduğu gibi kaldı.');
+    // Still silence (ffmpeg's meter says −70 LUFS for digital silence): no gain was applied to it.
+    expect(measured.integratedLufs).toBeLessThanOrEqual(-60);
+    await expect(page.getByTestId('export-method')).toHaveAttribute('data-method', 'copy');
+  });
+
+  // The same measuring for the other kinds of download (test hook: the options the task screens pass).
+  for (const kind of [
+    { name: 'sound only (M4A)', options: { output: 'audio' }, streams: ['audio:aac'] },
+    { name: 'a size target', options: { targetSize: { targetBytes: 2_000_000 } }, streams: ['video:h264', 'audio:aac'] },
+  ] as const) {
+    test(`${kind.name}: the same mix measured, the file at −16 LUFS under −1 dBTP`, async ({ page }, testInfo) => {
+      await page.addInitScript((options) => {
+        (window as unknown as { __clipExportOptions?: unknown }).__clipExportOptions = options;
+      }, kind.options);
+      await openEditor(page);
+      await openVideo(page, soundFixFixture('quiet'));
+      await turnOnSoundFix(page);
+      const { saved, measured, steps } = await downloadFromEditor(page, testInfo);
+      expect(steps).toContain('Sesin dinleniyor…');
+      await expect(line(page)).toHaveText('Ses düzeltildi: daha duyulur ve eşit.');
+      expect(probeStreams(saved).streams.map((stream) => `${stream.type}:${stream.codec}`)).toEqual([...kind.streams]);
+      expect(Math.abs(measured.integratedLufs - TARGET), JSON.stringify(measured)).toBeLessThanOrEqual(1);
+      expect(measured.truePeakDbtp, JSON.stringify(measured)).toBeLessThanOrEqual(-1);
+    });
+  }
+
+  test('off (the default): no measuring, no line, and the sound is mixed as always', async ({ page }, testInfo) => {
+    const source = soundFixFixture('quiet');
+    await openEditor(page);
+    await openVideo(page, source);
+    await openSettings(page, 'audio');
+    await expect(page.getByTestId('sound-fix')).not.toBeChecked();
+    await closeSheet(page);
+    const { measured, steps } = await downloadFromEditor(page, testInfo);
+    expect(steps).not.toContain('Sesin dinleniyor…');
+    await expect(line(page)).toHaveCount(0);
+    // The ordinary mix: the source's loudness less the −1 dB headroom of every download, not −16.
+    expect(Math.abs(measured.integratedLufs - (loudness(source).integratedLufs - 1))).toBeLessThanOrEqual(1);
+  });
+});
+
+test.describe('Sesi düzelt in the English editor', () => {
+  test.use({ locale: 'en-US', storageState: { cookies: [], origins: [] } });
+
+  test('the setting and what the download says, in English', async ({ page }, testInfo) => {
+    await page.goto('/en/editor');
+    await expect(page.getByTestId('download-all')).toBeVisible();
+    await openVideo(page, soundFixFixture('good'));
+    await openSettings(page, 'audio');
+    await expect(page.getByTestId('sound-fix-setting')).toContainText('Fix the sound');
+    await expect(page.getByTestId('sound-fix-setting')).toContainText('−16 LUFS');
+    await page.getByTestId('sound-fix').check();
+    await expect(page.getByTestId('sound-fix-keeps')).toContainText('It does not remove noise');
+    await closeSheet(page);
+    const { measured } = await downloadFromEditor(page, testInfo);
+    await expect(line(page)).toHaveText('Your sound was already good; little changed.');
+    expect(Math.abs(measured.integratedLufs - TARGET)).toBeLessThanOrEqual(1);
   });
 });

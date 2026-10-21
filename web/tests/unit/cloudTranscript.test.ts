@@ -269,7 +269,7 @@ describe('in the recipe: a transcript track whose lines name their voice (EDL v5
     // The line is the only place the route leaves anything: the track has no new key.
     expect(Object.keys(track ?? {}).sort()).toEqual(['assetId', 'cues', 'language', 'origin', 'style', 'timeBase', 'trackId']);
     expect(applied.project.schemaVersion).toBe(EDL_SCHEMA_VERSION);
-    expect(EDL_SCHEMA_VERSION).toBe(5);
+    expect(EDL_SCHEMA_VERSION).toBe(6);
     const withKesit = addClip(applied.project, { sourceInUs: 0, sourceOutUs: 5 * S });
     expect(withKesit.ok && validateProject(withKesit.project).ok).toBe(true);
     // The panel reads the voices from the stored lines — nothing lives beside the recipe any more.

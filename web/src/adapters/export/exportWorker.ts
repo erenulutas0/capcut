@@ -38,10 +38,22 @@ import {
 import { cueIndexAtFrame, preflightCaptions } from '@/domain/captionBurnIn';
 import type { CaptionLayout } from '@/domain/captionLayout';
 import { paramsAtFrame, planEnhancement, summarize, type EnhanceTimeline, type PictureRect } from '@/domain/enhance';
-import { SoundFixChain, usableSettings, type SoundFixSettings } from '@/domain/soundFix';
+import { R128Meter } from '@/domain/r128';
+import {
+  ClipMeter,
+  SILENT_BELOW_LUFS,
+  SoundFixChain,
+  SoundRehearsal,
+  decideSoundFix,
+  inputGainFor,
+  usableSettings,
+  type SoundFixSettings,
+} from '@/domain/soundFix';
 import type {
   EnhanceOutcome,
+  SoundFixFound,
   SoundFixOutcome,
+  SoundFixSkipped,
   ExportEvent,
   ExportFailureCode,
   ExportProbe,
@@ -892,6 +904,8 @@ interface ExportRequestOptions {
   enhanceForceCpu: boolean;
   /** ADR-049: the loudness chain's measured gains ("Sesi düzelt"); null: the sound is mixed as always. */
   soundFix: SoundFixSettings | null;
+  /** ADR-050: set by `prepareSoundFix` when this export measured the mix itself (the editor's setting). */
+  soundFixMeasured?: MixSoundFix;
   /** ADR-045, measurement hook: the rate control an ordinary download asks for instead of `ORDINARY_BITRATE_MODE`. */
   bitrateModeOverride: VideoBitrateMode | null;
   /** ADR-045, test builds only: the encoder is taken to refuse `constant` (false everywhere else). */
@@ -1023,16 +1037,136 @@ function soundFixChain(options: ExportRequestOptions, plan: RenderPlan): SoundFi
   return options.soundFix ? new SoundFixChain(plan.audio.sampleRate, plan.audio.channelCount, options.soundFix) : null;
 }
 
-/** What the loudness chain did, for the result (ADR-049). */
-function soundFixOutcome(options: ExportRequestOptions, chain: SoundFixChain | null | undefined): { soundFix?: SoundFixOutcome } {
+/** What the loudness chain did, for the result (ADR-049); and, for the editor's setting, what was found (ADR-050). */
+function soundFixOutcome(
+  options: ExportRequestOptions,
+  chain: SoundFixChain | null | undefined,
+): { soundFix?: SoundFixOutcome; soundFixSkipped?: SoundFixSkipped } {
+  const measured = options.soundFixMeasured;
+  if (measured && 'skipped' in measured) return { soundFixSkipped: measured.skipped };
   if (!options.soundFix || !chain) return {};
   return {
     soundFix: {
       inputGainDb: options.soundFix.inputGainDb,
       outputGainDb: options.soundFix.outputGainDb,
       deepestLimitingDb: Math.round(chain.deepestLimitingDb * 10) / 10,
+      ...(measured ? { found: measured.found } : {}),
     },
   };
+}
+
+/** ADR-050: what the export's own measurement of the mix decided. */
+type MixSoundFix = { skipped: SoundFixSkipped } | { settings: SoundFixSettings; found: SoundFixFound };
+
+/** Output time one step of the measuring mixes before it reports progress. */
+const SOUND_MEASURE_STEP_US = 2 * US_PER_SECOND;
+
+/** Where the measuring writes nothing: it only mixes. */
+const NOWHERE = { add: async () => undefined };
+
+/**
+ * ADR-050, "Sesi düzelt" in the editor: the whole mixed sound of this download,
+ * measured the way the card measures the video's sound (ADR-049), and the
+ * same decision made from it (`decideSoundFix`).
+ *
+ * The mix is the download's own: `SegmentAudioWriter` with every kesit at its
+ * gain and the music with its envelope, at the output rate — only, instead of
+ * being written, each chunk goes to the meters (`measure`). Two passes, each a
+ * fresh decode of the sound (nothing is held in memory):
+ *
+ * 1. the mix as it is → its integrated loudness (BS.1770) → the input gain;
+ *    on the way, how much of the video's OWN sound is at full scale (`ClipMeter`
+ *    on the source alone: the music's mastered peaks are not a damaged recording);
+ * 2. the mix through steps 1–4 and the limiter at that input gain
+ *    (`SoundRehearsal`) → the output gain.
+ *
+ * Progress is the real share of the two passes. Silence (under −60 LUFS) is
+ * not turned up: the chain does not run, and the result says why.
+ */
+async function measureMixForSoundFix(requestId: string, plan: RenderPlan, sources: Pick<ExportSources, 'sourceAudioTrack' | 'sourceAudioUsable' | 'musicTrack'>): Promise<MixSoundFix> {
+  const { sourceAudioTrack, sourceAudioUsable, musicTrack } = sources;
+  if (!(sourceAudioUsable && sourceAudioTrack) && !musicTrack) return { skipped: 'no_sound' };
+  enter('loudness');
+  const rate = plan.audio.sampleRate;
+  const channels = plan.audio.channelCount;
+  const totalUs = Math.max(1, plan.expectedDurationUs);
+  let lastProgressAt = Number.NEGATIVE_INFINITY;
+  const progress = (pass: 0 | 1, doneUs: number, last = false) => {
+    const now = performance.now();
+    if (!last && now - lastProgressAt < PROGRESS_INTERVAL_MS) return;
+    lastProgressAt = now;
+    const share = (pass + Math.min(1, Math.max(0, doneUs / totalUs))) / 2;
+    emit(requestId, { type: 'analysing', attemptId: requestId, progress: share, subject: 'sound' });
+  };
+
+  const mixOnce = async (pass: 0 | 1, measure: NonNullable<AudioContextSources['measure']>) => {
+    const mixing: AudioContextSources = {
+      clipReader: sourceAudioUsable && sourceAudioTrack ? new AudioStreamReader(new AudioSampleSink(sourceAudioTrack)) : null,
+      musicReader: musicTrack ? new AudioStreamReader(new AudioSampleSink(musicTrack)) : null,
+      measure,
+    };
+    try {
+      if (mixing.musicReader && plan.audio.music) {
+        const music = plan.audio.music;
+        await mixing.musicReader.open(music.sourceInUs / US_PER_SECOND, music.sourceOutUs / US_PER_SECOND);
+      }
+      progress(pass, 0, true);
+      for (const segment of plan.segments) {
+        checkCanceled(requestId);
+        const writer = new SegmentAudioWriter(plan, segment, mixing, NOWHERE, () => checkCanceled(requestId));
+        const startUs = frameToUs(segment.startFrame, plan.fpsNum, plan.fpsDen);
+        for (let untilUs = startUs + SOUND_MEASURE_STEP_US; !writer.done; untilUs += SOUND_MEASURE_STEP_US) {
+          await writer.advanceTo(untilUs);
+          progress(pass, untilUs);
+        }
+      }
+      progress(pass, totalUs, true);
+    } finally {
+      await mixing.clipReader?.close();
+      await mixing.musicReader?.close();
+    }
+  };
+
+  // Pass 1: the mix as it is.
+  const meter = new R128Meter(rate, channels);
+  const clip = new ClipMeter();
+  await mixOnce(0, { mix: (planar, frames) => meter.push(planar, frames), source: (planar, frames) => clip.push(planar, frames) });
+  const before = meter.result();
+  if (!(before.integratedLufs >= SILENT_BELOW_LUFS)) return { skipped: 'silent' };
+
+  // Pass 2: steps 1–4 and the limiter at the input gain pass 1 decided (no five seconds are kept to listen to).
+  const inputGainDb = inputGainFor(before.integratedLufs);
+  const shapedMeter = new R128Meter(rate, channels);
+  const rehearsal = new SoundRehearsal(rate, channels, inputGainDb, shapedMeter, 0, 0);
+  await mixOnce(1, { mix: (planar, frames) => rehearsal.push(planar, frames), source: () => undefined });
+  rehearsal.end();
+  const check = decideSoundFix(before, inputGainDb, shapedMeter.result(), clip.share);
+  // `silent` was answered above; what is left is a fix.
+  const verdict = check.verdict.kind === 'fix' ? check.verdict : null;
+  return {
+    settings: check.settings,
+    found: {
+      beforeLufs: Math.round(before.integratedLufs * 10) / 10,
+      afterLufs: Math.round(check.after.integratedLufs * 10) / 10,
+      alreadyGood: verdict?.alreadyGood ?? false,
+      stillQuiet: verdict?.stillQuiet ?? false,
+      clipped: verdict?.clipped ?? false,
+      clippedShare: clip.share,
+    },
+  };
+}
+
+/**
+ * ADR-050: before any output exists, the editor's "Sesi düzelt" is turned into
+ * measured gains for this download (`options.soundFix`), or into the reason it
+ * does not run. Gains the page already measured (the card, ADR-049) are used
+ * as they are; a plan that does not ask for the fix is left alone.
+ */
+async function prepareSoundFix(options: ExportRequestOptions, plan: RenderPlan, sources: Pick<ExportSources, 'sourceAudioTrack' | 'sourceAudioUsable' | 'musicTrack'>): Promise<void> {
+  if (!plan.soundFix || options.soundFix) return;
+  const measured = await measureMixForSoundFix(options.requestId, plan, sources);
+  options.soundFixMeasured = measured;
+  if ('settings' in measured) options.soundFix = measured.settings;
 }
 
 /** The export's AAC settings (the plan's rate, channels and bitrate). */
@@ -1177,6 +1311,9 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
   // delay cannot be measured would give sound out of sync with the picture.
   enter('audio_calibration');
   await measureAudioDelay(sources, plan);
+  // ADR-050: the editor's "Sesi düzelt" — the mix measured now, before any output exists. Nothing
+  // about the picture depends on it: the fast cut below decides as it always does.
+  await prepareSoundFix(options, plan, sources);
 
   // Previous results from this worker are no longer offered once a new export
   // starts; stale files from closed tabs are swept too.
@@ -1406,6 +1543,8 @@ async function runAudioExport(options: ExportRequestOptions, startedAt: number):
   enter('audio_calibration');
   const delay = await measureAacEncoderDelay(aacSettings(plan));
   if (!delay.ok) throw new ExportFailure('audio_encoder_misaligned');
+  // ADR-050: the editor's "Sesi düzelt", measured on the same mix before the file exists.
+  await prepareSoundFix(options, plan, { sourceAudioTrack, sourceAudioUsable, musicTrack });
 
   enter('open_output');
   for (const name of ownEntries) await removeExportEntry(name);
@@ -2116,7 +2255,8 @@ async function produceOutput(
       fallbackReason: fastJob ? null : fallbackReason,
       framesCopied: fastJob ? fastJob.framesCopied : 0,
       framesEncoded: fastJob ? fastJob.framesEncoded : framesDone,
-      ...(audioSource ? soundFixOutcome(options, audioSources.fix) : {}),
+      // No sound written: no chain ran (ADR-050 still says why, when the recipe asked for one).
+      ...soundFixOutcome(options, audioSource ? audioSources.fix : null),
       ...(enhancement && enhancer && plan.enhance
         ? {
             enhance: {

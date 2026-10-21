@@ -522,7 +522,7 @@ test.describe('İyileştir: the editor setting', () => {
     await expect(page.getByTestId('enhance-setting-summary')).toContainText('video belirgin biçimde aydınlatılır');
     await page.keyboard.press('Escape');
 
-    // The recipe in the browser's project store carries it (the setting came with EDL v4; the schema is v5 today).
+    // The recipe in the browser's project store carries it (the setting came with EDL v4; the schema is v6 today).
     const stored = () =>
       page.evaluate(
         () =>
@@ -544,7 +544,7 @@ test.describe('İyileştir: the editor setting', () => {
             };
           }),
       );
-    await expect.poll(stored, { timeout: 15_000 }).toEqual({ schemaVersion: 5, enhance: { strength: 'auto' } });
+    await expect.poll(stored, { timeout: 15_000 }).toEqual({ schemaVersion: 6, enhance: { strength: 'auto' } });
 
     // After a reload the project asks for its video again and the setting is still on.
     await page.reload();
@@ -577,7 +577,7 @@ test.describe('İyileştir: the editor setting', () => {
     await openSettings(page, 'frame');
     await page.getByTestId('enhance-strength').selectOption('off');
     await page.keyboard.press('Escape');
-    await expect.poll(stored, { timeout: 15_000 }).toEqual({ schemaVersion: 5, enhance: null });
+    await expect.poll(stored, { timeout: 15_000 }).toEqual({ schemaVersion: 6, enhance: null });
     await page.getByTestId('download-all').click();
     await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 240_000 });
     await expect(page.getByTestId('export-enhance')).toHaveCount(0);

@@ -112,7 +112,8 @@ export interface ShareOffer {
 export type DownloadState =
   | {
       phase: 'running';
-      step: 'waiting' | 'preparing' | 'analysing' | 'encoding' | 'finalizing' | 'verifying';
+      /** `listening`: ADR-050, the mixed sound is measured for "Sesi düzelt" before anything is encoded. */
+      step: 'waiting' | 'preparing' | 'analysing' | 'listening' | 'encoding' | 'finalizing' | 'verifying';
       progress: number | null;
       framesDone: number;
       totalFrames: number;
@@ -688,7 +689,8 @@ export function useDownloads({
               break;
             case 'analysing':
               // ADR-037: frames of the video are being looked at; a real share, no frame is encoded yet.
-              running('analysing', event.progress, 0);
+              // ADR-050: or the mixed sound is measured ("Sesi düzelt"), two passes, a real share.
+              running(event.subject === 'sound' ? 'listening' : 'analysing', event.progress, 0);
               break;
             case 'encoding':
               running('encoding', event.progress, event.framesDone, event.pass ?? 1);

@@ -1203,6 +1203,7 @@ export function EditorView({ state, stored, adopt = false }: { state: EditorStat
           videoSound={{ gainDb: state.settings.sourceGainDb, muted: state.settings.muted }}
           onVideoGain={state.changeVideoGain}
           onVideoMuted={state.changeVideoMuted}
+          onSoundFix={state.changeSoundFix}
           onMusicChange={state.changeMusic}
           onPickAudio={pickAudio}
           onRemoveAudio={state.dropAudio}

@@ -285,6 +285,8 @@ export class ExportWorkerClient {
     const attemptInSession = this.exportsStarted;
     this.exportsStarted += 1;
     let lastPhase: FailurePhase = 'waiting';
+    /** ADR-050: the last word was the sound being measured (watched for standing still, as the encoding is). */
+    let listeningToSound = false;
     let framesDone: number | null = null;
     let totalFrames: number | null = null;
     let heardFromWorker = false;
@@ -346,6 +348,8 @@ export class ExportWorkerClient {
         received.type === 'verifying'
       ) {
         lastPhase = received.type;
+        // ADR-050: the sound's measuring reports a share several times a second, like the encoding.
+        listeningToSound = received.type === 'analysing' && received.subject === 'sound';
       }
       push(received);
     };
@@ -400,7 +404,7 @@ export class ExportWorkerClient {
       if (finished || gaveUp || (typeof document !== 'undefined' && document.hidden)) return;
       const now = performance.now();
       if (this.cancelAskedAt !== null && now - this.cancelAskedAt > cancelGraceMs) gaveUp = 'cancel';
-      else if (lastPhase === 'encoding' && now - lastHeardAt > stallMs) gaveUp = 'stall';
+      else if ((lastPhase === 'encoding' || listeningToSound) && now - lastHeardAt > stallMs) gaveUp = 'stall';
       if (!gaveUp) return;
       // Ask where it stands (its message loop may still run), then end the attempt either way.
       try {

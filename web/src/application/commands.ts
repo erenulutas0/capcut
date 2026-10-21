@@ -9,6 +9,7 @@
 import {
   DEFAULT_EXPORT_SPEC,
   EDL_SCHEMA_VERSION,
+  SOUND_FIX_TARGET_LUFS_V6,
   type CaptionUnclearV3,
   type AspectRatio,
   type AssetV1,
@@ -411,6 +412,20 @@ export function setEnhance(project: Project, strength: EnhanceStrengthV4 | null)
     return { ...rest, revision: project.revision + 1 };
   }
   return bump(project, { enhance: { strength } });
+}
+
+/**
+ * "Sesi düzelt" (ADR-050) for every download: on (the one target, −16 LUFS),
+ * or off (the field is removed, so the recipe is what it was before the
+ * setting existed — as `setEnhance` does).
+ */
+export function setSoundFix(project: Project, on: boolean): Project {
+  if ((project.soundFix !== undefined) === on) return project;
+  if (!on) {
+    const { soundFix: _off, ...rest } = project;
+    return { ...rest, revision: project.revision + 1 };
+  }
+  return bump(project, { soundFix: { targetLufs: SOUND_FIX_TARGET_LUFS_V6 } });
 }
 
 /* ------------------------------------------------------------- captions */

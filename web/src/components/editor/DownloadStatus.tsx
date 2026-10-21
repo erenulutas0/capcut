@@ -303,20 +303,45 @@ function EnhanceLine({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase
   );
 }
 
-/** ADR-049: the sound went through "Sesi düzelt"'s chain — with the gains tests read back. */
+/**
+ * ADR-049: the sound went through "Sesi düzelt"'s chain — with the gains tests read back.
+ * ADR-050 (the editor's setting): what the export found in the mix is said too — already good,
+ * still a little quiet, a recording cut off in places — and, when the chain did not run, why.
+ */
 function SoundFixLine({ t, entry }: { t: T; entry: Extract<DownloadEntry, { phase: 'saved' | 'ready' }> }) {
   const outcome = entry.result.soundFix;
+  const skipped = entry.result.soundFixSkipped;
+  if (skipped) {
+    return (
+      <span className="dl-sub" data-testid="export-sound-fix" data-skipped={skipped}>
+        {t(skipped === 'silent' ? 'export.soundFix.silent' : 'export.soundFix.noSound')}
+      </span>
+    );
+  }
   if (!outcome) return null;
+  const found = outcome.found;
   return (
-    <span
-      className="dl-sub"
-      data-testid="export-sound-fix"
-      data-input-gain={outcome.inputGainDb}
-      data-output-gain={outcome.outputGainDb}
-      data-deepest-limiting={outcome.deepestLimitingDb}
-    >
-      {t('export.soundFix.done')}
-    </span>
+    <>
+      <span
+        className="dl-sub"
+        data-testid="export-sound-fix"
+        data-input-gain={outcome.inputGainDb}
+        data-output-gain={outcome.outputGainDb}
+        data-deepest-limiting={outcome.deepestLimitingDb}
+        data-before-lufs={found?.beforeLufs}
+        data-after-lufs={found?.afterLufs}
+        data-already-good={found ? String(found.alreadyGood) : undefined}
+        data-clipped={found ? String(found.clipped) : undefined}
+        data-clipped-share={found?.clippedShare}
+      >
+        {t(found?.alreadyGood ? 'export.soundFix.already' : found?.stillQuiet ? 'export.soundFix.stillQuiet' : 'export.soundFix.done')}
+      </span>
+      {found?.clipped ? (
+        <span className="dl-sub" data-testid="export-sound-fix-clipped">
+          {t('wizard.duzelt.clipped')}
+        </span>
+      ) : null}
+    </>
   );
 }
 

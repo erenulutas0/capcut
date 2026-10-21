@@ -1,6 +1,6 @@
 /**
  * EDL validation (doc 10 "Doğrulama kuralları"). Older input is migrated
- * first (migration.ts); this validator only ever sees the current schema (v5).
+ * first (migration.ts); this validator only ever sees the current schema (v6).
  *
  * Deliberately hand-written and dependency-free: the same rules must later be
  * re-implemented in Dart and Python and checked against the SAME fixture files
@@ -14,6 +14,7 @@ import {
   EDL_SCHEMA_VERSION,
   ENHANCE_STRENGTHS_V4,
   PROJECT_TOP_LEVEL_KEYS,
+  SOUND_FIX_TARGETS_V6,
   type AssetV1,
   type ClipV1,
   type MusicV1,
@@ -75,7 +76,8 @@ export type IssueCode =
   | 'caption_cue_too_short'
   | 'caption_cue_overlap'
   | 'caption_speaker_invalid'
-  | 'enhance_invalid';
+  | 'enhance_invalid'
+  | 'sound_fix_invalid';
 
 export interface ValidationIssue {
   code: IssueCode;
@@ -713,6 +715,18 @@ function validateEnhance(bag: IssueBag, raw: unknown): void {
   }
 }
 
+/** v6 (ADR-050): `{ targetLufs }`, the one known target; nothing else. */
+function validateSoundFix(bag: IssueBag, raw: unknown): void {
+  if (!isPlainObject(raw)) {
+    bag.add('not_an_object', 'soundFix', 'soundFix bir nesne olmalı.');
+    return;
+  }
+  checkUnknownFields(bag, raw, ['targetLufs'], 'soundFix');
+  if (typeof raw.targetLufs !== 'number' || !SOUND_FIX_TARGETS_V6.includes(raw.targetLufs)) {
+    bag.add('sound_fix_invalid', 'soundFix.targetLufs', `Yalnızca ${SOUND_FIX_TARGETS_V6.join(', ')} LUFS destekleniyor.`);
+  }
+}
+
 /** Sum of clip durations; there are no transitions or speed changes (doc 09). */
 function sumClipDurations(clips: unknown): number {
   if (!Array.isArray(clips)) return 0;
@@ -819,6 +833,7 @@ function validate(input: unknown, policy: ExportPolicy, allowNoClips: boolean): 
 
   validateCaptionTracks(bag, input.captionTracks, assets);
   if (input.enhance !== undefined) validateEnhance(bag, input.enhance);
+  if (input.soundFix !== undefined) validateSoundFix(bag, input.soundFix);
 
   if (!bag.ok) {
     return { ok: false, issues: bag.issues };

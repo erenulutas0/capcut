@@ -21,6 +21,7 @@ import type { EnhanceStrength } from './enhance';
 import { ENHANCE_PLAN_VERSION } from './enhanceVersion';
 import { outputSizeFor, type OutputSize } from './outputSize';
 import type { ExportPolicy } from './policy';
+import { SOUND_FIX_VERSION } from './soundFixVersion';
 import { dbToLinear, totalOutputDurationUs } from './timeline';
 import { cropPixels, type CropRect } from './transform';
 import { US_PER_SECOND, type Micros } from './time';
@@ -97,6 +98,16 @@ export interface RenderEnhancePlan {
   strength: EnhanceStrength;
 }
 
+/**
+ * "Sesi düzelt" in the editor (ADR-050): the whole mixed sound is measured by
+ * the engine at download time and brought to `targetLufs` by the chain of
+ * `domain/soundFix.ts`. The plan carries the request only; the gains are the
+ * engine's measurement of this very mix.
+ */
+export interface RenderSoundFixPlan {
+  targetLufs: number;
+}
+
 export interface RenderPlan {
   planVersion: typeof RENDER_PLAN_VERSION;
   engineId: string;
@@ -129,6 +140,8 @@ export interface RenderPlan {
   captions: RenderCaptionPlan | null;
   /** Null when the picture is not enhanced (the default). */
   enhance: RenderEnhancePlan | null;
+  /** Null when the sound is mixed as always (the default). */
+  soundFix: RenderSoundFixPlan | null;
 }
 
 export type PlanRejection =
@@ -249,6 +262,7 @@ export function compileRenderPlan(project: Project, policy: ExportPolicy): PlanR
   // ADR-041: `shortEdge` is the ceiling; the frame is the picture's own pixels up to it.
   const { width, height, rule: sizeRule } = outputSizeFor(project.canvas.aspect, shortEdge, segments, { captions: captions !== null });
   const enhance: RenderEnhancePlan | null = project.enhance ? { strength: project.enhance.strength } : null;
+  const soundFix: RenderSoundFixPlan | null = project.soundFix ? { targetLufs: project.soundFix.targetLufs } : null;
 
   const body = JSON.stringify({
     v: RENDER_PLAN_VERSION,
@@ -277,6 +291,8 @@ export function compileRenderPlan(project: Project, policy: ExportPolicy): PlanR
     captions,
     // Only present when asked for, so every plan without it keeps the fingerprint it always had.
     ...(enhance ? { enhance: [enhance.strength, ENHANCE_PLAN_VERSION] } : {}),
+    // The same for "Sesi düzelt" (ADR-050): a file made with the chain is another file.
+    ...(soundFix ? { soundFix: [soundFix.targetLufs, SOUND_FIX_VERSION] } : {}),
   });
 
   return {
@@ -304,6 +320,7 @@ export function compileRenderPlan(project: Project, policy: ExportPolicy): PlanR
       audio,
       captions,
       enhance,
+      soundFix,
     },
   };
 }

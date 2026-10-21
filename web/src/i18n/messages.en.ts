@@ -969,6 +969,14 @@ export const en: Record<MessageKey, string> = {
   'enhance.did.nothing': 'Enhancement was on, but nothing to change was found in this video; the picture was re-processed as it is.',
   'enhance.did.cpu': 'Done without help from a graphics card.',
   'export.soundFix.done': 'Sound fixed: easier to hear and more even.',
+  'export.soundFix.already': 'Your sound was already good; little changed.',
+  'export.soundFix.stillQuiet': 'The sound was very quiet: it was turned up as far as it goes, and may still be a little quiet.',
+  'export.soundFix.silent': 'Fix the sound was on, but there was nothing to hear in the sound; it was left as it was.',
+  'export.soundFix.noSound': 'Fix the sound was on, but this download has no sound.',
+  'export.running.listening': 'Listening to the sound…',
+  'audio.soundFix.label': 'Fix the sound',
+  'audio.soundFix.hint':
+    'When you download, all the sound (the video’s and the music together) becomes easier to hear and even: −16 LUFS. It does not change while it plays here.',
   'enhance.setting.label': 'Enhance the picture',
   'enhance.setting.off': 'Off',
   'enhance.setting.hint':

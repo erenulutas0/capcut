@@ -378,7 +378,7 @@ test.describe('captions', () => {
         },
         { timeout: 15_000 },
       )
-      .toBe('5:0');
+      .toBe('6:0');
     expect(errors).toEqual([]);
   });
 
@@ -446,7 +446,7 @@ test.describe('captions on a phone', () => {
     for await (const chunk of stream) chunks.push(chunk as Buffer);
     const record = JSON.parse(Buffer.concat(chunks).toString('utf8'));
 
-    expect(record.edl.schemaVersion).toBe(5);
+    expect(record.edl.schemaVersion).toBe(6);
     expect(record.edl.captionTracks).toHaveLength(1);
     expect(record.edl.captionTracks[0].timeBase).toBe('source');
     expect(record.edl.captionTracks[0].style).toEqual({

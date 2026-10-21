@@ -70,7 +70,7 @@ const spokenTrack = (cues, patch = {}) =>
   captionTrack(cues, { timeBase: 'source', assetId: 'a_video_001', origin: 'transcript', ...patch });
 
 const project = (patch = {}) => ({
-  schemaVersion: 5,
+  schemaVersion: 6,
   projectId: 'p_fixture_001',
   revision: 1,
   assets: [videoAsset],
@@ -83,7 +83,7 @@ const project = (patch = {}) => ({
 
 /** The canonical doc-10 example: two ranges -> 10 s, music 5-15 s. */
 const docExample = {
-  schemaVersion: 5,
+  schemaVersion: 6,
   projectId: 'p_example_001',
   revision: 3,
   assets: [videoAsset, musicAsset],
@@ -235,6 +235,10 @@ const valid = {
       }),
     ],
   }),
+  // v6 (ADR-050): "Sesi düzelt" for every download of the editor — alone, and
+  // with music, captions and "İyileştir" (the whole mixed sound is evened out).
+  'sound-fix-on': project({ soundFix: { targetLufs: -16 } }),
+  'sound-fix-with-music-and-enhance': { ...docExample, enhance: { strength: 'auto' }, soundFix: { targetLufs: -16 } },
 };
 
 const invalid = {
@@ -332,7 +336,7 @@ const invalid = {
     }),
     ['asset_kind_mismatch'],
   ],
-  'future-schema': [project({ schemaVersion: 6 }), ['schema_version_unsupported']],
+  'future-schema': [project({ schemaVersion: 7 }), ['schema_version_unsupported']],
   // v5 (ADR-043): a line's speaker is a whole number from 1 to 20, and only a transcript track has one.
   'caption-speaker-zero': [
     project({ captionTracks: [spokenTrack([cue('q_001', 0, 2, 'sıfır', { speaker: 0 })])] }),
@@ -375,6 +379,12 @@ const invalid = {
   'enhance-unknown-strength': [project({ enhance: { strength: 'max' } }), ['enhance_invalid']],
   'enhance-unknown-field': [project({ enhance: { strength: 'auto', sharpen: 2 } }), ['unknown_field']],
   'enhance-not-an-object': [project({ enhance: 'auto' }), ['not_an_object']],
+  // v6 (ADR-050): "Sesi düzelt" names its one target, −16 LUFS; nothing else is read as it.
+  'sound-fix-other-target': [project({ soundFix: { targetLufs: -23 } }), ['sound_fix_invalid']],
+  'sound-fix-target-as-text': [project({ soundFix: { targetLufs: '-16' } }), ['sound_fix_invalid']],
+  'sound-fix-no-target': [project({ soundFix: {} }), ['sound_fix_invalid']],
+  'sound-fix-unknown-field': [project({ soundFix: { targetLufs: -16, truePeakDbtp: -1 } }), ['unknown_field']],
+  'sound-fix-not-an-object': [project({ soundFix: true }), ['not_an_object']],
   'missing-caption-tracks': [
     (() => {
       const { captionTracks: _drop, ...rest } = project();
@@ -513,8 +523,9 @@ mkdirSync(join(root, 'legacy-v1'), { recursive: true });
 mkdirSync(join(root, 'legacy-v2'), { recursive: true });
 mkdirSync(join(root, 'legacy-v3'), { recursive: true });
 mkdirSync(join(root, 'legacy-v4'), { recursive: true });
+mkdirSync(join(root, 'legacy-v5'), { recursive: true });
 
-const manifest = { schemaVersion: 5, valid: [], invalid: [], legacy: [] };
+const manifest = { schemaVersion: 6, valid: [], invalid: [], legacy: [] };
 
 // Valid recipes the export refuses as they are (ADR-021): the reason the
 // render plan gives. Every other valid fixture is not checked for export here.
@@ -600,6 +611,23 @@ const legacyV4 = {
 for (const [name, [value, expect]] of Object.entries(legacyV4)) {
   writeFileSync(join(root, 'legacy-v4', `${name}.json`), `${JSON.stringify(value, null, 2)}${LF}`);
   manifest.legacy.push({ file: `legacy-v4/${name}.json`, expect });
+}
+
+// v5 recipes (ADR-043), as every build before ADR-050 wrote them. v6 only
+// adds the optional `soundFix` setting, so migration changes the number and
+// nothing else: an old project's sound stays as it was (the setting is off).
+const asV5 = (value) => ({ ...value, schemaVersion: 5 });
+const legacyV5 = {
+  'single-clip': [asV5(project()), 'valid'],
+  'doc10-example': [asV5(docExample), 'valid'],
+  'caption-transcript-speakers': [asV5(valid['caption-transcript-speakers']), 'valid'],
+  'enhance-light-with-music': [asV5(valid['enhance-light-with-music']), 'valid'],
+  // A "v5" that asks for "Sesi düzelt" is not something any build wrote.
+  'v5-with-sound-fix': [asV5(valid['sound-fix-on']), 'invalid'],
+};
+for (const [name, [value, expect]] of Object.entries(legacyV5)) {
+  writeFileSync(join(root, 'legacy-v5', `${name}.json`), `${JSON.stringify(value, null, 2)}${LF}`);
+  manifest.legacy.push({ file: `legacy-v5/${name}.json`, expect });
 }
 
 for (const [name, [value, codes]] of Object.entries(invalid)) {

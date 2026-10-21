@@ -230,9 +230,38 @@ reddeder (`schema_version_unsupported`).
   (SRT'de metnin önüne yazılan ad, dosyayı okuyan her program için metnin kendisi olurdu). Etiketler
   yalnızca izde en az iki ayrı konuşan varsa gösterilir ve yazılır.
 
+## EDL v6 — editörde "Sesi düzelt" (2026-10-21, kurucunun devrettiği karar; ADR-050)
+
+v6, v5'in aynısıdır; tarife **isteğe bağlı tek bir ana alan** gelir. Hiçbir v5 alanı değişmez ya da
+kalkmaz, bu yüzden v5 tarif kayıpsız okunur: yalnızca `schemaVersion` 6 yapılır (v1…v4 önce kendi
+kurallarıyla yükselir; hepsi doğrudan v6'ya gelir). Geçerli her v5 tarif, numarası değişince sesi
+düzeltilmeyen (ayar **kapalı**) geçerli bir v6 tariftir: eski bir projenin indirmesi aynı sesle çıkar.
+Fixture'lar `web/fixtures/edl/legacy-v5/`. Eski sürüm numarası taşıyıp bu alanı içeren bir dosyayı
+hiçbir derleme yazmadı: yükseltilmez, doğrulayıcı reddeder (`schema_version_unsupported`).
+
+```json
+"soundFix": { "targetLufs": -16 }
+```
+
+- **`soundFix`** (isteğe bağlı): editörün her indirmesinde **bütün karışık ses** (videonun sesi ve
+  müzik birlikte) cihazda ölçülür ve "Sesi düzelt" kartının zinciriyle (ADR-049,
+  `web/src/domain/soundFix.ts`) hedefe getirilir; dosyanın gerçek tepesi en çok −1 dBTP. Alan yoksa
+  kapalıdır (varsayılan); kapatmak alanı kaldırır, tarif ayarın hiç olmadığı hâline döner.
+- `targetLufs`: yalnızca **−16** (zincirin `TARGET_LUFS`'ı). Başka bir sayı ya da metin (`-23`,
+  `"-16"`, alan yok) **`sound_fix_invalid`**; nesne değilse `not_an_object`; başka alan
+  `unknown_field`. Sayı tarifte yazılıdır ki tarif ne istediğini söylesin; bilinmeyen bir hedef
+  sessizce −16 diye okunmaz.
+- Tarif yalnızca **isteği** taşır. Kazançlar (giriş/çıkış, dB) tarifte saklanmaz: her indirmede o
+  indirmenin karışımının kendisi iki geçişte ölçülür (`İyileştir`'in ölçüleri gibi), böylece kesitler,
+  ses düzeyleri ya da müzik değişince sonuç kendiliğinden doğru kalır.
+- Render planına `soundFix: { targetLufs } | null` olarak geçer ve parmak izine **yalnızca açıkken**
+  girer (zincir sürümüyle birlikte): ayarı kapalı bir tarifin parmak izi v5'teki ile aynıdır. Açıkken
+  **hızlı kesim (ADR-027) değişmez**: ses zaten her indirmede yeniden kodlanır, görüntü izin verilen
+  her videoda kopyalanır.
+
 ## Doğrulama kuralları
 
-`schemaVersion=5` (v1, v2, v3 ve v4 okunurken yukarıdaki geçişlerle yükseltilir); bilinmeyen ana alanlar ilk sürümde hata verir. Alan genişletme ihtiyacı değişiklik kaydıyla ele alınır. `projectId/assetId/clipId` sınırlı uzunlukta opaque kimliktir. Her `assetId` tekil; klipte referans verilen asset `video`; müzik asset'i `audio` olmalıdır. Tüm sayılar finite; NaN/Infinity kabul edilmez.
+`schemaVersion=6` (v1, v2, v3, v4 ve v5 okunurken yukarıdaki geçişlerle yükseltilir); bilinmeyen ana alanlar ilk sürümde hata verir. Alan genişletme ihtiyacı değişiklik kaydıyla ele alınır. `projectId/assetId/clipId` sınırlı uzunlukta opaque kimliktir. Her `assetId` tekil; klipte referans verilen asset `video`; müzik asset'i `audio` olmalıdır. Tüm sayılar finite; NaN/Infinity kabul edilmez.
 
 Zamanlar güvenli integer ve ≥0; JSON'da stringe çevrilmez. JavaScript safe-integer sınırı korunur. `0 ≤ in < out ≤ probedDuration`; her klip ≥100.000 µs. Düzenlemede tekrarlanan/örtüşen kaynak aralıkları geçerlidir; örneğin aynı sahnenin tekrar gösterilmesi mümkündür. Çıktı timeline'ında klipler ardışık ve boşluksuzdur; konum dizi sırasından türetilir.
 
@@ -288,5 +317,7 @@ Fingerprint cache anahtarı olabilir, fakat başka kullanıcının özel videosu
 Geçerli: tek klip, çok klip, aynı kaynaktan tekrar, sessiz kaynak, gecikmeli müzik, kare/portre çıktı. Geçersiz: negatif zaman, ters aralık, unknown asset, crop taşması, süre limiti aşımı, unsupported codec spec, fazla klip, müzik fade taşması, future schema.
 
 v5 ile eklenenler (`web/fixtures/edl/`, 2026-10-13): geçerli `caption-transcript-speakers`, `caption-transcript-speaker-highest`; geçersiz `caption-speaker-zero`, `-too-high`, `-not-integer`, `-not-a-number`, `-null` (`caption_speaker_invalid`), `caption-speaker-on-manual-track`, `-on-imported-track` (`caption_track_invalid`), `caption-track-speakers-field` (`unknown_field`); `future-schema` artık 6; `legacy-v4/` (dördü geçerli, `v4-with-speaker` geçersiz).
+
+v6 ile eklenenler (2026-10-21, ADR-050): geçerli `sound-fix-on`, `sound-fix-with-music-and-enhance`; geçersiz `sound-fix-other-target`, `-target-as-text`, `-no-target` (`sound_fix_invalid`), `sound-fix-unknown-field` (`unknown_field`), `sound-fix-not-an-object` (`not_an_object`); `future-schema` artık 7; `legacy-v5/` (dördü geçerli, `v5-with-sound-fix` geçersiz).
 
 Dart, TypeScript ve Python aynı fixture dosyalarını okuyup aynı valid/invalid sonucunu üretmeden sözleşme tamamlanmış sayılmaz.

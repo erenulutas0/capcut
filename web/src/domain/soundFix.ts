@@ -27,9 +27,10 @@
 
 import { MultiLevelNormaliser, type ListeningLevelParams } from './levelNormalise';
 import { TruePeakTracker, type R128Result } from './r128';
+import { SOUND_FIX_VERSION } from './soundFixVersion';
 
 /** Bumped whenever the chain or its numbers change: a measured plan is only used by the same chain. */
-export const SOUND_FIX_VERSION = 1;
+export { SOUND_FIX_VERSION };
 
 /**
  * −16 LUFS integrated: the level of online video and podcasts heard on phones

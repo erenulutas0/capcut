@@ -101,6 +101,35 @@ test.describe('local persistence', () => {
   });
 
   // ADR-026: a video is opened with no kesit. That project is stored, so it must come back.
+  test('"Sesi düzelt" (ADR-050) is stored with the project, comes back after a reload, and off removes it again', async ({ page }) => {
+    await buildAndSave(page);
+    const soundFix = async () => {
+      const record = (await storedRecord(page)) as unknown as { edl: { schemaVersion: number; soundFix?: unknown } } | null;
+      return record ? { schemaVersion: record.edl.schemaVersion, soundFix: 'soundFix' in record.edl ? record.edl.soundFix : 'absent' } : null;
+    };
+    await expect.poll(soundFix, { timeout: 15_000 }).toEqual({ schemaVersion: 6, soundFix: 'absent' });
+    await openSettings(page, 'audio');
+    await page.getByTestId('sound-fix').check();
+    await page.keyboard.press('Escape');
+    await expect.poll(soundFix, { timeout: 15_000 }).toEqual({ schemaVersion: 6, soundFix: { targetLufs: -16 } });
+
+    await page.reload();
+    await expect(page.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
+    await page.getByTestId('relink-video-input').setInputFiles(SAMPLE_VIDEO);
+    await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId('moment-count')).toHaveText('(2)');
+    await openSettings(page, 'audio');
+    await expect(page.getByTestId('sound-fix')).toBeChecked();
+
+    // Off: the field goes, the recipe is what it was before the setting existed.
+    await page.getByTestId('sound-fix').uncheck();
+    await page.keyboard.press('Escape');
+    await expect.poll(soundFix, { timeout: 15_000 }).toEqual({ schemaVersion: 6, soundFix: 'absent' });
+    // One undo step brings it back.
+    await page.getByTestId('undo').click();
+    await expect.poll(soundFix, { timeout: 15_000 }).toEqual({ schemaVersion: 6, soundFix: { targetLufs: -16 } });
+  });
+
   test('a video with no kesit survives a reload and asks for the file back', async ({ page }) => {
     const errors = await openEditor(page);
     await page.getByTestId('video-input').setInputFiles(OTHER_VIDEO);
@@ -387,7 +416,7 @@ async function seedRecord(page: Page, record: unknown): Promise<void> {
 
 const wholeRecord = (page: Page) => storedRecord(page) as unknown as Promise<Record<string, unknown> | null>;
 
-test.describe('a project stored by another build of the app (EDL v5, ADR-043)', () => {
+test.describe('a project stored by another build of the app (EDL v6, ADR-050; v5, ADR-043)', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
   test.beforeEach(async ({ page }) => {
@@ -403,7 +432,46 @@ test.describe('a project stored by another build of the app (EDL v5, ADR-043)', 
     );
   });
 
-  test('the build before this one (v4): it opens, and the first save changes the schema number and nothing else', async ({ page }) => {
+  test('the build before this one (v5): it opens with "Sesi düzelt" off, and the first save changes the schema number and nothing else', async ({ page }) => {
+    // Speakers on transcript lines, exactly as the v5 build wrote such a recipe (the shared fixture).
+    const v5 = JSON.parse(readFileSync(join(process.cwd(), 'fixtures', 'edl', 'legacy-v5', 'caption-transcript-speakers.json'), 'utf8')) as Record<string, unknown>;
+    expect(v5.schemaVersion).toBe(5);
+    const edl = { ...v5, projectId: 'p_local_001' };
+    const seeded = {
+      recordVersion: 1,
+      projectId: 'p_local_001',
+      title: 'Dünkü sürümden',
+      edl,
+      bindings: [
+        { assetId: 'a_video_001', kind: 'video', fileName: 'dunku-kayit.mp4', sizeBytes: 1234, lastModified: 1_700_000_000_000, durationUs: 20_000_000, displayWidth: 1080, displayHeight: 1920, mimeType: 'video/mp4', fingerprint: 'fp_00000000', lastSeenAt: '2026-10-20T10:00:00.000Z' },
+      ],
+      createdAt: '2026-10-20T10:00:00.000Z',
+      updatedAt: '2026-10-20T10:05:00.000Z',
+    };
+    await seedRecord(page, seeded);
+
+    const errors = await openEditor(page);
+    await expect(page.getByTestId('relink-video')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId('relink-filename')).toHaveText('dunku-kayit.mp4');
+    await expect(page.getByTestId('project-title')).toHaveValue('Dünkü sürümden');
+    await expect(page.getByTestId('moment-count')).toHaveText('(1)');
+    // The setting did not exist in that build: the project opens with it off.
+    await openSettings(page, 'audio');
+    await expect(page.getByTestId('sound-fix')).not.toBeChecked();
+    await page.keyboard.press('Escape');
+
+    // The autosave that follows the first load: v6, and otherwise the recipe the old build stored, to the byte.
+    await expect.poll(async () => ((await wholeRecord(page))?.edl as { schemaVersion?: number } | undefined)?.schemaVersion, { timeout: 15_000 }).toBe(6);
+    const after = (await wholeRecord(page)) as typeof seeded & { updatedAt: string };
+    expect(JSON.stringify({ ...after.edl, schemaVersion: 5 })).toBe(JSON.stringify(edl));
+    expect(after.bindings).toEqual(seeded.bindings);
+    expect(after.title).toBe(seeded.title);
+    expect(after.createdAt).toBe(seeded.createdAt);
+    expect(JSON.stringify(after)).not.toContain('soundFix');
+    expect(errors).toEqual([]);
+  });
+
+  test('a build two before this one (v4): it opens, and the first save changes the schema number and nothing else', async ({ page }) => {
     // A transcript track with unclear spans, exactly as the v4 build wrote such a recipe (the shared fixture).
     const v4 = JSON.parse(readFileSync(join(process.cwd(), 'fixtures', 'edl', 'legacy-v4', 'caption-transcript-unclear.json'), 'utf8')) as Record<string, unknown>;
     expect(v4.schemaVersion).toBe(4);
@@ -428,8 +496,8 @@ test.describe('a project stored by another build of the app (EDL v5, ADR-043)', 
     await expect(page.getByTestId('project-title')).toHaveValue('Eski sürümden');
     await expect(page.getByTestId('moment-count')).toHaveText('(1)');
 
-    // The autosave that follows the first load: v5, and otherwise the recipe the old build stored.
-    await expect.poll(async () => ((await wholeRecord(page))?.edl as { schemaVersion?: number } | undefined)?.schemaVersion, { timeout: 15_000 }).toBe(5);
+    // The autosave that follows the first load: v6 (the current number), and otherwise the recipe the old build stored.
+    await expect.poll(async () => ((await wholeRecord(page))?.edl as { schemaVersion?: number } | undefined)?.schemaVersion, { timeout: 15_000 }).toBe(6);
     const after = (await wholeRecord(page)) as typeof seeded & { updatedAt: string };
     expect({ ...after.edl, schemaVersion: 4 }).toEqual(edl);
     expect(JSON.stringify({ ...after.edl, schemaVersion: 4 })).toBe(JSON.stringify(edl));
@@ -459,7 +527,7 @@ test.describe('a project stored by another build of the app (EDL v5, ADR-043)', 
     await page.getByTestId('backup-input').setInputFiles({
       name: 'yarin.lilocut.json',
       mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify({ ...backup, edl: { ...v4, schemaVersion: 6, speakerNames: { 1: 'Ayşe' } } })),
+      buffer: Buffer.from(JSON.stringify({ ...backup, edl: { ...v4, schemaVersion: 7, speakerNames: { 1: 'Ayşe' } } })),
     });
     await openMore(page);
     await expect(page.getByTestId('backup-message')).toHaveText('Yedek dosyası okunamadı veya bu sürümle uyumlu değil.');
@@ -473,8 +541,8 @@ test.describe('a project stored by another build of the app (EDL v5, ADR-043)', 
     await expect(page.getByTestId('relink-filename')).toHaveText('eski-yedek.mp4');
     await expect(page.getByTestId('project-title')).toHaveValue('Eski yedek');
     await expect(page.getByTestId('moment-count')).toHaveText('(1)');
-    // Stored as v5, the recipe otherwise as the file had it.
-    await expect.poll(async () => ((await wholeRecord(page))?.edl as { schemaVersion?: number } | undefined)?.schemaVersion, { timeout: 15_000 }).toBe(5);
+    // Stored as v6, the recipe otherwise as the file had it.
+    await expect.poll(async () => ((await wholeRecord(page))?.edl as { schemaVersion?: number } | undefined)?.schemaVersion, { timeout: 15_000 }).toBe(6);
     const stored = (await wholeRecord(page)) as { edl: Record<string, unknown> };
     expect({ ...stored.edl, schemaVersion: 4 }).toEqual(v4);
     expect(errors).toEqual([]);
@@ -486,7 +554,7 @@ test.describe('a project stored by another build of the app (EDL v5, ADR-043)', 
       recordVersion: 1,
       projectId: 'p_local_001',
       title: 'Yarının projesi',
-      edl: { schemaVersion: 6, projectId: 'p_local_001', somethingThisBuildCannotKnow: { a: 1 } },
+      edl: { schemaVersion: 7, projectId: 'p_local_001', somethingThisBuildCannotKnow: { a: 1 } },
       bindings: [],
       createdAt: '2026-11-01T10:00:00.000Z',
       updatedAt: '2026-11-01T10:05:00.000Z',

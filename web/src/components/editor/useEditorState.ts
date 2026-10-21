@@ -32,6 +32,7 @@ import {
   setCaptionStyle,
   setEnhance,
   setExportShortEdge,
+  setSoundFix,
   setFraming,
   setMusicAsset,
   setVideoAsset,
@@ -481,6 +482,14 @@ export function useEditorState() {
     });
   }, []);
 
+  /** "Sesi düzelt" (ADR-050) for every download: on or off. One undo step. */
+  const changeSoundFix = useCallback((on: boolean) => {
+    setHistory((current) => {
+      const next = setSoundFix(current.present, on);
+      return next === current.present ? current : commit(current, next);
+    });
+  }, []);
+
   const changeShortEdge = useCallback((shortEdge: number) => {
     setHistory((current) => {
       const next = setExportShortEdge(current.present, shortEdge);
@@ -760,6 +769,7 @@ export function useEditorState() {
     changeMusic,
     changeShortEdge,
     changeEnhance,
+    changeSoundFix,
     addCaption,
     updateCaption,
     removeCaption,
