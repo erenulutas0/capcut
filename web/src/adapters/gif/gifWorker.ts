@@ -16,7 +16,12 @@
  * - `estimate`: a few moments of the part, three frames each, encoded exactly
  *   as the GIF will be — what the "yaklaşık 3 MB" on the screen is made of;
  * - `make`: every frame of the part, the text drawn on each, one palette,
- *   the GIF's bytes back to the page.
+ *   the GIF's bytes back to the page. The palette's sample is gathered as the
+ *   frames come (`GifPaletteSampler`); frames are held only while they fit in
+ *   the budget (`gifFramesBudget`: 32 MiB, or 128 MiB where the device says it
+ *   has 8 GB) — a larger GIF (e.g. ten seconds of "Büyük", 115 MB of frames)
+ *   decodes the part a second time and writes each frame as it comes, holding
+ *   none (ADR-046 memory addendum). The same bytes either way.
  *
  * Cancel is a `terminate()` from the page.
  */
@@ -32,11 +37,13 @@ import { probeHdrToneMapping } from '@/adapters/export/hdrProbe';
 import { sourceIntegrity } from '@/adapters/sourceIntegrity';
 import { applyWorkerFault } from '@/adapters/workerFault';
 import { missingFramesAllowed } from '@/domain/exportEvents';
-import { caughtFailureDetail, stalledFailureDetail, type ExportStage } from '@/domain/exportFailureDetail';
+import { caughtFailureDetail, failureHint, stalledFailureDetail, type ExportStage } from '@/domain/exportFailureDetail';
 import {
   GIF_FIXED_BYTES,
   GIF_FRAME_US,
   gifFrameTimesUs,
+  gifFramesBudget,
+  gifHoldsFrames,
   normalizeGifRange,
   planGifSize,
   type GifSize,
@@ -44,7 +51,7 @@ import {
 } from '@/domain/gif';
 import { hdrTransferOf, type HdrTransfer } from '@/domain/hdr';
 import { US_PER_SECOND } from '@/domain/time';
-import { GifWriter, buildGifPalette } from './gifEncode';
+import { GifPaletteSampler, GifWriter, buildGifPalette } from './gifEncode';
 import { drawGifText, gifMeasure, gifTextLayouts } from './gifText';
 import type { GifFailure, GifJob, GifSample, GifWorkerRequest, GifWorkerResponse } from './protocol';
 
@@ -162,7 +169,7 @@ async function open(job: GifJob): Promise<Source> {
 async function drawFrames(
   source: Source,
   timesUs: readonly number[],
-  onFrame: (rgba: Uint8Array, index: number) => void,
+  onFrame: (rgba: Uint8Array, index: number) => void | Promise<void>,
 ): Promise<{ missing: number; drawn: number }> {
   const { track, size, context, hdrContext, layouts } = source;
   const times = timesUs.map((us) => us / US_PER_SECOND);
@@ -204,7 +211,8 @@ async function drawFrames(
       }
       stage = 'frame_capture';
       const pixels = context.getImageData(0, 0, size.width, size.height).data;
-      onFrame(new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength), index);
+      const pending = onFrame(new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength), index);
+      if (pending) await pending;
       index += 1;
       stage = 'decode';
     }
@@ -214,13 +222,13 @@ async function drawFrames(
   return { missing, drawn };
 }
 
-function progressPoster(requestId: string, step: 'frames' | 'encoding', total: number): (done: number) => void {
+function progressPoster(requestId: string, step: 'frames' | 'encoding', total: number, passes: 1 | 2): (done: number) => void {
   let last = Number.NEGATIVE_INFINITY;
   return (done) => {
     const now = performance.now();
     if (done < total && now - last < PROGRESS_INTERVAL_MS) return;
     last = now;
-    post({ type: 'progress', requestId, step, done, total });
+    post({ type: 'progress', requestId, step, done, total, passes });
   };
 }
 
@@ -228,44 +236,88 @@ async function make(request: Extract<GifWorkerRequest, { type: 'make' }>): Promi
   const startedAt = performance.now();
   const { requestId } = request;
   post({ type: 'progress', requestId, step: 'frames', done: 0, total: 0 });
-  if (TEST_HOOKS) await applyWorkerFault(request.testFault);
+  // A test's fault breaks the job at its start — or, when it names a frame (`atFrame`), once that many
+  // frames of this job were drawn (both passes counted): the worker then fails mid-way, frames in hand.
+  const fault = TEST_HOOKS ? (request.testFault ?? null) : null;
+  const midway = fault && typeof fault.atFrame === 'number' ? fault : null;
+  if (fault && !midway) await applyWorkerFault(fault);
   const source = await open(request);
   try {
     const duration = await source.track.computeDuration().catch(() => request.range.endUs / US_PER_SECOND);
     const range = normalizeGifRange(request.range, Math.round(duration * US_PER_SECOND));
     const times = gifFrameTimesUs(range);
     const total = times.length;
-    const frameProgress = progressPoster(requestId, 'frames', total);
-    frameProgress(0);
+    const { width, height } = source.size;
+    // What the device says of its memory (Chromium, rounded to a power of two; this desktop says 32): nothing from Safari and Firefox.
+    const deviceMemory = (scope.navigator as WorkerNavigator & { deviceMemory?: unknown }).deviceMemory;
+    const budget =
+      TEST_HOOKS && typeof request.testHeldFramesBytes === 'number' ? request.testHeldFramesBytes : gifFramesBudget(deviceMemory);
+    const hold = gifHoldsFrames(source.size, total, budget);
+    const passes = hold ? 1 : 2;
+    let drawnInJob = 0;
+    const afterFrame = midway
+      ? async () => {
+          drawnInJob += 1;
+          if (drawnInJob === midway.atFrame) await applyWorkerFault(midway);
+        }
+      : () => undefined;
+
+    // Pass 1: every frame gives its share of the palette's sample; it is held only within the budget.
+    const sampler = new GifPaletteSampler(width * height, total);
     const frames: Uint8Array[] = [];
-    const { missing, drawn } = await drawFrames(source, times, (rgba, index) => {
+    const frameProgress = progressPoster(requestId, 'frames', total, passes);
+    frameProgress(0);
+    const first = await drawFrames(source, times, (rgba, index) => {
+      sampler.add(rgba);
       // `getImageData` hands out a new buffer for every frame: kept as it is.
-      frames.push(rgba);
+      if (hold) frames.push(rgba);
       frameProgress(index + 1);
+      return afterFrame();
     });
-    if (drawn === 0) throw new GifError('no_frames_decoded');
-    if (missing > missingFramesAllowed(total)) throw new GifError('source_frames_missing');
+    if (first.drawn === 0) throw new GifError('no_frames_decoded');
+    if (first.missing > missingFramesAllowed(total)) throw new GifError('source_frames_missing');
 
     stage = 'gif_encode';
-    const palette = buildGifPalette(frames, source.layouts.length > 0);
-    const writer = new GifWriter(source.size.width, source.size.height, palette);
-    const encodeProgress = progressPoster(requestId, 'encoding', total);
+    const palette = sampler.palette(source.layouts.length > 0);
+    const writer = new GifWriter(width, height, palette);
+    const encodeProgress = progressPoster(requestId, 'encoding', total, passes);
     encodeProgress(0);
-    for (let i = 0; i < frames.length; i += 1) {
-      writer.add(frames[i] as Uint8Array);
-      // Each frame is let go as soon as it is written: memory falls while the GIF grows.
-      frames[i] = new Uint8Array(0);
-      encodeProgress(i + 1);
+    let missing = first.missing;
+    if (hold) {
+      for (let i = 0; i < frames.length; i += 1) {
+        writer.add(frames[i] as Uint8Array);
+        // Each frame is let go as soon as it is written: memory falls while the GIF grows.
+        frames[i] = new Uint8Array(0);
+        encodeProgress(i + 1);
+      }
+    } else {
+      // Pass 2: the same moments decoded again; each frame is written the moment it is drawn, then let go.
+      const second = await drawFrames(source, times, (rgba, index) => {
+        stage = 'gif_encode';
+        writer.add(rgba);
+        encodeProgress(index + 1);
+        return afterFrame();
+      });
+      if (second.drawn === 0) throw new GifError('no_frames_decoded');
+      if (second.missing > missingFramesAllowed(total)) throw new GifError('source_frames_missing');
+      missing = Math.max(missing, second.missing);
     }
+    stage = 'gif_encode';
     const bytes = writer.finish();
-    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+    // `finish` hands out a copy of exactly the file's length: that buffer goes to the page as it is
+    // (transferred, not copied once more — at the end of a 20 MB GIF that was one more 20 MB).
+    const buffer = (
+      bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength
+        ? bytes.buffer
+        : bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+    ) as ArrayBuffer;
     post(
       {
         type: 'made',
         requestId,
         bytes: buffer,
-        width: source.size.width,
-        height: source.size.height,
+        width,
+        height,
         frames: writer.frameCount,
         framesMissing: missing,
         elapsedMs: Math.round(performance.now() - startedAt),
@@ -316,7 +368,9 @@ async function estimate(request: Extract<GifWorkerRequest, { type: 'estimate' }>
       await drawFrames(
         source,
         wanted.map((i) => times[i] as number),
-        (rgba, k) => byIndex.set(wanted[k] as number, rgba),
+        (rgba, k) => {
+          byIndex.set(wanted[k] as number, rgba);
+        },
       );
       for (const at of starts) {
         const frames = Array.from({ length: run }, (_, k) => byIndex.get(at + k)).filter((frame): frame is Uint8Array => frame !== undefined);
@@ -325,7 +379,9 @@ async function estimate(request: Extract<GifWorkerRequest, { type: 'estimate' }>
     } else {
       for (const at of starts) {
         const frames: Uint8Array[] = [];
-        await drawFrames(source, times.slice(at, at + run), (rgba) => frames.push(rgba));
+        await drawFrames(source, times.slice(at, at + run), (rgba) => {
+          frames.push(rgba);
+        });
         if (frames.length > 0) runs.push(frames);
       }
     }
@@ -368,7 +424,9 @@ scope.onmessage = (message: MessageEvent<GifWorkerRequest>) => {
     const origin = originOf(error);
     const planned = error instanceof GifError && origin === undefined;
     const cause = origin ?? error;
-    const outOfMemory = error instanceof RangeError && /array buffer|allocation/i.test(String((error as Error).message).slice(0, 200));
+    // A buffer the browser could not give ("Array buffer allocation failed", "Out of memory at ImageData
+    // creation" — the latter was not recognised before 21 Oct 2026): the known sentence is matched, never kept.
+    const outOfMemory = !(error instanceof GifError) && failureHint(cause) === 'out_of_memory';
     post({
       type: 'failed',
       requestId: request.requestId,

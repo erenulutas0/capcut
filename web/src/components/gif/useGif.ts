@@ -33,6 +33,8 @@ export type GifDownloadState =
       step: 'waiting' | 'frames' | 'encoding' | 'saving';
       done: number;
       total: number;
+      /** 2: the GIF is written while the part is decoded a second time (its frames were too many to hold). */
+      passes?: 1 | 2;
       fileName: string | null;
     }
   /** Written into the file picked in the save dialog. */
@@ -44,13 +46,19 @@ export type GifDownloadState =
 
 /** Share of the bar each step takes: decoding is most of the time (ADR-046 measured ~85 %). */
 const FRAMES_SHARE = 0.85;
+/**
+ * The same with two passes (ADR-046 memory addendum): writing the GIF decodes the part again, so
+ * the second step is about as long as the first.
+ */
+const FRAMES_SHARE_TWO_PASSES = 0.5;
 
 /** 0–100, from frames really done; null while nothing can be measured. */
 export function gifPercent(state: Extract<GifDownloadState, { phase: 'running' }>): number | null {
   if (state.total <= 0) return state.step === 'saving' ? 100 : null;
   const share = state.done / state.total;
-  if (state.step === 'frames') return Math.round(share * FRAMES_SHARE * 100);
-  if (state.step === 'encoding') return Math.round((FRAMES_SHARE + share * (1 - FRAMES_SHARE)) * 100);
+  const frames = state.passes === 2 ? FRAMES_SHARE_TWO_PASSES : FRAMES_SHARE;
+  if (state.step === 'frames') return Math.round(share * frames * 100);
+  if (state.step === 'encoding') return Math.round((frames + share * (1 - frames)) * 100);
   return state.step === 'saving' ? 100 : 0;
 }
 
@@ -131,7 +139,14 @@ export function useGifDownload() {
           return;
         }
         const outcome = await maker().make(job, (progress) => {
-          setState({ phase: 'running', step: progress.step, done: progress.done, total: progress.total, fileName: destination?.name ?? null });
+          setState({
+            phase: 'running',
+            step: progress.step,
+            done: progress.done,
+            total: progress.total,
+            passes: progress.passes,
+            fileName: destination?.name ?? null,
+          });
         });
         if (!outcome.ok) {
           if (destination) await removeEmptyPick(destination);

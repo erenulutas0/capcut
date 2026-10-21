@@ -35,7 +35,14 @@ export interface GifJob {
 }
 
 export type GifWorkerRequest =
-  | ({ type: 'make'; requestId: string; testFault?: WorkerTestFault | null; unsendable?: unknown } & GifJob)
+  | ({
+      type: 'make';
+      requestId: string;
+      testFault?: WorkerTestFault | null;
+      unsendable?: unknown;
+      /** Test builds only: the frames budget instead of `GIF_HELD_FRAMES_MAX_BYTES` (0: always two passes). */
+      testHeldFramesBytes?: number;
+    } & GifJob)
   | ({ type: 'estimate'; requestId: string; testFault?: WorkerTestFault | null; unsendable?: unknown } & GifJob)
   /** "Where are you?" — asked by the page when the job has stood still (ADR-042). */
   | { type: 'where'; requestId: string };
@@ -47,8 +54,11 @@ export interface GifSample {
 }
 
 export type GifWorkerResponse =
-  /** `step`: decoding the part (`frames`) or writing the GIF (`encoding`); `done` of `total` in that step. */
-  | { type: 'progress'; requestId: string; step: 'frames' | 'encoding'; done: number; total: number }
+  /**
+   * `step`: decoding the part (`frames`) or writing the GIF (`encoding`); `done` of `total` in that step.
+   * `passes`: 2 when the part is decoded once more while the GIF is written (its frames were not held).
+   */
+  | { type: 'progress'; requestId: string; step: 'frames' | 'encoding'; done: number; total: number; passes?: 1 | 2 }
   | { type: 'estimated'; requestId: string; width: number; height: number; frames: number; sample: GifSample }
   | {
       type: 'made';

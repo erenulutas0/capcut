@@ -14,7 +14,7 @@
 
 import { expect, type Page } from '@playwright/test';
 
-export type FaultKind = 'throw' | 'crash' | 'stall' | 'unsendable';
+export type FaultKind = 'throw' | 'crash' | 'stall' | 'unsendable' | 'oom';
 export type FaultWorker = 'silence' | 'model_download' | 'transcript' | 'cloud_audio' | 'enhance_preview' | 'gif';
 
 export interface Fault {
@@ -22,6 +22,8 @@ export interface Fault {
   kind: FaultKind;
   errorName?: string;
   message?: string;
+  /** The GIF worker only: once this many frames of the job were drawn (mid-way), not at its start. */
+  atFrame?: number;
 }
 
 export const SECRET_PATH = 'C:\\Users\\ayse\\Videos\\aile-tatili-antalya.mp4';

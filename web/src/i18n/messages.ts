@@ -1206,6 +1206,7 @@ export const tr = {
   'gif.details.frames': 'Kare sayısı',
   'gif.failedTitle': 'GIF yapılamadı.',
   'gif.fail.font': 'Yazının harfleri yüklenemedi. Bir kez daha dene; olmazsa yazıyı silip GIF’i yazısız yap.',
+  'gif.fail.memory': 'Tarayıcının belleği yetmedi. Daha küçük bir boyut seç ya da kısmı kısalt; açık başka sekmeleri kapatmak da yardım eder.',
   'task.filigran.label': 'Filigran ya da logo sil',
   'task.filigran.sub': 'Videonun üstündeki yazıyı, logoyu kaldır',
   'task.efekt.label': 'Filtre ve renk',

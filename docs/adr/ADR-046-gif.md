@@ -6,6 +6,8 @@
 > **Ek, 19–20 Ekim 2026** (en altta): gerçek telefon kayıtlarıyla ölçüm; renk yöntemi ve 12,5 kare/sn
 > değişmedi; yeni boyut "Büyük" (640), varsayılan "Orta" (kurucu kararı), 10 MB üstü uyarı, tahmin 8 × 3
 > kare; telefonda her sihirbazın ana düğmesi ekranın altında.
+> **Ek, 21 Ekim 2026** (en altta): bellek — 8 GB'tan az ya da belleğini söylemeyen cihazda 32 MiB'tan çok karesi olan
+> GIF iki geçişle, kare tutmadan yapılır (aynı baytlar); bellek yetmeyince GIF'in kendi cümlesi.
 > Kaynak: kurucunun kararı (yeni kart "GIF yap", taslak tuvalinden seçenek **B "Tek ekran, yazı önizlemenin
 > üstünde"**). Taslak ve uygulanan ekranlar: [`docs/ux/2026-10-17-gif/`](../ux/2026-10-17-gif/README.md).
 > İlgili: [ADR-034](ADR-034-task-first-home.md) (iş kartları ve sihirbaz çatısı), [ADR-015] (altyazı yazı
@@ -463,6 +465,7 @@ telefon çubuğu, ADR-030), sınamada yok.
 - VMAF-tel bir model; telefonun galerisinin ya da sohbet uygulamasının büyütme biçimi farklı olabilir. Gözle
   karşılaştırma yapılmadı (gerçek kayıtların karelerine depoda yer yok).
 - "Büyük"ün 10 sn'lik GIF'i bellekte ~115 MB kare tutar (yatay 640 × 360); düşük bellekli telefonda denenmedi.
+  → 21 Ekim eki: 8 GB'tan az ya da belleğini söylemeyen cihazda artık hiç kare tutmaz (iki geçiş); telefonda yine denenmedi.
 
 ### Kurucu kararları (ek)
 
@@ -471,4 +474,130 @@ telefon çubuğu, ADR-030), sınamada yok.
 3. ~~Döngülü MP4~~ **Karar:** şimdilik yok.
 4. Açık: eşikli saydamlık (dosyayı %15–23 küçültüyor, SSIM'de −0,003) yeni bir ön kayıtla denensin mi?
 5. Açık: üç boyut 390 px'te iki satıra kırılıyor ("Büyük" alta iniyor); istenirse seçenekler daraltılabilir.
+
+---
+
+## Ek — 21 Ekim 2026: bellek (kareler tutulmadan GIF)
+
+> Durum: UYGULANDI (birim, e2e, ölçüm). Politika ve şema **değişmedi**; GIF'in baytları **değişmedi** (aşağıda
+> kanıt). Düşük bellekli telefonda ve Safari'de **denenmedi**.
+
+### Bağlam: GIF işleyicisi bütün kareleri tutuyordu
+
+Kod okuması (`gifWorker.ts`, `a7ed854`): `make` kısmın **bütün** karelerini GIF boyutunda RGBA olarak bellekte
+topluyor, sonra paleti hepsinden seçiyor (`buildGifPalette`: bütün karelerden eşit aralıklı ~1 M piksel), sonra
+kareleri tek tek yazıp bırakıyordu. 10 sn "Büyük" (640 × 360 × 4 × 125) = **115 MB** yalnızca kareler. Sonda bir
+fazlalık daha: `writer.finish()` dosyanın tam boyunda bir kopya veriyor, işleyici onu bir kez daha kopyalayıp
+gönderiyordu (23 MB'lık GIF'te 23 MB fazla). Tahmin (`estimate`) en çok 24 kare tutar (Büyük'te 22 MB); değişmedi.
+
+### Ölçüm (bu masaüstü, Windows, Playwright Chromium, `CLIP_TEST_HOOKS=1` yapısı; `web/scripts/measure-gif-memory.mjs`)
+
+Uygulamanın kendi düğmesi (`/yap/gif`), iki yapay kaynak (1280 × 720, 30 kare/sn, 12 sn; `desen` = testsrc2,
+`gurultulu` = yoğun kumlu Mandelbrot, 92 Mbit/sn), Küçük / Orta / Büyük × 4 / 10 sn. Her GIF yaparken:
+
+- **işleyici:** GIF işleyicisinin V8 yığını + `ArrayBuffer` içerikleri (CDP `Runtime.getHeapUsage`,
+  `usedSize + backingStorageSize`, 100 ms'de bir; henüz toplanmamış çöp de içinde — gerçek bellek baskısıdır);
+- **süreç:** sayfayı ve işleyicilerini taşıyan renderer sürecinin özel belleğinin basıştan önceye göre en çok
+  artışı (işletim sistemi, 200 ms'de bir). Üç okumada örnekleyici yanlış süreci baz aldı (artış ≤ 1 MiB çıktı);
+  onlar sayılmadı ("—").
+- `performance.measureUserAgentSpecificMemory()` kullanılamadı: yalnızca cross-origin-isolated sayfada var.
+- Süre: basıştan GIF'in hazır olduğu ana. Grafik süreci hiçbir okumada artmadı (çözme renderer'da).
+
+Ortancalar (önce: 2 koşu; iki geçiş: 3 koşu; MiB · MiB · sn):
+
+| Kaynak, boyut | Önce: işleyici · süreç · süre | **İki geçiş** (32 MiB bütçe): işleyici · süreç · süre |
+|---|---|---|
+| desen Küçük 4 sn | 28 · 55 · 0,9 | tek geçiş (aynı) |
+| desen Orta 4 sn | 42 · 63 · 0,9 | tek geçiş (aynı) |
+| desen Büyük 4 sn | 61 · 80 · 0,9 | 60 · 90 · **1,4** |
+| desen Küçük 10 sn | 45 · 80 · 1,4 | tek geçiş (aynı) |
+| desen Orta 10 sn | 79 · 107 · 1,9 | **59 · 70** · 2,9 |
+| desen Büyük 10 sn | 131 · 163 · 1,9 | **63 · 96** · 2,9 |
+| gurultulu Küçük 4 sn | 82 · 152 · 4,2 | tek geçiş (aynı) |
+| gurultulu Orta 4 sn | 78 · 139 · 4,4 | tek geçiş (aynı) |
+| gurultulu Büyük 4 sn | 99 · 154 · 5,5 | 96 · — · **8,0** |
+| gurultulu Küçük 10 sn | 92 · 168 · 7,2 | tek geçiş (aynı) |
+| gurultulu Orta 10 sn | 114 · 188 · 7,8 | 104 · 174 · **13,2** |
+| gurultulu Büyük 10 sn | 168 · 229 · 10,5 | **117 · 178** · **14,7** |
+
+Bulgular:
+
+- Kareler gerçekten belleğin büyük kısmı: 10 sn Büyük'te işleyici 131 → 63 MiB (test deseni), 168 → 117 MiB (yoğun
+  kumlu); süreç 163 → 96, 229 → 178 MiB.
+- Yoğun kumlu kaynakta kareler dışında da çok bellek var: **Küçük 4 sn'de bile işleyici ~80 MiB, süreç ~150 MiB**
+  (yalnızca 11 MB kare). 92 Mbit/sn'lik kaynağın okunması / çözülmesinden kalan tamponlar; **araştırılmadı**, bu ek
+  onu düzeltmiyor. Telefonda gerçek kamera kaydı genellikle 10–20 Mbit/sn; o durumda ölçülmedi.
+- İkinci çözme pahalı: süre **+%50 (test deseni), +%40–70 (yoğun kumlu)**. Bu yüzden iki geçiş her cihazda değil.
+
+### Karar
+
+1. **Paletin örneği kare kare toplanır** (`GifPaletteSampler`, `gifEncode.ts`): kare sayısı çözmeden önce bilinir
+   (kısmın her anı bir kare; `pickFrames` her an için tam bir kare verir), yani örnek bütün kareler tutuluyormuş gibi
+   **aynı piksellerden, aynı sırayla** alınır. `buildGifPalette` artık onu kullanır (tek kaynak).
+2. **Kareler yalnızca bütçe içindeyse tutulur** (`gifFramesBudget`, `domain/gif.ts`). Bütçeyi aşan GIF **iki
+   geçişle** yapılır: 1. geçiş kısmı çözer, yalnızca örneği toplar ("Kareler hazırlanıyor"); palet seçilir; 2. geçiş
+   kısmı yeniden çözer ve her kareyi çizildiği anda yazıp bırakır ("GIF yazılıyor"). Hiçbir kare tutulmaz.
+   - Bütçe **32 MiB**: cihaz belleğini söylemiyorsa (Safari, Firefox — Safari'nin sekme başı sınırı tam da dar olan)
+     ya da 8 GB'tan az diyorsa. Bütün "Küçük"ler, 4 sn "Orta" (varsayılan; uzun videonun varsayılan kısmı 4 sn) ve
+     2,9 sn'ye kadar "Büyük" tek geçişte kalır; 10 sn Orta ve Büyük iki geçiş.
+   - Bütçe **128 MiB**: cihaz `navigator.deviceMemory` ile **8 GB ya da fazla** diyorsa (Chromium; bu masaüstü 32
+     diyor). Her GIF tek geçişte, eskisi gibi hızlı; bellek eskisi gibi.
+   - Neden cihaza göre: 8 GB'lık bir cihazda 115 MB kare bir sorun değil, oysa iki geçiş her Büyük 10 sn'ye %40–50
+     süre ekliyor; az bellekli ya da belleğini söylemeyen cihazda ise süre değil sekmenin kapanması risk.
+   - İlerleme çubuğu iki geçişte yarı yarıya (`passes: 2` her ilerleme iletisinde; tek geçişte %85 / %15 aynen).
+3. **Sondaki fazladan kopya kaldırıldı:** `finish()`'in verdiği tam boyutlu kopyanın tamponu olduğu gibi aktarılır.
+4. **Bellek yetmediği söylenir:** "Out of memory at ImageData creation" gibi bir `RangeError` önceden
+   `out_of_memory` sayılmıyordu (yalnız "array buffer / allocation" cümleleri); artık bilinen cümle etiketiyle
+   (`failureHint` → `out_of_memory`) tanınır. GIF'in kendi cümlesi: **"Tarayıcının belleği yetmedi. Daha küçük bir
+   boyut seç ya da kısmı kısalt; açık başka sekmeleri kapatmak da yardım eder."** (`gif.fail.memory`; önce dışa
+   aktarmanın "Daha kısa bir çıktı dene."si); "Ayrıntılar" ve "Sorun bildir" aynen.
+5. **Uyarı ya da sınır konmadı.** İki geçişle 10 sn Büyük'ün kareleri artık hiç tutulmuyor; kalan bellek
+   (yukarıda: kaynağın okunması, GIF'in kendisi ≤ ~25 MB) boyuttan çok kaynağa bağlı. Gerçek düşük bellekli bir
+   telefonda sekmenin kapandığı görülmeden bir boyutu yasaklamak ya da uyarmak kanıtsız olurdu.
+
+### Baytlar değişmedi — kanıt
+
+- **Birim** (`tests/unit/gifMemory.test.ts`, 10): eski `buildGifPalette`'in birebir kopyasına karşı kare kare örnek
+  dört geometride (örnek adımı 1, 2, 6, 13; tek sayılı ve adıma bölünmeyen kare boyları) yazılı / yazısız aynı palet;
+  kareleri tutup yazmak ile örneği toplayıp kareleri "yeniden üretip" yazmak **bayt bayt aynı GIF**; bozulan bir
+  başlangıç hesabı (bilerek denendi) üç sınamayı düşürüyor. Bütçe kuralı ve çubuk paylaşımı.
+- **Uygulamada, gerçek tarayıcıda** (`tests/e2e/gif-memory.spec.ts`): aynı GIF (sample-24s, Küçük 4 sn, Türkçe
+  harfli yazı) bütçe ∞ (tek geçiş) ve 0 (iki geçiş) ile: **171 456 bayt, aynı**; 10 sn Büyük kumlu video
+  (640 × 360 × 125) iki yoldan: **15 787 522 bayt, aynı**.
+- **Ölçüm koşularında:** 12 durumun her biri önceki yapıyla (2 koşu), yeni yapıyla cihaz kuralında (2 koşu) ve
+  32 MiB bütçeyle (3 koşu): 84 GIF, her durumda **tek bir SHA-256** (önceki yapının iki koşusu da kendi aralarında
+  aynı). (H.264 çözmesi standart gereği bit-tam; iki geçişte de aynı çözücü, aynı çizim.)
+
+### Ortada çöken işleyici (ADR-042)
+
+Önceki sınamalar hatayı yalnızca işin **başında** yapıyordu. Yeni sınama hatayı karelerin ortasında, kareler
+elde iken yapar (`window.__clipWorkerFault` artık `atFrame` alır — yalnız GIF işleyicisi; ve yeni tür `oom`:
+tarayıcının vermeyeceği bir tampon istenir, motorun kendi `RangeError`'u gelir, gerçekte bellek alınmaz):
+
+- 1. geçişin 20. karesinde bellek yetmedi → "Tarayıcının belleği yetmedi…", `RangeError · frame_capture ·
+  out_of_memory`;
+- 2. geçişin 10. karesinde (60. kare) işleyicinin kendisi çöker → "Beklenmeyen bir hata oluştu…", `WorkerError ·
+  worker_crash · worker_error_event`, tanı dosyasında gizli parça yok;
+- 2. geçişin 20. karesinde yerinde sayar → bekçi bitirir, `Stalled · gif_encode · stalled`;
+- her birinde kaydetme penceresinin açtığı dosya kalmaz; sonra hatasız GIF yapılır.
+
+Sekmenin **bütünüyle** öldürülmesi (Android'in bellek katili, iOS'un jetsam'i) sayfayı da götürür; sayfanın
+söyleyebileceği bir şey kalmaz. Ona karşı tek önlem belleği düşürmek (yukarıda).
+
+### Sınamalar (ek; son kodla, yerel, Windows, Playwright Chromium)
+
+- `tsc`, `eslint` temiz; birim **1624 / 1624** (94 dosya; yeni `gifMemory.test.ts` 10).
+- e2e (kilit altında, port 3194): `gif-memory.spec.ts` (yeni, 2), `gif.spec.ts` (11), `gif-a11y.spec.ts` (3),
+  `worker-failure.spec.ts` (6): **22 / 22 geçti.** `PAGE-RECOVERED-TOTAL 0`, `PAGE-DEAD-TOTAL 0`. Olağan e2e takımının
+  geri kalanı, kalite katmanı koşulmadı.
+
+### Doğrulanmayanlar (ek)
+
+- **Gerçek düşük bellekli telefon** (3–4 GB Android) ve **iPhone Safari**: hiçbiri denenmedi; sekmenin hangi
+  bellekte kapandığı bilinmiyor. 32 MiB bütçe ve 8 GB eşiği bir yargı, ölçüm değil.
+- Telefonda iki geçişin süresi (masaüstünün ~3 katı varsayılır: 10 sn Büyük kumlu ~45 sn).
+- `navigator.deviceMemory`'nin işleyicide okunduğu yalnız bu masaüstünde görüldü (32); Android Chrome'da okunmadı.
+- Yoğun kumlu kaynakta kareler dışındaki ~80 MiB (yukarıda) — araştırılmadı.
+- Donanım çözücüsünde (telefon) iki geçişin aynı kareleri verdiği: ADR-033'teki gibi bir çözücü kapanırsa ikinci
+  geçiş "eksik kare" sayar ve dürüstçe reddeder; baytların aynılığı yalnız bu makinenin yazılım çözücüsünde ölçüldü.
 

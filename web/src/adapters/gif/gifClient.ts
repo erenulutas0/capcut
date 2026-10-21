@@ -45,6 +45,21 @@ export interface GifProgress {
   step: 'frames' | 'encoding';
   done: number;
   total: number;
+  /** 2: the part is decoded a second time while the GIF is written (a GIF too large to hold its frames). */
+  passes: 1 | 2;
+}
+
+/** '1' only in a test build (`CLIP_TEST_HOOKS=1`); the published site is built with ''. */
+const TEST_HOOKS = process.env.NEXT_PUBLIC_CLIP_TEST_HOOKS === '1';
+
+/**
+ * Test builds only (`window.__clipGifHeldFramesBytes`): the frames budget of the next GIFs made
+ * (0: always two passes; Infinity: always one), so a test can make the same GIF both ways.
+ */
+function testHeldFramesBytes(): number | null {
+  if (!TEST_HOOKS) return null;
+  const value = (globalThis as { __clipGifHeldFramesBytes?: unknown }).__clipGifHeldFramesBytes;
+  return typeof value === 'number' && value >= 0 ? value : null;
 }
 
 function createWorker(): Worker {
@@ -118,12 +133,14 @@ class Lane {
       worker.addEventListener('message', listener);
       // A test's fault is for the GIF being made, never for the estimate that runs on its own beforehand.
       const fault = type === 'make' ? takeWorkerFault('gif') : null;
+      const budget = type === 'make' ? testHeldFramesBytes() : null;
       const request: GifWorkerRequest = {
         type,
         requestId,
         ...job,
         ...(fault && fault.kind !== 'unsendable' ? { testFault: fault } : {}),
         ...(fault?.kind === 'unsendable' ? { unsendable: unsendable() } : {}),
+        ...(budget !== null && type === 'make' ? { testHeldFramesBytes: budget } : {}),
       };
       try {
         worker.postMessage(request);
@@ -166,7 +183,7 @@ export class GifMaker {
   make(job: GifJob, onProgress: (progress: GifProgress) => void): Promise<GifMakeOutcome> {
     return this.makes.run('make', job, (data) => {
       if (data.type === 'progress') {
-        onProgress({ step: data.step, done: data.done, total: data.total });
+        onProgress({ step: data.step, done: data.done, total: data.total, passes: data.passes ?? 1 });
         return null;
       }
       if (data.type === 'made') {

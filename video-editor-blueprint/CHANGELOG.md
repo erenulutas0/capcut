@@ -3,6 +3,34 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## GIF yap: büyük GIF kareleri bellekte tutmadan yapılır; bellek yetmeyince dürüst cümle — 21 Ekim 2026 (ADR-046 eki; politika ve şema değişmedi)
+
+GIF işleyicisi kısmın bütün karelerini RGBA olarak bellekte topluyordu: 10 sn "Büyük" = 115 MB yalnızca kare. Bu
+masaüstünde ölçüldü (uygulamanın düğmesi, CDP ile işleyicinin belleği, işletim sistemiyle renderer süreci):
+10 sn Büyük'te işleyici 131 MiB (test deseni) / 168 MiB (yoğun kumlu), süreç +163 / +229 MiB.
+
+- Paletin örneği artık kare kare toplanıyor (aynı pikseller, aynı sıra). Karelerin toplamı **32 MiB**'ı aşarsa —
+  cihaz 8 GB'tan az belleği olduğunu söylüyorsa ya da hiç söylemiyorsa (Safari, Firefox) — GIF **iki geçişle**
+  yapılır: önce yalnız renkler için çözülür, sonra yeniden çözülüp her kare çizildiği anda yazılır; hiçbir kare
+  tutulmaz. 10 sn Büyük: işleyici 131 → 63 / 168 → 117 MiB, süreç +163 → +96 / +229 → +178 MiB; bedeli süre
+  (1,9 → 2,9 sn / 10,5 → 14,7 sn). 8 GB ve üstünü söyleyen cihaz eskisi gibi tek geçiş (bütçe 128 MiB).
+- GIF'in baytları değişmedi: birim sınamasında eski palet koduna karşı, uygulamada iki yoldan (171 456 ve
+  15 787 522 bayt, aynı), ölçümdeki 84 GIF'te tek SHA-256.
+- Sondaki gereksiz bir kopya kaldırıldı (23 MB'lık GIF'te 23 MB).
+- "Out of memory at ImageData creation" artık "bellek yetmedi" sayılıyor; GIF'in kendi cümlesi: "Tarayıcının
+  belleği yetmedi. Daha küçük bir boyut seç ya da kısmı kısalt; açık başka sekmeleri kapatmak da yardım eder."
+- Yeni e2e: işleyici karelerin **ortasında** (iki geçişin ikisinde de) bellek yetmeyince, çökünce ve yerinde sayınca
+  iş biter, cümle düz, "Ayrıntılar" doğru, dosya kalmaz, sonraki GIF yapılır (`atFrame`, yeni `oom` test hatası).
+- Ölçüm aracı: `web/scripts/measure-gif-memory.mjs`.
+
+**Sınamalar (yerel):** `tsc`, `eslint` temiz; birim **1624 / 1624** (94 dosya; yeni `gifMemory.test.ts` 10);
+e2e `gif-memory.spec.ts` (yeni, 2) + `gif.spec.ts` (11) + `gif-a11y.spec.ts` (3) + `worker-failure.spec.ts` (6):
+**22 / 22**.
+
+**Doğrulanmayan:** gerçek düşük bellekli telefon ve iPhone Safari (sekmenin hangi bellekte kapandığı bilinmiyor;
+32 MiB / 8 GB bir yargı); telefonda iki geçişin süresi; yoğun kumlu kaynakta kareler dışındaki ~80 MiB'ın nedeni;
+olağan e2e takımının geri kalanı ve kalite katmanı.
+
 ## Editör: müzik okunurken indirme bekler ve nedenini söyler — 21 Ekim 2026 (politika ve şema değişmedi)
 
 CI koşusu 39557873032'de "nothing is sent off the machine" iki dakika bekleyip düştü. Neden ürünün kendisiydi:

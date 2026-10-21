@@ -159,6 +159,44 @@ export function gifSizeChoices(videoWidth: number, videoHeight: number): GifSize
   return choices;
 }
 
+// ---------------------------------------------------------------- memory
+
+/**
+ * How many bytes of decoded frames the GIF worker may hold at once (ADR-046 memory addendum,
+ * 21 Oct 2026). Every frame drawn at the GIF's size is RGBA, 4 bytes a pixel: ten seconds of
+ * "Büyük" (640 × 360, 125 frames) is 115 MB — on a phone with 3–4 GB, or in Safari with its
+ * tighter limit per tab, possibly enough to have the tab closed (not tried on such a phone).
+ * Within the budget the frames are held as they come (one decode, as before); above it the
+ * part is decoded twice — once for the palette, once to write each frame as it comes — and no
+ * frame is held. Both write the same bytes (unit and e2e tests). The second decode costs time:
+ * measured on this desktop, 10 s of "Büyük" took 1,9 → 2,9 s (test pattern) and 10,5 → 15 s
+ * (heavy grain); so a device that says it has 8 GB or more keeps the larger budget below.
+ *
+ * This one: a device that says it has less than 8 GB, or says nothing (Safari, Firefox).
+ * 32 MiB holds every "Küçük" GIF, 4 s of "Orta" (the default) and 2,9 s of "Büyük".
+ */
+export const GIF_HELD_FRAMES_MAX_BYTES = 32 * 1024 * 1024;
+/** A device that says it has 8 GB or more (`navigator.deviceMemory`, Chromium only, rounded): every GIF in one pass. */
+export const GIF_HELD_FRAMES_MAX_BYTES_LARGE_MEMORY = 128 * 1024 * 1024;
+
+/** The frames budget for a device that reports `deviceMemory` gigabytes (undefined, or not a number: it says nothing). */
+export function gifFramesBudget(deviceMemoryGb: unknown): number {
+  return typeof deviceMemoryGb === 'number' && deviceMemoryGb >= 8 ? GIF_HELD_FRAMES_MAX_BYTES_LARGE_MEMORY : GIF_HELD_FRAMES_MAX_BYTES;
+}
+
+/** The decoded frames of a GIF of this size, all in memory (RGBA). */
+export function gifFramesBytes(size: GifSize, frames: number): number {
+  return size.width * size.height * 4 * Math.max(0, frames);
+}
+
+/**
+ * Whether the GIF is made in one pass with its frames held (`true`) or in two passes holding
+ * none. `budget`: a test build may move it; everything else uses the constant.
+ */
+export function gifHoldsFrames(size: GifSize, frames: number, budget: number = GIF_HELD_FRAMES_MAX_BYTES): boolean {
+  return gifFramesBytes(size, frames) <= budget;
+}
+
 // ---------------------------------------------------------------- the estimate
 
 /**
