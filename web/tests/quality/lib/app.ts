@@ -8,12 +8,13 @@
 
 import { copyFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Page, TestInfo } from '@playwright/test';
+import { expect, type Page, type TestInfo } from '@playwright/test';
 
 import { localizedPath } from '../../../src/i18n/localePath';
 import { translator, type MessageKey } from '../../../src/i18n/messages';
 import '../../../src/i18n/messages.en';
 import type { Locale } from '../../../src/i18n/translate';
+import { PAGE_ALIVE_ATTRIBUTE, PAGE_PENDING_ATTRIBUTE } from '../../../src/pageWatchdog';
 import { installSavePicker, noSavePicker, pickerCalls, readSaved } from '../../e2e/kesitFlow';
 import { OUTPUTS, ensureDir } from './record';
 
@@ -41,6 +42,37 @@ export const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|
 export const startsWith = (text: string): RegExp => new RegExp(`^\\s*${escapeRegExp(text)}`);
 
 export const isPhone = (testInfo: TestInfo): boolean => testInfo.project.use.hasTouch === true;
+
+/**
+ * The page is live: what a measurement may read. Every page is prerendered HTML first — its words, its
+ * cards, a wizard's first screen are on the screen before any of the app's code ran — so "the heading
+ * is visible" says nothing about whether the screen is the one a person meets a moment later. Live is
+ * the page watchdog's own condition (src/pageWatchdog.ts): `<html data-clip-alive>` (an effect of the
+ * root layout: React has taken the page over) and no part still waiting for its code
+ * (`data-clip-pending`: a wizard's first screen until it is hydrated). Measured 21 Oct 2026 with the
+ * page's CPU slowed 6× (two runs in each of the four views; docs/quality/bulgular.md): the opening screen
+ * was read before it was live in 24 of 136 readings — "Ana ekran" and the first look of every
+ * walkthrough. Its prerendered words and control sizes were those of the live page, so no number
+ * changed; the editor, whose prerendered layout is NOT the phone's, did change (3868d4c). Waiting for
+ * live makes "the same screen" something checked on every run instead of luck.
+ */
+export async function pageLive(page: Page): Promise<void> {
+  await expect(page.locator('html')).toHaveAttribute(PAGE_ALIVE_ATTRIBUTE, '', { timeout: 60_000 });
+  await expect(page.locator(`[${PAGE_PENDING_ATTRIBUTE}]`)).toHaveCount(0, { timeout: 60_000 });
+}
+
+/**
+ * A wizard's first screen as it is once live. The prerendered one is drawn for a wide window with a
+ * mouse ("Dosyalarından seç ya da videoyu buraya sürükleyip bırak"); a phone switches to its own words
+ * ("Galeriden ya da dosyalardan") after hydration, in a transition (components/useBrowserValue.ts).
+ * "Video seç" is enabled by that same switch: the wizard's three browser values (hydrated, layout,
+ * touch screen) are set in one passive-effect pass, so React renders them in one transition.
+ */
+export async function wizardLive(page: Page): Promise<void> {
+  await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'pick');
+  await pageLive(page);
+  await expect(page.getByTestId('pick-video')).toBeEnabled({ timeout: 60_000 });
+}
 
 /**
  * How the file leaves the browser.

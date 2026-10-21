@@ -227,11 +227,49 @@ export async function seedInvite(page: Page, code: string): Promise<void> {
   await page.addInitScript(([key, value]) => window.localStorage.setItem(key as string, value as string), [INVITE_KEY, code]);
 }
 
-/** The choice screen with a saved code whose minutes have been answered. */
+/** What the internet card shows about the minutes: enough to tell why "Sesi gönder ve yaz" is not there. */
+async function cardState(page: Page): Promise<string> {
+  return page
+    .evaluate(() => {
+      const card = document.querySelector('[data-testid="route-choice"]');
+      const minutes = document.querySelector('[data-testid="route-minutes"]');
+      return JSON.stringify({
+        step: document.querySelector('[data-testid="wizard"]')?.getAttribute('data-step') ?? null,
+        invite: card?.getAttribute('data-invite') ?? null,
+        quota: card?.getAttribute('data-quota') ?? null,
+        minutes: minutes ? `${minutes.getAttribute('data-state')}: ${minutes.textContent}` : null,
+        note: document.querySelector('[data-testid="invite-note"]')?.textContent ?? null,
+        pageNotice: document.getElementById('clip-page-dead')?.getAttribute('data-state') ?? null,
+      });
+    })
+    .catch((error: Error) => `(the page could not be read: ${error.message.split('\n')[0]})`);
+}
+
+/**
+ * The choice screen with a saved code whose minutes have been answered.
+ *
+ * The button comes only after the proxy answered how many minutes are left, and only when they fit. Once
+ * (a full local run, Oct 2026; the same test then passed 90 times in a row) this waited its 30 s and
+ * said nothing but "not visible". It was not load: with the page's CPU slowed 6× the answer came
+ * 0,07–0,19 s after the choice screen (8 runs), and the whole failure spec passed twice over with ten
+ * busy cores and the page at 4×. So when the button does not come, this now says what the card shows
+ * instead — still asking (`quota: checking`: no answer reached the page), a problem (`unreachable`:
+ * nothing answered on the fake's port, or something that was not this run's fake), the code dropped
+ * (`invite: none`: the answer said the code is unknown — another fake on the same port would say that) —
+ * and fails as soon as the card has settled on something other than the button.
+ */
 export async function openReady(page: Page, code: string, file: string = SAMPLE): Promise<void> {
   await seedInvite(page, code);
   await openChoice(page, file);
-  await expect(page.getByTestId('route-online-go')).toBeVisible({ timeout: 30_000 });
+  const card = page.getByTestId('route-choice');
+  const go = page.getByTestId('route-online-go');
+  try {
+    // The minutes were answered (or the code was dropped): the card has settled one way or the other.
+    await expect(card.and(page.locator(':not([data-quota="checking"])'))).toBeVisible({ timeout: 30_000 });
+    await expect(go).toBeVisible({ timeout: 5_000 });
+  } catch (error) {
+    throw new Error(`openReady: "Sesi gönder ve yaz" did not come; the card shows ${await cardState(page)}\n${(error as Error).message}`);
+  }
 }
 
 /** Types the code on the card and saves it. */
