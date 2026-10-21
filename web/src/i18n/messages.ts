@@ -1362,6 +1362,7 @@ export const tr = {
   'wizard.duzelt.uneven': 'Bazı yerler ötekilerden kısıktı; onlar da açılır.',
   'wizard.duzelt.already': 'Sesin zaten iyi. Yine de indirebilirsin; pek bir şey değişmez.',
   'wizard.duzelt.stillQuiet': 'Ses çok kısık: olabildiğince açılır, yine de biraz kısık kalabilir.',
+  'wizard.duzelt.clipped': 'Bu kayıtta ses yer yer patlamış. Sesin yüksekliği düzelir, ama patlama gitmez.',
   'wizard.duzelt.keeps': 'Gürültüyü silmez: rüzgâr ve uğultu da sesle birlikte açılır. Kendi videon değişmez.',
   'wizard.duzelt.listen': 'Dinle (5 sn):',
   'wizard.duzelt.listenBefore': 'Önce',

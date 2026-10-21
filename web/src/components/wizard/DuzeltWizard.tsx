@@ -179,6 +179,8 @@ export default function DuzeltWizard(host: WizardHostProps) {
             data-output-gain={done.check.settings.outputGainDb}
             data-uneven={fix.uneven}
             data-already-good={fix.alreadyGood}
+            data-clipped={fix.clipped}
+            data-clipped-share={done.check.before.clippedShare}
             data-copy={copy === null ? '' : String(copy)}
           >
             <p className="wizard-panel-title" data-testid="duzelt-body">
@@ -205,6 +207,12 @@ export default function DuzeltWizard(host: WizardHostProps) {
             {fix.stillQuiet ? (
               <p className="wizard-hint" data-testid="duzelt-still-quiet">
                 {t('wizard.duzelt.stillQuiet')}
+              </p>
+            ) : null}
+            {/* Cut off at full scale in places: the level is fixed, the distortion is not (never said to be). */}
+            {fix.clipped ? (
+              <p className="wizard-hint" data-testid="duzelt-clipped">
+                {t('wizard.duzelt.clipped')}
               </p>
             ) : null}
             <p className="wizard-hint" data-testid="duzelt-keeps">

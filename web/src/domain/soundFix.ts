@@ -61,6 +61,21 @@ export const GOOD_WITHIN_LU = 2;
 /** A loudness range (EBU Tech 3342) this wide is uneven: some stretches clearly quieter than others. */
 export const UNEVEN_FROM_LU = 10;
 
+/**
+ * A decoded sample this close to full scale (−0.45 dBFS) or over it counts as cut off. Not 1.0
+ * exactly: a recording cut off at full scale and then encoded (AAC) comes back with the codec's
+ * ripple around the cut, a little under it and a little over it.
+ */
+export const CLIPPED_FROM = 0.95;
+/**
+ * The recording is said to be cut off in places ("patlamış") from this share of its samples at full
+ * scale: one in a thousand. Measured on the test sources (21 Oct 2026, decoded as the app decodes
+ * them): the clipped speech 13 %, the loud music-like sound 0,0007 %, ordinary, quiet and uneven
+ * speech 0. A recording with one short shout cut off in a long video stays under it: then nothing is
+ * said, which is honest in the other direction (the screen never claims the sound is clean).
+ */
+export const CLIPPED_SHARE = 0.001;
+
 export const HIGH_PASS_HZ = 60;
 
 /** Step 3: the slow level (see `MultiLevelNormaliser`), set for listening rather than for the detector. */
@@ -470,10 +485,43 @@ export function outputGainFor(shapedLufs: number): number {
   return Math.max(-MAX_OUTPUT_GAIN_DB, Math.min(MAX_OUTPUT_GAIN_DB, TARGET_LUFS - shapedLufs));
 }
 
+/**
+ * How much of the sound is at full scale (`CLIPPED_FROM`), counted over every sample of every
+ * channel as it is decoded, before anything is changed. Streaming: the first measurement pushes
+ * every chunk. What was cut off cannot be put back — the chain only turns the whole level, so the
+ * screen says so (`wizard.duzelt.clipped`) and never says the distortion was removed.
+ */
+export class ClipMeter {
+  private atFullScale = 0;
+  private samples = 0;
+
+  push(channels: readonly Float32Array[], frames: number): void {
+    for (const channel of channels) {
+      const length = Math.min(frames, channel.length);
+      for (let i = 0; i < length; i += 1) {
+        const value = channel[i] as number;
+        if (value >= CLIPPED_FROM || value <= -CLIPPED_FROM) this.atFullScale += 1;
+      }
+      this.samples += length;
+    }
+  }
+
+  /** The share (0–1) of the samples pushed so far that were at full scale; 0 before any. */
+  get share(): number {
+    return this.samples === 0 ? 0 : this.atFullScale / this.samples;
+  }
+}
+
+/** Whether a recording with this share of samples at full scale is cut off in places. */
+export function isClipped(clippedShare: number): boolean {
+  return clippedShare >= CLIPPED_SHARE;
+}
+
 /** What the loudness worker found, and what the screen says. */
 export interface SoundCheck {
   version: typeof SOUND_FIX_VERSION;
-  before: { integratedLufs: number; lraLu: number; truePeakDbtp: number };
+  /** `clippedShare`: the share of its samples at full scale (`ClipMeter`). */
+  before: { integratedLufs: number; lraLu: number; truePeakDbtp: number; clippedShare: number };
   /** The chain's own result over the whole sound (steps 1–6, measured before the encoder). */
   after: { integratedLufs: number; lraLu: number; truePeakDbtp: number };
   settings: SoundFixSettings;
@@ -492,21 +540,26 @@ export type SoundVerdict =
       alreadyGood: boolean;
       /** The gains ran out before the target: the result stays quieter than "normal" (said honestly). */
       stillQuiet: boolean;
+      /** Cut off at full scale in places (`isClipped`): the level is fixed, the distortion stays (said honestly). */
+      clipped: boolean;
     };
 
 export function soundVerdict(
   before: Pick<R128Result, 'integratedLufs' | 'lraLu' | 'truePeakDbtp'>,
   predictedLufs: number,
+  clippedShare = 0,
 ): SoundVerdict {
   if (!(before.integratedLufs >= SILENT_BELOW_LUFS)) return { kind: 'silent' };
   const word = levelWord(before.integratedLufs);
   const uneven = before.lraLu >= UNEVEN_FROM_LU;
+  const clipped = isClipped(clippedShare);
   return {
     kind: 'fix',
     before: word,
     uneven,
-    alreadyGood: word === 'good' && !uneven && before.truePeakDbtp <= FILE_TRUE_PEAK_DBTP,
+    alreadyGood: word === 'good' && !uneven && !clipped && before.truePeakDbtp <= FILE_TRUE_PEAK_DBTP,
     stillQuiet: Number.isFinite(predictedLufs) && predictedLufs < TARGET_LUFS - GOOD_WITHIN_LU,
+    clipped,
   };
 }
 
@@ -521,19 +574,21 @@ export function decideSoundFix(
   before: Pick<R128Result, 'integratedLufs' | 'lraLu' | 'truePeakDbtp'>,
   inputGainDb: number,
   rehearsed: Pick<R128Result, 'integratedLufs' | 'lraLu' | 'truePeakDbtp'>,
+  /** From `ClipMeter` over the first measurement. */
+  clippedShare = 0,
 ): SoundCheck {
   const outputGainDb = outputGainFor(rehearsed.integratedLufs);
   const predicted = rehearsed.integratedLufs + outputGainDb;
   return {
     version: SOUND_FIX_VERSION,
-    before: { integratedLufs: before.integratedLufs, lraLu: before.lraLu, truePeakDbtp: before.truePeakDbtp },
+    before: { integratedLufs: before.integratedLufs, lraLu: before.lraLu, truePeakDbtp: before.truePeakDbtp, clippedShare },
     after: {
       integratedLufs: predicted,
       lraLu: rehearsed.lraLu,
       truePeakDbtp: Math.min(CEILING_DBTP, rehearsed.truePeakDbtp + outputGainDb),
     },
     settings: { version: SOUND_FIX_VERSION, inputGainDb, outputGainDb },
-    verdict: soundVerdict(before, predicted),
+    verdict: soundVerdict(before, predicted, clippedShare),
   };
 }
 

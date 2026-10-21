@@ -1316,6 +1316,7 @@ export const en: Record<MessageKey, string> = {
   'wizard.duzelt.uneven': 'Some parts were quieter than the rest; they are turned up too.',
   'wizard.duzelt.already': 'Your sound is already good. You can still download it; little will change.',
   'wizard.duzelt.stillQuiet': 'The sound is very quiet: it is turned up as far as it goes, and may still be a little quiet.',
+  'wizard.duzelt.clipped': 'The sound in this recording is distorted in places. The volume is fixed, but the distortion stays.',
   'wizard.duzelt.keeps': 'It does not remove noise: wind and hum get louder with the voice. Your own video is not changed.',
   'wizard.duzelt.listen': 'Listen (5 s):',
   'wizard.duzelt.listenBefore': 'Before',

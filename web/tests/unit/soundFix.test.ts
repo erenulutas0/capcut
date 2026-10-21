@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { R128Meter, TruePeakTracker, measureR128 } from '@/domain/r128';
 import {
   CEILING_DBTP,
+  CLIPPED_SHARE,
+  ClipMeter,
   LISTEN_S,
   SoundRehearsal,
   TARGET_LUFS,
@@ -10,6 +12,7 @@ import {
   decideSoundFix,
   fixSound,
   inputGainFor,
+  isClipped,
   levelWord,
   listenStartPart,
   soundVerdict,
@@ -240,5 +243,49 @@ describe('Sesi düzelt: words and checks', () => {
     expect(usableSettings({ version: SOUND_FIX_VERSION, inputGainDb: 80, outputGainDb: 0 })).toBe(false);
     expect(usableSettings({ version: SOUND_FIX_VERSION, inputGainDb: Number.NaN, outputGainDb: 0 })).toBe(false);
     expect(usableSettings(null)).toBe(false);
+  });
+});
+
+describe('Sesi düzelt: a recording cut off at full scale is said to be (ClipMeter)', () => {
+  /** Speech recorded 20 dB too loud and cut off at ±0.99, the way `patlamis-konusma.mp4` is made. */
+  function clippedSpeech(): Float32Array[] {
+    return speechLike(20, [-18]).map((channel) => channel.map((value) => Math.max(-0.99, Math.min(0.99, value * 10))));
+  }
+
+  function shareOf(channels: Float32Array[], chunk = 4096): number {
+    const meter = new ClipMeter();
+    for (let at = 0; at < channels[0]!.length; at += chunk) {
+      const end = Math.min(channels[0]!.length, at + chunk);
+      meter.push(channels.map((channel) => channel.subarray(at, end)), end - at);
+    }
+    return meter.share;
+  }
+
+  it('finds the cut-off speech, and nothing in clean speech, quiet speech or loud music', () => {
+    const clipped = shareOf(clippedSpeech());
+    expect(clipped).toBeGreaterThan(CLIPPED_SHARE * 10);
+    expect(isClipped(clipped)).toBe(true);
+    for (const clean of [speechLike(20, [-18]), speechLike(20, [-40]), loudMusic(10)]) {
+      expect(shareOf(clean)).toBeLessThan(CLIPPED_SHARE);
+      expect(isClipped(shareOf(clean))).toBe(false);
+    }
+  });
+
+  it('a few loud peaks are not a cut-off recording; the share does not depend on the chunking', () => {
+    const sound = speechLike(10, [-18]);
+    for (const at of [1000, 50_000, 200_000]) sound[0]![at] = 1;
+    expect(isClipped(shareOf(sound))).toBe(false);
+    const clipped = clippedSpeech();
+    expect(shareOf(clipped, 333)).toBeCloseTo(shareOf(clipped, 48_000), 12);
+    expect(new ClipMeter().share).toBe(0);
+  });
+
+  it('the check carries the share, and a cut-off sound is never "already good"', () => {
+    const before = { integratedLufs: -16.4, lraLu: 5, truePeakDbtp: -3 };
+    const check = decideSoundFix(before, 0, before, 0.02);
+    expect(check.before.clippedShare).toBe(0.02);
+    expect(check.verdict).toMatchObject({ kind: 'fix', clipped: true, alreadyGood: false });
+    expect(decideSoundFix(before, 0, before, 0).verdict).toMatchObject({ clipped: false, alreadyGood: true });
+    expect(soundVerdict(before, -16)).toMatchObject({ clipped: false });
   });
 });

@@ -94,11 +94,12 @@ async function fixAndMeasure(page: Page, testInfo: Parameters<Parameters<typeof 
   return { saved, measured, lengths, sourceLengths };
 }
 
-const CASES: ReadonlyArray<{ fixture: SoundFixFixture; file: string; change: string; uneven: boolean }> = [
-  { fixture: 'quiet', file: 'kisik-konusma', change: 'Ses: çok kısık → normal', uneven: false },
-  { fixture: 'uneven', file: 'dengesiz-konusma', change: 'Ses: kısık → normal', uneven: true },
-  { fixture: 'loud', file: 'yuksek-muzik', change: 'Ses: çok yüksek → normal', uneven: false },
-  { fixture: 'clipped', file: 'patlamis-konusma', change: 'Ses: çok yüksek → normal', uneven: false },
+/** `clipped`: cut off at full scale in places — the screen says the distortion stays (it is never said to be fixed). */
+const CASES: ReadonlyArray<{ fixture: SoundFixFixture; file: string; change: string; uneven: boolean; clipped: boolean }> = [
+  { fixture: 'quiet', file: 'kisik-konusma', change: 'Ses: çok kısık → normal', uneven: false, clipped: false },
+  { fixture: 'uneven', file: 'dengesiz-konusma', change: 'Ses: kısık → normal', uneven: true, clipped: false },
+  { fixture: 'loud', file: 'yuksek-muzik', change: 'Ses: çok yüksek → normal', uneven: false, clipped: false },
+  { fixture: 'clipped', file: 'patlamis-konusma', change: 'Ses: çok yüksek → normal', uneven: false, clipped: true },
 ];
 
 test.describe('Sesi düzelt', () => {
@@ -118,6 +119,12 @@ test.describe('Sesi düzelt', () => {
       await expect(page.getByTestId('duzelt-body')).toHaveText('Sesin daha duyulur ve eşit olur; görüntüye dokunulmaz.');
       await expect(page.getByTestId('duzelt-keeps')).toContainText('Gürültüyü silmez');
       await expect(page.getByTestId('duzelt-uneven')).toHaveCount(item.uneven ? 1 : 0);
+      await expect(page.getByTestId('duzelt-summary')).toHaveAttribute('data-clipped', String(item.clipped));
+      if (item.clipped) {
+        await expect(page.getByTestId('duzelt-clipped')).toHaveText('Bu kayıtta ses yer yer patlamış. Sesin yüksekliği düzelir, ama patlama gitmez.');
+      } else {
+        await expect(page.getByTestId('duzelt-clipped')).toHaveCount(0);
+      }
       // No choice to make, and no "editor" to continue in (the editor does not know this chain).
       await expect(page.getByRole('radio')).toHaveCount(0);
       await expect(page.getByTestId('wizard-open-editor')).toHaveCount(0);
@@ -169,6 +176,8 @@ test.describe('Sesi düzelt', () => {
     await startTask(page, source);
     await expect(page.getByTestId('duzelt-summary')).toBeVisible({ timeout: 120_000 });
     await expect(page.getByTestId('duzelt-already')).toHaveText('Sesin zaten iyi. Yine de indirebilirsin; pek bir şey değişmez.');
+    await expect(page.getByTestId('duzelt-summary')).toHaveAttribute('data-clipped', 'false');
+    await expect(page.getByTestId('duzelt-clipped')).toHaveCount(0);
     await expect(page.getByTestId('duzelt-change')).toHaveCount(0);
     await expect(page.getByTestId('wizard-download')).toBeEnabled();
     const { measured } = await fixAndMeasure(page, testInfo, source, 'saved-iyi-konusma_ses-duzeltildi.mp4');
@@ -254,5 +263,14 @@ test.describe('Sesi düzelt in English', () => {
     await expect(page.getByTestId('duzelt-change')).toHaveText('Sound: very quiet → normal');
     await expect(page.getByTestId('duzelt-body')).toHaveText('Your sound becomes easier to hear and more even; the picture is not touched.');
     await expect(page.getByTestId('duzelt-keeps')).toContainText('It does not remove noise');
+    await expect(page.getByTestId('duzelt-clipped')).toHaveCount(0);
+  });
+
+  test('a recording cut off at full scale: the English screen says the distortion stays', async ({ page }) => {
+    await startTask(page, soundFixFixture('clipped'), '/en/');
+    await expect(page.getByTestId('duzelt-summary')).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByTestId('duzelt-clipped')).toHaveText('The sound in this recording is distorted in places. The volume is fixed, but the distortion stays.');
+    // Measured on the page: far over the one-in-a-thousand line (ffmpeg's decoder: 13 % of the samples at or over 0.95).
+    expect(Number(await page.getByTestId('duzelt-summary').getAttribute('data-clipped-share'))).toBeGreaterThan(0.01);
   });
 });

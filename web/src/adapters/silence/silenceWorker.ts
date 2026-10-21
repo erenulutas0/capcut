@@ -18,7 +18,7 @@ import { applyWorkerFault } from '@/adapters/workerFault';
 import { caughtFailureDetail, stalledFailureDetail, type ExportStage } from '@/domain/exportFailureDetail';
 import { ENVELOPE_FRAME_US, joinEnvelopes, LoudnessMeter, splitMeterRange, type MeterPart } from '@/domain/loudness';
 import { R128Meter, SUB_BLOCK_S } from '@/domain/r128';
-import { SILENT_BELOW_LUFS, SoundRehearsal, decideSoundFix, inputGainFor, listenStartPart } from '@/domain/soundFix';
+import { ClipMeter, SILENT_BELOW_LUFS, SoundRehearsal, decideSoundFix, inputGainFor, listenStartPart } from '@/domain/soundFix';
 import { US_PER_SECOND } from '@/domain/time';
 import type { AnalysisFailure, SilenceWorkerRequest, SilenceWorkerResponse } from './protocol';
 
@@ -281,14 +281,16 @@ async function soundCheck(request: Extract<SilenceWorkerRequest, { type: 'soundC
     stage = 'audio_decode';
     if (TEST_HOOKS) await applyWorkerFault(request.testFault);
 
-    // Pass 1: the sound as it is.
+    // Pass 1: the sound as it is — its loudness, and how much of it was cut off at full scale.
     let meter: R128Meter | null = null;
+    const clip = new ClipMeter();
     let rate = 0;
     try {
       await eachChunk(sink, durationUs, progress(0), (channels, frames, sampleRate) => {
         rate = sampleRate;
         meter ??= new R128Meter(sampleRate, OUTPUT_CHANNELS);
         meter.push(channels, frames);
+        clip.push(channels, frames);
       });
     } catch (error) {
       throw withOrigin(new AnalysisError('undecodable'), tagStage(error, 'audio_decode'));
@@ -315,7 +317,7 @@ async function soundCheck(request: Extract<SilenceWorkerRequest, { type: 'soundC
     }
     stage = 'loudness';
     rehearsal.end();
-    const check = decideSoundFix(before, inputGainDb, shapedMeter.result());
+    const check = decideSoundFix(before, inputGainDb, shapedMeter.result(), clip.share);
     const heard = rehearsal.listen(check.settings.outputGainDb);
     const listen = { sampleRate: rate, startS: heard.startS, before: heard.before, after: heard.after };
     post({ type: 'progress', requestId, framesDone: framesTotal, framesTotal });
