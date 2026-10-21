@@ -6,6 +6,8 @@
 > **Ek, 19–20 Ekim 2026** (en altta): gerçek telefon kayıtlarıyla ölçüm; renk yöntemi ve 12,5 kare/sn
 > değişmedi; yeni boyut "Büyük" (640), varsayılan "Orta" (kurucu kararı), 10 MB üstü uyarı, tahmin 8 × 3
 > kare; telefonda her sihirbazın ana düğmesi ekranın altında.
+> **Ek 2, 21 Ekim 2026** (en altta): kareler tarayıcının kendisiyle çizilip ölçüldü; dördüncü boyut "Çok büyük"
+> (960); küçültme, keskinleştirme, eşikli saydamlık, kırpma ön kayıtlı kuralı geçmedi; 1280 / 1920 sunulmadı.
 > Kaynak: kurucunun kararı (yeni kart "GIF yap", taslak tuvalinden seçenek **B "Tek ekran, yazı önizlemenin
 > üstünde"**). Taslak ve uygulanan ekranlar: [`docs/ux/2026-10-17-gif/`](../ux/2026-10-17-gif/README.md).
 > İlgili: [ADR-034](ADR-034-task-first-home.md) (iş kartları ve sihirbaz çatısı), [ADR-015] (altyazı yazı
@@ -584,4 +586,121 @@ seviyeli ara çizimin süresiydi. Ucuz bir ara yol ön kayıtta yoktu. Yeni aday
 ortalama); değilse `high` ile aynı. Ve `mip2+s0.25`, `mip2+s0.5`. Kural ilk ekinkiyle aynı: adım 1'in a–c'si ve geçme
 eşikleri, `high`'a karşı, ana kümede **ve** saklı kümede (ilk ekin saklı kümesi; `high` aynı koşuda yeniden ölçülür).
 İki kümede de geçen bütün adaylar (ilk ekinkiler dahil) arasından kazanan ana kümedeki adım 1 sıralamasıyla seçilir.
+
+### Sonuçlar (21 Ekim; bu masaüstü, Google Chrome 155 başsız, `web/scripts/gif-eval/round2.mjs`, `app-check.mjs`)
+
+Kümeler: **gerçek** 13 (R1–R11, K1, K2; 10 sn ölçümlerinde 12, R2 4,4 sn), **yapay** 5 (S1–S5), **saklı** 13 (R1,
+R3–R12, K1, K2 ortadan + S1–S5 6. saniyeden). Değerler ortanca. VMAF-tel-NEG = telefon ekranının genişliğinde
+(kısa kenar 1080), keskinleştirmeyi ödüllendirmeyen modelle; birinci turun VMAF-tel'iyle aynı ölçek değil (kaynak
+artık tarayıcının kendi 1:1 kareleri). Aynı kareler iki kez ölçüldüğünde sayılar bayt bayt aynı çıktı.
+
+**Chrome'un küçültmesi (`high`):** `medium` ile her ölçüde aynı sayıları verdi; `low`dan farklı. Bir küçültme süzgeci
+bütün kaynaklarda daha iyi değil: 1080p kaynaklarda Büyük'te (3 kat küçültme) `mip` / `box` VMAF-tel-NEG'i 5–10
+puan artırdı (R2, R6, R10, R11), R3 ve R9'da Küçük / Orta'da 5–9 puan düşürdü (`high` orada daha keskin).
+
+**1. Küçültme ve keskinleştirme** (gerçek küme; Küçük / Orta / Büyük; puan = üçünün ortalaması):
+
+| Aday | VMAF-tel-NEG | Puan | Orta bayt | Büyük çizme ms/kare (en kötü kayıtta fark) | Kural |
+|---|---|---|---|---|---|
+| **`high` (bugünkü)** | **37,8 / 59,8 / 78,3** | **58,6** | **3,03 MB** | **7,4** | — |
+| `medium` | aynı | 58,6 | aynı | 7,0 | uygun; kazanç yok |
+| `low` | 41,3 / 64,9 / 78,3 | 61,5 | ×1,087 | 5,4 | ✗ (b) bayt, (c) SSIM-tel Orta −0,0029 |
+| `mip` | 36,2 / 64,8 / 78,3 | 59,8 | ×0,959 | 9,1 (+107, R1 4K) | ✗ (a) süre |
+| `mip+s0.25` / `+s0.5` | 47,9 / 71,5 / 82,3 · 53,7 / 74,3 / 83,8 | 67,3 · 70,6 | ×0,99 · ×1,07 | 16,6 · 17,3 (+114) | ✗ (a); s0.5 ayrıca (b) Büyük ×1,12 |
+| `box` | 36,6 / 64,7 / 78,5 | 59,9 | ×0,952 | 20,1 (+157) | ✗ (a) |
+| `box+s0.25` / `+s0.5` | 48,0 / 71,5 / 82,2 · 53,6 / 74,4 / 83,8 | 67,2 · 70,6 | ×0,98 · ×1,05 | 28,0 · 28,2 (+164) | ✗ (a) ortanca da (+20,7); s0.5 ayrıca (b) |
+
+Kural: kazanan `high` — **ön kaydın adaylarıyla küçültme değişmedi.**
+
+*İlk ek* (`high+s…`; ana küme / saklı küme, `high`'a karşı puan farkı):
+- `high+s0.25`: ana kümede **+7,7**, bayt ×1,03 / 1,03 / 1,04, süre +7,8 ms (en kötü +11,2), SSIM-tel +0,0007–0,0014 →
+  geçer. Saklı kümede +6,0 ama **SSIM-tel Büyük'te −0,0021** (sınır −0,002; Orta −0,0012) → **uygun değil.**
+- `high+s0.5`: iki kümede de (b) bayt (Büyük ×1,12 / ×1,08) ve saklıda SSIM-tel Büyük −0,0057 → uygun değil.
+
+*İkinci ek* (`mip2`):
+- `mip2`: ana kümede uygun ama +1,67 ve Orta'da ×0,959 (−%4,1) → geçme eşiğinin (+2,0, ya da +1,0 ve −%5) altında.
+- `mip2+s0.25`: saklı kümede geçer (+7,0); ana kümede **Büyük'te bayt ×1,062** (sınır ×1,05) → uygun değil.
+- `mip2+s0.5`: iki kümede de (b) bayt.
+
+**Sonuç: iki kümede de geçen aday yok → küçültme ve keskinleştirme değişmedi** (`VideoSample.draw`, `high`).
+Gözlem (karar değil, kurucuya): 0,25 güçte keskinleştirme telefonda görüneni **iki kümede de 6–8 puan** artırdı
+(VMAF-NEG; SSIM-tel de çoğunlukla arttı); iki aday kuralın birer alt şartını ince farkla kaçırdı.
+
+**2. Eşikli saydamlık** (`high`; gerçek, 4 sn; 10 sn bayt; T = 0'a karşı):
+
+| T | VMAF-tel-NEG Orta / Büyük | SSIM (GIF boyutunda) Orta / Büyük | 10 sn bayt Orta / Büyük | 10 sn Orta / Büyük > 10 MB (12 kayıttan) |
+|---|---|---|---|---|
+| **0 (bugünkü)** | **59,8 / 78,3** | **0,9819 / 0,9817** | **7,75 / 13,73 MB** | **1 / 8** |
+| 2 | −0,85 / **−1,32** | −0,0020 / −0,0021 | ×0,842 / ×0,865 | 1 / 7 |
+| 3 | −1,95 / −3,24 | −0,0065 / −0,0067 | ×0,771 / ×0,787 | 0 / 6 |
+| 4 | −3,23 / −5,58 | −0,0090 / −0,0096 | ×0,709 / ×0,721 | 0 / 6 |
+
+Yapay kümede Büyük'te T 2 bile VMAF-tel-NEG −4,1 ve SSIM −0,0049. **Uygun T yok → saydamlık değişmedi.**
+(Birinci turun "−0,003 SSIM" Küçük boyuttaydı; telefonda görünen boyutta kayıp daha büyük.)
+
+**3. Kare farkı kırpma:** 72 / 72 GIF bit bit aynı (kayıpsız) ama 10 sn Orta'da ortanca bayt **×1,0000**: kamera
+görüntüsünde her karede her satırda ve sütunda değişen bir piksel var, dikdörtgen bütün resim. Yalnızca neredeyse
+kıpırdamayan R6'da %10–28 (dosya 0,1–0,2 MB) ve S1 / R8'de %0,4–0,6 küçüldü → **geçmedi.**
+
+**4. Daha büyük boyutlar** (`high`, T = 0, kırpmasız; gerçek küme; bir boyut yalnızca videosu ona yeten kayıtlarda):
+
+| Uzun kenar | Kayıt | VMAF-tel-NEG | 4 sn MB ortanca / en çok | 10 sn MB ortanca / en çok | 10 sn kareler bellekte | Uygulamada yapma 4 / 10 sn (en çok) | Uygulamada tarayıcı belleği, 10 sn (artış, ortanca / en çok) |
+|---|---|---|---|---|---|---|---|
+| 640 (Büyük) | 13 | 78,3 | 5,15 / 9,71 | 13,73 / 19,24 | 115–136 MB | 1,4 / 2,9 sn (6,0) | +168 / +246 MB |
+| **960** | 12 | **87,7** (aynı kayıtlarda 640: 75,3) | **11,52 / 22,31** | 28,46 / 44,02 | **259 MB** | **1,9 / 3,9 sn** (8,6) | +302 / +348 MB |
+| 1280 | 12 | 96,4 (960: 87,7) | 20,02 / 38,09 | 46,59 / 75,72 | 461 MB | 2,4 / 5,5 sn (10,1) | +506 / +549 MB |
+| 1920 | 6 | 99,3 (aynı kayıtlarda 960: 81,1) | 39,46 / 83,10 | 95,54 / 161,39 | 1037 MB | 4,4 / 9,6 sn (22,9) | +1040 / +1136 MB |
+
+(Uygulamada ölçmek için 1280 ve 1920 yalnızca yerel, işlenmemiş bir derlemeye geçici olarak eklendi; her GIF kendi
+sayfasında; bellek = işletim sisteminin gördüğü tarayıcı süreç ağacının özel belleği, "GIF'i indir"den hemen önceki
+örneğe göre en yüksek artış.)
+
+- **960:** (a) +12,4 ✓; (b) 11,5 MB ortanca, en çok 22,3 MB ✓; (c) 1,9 / 3,9 sn ✓; (d) 259 MB ✓; (e) tahmin ±%10
+  içinde **gerçekte 25'te 23, yapayda 10'da 10**; dışındaki ikisi yine R6 (neredeyse kıpırdamayan video, 0,17 /
+  0,44 MB: ×1,10, ×1,51) — Büyük'te de aynı video aynı yönde dışarıda (×1,13, ×1,43; birinci turdaki gibi). Birinci
+  turun kabul ettiği istisna; kural bu yüzden tutmuş sayıldı → **"Çok büyük" (960) eklendi.**
+- **1280:** (a) +8,7 ✓ ama (b) 4 sn ortanca 20 MB ✗ ve (d) 461 MB ✗ → **sunulmadı.** İki geçişli yol belleği çözer,
+  dosya boyutunu çözmez: bu kural altında 1280'i bellek işi tek başına açmaz.
+- **1920:** (b) 39 MB ✗ (en çok 83 MB: paylaşma sınırının üstünde), (d) 1037 MB ✗ → **sunulmadı.**
+- Telefonda 1280 / 1920'yi güvenli yapacak olan iki geçişli yol (başka bir ajanın işi) olurdu; 960'ın 10 sn'si bugün
+  259 MB kare tutar ve bütün GIF'lerin en ağırıdır: düşük bellekli telefonda o yolla daha güvenli olur.
+
+**Uygulanan:** dördüncü boyut **"Çok büyük"** (İngilizce "Extra large"), uzun kenar 960; video ondan küçükse
+sunulmaz (ADR-041: 640 × 360 videoda yine üç boyut; 800 × 600'de "Çok büyük" videonun kendi boyutu). Varsayılan
+**Orta** kaldı. 4 sn'si çoğu zaman 10 MB'ı geçtiği için engellemeyen uyarı sık görünür. Telefonda dört seçenek tek
+satırda; iki kelimeli ad seçeneğin içinde iki satıra, yalnızca kelimeler arasından bölünür. Küçültme, palet,
+saydamlık ve tahmin yöntemi değişmedi.
+
+### Sınamalar (ek 2; yerel, Windows)
+
+- `tsc`, `eslint` temiz; birim **1614 / 1614** (93 dosya; `gif.test.ts`: dört boyut, 960, videodan büyük değil, dört
+  seçenek ancak video "Büyük"ten büyükse).
+- e2e (test kancalı derleme, port 3193, kilit altında): `gif.spec.ts` + `gif-a11y.spec.ts` + `wizard-phone-action.spec.ts`
+  **50 / 50** (yeni: "Çok büyük" 540 × 960, tahmin ×1,01, 640 × 360'ta yine üç seçenek; dört seçenek 320 / 360 / 390 px'te
+  Türkçe ve İngilizce tek satırda, her biri ≥ 44 × 44, hiçbir kelime satır arasında bölünmeden). İlk koşuda bu yeni
+  satır sınamalarının 6'sı düştü (iki satırlı ad satırdaki öbür seçenekleri 9 px aşağı itiyordu); seçenekler aynı
+  boya getirildi, sonra 50 / 50. `english.spec.ts` "Make a GIF" ve `share-target.spec.ts` GIF sınaması **2 / 2**.
+  `PAGE-RECOVERED-TOTAL 0`. Tam e2e takımı, bulut, Pages koşulmadı.
+- Kalite katmanı (yalnız `visual`, `a11y`, `text`, `walkthrough`; geçmişe yazılmadan): 705 ölçüden 704 bütçe içinde,
+  1 dışında: farklı ekran 2 — `sihirbaz-gif-secim` telefon TR / EN, dördüncü seçenek; fark resimlerine bakılıp yalnız
+  bu iki taban yenilendi, sonra farklı ekran 0. a11y 34 / 34 (telefonda 44 px altı hedef yok).
+- Ölçüm: ön kayıt ve iki ek önce kaydedildi (`34f6575`, `d053553`, `b806acf`), sonuçlar sonra.
+
+### Doğrulanmayanlar (ek 2)
+
+- **Telefon:** S23'te "Çok büyük" ne görünüş ne süre ne bellek ölçüldü; telefonda yapma ve tahmin masaüstünün ~3 katı
+  varsayıldı. Ölçüm masaüstü Chrome'unda (Windows, başsız); Android Chrome'un küçültmesi başka olabilir (donanım
+  çözücüsünün kareleri).
+- VMAF-tel-NEG bir model; gözle karşılaştırma yapılmadı (gerçek kayıtların karelerine depoda yer yok).
+- 10 sn "Çok büyük" düşük bellekli telefonda denenmedi (masaüstünde tarayıcı belleği +300–350 MB).
+
+### Kurucu kararları (ek 2)
+
+1. **Keskinleştirme (0,25):** telefonda görüneni iki kümede 6–8 puan artırıyor; dosya %3–4 büyük, kare başına +8 ms;
+   kural ince farkla geçirmedi (saklı kümede Büyük'te SSIM-tel −0,0021, sınır −0,002). Telefonda gözle bir karşılaştırma
+   ve istenirse kurucu kararıyla açılabilir (tek işlev, kod ölçüm aracında hazır).
+2. **1280 / 1920:** dosyaları 4 sn'de 20 / 39 MB (ortanca); paylaşmada ve sohbet uygulamalarında sorun. İki geçişli
+   yol gelince bile bu kural onları açmaz; istenirse sınır (15 MB) kurucu kararıyla değişir. Bu boyutlarda döngülü MP4
+   ("Video olarak", kurucu 20 Ekim'de şimdilik istemedi) aynı netliği çok küçük dosyayla verir.
+3. Adlar "Çok büyük" / "Extra large".
 
