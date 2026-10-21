@@ -168,7 +168,14 @@ Aynı kısım (baştan 4 sn ya da 10 sn), yazısız. "960 kopya": kaynağın 960
   - İlk koşuda `gif-a11y` 390 × 844'te düştü: yeni satırlar boyut seçeneklerini (sonra çıktı seçeneklerini) ana düğme
     çubuğunun altına itiyordu (axe `target-size`, kısmen örtülü). Çıktı seçimi boyutun altına alındı ve boyutun iki
     açıklama satırı tek satır yapıldı; sonra geçti.
-- Kalite katmanı: aşağıda (`visual`, `a11y`, `text`, `walkthrough`).
+- Kalite katmanı (yalnız `visual`, `a11y`, `text`, `walkthrough`; geçmişe yazılmadan, rapor depoya konmadı): ilk
+  koşuda 757 ölçüden 700 bütçe içinde, **5 dışında** — farklı ekran 4 (`sihirbaz-gif-secim` dört görünüm: "Çok büyük"
+  seçili, yeni satır, "Nasıl kaydedilsin?") ve dört GIF yürüyüşünde "dosya çıktı ve doğru" hayır (yürüyüş 480 × 270
+  bekliyordu; artık kuralın seçtiği 960 × 540 ve aramanın bitmesini bekler, `tests/quality/lib/walk.ts`). Fark
+  resimlerine bakılıp yalnız bu dört taban yenilendi; sonra **705 bütçe içinde, 0 dışında, farklı ekran 0**,
+  erişilebilirlik 34 / 34, dosyası doğrulanan görev 11 / 11 · 11 / 11. Not: telefon tabanının tam sayfa görüntüsünde
+  yapışkan düğme çubuğu "Nasıl kaydedilsin?" seçeneklerinin üstünde çizilir (tam sayfa yakalamanın yapışkan öğeyi ilk
+  ekranın altında tutması); sayfa kaydırılınca seçenekler çubuğun üstünde görünür.
 
 ## Doğrulanmayanlar
 

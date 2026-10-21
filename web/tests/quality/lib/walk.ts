@@ -285,14 +285,17 @@ export const FLOWS: Flow[] = [
       await novice.look('seçim', ['üst ya da alt yazı (isteğe bağlı)']);
       await novice.type(t('wizard.gif.topLabel'), 'PAZARTESİ SABAHI', 'gif-text-top');
       await expect(estimate).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+      // ADR-052: the size chosen first is measured from the largest down; "GIF'i indir" waits until it is found.
+      await expect(page.getByTestId('gif-size')).not.toHaveAttribute('data-auto', 'picking', { timeout: 120_000 });
     },
     download: { key: 'wizard.gif.download', testId: 'wizard-download' },
     verify: (out, _source, files) => {
       const gif = inspectGif(new Uint8Array(readFileSync(files.out)));
       return [
         { name: 'GIF', ok: out.format === 'gif' && out.video?.codec === 'gif', value: `${out.format} / ${out.video?.codec ?? 'yok'}` },
-        // "Orta" is the size offered first since 20 Oct 2026 (founder's decision, ADR-046 addendum).
-        { name: '480 × 270 (Orta, kaynaktan büyük değil)', ok: out.video?.width === 480 && out.video?.height === 270, value: `${out.video?.width} × ${out.video?.height}` },
+        // ADR-052 (21 Oct 2026; before it "Orta", 480 × 270): the sharpest size under 10 MB is offered first — four
+        // seconds of the test pattern are far under it, so the largest, "Çok büyük", never larger than the source.
+        { name: '960 × 540 (Çok büyük: 10 MB altındaki en net; kaynaktan büyük değil)', ok: out.video?.width === 960 && out.video?.height === 540, value: `${out.video?.width} × ${out.video?.height}` },
         {
           name: '50 kare, 4 sn, durmadan döner',
           ok: gif.ok && gif.gif.frames === 50 && gif.gif.durationCs === 400 && gif.gif.loops === 0,
