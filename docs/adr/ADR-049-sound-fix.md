@@ -174,7 +174,8 @@ Küme dosyası depoya konmadı (`tests/quality/data`'ya eklemek bir sonraki aram
 1. **Hedef −16 LUFS** (EBU R128'in −23'ü değil); gerekçe yukarıda. Başka bir hedef tek sabit
    (`TARGET_LUFS`).
 2. **Editör bağlantısı yok** bu kartta. Alternatif: editöre bir "Sesi düzelt" ayarı eklemek (tarif şeması
-   v6, ayrı iş).
+   v6, ayrı iş). — **21 Ekim 2026:** editör ayarı yapıldı ([ADR-050](ADR-050-sound-fix-in-editor.md), EDL v6);
+   kartın "editörde aç" bağlantısı hâlâ yok (ADR-050 "Kurucu kararları 2").
 3. **Kırpılmış sesin bozukluğu** düzelmez, yalnızca kısılır; ekran bunu ayrıca söylemiyor (kelime bütçesi).
    İstenirse "Kaydın bazı yerleri bozuk; o yerler düzelmez" satırı eklenebilir.
 4. **Sesi olmayan video** için Sesini al'ın cümlesi yeniden kullanılmadı ("ses dosyası çıkmaz" bu işe

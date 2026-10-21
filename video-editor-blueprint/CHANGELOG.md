@@ -3,6 +3,38 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Editörde "Sesi düzelt": bütün karışık ses −16 LUFS'a — 21 Ekim 2026 (ADR-050; **şema EDL v6**, politika değişmedi)
+
+Şimdiye kadar "Sesi düzelt" yalnızca bir iş kartıydı; editörde sesi eşitlemenin yolu yoktu.
+
+- **Ayarlar → Ses'in en üstünde tek onay kutusu: "Sesi düzelt"** (İngilizcesi "Fix the sound"), proje başına,
+  varsayılan kapalı, bir geri alma adımı. Açıkken her indirmede videonun sesi ve müzik **birlikte** ölçülür ve
+  kartın zinciriyle −16 LUFS'a, gerçek tepe ≤ −1 dBTP'ye getirilir. Oynatıcıda ses değişmez; ayar bunu söyler.
+- **Ölçüm indirmede, export worker'ında, indirmenin kendi karışımı üzerinde** (iki geçiş, "Sesin dinleniyor…",
+  gerçek pay, bekçi izler). İkinci bir algoritma yok: ölçer, kırpılma sayacı, kazançlar, zincir ve karar
+  ADR-049'un kodu. Patlamış kayıt yalnızca videonun kendi sesinde sayılır (müziğin tepeleri değil).
+- **Görüntü kopyalanmaya devam eder** (hızlı kesim değişmedi; e2e'de paketler bayt bayt aynı).
+- **Dürüst sonuç satırı:** düzeltildi / zaten iyiydi / yine de biraz kısık / kartın patlama cümlesi / sessizlik
+  (dokunulmadı) / indirmede ses yok.
+- **EDL v6:** isteğe bağlı `soundFix: { targetLufs: -16 }`; yalnız −16 (`sound_fix_invalid`); v5'ten geçiş
+  yalnızca numara (eski projeler ayar kapalı açılır, bayt bayt); parmak izine yalnızca açıkken girer;
+  fixture'lar `legacy-v5/`, 2 geçerli, 5 geçersiz, `future-schema` 7; belge 10 güncellendi. v5 derlemesi
+  "daha yeni kayıt" korumasını taşıdığı için v6 kaydının üstüne yazmaz.
+- Politika (belge 15) değişmedi: "Sesi düzelt" zaten ücretsiz ve cihazda.
+
+**Ölçülen (ffmpeg `ebur128`, kaydedilen dosya):** kısık konuşma −16,0 LUFS / −4,7 dBTP; kısık konuşma + müzik
+−16,0 / −9,4; iki kesitlik birleşik −16,0 / −2,8; patlamış −16,0 / −8,7; zaten iyi −16,0 / −4,7; yalnız ses ve
+hedef boyut da −16 ± 1; sessiz ses −70 (dokunulmadı); ayar kapalı −38,7 (olağan karışım).
+
+**Sınamalar (yerel):** `tsc`, `eslint` temiz; birim **1646 / 1646** (20'si yeni); e2e ilk koşu `sound-fix`,
+`persistence`, `editor`, `enhance`, `captions`, `transcript-keep`, `audio-only`: **98'den 97 geçti**, düşen
+`captions.spec.ts`'teki güncellenmemiş "5:0" sabitiydi (sınama düzeltildi → 7 / 7); sonra `sound-fix.spec.ts`
+**23 / 23** (10'u yeni), `persistence.spec.ts` 20 / 20 (2'si yeni), `a11y.spec.ts` Ayarlar ve Sesi düzelt alt kümesi
+**12 / 12**.
+
+**Doğrulanmayan:** tüm e2e takımı, `npm run quality`, bulut ve Pages yapıları; gerçek telefon, Safari, Firefox;
+gerçek kayıtlar ve kulakla dinleme; ölçüm sırasında "Vazgeç"; bir saatlik video; 44,1 kHz kaynak.
+
 ## Editör: müzik okunurken indirme bekler ve nedenini söyler — 21 Ekim 2026 (politika ve şema değişmedi)
 
 CI koşusu 39557873032'de "nothing is sent off the machine" iki dakika bekleyip düştü. Neden ürünün kendisiydi:

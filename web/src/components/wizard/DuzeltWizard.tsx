@@ -70,10 +70,12 @@ function useCopyCheck(state: WizardHostProps['state']): boolean | null {
  * video without sound, or whose sound is silence, is told so and nothing is
  * offered. The chain does not remove noise, and the screen says that too.
  *
- * The editor does not know this chain: the measured gains go with the
- * download only (`ExportExtras.soundFix`), so there is no "Daha fazla ayar →
- * editörde aç" here — the editor would download the video with its sound as
- * it was, and that would be a fake promise.
+ * The measured gains go with the download only (`ExportExtras.soundFix`); the
+ * recipe this card opens does not ask for the fix. Since ADR-050 the editor
+ * has its own "Sesi düzelt" setting (the same chain, measured on the editor's
+ * mix at download), but this card still offers no "Daha fazla ayar → editörde
+ * aç": the editor would open with the setting off, and adding the link is a
+ * founder decision (ADR-050, "Kurucu kararları").
  */
 export default function DuzeltWizard(host: WizardHostProps) {
   const t = useT();

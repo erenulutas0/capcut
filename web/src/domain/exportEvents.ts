@@ -126,6 +126,13 @@ export interface ExportResult {
   /** ADR-049: set when the sound went through the loudness chain ("Sesi düzelt"). */
   soundFix?: SoundFixOutcome;
   /**
+   * ADR-050: the recipe asked for "Sesi düzelt" but the chain did not run —
+   * the download has no sound (`no_sound`), or its sound is silence or nearly
+   * (`silent`, under −60 LUFS: turning that up is not a fix). The sound is
+   * then the ordinary mix, and the page says so.
+   */
+  soundFixSkipped?: SoundFixSkipped;
+  /**
    * ADR-045: set for a full encode — the video bitrate and rate control the
    * encoder was really configured with, and the rate control that was asked
    * for (they differ when the browser refused `constant`).
@@ -152,7 +159,31 @@ export interface SoundFixOutcome {
   outputGainDb: number;
   /** The deepest the limiter had to go, dB (≤ 0; 0: it never touched a peak). */
   deepestLimitingDb: number;
+  /**
+   * ADR-050: what the export itself measured in the mix before the chain ran
+   * (the editor's setting). Absent when the page measured first and sent the
+   * gains (the "Sesi düzelt" card, ADR-049).
+   */
+  found?: SoundFixFound;
 }
+
+/** ADR-050: the mix as the export measured it — the same decision as the card's (`decideSoundFix`). */
+export interface SoundFixFound {
+  /** Integrated loudness of the mix as it was, LUFS (BS.1770). */
+  beforeLufs: number;
+  /** What the chain's rehearsal predicts for the file, LUFS. */
+  afterLufs: number;
+  /** Already at a good level, even, and under the peak ceiling: little changes (said). */
+  alreadyGood: boolean;
+  /** The gains ran out before the target: still somewhat quiet (said). */
+  stillQuiet: boolean;
+  /** The video's own sound is cut off at full scale in places: the level is fixed, the distortion stays (said). */
+  clipped: boolean;
+  /** The share of the video's own samples at full scale (`ClipMeter`), 0–1. */
+  clippedShare: number;
+}
+
+export type SoundFixSkipped = 'no_sound' | 'silent';
 
 /** What "İyileştir" did in one download (ADR-037). */
 export interface EnhanceOutcome {
@@ -180,8 +211,11 @@ export function missingFramesAllowed(totalFrames: number): number {
 
 export type ExportEvent =
   | { type: 'preparing'; attemptId: string }
-  /** ADR-037: frames of the video are being looked at before the first one is encoded; a real share, 0..1. */
-  | { type: 'analysing'; attemptId: string; progress: number }
+  /**
+   * ADR-037: frames of the video are being looked at before the first one is encoded; a real share, 0..1.
+   * ADR-050, `subject: 'sound'`: the mixed sound is being measured ("Sesi düzelt", two passes) instead.
+   */
+  | { type: 'analysing'; attemptId: string; progress: number; subject?: 'sound' }
   | {
       type: 'encoding';
       attemptId: string;

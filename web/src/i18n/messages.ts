@@ -1007,6 +1007,14 @@ export const tr = {
   'enhance.did.nothing': 'İyileştirme açıktı ama bu videoda değiştirilecek bir şey bulunamadı; görüntü olduğu gibi yeniden işlendi.',
   'enhance.did.cpu': 'Ekran kartı hızlandırması olmadan yapıldı.',
   'export.soundFix.done': 'Ses düzeltildi: daha duyulur ve eşit.',
+  'export.soundFix.already': 'Sesin zaten iyiydi; pek bir şey değişmedi.',
+  'export.soundFix.stillQuiet': 'Ses çok kısıktı: olabildiğince açıldı, yine de biraz kısık kalabilir.',
+  'export.soundFix.silent': 'Sesi düzelt açıktı, ama seste duyulacak bir şey yoktu; ses olduğu gibi kaldı.',
+  'export.soundFix.noSound': 'Sesi düzelt açıktı, ama bu indirmede ses yok.',
+  'export.running.listening': 'Sesin dinleniyor…',
+  'audio.soundFix.label': 'Sesi düzelt',
+  'audio.soundFix.hint':
+    'İndirirken bütün ses (videonun sesi ve müzik birlikte) duyulur ve eşit olur: −16 LUFS. Burada oynatırken ses değişmez.',
   'enhance.setting.label': 'Görüntüyü iyileştir',
   'enhance.setting.off': 'Kapalı',
   'enhance.setting.hint':

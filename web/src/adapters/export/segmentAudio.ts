@@ -49,6 +49,20 @@ export interface AudioContextSources {
    * headroom: its limiter is what keeps the peaks down.
    */
   fix?: SoundFixChain | null;
+  /**
+   * ADR-050 ("Sesi düzelt" in the editor): measuring instead of writing. Each
+   * chunk of the mix is handed over as it is — every kesit at its gain, the
+   * music with its envelope, before the headroom, the chain or the clamp —
+   * and nothing goes to the encoder. `source` gets the video's own sound
+   * alone, at full level (1), where a kesit is heard at all: what "cut off at
+   * full scale" is judged on (the music's own peaks are not the recording's).
+   */
+  measure?: MixMeasure | null;
+}
+
+export interface MixMeasure {
+  mix(planar: readonly Float32Array[], frames: number): void;
+  source(planar: readonly Float32Array[], frames: number): void;
 }
 
 export class SegmentAudioWriter {
@@ -123,6 +137,11 @@ export class SegmentAudioWriter {
         clock.lap('audioDecode');
         if (clipReader.pcm) {
           mixStreamInto(planar, chunkFrames, clipReader.pcm, positionStart, positionStep, segment.gain);
+          if (sources.measure) {
+            const alone = Array.from({ length: channels }, () => new Float32Array(chunkFrames));
+            mixStreamInto(alone, chunkFrames, clipReader.pcm, positionStart, positionStep, 1);
+            sources.measure.source(alone, chunkFrames);
+          }
           clipReader.release(Math.floor(positionStart) - 1);
         }
       }
@@ -153,6 +172,14 @@ export class SegmentAudioWriter {
             musicReader.release(Math.floor(positionStart) - 1);
           }
         }
+      }
+
+      if (sources.measure) {
+        // ADR-050: the mix as the chain would get it; nothing is written.
+        sources.measure.mix(planar, chunkFrames);
+        clock.lap('audioMix');
+        this.frame = frame + chunkFrames;
+        continue;
       }
 
       const fix = sources.fix ?? null;

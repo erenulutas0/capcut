@@ -29,6 +29,8 @@ interface Props {
   videoSound: { gainDb: number; muted: boolean };
   onVideoGain: (gainDb: number) => void;
   onVideoMuted: (muted: boolean) => void;
+  /** "Sesi düzelt" (ADR-050): the whole mixed sound of every download evened out; on or off. */
+  onSoundFix: (on: boolean) => void;
   onMusicChange: (patch: Partial<Omit<MusicV1, 'assetId'>>) => boolean;
   onPickAudio: () => void;
   onRemoveAudio: () => void;
@@ -229,6 +231,7 @@ export function AudioPanel({
   videoSound,
   onVideoGain,
   onVideoMuted,
+  onSoundFix,
   onMusicChange,
   onPickAudio,
   onRemoveAudio,
@@ -241,6 +244,7 @@ export function AudioPanel({
   | 'videoSound'
   | 'onVideoGain'
   | 'onVideoMuted'
+  | 'onSoundFix'
   | 'onMusicChange'
   | 'onPickAudio'
   | 'onRemoveAudio'
@@ -249,6 +253,7 @@ export function AudioPanel({
   const previewRef = useRef<HTMLAudioElement | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const music = project.music;
+  const soundFix = project.soundFix !== undefined;
 
   useEffect(
     () => () => {
@@ -275,6 +280,27 @@ export function AudioPanel({
 
   return (
     <>
+      {/* ADR-050: one setting for the whole mixed sound of every download; the player plays the files as they are. */}
+      <label className="radio-row" data-testid="sound-fix-setting">
+        <input
+          type="checkbox"
+          checked={soundFix}
+          onChange={(event) => onSoundFix(event.target.checked)}
+          data-testid="sound-fix"
+        />
+        <span>
+          {t('audio.soundFix.label')}
+          <small>{t('audio.soundFix.hint')}</small>
+        </span>
+      </label>
+      {soundFix ? (
+        <p className="hint-small" data-testid="sound-fix-keeps">
+          {t('wizard.duzelt.keeps')}
+        </p>
+      ) : null}
+
+      <hr className="divider" />
+
       <div className="section-head">
         <h2>{t('audio.sourceTitle')}</h2>
       </div>

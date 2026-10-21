@@ -378,7 +378,7 @@ test.describe('captions', () => {
         },
         { timeout: 15_000 },
       )
-      .toBe('5:0');
+      .toBe('6:0');
     expect(errors).toEqual([]);
   });
 
