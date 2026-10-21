@@ -9,6 +9,8 @@
 > videonun kendi bit hızı (planınki; kopya ancak ondan küçükse), ses yok.
 > **Ek 2 (aynı gün, en altta):** bütün boyutlar tek çözmeden ölçülür (tahminler bayt bayt aynı; 10 sn'lik aramada
 > süre yarıya), süre dolunca ölçülmüş büyük boyuttan ×1,3 tahmin, videoda yazılım kodlayıcıya 1,5 kat.
+> **Ek 3 (22 Ekim, en altta):** videoda yine 1 kat; 8 sn'de hiçbir boyut yoksa ilk gelen boyut karar verir, en çok
+> 20 sn, ancak hiçbir şey gelmezse Küçük.
 > İlgili: [ADR-046](ADR-046-gif.md) (GIF yap; ekleri: tahmin ±%10, 10 MB uyarısı, bellek, "Çok büyük"),
 > [ADR-041](ADR-041-never-upscale.md) (büyütme yok), [ADR-042](ADR-042-export-failure-detail.md) (hata ayrıntısı,
 > bekçi), [ADR-045](ADR-045-constant-bitrate-ordinary-download.md) (donanım kodlayıcıda sabit bit hızı),
@@ -370,8 +372,49 @@ VMAF / SSIM videonun çerçevesinde):
 - Ölçüm betiği `scripts/gif-eval/video-vs-gif.mjs`: `--pick-only`, `--cores=2`, `--cpu=3`, `--limit-ms`; ekranın
   `data-measured`'ı her boyutun bilinen tahminini verir. Gerçek kayıtlardan türeyen hiçbir şey depoya girmedi.
 
+### Hâlâ açık (kurucuya) — ikisi de Ek 3'te karara bağlandı
+
+1. ~~Telefonda 10 sn'lik 1080p kısım Küçük'e düşebilir~~ → Ek 3. 2. ~~1,5 kat~~ → Ek 3: 1 kata dönüldü.
+
+---
+
+## Ek 3 — 22 Ekim 2026: ana oturumun son iki kararı
+
+1. **Yazılım kodlayıcıda yine planın bit hızı (1 kat).** 1,5 kat dosyayı ~%50 büyütüp VMAF'ı yalnızca +0,3–3 artırdı
+   (Ek 2, C) — değmez. Ek 2'deki 1 kat sayıları geçerli (4 sn 1080p ≈ 2,8 MB, 10 sn ≈ 7 MB; video 16 durumun 12'sinde
+   ilk seçilen GIF'ten küçük). e2e: 1280 × 720, 4 sn, 248 KB (sınır planın bit hızı × 4 sn × 1,1; GIF 839 KB).
+2. **8 sn'de hiçbir boyut bitmemişse Küçük'e düşülmez.** Arama sürer — ekran yine "En net boyut ölçülüyor…" der, düğme
+   bekler — ve **ilk gelen boyut** karar verir: sığıyorsa (≤ 9 MB) o, sığmıyorsa Ek 2'nin aşağı doğru tahmini (en yakın
+   ölçülmüş büyük boyuttan, piksel oranı × 1,3); seçim donar. Bütününde en çok **20 sn** (`GIF_AUTO_PICK_HARD_LIMIT_MS`):
+   o ana dek hiçbir boyut gelmediyse ancak o zaman Küçük, ekran söyler ("Ölçmek uzun sürdü; en küçük boyutu seçtik…").
+   8 sn'de bir boyut zaten ölçülmüşse Ek 2'deki gibi hemen karar verilir. Sınama derlemesinde iki süre de kısaltılabilir
+   (`__clipGifPickLimitMs`, `__clipGifPickHardLimitMs`).
+
+### Ölçülen: 2 çekirdek (telefon yerine), 10 sn'lik kısım, gerçek süreler (8 sn / 20 sn)
+
+| Kaynak | İlk gelen boyut | Sonuç | Süre (ekran hazır → seçilen boyutun tahmini görünür) | Ek 2'de (8 sn'de Küçük) |
+|---|---|---|---|---|
+| R1 (1080p 60) | Çok büyük 27,3 MB | **Orta**, tahminle (27,3 × 0,25 × 1,3 = 8,9 MB; Orta'nın kendi tahmini sonra 7,6 MB) | 21,8 sn | Küçük, 19,6 sn |
+| R3 (1080p 30) | Çok büyük 28,6 MB | Küçük, tahminle (Orta 9,3 MB > 9; kendi tahmini 8,3 — pay ihtiyatlı) | 15,8 sn | Küçük, 16,8 sn |
+| S3 (yapay, kaydırma + kum) | Çok büyük 35,8 MB | Küçük, tahminle (Orta 11,6 MB) | 18,6 sn | Küçük, 18,6 sn |
+
+- Üçünde de ilk boyut 8 ile 20 sn arasında geldi; hiçbiri 20 sn'ye kalmadı. Süre, seçilen boyutun kendi tahmininin de
+  gelmesini içerir: seçim donunca yarım kalan ölçüm bırakılır, seçilen boyut yeniden ölçülür (bir çözme daha) — boşa
+  giden iş; seçilen boyut ilk ölçümün içinde zaten varsa onu beklemek bir sonraki iyileştirme olabilir.
+- Bütün çekirdeklerde (bu masaüstü) R1 ve R3 10 sn 8 sn içinde Orta, ölçülerek (Ek 2, 5,5–5,9 sn) — değişmedi.
+- R3 ve S3'te pay (×1,3) Orta'yı kaçırdı (tahmini 8,3 / 8,7 MB, sığıyordu). İlk gelen boyut her zaman en büyüğü
+  olduğu için tahmin en uzak boyuttan yapılıyor; telefonda S23 ölçümü bunu gösterecek.
+
+### Sınamalar (Ek 3; yerel, port 3195, kilit altında)
+
+- `tsc`, `eslint` temiz; birim **1667 / 1667**.
+- e2e **113 / 113** (aynı on dosya; sınır sınaması yeniden yazıldı: 8 sn 0 ms → ilk gelen Çok büyük sığar, seçilir;
+  yoğun kumlu 640 × 360 10 sn'de ilk gelen Büyük ~18 MB → tahminle Küçük ve tahmin cümlesi; iki süre de 0 → Küçük ve
+  cümlesi; hiçbiri sonradan kendiliğinden değişmez). `PAGE-RECOVERED-TOTAL 0`.
+- Kalite katmanı koşulmadı: hiçbir ekran ya da cümle değişmedi (yalnızca sürelerin davranışı ve bit hızı).
+
 ### Hâlâ açık (kurucuya)
 
-1. **Telefonda 10 sn'lik 1080p kısım:** 2 çekirdekte arama 10,6–17,6 sn; 8 sn'de hiçbir boyut bitmemiş olabilir →
-   Küçük. S23 ölçümünden sonra: sınırı uzatmak (ör. 15 sn) ya da 10 sn'lik kısımda önce Orta'yı tek başına ölçmek.
-2. **1,5 kat:** netliğe katkısı küçük (VMAF +0,3–3), dosyaya %50; istenirse 1 kata dönülür.
+1. S23'te 10 sn'lik 1080p kısım: ilk boyut kaç saniyede geliyor, tahmin Orta'yı mı Küçük'ü mü veriyor.
+2. Pay ×1,3, en büyük boyuttan iki basamak aşağı tahminde Orta'yı kaçırabiliyor (R3, S3); istenirse 10 sn'lik kısımda
+   arama önce Orta'yı tek başına ölçebilir.

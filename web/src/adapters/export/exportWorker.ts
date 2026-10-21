@@ -768,9 +768,6 @@ async function videoEncoderKind(plan: RenderPlan): Promise<VideoEncoderKind> {
  * before that hold: a shorter output with the same settings keeps more of it
  * (the "not enough space" suggestion is computed with it).
  */
-/** ADR-052: the software encoder's share for the GIF card's short video (the ordinary download's is 3). */
-const SHORT_CLIP_SOFTWARE_BITRATE_FACTOR = 1.5;
-
 async function exportVideoBitrate(
   plan: RenderPlan,
   sourceBitrate: number | null,
@@ -779,14 +776,11 @@ async function exportVideoBitrate(
 ): Promise<{ bitrate: number; unlimited: number; kind: VideoEncoderKind; heldForFileLimit: boolean }> {
   const kind = await videoEncoderKind(plan);
   const planned = plan.enhance ? plan.videoBitrate : sourceBoundedBitrate(plan.videoBitrate, sourceBitrate);
-  // ADR-052: "GIF yap → Video olarak" asks a hardware encoder for the plan's own bitrate (constant, ADR-045) and a
-  // software encoder for 1,5 times it (main session's decision; the ordinary download gives it 3 times): a short
-  // silent clip for a phone screen, not larger than it needs to be.
-  let unlimited = planBitrateOnly
-    ? kind === 'software'
-      ? Math.round(planned * SHORT_CLIP_SOFTWARE_BITRATE_FACTOR)
-      : planned
-    : encoderVideoBitrate(planned, kind);
+  // ADR-052: "GIF yap → Video olarak" asks every encoder for the plan's own bitrate — what a phone's hardware
+  // encoder is given (constant there, ADR-045) — not the software encoder's three times: a short silent clip for
+  // a phone screen, not larger than it needs to be. (1,5 times on a software encoder was measured and dropped:
+  // ~50 % larger files for VMAF +0,3–3, ADR-052 addendum 3.)
+  let unlimited = planBitrateOnly ? planned : encoderVideoBitrate(planned, kind);
   if (unlimited !== planned) {
     // A software encoder that would refuse the higher bitrate keeps the plan's.
     const supported = await canEncodeVideo('avc', {

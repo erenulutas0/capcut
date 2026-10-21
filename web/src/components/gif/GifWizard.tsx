@@ -23,6 +23,7 @@ import {
   gifSizeChoices,
   normalizeGifRange,
   planGifSize,
+  GIF_AUTO_PICK_HARD_LIMIT_MS,
   GIF_AUTO_PICK_LIMIT_MS,
   sharpestShareableGifSize,
   type GifAutoSize,
@@ -65,6 +66,15 @@ function autoPickLimitMs(): number {
     if (typeof hook === 'number' && hook >= 0) return hook;
   }
   return GIF_AUTO_PICK_LIMIT_MS;
+}
+
+/** `GIF_AUTO_PICK_HARD_LIMIT_MS`; a test build may shorten it (`window.__clipGifPickHardLimitMs`). */
+function autoPickHardLimitMs(): number {
+  if (TEST_HOOKS) {
+    const hook = (globalThis as { __clipGifPickHardLimitMs?: unknown }).__clipGifPickHardLimitMs;
+    if (typeof hook === 'number' && hook >= 0) return hook;
+  }
+  return GIF_AUTO_PICK_HARD_LIMIT_MS;
 }
 
 /**
@@ -356,18 +366,43 @@ export default function GifWizard(host: WizardHostProps) {
   // Still measuring the sizes from the largest down: no size is "chosen" yet, and no GIF is made at a guess.
   const picking = !asVideo && twoSizes && !userChose && auto.kind === 'measure';
   // At most `GIF_AUTO_PICK_LIMIT_MS` of that (main session's decision): then what is known decides, and says so.
+  // If no size has been measured yet by then, the search goes on until the first one is (still "ölçülüyor"), at
+  // most `GIF_AUTO_PICK_HARD_LIMIT_MS` in all; only if nothing at all came by then, the smallest.
   const searchRef = useRef({ sizeChoices, known, pixels });
   useEffect(() => {
     searchRef.current = { sizeChoices, known, pixels };
   });
+  const [overtime, setOvertime] = useState<string | null>(null);
+  const settleNow = useCallback(
+    (forKey: string, nothingCame = false) => {
+      const now = searchRef.current;
+      const auto = nothingCame
+        ? ({ kind: 'chosen', size: now.sizeChoices[0] ?? 'small', why: 'timeout_smallest' } as const)
+        : sharpestShareableGifSize(now.sizeChoices, now.known, { timedOut: true, pixels: now.pixels });
+      setSettled({ key: forKey, auto });
+    },
+    [setSettled],
+  );
   useEffect(() => {
     if (!picking || !searchKey) return undefined;
-    const timer = window.setTimeout(() => {
-      const now = searchRef.current;
-      setSettled({ key: searchKey, auto: sharpestShareableGifSize(now.sizeChoices, now.known, { timedOut: true, pixels: now.pixels }) });
+    const soft = window.setTimeout(() => {
+      const anyMeasured = Object.values(searchRef.current.known).some((value) => value !== undefined);
+      if (anyMeasured) settleNow(searchKey);
+      else setOvertime(searchKey);
     }, autoPickLimitMs());
-    return () => window.clearTimeout(timer);
-  }, [picking, searchKey]);
+    const hard = window.setTimeout(() => settleNow(searchKey, true), autoPickHardLimitMs());
+    return () => {
+      window.clearTimeout(soft);
+      window.clearTimeout(hard);
+    };
+  }, [picking, searchKey, settleNow]);
+  // Past the limit with nothing measured: the first size that arrives decides (with the prediction downwards).
+  const measuredCount = Object.values(known).filter((value) => value !== undefined).length;
+  useEffect(() => {
+    if (!picking || overtime !== searchKey || measuredCount === 0) return undefined;
+    const now = window.setTimeout(() => settleNow(searchKey), 0);
+    return () => window.clearTimeout(now);
+  }, [picking, overtime, searchKey, measuredCount, settleNow]);
   const size = planGifSize(videoWidth || 1, videoHeight || 1, chosenSize);
 
   const job: GifJob | null = video && part && !asVideo ? { file: video.file, range: part, size: chosenSize, texts, origin } : null;

@@ -41,9 +41,14 @@ Kurucunun hedefi: "bence her zaman en neti vermeliyiz".
   bakılacak. "Video olarak" yazılım kodlayıcıda planın 1,5 katı: 4 sn 1080p 4,2 MB, 10 sn 10,4 MB; video 13 durumun
   9'unda seçilen GIF'ten küçük, VMAF +22–48.
 
+- **Ek 3 (22 Ekim):** "Video olarak" yazılım kodlayıcıda yine planın bit hızında (1,5 kat dosyayı %50 büyütüp VMAF'ı
+  +0,3–3 artırıyordu). 8 sn'de hiçbir boyut ölçülmemişse Küçük'e düşülmez: arama sürer ("ölçülüyor"), ilk gelen boyut
+  karar verir (sığıyorsa o, sığmıyorsa aşağı doğru tahmin), en çok 20 sn; ancak hiçbir şey gelmezse Küçük. 2 çekirdekte
+  10 sn: R1 → Orta (tahminle, 21,8 sn), R3 → Küçük (tahminle, 15,8 sn), S3 → Küçük (tahminle, 18,6 sn).
+
 **Sınamalar (yerel):** `tsc`, `eslint` temiz; birim **1667 / 1667** (96 dosya); e2e GIF dört dosya + `english` +
-dışa aktarma beşlisi **113 / 113**; kalite katmanı (visual, a11y, text, walkthrough) 705 bütçe içinde, 0 dışında,
-farklı ekran 0.
+dışa aktarma beşlisi **113 / 113**; kalite katmanı (visual, a11y, text, walkthrough; Ek 3'ten önce) 705 bütçe içinde,
+0 dışında, farklı ekran 0.
 
 **Doğrulanmayan:** telefon, Safari, Firefox; hiçbir sohbet uygulamasına gönderilmedi (döngü uygulamaya bağlı);
 telefonda donanım kodlayıcıyla videonun boyutu.

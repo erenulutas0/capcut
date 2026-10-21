@@ -270,6 +270,13 @@ export const GIF_AUTO_PICK_MAX_BYTES = 9_000_000;
 export const GIF_AUTO_PICK_LIMIT_MS = 8_000;
 
 /**
+ * When NO size has been measured by `GIF_AUTO_PICK_LIMIT_MS`, the search goes on until the first size is (main
+ * session's decision, ADR-052 addendum 3) — never longer than this in all; only then, with nothing measured at
+ * all, the smallest size, and the screen says so.
+ */
+export const GIF_AUTO_PICK_HARD_LIMIT_MS = 20_000;
+
+/**
  * Out of time, a size not yet measured is predicted from the nearest LARGER size measured: GIF bytes follow
  * the pixel count. Measured (ADR-052 addendum 2; the estimates of 5 real recordings and 3 synthetic clips, 4
  * and 10 s, 19 pairs of neighbouring sizes): a size's estimate was 0,83–1,25 times the larger size's scaled by

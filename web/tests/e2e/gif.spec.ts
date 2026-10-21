@@ -296,21 +296,42 @@ test('"Çok büyük" (ADR-046 addendum 2): a 720 × 1280 phone video gives 540 �
   await expect(page.getByTestId('gif-size-xlarge')).toHaveCount(0);
 });
 
-test('the search for the sharpest size waits 8 s at most, then settles on what is known and says so — and stays', async ({ page }) => {
-  // A test build only: the limit made 0 ms, so the search runs out at once (before anything is measured).
+test('past 8 s with nothing measured, the first size that arrives decides; nothing in 20 s: the smallest, said so — and it stays', async ({ page }) => {
+  // A test build only: the 8 s made 0 ms, so the search is past it before anything is measured. It waits for the
+  // first size (still "ölçülüyor"), never Küçük at once: here the largest, "Çok büyük", 4 s of the test pattern far
+  // under 9 MB — chosen by the ordinary rule.
   await page.addInitScript(() => {
     (window as unknown as { __clipGifPickLimitMs: number }).__clipGifPickLimitMs = 0;
+  });
+  await openGif(page, SAMPLE);
+  await expect(page.getByTestId('gif-size')).toHaveAttribute('data-auto-why', 'fits');
+  await expect(page.getByTestId('gif-size-xlarge')).toBeChecked();
+  await expect(page.getByTestId('wizard-download')).toBeEnabled();
+
+  // A first size measured OVER the limit (10 s of heavy grain at 640 × 360: "Büyük" ~18 MB): the smaller sizes are
+  // predicted from it (pixels × 1,3: Orta ~13 MB, Küçük ~4,4 MB) — Küçük, said to be chosen from an estimate.
+  await openGif(page, wizardFixture('grainy'));
+  await expect(page.getByTestId('gif-size')).toHaveAttribute('data-auto-why', 'timeout_predicted');
+  await expect(page.getByTestId('gif-size')).toHaveAttribute('data-measured', /large:\d{8}/);
+  await expect(page.getByTestId('gif-size-small')).toBeChecked();
+  await expect(page.getByTestId('gif-size-hint')).toHaveText(
+    'Ölçmek uzun sürdü; ölçtüğümüz daha büyük boyuttan tahminle 10 MB’ı geçmemesi beklenen en net boyutu seçtik.',
+  );
+  // It never changes by itself afterwards (Orta's own measurement, 9,5 MB, came later or not at all).
+  await page.waitForTimeout(3000);
+  await expect(page.getByTestId('gif-size-small')).toBeChecked();
+
+  // The 20 s made 0 ms as well: nothing at all has arrived — the smallest, and the screen says so.
+  await page.addInitScript(() => {
+    (window as unknown as { __clipGifPickHardLimitMs: number }).__clipGifPickHardLimitMs = 0;
   });
   await openGif(page, SAMPLE);
   await expect(page.getByTestId('gif-size')).toHaveAttribute('data-auto-why', 'timeout_smallest');
   await expect(page.getByTestId('gif-size-small')).toBeChecked();
   await expect(page.getByTestId('gif-size-hint')).toHaveText('Ölçmek uzun sürdü; en küçük boyutu seçtik. Daha büyüğünü kendin seçebilirsin.');
-  await expect(page.getByTestId('wizard-download')).toBeEnabled();
   await expect(estimate(page)).toHaveAttribute('data-width', '320');
-  // It never changes by itself afterwards.
   await page.waitForTimeout(3000);
   await expect(page.getByTestId('gif-size-small')).toBeChecked();
-  await expect(page.getByTestId('gif-size-xlarge')).not.toBeChecked();
 });
 
 test('refusals: sound only, one frame, a broken index — the screens’ own sentences, nothing made', async ({ page }) => {
@@ -475,11 +496,10 @@ test('"Video olarak (en net)" (ADR-052): the same part and text as a short H.264
   const path = await readSaved(page, testInfo, 'saved-sample-24s_gif.mp4');
   const probed = probeMp4(path);
   console.log(`GIF-VS-VIDEO ${JSON.stringify({ gif: { bytes: gif.bytes, width: gif.gif.width, height: gif.gif.height }, video: { bytes: readFileSync(path).length, ...probed } })}`);
-  // ADR-052: a short clip's own bitrate — the plan's (0,09 bit a pixel: 2,49 Mbit/s at 720p30), 1,5 times on a
-  // software encoder (this one), never the ordinary download's three times: at most that over four seconds
-  // (+10 %), and smaller than the GIF.
+  // ADR-052: a short clip's own bitrate — the plan's (0,09 bit a pixel: 2,49 Mbit/s at 720p30), never the
+  // software encoder's three times: at most that over four seconds (+10 %), and smaller than the GIF.
   const videoBytes = readFileSync(path).length;
-  expect(videoBytes).toBeLessThanOrEqual(((1280 * 720 * 30 * 0.09 * 1.5 * 4) / 8) * 1.1);
+  expect(videoBytes).toBeLessThanOrEqual(((1280 * 720 * 30 * 0.09 * 4) / 8) * 1.1);
   expect(videoBytes).toBeLessThan(gif.bytes);
   // H.264, no sound at all, the video's own 1280 × 720, four seconds.
   expect(probed).toMatchObject({ videoCodec: 'h264', audioCodec: null, width: 1280, height: 720 });
