@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 
 import type { GifJob } from '@/adapters/gif/gifClient';
 import { gifMeasure } from '@/adapters/gif/gifText';
 import { CAPTION_FONT_FAMILY } from '@/adapters/captionRender';
-import { ownSizeRecipe } from '@/application/taskRecipes';
+import { gifVideoRecipe, ownSizeRecipe } from '@/application/taskRecipes';
 import { FailureDetails } from '@/components/FailureDetails';
 import { Icon } from '@/components/Icon';
 import { useCaptionFont } from '@/components/editor/useCaptionFont';
@@ -23,18 +23,22 @@ import {
   gifSizeChoices,
   normalizeGifRange,
   planGifSize,
+  sharpestShareableGifSize,
+  type GifOutput,
   type GifRange,
   type GifSize,
+  type GifSizeEstimates,
   type GifSizeId,
   type GifTextLayout,
   type GifTexts,
   type MeasureGifText,
 } from '@/domain/gif';
-import { formatBytes } from '@/domain/policy';
+import { WEB_LOCAL_POLICY, formatBytes } from '@/domain/policy';
+import { compileRenderPlan } from '@/domain/renderPlan';
 import { useT } from '@/i18n/locale';
 import { GifRangeBar } from './GifRangeBar';
 import { GifStatus, gifFailureText } from './GifStatus';
-import { useGifDownload, useGifEstimate } from './useGif';
+import { useGifDownload, useGifEstimate, useGifEstimatesDone } from './useGif';
 
 
 /** Refusals the estimate already proves: the GIF could not be made either, so "GIF'i indir" waits. */
@@ -141,6 +145,7 @@ function GifPreview({
   onTexts,
   measure,
   disabled,
+  cover = false,
 }: {
   src: string;
   range: GifRange;
@@ -149,6 +154,11 @@ function GifPreview({
   onTexts: (texts: GifTexts) => void;
   measure: MeasureGifText | null;
   disabled: boolean;
+  /**
+   * The video's frame (ADR-052): the picture fills it as the export fills it (centred, cut at the edges —
+   * only where the video's own shape is not 16:9, 9:16 or square). The GIF is the video's own shape.
+   */
+  cover?: boolean;
 }) {
   const t = useT();
   const frameRef = useRef<HTMLDivElement | null>(null);
@@ -219,6 +229,7 @@ function GifPreview({
         className="gif-preview-frame"
         ref={frameRef}
         style={{ aspectRatio: `${size.width} / ${size.height}`, '--gif-ratio': size.width / size.height } as CSSProperties}
+        data-fit={cover ? 'cover' : 'fill'}
         data-testid="gif-preview-frame"
       >
         <video
@@ -272,6 +283,11 @@ function GifPreview({
  * seconds) with an honest "yaklaşık 3 MB" measured from frames really made, the size, and one
  * button. Everything happens on this device, in the GIF worker; the file is saved like every other
  * download (the save dialog where the browser has one, a save link where it has not).
+ *
+ * ADR-052: the size chosen first is the sharpest that stays under 10 MB, measured from the largest
+ * down (`sharpestShareableGifSize`); and the same part can be saved as a short video instead
+ * ("Video olarak (en net)") — through the ordinary MP4 download (`WizardFlow`'s own), with the
+ * same text drawn the GIF's way.
  */
 export default function GifWizard(host: WizardHostProps) {
   const t = useT();
@@ -284,12 +300,14 @@ export default function GifWizard(host: WizardHostProps) {
   const measure = video ? pageMeasure() : null;
   const [range, setRange] = useState<GifRange | null>(null);
   const [capped, setCapped] = useState(false);
-  // "Orta" first where the video has it (founder's decision, 20 Oct 2026: on a phone "Küçük" looked blurred;
-  // ADR-046 addendum). A video that has no "Orta" gets its largest size, which is its own.
-  const [sizeId, setSizeId] = useState<GifSizeId>('medium');
+  // The size the user picked; null until they pick one: the sharpest that fits 10 MB is then chosen for
+  // them (ADR-052; before 21 Oct 2026 "Orta", the founder's decision of 20 Oct).
+  const [userSize, setUserSize] = useState<GifSizeId | null>(null);
+  // GIF first: the card is "GIF yap", and a GIF is the one file every place shows as a GIF (ADR-052).
+  const [output, setOutput] = useState<GifOutput>('gif');
   const [texts, setTexts] = useState<GifTexts>({ top: '', bottom: '' });
   const download = useGifDownload();
-  const busy = download.busy;
+  const asVideo = output === 'video';
 
   const videoUs = video?.durationUs ?? 0;
   const part = video && range ? normalizeGifRange(range, videoUs) : null;
@@ -297,18 +315,46 @@ export default function GifWizard(host: WizardHostProps) {
   const videoHeight = video?.displayHeight ?? 0;
   const sizeChoices = videoWidth > 0 && videoHeight > 0 ? gifSizeChoices(videoWidth, videoHeight) : (['small'] as GifSizeId[]);
   const twoSizes = sizeChoices.length > 1;
-  // A size this video does not have (a smaller video after a larger one): its largest.
-  const chosenSize: GifSizeId = sizeChoices.includes(sizeId) ? sizeId : (sizeChoices[sizeChoices.length - 1] ?? 'small');
-  const size = planGifSize(videoWidth || 1, videoHeight || 1, chosenSize);
 
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
-  const job: GifJob | null = video && part ? { file: video.file, range: part, size: chosenSize, texts, origin } : null;
-  // What the estimate is for: it is measured again only when this changes.
-  const key = job ? `${video?.objectUrl}|${job.range.startUs}|${job.range.endUs}|${job.size}|${job.texts.top}|${job.texts.bottom}` : '';
-  const estimate = useGifEstimate(download.maker, job, key);
-  const current = estimate.status !== 'idle' && estimate.key === key ? estimate : null;
+  /** What an estimate is for: it is measured again only when this changes. */
+  const keyFor = (id: GifSizeId) => (video && part ? `${video.objectUrl}|${part.startUs}|${part.endUs}|${id}|${texts.top}|${texts.bottom}` : '');
+
+  // ADR-052: what is known of every size of this part and text, and from it the sharpest that fits.
+  const [done, record] = useGifEstimatesDone();
+  const known: GifSizeEstimates = {};
+  for (const id of sizeChoices) {
+    const finished = done[keyFor(id)];
+    if (finished) known[id] = finished.status === 'ready' ? finished.bytes : 'failed';
+  }
+  const auto = sharpestShareableGifSize(sizeChoices, known);
+  const userChose = userSize !== null && sizeChoices.includes(userSize);
+  const chosenSize: GifSizeId = userChose ? (userSize as GifSizeId) : auto.size;
+  // Still measuring the sizes from the largest down: no size is "chosen" yet, and no GIF is made at a guess.
+  const picking = !asVideo && twoSizes && !userChose && auto.kind === 'measure';
+  const size = planGifSize(videoWidth || 1, videoHeight || 1, chosenSize);
+
+  const job: GifJob | null = video && part && !asVideo ? { file: video.file, range: part, size: chosenSize, texts, origin } : null;
+  const key = job ? keyFor(chosenSize) : '';
+  // The next size of the search follows the last one at once: nothing was changed by hand in between.
+  const searching = picking && sizeChoices.some((id) => done[keyFor(id)] !== undefined);
+  const latest = useGifEstimate(download.maker, job, key, done, record, searching ? 0 : undefined);
+  const current = job ? (done[key] ?? (latest.status !== 'idle' && latest.key === key ? latest : null)) : null;
   const refusal = current?.status === 'failed' && BLOCKING.has(current.reason) ? current : null;
   const estimateProblem = current?.status === 'failed' && !refusal ? current : null;
+
+  // ADR-052, "Video olarak": the part, muted, at the video's own size (never enlarged), through the ordinary download.
+  const videoRecipe = useMemo(
+    () => (asVideo && part ? gifVideoRecipe(state.project, part, state.settings) : null),
+    [asVideo, part?.startUs, part?.endUs, state.project, state.settings], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const videoPlan = useMemo(() => {
+    if (!videoRecipe) return null;
+    const compiled = compileRenderPlan(videoRecipe, WEB_LOCAL_POLICY);
+    return compiled.ok ? compiled.plan : null;
+  }, [videoRecipe]);
+  const videoExtras = useMemo(() => ({ overlayText: texts }), [texts]);
+  const previewSize: GifSize = asVideo && videoPlan ? { width: videoPlan.width, height: videoPlan.height } : size;
 
   const onRange = useCallback((next: GifRange, wasCapped: boolean) => {
     setRange(next);
@@ -319,39 +365,49 @@ export default function GifWizard(host: WizardHostProps) {
   const mark = t('time.decimalMark');
   const estimateText = !part
     ? ''
-    : current?.status === 'ready'
-      ? fill(t('wizard.gif.estimate'), { length: lengthText(lengthUs, t), size: formatBytes(current.bytes, mark) })
-      : fill(t('wizard.gif.measuring'), { length: lengthText(lengthUs, t) });
+    : asVideo
+      ? lengthText(lengthUs, t)
+      : current?.status === 'ready'
+        ? fill(t('wizard.gif.estimate'), { length: lengthText(lengthUs, t), size: formatBytes(current.bytes, mark) })
+        : fill(t('wizard.gif.measuring'), { length: lengthText(lengthUs, t) });
 
   const status = download.state;
-  const ownDownload = {
-    phase: status?.phase ?? null,
-    busy,
-    readyTitle: t('wizard.gif.ready'),
-    cancel: download.cancel,
-    dismiss: download.dismiss,
-    status: status ? (
-      <GifStatus t={t} state={status} device={phone || touchScreen} onCancel={download.cancel} onShare={download.share} />
-    ) : null,
-  };
+  const ownDownload = asVideo
+    ? undefined
+    : {
+        phase: status?.phase ?? null,
+        busy: download.busy,
+        readyTitle: t('wizard.gif.ready'),
+        cancel: download.cancel,
+        dismiss: download.dismiss,
+        status: status ? (
+          <GifStatus t={t} state={status} device={phone || touchScreen} onCancel={download.cancel} onShare={download.share} />
+        ) : null,
+      };
+  const smallest = sizeChoices[0] ?? 'small';
 
   return (
     <WizardFlow
       {...host}
       titleKey="wizard.gif.title"
       fileTag="gif"
-      recipe={null}
+      recipe={asVideo ? videoRecipe : null}
+      exportExtras={asVideo ? videoExtras : undefined}
+      downloadLabelKey="wizard.gif.downloadVideo"
+      noEditor
+      againSame
       ownDownload={ownDownload}
       preview={
         video && part ? (
           <GifPreview
             src={video.objectUrl}
             range={part}
-            size={size}
+            size={previewSize}
             texts={texts}
             onTexts={setTexts}
             measure={measure}
-            disabled={busy}
+            disabled={download.busy}
+            cover={asVideo}
           />
         ) : undefined
       }
@@ -361,113 +417,168 @@ export default function GifWizard(host: WizardHostProps) {
         if (outcome.kind !== 'opened') return false;
         setRange(initialGifRange(outcome.lengthUs));
         setCapped(false);
+        // A new video: its sharpest size that fits is found again.
+        setUserSize(null);
         return true;
       }}
     >
-      {video && part ? (
-        <>
-          <div className="gif-part" data-testid="gif-part">
-            <GifRangeBar
-              videoUs={videoUs}
-              range={part}
-              disabled={busy}
-              onChange={onRange}
-              labels={{
-                window: t('wizard.gif.partLabel'),
-                start: t('wizard.gif.startLabel'),
-                end: t('wizard.gif.endLabel'),
-                valueText: (from, to) => fill(t('wizard.gif.partValue'), { from, to }),
-              }}
-            />
-            <div className="gif-part-line">
-              <span>{t('wizard.gif.part')}</span>
-              <span
-                className="gif-estimate"
-                role="status"
-                data-testid="gif-estimate"
-                data-state={current?.status ?? 'measuring'}
-                data-bytes={current?.status === 'ready' ? current.bytes : undefined}
-                data-frames={current?.status === 'ready' ? current.frames : undefined}
-                data-width={current?.status === 'ready' ? current.width : undefined}
-                data-height={current?.status === 'ready' ? current.height : undefined}
-              >
-                {estimateText}
-              </span>
+      {({ busy }) =>
+        video && part ? (
+          <>
+            <div className="gif-part" data-testid="gif-part">
+              <GifRangeBar
+                videoUs={videoUs}
+                range={part}
+                disabled={busy}
+                onChange={onRange}
+                labels={{
+                  window: t('wizard.gif.partLabel'),
+                  start: t('wizard.gif.startLabel'),
+                  end: t('wizard.gif.endLabel'),
+                  valueText: (from, to) => fill(t('wizard.gif.partValue'), { from, to }),
+                }}
+              />
+              <div className="gif-part-line">
+                <span>{t('wizard.gif.part')}</span>
+                <span
+                  className="gif-estimate"
+                  role="status"
+                  data-testid="gif-estimate"
+                  data-state={asVideo ? 'video' : (current?.status ?? 'measuring')}
+                  data-bytes={current?.status === 'ready' ? current.bytes : undefined}
+                  data-frames={current?.status === 'ready' ? current.frames : undefined}
+                  data-width={current?.status === 'ready' ? current.width : undefined}
+                  data-height={current?.status === 'ready' ? current.height : undefined}
+                >
+                  {estimateText}
+                </span>
+              </div>
+              {capped ? (
+                <p className="wizard-blocked" role="status" data-testid="gif-max-length">
+                  {t('wizard.gif.maxLength')}
+                </p>
+              ) : null}
             </div>
-            {capped ? (
-              <p className="wizard-blocked" role="status" data-testid="gif-max-length">
-                {t('wizard.gif.maxLength')}
+
+            {asVideo ? (
+              videoPlan ? (
+                <p className="wizard-hint" data-testid="gif-video-size" data-width={videoPlan.width} data-height={videoPlan.height}>
+                  {fill(t('wizard.gif.videoSize'), { width: String(videoPlan.width), height: String(videoPlan.height) })}
+                </p>
+              ) : null
+            ) : twoSizes ? (
+              <fieldset
+                className="gif-size"
+                data-testid="gif-size"
+                data-auto={userChose ? 'user' : picking ? 'picking' : 'picked'}
+                data-auto-why={!userChose && auto.kind === 'chosen' ? auto.why : undefined}
+                aria-describedby="gif-size-hint"
+              >
+                <legend>{t('wizard.gif.size')}</legend>
+                {sizeChoices.map((id) => (
+                  <label className="gif-size-option" data-checked={!picking && chosenSize === id} key={id}>
+                    <input
+                      type="radio"
+                      name="gif-size"
+                      value={id}
+                      // While the sizes are still measured, none is checked: none is chosen yet.
+                      checked={!picking && chosenSize === id}
+                      disabled={busy}
+                      onChange={() => setUserSize(id)}
+                      data-testid={`gif-size-${id}`}
+                    />
+                    <span>{t(SIZE_LABEL[id])}</span>
+                  </label>
+                ))}
+                {/*
+                  The honest trade (ADR-046 addendum): a larger GIF looks sharper on a phone, and its file is larger. While
+                  the size is chosen for the user (ADR-052), the same line says what is happening, then why this size: one
+                  line, so that on a phone the choices below stay above the action bar.
+                */}
+                <p className="wizard-hint gif-size-hint" id="gif-size-hint" role="status" data-testid="gif-size-hint">
+                  {picking && !refusal ? (
+                    <span id="gif-size-picking" data-testid="gif-size-picking">
+                      {t('wizard.gif.autoPicking')}
+                    </span>
+                  ) : !userChose && auto.kind === 'chosen' && auto.why === 'fits' ? (
+                    <span data-testid="gif-size-picked">{t('wizard.gif.autoPicked')}</span>
+                  ) : (
+                    t('wizard.gif.sizeHint')
+                  )}
+                </p>
+              </fieldset>
+            ) : (
+              <p className="wizard-hint" data-testid="gif-one-size">
+                {t('wizard.gif.oneSize')}
+              </p>
+            )}
+
+            {!asVideo && current?.status === 'ready' && gifIsLarge(current.bytes) ? (
+              // Said, never blocked: the GIF is still made if the user wants it this large.
+              <p className="wizard-blocked" role="status" data-testid="gif-too-large">
+                {t(chosenSize === smallest ? 'wizard.gif.tooLargeSmallest' : 'wizard.gif.tooLarge')}
               </p>
             ) : null}
-          </div>
 
-          {twoSizes ? (
-            <fieldset className="gif-size" data-testid="gif-size" aria-describedby="gif-size-hint">
-              <legend>{t('wizard.gif.size')}</legend>
-              {sizeChoices.map((id) => (
-                <label className="gif-size-option" data-checked={chosenSize === id} key={id}>
+            {/* ADR-052: GIF (the card's own, the default) or the same part as a short video, the sharpest there is. Below
+                the size, so that on a phone the size row stays where it was, above the action bar. */}
+            <fieldset className="gif-size gif-output" data-testid="gif-output" aria-describedby="gif-output-hint">
+              <legend>{t('wizard.gif.output')}</legend>
+              {(['gif', 'video'] as const).map((id) => (
+                <label className="gif-size-option" data-checked={output === id} key={id}>
                   <input
                     type="radio"
-                    name="gif-size"
+                    name="gif-output"
                     value={id}
-                    checked={chosenSize === id}
+                    checked={output === id}
                     disabled={busy}
-                    onChange={() => setSizeId(id)}
-                    data-testid={`gif-size-${id}`}
+                    onChange={() => setOutput(id)}
+                    data-testid={`gif-output-${id}`}
                   />
-                  <span>{t(SIZE_LABEL[id])}</span>
+                  <span>{t(id === 'gif' ? 'wizard.gif.outputGif' : 'wizard.gif.outputVideo')}</span>
                 </label>
               ))}
-              {/* The honest trade (ADR-046 addendum): a larger GIF looks sharper on a phone, and its file is larger. */}
-              <p className="wizard-hint gif-size-hint" id="gif-size-hint" data-testid="gif-size-hint">
-                {t('wizard.gif.sizeHint')}
+              <p className="wizard-hint gif-size-hint" id="gif-output-hint" data-testid="gif-output-hint">
+                {t(asVideo ? 'wizard.gif.videoNote' : 'wizard.gif.outputHint')}
               </p>
             </fieldset>
-          ) : (
-            <p className="wizard-hint" data-testid="gif-one-size">
-              {t('wizard.gif.oneSize')}
-            </p>
-          )}
 
-          {current?.status === 'ready' && gifIsLarge(current.bytes) ? (
-            // Said, never blocked: the GIF is still made if the user wants it this large.
-            <p className="wizard-blocked" role="status" data-testid="gif-too-large">
-              {t('wizard.gif.tooLarge')}
-            </p>
-          ) : null}
+            {refusal ? (
+              <div className="wizard-panel" data-testid="gif-refused" data-reason={refusal.reason}>
+                <p className="wizard-panel-title" role="alert">
+                  {gifFailureText(t, refusal.reason)}
+                </p>
+              </div>
+            ) : null}
+            {estimateProblem ? (
+              <div className="wizard-panel" data-testid="gif-estimate-failed" data-reason={estimateProblem.reason}>
+                <p className="wizard-panel-title" role="status">
+                  {t('wizard.gif.estimateFailed')}
+                </p>
+                <FailureDetails t={t} detail={estimateProblem.detail} testId="gif-estimate" />
+              </div>
+            ) : null}
 
-          {refusal ? (
-            <div className="wizard-panel" data-testid="gif-refused" data-reason={refusal.reason}>
-              <p className="wizard-panel-title" role="alert">
-                {gifFailureText(t, refusal.reason)}
-              </p>
-            </div>
-          ) : null}
-          {estimateProblem ? (
-            <div className="wizard-panel" data-testid="gif-estimate-failed" data-reason={estimateProblem.reason}>
-              <p className="wizard-panel-title" role="status">
-                {t('wizard.gif.estimateFailed')}
-              </p>
-              <FailureDetails t={t} detail={estimateProblem.detail} testId="gif-estimate" />
-            </div>
-          ) : null}
-
-          <div className="wizard-actions wizard-action-bar" data-testid="wizard-actions">
-            <button
-              type="button"
-              className="btn btn-accent wizard-go"
-              onClick={() => {
-                if (job) download.start(job, gifFileName(video.fileName));
-              }}
-              disabled={!job || busy || refusal !== null || state.importing === 'video'}
-              data-testid="wizard-download"
-            >
-              <Icon name="download" />
-              {t('wizard.gif.download')}
-            </button>
-          </div>
-        </>
-      ) : null}
+            {asVideo ? null : (
+              <div className="wizard-actions wizard-action-bar" data-testid="wizard-actions">
+                <button
+                  type="button"
+                  className="btn btn-accent wizard-go"
+                  onClick={() => {
+                    if (job) download.start(job, gifFileName(video.fileName));
+                  }}
+                  disabled={!job || busy || picking || refusal !== null || state.importing === 'video'}
+                  aria-describedby={picking ? 'gif-size-picking' : undefined}
+                  data-testid="wizard-download"
+                >
+                  <Icon name="download" />
+                  {t('wizard.gif.download')}
+                </button>
+              </div>
+            )}
+          </>
+        ) : null
+      }
     </WizardFlow>
   );
 }

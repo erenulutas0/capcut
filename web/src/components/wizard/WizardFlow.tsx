@@ -125,6 +125,11 @@ interface Props extends WizardHostProps {
    * ADR-049 — the editor would download the sound as it was), so offering it would be a false promise.
    */
   noEditor?: boolean;
+  /**
+   * After a finished download, "Bir GIF daha yap": back to the choose step with the same video and choices (a task
+   * with a download of its own always has it; "GIF yap" also for its video, ADR-052).
+   */
+  againSame?: boolean;
   /** The one decision (or the one-line explanation) of this task. */
   children: ReactNode | ((info: FlowInfo) => ReactNode);
 }
@@ -163,6 +168,7 @@ export function WizardFlow({
   editorNote = null,
   ownDownload,
   noEditor = false,
+  againSame = false,
   children,
 }: Props) {
   const t = useT();
@@ -450,7 +456,7 @@ export function WizardFlow({
             {resultPhase === 'running' ? <p className="wizard-hint">{t('wizard.result.keepOpen')}</p> : null}
             {finished ? (
               <div className="wizard-after">
-                {ownDownload ? (
+                {ownDownload || againSame ? (
                   // Another GIF of the same video: the part, the size and the text are still there.
                   <button type="button" className="btn" onClick={dismissResult} data-testid="wizard-again-same">
                     {t('wizard.gif.again')}

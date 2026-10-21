@@ -3,6 +3,34 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## GIF yap: her zaman en net olan — 21 Ekim 2026 (ADR-052; politika ve şema değişmedi)
+
+Kurucunun hedefi: "bence her zaman en neti vermeliyiz".
+
+- **İlk seçilen boyut artık sabit "Orta" değil:** videonun boyutları en büyükten aşağı birer birer **ölçülür**
+  (ADR-046'nın ±%10'luk tahmini) ve tahmini 10 MB'ı geçmeyen en büyüğü seçilir; hiçbiri sığmazsa ya da ölçüm
+  düşerse "Küçük". Ölçülürken hiçbir boyut işaretli değil, "En net boyut ölçülüyor…" yazar ve "GIF'i indir" bekler
+  (bir boyuta dokunmak beklemeyi bitirir); sonra "Paylaşması kolay olsun diye 10 MB'ı geçmeyen en net boyutu seçtik."
+  Ölçülen her seçim saklanır, yeniden ölçülmez. 10 MB uyarısı ve bellek kuralı aynen (düşük bellekte 4 sn "Çok büyük"
+  iki geçişle, kare tutmadan).
+- **Ölçülen (bu masaüstü):** 4 sn telefon videosunda artık çoğunlukla "Büyük" (640; az ayrıntılıda "Çok büyük"),
+  10 sn'de çoğunlukla yine "Orta"; seçilen 14 GIF'in hiçbiri 10 MB'ı geçmedi. Bedel: ilk GIF arama bitene dek
+  1,3–10,6 sn bekliyor (telefonda ölçülmedi).
+- **Yeni çıktı "Video olarak (en net)"** ("Nasıl kaydedilsin?": GIF varsayılan): aynı kısım, aynı yazı (GIF'in kendi
+  dizgisi ve çizimiyle, her karede), sessiz H.264, videonun kendi boyutunda en çok Full HD — öbür sihirbazların
+  indirmesiyle (ikinci kodlayıcı yok; gerçek ilerleme, İptal, hata ayrıntısı ve bekçi aynen). Ekran dürüst:
+  "Durmadan dönmesine videoyu gösteren uygulama karar verir. Discord ve bazı siteler gerçek GIF ister." Dosya
+  `<video>_gif.mp4`.
+- **Boyut karşılaştırması:** aynı çözünürlükte (960) video gerçek kayıtlarda GIF'in 0,11–0,64'ü; ama asıl
+  çözünürlüğünde bu masaüstünün yazılım kodlayıcısıyla ilk seçilen GIF'ten çoğu zaman büyük (10 sn 1080p 18–21 MB).
+  Ekran dosya boyutu için bir şey vaat etmiyor.
+
+**Sınamalar (yerel):** `tsc`, `eslint` temiz; birim **1665 / 1665** (96 dosya); e2e GIF dört dosya **58 / 58**,
+`english` **23 / 23**, dışa aktarma beşlisi **31 / 31**; kalite katmanı ADR-052'de.
+
+**Doğrulanmayan:** telefon, Safari, Firefox; hiçbir sohbet uygulamasına gönderilmedi (döngü uygulamaya bağlı);
+telefonda donanım kodlayıcıyla videonun boyutu.
+
 ## Bağımlılıklar: Next 16.4.0, mediabunny 1.61.3, TypeScript 6 — 21 Ekim 2026 (ADR-051; politika ve şema değişmedi)
 
 Yalnız en az iki haftalık sürümler, notları okunarak; bir grup bütün denetimlerden geçince kaldı.

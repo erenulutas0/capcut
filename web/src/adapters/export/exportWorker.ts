@@ -112,6 +112,8 @@ import {
   type TargetSizeMeasurement,
 } from '@/domain/targetSize';
 import { outputPixelSize } from '@/domain/edl';
+import { cleanGifText, type GifTexts, type GifTextLayout } from '@/domain/gif';
+import { drawGifText, gifMeasure, gifTextLayouts } from '../gif/gifText';
 import { hdrTransferOf, type HdrTransfer } from '@/domain/hdr';
 import { WEB_LOCAL_POLICY, outputRouteRefusal } from '@/domain/policy';
 import { US_PER_SECOND } from '@/domain/time';
@@ -914,6 +916,19 @@ interface ExportRequestOptions {
   outputLimitBytes: number | null;
   /** Test builds only: break this export on purpose (`ExportTestFault`); null everywhere else. */
   testFault: ExportTestFault | null;
+  /**
+   * ADR-052 ("GIF yap" → "Video olarak"): the GIF's top and bottom text, drawn on every frame the GIF's
+   * way (`layoutGifText` at the output's size, `drawGifText`); null when there is none. Already cleaned.
+   */
+  overlayText: GifTexts | null;
+}
+
+/** ADR-052: the text as the worker draws it — only strings, cleaned like the GIF's; null when both are empty. */
+function usableOverlayText(value: unknown): GifTexts | null {
+  if (!value || typeof value !== 'object') return null;
+  const { top, bottom } = value as { top?: unknown; bottom?: unknown };
+  const texts = { top: typeof top === 'string' ? cleanGifText(top) : '', bottom: typeof bottom === 'string' ? cleanGifText(bottom) : '' };
+  return texts.top || texts.bottom ? texts : null;
 }
 
 /* ------------------------------------------------------------- İyileştir */
@@ -1208,6 +1223,11 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
   // download lays its captions out per attempt, at the size it encodes.
   enter('captions');
   const captionLayouts = targetSize ? null : await prepareCaptionLayouts(plan, origin);
+  // ADR-052: the GIF's text is drawn with the caption typeface, the one the page's preview measured with;
+  // a fallback font would wrap the lines elsewhere, so a missing typeface is refused here, before anything.
+  if (options.overlayText && (await loadWorkerCaptionFont(origin)) !== 'loaded') {
+    throw new ExportFailure('caption_font_unavailable');
+  }
 
   enter('open_source');
   const videoInput = new Input({ formats: ALL_FORMATS, source: new BlobSource(videoFile) });
@@ -1327,20 +1347,23 @@ async function runExport(options: ExportRequestOptions): Promise<void> {
   // that can refuse (eligibility, packet scan, seam encoder) is decided here,
   // before an output file exists.
   let fallbackReason: FastCutFallbackReason | null = null;
-  let prepared: Awaited<ReturnType<typeof prepareFastCut>>;
-  try {
-    prepared = await prepareFastCut({
-      plan,
-      input: videoInput,
-      track: videoTrack,
-      hdr: hdrTransfer !== null,
-      needsReorderFix: reorderFixed,
-      mode,
-      checkCanceled: () => checkCanceled(requestId),
-    });
-  } catch (error) {
-    if (endsTheExport(error)) throw error;
-    prepared = { ok: false, reason: 'error' };
+  // ADR-052: text drawn on every picture: no picture of the source can be kept as it is.
+  let prepared: Awaited<ReturnType<typeof prepareFastCut>> = { ok: false, reason: 'text' };
+  if (!options.overlayText) {
+    try {
+      prepared = await prepareFastCut({
+        plan,
+        input: videoInput,
+        track: videoTrack,
+        hdr: hdrTransfer !== null,
+        needsReorderFix: reorderFixed,
+        mode,
+        checkCanceled: () => checkCanceled(requestId),
+      });
+    } catch (error) {
+      if (endsTheExport(error)) throw error;
+      prepared = { ok: false, reason: 'error' };
+    }
   }
 
   if (prepared.ok) {
@@ -1825,6 +1848,7 @@ async function produceOutput(
   let videoSource: VideoSampleSource | null = null;
   let canvas: OffscreenCanvas | null = null;
   let context: OffscreenCanvasRenderingContext2D | null = null;
+  let overlayLayouts: GifTextLayout[] = [];
   let hdrContext: ReturnType<typeof createHdrContext> = null;
   let enhancer: FrameEnhancer | null = null;
   /** ADR-037: where the current moment's picture sits in the frame; everything outside it is left alone. */
@@ -1836,6 +1860,10 @@ async function produceOutput(
     canvas = new OffscreenCanvas(plan.width, plan.height);
     context = canvas.getContext('2d', { alpha: false });
     if (!context) throw new ExportFailure('internal_error');
+    // ADR-052: the GIF's text, laid out once at this frame's size with the typeface loaded above.
+    overlayLayouts = options.overlayText
+      ? gifTextLayouts(options.overlayText, { width: plan.width, height: plan.height }, gifMeasure(context))
+      : [];
     // HDR frames are drawn into a float16 canvas and soft clipped (ADR-022),
     // the same path the runtime check verified; SDR frames draw directly.
     hdrContext = hdrTransfer ? createHdrContext(plan.width, plan.height) : null;
@@ -1962,6 +1990,14 @@ async function produceOutput(
         throw tagStage(error, 'draw');
       }
       clock.lap('captions');
+    }
+    // ADR-052: the GIF's top and bottom text, on every frame, as the GIF draws it.
+    if (overlayLayouts.length > 0) {
+      try {
+        drawGifText(context, overlayLayouts);
+      } catch (error) {
+        throw tagStage(error, 'draw');
+      }
     }
 
     let picture: VideoSample;
@@ -2667,6 +2703,7 @@ async function onRequest(message: MessageEvent<WorkerRequest>): Promise<void> {
             ? request.outputLimitBytes
             : null,
         testFault: TEST_HOOKS ? (request.testFault ?? null) : null,
+        overlayText: request.output === 'audio' ? null : usableOverlayText(request.overlayText),
       });
     } catch (error) {
       if (error instanceof CanceledError) {

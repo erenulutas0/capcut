@@ -170,6 +170,47 @@ for (const language of [
   }
 }
 
+// ADR-052: "GIF" and "Video olarak (en net)" share one row the same way, each a finger-sized target, no word cut.
+for (const language of [
+  { prefix: '', locale: 'tr-TR', words: ['GIF', 'Video olarak (en net)'] },
+  { prefix: '/en', locale: 'en-US', words: ['GIF', 'Video (sharpest)'] },
+]) {
+  for (const width of [320, 390]) {
+    test.describe(`GIF yap's two outputs, ${width} px, ${language.locale}`, () => {
+      test.use({ viewport: { width, height: 780 }, hasTouch: true, locale: language.locale });
+
+      test('GIF and the video share one row, each at least 44 × 44, no word cut', async ({ page }) => {
+        await openWizard(page, 'gif', (p) => expect(p.getByTestId('gif-estimate')).toHaveAttribute('data-state', 'ready', { timeout: 60_000 }), VERTICAL, language.prefix);
+        const options = page.getByTestId('gif-output').locator('label.gif-size-option');
+        await expect(options).toHaveText(language.words);
+        const boxes = await options.evaluateAll((labels) =>
+          labels.map((label) => {
+            const box = label.getBoundingClientRect();
+            const word = label.querySelector('span') as HTMLElement;
+            const wordBox = word.getBoundingClientRect();
+            return { top: box.top, left: box.left, right: box.right, width: box.width, height: box.height, wordWhole: word.scrollWidth <= Math.ceil(wordBox.width) && wordBox.left >= box.left && wordBox.right <= box.right };
+          }),
+        );
+        console.log(`GIF-OUTPUT-ROW ${JSON.stringify({ width, locale: language.locale, boxes })}`);
+        for (const box of boxes) {
+          expect(Math.abs(box.top - boxes[0]!.top), 'one row').toBeLessThan(1);
+          expect(box.width).toBeGreaterThanOrEqual(44);
+          expect(box.height).toBeGreaterThanOrEqual(44);
+          expect(box.left).toBeGreaterThanOrEqual(0);
+          expect(box.right).toBeLessThanOrEqual(width);
+          expect(box.wordWhole, 'the words are whole').toBe(true);
+        }
+        // With the video chosen, its own button ("Videoyu indir") is the one at the bottom of the screen, on it.
+        await page.getByTestId('gif-output-video').check();
+        const button = await page.getByTestId('wizard-download').boundingBox();
+        expect(button).not.toBeNull();
+        expect(button!.y + button!.height).toBeLessThanOrEqual(780);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      });
+    });
+  }
+}
+
 test.describe('the action bar covers nothing a finger or the keyboard needs (GIF yap, 360 × 780, vertical video)', () => {
   test.use({ viewport: { width: 360, height: 780 }, hasTouch: true });
 

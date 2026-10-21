@@ -17,6 +17,7 @@ import {
   type FailureVia,
 } from '@/domain/exportFailureDetail';
 import type { FastCutFallbackReason } from '@/domain/fastPath';
+import type { GifTexts } from '@/domain/gif';
 import type { HdrTransfer } from '@/domain/hdr';
 import type { SoundFixSettings } from '@/domain/soundFix';
 import { TERMINAL_EXPORT_TYPES } from '@/domain/exportEvents';
@@ -268,6 +269,8 @@ export class ExportWorkerClient {
       enhanceAnalysis?: EnhanceAnalysis | null;
       /** ADR-049: the sound goes through the loudness chain with these measured gains ("Sesi düzelt"). */
       soundFix?: SoundFixSettings | null;
+      /** ADR-052: the "GIF yap" card's top and bottom text, drawn on every frame the GIF's way. */
+      overlayText?: GifTexts | null;
     },
   ): AsyncGenerator<ExportEvent, void, unknown> {
     const worker = this.ensureWorker();
@@ -391,6 +394,7 @@ export class ExportWorkerClient {
       targetSize: options.targetSize ?? null,
       enhanceAnalysis: options.enhanceAnalysis ?? null,
       soundFix: options.soundFix ?? null,
+      overlayText: options.overlayText ?? null,
       enhanceEngine: enhanceEngineHook(),
       bitrateMode: bitrateModeHook(),
       outputLimitBytes: outputLimitHook(),

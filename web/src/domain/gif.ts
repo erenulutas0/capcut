@@ -177,7 +177,9 @@ export function gifSizeChoices(videoWidth: number, videoHeight: number): GifSize
  * (heavy grain); so a device that says it has 8 GB or more keeps the larger budget below.
  *
  * This one: a device that says it has less than 8 GB, or says nothing (Safari, Firefox).
- * 32 MiB holds every "Küçük" GIF, 4 s of "Orta" (the default) and 2,9 s of "Büyük".
+ * 32 MiB holds every "Küçük" GIF, 4 s of "Orta" and 2,9 s of "Büyük". Since ADR-052 the size chosen first is
+ * the sharpest under 10 MB — often "Büyük" or "Çok büyük" for four seconds of a phone video: on such a device
+ * that GIF is made in two passes, holding no frame (unit test `gifSharpest.test.ts`).
  */
 export const GIF_HELD_FRAMES_MAX_BYTES = 32 * 1024 * 1024;
 /** A device that says it has 8 GB or more (`navigator.deviceMemory`, Chromium only, rounded): every GIF in one pass. */
@@ -214,6 +216,34 @@ export const GIF_LARGE_FILE_BYTES = 10_000_000;
 /** Whether the GIF, as estimated, is larger than many apps take. */
 export function gifIsLarge(estimatedBytes: number): boolean {
   return estimatedBytes > GIF_LARGE_FILE_BYTES;
+}
+
+/**
+ * The size chosen before the user chooses one (ADR-052, 21 Oct 2026: "her zaman en neti vermeliyiz"):
+ * the LARGEST size this video has whose measured estimate stays within `GIF_LARGE_FILE_BYTES` — the
+ * sharpest GIF that is still easy to share. Never guessed: the sizes are measured from the largest
+ * down (`measure`), one at a time, and the first that fits is the one (`fits`). When none fits, the
+ * smallest (`none_fit`; the 10 MB warning then says so); when a measurement itself failed, the
+ * smallest too (`unknown`: the screen cannot say it fits, and "Küçük" is the size that fitted every
+ * real recording measured — 10 s at most 5,1 MB, ADR-046 addendum).
+ */
+export type GifAutoSize =
+  | { kind: 'measure'; size: GifSizeId }
+  | { kind: 'chosen'; size: GifSizeId; why: 'fits' | 'none_fit' | 'unknown' };
+
+/** What is known of each size's estimate: bytes, `failed`, or nothing yet (absent). */
+export type GifSizeEstimates = Partial<Record<GifSizeId, number | 'failed'>>;
+
+export function sharpestShareableGifSize(choices: readonly GifSizeId[], estimates: GifSizeEstimates): GifAutoSize {
+  const smallest = choices[0] ?? 'small';
+  for (let i = choices.length - 1; i >= 0; i -= 1) {
+    const size = choices[i] as GifSizeId;
+    const known = estimates[size];
+    if (known === undefined) return { kind: 'measure', size };
+    if (known === 'failed') return { kind: 'chosen', size: smallest, why: 'unknown' };
+    if (!gifIsLarge(known)) return { kind: 'chosen', size, why: 'fits' };
+  }
+  return { kind: 'chosen', size: smallest, why: 'none_fit' };
 }
 
 /** GIF header, logical screen, 256-entry colour table, loop extension, trailer. */
@@ -380,3 +410,14 @@ export function gifFileName(videoFileName: string): string {
 }
 
 export const GIF_MIME = 'image/gif';
+
+// ---------------------------------------------------------------- the video instead (ADR-052)
+
+/**
+ * What the "GIF yap" card saves: the GIF (the default — the card's own name, and the one file that
+ * plays as a GIF everywhere), or the same part as a short video ("Video olarak (en net)"): H.264 at
+ * the video's own size up to Full HD (ADR-041), no sound, the same text — through the ordinary MP4
+ * export, not a second encoder. Chat apps (WhatsApp, Telegram, Instagram) show such a video the way
+ * they show a GIF; whether it loops is decided by the app that shows it, not by the file.
+ */
+export type GifOutput = 'gif' | 'video';

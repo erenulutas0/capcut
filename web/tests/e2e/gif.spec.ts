@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { inspectGif, type GifInspection } from '../../src/domain/gifInspect';
 import { expect, test, type Page } from './fixtures';
-import { installSavePicker, noSavePicker, opfsFiles, pickerCalls, readSaved } from './kesitFlow';
+import { closestSourceSecond, installSavePicker, noSavePicker, opfsFiles, pickerCalls, probeMp4, readSaved } from './kesitFlow';
 import { wizardFixture } from './wizard-media';
 import { SECRETS, diagnosticsFrom, fault, nextFault, watchLogs } from './workerFaultKit';
 
@@ -27,6 +27,16 @@ test.use({ storageState: { cookies: [], origins: [] } });
 const estimate = (page: Page) => page.getByTestId('gif-estimate');
 let copies = 0;
 
+/**
+ * ADR-052: until the user picks a size, the sizes are measured from the largest down and none is checked
+ * ("En net boyut ölçülüyor…"); this waits until the sharpest that fits 10 MB is chosen and its estimate shown.
+ */
+async function settled(page: Page) {
+  const sizes = page.getByTestId('gif-size');
+  if ((await sizes.count()) > 0) await expect(sizes).not.toHaveAttribute('data-auto', 'picking', { timeout: 120_000 });
+  await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+}
+
 async function openGif(page: Page, file: string) {
   await page.goto('/');
   await page.getByTestId('task-gif').click();
@@ -34,6 +44,7 @@ async function openGif(page: Page, file: string) {
   await page.getByTestId('video-input').setInputFiles(file);
   await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'choose', { timeout: 60_000 });
   await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+  await settled(page);
 }
 
 async function saveGif(page: Page, testInfo: Parameters<Parameters<typeof test>[1]>[1], name: string): Promise<{ path: string; gif: GifInspection; bytes: number }> {
@@ -88,11 +99,18 @@ test('card → video → text → GIF: a real looping GIF of the part, its text 
   await expect(page.getByLabel('Alt yazı')).toBeVisible();
   await expect(page.getByTestId('gif-range-window')).toHaveAttribute('data-end-us', '4000000');
   await expect(page.getByTestId('wizard-open-editor')).toHaveCount(0);
-  // "Orta" first where the video has it (founder's decision, 20 Oct 2026; ADR-046 addendum: on a phone "Küçük"
-  // looked blurred). This test then makes the Küçük GIF on purpose: its text bands below are measured at 320 px.
-  await expect(page.getByTestId('gif-size-medium')).toBeChecked();
-  await expect(estimate(page)).toHaveAttribute('data-width', '480');
+  // ADR-052 (until 21 Oct 2026 "Orta", the founder's decision of 20 Oct): the sharpest size under 10 MB is chosen
+  // first, and the screen says why — here the largest, "Çok büyük" (960 × 540: four seconds of the test pattern are
+  // far under 10 MB). This test then makes the Küçük GIF on purpose: its text bands below are measured at 320 px.
+  await expect(page.getByTestId('gif-size-xlarge')).toBeChecked();
+  await expect(page.getByTestId('gif-size')).toHaveAttribute('data-auto-why', 'fits');
+  await expect(page.getByTestId('gif-size-picked')).toHaveText('Paylaşması kolay olsun diye 10 MB’ı geçmeyen en net boyutu seçtik.');
+  await expect(estimate(page)).toHaveAttribute('data-width', '960');
+  expect(Number(await estimate(page).getAttribute('data-bytes'))).toBeLessThanOrEqual(10_000_000);
+  await expect(page.getByTestId('gif-output-gif')).toBeChecked();
   await page.getByTestId('gif-size-small').check();
+  // The user's own choice: the line about the chosen size is gone.
+  await expect(page.getByTestId('gif-size-picked')).toHaveCount(0);
   await expect(page.getByTestId('gif-size-small')).toBeChecked();
   await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
   await expect(estimate(page)).toHaveText(/^4,0 sn · yaklaşık \d+(,\d)? (KB|MB)$/);
@@ -180,8 +198,11 @@ test('a small video has one size, its own; the GIF is never larger than the vide
   // 640 × 360: Küçük 320, Orta 480, Büyük 640 — Büyük is the video's own size, not more (ADR-041).
   await expect(page.getByTestId('gif-size')).toBeVisible();
   await expect(page.getByTestId('gif-size').getByRole('radio')).toHaveCount(3);
-  await expect(page.getByTestId('gif-size-hint')).toHaveText('Büyüdükçe GIF telefonda daha net görünür; dosyası da büyür.');
+  // ADR-052: while the size is the one chosen for the user, the line under the sizes says why; once the user
+  // chooses, it is the honest trade again.
+  await expect(page.getByTestId('gif-size-hint')).toHaveText('Paylaşması kolay olsun diye 10 MB’ı geçmeyen en net boyutu seçtik.');
   await page.getByTestId('gif-size-medium').check();
+  await expect(page.getByTestId('gif-size-hint')).toHaveText('Büyüdükçe GIF telefonda daha net görünür; dosyası da büyür.');
   await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
   await expect(estimate(page)).toHaveAttribute('data-width', '480');
   const made = await saveGif(page, testInfo, 'other-8s_gif.gif');
@@ -200,6 +221,17 @@ test('a small video has one size, its own; the GIF is never larger than the vide
 
 test('over 10 MB: said in plain words under the size, never blocked; gone again on "Küçük"', async ({ page }) => {
   await openGif(page, wizardFixture('grainy')); // 640 × 360, 10 s of heavy grain: taken whole
+  // ADR-052: the size chosen first is the sharpest whose MEASURED estimate is under 10 MB — not "Büyük", which
+  // is measured over 10 MB below; no warning until the user chooses a larger one.
+  const auto = page.getByTestId('gif-size');
+  await expect(auto).toHaveAttribute('data-auto-why', 'fits');
+  await expect(page.getByTestId('gif-size-large')).not.toBeChecked();
+  const first = Number(await estimate(page).getAttribute('data-bytes'));
+  const firstWidth = await estimate(page).getAttribute('data-width');
+  console.log(`GIF-AUTO-SIZE ${JSON.stringify({ bytes: first, width: firstWidth })}`);
+  expect(first).toBeLessThanOrEqual(10_000_000);
+  await expect(page.getByTestId('gif-too-large')).toHaveCount(0);
+  await expect(page.getByTestId('gif-size-picked')).toBeVisible();
   await page.getByTestId('gif-size-large').check();
   await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
   await expect(estimate(page)).toHaveAttribute('data-width', '640');
@@ -218,9 +250,10 @@ test('over 10 MB: said in plain words under the size, never blocked; gone again 
 
 test('"Büyük" (ADR-046 addendum): a phone video at 360 × 640 — twice as wide on a phone as "Küçük" — about the size it said', async ({ page }, testInfo) => {
   await openGif(page, wizardFixture('vertical')); // 360 × 640, 2 s: taken whole
-  // "Orta" first (20 Oct 2026): 270 × 480; "Küçük" would be 180 × 320.
-  await expect(page.getByTestId('gif-size-medium')).toBeChecked();
-  await expect(estimate(page)).toHaveAttribute('data-width', '270');
+  // ADR-052: the sharpest size under 10 MB first — "Büyük", the video's own 360 × 640 (two seconds fit easily);
+  // until 21 Oct 2026 "Orta" (270 × 480). "Küçük" would be 180 × 320.
+  await expect(page.getByTestId('gif-size-large')).toBeChecked();
+  await expect(page.getByTestId('gif-size')).toHaveAttribute('data-auto-why', 'fits');
   await expect(page.getByTestId('gif-too-large')).toHaveCount(0);
   await page.getByTestId('gif-size-large').check();
   await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
@@ -240,8 +273,9 @@ test('"Büyük" (ADR-046 addendum): a phone video at 360 × 640 — twice as wid
 test('"Çok büyük" (ADR-046 addendum 2): a 720 × 1280 phone video gives 540 × 960 — three times as wide as "Küçük" — about the size it said', async ({ page }, testInfo) => {
   await openGif(page, wizardFixture('verticalHd')); // 720 × 1280, 2 s: taken whole
   await expect(page.getByTestId('gif-size').getByRole('radio')).toHaveCount(4);
-  // "Orta" stays the first choice (founder's decision, 20 Oct 2026).
-  await expect(page.getByTestId('gif-size-medium')).toBeChecked();
+  // ADR-052: the sharpest under 10 MB is the first choice — "Çok büyük" here (until 21 Oct 2026 "Orta").
+  await expect(page.getByTestId('gif-size-xlarge')).toBeChecked();
+  await expect(page.getByTestId('gif-size')).toHaveAttribute('data-auto-why', 'fits');
   await page.getByTestId('gif-size-xlarge').check();
   await expect(estimate(page)).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
   await expect(estimate(page)).toHaveAttribute('data-width', '540');
@@ -340,8 +374,8 @@ test.describe('without a save dialog (Firefox, Safari)', () => {
     const path = testInfo.outputPath('fallback.gif');
     await download.saveAs(path);
     const inspected = inspectGif(new Uint8Array(readFileSync(path)));
-    // The default size since 20 Oct 2026 is "Orta" (ADR-046 addendum): 480 × 270 from 640 × 360.
-    expect(inspected.ok && inspected.gif).toMatchObject({ width: 480, height: 270, frames: 100, loops: 0 });
+    // The size chosen first since 21 Oct 2026 (ADR-052): the sharpest under 10 MB — "Büyük", the video's own 640 × 360.
+    expect(inspected.ok && inspected.gif).toMatchObject({ width: 640, height: 360, frames: 100, loops: 0 });
   });
 });
 
@@ -367,6 +401,116 @@ test('"Paylaş" hands the system share sheet the GIF itself', async ({ page }) =
   await expect
     .poll(() => page.evaluate(() => (window as unknown as { __shared: unknown[] }).__shared))
     .toEqual([expect.objectContaining({ name: 'saved-other-8s_gif.gif', type: 'image/gif' })]);
+});
+
+/** The frame at `atS` as RGB at its own size, decoded by ffmpeg (a source frame: at `width` × `height`). */
+function rgbAt(file: string, atS: number, width: number, height: number): Buffer {
+  return spawnSync(
+    'ffmpeg',
+    ['-v', 'error', '-ss', atS.toFixed(3), '-i', file, '-frames:v', '1', '-vf', `scale=${width}:${height}:flags=area`, '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'pipe:1'],
+    { maxBuffer: 1 << 27 },
+  ).stdout;
+}
+
+test('"Video olarak (en net)" (ADR-052): the same part and text as a short H.264 video without sound, at the video’s own size; GIF stays the first choice', async ({ page }, testInfo) => {
+  const logs = watchLogs(page);
+  await openGif(page, SAMPLE);
+  // GIF first: the card is "GIF yap".
+  await expect(page.getByTestId('gif-output-gif')).toBeChecked();
+  await expect(page.getByTestId('gif-output-video')).not.toBeChecked();
+  await expect(page.getByTestId('gif-output').getByRole('radio')).toHaveCount(2);
+  await expect(page.getByTestId('gif-output-hint')).toHaveText(
+    'Video çok daha net ve akıcı olur. Sohbet uygulamaları kısa, sessiz videoları çoğu zaman GIF gibi gösterir.',
+  );
+  // The part from 6 s to 10 s, with text on top.
+  await page.getByTestId('gif-range-window').focus();
+  for (let i = 0; i < 3; i += 1) await page.keyboard.press('Shift+ArrowRight');
+  await expect(page.getByTestId('gif-range-window')).toHaveAttribute('data-start-us', '6000000');
+  await expect(page.getByTestId('gif-range-window')).toHaveAttribute('data-end-us', '10000000');
+  await page.getByLabel('Üst yazı').fill('PAZARTESİ SABAHI ığüşöç');
+  await settled(page);
+  // The GIF of the same part at the size chosen first, to compare with.
+  const gif = await saveGif(page, testInfo, 'sample-24s_gif.gif');
+
+  await page.getByTestId('wizard-again-same').click();
+  await page.getByTestId('gif-output-video').check();
+  // No GIF size and no GIF estimate: the video is the video's own size, up to Full HD, never larger (ADR-041).
+  await expect(page.getByTestId('gif-size')).toHaveCount(0);
+  await expect(estimate(page)).toHaveText('4,0 sn');
+  await expect(page.getByTestId('gif-video-size')).toHaveText('Video: 1280 × 720, sessiz, yazısıyla.');
+  // Honest about where a video is not a GIF, and about the loop.
+  await expect(page.getByTestId('gif-output-hint')).toHaveText(
+    'Durmadan dönmesine videoyu gösteren uygulama karar verir. Discord ve bazı siteler gerçek GIF ister; oraya göndereceksen GIF’i seç.',
+  );
+  await expect(page.getByLabel('Üst yazı')).toHaveValue('PAZARTESİ SABAHI ığüşöç');
+  await expect(page.getByTestId('wizard-download')).toHaveText('Videoyu indir');
+  await expect(page.getByTestId('wizard-open-editor')).toHaveCount(0);
+  await page.getByTestId('wizard-download').click();
+  // The ordinary download's own card: real progress of frames, then what the file really is.
+  await expect(page.getByTestId('download-saved')).toHaveText('Kaydedildi: saved-sample-24s_gif.mp4', { timeout: 120_000 });
+  expect((await pickerCalls(page)).at(-1)).toBe('sample-24s_gif.mp4');
+  await expect(page.getByTestId('wizard-title')).toHaveText('Kaydedildi');
+  // Every picture was made again (the text is on it): never a copy of the source's pictures.
+  await expect(page.getByTestId('export-method')).toHaveAttribute('data-method', 'encode');
+  await expect(page.getByTestId('export-method')).toHaveAttribute('data-fallback', 'text');
+  await expect(page.getByTestId('export-method')).toContainText('yazın görüntünün üstüne yazıldı');
+
+  const path = await readSaved(page, testInfo, 'saved-sample-24s_gif.mp4');
+  const probed = probeMp4(path);
+  console.log(`GIF-VS-VIDEO ${JSON.stringify({ gif: { bytes: gif.bytes, width: gif.gif.width, height: gif.gif.height }, video: { bytes: readFileSync(path).length, ...probed } })}`);
+  // H.264, no sound at all, the video's own 1280 × 720, four seconds.
+  expect(probed).toMatchObject({ videoCodec: 'h264', audioCodec: null, width: 1280, height: 720 });
+  expect(Math.abs(probed.durationS - 4)).toBeLessThan(0.1);
+  // The part: from 6 s, not from the start.
+  expect(closestSourceSecond(path, 0.5, SAMPLE, [0.5, 6.5, 12.5])).toBe(6.5);
+  // The text is IN the picture, the GIF's way: white letters with a dark edge in the top band; the middle untouched.
+  const made = rgbAt(path, 0, 1280, 720);
+  const source = rgbAt(SAMPLE, 6, 1280, 720);
+  expect(made.length).toBe(1280 * 720 * 3);
+  const top = bandDiff(made, source, 1280, 0, 150);
+  const middle = bandDiff(made, source, 1280, 300, 420);
+  console.log(`GIF-VIDEO-TEXT-BANDS ${JSON.stringify({ top, middle })}`);
+  // The middle differs only by what H.264 itself loses on the test pattern's sharp edges (measured 6,4); the text band many times more.
+  expect(top).toBeGreaterThan(8);
+  expect(top).toBeGreaterThan(middle * 4);
+  expect(middle).toBeLessThan(10);
+  let white = 0;
+  let black = 0;
+  for (let i = 0; i < 150 * 1280 * 3; i += 3) {
+    if ((made[i] ?? 0) > 235 && (made[i + 1] ?? 0) > 235 && (made[i + 2] ?? 0) > 235) white += 1;
+    if ((made[i] ?? 255) < 20 && (made[i + 1] ?? 255) < 20 && (made[i + 2] ?? 255) < 20) black += 1;
+  }
+  expect(white).toBeGreaterThan(1000);
+  expect(black).toBeGreaterThan(1000);
+
+  // Back to the same screen: the video is still the choice, the part and the text still there.
+  await page.getByTestId('wizard-again-same').click();
+  await expect(page.getByTestId('gif-output-video')).toBeChecked();
+  await expect(page.getByTestId('gif-range-window')).toHaveAttribute('data-start-us', '6000000');
+  expect(logs.pageErrors).toEqual([]);
+});
+
+test('"Video olarak": a failure nobody planned for ends in plain words with the detail (ADR-042), and the next press works', async ({ page }) => {
+  await openGif(page, OTHER);
+  await page.getByTestId('gif-output-video').check();
+  await expect(page.getByTestId('gif-video-size')).toHaveText('Video: 640 × 360, sessiz, yazısıyla.');
+  // With text every picture is made again (a 640 × 360 H.264 source without text could keep its own pictures).
+  await page.getByLabel('Alt yazı').fill('olmadı');
+  await page.evaluate(() => {
+    (window as unknown as { __clipExportFault: unknown }).__clipExportFault = { kind: 'encode', atFrame: 12, errorName: 'EncodingError', message: 'Encoding error.' };
+  });
+  await page.getByTestId('wizard-download').click();
+  await expect(page.getByTestId('export-failed')).toBeVisible({ timeout: 120_000 });
+  await expect(page.getByTestId('wizard-title')).toHaveText('Bu sefer olmadı');
+  await expect(page.getByTestId('export-failed-reason')).toHaveText('Beklenmeyen bir hata oluştu. Bir kez daha dene; yine olursa “Sorun bildir”e bas.');
+  await page.getByTestId('export-failed-details').locator('summary').click();
+  await expect(page.getByTestId('export-failed-detail')).toContainText('EncodingError · encode');
+  await expect(page.getByTestId('export-report')).toBeVisible();
+  expect((await opfsFiles(page))['saved-other-8s_gif.mp4'] ?? 'gone').toBe('gone');
+  await page.getByTestId('wizard-back-to-choice').click();
+  await expect(page.getByTestId('gif-output-video')).toBeChecked();
+  await page.getByTestId('wizard-download').click();
+  await expect(page.getByTestId('download-saved')).toHaveText('Kaydedildi: saved-other-8s_gif.mp4', { timeout: 120_000 });
 });
 
 test('the search finds the card: "gif yap" starts it', async ({ page }) => {

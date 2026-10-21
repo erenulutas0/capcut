@@ -10,6 +10,8 @@
 > GIF iki geçişle, kare tutmadan yapılır (aynı baytlar); bellek yetmeyince GIF'in kendi cümlesi.
 > **Ek 2, 21 Ekim 2026** (en altta): kareler tarayıcının kendisiyle çizilip ölçüldü; dördüncü boyut "Çok büyük"
 > (960); küçültme, keskinleştirme, eşikli saydamlık, kırpma ön kayıtlı kuralı geçmedi; 1280 / 1920 sunulmadı.
+> **Sonra: [ADR-052](ADR-052-gif-sharpest.md) (21 Ekim 2026):** varsayılan "Orta" değil, ölçülen tahmini 10 MB'ı
+> geçmeyen en büyük boyut; kartta ikinci çıktı "Video olarak (en net)" (aynı kısım ve yazı, olağan MP4 indirmesiyle).
 > Kaynak: kurucunun kararı (yeni kart "GIF yap", taslak tuvalinden seçenek **B "Tek ekran, yazı önizlemenin
 > üstünde"**). Taslak ve uygulanan ekranlar: [`docs/ux/2026-10-17-gif/`](../ux/2026-10-17-gif/README.md).
 > İlgili: [ADR-034](ADR-034-task-first-home.md) (iş kartları ve sihirbaz çatısı), [ADR-015] (altyazı yazı

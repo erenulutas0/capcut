@@ -6,12 +6,12 @@
  */
 
 import { DEFAULT_EXPORT_SPEC, type EnhanceStrengthV4, type MusicV1, type Project } from '@/domain/edl';
-import { fileBaseName } from '@/domain/kesit';
+import { clipWithSettings, fileBaseName, type KesitSettings } from '@/domain/kesit';
 import { downloadDurationUs, fittedMusicEndUs } from '@/domain/musicFit';
 import { DEFAULT_SILENCE_PARAMS, SILENCE_PARAM_LIMITS, type SilenceParams } from '@/domain/silence';
 import type { Micros } from '@/domain/time';
 import { totalOutputDurationUs } from '@/domain/timeline';
-import { primaryVideoAsset, removeMusic, setEnhance, setExportShortEdge } from './commands';
+import { primaryVideoAsset, removeMusic, setEnhance, setExportShortEdge, setSoundFix } from './commands';
 
 // ------------------------------------------------------------ file names
 
@@ -192,4 +192,26 @@ export function silenceParamsFor(choice: GapChoice): SilenceParams {
 /** Before → after, for "Videon kısalacak". */
 export function lengthsAfterCut(before: Project, after: Project): { beforeUs: Micros; afterUs: Micros } {
   return { beforeUs: totalOutputDurationUs(before), afterUs: totalOutputDurationUs(after) };
+}
+
+// ------------------------------------------------------------ GIF yap → "Video olarak (en net)"
+
+/**
+ * ADR-052: the part of "GIF yap" as a short video — exactly the chosen part, at the video's own size up
+ * to Full HD (`ownSizeRecipe`, never enlarged: ADR-041), and NO sound: the part is muted and no music
+ * is left over, so the export writes no audio track at all. A GIF has no sound, and a chat app shows a
+ * short video without sound the way it shows a GIF (Telegram turns exactly such a video into its own
+ * GIF). Nothing else of an earlier session is carried in: no subtitles, no enhancement, no sound fix.
+ * The top and bottom text are not in the recipe: they go with the download (`ExportExtras.overlayText`),
+ * drawn the GIF's way.
+ */
+export function gifVideoRecipe(
+  project: Project,
+  range: { startUs: Micros; endUs: Micros },
+  settings: KesitSettings,
+): Project | null {
+  const base = setSoundFix(setEnhance(removeMusic(ownSizeRecipe(project)), null), false);
+  const clip = clipWithSettings(base, 'c_gif', { sourceInUs: range.startUs, sourceOutUs: range.endUs }, { ...settings, muted: true });
+  if (!clip) return null;
+  return { ...base, clips: [clip], captionTracks: [] };
 }

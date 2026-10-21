@@ -12,6 +12,7 @@ import type { ExportFailureDetail } from '@/domain/exportFailureDetail';
 import type { WorkerTestFault } from '../workerWatch';
 import type { ExportMode, FastCutFallbackReason } from '@/domain/fastPath';
 import type { SoundFixSettings } from '@/domain/soundFix';
+import type { GifTexts } from '@/domain/gif';
 import type { HdrTransfer } from '@/domain/hdr';
 import type { RenderPlan } from '@/domain/renderPlan';
 import type { TargetSizeRequest } from '@/domain/targetSize';
@@ -250,6 +251,12 @@ export type WorkerRequest =
       outputLimitBytes?: number | null;
       /** Test builds only (`window.__clipExportFault`): see `ExportTestFault`. Ignored in every other build. */
       testFault?: ExportTestFault | null;
+      /**
+       * ADR-052 ("GIF yap" → "Video olarak (en net)"): the top and bottom text of the GIF, drawn on every
+       * frame exactly the GIF's way (`layoutGifText` at the output's size, the caption typeface). The
+       * pictures are then always encoded (no fast cut). Absent or empty: no text.
+       */
+      overlayText?: GifTexts | null;
     }
   | {
       /** ADR-037: one frame of `plan` (which must ask for enhancement) before and after. Nothing is encoded. */

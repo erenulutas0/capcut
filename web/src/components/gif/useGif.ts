@@ -260,26 +260,62 @@ export type GifEstimateState =
   | { status: 'ready'; key: string; bytes: number; width: number; height: number; frames: number }
   | { status: 'failed'; key: string; reason: GifFailure | 'worker_unavailable'; detail?: ExportFailureDetail };
 
+/** A measurement that finished, one way or the other. */
+export type GifEstimateDone = Extract<GifEstimateState, { status: 'ready' | 'failed' }>;
+
+/**
+ * Every finished measurement of one screen, by its key (ADR-052): a choice measured once is not
+ * measured again — the screen measures the sizes one after the other to find the sharpest that fits,
+ * and a size chosen back is known at once. Kept by the screen, which reads it before it knows which
+ * size to ask the estimate for.
+ */
+export type GifEstimatesDone = Readonly<Record<string, GifEstimateDone>>;
+
+/** The screen's record of finished measurements, and how the estimate adds one. */
+export function useGifEstimatesDone(): [GifEstimatesDone, (result: GifEstimateDone) => void] {
+  const [done, setDone] = useState<GifEstimatesDone>({});
+  const record = useCallback((result: GifEstimateDone) => setDone((before) => ({ ...before, [result.key]: result })), []);
+  return [done, record];
+}
+
 /** How long the screen waits after the last change before it measures again. */
-const ESTIMATE_PAUSE_MS = 450;
+export const ESTIMATE_PAUSE_MS = 450;
 
 /**
  * "yaklaşık 3 MB" (ADR-046): measured, not guessed — a few frames of the part
  * are made the GIF's way in the worker each time the part, the size or the
  * text has stood still for a moment. `key` says which choice a number is for:
- * a number for an older choice is never shown as the current one.
+ * a number for an older choice is never shown as the current one. A key in
+ * `done` was measured before and is not measured again (ADR-052).
  */
-export function useGifEstimate(maker: () => GifMaker, job: GifJob | null, key: string): GifEstimateState {
+export function useGifEstimate(
+  maker: () => GifMaker,
+  job: GifJob | null,
+  key: string,
+  done: GifEstimatesDone,
+  record: (result: GifEstimateDone) => void,
+  /** 0 when nobody is changing anything: the next size of the search for the sharpest (ADR-052). */
+  pauseMs: number = ESTIMATE_PAUSE_MS,
+): GifEstimateState {
   const [state, setState] = useState<GifEstimateState>({ status: 'idle' });
   const jobRef = useRef(job);
+  const doneRef = useRef(done);
+  const pauseRef = useRef(pauseMs);
   useEffect(() => {
     jobRef.current = job;
+    doneRef.current = done;
+    pauseRef.current = pauseMs;
   });
   const hasJob = job !== null;
   useEffect(() => {
     const current = jobRef.current;
-    if (!hasJob || !current) return undefined;
+    // Measured before: known at once, nothing runs.
+    if (!hasJob || !current || doneRef.current[key]) return undefined;
     let live = true;
+    const finish = (result: GifEstimateDone) => {
+      setState(result);
+      record(result);
+    };
     const timer = window.setTimeout(() => {
       setState({ status: 'measuring', key });
       void maker()
@@ -287,7 +323,7 @@ export function useGifEstimate(maker: () => GifMaker, job: GifJob | null, key: s
         .then((outcome) => {
           if (!live) return;
           if (outcome.ok) {
-            setState({
+            finish({
               status: 'ready',
               key,
               bytes: estimateGifBytes(outcome.sample, outcome.frames),
@@ -296,14 +332,14 @@ export function useGifEstimate(maker: () => GifMaker, job: GifJob | null, key: s
               frames: outcome.frames,
             });
           } else if (outcome.reason !== 'canceled') {
-            setState({ status: 'failed', key, reason: outcome.reason, ...(outcome.detail ? { detail: outcome.detail } : {}) });
+            finish({ status: 'failed', key, reason: outcome.reason, ...(outcome.detail ? { detail: outcome.detail } : {}) });
           }
         });
-    }, ESTIMATE_PAUSE_MS);
+    }, pauseRef.current);
     return () => {
       live = false;
       window.clearTimeout(timer);
     };
-  }, [hasJob, key, maker]);
+  }, [hasJob, key, maker, record]);
   return state;
 }

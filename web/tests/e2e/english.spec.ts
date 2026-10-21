@@ -391,9 +391,21 @@ test.describe('every card, in English, to the saved file', () => {
     await expect(page.getByLabel(en['wizard.gif.topLabel'])).toBeVisible();
     const estimate = page.getByTestId('gif-estimate');
     await expect(estimate).toHaveText(/^4\.0 s · about [\d.]+ (KB|MB)$/, { timeout: 60_000 });
+    // ADR-052: the sharpest size under 10 MB, said in English; GIF or the video, GIF first.
+    await expect(page.getByTestId('gif-size-picked')).toHaveText(en['wizard.gif.autoPicked'], { timeout: 120_000 });
+    await expect(page.getByTestId('gif-output').locator('label')).toHaveText([en['wizard.gif.outputGif'], en['wizard.gif.outputVideo']]);
+    await expect(page.getByTestId('gif-output-gif')).toBeChecked();
     await page.getByTestId('wizard-download').click();
     await expect(page.getByTestId('download-saved')).toHaveText('Saved: saved-sample-24s_gif.gif', { timeout: 120_000 });
     await expect(page.getByTestId('gif-result-line')).toContainText('4.0 s · loops for ever');
+    // The same part as a video: the ordinary download, an .mp4.
+    await page.getByTestId('wizard-again-same').click();
+    await page.getByTestId('gif-output-video').check();
+    await expect(page.getByTestId('gif-output-hint')).toHaveText(en['wizard.gif.videoNote']);
+    await expect(page.getByTestId('gif-video-size')).toHaveText('Video: 1280 × 720, no sound, with your text.');
+    await expect(page.getByTestId('wizard-download')).toHaveText(en['wizard.gif.downloadVideo']);
+    await page.getByTestId('wizard-download').click();
+    await expect(page.getByTestId('download-saved')).toHaveText('Saved: saved-sample-24s_gif.mp4', { timeout: 120_000 });
   });
 });
 

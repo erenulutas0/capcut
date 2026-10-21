@@ -754,6 +754,12 @@
   object-fit: fill;
 }
 
+/* ADR-052, "Video olarak": the video's frame, filled the way the download fills it (centred, cut at the
+   edges where the video's own shape is not 16:9, 9:16 or square). */
+.gif-preview-frame[data-fit='cover'] video {
+  object-fit: cover;
+}
+
 .gif-text {
   position: absolute;
   left: 50%;
