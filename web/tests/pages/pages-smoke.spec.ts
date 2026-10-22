@@ -609,14 +609,17 @@ test('GIF yap under /capcut/: its worker, the typeface of its text and the saved
   // Text: the worker loads the caption typeface from the sub-path, or refuses ("Yazının harfleri yüklenemedi").
   await page.getByTestId('gif-text-top').fill('PAZARTESİ');
   await expect(page.getByTestId('gif-estimate')).toHaveAttribute('data-state', 'ready', { timeout: 60_000 });
+  // ADR-052 (until 21 Oct 2026 "Orta"): the sharpest size under 10 MB is chosen first — "Büyük", the video's own
+  // 640 × 360 (nothing is enlarged, ADR-041).
+  await expect(page.getByTestId('gif-size-large')).toBeChecked({ timeout: 60_000 });
+  await expect(page.getByTestId('gif-size')).toHaveAttribute('data-auto-why', 'fits');
   await page.getByTestId('wizard-download').click();
   await expect(page.getByTestId('download-saved')).toBeVisible({ timeout: 120_000 });
   const savedPath = await readSaved(page, testInfo, 'saved-other-8s_gif.gif');
   const bytes = readFileSync(savedPath);
   expect(bytes.subarray(0, 6).toString('latin1')).toBe('GIF89a');
-  // "Orta" by default since 20 Oct 2026 (ADR-046 addendum): 480 × 270 from the 640 × 360 video.
-  expect(bytes.readUInt16LE(6)).toBe(480);
-  expect(bytes.readUInt16LE(8)).toBe(270);
+  expect(bytes.readUInt16LE(6)).toBe(640);
+  expect(bytes.readUInt16LE(8)).toBe(360);
   expect(seen.outside).toEqual([]);
   expect(watch.violations).toEqual([]);
   expect(seen.failures).toEqual([]);
