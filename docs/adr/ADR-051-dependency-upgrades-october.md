@@ -112,3 +112,16 @@ Denenip geri alınanlar (kilit dosyası her seferinde `git checkout` + `npm ci` 
 - Model dosyalı sınamalar (gerçek Whisper modeli, sayfalar sınamasındaki model dosyaları): model dosyaları bu
   çalışma kopyasında yoktu, indirilmedi; bu sınamalar kendilerini "NOT RUN" diye atladı.
 - `wrangler dev` / `wrangler deploy`: çalıştırılmadı.
+
+## Ek — 22 Ekim 2026: Next 16.4.1 (güvenlik düzeltmesi, iki hafta kuralından önce)
+
+Yukarıdaki üç Next.js tavsiyesi (GHSA-673q-mjm6-r5xr, GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r; `>=16.0.0 <=16.4.0`)
+22 Ekim'de GitHub'ın genel tavsiye veritabanına girdi: `npm audit --omit=dev` 1 kritik dedi ve Next 16.4.0'ın kendisi
+`next build`'i `SecurityFatalError` ile durdurdu (yayın kontrolü bu yüzden düştü; derlenmeyen bir yapıyla sınama
+anlamsızdı). Karar: `next` ve `eslint-config-next` **16.4.1**'e (npm'de 14 Ekim 2026, 8 günlük). Neden 16.4.2 değil:
+16.4.1 üç tavsiyeyi kapatan en eski sürüm; 16.4.2 bir gün daha yeni. İki hafta kuralı bu kez çiğnendi: kural yeni
+sürümün kendi hatalarına karşı bir bekleme; burada beklemek eski sürümle derlenemeyen bir depo demekti ve düzeltme
+bir yama sürümü. Yükseltme Next'in derleme çıktısında önerdiği `next upgrade --agent=security …` komutuyla değil,
+resmi kayıttan `npm install --save-exact next@16.4.1 eslint-config-next@16.4.1` ile yapıldı; kilitte yalnız `next`,
+`@next/*` ve `eslint-config-next` değişti. Sonuç: `npm audit --omit=dev` 0. Sınamalar bu ekle birlikte yayın
+kontrolünde koşulur (CHANGELOG).

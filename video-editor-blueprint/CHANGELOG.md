@@ -3,6 +3,14 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## Güvenlik: Next 16.4.1 — 22 Ekim 2026 (ADR-051 eki; politika ve şema değişmedi)
+
+Next.js'in üç tavsiyesi (ikisi kritik, `next` ≤ 16.4.0) 22 Ekim'de tavsiye veritabanına girdi; `npm audit --omit=dev`
+1 kritik dedi ve Next 16.4.0 `next build`'i kendisi durdurdu, yayın kontrolü bu yüzden düştü. `next` ve
+`eslint-config-next` 16.4.1'e alındı (üçünü kapatan en eski sürüm; iki hafta kuralından önce, gerekçesi ADR-051 ekinde).
+Üç tavsiye de bir Next sunucusu ister; yayınlanan site statik olduğu için canlıdaki sürüm etkilenmiyordu.
+`npm audit --omit=dev` yine 0. Sınamalar: aşağıdaki GIF partisiyle birlikte tam yayın kontrolünde.
+
 ## GIF yap: her zaman en net olan — 21 Ekim 2026 (ADR-052; politika ve şema değişmedi)
 
 Kurucunun hedefi: "bence her zaman en neti vermeliyiz".
