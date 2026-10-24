@@ -45,6 +45,15 @@
  * Her yerde açılsın use generated stand-ins (portrait 720×1280, a 24.7 MB noisy
  * 720p clip, a VP9 HLG clip with a 90° rotation). Rows name sources by case
  * id, never by file name.
+ *
+ * GIF yap after ADR-052 (24 Oct): the size is no longer a fixed "Küçük" but the sharpest whose measured
+ * estimate stays ≤ 9 MB, found by measuring from the largest down (at most 8 s, then what is known decides;
+ * 20 s hard limit). The `gif` case checks the rule the card says it followed (`data-auto-why`, the screen
+ * line, the larger sizes really over 9 MB) and the GIF at that size. The `gif-sharp-*` cases (generated
+ * 1080p clips with detail and grain, made here with ffmpeg on first use in matrix-results/, never in the
+ * repo) record what the card picks on the phone, how long that takes, the estimate against the real file,
+ * the make time and passes, and then save the same part "Video olarak (en net)" (H.264, no audio track,
+ * the video's own size) for the size comparison.
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, statSync, readFileSync, writeFileSync } from 'node:fs';
@@ -89,6 +98,38 @@ const SOURCES = {
   uneven: { file: join(media, 'soundfix', 'dengesiz-konusma.mp4'), mime: 'video/mp4' }, // one line 22 dB under the other
   sync: { file: join(media, 'soundfix', 'sync-clip.mp4'), mime: 'video/mp4' }, // scripts/lib/av-sync.mjs, 1080×1920, 12 s
 };
+
+/**
+ * ADR-052 sources: 1080p with phone-like detail (a Mandelbrot zoom under a faint moving test pattern,
+ * temporal grain), 30 fps, H.264 at ~15 Mbit/s with a 1 s GOP and an AAC track, as a phone records.
+ * Generated on first use (seconds), kept out of the repository (≈ 19 MB each).
+ */
+const SHARP_DIR = join(web, 'matrix-results', 'gif-sharp-media');
+const SHARP = {
+  land10: { width: 1920, height: 1080, seconds: 10 },
+  port10: { width: 1080, height: 1920, seconds: 10 },
+  land4: { width: 1920, height: 1080, seconds: 4 },
+};
+function sharpSource(id) {
+  const { width, height, seconds } = SHARP[id];
+  const file = join(SHARP_DIR, `sharp-${id}.mp4`);
+  if (!existsSync(file)) {
+    mkdirSync(SHARP_DIR, { recursive: true });
+    const frames = seconds * 30;
+    const made = spawnSync('ffmpeg', [
+      '-v', 'error', '-y',
+      '-f', 'lavfi', '-i', `mandelbrot=s=${width}x${height}:r=30:start_scale=2.5:end_scale=0.05:end_pts=${frames}:maxiter=160:inner=mincol`,
+      '-f', 'lavfi', '-i', `testsrc2=s=${width}x${height}:r=30`,
+      '-f', 'lavfi', '-i', 'sine=f=330:r=48000,volume=0.3',
+      '-filter_complex', '[0:v][1:v]blend=all_mode=normal:all_opacity=0.7,noise=alls=10:allf=t+u,format=yuv420p[v]',
+      '-t', String(seconds), '-map', '[v]', '-map', '2:a',
+      '-c:v', 'libx264', '-preset', 'medium', '-b:v', '16M', '-maxrate', '20M', '-bufsize', '16M', '-g', '30', '-profile:v', 'high',
+      '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', file,
+    ], { encoding: 'utf8' });
+    if (made.status !== 0) throw new Error(`could not make ${id}: ${made.stderr}`);
+  }
+  return { file, mime: 'video/mp4', name: `sharp-${id}.mp4`, ...SHARP[id] };
+}
 
 const adb = (...argv) => spawnSync('adb', argv, { encoding: 'utf8' });
 const local = /^http:\/\/localhost:(\d+)/.exec(site)?.[1] ?? null;
@@ -466,6 +507,19 @@ async function download(page, row, { button, gif = false, into = row, suffix = '
   }
   const startedAt = Date.now();
   await go.click();
+  // A GIF's progress says how many passes it makes (`data-passes`, ADR-046 memory addendum) and its steps.
+  let watching = gif;
+  const seen = { passes: null, steps: [] };
+  const watcher = (async () => {
+    while (watching) {
+      const running = page.locator('[data-testid="download-running"]').first();
+      const passes = await running.getAttribute('data-passes', { timeout: 250 }).catch(() => null);
+      const step = await running.getAttribute('data-step', { timeout: 50 }).catch(() => null);
+      if (passes) seen.passes = Math.max(seen.passes ?? 0, Number(passes));
+      if (step && seen.steps.at(-1) !== step) seen.steps.push(step);
+      await page.waitForTimeout(150).catch(() => undefined);
+    }
+  })();
   into.outcome = await Promise.race([
     page.getByTestId('download-saved').first().waitFor({ timeout: 30 * 60_000 }).then(() => 'saved'),
     page.getByTestId('export-failed').first().waitFor({ timeout: 30 * 60_000 }).then(() => 'failed'),
@@ -474,6 +528,13 @@ async function download(page, row, { button, gif = false, into = row, suffix = '
   into.exportS = seconds(Date.now() - startedAt);
   // The phone's part ends here: copying the file out and measuring it on this computer is not counted.
   into.savedAtMs = Date.now();
+  watching = false;
+  await watcher;
+  if (gif) {
+    into.passes = seen.passes;
+    into.steps = seen.steps;
+    into.elapsedShown = await textIfThere(page.getByTestId('gif-measured-elapsed'));
+  }
   if (into.outcome !== 'saved') {
     into.message = await text(page.locator('[data-testid="export-failed"], [data-testid="export-blocked"]'));
     return null;
@@ -541,6 +602,134 @@ const near = (value, expected, tolerance) => Math.abs(value - expected) <= toler
 const video = (row) => row.file?.streams.find((s) => s.type === 'video') ?? null;
 const audio = (row) => row.file?.streams.find((s) => s.type === 'audio') ?? null;
 const plays = (row) => row.play && !row.play.error && row.play.playedS >= 1;
+
+// ---------------------------------------------------------------- GIF yap's size (ADR-052)
+
+/** The GIF's long edge per size and its own size rule (src/domain/gif.ts `planGifSize`), restated. */
+const GIF_LONG_EDGE = { small: 320, medium: 480, large: 640, xlarge: 960 };
+const GIF_SIZE_ORDER = ['small', 'medium', 'large', 'xlarge'];
+function plannedGif(width, height, id) {
+  const scale = Math.min(1, GIF_LONG_EDGE[id] / Math.max(width, height));
+  return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
+}
+/** 9 MB: the first pick's margin (`GIF_AUTO_PICK_MAX_BYTES`); 10 MB: the warning (`GIF_LARGE_FILE_BYTES`). */
+const PICK_MAX_BYTES = 9_000_000;
+const LARGE_BYTES = 10_000_000;
+/** The line under the size for each reason (TR, src/i18n/messages.ts); `none_fit` / `unknown` keep the ordinary hint. */
+const PICK_LINES = {
+  fits: 'Paylaşması kolay olsun diye 10 MB’ı geçmeyen en net boyutu seçtik.',
+  timeout_fits: 'Ölçmek uzun sürdü; 10 MB’ı geçmediği ölçülen en büyük boyutu seçtik.',
+  timeout_predicted: 'Ölçmek uzun sürdü; ölçtüğümüz daha büyük boyuttan tahminle 10 MB’ı geçmemesi beklenen en net boyutu seçtik.',
+  timeout_smallest: 'Ölçmek uzun sürdü; en küçük boyutu seçtik. Daha büyüğünü kendin seçebilirsin.',
+  none_fit: 'Büyüdükçe GIF telefonda daha net görünür; dosyası da büyür.',
+  unknown: 'Büyüdükçe GIF telefonda daha net görünür; dosyası da büyür.',
+};
+/** `data-measured` ("small:123,medium:-,…") as numbers, null where not measured. */
+const parseMeasured = (value) => Object.fromEntries((value ?? '').split(',').filter(Boolean).map((part) => part.split(':')).map(([id, v]) => [id, v === '-' ? null : Number(v)]));
+
+/**
+ * Watches the GIF screen in the page itself (every 50 ms, the phone's own clock) from now until the chosen
+ * size's estimate is ready and "GIF'i indir" is on: when the part and sizes appeared (video ready), when each
+ * size's measurement arrived, when the size was settled (`data-auto` no longer "picking"), when the estimate
+ * was ready. `requirePicking`: the search must be seen running first (after a text change).
+ */
+async function watchAutoPick(page, { requirePicking = false, timeoutMs = 180_000 } = {}) {
+  const facts = await page.evaluate(
+    ({ requirePicking: mustSeePicking, timeoutMs: limit }) =>
+      new Promise((done) => {
+        const t0 = performance.now();
+        const out = { partMs: null, arrivals: {}, sawPicking: false, settledMs: null, readyMs: null, timedOut: false };
+        const tick = () => {
+          const now = Math.round(performance.now() - t0);
+          const part = document.querySelector('[data-testid="gif-part"]');
+          if (part && out.partMs === null) out.partMs = now;
+          const sizes = document.querySelector('[data-testid="gif-size"]');
+          const auto = sizes?.getAttribute('data-auto') ?? null;
+          if (auto === 'picking') out.sawPicking = true;
+          for (const pair of (sizes?.getAttribute('data-measured') ?? '').split(',')) {
+            const [id, value] = pair.split(':');
+            if (id && value && value !== '-' && out.arrivals[id] === undefined) out.arrivals[id] = now;
+          }
+          const searchSeen = out.sawPicking || !mustSeePicking || now > 5000;
+          if (part && searchSeen && out.settledMs === null && (!sizes || auto !== 'picking')) {
+            out.settledMs = now;
+            // What was known when it settled (a frozen pick's own size is measured again afterwards).
+            out.measuredAtSettle = sizes?.getAttribute('data-measured') ?? null;
+          }
+          const estimate = document.querySelector('[data-testid="gif-estimate"]');
+          const button = document.querySelector('[data-testid="wizard-download"]');
+          if (out.settledMs !== null && estimate?.getAttribute('data-state') === 'ready' && button && !button.disabled) out.readyMs = now;
+          if (out.readyMs !== null || now > limit) {
+            out.timedOut = out.readyMs === null;
+            clearInterval(timer);
+            done(out);
+          }
+        };
+        const timer = setInterval(tick, 50);
+        tick();
+      }),
+    { requirePicking, timeoutMs },
+  );
+  const sizes = page.getByTestId('gif-size');
+  const estimate = page.getByTestId('gif-estimate');
+  const one = (await sizes.count()) === 0;
+  return {
+    ...facts,
+    auto: one ? 'one_size' : await attr(sizes, 'data-auto'),
+    why: one ? 'one_size' : await attr(sizes, 'data-auto-why'),
+    measured: one ? {} : parseMeasured(await attr(sizes, 'data-measured')),
+    chosen: one ? null : await page.locator('[data-testid="gif-size"] input[type="radio"]:checked').getAttribute('value').catch(() => null),
+    offered: one ? [] : await page.locator('[data-testid="gif-size"] input[type="radio"]').evaluateAll((inputs) => inputs.map((input) => input.value)),
+    line: await textIfThere(page.getByTestId('gif-size-hint')),
+    tooLarge: await textIfThere(page.getByTestId('gif-too-large')),
+    estimate: {
+      text: await text(estimate),
+      bytes: Number(await attr(estimate, 'data-bytes')),
+      frames: Number(await attr(estimate, 'data-frames')),
+      width: Number(await attr(estimate, 'data-width')),
+      height: Number(await attr(estimate, 'data-height')),
+    },
+  };
+}
+
+/**
+ * Did the card follow its own rule? With `fits` every larger offered size was measured over 9 MB and the
+ * chosen one within it; with a timeout reason the line says so; the line is the reason's; the checked size
+ * is the one the estimate is for.
+ */
+function pickHonest(pick, sourceWidth, sourceHeight) {
+  if (!pick || pick.auto !== 'picked' || !pick.chosen) return { ok: false, why: 'not picked' };
+  const lineOk = pick.line === PICK_LINES[pick.why];
+  const planned = plannedGif(sourceWidth, sourceHeight, pick.chosen);
+  const estimateForChosen = pick.estimate.width === planned.width && pick.estimate.height === planned.height;
+  const larger = pick.offered.filter((id) => GIF_SIZE_ORDER.indexOf(id) > GIF_SIZE_ORDER.indexOf(pick.chosen));
+  let ruleOk;
+  let expected = null;
+  if (pick.why === 'fits') {
+    ruleOk = pick.estimate.bytes <= PICK_MAX_BYTES && larger.every((id) => typeof pick.measured[id] === 'number' && pick.measured[id] > PICK_MAX_BYTES);
+  } else if (pick.why.startsWith('timeout')) {
+    // Restated from what was known when it settled (src/domain/gif.ts, timedOut): largest first, a size measured
+    // ≤ 9 MB, or one not measured whose prediction (nearest larger measured × pixel ratio × 1,3) is ≤ 9 MB.
+    const known = parseMeasured(pick.measuredAtSettle);
+    const pixels = (id) => plannedGif(sourceWidth, sourceHeight, id).width * plannedGif(sourceWidth, sourceHeight, id).height;
+    for (let i = pick.offered.length - 1; i >= 0 && !expected; i -= 1) {
+      const id = pick.offered[i];
+      if (typeof known[id] === 'number') {
+        if (known[id] <= PICK_MAX_BYTES) expected = { size: id, why: 'timeout_fits' };
+        continue;
+      }
+      const from = pick.offered.slice(i + 1).find((other) => typeof known[other] === 'number');
+      const predicted = from ? known[from] * (pixels(id) / pixels(from)) * 1.3 : null;
+      if (predicted !== null && predicted <= PICK_MAX_BYTES) expected = { size: id, why: 'timeout_predicted', predicted: Math.round(predicted), from };
+    }
+    expected = expected ?? { size: pick.offered[0], why: 'timeout_smallest' };
+    // A hard-limit fall (nothing came in 20 s) also says timeout_smallest.
+    ruleOk = (expected.size === pick.chosen && expected.why === pick.why) || (pick.why === 'timeout_smallest' && pick.chosen === pick.offered[0] && Object.values(known).every((v) => v === null));
+  } else {
+    ruleOk = pick.chosen === pick.offered[0];
+  }
+  return { ok: lineOk && estimateForChosen && ruleOk, lineOk, estimateForChosen, ruleOk, expected };
+}
 
 /**
  * The cards. `run` walks it (default choices), `checks` say what the card
@@ -973,41 +1162,40 @@ const CARDS = [
       plays: plays(row),
     }),
   },
-  // ---------------------------------------------------------------- GIF yap (ADR-046)
+  // ---------------------------------------------------------------- GIF yap (ADR-046; the size since ADR-052)
   {
     id: 'gif',
     task: 'gif',
     label: 'GIF yap',
-    source: 'sample-24s (generated test card, 1280×720, 24 s); top text, default part, Küçük',
+    source: 'sample-24s (generated test card, 1280×720, 24 s); top text, default part, the size the card picks (ADR-052)',
     async run(page, row) {
       await putFile(page, '[data-testid="video-input"]', SOURCES.sample);
-      const openedAt = Date.now();
-      const estimate = page.locator('[data-testid="gif-estimate"][data-state="ready"]');
-      await estimate.waitFor({ timeout: 120_000 });
-      row.readyS = seconds(Date.now() - openedAt);
+      // ADR-052: no size is checked until the sharpest that fits is measured; "GIF'i indir" waits for it.
+      row.pickPlain = await watchAutoPick(page);
+      row.readyS = seconds(row.pickPlain.readyMs);
       const range = page.getByTestId('gif-range-window');
       row.part = { startUs: Number(await attr(range, 'data-start-us')), endUs: Number(await attr(range, 'data-end-us')) };
-      row.smallDefault = await page.getByTestId('gif-size-small').isChecked();
-      // A newcomer types the top line.
+      // A newcomer types the top line: the text is part of what is measured, so the search runs again.
       await page.getByLabel('Üst yazı').pressSequentially('PAZARTESİ SABAHI ığüşöç', { delay: 20 });
       await page.evaluate(() => document.activeElement?.blur());
-      await page.waitForTimeout(500);
-      await estimate.waitFor({ timeout: 60_000 });
-      row.estimate = { text: await text(estimate), bytes: Number(await attr(estimate, 'data-bytes')), frames: Number(await attr(estimate, 'data-frames')), width: Number(await attr(estimate, 'data-width')) };
+      row.pick = await watchAutoPick(page, { requirePicking: true });
+      row.estimate = row.pick.estimate;
       const saved = await download(page, row, { gif: true });
       if (!saved) return null;
       row.resultTitle = await text(page.getByTestId('wizard-title'));
-      // The same part once more without text: the reference for the text band (not part of time-to-result).
+      // The same part once more without text, at the SAME size chosen by hand: the reference for the text band
+      // (not part of time-to-result; without text the card might pick another size).
       const plainAt = Date.now();
       await page.getByTestId('wizard-again-same').click();
       await page.getByLabel('Üst yazı').fill('');
       await page.evaluate(() => document.activeElement?.blur());
       await page.waitForTimeout(500);
-      await estimate.waitFor({ timeout: 60_000 });
+      if (row.pick.chosen) await page.getByTestId(`gif-size-${row.pick.chosen}`).check();
+      await page.locator('[data-testid="gif-estimate"][data-state="ready"]').waitFor({ timeout: 120_000 });
       row.plain = {};
       const plain = await download(page, row, { gif: true, into: row.plain, suffix: '-plain' });
       row.excludedMs = Date.now() - plainAt;
-      if (plain) {
+      if (plain && row.plain.gif?.width === row.gif.width && row.plain.gif?.height === row.gif.height) {
         const a = firstFrameRgb(plain);
         const b = firstFrameRgb(saved);
         const w = row.gif.width;
@@ -1028,21 +1216,117 @@ const CARDS = [
       }
       return saved;
     },
-    checks: (row) => ({
-      gif89a: row.gif?.ok === true && row.gif.header === 'GIF89a',
-      part0to4s: row.part?.startUs === 0 && row.part?.endUs === 4_000_000,
-      smallDefault: row.smallDefault === true,
-      size320x180: row.gif?.width === 320 && row.gif?.height === 180,
-      frames50: row.gif?.frames === 50 && row.ffprobe?.frames === 50,
-      loopsForever: row.gif?.loops === 0,
-      length4s: row.gif?.durationCs === 400,
-      plainSameShape: row.plain?.gif?.frames === 50 && row.plain?.gif?.width === 320,
-      textInTopBand: (row.bands?.top ?? 0) > 8 && (row.bands?.whitePixels ?? 0) > 200 && (row.bands?.blackPixels ?? 0) > 200,
-      middleUntouched: (row.bands?.middle ?? 99) < 2,
-      estimateWithinQuarter: row.estimate?.bytes > 0 && row.file.sizeBytes / row.estimate.bytes > 0.75 && row.file.sizeBytes / row.estimate.bytes < 1.33,
-      decodesOnPhone: !row.shown?.error && row.shown?.size?.[0] === 320,
-    }),
+    checks: (row) => {
+      const planned = row.pick?.chosen ? plannedGif(1280, 720, row.pick.chosen) : { width: -1, height: -1 };
+      row.pickCheck = pickHonest(row.pick, 1280, 720);
+      return {
+        gif89a: row.gif?.ok === true && row.gif.header === 'GIF89a',
+        part0to4s: row.part?.startUs === 0 && row.part?.endUs === 4_000_000,
+        // ADR-052 (was: Küçük by default): the card's own rule, its line, the estimate of the checked size.
+        autoPickHonest: row.pickCheck.ok === true,
+        autoPickNoWarning: row.pick?.why === 'fits' ? row.pick.tooLarge === null : true,
+        sizeAsPicked: row.gif?.width === planned.width && row.gif?.height === planned.height,
+        frames50: row.gif?.frames === 50 && row.ffprobe?.frames === 50,
+        loopsForever: row.gif?.loops === 0,
+        length4s: row.gif?.durationCs === 400,
+        plainSameShape: row.plain?.gif?.frames === 50 && row.plain?.gif?.width === row.gif?.width && row.plain?.gif?.height === row.gif?.height,
+        textInTopBand: (row.bands?.top ?? 0) > 8 && (row.bands?.whitePixels ?? 0) > 200 && (row.bands?.blackPixels ?? 0) > 200,
+        middleUntouched: (row.bands?.middle ?? 99) < 2,
+        estimateWithinQuarter: row.estimate?.bytes > 0 && row.file.sizeBytes / row.estimate.bytes > 0.75 && row.file.sizeBytes / row.estimate.bytes < 1.33,
+        decodesOnPhone: !row.shown?.error && row.shown?.size?.[0] === row.gif?.width && row.shown?.size?.[1] === row.gif?.height,
+      };
+    },
   },
+  // ---------------------------------------------------------------- GIF yap: the sharpest that fits, and "Video olarak" (ADR-052)
+  ...[
+    { id: 'gif-sharp-land10', src: 'land10', said: 'sharp-land10 (generated, 1920×1080 30 fps, 10 s, detail + grain, ~15 Mbit/s + AAC)' },
+    { id: 'gif-sharp-port10', src: 'port10', said: 'sharp-port10 (generated, 1080×1920 30 fps, 10 s, detail + grain, ~15 Mbit/s + AAC)' },
+    { id: 'gif-sharp-land4', src: 'land4', said: 'sharp-land4 (generated, 1920×1080 30 fps, 4 s, detail + grain, ~15 Mbit/s + AAC)' },
+  ].map((item) => ({
+    id: item.id,
+    task: 'gif',
+    label: 'GIF yap',
+    source: `${item.said}; whole video, no text, the size the card picks; then the same part "Video olarak (en net)"`,
+    // Made before the case's clock starts (ffmpeg, first use only).
+    prepare: () => sharpSource(item.src),
+    async run(page, row) {
+      const source = sharpSource(item.src);
+      row.env = await page.evaluate(() => ({ deviceMemoryGb: navigator.deviceMemory ?? null, cores: navigator.hardwareConcurrency ?? null }));
+      await putFile(page, '[data-testid="video-input"]', source);
+      row.pick = await watchAutoPick(page);
+      const range = page.getByTestId('gif-range-window');
+      row.part = { startUs: Number(await attr(range, 'data-start-us')), endUs: Number(await attr(range, 'data-end-us')) };
+      // A video of at most 10 s is taken whole (ADR-046). If not, the end is moved to the end (as video-vs-gif.mjs)
+      // and the search watched again; the case then says so.
+      if (row.part.endUs - row.part.startUs < source.seconds * 1e6 - 50_000) {
+        row.partExtended = true;
+        await page.getByTestId('gif-range-end').focus();
+        await page.keyboard.press('End');
+        row.pick = await watchAutoPick(page, { requirePicking: true });
+        row.part = { startUs: Number(await attr(range, 'data-start-us')), endUs: Number(await attr(range, 'data-end-us')) };
+      }
+      row.videoReadyS = seconds(row.pick.partMs);
+      row.settleS = seconds(row.pick.settledMs - row.pick.partMs);
+      row.estimateReadyS = seconds(row.pick.readyMs - row.pick.partMs);
+      row.arrivalsS = Object.fromEntries(Object.entries(row.pick.arrivals).map(([id, ms]) => [id, seconds(ms - row.pick.partMs)]));
+      row.estimate = row.pick.estimate;
+      const saved = await download(page, row, { gif: true });
+      if (!saved) return null;
+      row.estimateRatio = Number((row.file.sizeBytes / row.estimate.bytes).toFixed(3));
+      // "Video olarak (en net)": the same part through the ordinary MP4 download (not part of time-to-result).
+      await page.getByTestId('wizard-again-same').click();
+      await page.getByTestId('gif-output-video').check();
+      const said = page.getByTestId('gif-video-size');
+      await said.waitFor({ timeout: 30_000 });
+      row.video = {
+        said: await text(said),
+        saidWidth: Number(await attr(said, 'data-width')),
+        saidHeight: Number(await attr(said, 'data-height')),
+        note: await text(page.getByTestId('gif-output-hint')),
+        part: { startUs: Number(await attr(range, 'data-start-us')), endUs: Number(await attr(range, 'data-end-us')) },
+      };
+      const clip = await download(page, row, { into: row.video, suffix: '-video' });
+      if (clip && row.video.file) {
+        const v = row.video.file.streams.find((s) => s.type === 'video');
+        const [num, den] = String(v?.fps ?? '0/1').split('/').map(Number);
+        // The plan's own bitrate for a short clip (ADR-052 addendum 3): 0,09 bit a pixel (1080p30 ≈ 5,6 Mbit/s).
+        row.video.planKbps = v ? Math.round((0.09 * v.width * v.height * (num / (den || 1))) / 1000) : null;
+        row.video.toPlan = row.video.planKbps ? Number((row.video.file.videoKbps / row.video.planKbps).toFixed(3)) : null;
+        row.video.toGif = Number((row.video.file.sizeBytes / row.file.sizeBytes).toFixed(3));
+      }
+      return saved;
+    },
+    checks: (row) => {
+      const s = SHARP[item.src];
+      row.pickCheck = pickHonest(row.pick, s.width, s.height);
+      const planned = plannedGif(s.width, s.height, row.pick?.chosen ?? 'small');
+      const frames = Math.round(s.seconds * 12.5);
+      const v = row.video?.file?.streams.find((x) => x.type === 'video');
+      // The screen promises "10 MB'ı geçmeyen" for every pick but the smallest-by-timeout / none fit.
+      const promisesUnder10 = ['fits', 'timeout_fits', 'timeout_predicted'].includes(row.pick?.why);
+      return {
+        wholePart: row.part?.startUs === 0 && row.part?.endUs === s.seconds * 1e6,
+        autoPickHonest: row.pickCheck.ok === true,
+        gif89a: row.gif?.ok === true && row.gif.header === 'GIF89a',
+        sizeAsPicked: row.gif?.width === planned.width && row.gif?.height === planned.height,
+        frames: row.gif?.frames === frames && row.ffprobe?.frames === frames,
+        loopsForever: row.gif?.loops === 0,
+        length: row.gif?.durationCs === s.seconds * 100,
+        estimateWithin10pct: row.estimateRatio >= 0.9 && row.estimateRatio <= 1.1,
+        under10MBAsSaid: promisesUnder10 ? row.file.sizeBytes <= LARGE_BYTES : true,
+        decodesOnPhone: !row.shown?.error && row.shown?.size?.[0] === row.gif?.width && row.shown?.size?.[1] === row.gif?.height,
+        videoSaved: row.video?.outcome === 'saved',
+        videoH264Mp4: v?.codec === 'h264' && /mp4/.test(row.video?.file?.format ?? ''),
+        videoNoAudioTrack: row.video?.file?.streams.length === 1,
+        // The video's own size, at most Full HD, never enlarged (ADR-041), and what the screen said.
+        videoOwnSize: v?.width === s.width && v?.height === s.height && row.video.saidWidth === v.width && row.video.saidHeight === v.height,
+        videoSamePart: row.video?.part?.startUs === row.part?.startUs && row.video?.part?.endUs === row.part?.endUs,
+        videoLength: near(row.video?.file?.durationS ?? 0, s.seconds, 0.1),
+        videoAtPlanBitrate: row.video?.toPlan > 0 && row.video.toPlan <= 1.1,
+        videoPlays: plays(row.video ?? {}),
+      };
+    },
+  })),
   // ---------------------------------------------------------------- Sesi düzelt (ADR-049)
   ...[
     { id: 'duzelt-quiet', source: SOURCES.quiet, said: 'kisik-konusma (generated: synthetic voice, about −38 LUFS)', uneven: false },
@@ -1317,6 +1601,7 @@ try {
       const { page, watch } = await freshTab();
       await installSavePicker(page);
       const row = { id: card.id, task: card.task, source: card.source };
+      card.prepare?.();
       const startedAt = Date.now();
       transferMs = 0;
       try {
