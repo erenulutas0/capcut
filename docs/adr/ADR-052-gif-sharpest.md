@@ -11,6 +11,9 @@
 > süre yarıya), süre dolunca ölçülmüş büyük boyuttan ×1,3 tahmin, videoda yazılım kodlayıcıya 1,5 kat.
 > **Ek 3 (22 Ekim, en altta):** videoda yine 1 kat; 8 sn'de hiçbir boyut yoksa ilk gelen boyut karar verir, en çok
 > 20 sn, ancak hiçbir şey gelmezse Küçük.
+> **Ek 4 (24 Ekim, en altta; S23 ölçümünden sonra):** tahmin payı ×1,15 ve tahminle seçilen boyut kendi ölçümüyle
+> doğrulanır (9 MB'ı geçerse bir küçüğü, ekran söyler); süren ölçüm bırakılmaz; "dosyası da çoğu zaman daha küçük"
+> yerine videonun beklenen boyutu; yazı yoksa "yazısıyla" yok. Aynı gün GIF kareleri keskinleşti (ADR-046 Ek 3).
 > İlgili: [ADR-046](ADR-046-gif.md) (GIF yap; ekleri: tahmin ±%10, 10 MB uyarısı, bellek, "Çok büyük"),
 > [ADR-041](ADR-041-never-upscale.md) (büyütme yok), [ADR-042](ADR-042-export-failure-detail.md) (hata ayrıntısı,
 > bekçi), [ADR-045](ADR-045-constant-bitrate-ordinary-download.md) (donanım kodlayıcıda sabit bit hızı),
@@ -418,3 +421,92 @@ VMAF / SSIM videonun çerçevesinde):
 1. S23'te 10 sn'lik 1080p kısım: ilk boyut kaç saniyede geliyor, tahmin Orta'yı mı Küçük'ü mü veriyor.
 2. Pay ×1,3, en büyük boyuttan iki basamak aşağı tahminde Orta'yı kaçırabiliyor (R3, S3); istenirse 10 sn'lik kısımda
    arama önce Orta'yı tek başına ölçebilir.
+
+(İkisi de 24 Ekim'de S23'te ölçüldü — `docs/phone/2026-10-24-s23.md` — ve Ek 4'te ele alındı.)
+
+---
+
+## Ek 4 — 24 Ekim 2026: S23'ten sonra — pay ×1,15 ve doğrulama, süren ölçüm bırakılmaz, videonun boyutu söylenir
+
+Kaynak: S23 ölçümü (`docs/phone/2026-10-24-s23.md`, canlı b4d544a) ve ana oturumun kararları (kurucu devretti).
+Telefonda 10 sn'lik 1080p (üretilmiş kliplerde): Çok büyük 7,2–7,9 sn'de ölçüldü; 8 sn'de ×1,3 pay Büyük'ü 10,4 MB
+"tahmin etti" → Orta (masaüstünde aynı klipte Büyük 8,55 MB ölçülüp sığıyordu; oran 1,07); sonra seçilen Orta
+**yeniden ölçüldü** (süren çok boyutlu ölçüm bırakıldığı için; bir çözme daha) → seçilen boyutun tahmini 13,8–14,5
+sn'de. Ve GIF'in altındaki "Video … dosyası da çoğu zaman daha küçük" 10 sn'lik 1080p'de tutmadı (video GIF'in
+1,19–1,43 katı).
+
+### Kararlar (uygulandı)
+
+1. **Süren ölçüm bırakılmaz** (`useGifEstimate`'in yeni `keepRunning`'i): kullanıcıya bir boyut seçildiğinde, bütün
+   boyutların ölçümü sürüyorsa ve seçilen boyutu da ölçecekse, kesilmez; seçilen boyutun sonucu oradan gelir. Kullanıcı
+   kendisi bir boyut seçerse eskisi gibi yalnız o ölçülür.
+2. **Pay ×1,15** (`GIF_PREDICT_FACTOR`; ölçülen komşu oranı 0,83–1,25, ortanca 1,06) **ve doğrulama**
+   (`verifyPredictedGifSize`): tahminle seçilen boyutun kendi tahmini gelene kadar "GIF'i indir" bekler (satır tahmin
+   cümlesini söyler, `data-verifying`); gelince ≤ 9 MB ise kalır, değilse **bir küçük boyut** seçilir ve satır der ki
+   "Tahminle seçtiğimiz boyut ölçülünce 10 MB’ı geçecekti; bir küçüğünü seçtik." (yeni sebep `timeout_stepped_down`;
+   o boyut da aynı biçimde doğrulanır, en küçükte durur). Daha büyük bir boyutun ölçümü sonradan ≤ 9 MB gelse de seçim
+   **kendiliğinden değişmez** (sürpriz yok). Sınama derlemesinde pay değiştirilebilir (`__clipGifPredictFactor`).
+3. **Videonun boyutu söylenir, "çoğu zaman daha küçük" sözü kalktı:** GIF seçiliyken: "Video çok daha net ve akıcı
+   olur; video olarak yaklaşık 7 MB. …"; video seçiliyken: "Video: 1920 × 1080, sessiz, yaklaşık 7 MB." Hesap
+   (`gifVideoExpectedSize`): dışa aktarmanın bu indirmeye istediği bit hızı — planınki, kaynağınkinin 2 katıyla sınırlı
+   (`sourceBoundedBitrate`, export worker'ının aynı işlevi) — × kısmın süresi. Donanım kodlayıcıda (sabit hız) S23
+   planın ×1,001–1,012'sini ölçmüştü. **Yazılım kodlayıcıda** (değişken hız; sayfa sorar, `videoEncoderKindFor`) "yaklaşık
+   … (bu tarayıcıda daha büyük çıkabilir)". **Yazısız ve kaynağın kendi bit hızı bundan düşükse** kaynağın resimleri
+   tutulabilir (ADR-027, `clip_size`): "en çok …".
+4. **Yazı yoksa "yazısıyla" yok** (ayrı işlem, `gifHasText`; export işçisinin kuralıyla aynı).
+
+### Ölçülen (bu masaüstü; ADR-046 Ek 3'ün keskin kareleriyle; `video-vs-gif.mjs --pick-only`, artık seçimin anı ve
+"GIF'i indir"in açıldığı an ayrı, seçimden 4 sn sonra yeniden bakılır; her durum 2 koşu)
+
+Klipler: telefon ölçümünün üretilmiş `land10` (1920 × 1080) ve `port10` (1080 × 1920), bu ADR'nin R1 (iPhone 1080p
+60) ve R3 (iPhone 1080p 30), yapay S3; hepsi 10 sn. "Seçildi" = boyut işaretlendi; "açık" = seçilen boyutun tahmini
+ekranda ve düğme açık.
+
+| Durum | Bütün çekirdekler: sonuç · seçildi · açık | 2 çekirdek: sonuç · seçildi · açık | 2 çekirdek, süren ölçüm bırakılsaydı: açık | Ek 3'te (2 çekirdek) |
+|---|---|---|---|---|
+| land10 | **Büyük, ölçülerek** (8,20 MB) · 8,0 · 8,0 sn | Orta, tahminle · 10,3–12,8 · 17,9–18,4 sn | 18,0–18,4 sn | (yok; S23: Orta, 13,8 sn) |
+| port10 | Orta, tahminle (Büyük ölçülünce 9,83 MB: doğru) · 8,0–9,5 · 11,9–14,5 | Orta, tahminle · 11,2–13,7 · 20,3–21,8 | 19,3–19,4 | (yok; S23: Orta, 14,5 sn) |
+| R1 | Orta, ölçülerek · 5,4 · 5,4 | Orta, tahminle · 11,3–11,9 · **12,7–12,8** | 21,7–21,9 | Orta, 21,8 sn |
+| R3 | Orta, ölçülerek · 4,9 · 4,9 | **Orta**, tahminle · 8,7–8,8 · **9,5–9,6** | 16,3–16,5 | **Küçük**, 15,8 sn |
+| S3 | Küçük, tahminle (Orta 9,10 MB) · 8,0–8,5 · 8,8 | Küçük, tahminle · 10,3–11,3 · 14,3–14,7 | 18,3–19,0 | Küçük, 18,6 sn |
+
+- **Doğrulama hiçbir koşuda boyut düşürmedi** (tahminle seçilen her boyutun kendi tahmini ≤ 9 MB: Orta 5,0–8,5 MB,
+  Küçük 3,9); seçimden 4 sn sonra hiçbiri değişmemişti. Boyut düşürme e2e'de pay 0,5 yapılarak sınandı (aşağıda).
+- **Süren ölçümü bırakmamak** 2 çekirdekte R1'de 9 sn, R3'te 7 sn, S3'te 4 sn kazandırdı; kumlu üretilmiş kliplerde
+  kazandırmadı (land10 aynı, port10 1–2 sn kötü): ölçüm boyutları büyükten küçüğe kodlar, kumlu karede Büyük'ün
+  kodlanması (artık gereksiz) yeni bir çözme kadar sürüyor. Seçilen boyutu öne alan bir kodlama sırası yapılmadı.
+- **×1,15 bir boy kazandırdı:** 2 çekirdekte R3 Küçük → Orta (Orta tahmini 29,50 × 0,25 × 1,15 = 8,48 MB; ×1,3'le
+  9,59). **Ama land10'da hâlâ Orta:** keskin karelerle Çok büyük 18,59 MB → Büyük tahmini 18,59 × 0,444 × 1,15 = **9,50
+  MB** > 9, oysa Büyük'ün kendi tahmini 8,20 MB (oran 0,99). Bu klipte Büyük'ü yakalamak için pay ≤ 1,09 olmalıydı;
+  doğrulama artık var olduğu için daha düşük bir pay (ör. ortanca 1,06) güvenli olurdu — kurucu / ana oturum kararı.
+- Telefonda ölçülmedi; 2 çekirdek bir telefonun hızı değil (land10'da S23 13,8 sn, burada 17,9–18,4).
+
+**Videonun söylenen boyutu:** e2e'de (1280 × 720 test kartı, 157 kbit/sn kaynak, 4 sn, yazılı, yazılım kodlayıcı)
+söylenen 250 000 B, dosya 247 625 B (**×0,99**). Gerçek kayıtlarda masaüstünde ölçülmedi; donanım kodlayıcıda telefonun
+×1,001–1,012'si (S23, Ek 4'ün kaynağı) bu hesabın aynısı.
+
+### Sınamalar (Ek 4; ADR-046 Ek 3 ile aynı son kod ve koşu — sayılar orada)
+
+- Birim: `gifSharpest.test.ts` (×1,15 ve S23'ün durumu, doğrulama: sığar / bir küçüğe iner / en küçükte durur / ölçüm
+  düşerse kalır / büyük boyut sonradan sığsa da değişmez; videonun boyutu: 10 sn 1080p ≈ S23'ün 7,04 MB'ının
+  ×0,98–1,01'i, kaynağın 2 katıyla sınır, yazısızda "en çok"), `gif.test.ts` (cümleler, "daha küçük" sözü yok).
+- e2e `gif.spec.ts`: 8 sn sınırı sınaması doğrulamayı da sınar (tahminle Küçük, kendi tahmini ≤ 9 MB, düğme açık);
+  yeni adım — pay 0,5 (sınama kancası): Orta ~5 MB tahminle seçilir, kendi tahmini > 9 MB → Küçük,
+  `timeout_stepped_down` ve cümlesi, 3 sn sonra değişmemiş. "Video olarak": satırda boyut (yazılı: "yaklaşık 250 KB
+  (bu tarayıcıda daha büyük çıkabilir)", `data-bytes` 250 000, dosya 247 625 B, ×0,99; yazısız: "en çok …"),
+  `english.spec.ts` aynı İngilizce.
+- `gif-a11y` (telefonda 44 px, yatay kaydırma yok) yeni, daha uzun çıktı satırıyla geçti.
+
+### Doğrulanmayanlar (Ek 4)
+
+- S23'te yeni kural (×1,15, doğrulama, süren ölçüm) ve videonun söylenen boyutu **denenmedi**.
+- Yazılım kodlayıcıda ayrıntılı gerçek kayıtta videonun söylenen boyuttan ne kadar büyük çıktığı (ADR-052 Ek 2:
+  R2'de ×1,65) yeniden ölçülmedi; ekran yalnızca "daha büyük çıkabilir" der.
+- "En çok" durumunda (yazısız, düşük bit hızlı kaynak) kaynağın resimleri kopyalanamazsa (ör. HEVC kaynak) video
+  kaynağın 2 katı bit hızıyla kodlanır ve "en çok" sayısına kadar çıkabilir; kopyalanamayan düşük bit hızlı bir
+  kaynakla sınanmadı.
+
+### Hâlâ açık
+
+1. land10'da Büyük'ü kaçıran pay (×1,15 → 1,06?); doğrulama artık bir alt güvence.
+2. Süren ölçümde seçilen boyutu öne almak (kumlu kaynakta 5–8 sn bekleme).

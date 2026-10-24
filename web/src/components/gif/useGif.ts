@@ -304,30 +304,62 @@ export function useGifEstimate(
   record: (results: GifEstimateDone[]) => void,
   /** 0 when nobody is changing anything. */
   pauseMs: number = ESTIMATE_PAUSE_MS,
+  /**
+   * ADR-052 addendum 4: a request whose sizes the measurement already running will answer (same part, same text)
+   * leaves that measurement running and waits for its answers, instead of ending it and decoding again — the size
+   * settled on when the search ran out of time is in the measurement of all sizes that was cut short before.
+   */
+  keepRunning = false,
 ): GifEstimateState {
   const [state, setState] = useState<GifEstimateState>({ status: 'idle' });
   const jobRef = useRef(job);
   const doneRef = useRef(done);
   const pauseRef = useRef(pauseMs);
   const keyOfRef = useRef(keyOf);
+  const keepRef = useRef(keepRunning);
   useEffect(() => {
     jobRef.current = job;
     doneRef.current = done;
     pauseRef.current = pauseMs;
     keyOfRef.current = keyOf;
+    keepRef.current = keepRunning;
   });
+  /** The measurement asked for last (waiting for its pause, or running): the keys it answers, and how to let it go. */
+  const flight = useRef<{ keys: ReadonlySet<string>; stop: () => void } | null>(null);
+  useEffect(
+    () => () => {
+      flight.current?.stop();
+      flight.current = null;
+    },
+    [],
+  );
   const hasJob = job !== null;
   const wanted = sizes.join(',');
   // What this request is for: the part and text (every size's key) and the sizes.
   const requestKey = hasJob ? `${sizes.map((size) => keyOf(size)).join('&')}` : '';
   useEffect(() => {
     const current = jobRef.current;
-    if (!hasJob || !current || !wanted) return undefined;
+    const running = flight.current;
+    if (!hasJob || !current || !wanted) {
+      running?.stop();
+      flight.current = null;
+      return;
+    }
     const keyFor = keyOfRef.current;
     // Measured before: known at once, nothing runs.
     const missing = (wanted.split(',') as GifSizeId[]).filter((size) => !doneRef.current[keyFor(size)]);
-    if (missing.length === 0) return undefined;
+    if (missing.length === 0) return;
+    if (running && keepRef.current && missing.every((size) => running.keys.has(keyFor(size)))) return;
+    running?.stop();
     let live = true;
+    const me = {
+      keys: new Set(missing.map((size) => keyFor(size))),
+      stop: () => {
+        live = false;
+        window.clearTimeout(timer);
+      },
+    };
+    flight.current = me;
     const timer = window.setTimeout(() => {
       setState({ status: 'measuring', key: requestKey, sizes: missing });
       const recorded = new Set<GifSizeId>();
@@ -348,6 +380,7 @@ export function useGifEstimate(
         })
         .then((outcome) => {
           if (!live) return;
+          if (flight.current === me) flight.current = null;
           setState({ status: 'idle' });
           if (!outcome.ok && outcome.reason !== 'canceled') {
             const reason = outcome.reason;
@@ -360,10 +393,8 @@ export function useGifEstimate(
           }
         });
     }, pauseRef.current);
-    return () => {
-      live = false;
-      window.clearTimeout(timer);
-    };
+    // No cleanup here: the next request decides whether this one goes on (above); the job gone or the screen
+    // closed ends it (the first lines, and the effect on unmount).
   }, [hasJob, requestKey, wanted, maker, record]);
   return state;
 }

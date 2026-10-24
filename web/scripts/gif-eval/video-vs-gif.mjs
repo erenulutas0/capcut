@@ -90,13 +90,21 @@ for (const clip of clips) {
     const sizes = page.getByTestId('gif-size');
     const pickStarted = Date.now();
     if ((await sizes.count()) > 0) await page.locator('[data-testid="gif-size"]:not([data-auto="picking"])').waitFor({ timeout: 300_000 });
+    // ADR-052 addendum 4: when a size is settled on (`pickedMs`, and why), and when "GIF'i indir" is open with the
+    // chosen size's estimate on screen (`pickMs`; a size chosen from a prediction waits for its own estimate).
+    const pickedMs = Date.now() - pickStarted;
+    const firstWhy = (await sizes.count()) > 0 ? await sizes.getAttribute('data-auto-why') : 'one_size';
     await page.locator('[data-testid="gif-estimate"][data-state="ready"]').waitFor({ timeout: 300_000 });
+    await page.locator('[data-testid="wizard-download"]:not([disabled])').waitFor({ timeout: 300_000 });
     const pickMs = Date.now() - pickStarted;
     const why = (await sizes.count()) > 0 ? await sizes.getAttribute('data-auto-why') : 'one_size';
     const chosen = { width: Number(await est.getAttribute('data-width')), height: Number(await est.getAttribute('data-height')), estimated: Number(await est.getAttribute('data-bytes')) };
     if (args['pick-only']) {
+      // Whatever else arrives in the next 4 s (the measurement of all sizes may go on): it must not change the choice.
+      await page.waitForTimeout(4000);
       const measured = (await sizes.count()) > 0 ? await sizes.getAttribute('data-measured') : null;
-      const row = { id: clip.id, seconds, cpu: Number(args.cpu ?? 1), cores: Number(args.cores ?? 0) || 'all', pickMs, why, chosen, measured };
+      const after = { width: Number(await est.getAttribute('data-width')), why: (await sizes.count()) > 0 ? await sizes.getAttribute('data-auto-why') : 'one_size' };
+      const row = { id: clip.id, seconds, cpu: Number(args.cpu ?? 1), cores: Number(args.cores ?? 0) || 'all', pickedMs, firstWhy, pickMs, why, chosen, measured, after };
       console.log(JSON.stringify(row));
       if (out) appendFileSync(out, `${JSON.stringify(row)}
 `);

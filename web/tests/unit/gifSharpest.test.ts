@@ -13,9 +13,11 @@ import {
   gifFramesBudget,
   gifFrameTimesUs,
   gifHoldsFrames,
+  gifPickIsPredicted,
   gifSizeChoices,
   planGifSize,
   sharpestShareableGifSize,
+  verifyPredictedGifSize,
 } from '@/domain/gif';
 import { DEFAULT_KESIT_SETTINGS, downloadRecipe } from '@/domain/kesit';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
@@ -70,20 +72,54 @@ describe('GIF yap: the sharpest size that stays shareable', () => {
     expect(GIF_AUTO_PICK_LIMIT_MS).toBe(8_000);
   });
 
-  it('out of time: a size not measured is predicted from a larger one measured over the limit (pixels × 1,3), and chosen if that fits', () => {
+  it('out of time: a size not measured is predicted from a larger one measured over the limit (pixels × 1,15), and chosen if that fits', () => {
     const pixels = { small: 320 * 180, medium: 480 * 270, large: 640 * 360, xlarge: 960 * 540 };
-    expect(GIF_PREDICT_FACTOR).toBe(1.3);
-    // Only Çok büyük measured (20 MB): Büyük 20 × 0,444 × 1,3 = 11,6 MB, Orta 20 × 0,25 × 1,3 = 6,5 MB → Orta.
-    expect(predictGifBytes('medium', ['large', 'xlarge'], { xlarge: 20 * MB }, pixels)).toBeCloseTo(6.5 * MB, -3);
+    // 1,3 until 24 Oct 2026 (ADR-052 addendum 4): on the S23 it lost "Büyük" (predicted 10,4 MB, measured 8,55 on the desktop).
+    expect(GIF_PREDICT_FACTOR).toBe(1.15);
+    // The S23's case: only Çok büyük measured (17,96 MB): Büyük 17,96 × 0,444 × 1,15 = 9,18 MB (just over), Orta 5,16 MB.
+    expect(predictGifBytes('large', ['xlarge'], { xlarge: 17_963_081 }, pixels)).toBeCloseTo(9_179_000, -4);
+    // 20 MB: Büyük 20 × 0,444 × 1,15 = 10,2 MB, Orta 20 × 0,25 × 1,15 = 5,75 MB → Orta.
+    expect(predictGifBytes('medium', ['large', 'xlarge'], { xlarge: 20 * MB }, pixels)).toBeCloseTo(5.75 * MB, -3);
     expect(sharpestShareableGifSize(four, { xlarge: 20 * MB }, { timedOut: true, pixels })).toEqual({ kind: 'chosen', size: 'medium', why: 'timeout_predicted' });
-    // The nearest larger size measured is the one predicted from (Büyük 12 MB → Orta 12 × 0,5625 × 1,3 = 8,8 MB).
-    expect(predictGifBytes('medium', ['large', 'xlarge'], { xlarge: 40 * MB, large: 12 * MB }, pixels)).toBeCloseTo(8.775 * MB, -3);
+    // 17 MB: Büyük 17 × 0,444 × 1,15 = 8,69 MB → Büyük (with 1,3: 9,82 → Orta).
+    expect(sharpestShareableGifSize(four, { xlarge: 17 * MB }, { timedOut: true, pixels })).toEqual({ kind: 'chosen', size: 'large', why: 'timeout_predicted' });
+    expect(sharpestShareableGifSize(four, { xlarge: 17 * MB }, { timedOut: true, pixels, predictFactor: 1.3 })).toEqual({ kind: 'chosen', size: 'medium', why: 'timeout_predicted' });
+    // The nearest larger size measured is the one predicted from (Büyük 12 MB → Orta 12 × 0,5625 × 1,15 = 7,76 MB).
+    expect(predictGifBytes('medium', ['large', 'xlarge'], { xlarge: 40 * MB, large: 12 * MB }, pixels)).toBeCloseTo(7.7625 * MB, -3);
     expect(sharpestShareableGifSize(four, { xlarge: 40 * MB, large: 12 * MB }, { timedOut: true, pixels })).toEqual({ kind: 'chosen', size: 'medium', why: 'timeout_predicted' });
     // A measured fit larger than any prediction wins; nothing measured larger: nothing predicted.
     expect(sharpestShareableGifSize(four, { xlarge: 40 * MB, large: 8 * MB }, { timedOut: true, pixels })).toEqual({ kind: 'chosen', size: 'large', why: 'timeout_fits' });
     expect(predictGifBytes('xlarge', [], {}, pixels)).toBeNull();
     // Without pixel counts nothing is predicted.
     expect(sharpestShareableGifSize(four, { xlarge: 28 * MB }, { timedOut: true })).toEqual({ kind: 'chosen', size: 'small', why: 'timeout_smallest' });
+  });
+
+  it('a size chosen from a prediction is checked by its own estimate: over 9 MB → one size down, said so; a larger size that fits later changes nothing', () => {
+    const predicted = { kind: 'chosen', size: 'large', why: 'timeout_predicted' } as const;
+    expect(gifPickIsPredicted(predicted)).toBe(true);
+    expect(gifPickIsPredicted({ kind: 'chosen', size: 'large', why: 'fits' })).toBe(false);
+    expect(gifPickIsPredicted({ kind: 'measure', size: 'large' })).toBe(false);
+    // Not known yet, or known to fit: the same object (nothing to change).
+    expect(verifyPredictedGifSize(four, predicted, { xlarge: 18 * MB })).toBe(predicted);
+    expect(verifyPredictedGifSize(four, predicted, { xlarge: 18 * MB, large: 8.55 * MB })).toBe(predicted);
+    expect(verifyPredictedGifSize(four, predicted, { xlarge: 18 * MB, large: GIF_AUTO_PICK_MAX_BYTES })).toBe(predicted);
+    // Measured over 9 MB: the next smaller size, which is then checked the same way.
+    const down = verifyPredictedGifSize(four, predicted, { xlarge: 18 * MB, large: 9.4 * MB });
+    expect(down).toEqual({ kind: 'chosen', size: 'medium', why: 'timeout_stepped_down' });
+    expect(gifPickIsPredicted(down)).toBe(true);
+    expect(verifyPredictedGifSize(four, down, { large: 9.4 * MB, medium: 5.3 * MB })).toBe(down);
+    expect(verifyPredictedGifSize(four, down, { large: 9.4 * MB, medium: 9.2 * MB, small: 4 * MB })).toEqual({ kind: 'chosen', size: 'small', why: 'timeout_stepped_down' });
+    // Never below the smallest: it stays whatever it weighs (the 10 MB warning says so).
+    const smallest = { kind: 'chosen', size: 'small', why: 'timeout_predicted' } as const;
+    expect(verifyPredictedGifSize(four, smallest, { small: 12 * MB })).toBe(smallest);
+    // A failed measurement keeps the choice (the screen says the estimate failed).
+    expect(verifyPredictedGifSize(four, predicted, { large: 'failed' })).toBe(predicted);
+    // No surprise switching: a larger size measured to fit afterwards does not move a predicted choice up.
+    const medium = { kind: 'chosen', size: 'medium', why: 'timeout_predicted' } as const;
+    expect(verifyPredictedGifSize(four, medium, { xlarge: 18 * MB, large: 8.5 * MB, medium: 5 * MB })).toBe(medium);
+    // A measured choice is never touched.
+    const fits = { kind: 'chosen', size: 'large', why: 'timeout_fits' } as const;
+    expect(verifyPredictedGifSize(four, fits, { large: 9.5 * MB })).toBe(fits);
   });
 
   it('only the sizes this video has (never larger than the video, ADR-041)', () => {

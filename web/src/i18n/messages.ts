@@ -1212,6 +1212,7 @@ export const tr = {
   'wizard.gif.autoTimeoutFits': 'Ölçmek uzun sürdü; 10 MB’ı geçmediği ölçülen en büyük boyutu seçtik.',
   'wizard.gif.autoTimeoutPredicted': 'Ölçmek uzun sürdü; ölçtüğümüz daha büyük boyuttan tahminle 10 MB’ı geçmemesi beklenen en net boyutu seçtik.',
   'wizard.gif.autoTimeoutSmallest': 'Ölçmek uzun sürdü; en küçük boyutu seçtik. Daha büyüğünü kendin seçebilirsin.',
+  'wizard.gif.autoTimeoutSteppedDown': 'Tahminle seçtiğimiz boyut ölçülünce 10 MB’ı geçecekti; bir küçüğünü seçtik.',
   'wizard.gif.output': 'Nasıl kaydedilsin?',
   'wizard.gif.outputGif': 'GIF',
   'wizard.gif.outputVideo': 'Video olarak (en net)',

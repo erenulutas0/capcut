@@ -16,6 +16,7 @@ import {
   GIF_TEXT_MAX_CHARS,
   gifFileName,
   gifHasText,
+  gifPickIsPredicted,
   gifRangeLength,
   gifTextMaxPx,
   initialGifRange,
@@ -27,6 +28,7 @@ import {
   GIF_AUTO_PICK_HARD_LIMIT_MS,
   GIF_AUTO_PICK_LIMIT_MS,
   sharpestShareableGifSize,
+  verifyPredictedGifSize,
   type GifAutoSize,
   type GifOutput,
   type GifRange,
@@ -76,6 +78,18 @@ function autoPickHardLimitMs(): number {
     if (typeof hook === 'number' && hook >= 0) return hook;
   }
   return GIF_AUTO_PICK_HARD_LIMIT_MS;
+}
+
+/**
+ * `GIF_PREDICT_FACTOR`; a test build may change it (`window.__clipGifPredictFactor`) to see a predicted size fail
+ * its check (ADR-052 addendum 4).
+ */
+function predictFactor(): number | undefined {
+  if (TEST_HOOKS) {
+    const hook = (globalThis as { __clipGifPredictFactor?: unknown }).__clipGifPredictFactor;
+    if (typeof hook === 'number' && hook > 0) return hook;
+  }
+  return undefined;
 }
 
 /**
@@ -379,11 +393,20 @@ export default function GifWizard(host: WizardHostProps) {
       const now = searchRef.current;
       const auto = nothingCame
         ? ({ kind: 'chosen', size: now.sizeChoices[0] ?? 'small', why: 'timeout_smallest' } as const)
-        : sharpestShareableGifSize(now.sizeChoices, now.known, { timedOut: true, pixels: now.pixels });
+        : sharpestShareableGifSize(now.sizeChoices, now.known, { timedOut: true, pixels: now.pixels, predictFactor: predictFactor() });
       setSettled({ key: forKey, auto });
     },
     [setSettled],
   );
+  // ADR-052 addendum 4: a size settled on from a PREDICTION is checked once its own estimate is here (the
+  // measurement of all sizes goes on, below): over 9 MB → the next smaller size, said so; a larger size measured
+  // to fit later never switches the choice by itself.
+  const knownKey = sizeChoices.map((id) => `${id}:${String(known[id] ?? '-')}`).join(',');
+  useEffect(() => {
+    if (!settled || settled.key !== searchKey || !gifPickIsPredicted(settled.auto)) return;
+    const checked = verifyPredictedGifSize(searchRef.current.sizeChoices, settled.auto, searchRef.current.known);
+    if (checked !== settled.auto) setSettled({ key: settled.key, auto: checked });
+  }, [settled, searchKey, knownKey]);
   useEffect(() => {
     if (!picking || !searchKey) return undefined;
     const soft = window.setTimeout(() => {
@@ -411,8 +434,14 @@ export default function GifWizard(host: WizardHostProps) {
   // ADR-052 addendum 2: the search asks for every size in ONE measurement (one decode; sizes already known are
   // left out when it starts) — the same request while its answers come in, so it is not started again; a size
   // the user chose, or the one settled on, alone.
+  // ADR-052 addendum 4: once a size is settled on for the user, the measurement of all sizes still running is not
+  // ended (its answer for that size comes sooner than a new decode would) — `keepRunning`. A size the user picks is
+  // measured alone, as before.
   const toMeasure = picking ? sizeChoices : [chosenSize];
-  useGifEstimate(download.maker, job, toMeasure, keyFor, done, record);
+  useGifEstimate(download.maker, job, toMeasure, keyFor, done, record, undefined, !userChose);
+  // A size settled on from a prediction: no GIF is made until its own estimate has confirmed it (or stepped down).
+  const verifying =
+    !asVideo && twoSizes && !userChose && gifPickIsPredicted(auto) && typeof known[auto.size] !== 'number' && known[auto.size] !== 'failed';
   const current = job ? (done[key] ?? null) : null;
   const refusal = current?.status === 'failed' && BLOCKING.has(current.reason) ? current : null;
   const estimateProblem = current?.status === 'failed' && !refusal ? current : null;
@@ -557,6 +586,8 @@ export default function GifWizard(host: WizardHostProps) {
                 data-testid="gif-size"
                 data-auto={userChose ? 'user' : picking ? 'picking' : 'picked'}
                 data-auto-why={!userChose && auto.kind === 'chosen' ? auto.why : undefined}
+                // ADR-052 addendum 4: a size settled on from a prediction, its own estimate still awaited.
+                data-verifying={verifying}
                 // What is known of each size (bytes), for the measurements in ADR-052; nothing private.
                 data-measured={sizeChoices.map((id) => `${id}:${typeof known[id] === 'number' ? known[id] : '-'}`).join(',')}
                 aria-describedby="gif-size-hint"
@@ -596,7 +627,9 @@ export default function GifWizard(host: WizardHostProps) {
                           ? 'wizard.gif.autoTimeoutFits'
                           : auto.why === 'timeout_predicted'
                             ? 'wizard.gif.autoTimeoutPredicted'
-                            : 'wizard.gif.autoTimeoutSmallest',
+                            : auto.why === 'timeout_stepped_down'
+                              ? 'wizard.gif.autoTimeoutSteppedDown'
+                              : 'wizard.gif.autoTimeoutSmallest',
                       )}
                     </span>
                   ) : (
@@ -664,8 +697,8 @@ export default function GifWizard(host: WizardHostProps) {
                   onClick={() => {
                     if (job) download.start(job, gifFileName(video.fileName));
                   }}
-                  disabled={!job || busy || picking || refusal !== null || state.importing === 'video'}
-                  aria-describedby={picking ? 'gif-size-picking' : undefined}
+                  disabled={!job || busy || picking || verifying || refusal !== null || state.importing === 'video'}
+                  aria-describedby={picking ? 'gif-size-picking' : verifying ? 'gif-size-hint' : undefined}
                   data-testid="wizard-download"
                 >
                   <Icon name="download" />

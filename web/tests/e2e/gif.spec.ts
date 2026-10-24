@@ -308,8 +308,10 @@ test('past 8 s with nothing measured, the first size that arrives decides; nothi
   await expect(page.getByTestId('gif-size-xlarge')).toBeChecked();
   await expect(page.getByTestId('wizard-download')).toBeEnabled();
 
-  // A first size measured OVER the limit (10 s of heavy grain at 640 × 360: "Büyük" ~18 MB): the smaller sizes are
-  // predicted from it (pixels × 1,3: Orta ~13 MB, Küçük ~4,4 MB) — Küçük, said to be chosen from an estimate.
+  // A first size measured OVER the limit (10 s of heavy grain at 640 × 360: "Büyük" ~19 MB): the smaller sizes are
+  // predicted from it (pixels × 1,15 since ADR-052 addendum 4: Orta ~12 MB, Küçük ~5,4 MB) — Küçük, said to be
+  // chosen from an estimate; and checked by its own estimate (from the measurement still running, addendum 4)
+  // before "GIF'i indir" opens.
   await openGif(page, wizardFixture('grainy'));
   await expect(page.getByTestId('gif-size')).toHaveAttribute('data-auto-why', 'timeout_predicted');
   await expect(page.getByTestId('gif-size')).toHaveAttribute('data-measured', /large:\d{8}/);
@@ -317,7 +319,27 @@ test('past 8 s with nothing measured, the first size that arrives decides; nothi
   await expect(page.getByTestId('gif-size-hint')).toHaveText(
     'Ölçmek uzun sürdü; ölçtüğümüz daha büyük boyuttan tahminle 10 MB’ı geçmemesi beklenen en net boyutu seçtik.',
   );
-  // It never changes by itself afterwards (Orta's own measurement, 9,5 MB, came later or not at all).
+  await expect(page.getByTestId('gif-size')).toHaveAttribute('data-verifying', 'false');
+  await expect(page.getByTestId('wizard-download')).toBeEnabled();
+  expect(Number(await estimate(page).getAttribute('data-bytes'))).toBeLessThanOrEqual(9_000_000);
+  // It never changes by itself afterwards (Orta's own measurement, ~9,8 MB, came later or not at all).
+  await page.waitForTimeout(3000);
+  await expect(page.getByTestId('gif-size-small')).toBeChecked();
+  await expect(page.getByTestId('gif-size')).toHaveAttribute('data-auto-why', 'timeout_predicted');
+
+  // ADR-052 addendum 4: a prediction that its own estimate proves wrong. A test build makes the factor 0,5, so
+  // Orta is predicted at ~5 MB and chosen; its own estimate (~9,8 MB, over 9) then steps it down to Küçük, said so.
+  await page.addInitScript(() => {
+    (window as unknown as { __clipGifPredictFactor: number }).__clipGifPredictFactor = 0.5;
+  });
+  await openGif(page, wizardFixture('grainy'));
+  await expect(page.getByTestId('gif-size')).toHaveAttribute('data-auto-why', 'timeout_stepped_down');
+  await expect(page.getByTestId('gif-size-small')).toBeChecked();
+  await expect(page.getByTestId('gif-size')).toHaveAttribute('data-measured', /medium:(9\d{6}|\d{8})/);
+  await expect(page.getByTestId('gif-size-hint')).toHaveText('Tahminle seçtiğimiz boyut ölçülünce 10 MB’ı geçecekti; bir küçüğünü seçtik.');
+  await expect(page.getByTestId('gif-size')).toHaveAttribute('data-verifying', 'false');
+  await expect(page.getByTestId('wizard-download')).toBeEnabled();
+  await expect(estimate(page)).toHaveAttribute('data-width', '320');
   await page.waitForTimeout(3000);
   await expect(page.getByTestId('gif-size-small')).toBeChecked();
 

@@ -229,7 +229,11 @@ export function gifIsLarge(estimatedBytes: number): boolean {
  */
 export type GifAutoSize =
   | { kind: 'measure'; size: GifSizeId }
-  | { kind: 'chosen'; size: GifSizeId; why: 'fits' | 'none_fit' | 'unknown' | 'timeout_fits' | 'timeout_predicted' | 'timeout_smallest' };
+  | {
+      kind: 'chosen';
+      size: GifSizeId;
+      why: 'fits' | 'none_fit' | 'unknown' | 'timeout_fits' | 'timeout_predicted' | 'timeout_stepped_down' | 'timeout_smallest';
+    };
 
 /**
  * `size`'s bytes predicted from the nearest larger size measured (`larger`, smallest first: the least
@@ -240,13 +244,14 @@ export function predictGifBytes(
   larger: readonly GifSizeId[],
   estimates: GifSizeEstimates,
   pixels: Partial<Record<GifSizeId, number>>,
+  factor: number = GIF_PREDICT_FACTOR,
 ): number | null {
   const own = pixels[size];
   if (!own) return null;
   for (const other of larger) {
     const bytes = estimates[other];
     const otherPixels = pixels[other];
-    if (typeof bytes === 'number' && otherPixels) return bytes * (own / otherPixels) * GIF_PREDICT_FACTOR;
+    if (typeof bytes === 'number' && otherPixels) return bytes * (own / otherPixels) * factor;
   }
   return null;
 }
@@ -280,16 +285,24 @@ export const GIF_AUTO_PICK_HARD_LIMIT_MS = 20_000;
  * Out of time, a size not yet measured is predicted from the nearest LARGER size measured: GIF bytes follow
  * the pixel count. Measured (ADR-052 addendum 2; the estimates of 5 real recordings and 3 synthetic clips, 4
  * and 10 s, 19 pairs of neighbouring sizes): a size's estimate was 0,83–1,25 times the larger size's scaled by
- * pixels (median 1,06). The prediction is that scaling times this factor, above every ratio measured. Used only when
- * the search ran out of time, and the screen then says the size was chosen from an estimate.
+ * pixels (median 1,06). Used only when the search ran out of time, and the screen then says the size was chosen
+ * from an estimate.
+ *
+ * 1,3 until 24 Oct 2026 (above every ratio measured). On the S23 (docs/phone/2026-10-24-s23.md) that cost a size:
+ * 10 s of 1080p, only "Çok büyük" measured by 8 s, "Büyük" predicted at 10,4 MB → "Orta", though "Büyük" measured
+ * 8,55 MB on the desktop (ratio 1,07). Now 1,15 (main session, ADR-052 addendum 4) — and the prediction is
+ * VERIFIED: the size chosen from it is still measured (`verifyPredictedGifSize`), and one that then turns out
+ * over `GIF_AUTO_PICK_MAX_BYTES` gives way to the next smaller size, said so on the screen.
  */
-export const GIF_PREDICT_FACTOR = 1.3;
+export const GIF_PREDICT_FACTOR = 1.15;
 
 export interface GifAutoSizeOptions {
   /** The search ran past `GIF_AUTO_PICK_LIMIT_MS`: nothing more is measured. */
   timedOut?: boolean;
   /** Each size's pixel count, for the prediction. */
   pixels?: Partial<Record<GifSizeId, number>>;
+  /** `GIF_PREDICT_FACTOR` unless said (a test build may change it to see a prediction fail its check). */
+  predictFactor?: number;
 }
 
 /**
@@ -310,7 +323,7 @@ export function sharpestShareableGifSize(
       const known = estimates[size];
       if (fits(known)) return { kind: 'chosen', size, why: 'timeout_fits' };
       if (known !== undefined) continue;
-      const predicted = predictGifBytes(size, choices.slice(i + 1), estimates, pixels);
+      const predicted = predictGifBytes(size, choices.slice(i + 1), estimates, pixels, options.predictFactor);
       if (predicted !== null && predicted <= GIF_AUTO_PICK_MAX_BYTES) return { kind: 'chosen', size, why: 'timeout_predicted' };
     }
     return { kind: 'chosen', size: smallest, why: 'timeout_smallest' };
@@ -323,6 +336,31 @@ export function sharpestShareableGifSize(
     if (fits(known)) return { kind: 'chosen', size, why: 'fits' };
   }
   return { kind: 'chosen', size: smallest, why: 'none_fit' };
+}
+
+/** A size chosen from a prediction (ADR-052 addendum 4): its own measurement is still awaited before a GIF is made. */
+export function gifPickIsPredicted(auto: GifAutoSize): boolean {
+  return auto.kind === 'chosen' && (auto.why === 'timeout_predicted' || auto.why === 'timeout_stepped_down');
+}
+
+/**
+ * The check on a size chosen from a prediction (ADR-052 addendum 4): once that size's own estimate is known,
+ * it stays if it fits `GIF_AUTO_PICK_MAX_BYTES`; if not, the next smaller size takes its place
+ * (`timeout_stepped_down`, said on the screen) — and is checked the same way when its estimate comes, down to
+ * the smallest, which stays whatever it weighs (the 10 MB warning then says so). Nothing else changes a chosen
+ * size: a LARGER size measured to fit afterwards does not switch the choice by itself (no surprises). A failed
+ * measurement keeps the choice (the screen says the estimate failed). Returns `auto` itself when nothing changes.
+ */
+export function verifyPredictedGifSize(choices: readonly GifSizeId[], auto: GifAutoSize, estimates: GifSizeEstimates): GifAutoSize {
+  let now = auto;
+  for (;;) {
+    if (!gifPickIsPredicted(now) || now.kind !== 'chosen') return now;
+    const known = estimates[now.size];
+    if (typeof known !== 'number' || known <= GIF_AUTO_PICK_MAX_BYTES) return now;
+    const at = choices.indexOf(now.size);
+    if (at <= 0) return now;
+    now = { kind: 'chosen', size: choices[at - 1] as GifSizeId, why: 'timeout_stepped_down' };
+  }
 }
 
 /** GIF header, logical screen, 256-entry colour table, loop extension, trailer. */
