@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 
+import { videoEncoderKindFor } from '@/adapters/export/encoderKind';
 import type { GifJob } from '@/adapters/gif/gifClient';
 import { gifMeasure } from '@/adapters/gif/gifText';
 import { CAPTION_FONT_FAMILY } from '@/adapters/captionRender';
@@ -17,6 +18,7 @@ import {
   gifFileName,
   gifHasText,
   gifPickIsPredicted,
+  gifVideoExpectedSize,
   gifRangeLength,
   gifTextMaxPx,
   initialGifRange,
@@ -39,7 +41,9 @@ import {
   type GifTexts,
   type MeasureGifText,
 } from '@/domain/gif';
+import type { VideoEncoderKind } from '@/domain/encoderBitrate';
 import { WEB_LOCAL_POLICY, formatBytes } from '@/domain/policy';
+import { US_PER_SECOND } from '@/domain/time';
 import { compileRenderPlan } from '@/domain/renderPlan';
 import { useT } from '@/i18n/locale';
 import { GifRangeBar } from './GifRangeBar';
@@ -447,15 +451,40 @@ export default function GifWizard(host: WizardHostProps) {
   const estimateProblem = current?.status === 'failed' && !refusal ? current : null;
 
   // ADR-052, "Video olarak": the part, muted, at the video's own size (never enlarged), through the ordinary download.
+  // Planned also while GIF is chosen: the line under the two choices says what the video would weigh (addendum 4).
   const videoRecipe = useMemo(
-    () => (asVideo && part ? gifVideoRecipe(state.project, part, state.settings) : null),
-    [asVideo, part?.startUs, part?.endUs, state.project, state.settings], // eslint-disable-line react-hooks/exhaustive-deps
+    () => (part ? gifVideoRecipe(state.project, part, state.settings) : null),
+    [part?.startUs, part?.endUs, state.project, state.settings], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const videoPlan = useMemo(() => {
     if (!videoRecipe) return null;
     const compiled = compileRenderPlan(videoRecipe, WEB_LOCAL_POLICY);
     return compiled.ok ? compiled.plan : null;
   }, [videoRecipe]);
+  // ADR-052 addendum 4: the video's size, said next to the GIF's estimate — the bitrate the export asks for this
+  // download (the plan's, held to the source's) over the part; on a software encoder (variable bitrate) "can come
+  // out larger".
+  const sourceBitrate = video && video.durationUs > 0 ? (video.file.size * 8) / (video.durationUs / US_PER_SECOND) : null;
+  const videoSize = videoPlan && part ? gifVideoExpectedSize(videoPlan.videoBitrate, sourceBitrate, gifRangeLength(part), gifHasText(texts)) : null;
+  const encoderAsk = videoPlan ? `${videoPlan.width}x${videoPlan.height}@${videoPlan.fpsNum}/${videoPlan.fpsDen}:${videoPlan.videoBitrate}` : '';
+  const [encoder, setEncoder] = useState<{ ask: string; kind: VideoEncoderKind } | null>(null);
+  useEffect(() => {
+    if (!videoPlan || !encoderAsk) return undefined;
+    let live = true;
+    void videoEncoderKindFor(videoPlan.width, videoPlan.height, videoPlan.fpsNum / videoPlan.fpsDen, videoPlan.videoBitrate).then((kind) => {
+      if (live) setEncoder({ ask: encoderAsk, kind });
+    });
+    return () => {
+      live = false;
+    };
+  }, [encoderAsk]); // eslint-disable-line react-hooks/exhaustive-deps
+  const software = encoder !== null && encoder.ask === encoderAsk && encoder.kind === 'software';
+  const videoSizeText = videoSize
+    ? // "en çok" first: the source's own pictures are kept only when that is not larger than encoding them.
+      fill(t(videoSize.upTo ? 'wizard.gif.videoUpTo' : software ? 'wizard.gif.videoAboutSoftware' : 'wizard.gif.videoAbout'), {
+        size: formatBytes(videoSize.bytes, t('time.decimalMark')),
+      })
+    : null;
   // The text, and a bitrate for a short silent clip on a phone screen: the plan's own on every encoder (ADR-052).
   const videoExtras = useMemo(() => ({ overlayText: texts, planBitrateOnly: true }), [texts]);
   const previewSize: GifSize = asVideo && videoPlan ? { width: videoPlan.width, height: videoPlan.height } : size;
@@ -572,11 +601,15 @@ export default function GifWizard(host: WizardHostProps) {
                   data-width={videoPlan.width}
                   data-height={videoPlan.height}
                   data-text={gifHasText(texts)}
+                  data-bytes={videoSize?.bytes}
+                  data-up-to={videoSize?.upTo}
+                  data-encoder={encoder?.ask === encoderAsk ? encoder.kind : undefined}
                 >
                   {/* "yazısıyla" only when there is text to draw (the worker's own rule, `gifHasText`). */}
                   {fill(t(gifHasText(texts) ? 'wizard.gif.videoSizeText' : 'wizard.gif.videoSize'), {
                     width: String(videoPlan.width),
                     height: String(videoPlan.height),
+                    size: videoSizeText ?? '',
                   })}
                 </p>
               ) : null
@@ -669,7 +702,11 @@ export default function GifWizard(host: WizardHostProps) {
                 </label>
               ))}
               <p className="wizard-hint gif-size-hint" id="gif-output-hint" data-testid="gif-output-hint">
-                {t(asVideo ? 'wizard.gif.videoNote' : 'wizard.gif.outputHint')}
+                {asVideo
+                  ? t('wizard.gif.videoNote')
+                  : videoSizeText
+                    ? fill(t('wizard.gif.outputHint'), { size: videoSizeText })
+                    : t('wizard.gif.outputHintNoSize')}
               </p>
             </fieldset>
 

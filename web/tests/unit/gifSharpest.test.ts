@@ -15,6 +15,7 @@ import {
   gifHoldsFrames,
   gifPickIsPredicted,
   gifSizeChoices,
+  gifVideoExpectedSize,
   planGifSize,
   sharpestShareableGifSize,
   verifyPredictedGifSize,
@@ -205,6 +206,26 @@ describe('GIF yap → "Video olarak (en net)": the recipe', () => {
     expect(recipe.clips[0]?.muted).toBe(true);
     const plan = compileRenderPlan(recipe, WEB_LOCAL_POLICY);
     expect(plan.ok && plan.plan.audio.wantsSourceAudio).toBe(false);
+  });
+
+  it('what the video will weigh, said next to the GIF (ADR-052 addendum 4): the plan’s bitrate held to the source’s, over the part', () => {
+    const recipe = gifVideoRecipe(opened(), { startUs: 0, endUs: 10 * S }, DEFAULT_KESIT_SETTINGS);
+    const plan = recipe ? compileRenderPlan(recipe, WEB_LOCAL_POLICY) : null;
+    if (!plan?.ok) throw new Error('no plan');
+    // 1080p30 at 0,09 bit a pixel ≈ 5,6 Mbit/s: 10 s ≈ 7,0 MB — what the S23 measured (7 042 795 / 7 006 161 B).
+    const ten = gifVideoExpectedSize(plan.plan.videoBitrate, 15_000_000, 10 * S, true);
+    expect(ten.bytes).toBe(Math.round((plan.plan.videoBitrate * 10) / 8));
+    expect(ten.bytes / 7_042_795).toBeGreaterThan(0.98);
+    expect(ten.bytes / 7_042_795).toBeLessThan(1.01);
+    expect(ten.upTo).toBe(false);
+    // A source of 2 Mbit/s: held to twice that (4 Mbit/s); with text it is encoded — "yaklaşık".
+    const low = gifVideoExpectedSize(plan.plan.videoBitrate, 2_000_000, 4 * S, true);
+    expect(low).toEqual({ bytes: 2_000_000, upTo: false });
+    // Without text the source's own pictures may be kept (smaller than encoding them): "en çok".
+    expect(gifVideoExpectedSize(plan.plan.videoBitrate, 2_000_000, 4 * S, false)).toEqual({ bytes: 2_000_000, upTo: true });
+    // A source above the plan: encoded at the plan's bitrate either way; the source's size unknown: the plan's.
+    expect(gifVideoExpectedSize(plan.plan.videoBitrate, 15_000_000, 4 * S, false).upTo).toBe(false);
+    expect(gifVideoExpectedSize(plan.plan.videoBitrate, null, 4 * S, false)).toEqual({ bytes: Math.round((plan.plan.videoBitrate * 4) / 8), upTo: false });
   });
 
   it('the file is an .mp4 named after the video, never the original name', () => {

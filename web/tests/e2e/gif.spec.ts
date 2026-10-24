@@ -479,8 +479,12 @@ test('"Video olarak (en net)" (ADR-052): the same part and text as a short H.264
   await expect(page.getByTestId('gif-output-gif')).toBeChecked();
   await expect(page.getByTestId('gif-output-video')).not.toBeChecked();
   await expect(page.getByTestId('gif-output').getByRole('radio')).toHaveCount(2);
+  // ADR-052 addendum 4: no claim that the video is "usually smaller" (on the S23 it was not, at 10 s of 1080p) —
+  // its own size instead, next to the GIF's estimate. No text, and this source's own bitrate (157 kbit/s) is under
+  // what the video would be encoded at (the plan's, held to the source's: 500 kbit/s × 4 s = 250 KB): its own
+  // pictures may be kept, so "en çok".
   await expect(page.getByTestId('gif-output-hint')).toHaveText(
-    'Video çok daha net ve akıcı olur, dosyası da çoğu zaman daha küçük. Sohbet uygulamaları kısa, sessiz videoları çoğu zaman GIF gibi gösterir.',
+    /^Video çok daha net ve akıcı olur; video olarak en çok 2[45]\d KB\. Sohbet uygulamaları kısa, sessiz videoları çoğu zaman GIF gibi gösterir\.$/,
   );
   // The part from 6 s to 10 s, with text on top.
   await page.getByTestId('gif-range-window').focus();
@@ -497,7 +501,12 @@ test('"Video olarak (en net)" (ADR-052): the same part and text as a short H.264
   // No GIF size and no GIF estimate: the video is the video's own size, up to Full HD, never larger (ADR-041).
   await expect(page.getByTestId('gif-size')).toHaveCount(0);
   await expect(estimate(page)).toHaveText('4,0 sn');
-  await expect(page.getByTestId('gif-video-size')).toHaveText('Video: 1280 × 720, sessiz, yazısıyla.');
+  // With text every picture is encoded: "yaklaşık"; this browser's encoder is software (variable bitrate): said so.
+  const videoLine = page.getByTestId('gif-video-size');
+  await expect(videoLine).toHaveAttribute('data-encoder', 'software');
+  await expect(videoLine).toHaveText(/^Video: 1280 × 720, sessiz, yazısıyla, yaklaşık 2[45]\d KB \(bu tarayıcıda daha büyük çıkabilir\)\.$/);
+  await expect(videoLine).toHaveAttribute('data-bytes', String(Math.round((500_000 * 4) / 8)));
+  await expect(videoLine).toHaveAttribute('data-up-to', 'false');
   // Honest about where a video is not a GIF, and about the loop.
   await expect(page.getByTestId('gif-output-hint')).toHaveText(
     'Durmadan dönmesine videoyu gösteren uygulama karar verir. Discord ve bazı siteler gerçek GIF ister; oraya göndereceksen GIF’i seç.',
@@ -523,6 +532,11 @@ test('"Video olarak (en net)" (ADR-052): the same part and text as a short H.264
   const videoBytes = readFileSync(path).length;
   expect(videoBytes).toBeLessThanOrEqual(((1280 * 720 * 30 * 0.09 * 4) / 8) * 1.1);
   expect(videoBytes).toBeLessThan(gif.bytes);
+  // And the size the screen said (ADR-052 addendum 4): within 10 % of the file on this encoder and this source.
+  const said = 250_000;
+  console.log(`GIF-VIDEO-SIZE-SAID ${JSON.stringify({ said, actual: videoBytes, ratio: videoBytes / said })}`);
+  expect(videoBytes / said).toBeGreaterThan(0.9);
+  expect(videoBytes / said).toBeLessThan(1.1);
   // H.264, no sound at all, the video's own 1280 × 720, four seconds.
   expect(probed).toMatchObject({ videoCodec: 'h264', audioCodec: null, width: 1280, height: 720 });
   expect(Math.abs(probed.durationS - 4)).toBeLessThan(0.1);
@@ -559,13 +573,15 @@ test('"Video olarak": a failure nobody planned for ends in plain words with the 
   await openGif(page, OTHER);
   await page.getByTestId('gif-output-video').check();
   // No text typed: the line says nothing about text (until 24 Oct 2026 "yazısıyla" here too); spaces alone are no text.
-  await expect(page.getByTestId('gif-video-size')).toHaveText('Video: 640 × 360, sessiz.');
+  // Its size (ADR-052 addendum 4): without text the source's own pictures may be kept — "en çok".
+  await expect(page.getByTestId('gif-video-size')).toHaveText(/^Video: 640 × 360, sessiz, en çok \d+ KB\.$/);
   await expect(page.getByTestId('gif-video-size')).toHaveAttribute('data-text', 'false');
+  await expect(page.getByTestId('gif-video-size')).toHaveAttribute('data-up-to', 'true');
   await page.getByLabel('Alt yazı').fill('   ');
-  await expect(page.getByTestId('gif-video-size')).toHaveText('Video: 640 × 360, sessiz.');
+  await expect(page.getByTestId('gif-video-size')).toHaveText(/^Video: 640 × 360, sessiz, en çok \d+ KB\.$/);
   // With text every picture is made again (a 640 × 360 H.264 source without text could keep its own pictures).
   await page.getByLabel('Alt yazı').fill('olmadı');
-  await expect(page.getByTestId('gif-video-size')).toHaveText('Video: 640 × 360, sessiz, yazısıyla.');
+  await expect(page.getByTestId('gif-video-size')).toHaveText(/^Video: 640 × 360, sessiz, yazısıyla, yaklaşık \d+ KB \(bu tarayıcıda daha büyük çıkabilir\)\.$/);
   await expect(page.getByTestId('gif-video-size')).toHaveAttribute('data-text', 'true');
   await page.evaluate(() => {
     (window as unknown as { __clipExportFault: unknown }).__clipExportFault = { kind: 'encode', atFrame: 12, errorName: 'EncodingError', message: 'Encoding error.' };

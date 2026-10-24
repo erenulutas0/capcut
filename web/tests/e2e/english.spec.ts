@@ -403,11 +403,12 @@ test.describe('every card, in English, to the saved file', () => {
     await page.getByTestId('gif-output-video').check();
     await expect(page.getByTestId('gif-output-hint')).toHaveText(en['wizard.gif.videoNote']);
     // No text typed: nothing about text (until 24 Oct 2026 it said "with your text" here too); with text, it does.
-    await expect(page.getByTestId('gif-video-size')).toHaveText('Video: 1280 × 720, no sound.');
+    // And its size (ADR-052 addendum 4): "at most" without text (its own pictures may be kept), "about" with text.
+    await expect(page.getByTestId('gif-video-size')).toHaveText(/^Video: 1280 × 720, no sound, at most \d+ KB\.$/);
     await page.getByLabel(en['wizard.gif.topLabel']).fill('MONDAY');
-    await expect(page.getByTestId('gif-video-size')).toHaveText('Video: 1280 × 720, no sound, with your text.');
+    await expect(page.getByTestId('gif-video-size')).toHaveText(/^Video: 1280 × 720, no sound, with your text, about \d+ KB \(it can come out larger in this browser\)\.$/);
     await page.getByLabel(en['wizard.gif.topLabel']).fill('');
-    await expect(page.getByTestId('gif-video-size')).toHaveText('Video: 1280 × 720, no sound.');
+    await expect(page.getByTestId('gif-video-size')).toHaveText(/^Video: 1280 × 720, no sound, at most \d+ KB\.$/);
     await expect(page.getByTestId('wizard-download')).toHaveText(en['wizard.gif.downloadVideo']);
     await page.getByTestId('wizard-download').click();
     await expect(page.getByTestId('download-saved')).toHaveText('Saved: saved-sample-24s_gif.mp4', { timeout: 120_000 });

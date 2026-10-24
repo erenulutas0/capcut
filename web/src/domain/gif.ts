@@ -9,6 +9,7 @@
  * GIF break the lines in the same places (as the captions do, ADR-015).
  */
 
+import { sourceBoundedBitrate } from './encoderBitrate';
 import { fileBaseName } from './kesit';
 import { WEB_LOCAL_POLICY } from './policy';
 import { US_PER_SECOND, type Micros } from './time';
@@ -546,3 +547,26 @@ export const GIF_MIME = 'image/gif';
  * they show a GIF; whether it loops is decided by the app that shows it, not by the file.
  */
 export type GifOutput = 'gif' | 'video';
+
+/**
+ * What the video will weigh (ADR-052 addendum 4): the screen says it next to the GIF's estimate, so the two
+ * can be compared (before: "dosyası da çoğu zaman daha küçük" — on the S23, 10 s of 1080p came out 1,19–1,43
+ * times the GIF chosen first). The bitrate the export worker asks for this download: the plan's own
+ * (`planBitrateOnly`), held to twice the source's (`sourceBoundedBitrate`), over the part's length. A hardware
+ * encoder keeps it (constant bitrate, ADR-045: the S23 measured ×1,001–1,012); a software one aims at it with a
+ * variable bitrate and can pass it on a very detailed video (the screen says so). Without text, a source whose
+ * own bitrate is under that may keep its own pictures (ADR-027, `clip_size`): the file is then at most this
+ * (`upTo`), usually less.
+ */
+export interface GifVideoSize {
+  bytes: number;
+  upTo: boolean;
+}
+
+export function gifVideoExpectedSize(planBitrate: number, sourceBitrate: number | null, lengthUs: Micros, withText: boolean): GifVideoSize {
+  const bitrate = sourceBoundedBitrate(planBitrate, sourceBitrate);
+  return {
+    bytes: Math.round((bitrate * lengthUs) / US_PER_SECOND / 8),
+    upTo: !withText && sourceBitrate !== null && sourceBitrate > 0 && sourceBitrate < bitrate,
+  };
+}

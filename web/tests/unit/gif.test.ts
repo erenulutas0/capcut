@@ -169,10 +169,15 @@ describe('GIF yap: the text', () => {
     expect(gifHasText({ top: 'PAZARTESİ', bottom: '' })).toBe(true);
     expect(gifHasText({ top: '', bottom: ' ğ ' })).toBe(true);
     // The two sentences: without and with text, Turkish and English (same placeholders).
-    expect(TR['wizard.gif.videoSize']).toBe('Video: {width} × {height}, sessiz.');
-    expect(TR['wizard.gif.videoSizeText']).toBe('Video: {width} × {height}, sessiz, yazısıyla.');
-    expect(EN['wizard.gif.videoSize']).toBe('Video: {width} × {height}, no sound.');
-    expect(EN['wizard.gif.videoSizeText']).toBe('Video: {width} × {height}, no sound, with your text.');
+    // ADR-052 addendum 4: and the video's size at the end ("yaklaşık 7,0 MB").
+    expect(TR['wizard.gif.videoSize']).toBe('Video: {width} × {height}, sessiz, {size}.');
+    expect(TR['wizard.gif.videoSizeText']).toBe('Video: {width} × {height}, sessiz, yazısıyla, {size}.');
+    expect(EN['wizard.gif.videoSize']).toBe('Video: {width} × {height}, no sound, {size}.');
+    expect(EN['wizard.gif.videoSizeText']).toBe('Video: {width} × {height}, no sound, with your text, {size}.');
+    // The claim "its file is usually smaller" is gone (on the S23, 10 s of 1080p: 1,19–1,43 × the GIF): the number instead.
+    expect(TR['wizard.gif.outputHint']).not.toContain('daha küçük');
+    expect(EN['wizard.gif.outputHint']).not.toContain('smaller');
+    expect(TR['wizard.gif.outputHint']).toContain('{size}');
   });
 
   it('is nothing at all when the box is empty', () => {

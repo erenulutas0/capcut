@@ -3,6 +3,24 @@
 > Tarih: 2026-09-19 · Sürüm: 0.1 · Durum: ÖNERİLEN SPESİFİKASYON
 > Bu paketteki ürün kararları başlangıç önerisidir; uygulamanın yapılmış veya test edilmiş olduğunu göstermez.
 
+## GIF yap: keskin kareler, doğrulanan tahmin, videonun boyutu — 24 Ekim 2026 (ADR-046 Ek 3, ADR-052 Ek 4; politika ve şema değişmedi)
+
+- **Her GIF karesi keskinleşir** (0,25 güç, tarayıcının küçültmesinden sonra, paletten ve kodlayıcıdan önce; tahminde,
+  tek ve iki geçişte aynı; yazı keskinleşmez). Ana oturumun kararı (kurucu devretti, "her zaman en neti vermeliyiz"):
+  21 Ekim'in ön kayıtlı kuralı bunu saklı kümede Büyük'te SSIM-tel −0,0021 (sınır −0,002) ile geçirmemişti — bu
+  kural bilerek geçersiz kılındı, ADR-046 Ek 3 gerekçesiyle. Telefon ekranında netlik ölçüsü +4–8 puan (21 Ekim).
+  Bedel (bu masaüstü): dosya gerçek kayıtlarda ~%2–3 (yapayda %4–6) büyük; kare başına 0,6 (Küçük) – 5,8 ms (Çok
+  büyük); 10 sn Çok büyük GIF 1,8–2,5 sn uzun. Tahmin yine ±%10 (gerçek 76/84, dışındaki 8'i bilinen neredeyse
+  kıpırdamayan video; yapay 40/40). İki geçiş tek geçişle yine bayt bayt aynı. "Video olarak" değişmedi.
+- **Süre dolunca tahminle seçilen boyut** (S23'te 10 sn 1080p): pay ×1,3 → ×1,15; seçilen boyut **kendi ölçümüyle
+  doğrulanır** — 9 MB'ı geçerse bir küçüğü seçilir, ekran söyler; o ana dek "GIF'i indir" bekler. Süren ölçüm artık
+  bırakılmaz (2 çekirdekte 10 sn 1080p'de düğme 4–9 sn erken açılıyor; kumlu üretilmiş klipte kazanç yok). Daha büyük
+  bir boyut sonradan sığsa da seçim kendiliğinden değişmez.
+- **"Video olarak":** "dosyası da çoğu zaman daha küçük" sözü kalktı (telefonda 10 sn'de tutmuyordu); yerine videonun
+  beklenen boyutu: "Video çok daha net ve akıcı olur; video olarak yaklaşık 7 MB." ve "Video: 1920 × 1080, sessiz,
+  yaklaşık 7 MB." (bu tarayıcı yazılımla kodluyorsa "daha büyük çıkabilir"; yazısız düşük bit hızlı kaynakta "en
+  çok"). Yazı yazılmamışsa satır artık "yazısıyla" demiyor.
+
 ## Güvenlik: Next 16.4.1 — 22 Ekim 2026 (ADR-051 eki; politika ve şema değişmedi)
 
 Next.js'in üç tavsiyesi (ikisi kritik, `next` ≤ 16.4.0) 22 Ekim'de tavsiye veritabanına girdi; `npm audit --omit=dev`
