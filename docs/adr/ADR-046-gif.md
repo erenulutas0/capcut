@@ -10,6 +10,9 @@
 > GIF iki geçişle, kare tutmadan yapılır (aynı baytlar); bellek yetmeyince GIF'in kendi cümlesi.
 > **Ek 2, 21 Ekim 2026** (en altta): kareler tarayıcının kendisiyle çizilip ölçüldü; dördüncü boyut "Çok büyük"
 > (960); küçültme, keskinleştirme, eşikli saydamlık, kırpma ön kayıtlı kuralı geçmedi; 1280 / 1920 sunulmadı.
+> **Ek 3, 24 Ekim 2026** (en altta): ana oturumun kararıyla (kurucu devretti) her GIF karesi küçültmeden sonra 0,25
+> güçte keskinleştirilir (`high+s0.25`) — Ek 2'nin ön kayıtlı kuralı bunu ince farkla geçirmemişti; geçersiz kılma ve
+> gerekçesi orada. Tahmin keskinleştirmeyi içerir, ±%10 yeniden ölçüldü.
 > **Sonra: [ADR-052](ADR-052-gif-sharpest.md) (21 Ekim 2026):** varsayılan "Orta" değil, ölçülen tahmini 10 MB'ı
 > geçmeyen en büyük boyut; kartta ikinci çıktı "Video olarak (en net)" (aynı kısım ve yazı, olağan MP4 indirmesiyle).
 > Kaynak: kurucunun kararı (yeni kart "GIF yap", taslak tuvalinden seçenek **B "Tek ekran, yazı önizlemenin
@@ -834,4 +837,108 @@ saydamlık ve tahmin yöntemi değişmedi.
    yol gelince bile bu kural onları açmaz; istenirse sınır (15 MB) kurucu kararıyla değişir. Bu boyutlarda döngülü MP4
    ("Video olarak", kurucu 20 Ekim'de şimdilik istemedi) aynı netliği çok küçük dosyayla verir.
 3. Adlar "Çok büyük" / "Extra large".
+
+---
+
+## Ek 3 — 24 Ekim 2026: keskinleştirme açıldı (0,25, `high+s0.25`) — ön kayıtlı kuralın geçersiz kılınması
+
+> Durum: UYGULANDI (birim, e2e, uygulamada ölçüm; sayılar aşağıda). Telefonda **denenmedi**. Politika ve şema
+> değişmedi. "Video olarak" (MP4) **değişmedi**.
+
+### Karar ve geçersiz kılma (açıkça)
+
+Ana oturumun kararı (kurucu devretti; kurucunun hedefi "her zaman en neti vermeliyiz"): Ek 2'nin `high+s0.25`
+adayı — uygulamanın kendi `high` küçültmesinden sonra 3 × 3 bulanıklık farkıyla 0,25 güçte keskinleştirme — **her GIF
+boyutunda açılır.** Bu, Ek 2'nin ön kayıtlı karar kuralını **bilerek geçersiz kılar:** aday ana kümede kuralı geçti
+(+7,7 puan, bayt ×1,03–1,04, kare başına +7,8 ms), ama ön kayda ekin istediği saklı kümede **SSIM-tel Büyük'te
+−0,0021** çıktı; sınır −0,002 idi (Orta −0,0012). Kural yazıldığı gibi uygulansaydı keskinleştirme açılmazdı;
+sonuç bölümü (yukarıda) bu yüzden "değişmedi" diyor ve o bölüm değiştirilmedi.
+
+21 Ekim karşılaştırmasının sayıları (R3 / R4 çiftleri, o günün numaralarıyla; ana oturumun aktardığı, bu ek
+yeniden ölçmedi):
+**VMAF-tel +4,1 ile +6,8**, bayt **+%2,4 ile +%3,9**, **SSIM-tel −0,0021 ile +0,0065**.
+
+Gerekçe: telefonda görünen netlik (VMAF-tel ve keskinleştirmeyi ödüllendirmeyen VMAF-tel-NEG) iki kümede de
+6–8 puan arttı; SSIM-tel kaybı tek bir boyutta, tek kümede sınırı 0,0001 aştı, öbür durumlarda SSIM-tel arttı;
+bedel küçük (dosya %2–4, süre aşağıda). Hedef "en net" olduğu için bu ince kaçırma, kazancı geri çevirmeye yeter
+sayılmadı. Kural bundan sonraki ölçümler için aynen geçerli; bu ek bir istisnadır, kuralın gevşetilmesi değil.
+
+### Uygulama
+
+- **`GifSharpener`** (`adapters/gif/gifSharpen.ts`, yeni; tarayıcı API'si yok): ölçüm aracının `sharpen`'ıyla
+  (`scripts/gif-eval/resample.ts`) **aynı aritmetik** — out = in + 0,25 × (in − blur), [1 2 1] ⊗ [1 2 1] / 16,
+  kenarda kenar pikseli tekrarlanır, `Uint8ClampedArray` gibi yuvarlanır (en yakın, yarımlar çifte) ve 0–255'e
+  kırpılır; alfa okunmaz, 255 yazılır. Fark: kare **yerinde** keskinleşir (her satırın bulanıklığı özgün piksellerin
+  üç satırlık yatay toplamlarından; y + 1. satır, y. satır yazılmadan toplanır) ve sonuç tek bir tamsayı anahtarla
+  (M × in − 16 × blur, M = 80) bir kez kurulan tablodan okunur. Birim sınaması: 15 geometride (1 × 1, tek satır,
+  tek sütun, tek sayılı boylar, dört GIF boyutu) iki güçte ölçüm aracınınkiyle **bayt bayt aynı**.
+- **Nerede:** `gifWorker.ts`'in tek çizim yolu `drawFrames`'te, her boyutta, `VideoSample.draw` (tarayıcının `high`
+  küçültmesi; HDR'de yumuşak kırpmadan sonra) ile paletin örneği ve kodlayıcı arasında. Tahmin, tek geçiş ve iki geçiş
+  aynı yoldan geçtiği için üçü de aynı kareyi görür.
+- **Yazı keskinleşmez:** resim keskinleşir, yazı onun üstüne çizilir (`putImageData`, `drawGifText`, yeniden
+  `getImageData`). Harflerin saf beyazı ve siyah kenarı paletin onlara ayırdığı renkler; keskinleştirme onların
+  kenarında hale bırakırdı. Yazılı karede bu bir okuma / yazma daha (960 × 540'ta 0,8 ms).
+- "Video olarak" (export worker'ı) dokunulmadı.
+
+### Ölçülen (bu masaüstü, Windows; uygulamanın kendisi, `CLIP_TEST_HOOKS=1` yapısı)
+
+**Kare başına keskinleştirme** (Playwright Chromium 153'ün bir işleyicisinde, 200 karenin ortancası, üç koşu):
+Küçük 320 × 180 **0,6–0,7 ms**, Orta 480 × 270 **1,4–1,5 ms**, Büyük 640 × 360 **2,5–2,6 ms**, Çok büyük 960 × 540
+**5,7–5,8 ms**. Yazılı karede ayrıca 0,1–0,8 ms. (İlk yazılan, her pikseli hesaplayan sürüm Çok büyük'te 9,6 ms idi;
+tablo ile 5,8.) Telefon ~3 kat yavaş varsayılır (ölçülmedi): Çok büyük'te ~17 ms.
+
+**GIF'i yapma süresi** (işleyicinin kendi ölçtüğü süre, sonuç kartındaki "Süre", Google Chrome; 3 koşu ortancası,
+öncesi → sonrası):
+
+| Kaynak | 4 sn Büyük | 4 sn Çok büyük | 10 sn Büyük | 10 sn Çok büyük (iki geçiş) |
+|---|---|---|---|---|
+| S1 (test deseni) | 0,8 → 1,0 sn | 1,2 → 1,6 | 1,8 → 2,2 | 3,7 → 6,1 |
+| R3 (iPhone 1080p 30) | 1,1 → 1,3 | 1,8 → 1,9 | 2,4 → 2,9 | 5,0 → 6,8 |
+| R4 (iPhone 1080p 60) | 1,1 → 1,2 | 1,5 → 1,8 | 2,4 → 2,8 | 5,0 → 7,5 |
+| R8 (GoPro 720p 60) | 1,0 → 1,3 | 1,3 → 2,0 | 2,1 → 2,7 | 4,4 → 6,4 |
+
+Kare başına **+2–6 ms Büyük'te, +2–14 ms 4 sn Çok büyük'te, +14–20 ms 10 sn Çok büyük'te** (bu masaüstünde 10 sn
+Çok büyük'ün 259 MB karesi 128 MiB bütçeyi aşar: iki geçiş, her kare iki kez çizilir ve keskinleşir; çekirdeğin
+2 × 5,8 ms'sinin üstündeki kısım ölçülmüş ama ayrıştırılmamıştır — keskin karede değişmeden kalan piksel azalır,
+kodlayıcının işi artar). En kötüsü 10 sn Çok büyük: +1,8–2,5 sn. Telefonda ölçülmedi.
+
+**Dosya boyutu ve tahmin** (`scripts/gif-eval/app-check.mjs`; öncesi ve sonrası aynı kaynaklarla; gerçek 11
+kayıt — Ek 2'nin kümesi, K1 / K2 yok; R1 (4K), R2 (4,4 sn), R6 (neredeyse kıpırdamayan) Ek 2'dekilerle aynı
+kayıtlar, öbür numaralar yeniden verildi (yukarıdaki süre tablosu dahil; eşlemesi yalnızca yerel bir dosyada); yapay S1–S5; Küçük / Orta / Büyük / Çok büyük × 4 / 10 sn; gerçek kayıtlar Google Chrome'da,
+yapaylar Playwright Chromium'da):
+
+- **Bayt, sonra ÷ önce** (her boyut ve süre için ortanca): gerçek kümede **×1,018–1,032** (tek tek 0,991–1,057),
+  yapayda ×1,035–1,056 (en çok ×1,116: S1 test deseni Küçük 10 sn).
+- **Tahmin ±%10 içinde: gerçek kümede 84 GIF'in 76'sı, yapayda 40 / 40.** Dışındaki 8'in hepsi **R6** (neredeyse
+  kıpırdamayan dikey 1080p, 0,04–0,45 MB: ×1,13–1,54), birinci turdan beri bilinen istisna — önceki yapıda da aynı 8
+  dışarıdaydı (×1,10–1,51). Tahmin yöntemi değişmedi: aynı işleyici, aynı keskin kareler.
+- **ADR-052'nin ilk seçimi** (9 MB eşiği değişmedi; ölçülen tahminlere uygulanınca, süre sınırı dışarıda): 31
+  kaynak / süre durumunun **30'unda aynı boyut**; değişen tek durum S3 10 sn (yapay kaydırma + kum): Orta 8,69 →
+  9,26 MB, artık Küçük. Gerçek kayıtlarda seçilen boyutun tahmini en çok 8,93 MB (R11 10 sn Büyük).
+- Önceki yapının bir koşusu (R9 10 sn Çok büyük) 10 dk'da bitmedi (ölçüm aracının sınırı); yeni yapıda aynı GIF 6,5
+  sn'de çıktı. Tekrar edilmedi; keskinleştirmeyle ilgisi yok (önceki yapı).
+
+### Sınamalar (Ek 3; ADR-052 Ek 4 ile aynı son kodla; yerel, Windows, port 3193, ölçüm kilidi altında)
+
+- `tsc`, `eslint` temiz; birim **1679 / 1679** (97 dosya; yeni `gifSharpen.test.ts` 9: ölçüm aracınınkiyle 15
+  geometride iki güçte bayt bayt aynı, elle hesaplanmış nokta ve hale, yarımların çifte yuvarlanması, siyah / beyazda
+  kırpma, kenarlar, alfa okunmaz ve 255, tek nesneyle ardışık kareler, yanlış boy / güç reddi).
+- e2e (Playwright Chromium, `CLIP_TEST_HOOKS=1` yapısı) **92 / 92**, ilk koşuda: `gif.spec.ts` 15, `gif-a11y.spec.ts` 3,
+  `gif-memory.spec.ts` 2, `wizard-phone-action.spec.ts` 39, `english.spec.ts` 23, `share-target.spec.ts` 10.
+  `PAGE-RECOVERED-TOTAL 0`. **İki geçiş tek geçişle bayt bayt aynı** (var olan sınama, değiştirilmedi): Küçük 4 sn
+  yazılı 172 515 B, 10 sn Büyük kumlu 16 278 940 B (keskinleştirmeden önce 171 456 / 15 787 522). GIF sınamalarında
+  hiçbir eşik gevşemedi; beklentisi değişen yalnızca ADR-052 Ek 4'ün satırları (yazılı / yazısız video satırı,
+  videonun boyutu, ×1,15 ve doğrulama). Tahmin ÷ gerçek: 1,016 (Küçük, yazılı), 1,014 (Büyük dikey), 1,034 (Çok büyük).
+- Kalite katmanı (`visual`, `a11y`, `text`, `walkthrough`; geçmişe yazılmadan, rapor depoya konmadı): ilk koşuda 705
+  ölçüden 704 bütçe içinde, **farklı ekran 2** — `sihirbaz-gif-secim` telefon TR / EN: tahmin sayısı (keskin
+  kareler) ve Ek 4'ün yeni çıktı satırı ("video olarak yaklaşık 250 KB …"). Fark resimlerine bakılıp yalnız bu iki taban
+  yenilendi; sonra **705 bütçe içinde, 0 dışında, farklı ekran 0**; a11y 34 / 34.
+- Tam e2e takımı, Pages sınaması, bulut koşulmadı.
+
+### Doğrulanmayanlar (Ek 3)
+
+- **Telefon:** S23'te keskin GIF'in görünüşü, süresi, tahmini ölçülmedi; kurucunun gözle karşılaştırması yapılmadı.
+- Saklı kümedeki SSIM-tel kaybının (Büyük −0,0021) gözle fark edilip edilmediği bilinmiyor.
+- K1 / K2 (az ışık kopyaları) bu ekte yeniden üretilmedi; tahmin ve bayt onlarda ölçülmedi.
+- Safari / Firefox'un küçültmesinin üstüne keskinleştirme (yalnız Chromium'da ölçüldü).
 

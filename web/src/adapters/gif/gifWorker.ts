@@ -10,7 +10,11 @@
  * (`decoderHold`, ADR-033), the incomplete-file check (ADR-040), HDR through
  * the float canvas and the soft clip that the export verified (ADR-022).
  * `VideoSample.draw` applies the file's rotation. Nothing is ever enlarged
- * (ADR-041): the size comes from `planGifSize`.
+ * (ADR-041): the size comes from `planGifSize`. Each frame, drawn at the GIF's
+ * size (the browser's 'high' downscale), is sharpened a little (0,25,
+ * `GifSharpener`, ADR-046 addendum 3) before the text goes on it and before
+ * the palette or the encoder sees it — in the estimate and in both roads of
+ * `make` alike.
  *
  * Two jobs:
  * - `estimate`: a few moments of the part, three frames each, encoded exactly
@@ -54,6 +58,7 @@ import {
 import { hdrTransferOf, type HdrTransfer } from '@/domain/hdr';
 import { US_PER_SECOND } from '@/domain/time';
 import { GifPaletteSampler, GifWriter, buildGifPalette } from './gifEncode';
+import { GifSharpener } from './gifSharpen';
 import { drawGifText, gifMeasure, gifTextLayouts } from './gifText';
 import type { GifFailure, GifJob, GifSample, GifWorkerRequest, GifWorkerResponse } from './protocol';
 
@@ -97,12 +102,14 @@ interface Target {
   canvas: OffscreenCanvas;
   context: OffscreenCanvasRenderingContext2D;
   hdrContext: OffscreenCanvasRenderingContext2D | null;
+  /** ADR-046 addendum 3: every frame of this size is sharpened (0,25) after the browser's downscale. */
+  sharpener: GifSharpener;
 }
 
 /**
  * The opened video, ready to draw frames of at one or more GIF sizes. ADR-052: the estimate draws every
  * decoded frame at each size it measures — one decode for all of them, and each size drawn exactly as the
- * GIF of that size is (`VideoSample.draw` straight to its size), so each estimate is what it was alone.
+ * GIF of that size is (`VideoSample.draw` straight to its size, then sharpened), so each estimate is what it was alone.
  */
 interface Source {
   input: Input;
@@ -170,7 +177,7 @@ async function open(job: GifJob, sizeIds: readonly GifSizeId[] = [job.size]): Pr
       }
       stage = 'captions';
       const layouts = withText ? gifTextLayouts(job.texts, size, gifMeasure(context)) : [];
-      targets.push({ id, size, layouts, canvas, context, hdrContext });
+      targets.push({ id, size, layouts, canvas, context, hdrContext, sharpener: new GifSharpener(size.width, size.height) });
     }
     return { input, track, hdr, targets };
   } catch (error) {
@@ -213,8 +220,9 @@ async function drawFrames(
       if (picked.missing) missing += 1;
       if (picked.frame) drawn += 1;
       const rgba: Uint8Array[] = [];
-      for (const { size, context, hdrContext, layouts } of targets) {
+      for (const { size, context, hdrContext, layouts, sharpener } of targets) {
         stage = 'draw';
+        let picture: ImageData | null = null;
         try {
           const target = hdrContext ?? context;
           target.fillStyle = '#000000';
@@ -222,16 +230,33 @@ async function drawFrames(
           // The picker owns the sample and closes it (after this loop: every size is drawn from it).
           if (picked.frame) picked.frame.draw(target, 0, 0, size.width, size.height);
           if (hdrContext) {
-            const clipped = softClippedImage(hdrContext, size.width, size.height);
-            if (!clipped) throw new GifError('hdr_source_unsupported');
-            context.putImageData(clipped, 0, 0);
+            // A new ImageData every frame (`reuse` not given): it can be kept as the frame itself.
+            picture = softClippedImage(hdrContext, size.width, size.height);
+            if (!picture) throw new GifError('hdr_source_unsupported');
           }
-          drawGifText(context, layouts);
         } catch (error) {
           throw tagStage(error, 'draw');
         }
         stage = 'frame_capture';
-        const pixels = context.getImageData(0, 0, size.width, size.height).data;
+        // `getImageData` hands out a new buffer for every frame.
+        picture ??= context.getImageData(0, 0, size.width, size.height);
+        // ADR-046 addendum 3: the picture is sharpened at the GIF's size (the downscale was the browser's
+        // 'high'), before the palette or the encoder sees it — the same in the estimate, one pass and two.
+        sharpener.apply(picture.data);
+        if (layouts.length > 0) {
+          // The text over the sharpened picture, never sharpened itself: its letters stay the pure white and
+          // black the palette keeps for them, without a halo.
+          stage = 'draw';
+          try {
+            context.putImageData(picture, 0, 0);
+            drawGifText(context, layouts);
+          } catch (error) {
+            throw tagStage(error, 'draw');
+          }
+          stage = 'frame_capture';
+          picture = context.getImageData(0, 0, size.width, size.height);
+        }
+        const pixels = picture.data;
         rgba.push(new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength));
       }
       const pending = onFrame(rgba, index);
