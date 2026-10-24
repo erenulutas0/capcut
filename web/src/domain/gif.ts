@@ -481,6 +481,14 @@ export interface GifTexts {
   bottom: string;
 }
 
+/**
+ * Whether anything of the two boxes is drawn: what is left once cleaned (`cleanGifText`) — the one rule of the
+ * export worker (no text: the video may keep the source's pictures) and of the screen ("yazısıyla" only then).
+ */
+export function gifHasText(texts: GifTexts): boolean {
+  return cleanGifText(texts.top) !== '' || cleanGifText(texts.bottom) !== '';
+}
+
 // ---------------------------------------------------------------- the file
 
 /** `tatil.mp4` → `tatil_gif.gif` (the same cleaned base name every download uses). */

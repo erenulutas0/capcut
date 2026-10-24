@@ -15,6 +15,7 @@ import { WizardFlow, fill, lengthText, type WizardHostProps } from '@/components
 import {
   GIF_TEXT_MAX_CHARS,
   gifFileName,
+  gifHasText,
   gifRangeLength,
   gifTextMaxPx,
   initialGifRange,
@@ -536,8 +537,18 @@ export default function GifWizard(host: WizardHostProps) {
 
             {asVideo ? (
               videoPlan ? (
-                <p className="wizard-hint" data-testid="gif-video-size" data-width={videoPlan.width} data-height={videoPlan.height}>
-                  {fill(t('wizard.gif.videoSize'), { width: String(videoPlan.width), height: String(videoPlan.height) })}
+                <p
+                  className="wizard-hint"
+                  data-testid="gif-video-size"
+                  data-width={videoPlan.width}
+                  data-height={videoPlan.height}
+                  data-text={gifHasText(texts)}
+                >
+                  {/* "yazısıyla" only when there is text to draw (the worker's own rule, `gifHasText`). */}
+                  {fill(t(gifHasText(texts) ? 'wizard.gif.videoSizeText' : 'wizard.gif.videoSize'), {
+                    width: String(videoPlan.width),
+                    height: String(videoPlan.height),
+                  })}
                 </p>
               ) : null
             ) : twoSizes ? (

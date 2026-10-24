@@ -10,6 +10,7 @@ import {
   GIF_TEXT_MAX_CHARS,
   GIF_TEXT_MIN_PX,
   cleanGifText,
+  gifHasText,
   estimateGifBytes,
   gifFileName,
   gifFrameTimesUs,
@@ -26,6 +27,8 @@ import {
   type MeasureGifText,
 } from '@/domain/gif';
 import { inspectGif } from '@/domain/gifInspect';
+import { tr as TR } from '@/i18n/messages';
+import { en as EN } from '@/i18n/messages.en';
 import { indexFrame, keepUnchanged, nearestCache, nearestIndex, type GifPalette } from '@/domain/gifPalette';
 import { WEB_LOCAL_POLICY } from '@/domain/policy';
 
@@ -158,6 +161,18 @@ describe('GIF yap: the text', () => {
     const long = 'ğ'.repeat(GIF_TEXT_MAX_CHARS + 5);
     expect(Array.from(cleanGifText(long))).toHaveLength(GIF_TEXT_MAX_CHARS);
     expect(Array.from(cleanGifText('😀'.repeat(50)))).toHaveLength(GIF_TEXT_MAX_CHARS);
+  });
+
+  it('is there only when something is left once cleaned — the "Video olarak" line says "yazısıyla" only then', () => {
+    expect(gifHasText({ top: '', bottom: '' })).toBe(false);
+    expect(gifHasText({ top: '   ', bottom: '\n\t' })).toBe(false);
+    expect(gifHasText({ top: 'PAZARTESİ', bottom: '' })).toBe(true);
+    expect(gifHasText({ top: '', bottom: ' ğ ' })).toBe(true);
+    // The two sentences: without and with text, Turkish and English (same placeholders).
+    expect(TR['wizard.gif.videoSize']).toBe('Video: {width} × {height}, sessiz.');
+    expect(TR['wizard.gif.videoSizeText']).toBe('Video: {width} × {height}, sessiz, yazısıyla.');
+    expect(EN['wizard.gif.videoSize']).toBe('Video: {width} × {height}, no sound.');
+    expect(EN['wizard.gif.videoSizeText']).toBe('Video: {width} × {height}, no sound, with your text.');
   });
 
   it('is nothing at all when the box is empty', () => {

@@ -112,7 +112,7 @@ import {
   type TargetSizeMeasurement,
 } from '@/domain/targetSize';
 import { outputPixelSize } from '@/domain/edl';
-import { cleanGifText, type GifTexts, type GifTextLayout } from '@/domain/gif';
+import { cleanGifText, gifHasText, type GifTexts, type GifTextLayout } from '@/domain/gif';
 import { drawGifText, gifMeasure, gifTextLayouts } from '../gif/gifText';
 import { hdrTransferOf, type HdrTransfer } from '@/domain/hdr';
 import { WEB_LOCAL_POLICY, outputRouteRefusal } from '@/domain/policy';
@@ -938,7 +938,7 @@ function usableOverlayText(value: unknown): GifTexts | null {
   if (!value || typeof value !== 'object') return null;
   const { top, bottom } = value as { top?: unknown; bottom?: unknown };
   const texts = { top: typeof top === 'string' ? cleanGifText(top) : '', bottom: typeof bottom === 'string' ? cleanGifText(bottom) : '' };
-  return texts.top || texts.bottom ? texts : null;
+  return gifHasText(texts) ? texts : null;
 }
 
 /* ------------------------------------------------------------- İyileştir */

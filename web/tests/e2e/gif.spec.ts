@@ -536,9 +536,15 @@ test('"Video olarak (en net)" (ADR-052): the same part and text as a short H.264
 test('"Video olarak": a failure nobody planned for ends in plain words with the detail (ADR-042), and the next press works', async ({ page }) => {
   await openGif(page, OTHER);
   await page.getByTestId('gif-output-video').check();
-  await expect(page.getByTestId('gif-video-size')).toHaveText('Video: 640 × 360, sessiz, yazısıyla.');
+  // No text typed: the line says nothing about text (until 24 Oct 2026 "yazısıyla" here too); spaces alone are no text.
+  await expect(page.getByTestId('gif-video-size')).toHaveText('Video: 640 × 360, sessiz.');
+  await expect(page.getByTestId('gif-video-size')).toHaveAttribute('data-text', 'false');
+  await page.getByLabel('Alt yazı').fill('   ');
+  await expect(page.getByTestId('gif-video-size')).toHaveText('Video: 640 × 360, sessiz.');
   // With text every picture is made again (a 640 × 360 H.264 source without text could keep its own pictures).
   await page.getByLabel('Alt yazı').fill('olmadı');
+  await expect(page.getByTestId('gif-video-size')).toHaveText('Video: 640 × 360, sessiz, yazısıyla.');
+  await expect(page.getByTestId('gif-video-size')).toHaveAttribute('data-text', 'true');
   await page.evaluate(() => {
     (window as unknown as { __clipExportFault: unknown }).__clipExportFault = { kind: 'encode', atFrame: 12, errorName: 'EncodingError', message: 'Encoding error.' };
   });
